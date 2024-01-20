@@ -1811,20 +1811,43 @@ void parser::tag_combobox(XMLTag &Tag)
       else log.warning("<combobox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   // Process <option/> tags for the drop-down menu
+   // Process <option/> tags for the drop-down menu.
+   // The content within each option is used as presentation in the drop-down list.
+   // The 'value' attrib, if declared, will appear in the combobox for the selected item.
+   // The 'id' attrib, if declared, is a UID hidden from the user.
 
    if (!Tag.Children.empty()) {
       for (auto &scan : Tag.Children) {
-         if (!StrMatch("option", scan.name())) {
+         if (!StrMatch("style", scan.name())) {
+            // Client is overriding the decorator: A custom SVG background is expected, defs and body
+            // adjustments may also be provided.
+            if (scan.hasContent()) {
+               STRING xml_ser;
+               if (!xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser)) {
+                  widget.style = xml_ser;
+                  FreeResource(xml_ser);
+               }
+            }
+         }
+         else if (!StrMatch("option", scan.name())) {
             std::string value;
             
-            if (scan.hasContent()) value = scan.getContent();
+            if (scan.hasContent()) { 
+               STRING xml_ser;
+               if (!xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser)) {
+                  value = xml_ser;
+                  FreeResource(xml_ser);
+               }
+            }
 
             if (!value.empty()) {
                auto &option = widget.menu.m_items.emplace_back(value);
-
-               auto id = scan.attrib("value");
+               
+               auto id = scan.attrib("id");
                if ((id) and (!id->empty())) option.id = *id;
+
+               auto val = scan.attrib("value");
+               if ((val) and (!val->empty())) option.value = *val;
 
                auto icon = scan.attrib("icon");
                if (icon) option.icon = *icon;
@@ -1861,7 +1884,8 @@ void parser::tag_combobox(XMLTag &Tag)
          });
 
          vp->setFields(fl::AspectRatio(ARF::X_MAX|ARF::Y_MIN|ARF::MEET),
-            fl::ViewX(-PAD), fl::ViewY(-PAD), fl::ViewWidth(29+(PAD*2)), fl::ViewHeight(29+(PAD*2)));
+            fl::ViewX(-PAD), fl::ViewY(-PAD), 
+            fl::ViewWidth(29+(PAD*2)), fl::ViewHeight(29+(PAD*2)));
 
          scAddDef(Self->Viewport->Scene, "/widget/combobox", pattern_cb);
       }

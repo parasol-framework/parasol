@@ -645,7 +645,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                }
 
                combo.menu.define_font(font);
-               combo.menu.m_ref = &combo;
+               combo.menu.m_ref   = &combo;
+               combo.menu.m_style = combo.style;
 
                Self->Widgets.emplace(combo.viewport->UID, ui_widget { &combo });
                break;

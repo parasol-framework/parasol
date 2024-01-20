@@ -1,31 +1,21 @@
 //********************************************************************************************************************
-// Template for building the menu's layout.
-// Additional SVG defs can be inserted after the header
+// Default template for building the menu's layout.
 
-static const char * glMenuHeader = R"LONGSTRING(
+static const char * glSVGHeader = R"LONGSTRING(
 <svg>
   <defs>
-    <linearGradient id="Gradient" gradientUnits="objectBoundingBox">
+    <linearGradient id="Gradient" gradientUnits="objectBoundingBox" gradientTransform="rotate(90)">
       <stop offset="0" stop-color="rgb(255,255,255,246)"/>
-      <stop offset="1" stop-color="rgb(255,255,255,190)"/>
+      <stop offset="1" stop-color="rgb(235,235,235,190)"/>
     </linearGradient>
 )LONGSTRING";
 
-// Actual content can be inserted after the page
-
-static const char * glMenuPage = R"LONGSTRING(
+static const char * glSVGTail = R"LONGSTRING(
   </defs>
 
-  <rect rx="3%" ry="3%" x="1" y="1" xOffset="1" yOffset="1" fill="url(#Gradient)" stroke="rgb(0,0,0,80)" stroke-width="1"/>
+  <rect rx="3%" ry="3%" x="1" y="1" xOffset="2" yOffset="2" fill="url(#Gradient)" stroke="rgb(0,0,0,40)" stroke-width="1"/>
+  <rect rx="3%" ry="3%" x="3" y="3" xOffset="1" yOffset="1" fill="rgb(0,0,0,0)" stroke="rgb(0,0,0,90)" stroke-width="1"/>
 </svg>
-
-<page name="Index">
-)LONGSTRING";
-
-// Remaining tail-end of the page
-
-static const char * glMenuFooter = R"LONGSTRING(
-</page>
 )LONGSTRING";
 
 //********************************************************************************************************************
@@ -59,10 +49,10 @@ static ERROR menu_doc_events(objDocument *DocMenu, DEF Event, KEYVALUE *EventDat
          }
       }
       
-      kv_item = EventData->find("name");
+      kv_item = EventData->find("value");
       if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
          for (auto &item : menu->m_items) {
-            if (item.name IS kv_item->second) {
+            if (item.value IS kv_item->second) {
                menu->m_callback(*menu, item);
                return ERR_Skip;
             }
@@ -121,7 +111,7 @@ objSurface * doc_menu::create(DOUBLE Width)
          fl::Owner(Self->UID),
          fl::Viewport(vp),
          fl::EventMask(DEF::LINK_ACTIVATED),
-         fl::EventCallback(menu_doc_events)
+         fl::EventCallback(APTR(menu_doc_events))
       })));
       
       m_doc->CreatorMeta = this;
@@ -141,51 +131,64 @@ void doc_menu::refresh()
 {
    pf::Log log(__FUNCTION__);
 
-   acClear(*m_doc);
-
    const DOUBLE GAP = m_font_size * 0.5;
    const DOUBLE LEADING = 0.2;
+   LONG total_icons = 0;
+
    std::ostringstream buf;
    buf << "<body margins=\"" << GAP << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " << 
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
-   buf << glMenuHeader;
    
-   LONG total_icons = 0;
-   for (auto &item : m_items) {
-      if (!item.icon.empty()) {
-         buf << "    <image id=\"" << item.icon << "\" xlink:href=\"" << item.icon << "\" " << 
-            "width=\"" << m_font_size * 2 << "\" height=\"" << m_font_size * 2 << "\"/>\n";
-         total_icons++;
-      }
+   if (!m_style.empty()) {
+      buf << m_style;
    }
+   else {
+      buf << glSVGHeader;
 
-   buf << glMenuPage;
-   
-   for (auto &item : m_items) {
-      if (item.icon.empty()) {
-         if (total_icons) {
-            buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" " << 
-               "@name=\"" << item.name << "\">" << "<advance x=\"[=" << GAP << "+[%line-height]]\"/>" << 
-               item.name << "</a></p>\n";
+      for (auto &item : m_items) {
+         if (!item.icon.empty()) {
+            buf << "    <image id=\"" << item.icon << "\" xlink:href=\"" << item.icon << "\" " << 
+               "width=\"" << m_font_size * 2 << "\" height=\"" << m_font_size * 2 << "\"/>\n";
+            total_icons++;
          }
-         else buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" " << 
-            "@name=\"" << item.name << "\">" << item.name << "</a></p>\n";
       }
-      else {
-         buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" " << 
-            "@name=\"" << item.name << "\"><image src=\"url(#" << item.icon <<
-            ")\"/><advance x=\"" << GAP << "\"/>" << item.name << "</a></p>\n";
-      }
+
+      buf << glSVGTail;
    }
 
-   buf << glMenuFooter;
+   buf << "<page name=\"Index\">";
+   
+   for (auto &item : m_items) {
+      buf << "<p no-wrap leading=\"" << LEADING << "\">";
+
+      if (!item.id.empty()) buf << "<a @id=\"" << item.id << "\">";
+      else if (!item.value.empty()) buf << "<a @value=\"" << item.value << "\">";
+      else buf << "<a>";
+
+      if (item.icon.empty()) {
+         if (total_icons) buf << "<advance x=\"[=" << GAP << "+[%line-height]]\"/>";
+      }
+      else buf << "<image src=\"url(#" << item.icon << ")\"/><advance x=\"" << GAP << "\"/>";
+
+      if (!item.content.empty()) buf << item.content;
+      else buf << item.value;
+
+      buf << "</a></p>\n";
+   }
+
+   buf << "</page>";
+
+   acClear(*m_doc);
    acDataXML(*m_doc, buf.str().c_str());
 
-   DOUBLE page_height;
+   DOUBLE page_width, page_height;
    m_doc->get(FID_PageHeight, &page_height);
-   m_surface->setHeight(page_height);
+   m_doc->get(FID_PageWidth, &page_width);
 
-   acRefresh(*m_doc);
+   if (page_width > m_surface->Width) {
+      acResize(*m_surface, page_width, page_height, 0);
+   }
+   else m_surface->setHeight(page_height);
 }
 
 //********************************************************************************************************************

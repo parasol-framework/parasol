@@ -544,6 +544,16 @@ static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
 
 /*********************************************************************************************************************
 
+-FIELD-
+Defs: Obtain direct access to the SVG definition table.
+
+Reading the Defs field will return a direct pointer to the SVG definition table, which is declared as a key-value C++
+type:
+
+<pre>std::unordered_map&lt;std::string, OBJECTPTR&gt;</pre>
+
+Direct access is provided for internal use only and not for the benefit of client programs.
+
 *********************************************************************************************************************/
 
 static ERROR GET_Defs(extVectorScene *Self, std::unordered_map<std::string, OBJECTPTR> **Value)
@@ -866,13 +876,13 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 static const FieldArray clSceneFields[] = {
    { "RenderTime",   FDF_LARGE|FDF_R, GET_RenderTime },
    { "Gamma",        FDF_DOUBLE|FDF_RW },
-   { "HostScene",    FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORSCENE },
-   { "Viewport",     FDF_OBJECT|FD_R, NULL, NULL, ID_VECTORVIEWPORT },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, SET_Bitmap, ID_BITMAP },
-   { "Surface",      FDF_OBJECTID|FDF_RI, NULL, SET_Surface, ID_SURFACE },
+   { "HostScene",    FDF_OBJECT|FDF_RI,    NULL, NULL, ID_VECTORSCENE },
+   { "Viewport",     FDF_OBJECT|FD_R,      NULL, NULL, ID_VECTORVIEWPORT },
+   { "Bitmap",       FDF_OBJECT|FDF_RW,    NULL, SET_Bitmap, ID_BITMAP },
+   { "Surface",      FDF_OBJECTID|FDF_RI,  NULL, SET_Surface, ID_SURFACE },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
-   { "PageWidth",    FDF_LONG|FDF_RW, NULL, SET_PageWidth },
-   { "PageHeight",   FDF_LONG|FDF_RW, NULL, SET_PageHeight },
+   { "PageWidth",    FDF_LONG|FDF_RW,      NULL, SET_PageWidth },
+   { "PageHeight",   FDF_LONG|FDF_RW,      NULL, SET_PageHeight },
    { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorSceneSampleMethod },
    // Virtual fields
    { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, NULL },

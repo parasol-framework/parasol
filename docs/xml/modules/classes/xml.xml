@@ -165,7 +165,7 @@
         <param type="LONG" name="Length">The length of the Buffer in bytes.</param>
       </input>
       <description>
-<p>The GetContent method is used to extract the string content from an XML tag.  It will extract content that is immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to <method>GetString</method> for deep extraction).  Consider the following structure:</p>
+<p>The GetContent method is used to extract the string content from an XML tag.  It will extract content that is immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to <method>Serialise</method> for deep extraction).  Consider the following structure:</p>
 <pre>&lt;body&gt;
   Hello
   &lt;bold&gt;my&lt;/bold&gt;
@@ -179,27 +179,6 @@
         <error code="NotFound">The tag identified by Index was not found.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="BufferOverflow">The buffer was not large enough to hold the content (the resulting string will be valid but truncated).</error>
-      </result>
-    </method>
-
-    <method>
-      <name>GetString</name>
-      <comment>Serialise part of the XML tree to an XML string.</comment>
-      <prototype>ERROR xmlGetString(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
-      <input>
-        <param type="LONG" name="Index">Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</param>
-        <param type="XMF" name="Flags" lookup="XMF">Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.</param>
-        <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
-      </input>
-      <description>
-<p>The GetString method will serialise all or part of the XML data tree to a string.</p>
-<p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
-      </description>
-      <result>
-        <error code="Okay">The XML string was retrieved.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NoData">No information has been loaded into the XML object.</error>
-        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
       </result>
     </method>
 
@@ -345,6 +324,27 @@
         <error code="Okay">Operation successful.</error>
         <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Serialise</name>
+      <comment>Serialise part of the XML tree to an XML string.</comment>
+      <prototype>ERROR xmlSerialise(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
+      <input>
+        <param type="LONG" name="Index">Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</param>
+        <param type="XMF" name="Flags" lookup="XMF">Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.</param>
+        <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
+      </input>
+      <description>
+<p>The Serialise method will serialise all or part of the XML data tree to a string.</p>
+<p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
+      </description>
+      <result>
+        <error code="Okay">The XML string was retrieved.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">No information has been loaded into the XML object.</error>
+        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
       </result>
     </method>
 

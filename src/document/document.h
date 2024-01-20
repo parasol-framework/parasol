@@ -771,8 +771,8 @@ struct widget_mgr {
 //********************************************************************************************************************
 
 struct dropdown_item {
-   std::string id, name, icon;
-   dropdown_item(std::string pName) : name(pName) { }
+   std::string id, value, content, icon;
+   dropdown_item(std::string pContent) : content(pContent) { }
 };
 
 struct doc_menu {
@@ -781,6 +781,7 @@ struct doc_menu {
    std::vector<dropdown_item> m_items;   // List of items to appear in the menu
    std::function<void(doc_menu &, dropdown_item &)> m_callback; // Callback for item selection
    std::variant<bc_combobox *> m_ref;    // User customisable reference.
+   std::string m_style;                  // Optional style override
 
    // Font options for items in the list
 
@@ -830,6 +831,7 @@ struct bc_combobox : public base_code, widget_mgr {
    GuardedObject<objVectorViewport> clip_vp;
    objVectorText *input;
    doc_menu menu;
+   std::string style;
    std::string value;
    std::string last_good_input;
   

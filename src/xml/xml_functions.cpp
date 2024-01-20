@@ -2,7 +2,7 @@
 //********************************************************************************************************************
 // Output an XML string with escape characters.
 
-template <class T> void output_attribvalue(T &&String, std::stringstream &Output)
+template <class T> void output_attribvalue(T &&String, std::ostringstream &Output)
 {
    CSTRING str = to_cstring(String);
    for (auto j=0; str[j]; j++) {
@@ -53,7 +53,7 @@ static ERROR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
       if (str[i] IS '\r') continue;
       // Content detected
 
-      std::stringstream buffer;
+      std::ostringstream buffer;
       while ((*str) and (*str != '<')) {
          if (*str IS '\n') Self->LineNo++;
          if (*str != '\r') buffer << *str++;
@@ -211,7 +211,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if (*str IS '=') {
          str++;
          while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         std::stringstream buffer;
+         std::ostringstream buffer;
          if (*str IS '"') {
             str++;
             while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
@@ -351,7 +351,7 @@ static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 //********************************************************************************************************************
 // Serialise XML data into string form.
 
-void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, XMF Flags)
+void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
       if (!Tag.Attribs[0].Value.empty()) {

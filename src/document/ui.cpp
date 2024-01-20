@@ -31,8 +31,11 @@ static ERROR combo_feedback(objVectorViewport *View, FM Event)
 void bc_combobox::callback(struct doc_menu &Menu, struct dropdown_item &Item)
 {
    auto combo = std::get<bc_combobox *>(Menu.m_ref);
-   if (combo) combo->input->setFields(fl::String(Item.name));
-   combo->viewport->draw();
+   if (combo) {
+      if (!Item.value.empty()) combo->input->setFields(fl::String(Item.value));
+      else combo->input->setFields(fl::String(Item.content));
+      combo->viewport->draw();
+   }
 }
 
 //********************************************************************************************************************
@@ -924,7 +927,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 //********************************************************************************************************************
 // Scrolls any given area of the document into view.
 
-static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
+static bool view_area(extDocument *Self, DOUBLE Left, DOUBLE Top, DOUBLE Right, DOUBLE Bottom)
 {
    pf::Log log(__FUNCTION__);
 
@@ -932,7 +935,7 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
    DOUBLE view_x = -Self->XPosition, view_y = -Self->YPosition;
    DOUBLE view_height = Self->VPHeight, view_width  = Self->VPWidth;
 
-   log.trace("View: %dx%d,%dx%d Link: %dx%d,%dx%d", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
+   log.trace("View: %dx%d,%dx%d Link: %gx%g,%gx%g", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
 
    // Vertical
 

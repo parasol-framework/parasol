@@ -1360,11 +1360,10 @@ extend_page:
 
          if (set_segment_now) {
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
-               strCodes[LONG(m_stream[0][idx].code)], m_line.index.index, m_line.x, m_word_width);
+               std::string(strCodes[LONG(m_stream[0][idx].code)]).c_str(), m_line.index.index, m_line.x, m_word_width);
             finish_segment();
             new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x);
             reset_broken_segment();
-            m_align_width = wrap_edge();
          }
       }
 

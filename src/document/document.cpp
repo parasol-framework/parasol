@@ -181,7 +181,7 @@ static void  show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERROR unload_doc(extDocument *, ULD = ULD::NIL);
 static bool  valid_objectid(extDocument *, OBJECTID);
-static BYTE  view_area(extDocument *, LONG, LONG, LONG, LONG);
+static bool  view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 static std::string write_calc(DOUBLE, WORD);
 
 static ERROR GET_WorkingPath(extDocument *, CSTRING *);

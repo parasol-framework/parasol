@@ -626,7 +626,7 @@ static ERROR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
 
    log.traceBranch("Tag: %d", Args->Index);
 
-   std::stringstream buffer;
+   std::ostringstream buffer;
 
    auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
    if (!tag) return log.warning(ERR_NotFound);
@@ -766,7 +766,7 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR_NotFound);
 
-   std::stringstream buffer;
+   std::ostringstream buffer;
    output_attribvalue(std::string(Args->Content), buffer);
    XMLTag content(glTagID++, 0, { { "", buffer.str() } });
 
@@ -1647,7 +1647,7 @@ static ERROR GET_Statement(extXML *Self, STRING *Value)
 
    if (Self->Tags.empty()) return ERR_FieldNotSet;
 
-   std::stringstream buffer;
+   std::ostringstream buffer;
 
    if (auto tag = Self->getTag(Self->Start)) {
       CURSOR it;

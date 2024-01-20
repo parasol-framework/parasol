@@ -337,7 +337,7 @@ class objDocument : public BaseClass {
 namespace fl {
    using namespace pf;
 
-constexpr FieldValue EventCallback(ERROR (*Value)(objDocument *, DEF, KEYVALUE *)) { return FieldValue(FID_EventCallback, &Value); }
+constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }
 constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, LONG(Value)); }
 constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, LONG(Value)); }
 

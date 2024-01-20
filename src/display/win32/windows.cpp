@@ -932,12 +932,16 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_RBUTTONUP:     HandleButtonRelease(window, WIN_RMB); return 0;
       case WM_MBUTTONUP:     HandleButtonRelease(window, WIN_MMB); return 0;
 
-      case WM_NCLBUTTONDOWN: // Click detected on the titlebar
+      case WM_NCLBUTTONDOWN: 
+         // Click detected on the titlebar or resize area.  Quirks in the way that Windows manages
+         // mouse input mean that we need to signal a button press and release consecutively.
          MsgButtonPress(WIN_LMB, 1);
+         MsgButtonPress(WIN_LMB, 0);
          return DefWindowProc(window, msgcode, wParam, lParam);
-         
+
       case WM_NCLBUTTONDBLCLK: // Double-click detected on the titlebar
          MsgButtonPress(WIN_DBL|WIN_LMB, 1);
+         MsgButtonPress(WIN_DBL|WIN_LMB, 0);
          return DefWindowProc(window, msgcode, wParam, lParam); 
 
       case WM_ICONNOTIFY:
