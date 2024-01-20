@@ -197,7 +197,7 @@ private:
 
    void apply_style(bc_font &);
    DOUBLE calc_page_height();
-   WRAP check_wordwrap(DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE, bool = false);
+   WRAP check_wordwrap(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE, bool = false);
    void end_line(NL, stream_char);
    void new_code_segment();
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE);
@@ -473,7 +473,7 @@ WRAP layout::place_widget(widget_mgr &Widget)
       // widget then it is also possible for word-wrapping to occur later.  Note that the line height isn't
       // adjusted in this call because if a wrap occurs then the widget won't be in the former segment.
 
-      wrap_result = check_wordwrap(m_page_width, m_word_index,
+      wrap_result = check_wordwrap(m_word_index,
          m_cursor_x, m_cursor_y, m_word_width + Widget.full_width(), m_line.height);
 
       // The inline widget will probably increase the height of the line, but due to the potential for delayed
@@ -549,7 +549,7 @@ WRAP layout::lay_text()
    for (unsigned i=0; i < str.size(); ) {
       if (str[i] IS '\n') { // The use of '\n' in a string forces a line break
          check_line_height();
-         wrap_result = check_wordwrap(m_page_width, m_word_index, m_cursor_x, m_cursor_y, m_word_width,
+         wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y, m_word_width,
             (m_line.height < 1) ? 1 : m_line.height);
          if (wrap_result IS WRAP::EXTEND_PAGE) break;
 
@@ -559,8 +559,8 @@ WRAP layout::lay_text()
       else if (str[i] <= 0x20) { // Whitespace encountered
          check_line_height();
 
-         if (m_word_width) { // Existing word finished, check if it will wordwrap
-            wrap_result = check_wordwrap(m_page_width, m_word_index, m_cursor_x, m_cursor_y,
+         if ((m_word_width) and (!m_no_wrap)) { // Existing word finished, check if it will wordwrap
+            wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y,
                m_word_width, (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) break;
          }
@@ -598,9 +598,14 @@ WRAP layout::lay_text()
 
    // Entire text string has been processed, perform one final wrapping check.
 
-   if (m_word_width) {
-      wrap_result = check_wordwrap(m_page_width, m_word_index, m_cursor_x, m_cursor_y,
+   if ((m_word_width) and (!m_no_wrap)) {
+      wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y,
          m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+   }
+
+   if ((m_no_wrap) and (m_cursor_x + m_word_width > m_page_width)) {
+      m_page_width = m_cursor_x + m_word_width + m_margins.Right;
+      wrap_result = WRAP::EXTEND_PAGE;
    }
 
    return wrap_result;
@@ -972,10 +977,10 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
    if (Table.total_clips > m_clips.size()) {
       std::vector<doc_clip> saved_clips(m_clips.begin() + Table.total_clips, m_clips.end() + m_clips.size());
       m_clips.resize(Table.total_clips);
-      ww = check_wordwrap(m_page_width, idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
+      ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
       m_clips.insert(m_clips.end(), saved_clips.begin(), saved_clips.end());
    }
-   else ww = check_wordwrap(m_page_width, idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
+   else ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
 
    if (ww IS WRAP::EXTEND_PAGE) {
       DLAYOUT("Table wrapped - expanding page width due to table size/position.");
@@ -1373,7 +1378,7 @@ extend_page:
       else switch (m_stream[0][idx].code) {
          case SCODE::TABLE_END: {
             auto &table = m_stream->lookup<bc_table>(idx);
-            auto wrap_result = check_wordwrap(m_page_width, m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height, table.floating_x());
+            auto wrap_result = check_wordwrap(m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height, table.floating_x());
             if (wrap_result IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width on wordwrap request.");
                goto extend_page;
@@ -1382,7 +1387,7 @@ extend_page:
          }
 
          case SCODE::ADVANCE: {
-            auto wrap_result = check_wordwrap(m_page_width, m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+            auto wrap_result = check_wordwrap(m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width on wordwrap request.");
                goto extend_page;
@@ -1618,7 +1623,7 @@ wrap_table_cell:
             DLAYOUT("Checking for table collisions before layout (%gx%g).  reset_row_height: %d",
                table->x, table->y, table->reset_row_height);
 
-            auto ww = check_wordwrap(m_page_width, idx, table->x, table->y, table->width, table->height, table->floating_x());
+            auto ww = check_wordwrap(idx, table->x, table->y, table->width, table->height, table->floating_x());
             if (ww IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width due to table size.");
                goto extend_page;
@@ -1815,16 +1820,15 @@ void layout::end_line(NL NewLine, stream_char Next)
 // Wrapping can be checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
 // solo <br/> tags).
 
-WRAP layout::check_wordwrap(DOUBLE &PageWidth, stream_char Cursor,
-   DOUBLE &X, DOUBLE &Y, DOUBLE Width, DOUBLE Height, bool Floating)
+WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Width, DOUBLE Height, bool Floating)
 {
    pf::Log log(__FUNCTION__);
 
    if (!m_break_loop) return WRAP::DO_NOTHING;
    if (Width < 1) Width = 1;
 
-   if ((X > MAX_PAGE_WIDTH) or (Y > MAX_PAGE_HEIGHT) or (PageWidth > MAX_PAGE_WIDTH)) {
-      log.warning("Invalid element position of %gx%g in page of %g", X, Y, PageWidth);
+   if ((X > MAX_PAGE_WIDTH) or (Y > MAX_PAGE_HEIGHT) or (m_page_width > MAX_PAGE_WIDTH)) {
+      log.warning("Invalid element position of %gx%g in page of %g", X, Y, m_page_width);
       Self->Error = ERR_InvalidDimension;
       return WRAP::DO_NOTHING;
    }
@@ -1849,12 +1853,12 @@ WRAP layout::check_wordwrap(DOUBLE &PageWidth, stream_char Cursor,
       if ((Floating) or (X IS m_left_margin) or (m_no_wrap)) {
          // Force an extension of the page width and recalculate from scratch.
          // NB: Floating vectors are permitted to wrap when colliding with other clip regions.  In all other cases a width increase is required.
-         auto min_width = X + Width + m_margins.Right;
-         if (min_width > PageWidth) {
-            PageWidth = min_width;
-            DWRAP("Forcing an extension of the page width to %d", min_width);
+         DOUBLE min_width = X + Width + m_margins.Right;
+         if (min_width > m_page_width) {
+            m_page_width = min_width;
+            DWRAP("Forcing an extension of the page width to %g", min_width);
          }
-         else PageWidth += 1;
+         else m_page_width += 1;
          return WRAP::EXTEND_PAGE;
       }
 
