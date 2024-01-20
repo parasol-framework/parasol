@@ -393,5 +393,19 @@ gui.scrollbar = function(Options)
       recalcSlidersFromView()
    end)
 
+   lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport, Events)
+      local ev = Events
+      while (ev) do
+         if (ev.type == JET_WHEEL) then
+            local length = lPage.height - lView.height
+            if (length > 0) then
+               if (length > lView.height) then length = lView.height end
+               self.scrollPage(0, -ev.value * length * 0.06)
+            end
+         end
+         ev = ev.next
+      end
+   end)
+
    return self
 end

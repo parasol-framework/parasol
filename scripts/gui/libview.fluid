@@ -576,12 +576,6 @@ gui.initView = function(Options, BuildUI, NewItems)
             if vw.hItem then
                highlightItem(vw, nil)
             end
-         elseif (ev.type == JET_WHEEL) then
-            local length = vw.page.height - vw.window.height
-            if (length > 0) then
-               if (length > vw.window.height) then length = vw.window.height end
-               vw.scrollbar.scrollPage(0, -ev.value * length * 0.06)
-            end
          elseif (ev.type == JET_BUTTON_1) then
             if (bit.band(ev.flags, JTYPE_REPEATED) != 0) then
                return
