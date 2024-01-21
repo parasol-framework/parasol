@@ -195,7 +195,10 @@ void doc_menu::refresh()
 
 void doc_menu::reposition(objVectorViewport *RelativeViewport)
 {
-   pf::ScopedObjectLock lk_surface(RelativeViewport->Scene->SurfaceID);
+   DISPLAYINFO *info;
+   gfxGetDisplayInfo(0, &info);
+   
+   pf::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
    if (lk_surface.granted()) {
       DOUBLE w_absx, w_absy, vp_absx, vp_absy, vp_height;
 
@@ -206,7 +209,14 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
       RelativeViewport->get(FID_AbsY, &vp_absy);
       RelativeViewport->get(FID_Height, &vp_height);
       
-      acMoveToPoint(*m_surface, w_absx + vp_absx, w_absy + vp_absy + vp_height, 0, MTF::X|MTF::Y);
+      // Invert the menu position if it will drop off the display
+
+      DOUBLE y = w_absy + vp_absy + vp_height;
+      if (y + m_surface->Height > info->Height) {
+         y -= m_surface->Height + vp_height;
+      }
+
+      acMoveToPoint(*m_surface, w_absx + vp_absx, y, 0, MTF::X|MTF::Y);
    }
 }
 
