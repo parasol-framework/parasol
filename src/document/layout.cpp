@@ -207,7 +207,7 @@ private:
       DOUBLE &, DOUBLE &);
 
 public:
-   layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, ClipRectangle &pMargins) : 
+   layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, ClipRectangle &pMargins) :
       Self(pSelf), m_stream(pStream), m_viewport(pViewport), m_margins(pMargins) { }
 
    ERROR do_layout(objFont **, DOUBLE &, DOUBLE &, bool &);
@@ -752,7 +752,7 @@ void layout::lay_paragraph()
 
    if (para.indent) {
       if (para.relative) {
-         // To ensure that relative indenting remains constant, the multiple is a factor of the 
+         // To ensure that relative indenting remains constant, the multiple is a factor of the
          // paragraph's font size.
          para.block_indent = para.indent * para.font.get_font()->LineSpacing;
       }
@@ -1072,14 +1072,14 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 #endif
 
    if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
-      // Patching: Segments should never overlap each other.  If the start of this segment is less than the end of 
+      // Patching: Segments should never overlap each other.  If the start of this segment is less than the end of
       // the previous segment, adjust the previous segment so that it stops at the beginning of our new segment.
 
       if (Start <= m_segments.back().start) {
          // If the start of the new segment retraces to an index that has already been configured,
          // then we have actually encountered a coding flaw and the caller should be investigated.
 
-         log.warning("New segment at index %d overlaps previously registered segment starting at %d.", 
+         log.warning("New segment at index %d overlaps previously registered segment starting at %d.",
             Start.index, m_segments.back().start.index);
          return;
       }
@@ -1444,14 +1444,13 @@ extend_page:
             if (link.path.empty()) {
                // This 'invisible' viewport will be used to receive user input
                link.path.set(objVectorPath::create::global({
-                  fl::Owner(m_viewport->UID), 
-                  fl::Name("link_vp"), 
+                  fl::Owner(m_viewport->UID),
+                  fl::Name("link_vp"),
                   fl::Cursor(PTC::HAND)
                }));
 
                if (link.path->Scene->SurfaceID) {
-                  auto callback = make_function_stdc(link_callback);
-                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(link_callback));
                }
             }
             break;
@@ -1561,10 +1560,10 @@ extend_page:
                   fl::Width(1), fl::Height(1)
                }));
             }
-            
+
             if (table->path.empty()) {
-               table->path.set(objVectorPath::create::global({ 
-                  fl::Name("table_path"), fl::Owner(table->viewport->UID) 
+               table->path.set(objVectorPath::create::global({
+                  fl::Name("table_path"), fl::Owner(table->viewport->UID)
                }));
 
                if (!table->fill.empty()) table->path->set(FID_Fill, table->fill);
@@ -1843,13 +1842,13 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
    for (breakloop = MAXLOOP; breakloop > 0; breakloop--) {
       m_align_width = wrap_edge();
 
-      if (!m_clips.empty()) { 
+      if (!m_clips.empty()) {
          // If clips are registered then we need to check them for collisions.  Updates m_align_width if necessary
          wrap_through_clips(Cursor, X, Y, Width, Height);
       }
 
       if (X + Width <= wrap_edge()) break;
-      
+
       if ((Floating) or (X IS m_left_margin) or (m_no_wrap)) {
          // Force an extension of the page width and recalculate from scratch.
          // NB: Floating vectors are permitted to wrap when colliding with other clip regions.  In all other cases a width increase is required.

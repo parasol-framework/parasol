@@ -31,10 +31,7 @@ by setting the #FrameCallback with a suitable function.
 static ERROR SVG_Activate(extSVG *Self, APTR Void)
 {
    if (Self->Animated) {
-      if (!Self->AnimationTimer) {
-         auto call = make_function_stdc(animation_timer);
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, &call, &Self->AnimationTimer);
-      }
+      if (!Self->AnimationTimer) SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, FUNCTION(animation_timer), &Self->AnimationTimer);
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }
 
@@ -407,8 +404,7 @@ static ERROR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
       if (Self->FrameCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
       Self->FrameCallback = *Value;
       if (Self->FrameCallback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_frame_callback);
-         SubscribeAction(Self->FrameCallback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->FrameCallback.Script.Script, AC_Free, FUNCTION(notify_free_frame_callback));
       }
    }
    else Self->FrameCallback.Type = CALL_NONE;

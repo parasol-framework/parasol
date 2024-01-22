@@ -302,10 +302,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 
    if (Self->txFocusID) {
       pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
-      if (focus.granted()) {
-         auto callback = make_function_stdc(text_focus_event);
-         vecSubscribeFeedback(*focus, FM::NIL, &callback);
-      }
+      if (focus.granted()) vecSubscribeFeedback(*focus, FM::NIL, FUNCTION(text_focus_event));
    }
 
    return ERR_Okay;
@@ -323,8 +320,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       {
          pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
          if (focus.granted()) {
-            auto callback = make_function_stdc(text_focus_event);
-            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &callback);
+            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, FUNCTION(text_focus_event));
          }
       }
 
@@ -343,8 +339,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
       if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-         auto callback = make_function_stdc(text_input_events);
-         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, &callback);
+         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, FUNCTION(text_input_events));
       }
    }
 
@@ -1950,12 +1945,10 @@ static ERROR text_focus_event(extVector *Vector, FM Event)
 
          if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
          else {
-            auto callback = make_function_stdc(cursor_timer);
-            SubscribeTimer(0.8, &callback, &Self->txCursor.timer);
+            SubscribeTimer(0.8, FUNCTION(cursor_timer), &Self->txCursor.timer);
 
             if (!Self->txKeyEvent) {
-               auto callback = make_function_stdc(key_event);
-               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->txKeyEvent);
+               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(key_event), Self, &Self->txKeyEvent);
             }
          }
 

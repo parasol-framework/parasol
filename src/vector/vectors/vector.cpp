@@ -1617,8 +1617,7 @@ static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
    else if (Value->Class->ClassID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
-         auto callback = make_function_stdc(notify_free_clipmask);
-         SubscribeAction(Value, AC_Free, &callback);
+         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_clipmask));
          Self->ClipMask = Value;
          return ERR_Okay;
       }
@@ -1699,8 +1698,7 @@ static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
    else if (Value->Class->BaseClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         auto callback = make_function_stdc(notify_free_morph);
-         SubscribeAction(Value, AC_Free, &callback);
+         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_morph));
          Self->Morph = Value;
          return ERR_Okay;
       }
@@ -1910,8 +1908,7 @@ static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
          auto scene = (extVectorScene *)Self->Scene;
          scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
 
-         auto callback = make_function_stdc(notify_free_resize_event);
-         SubscribeAction(Value->StdC.Context, AC_Free, &callback);
+         SubscribeAction(Value->StdC.Context, AC_Free, FUNCTION(notify_free_resize_event));
       }
       else {
          const std::lock_guard<std::mutex> lock(glResizeLock);
@@ -2233,8 +2230,7 @@ static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
    else if (Value->Class->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         auto callback = make_function_stdc(notify_free_transition);
-         SubscribeAction(Value, AC_Free, &callback);
+         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_transition));
          Self->Transition = Value;
          return ERR_Okay;
       }

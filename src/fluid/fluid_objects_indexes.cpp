@@ -115,12 +115,12 @@ static ERROR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field,
    LONG type = lua_type(Lua, ValueIndex);
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-      auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       return Object->set(Field->FieldID, &func);
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, ValueIndex);
-      auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
       return Object->set(Field->FieldID, &func);
    }
    else return ERR_SetValueNotFunction;
@@ -486,12 +486,12 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       else if (field->Flags & FD_FUNCTION) {
          if (type IS LUA_TSTRING) {
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return target->set(field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
             lua_pushvalue(Lua, ValueIndex);
-            auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return target->set(field->FieldID, &func);
          }
          else return ERR_SetValueNotFunction;

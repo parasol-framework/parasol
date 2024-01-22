@@ -567,7 +567,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
    else if (Task->ExitCallback.Type IS CALL_SCRIPT) {
       auto script = Task->ExitCallback.Script.Script;
       const ScriptArg args[] = { { "Task", Task, FD_OBJECTPTR } };
-      scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);      
+      scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 
    // Post an event for the task's closure
@@ -658,8 +658,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (!glJanitorActive) {
       pf::SwitchContext ctx(glCurrentTask);
-      auto call = make_function_stdc(process_janitor);
-      SubscribeTimer(60, &call, &glProcessJanitor);
+      SubscribeTimer(60, FUNCTION(process_janitor), &glProcessJanitor);
       glJanitorActive = true;
    }
 

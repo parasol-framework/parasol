@@ -306,8 +306,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
    if (Result) return;
 
    if (!Self->prvKeyEvent) {
-      auto callback = make_function_stdc(key_event);
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(key_event), Self, &Self->prvKeyEvent);
    }
 
    if ((Self->Visible) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL)) {
@@ -793,11 +792,8 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    OBJECTPTR object;
    if (!AccessObject(Self->FocusID, 5000, &object)) {
-      auto callback = make_function_stdc(notify_focus);
-      SubscribeAction(object, AC_Focus, &callback);
-
-      callback = make_function_stdc(notify_lostfocus);
-      SubscribeAction(object, AC_LostFocus, &callback);
+      SubscribeAction(object, AC_Focus, FUNCTION(notify_focus));
+      SubscribeAction(object, AC_LostFocus, FUNCTION(notify_lostfocus));
       ReleaseObject(object);
    }
 
@@ -818,21 +814,13 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
       //SubscribeFeed(surface); TODO: Deprecated
 
-      auto callback = make_function_stdc(notify_dragdrop);
-      SubscribeAction(surface, AC_DragDrop, &callback);
-
-      callback = make_function_stdc(notify_hide);
-      SubscribeAction(surface, AC_Hide, &callback);
-
-      callback = make_function_stdc(notify_redimension);
-      SubscribeAction(surface, AC_Redimension, &callback);
-
-      callback = make_function_stdc(notify_show);
-      SubscribeAction(surface, AC_Show, &callback);
+      SubscribeAction(surface, AC_DragDrop, FUNCTION(notify_dragdrop));
+      SubscribeAction(surface, AC_Hide, FUNCTION(notify_hide));
+      SubscribeAction(surface, AC_Redimension, FUNCTION(notify_redimension));
+      SubscribeAction(surface, AC_Show, FUNCTION(notify_show));
 
       if (surface->hasFocus()) {
-         auto callback = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
+         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(key_event), Self, &Self->prvKeyEvent);
       }
 
       ReleaseObject(surface);
@@ -840,7 +828,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    else return log.warning(ERR_AccessObject);
 
    {
-      auto callback = make_function_stdc(consume_input_events);
+      auto callback = FUNCTION(consume_input_events);
       gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
    }
 
@@ -868,10 +856,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    }
    else calc_longest_line(Self);
 
-   {
-      auto callback = make_function_stdc(idle_timer);
-      SubscribeTimer(0.03, &callback, &Self->TimerID);
-   }
+   SubscribeTimer(0.03, FUNCTION(idle_timer), &Self->TimerID);
 
    if (Self->Visible IS -1) Self->Visible = TRUE;
 
@@ -1897,8 +1882,7 @@ static ERROR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
       if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_event);
-         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.Type = CALL_NONE;
@@ -2225,8 +2209,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
          if (!flStartStream(file, Self->UID, FL::READ, 0)) {
             acClear(Self);
 
-            auto callback = make_function_stdc(notify_write);
-            SubscribeAction(file, AC_Write, &callback);
+            SubscribeAction(file, AC_Write, FUNCTION(notify_write));
             Self->FileStream = file;
             file = NULL;
          }

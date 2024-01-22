@@ -1,6 +1,6 @@
 
 //********************************************************************************************************************
-// Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is 
+// Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is
 // presented.
 
 static ERROR combo_feedback(objVectorViewport *View, FM Event)
@@ -417,7 +417,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
    // User callbacks
 
    if (!edit.on_enter.empty()) {
-      OBJECTPTR script;
+      objScript *script;
       std::string function_name, argstring;
 
       log.msg("Calling onenter callback function.");
@@ -466,7 +466,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
          if (cell.modified) {
             log.trace("Change detected in editable cell %d", cell.cell_id);
 
-            OBJECTPTR script;
+            objScript *script;
             std::string function_name, argstring;
             if (!extract_script(Self, edit->on_change, &script, function_name, argstring)) {
                auto cell_content = cell_index;
@@ -504,7 +504,7 @@ static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
          // Pointer has left this zone
 
          std::string function_name, argstring;
-         OBJECTPTR script;
+         objScript *script;
          if (!extract_script(Self, it->function, &script, function_name, argstring)) {
             const ScriptArg args[] = {
                { "Element", it->element_id },
@@ -787,7 +787,7 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
       return ERR_Okay;
    }
 
-   OBJECTPTR script;
+   objScript *script;
    std::string argstring, func_name;
 
    if ((Event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
@@ -1067,10 +1067,7 @@ static void reset_cursor(extDocument *Self)
 
    Self->CursorState = 1;
    if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);
-   else {
-      auto call = make_function_stdc(flash_cursor);
-      SubscribeTimer(0.5, &call, &Self->FlashTimer);
-   }
+   else SubscribeTimer(0.5, FUNCTION(flash_cursor), &Self->FlashTimer);
 }
 
 //********************************************************************************************************************
@@ -1140,7 +1137,7 @@ static ERROR inputevent_dropdown(objVectorViewport *Viewport, const InputEvent *
          combo.menu.create(combo.width);
 
          if (Event->Type IS JET::LMB) {
-            
+
             if (Event->Value IS 1) {
                combo.menu.toggle(*combo.viewport);
             }

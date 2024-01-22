@@ -843,7 +843,7 @@ static void process_parameters(extDocument *Self, const std::string &String)
 // Resolves function references.
 // E.g. "script.function(Args...)"; "function(Args...)"; "function()", "function", "script.function"
 
-static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPTR *Script, std::string &Function, std::string &Args)
+static ERROR extract_script(extDocument *Self, const std::string &Link, objScript **Script, std::string &Function, std::string &Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -868,7 +868,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
          OBJECTID id;
          if (!FindObject(script_name.c_str(), ID_SCRIPT, FOF::NIL, &id)) {
             // Security checks
-            *Script = GetObjectPtr(id);
+            *Script = (objScript *)GetObjectPtr(id);
             if ((Script[0]->OwnerID != Self->UID) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
                log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name.c_str());
                return ERR_NoPermission;
@@ -903,7 +903,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
 
 void ui_link::exec(extDocument *Self)
 {
-   OBJECTPTR script;
+   objScript *script;
    CLASSID class_id, subclass_id;
 
    pf::Log log(__FUNCTION__);

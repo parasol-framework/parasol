@@ -950,7 +950,7 @@ ERROR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
          if (!glCacheTimer) {
             pf::SwitchContext context(CurrentTask());
-            auto call = make_function_stdc(check_cache);
+            auto call = FUNCTION(check_cache);
             SubscribeTimer(60, &call, &glCacheTimer);
          }
 

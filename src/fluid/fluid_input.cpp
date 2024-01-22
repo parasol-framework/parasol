@@ -146,8 +146,7 @@ static int input_keyboard(lua_State *Lua)
    bool sub_keyevent = false;
    if (object_id) {
       if (!prv->FocusEventHandle) { // Monitor the focus state of the target surface with a global function.
-         auto callback = make_function_stdc(focus_event);
-         SubscribeEvent(EVID_GUI_SURFACE_FOCUS, &callback, Lua, &prv->FocusEventHandle);
+         SubscribeEvent(EVID_GUI_SURFACE_FOCUS, FUNCTION(focus_event), Lua, &prv->FocusEventHandle);
       }
 
       objSurface *surface;
@@ -168,10 +167,7 @@ static int input_keyboard(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       APTR event = NULL;
-      if (sub_keyevent) {
-         auto callback = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, input, &event);
-      }
+      if (sub_keyevent) SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(key_event), input, &event);
 
       input->InputHandle = 0;
       input->Script      = Lua->Script;
@@ -347,7 +343,7 @@ static int input_subscribe(lua_State *Lua)
 
       prv->InputList = input;
 
-      auto callback = make_function_stdc(consume_input_events);
+      auto callback = FUNCTION(consume_input_events);
       if ((error = gfxSubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle))) goto failed;
 
       return 1;
@@ -476,9 +472,8 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
 
       for (LONG i=0; i < Event->TotalWithFocus; i++) {
          if (input->SurfaceID IS Event->FocusList[i]) {
-            auto callback = make_function_stdc(key_event);
             log.trace("Focus notification received for key events on surface #%d.", input->SurfaceID);
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, input, &input->KeyEvent);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(key_event), input, &input->KeyEvent);
             break;
          }
       }

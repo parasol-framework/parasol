@@ -102,8 +102,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
       if (!Self->BmpCache->OpenCount) {
          if (!glCacheTimer) {
             pf::SwitchContext ctx(modFont);
-            auto callback = make_function_stdc(bitmap_cache_cleaner);
-            SubscribeTimer(60.0, &callback, &glCacheTimer);
+            SubscribeTimer(60.0, FUNCTION(bitmap_cache_cleaner), &glCacheTimer);
          }
       }
    }

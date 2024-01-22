@@ -250,7 +250,7 @@ static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Ar
 
    // Function is in the format 'function()' or 'script.function()'
 
-   OBJECTPTR script;
+   objScript *script;
    std::string function_name, args;
    if (auto error = extract_script(Self, Args->Function, &script, function_name, args); !error) {
       return scExec(script, function_name.c_str(), Args->Args, Args->TotalArgs);
@@ -673,24 +673,14 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
    if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      auto call = make_function_stdc(key_event);
-      vecSubscribeKeyboard(Self->Viewport, &call);
-
-      call = make_function_stdc(notify_focus_viewport);
-      SubscribeAction(Self->Focus, AC_Focus, &call);
-
-      call = make_function_stdc(notify_lostfocus_viewport);
-      SubscribeAction(Self->Focus, AC_LostFocus, &call);
-
-      call = make_function_stdc(notify_disable_viewport);
-      SubscribeAction(Self->Viewport, AC_Disable, &call);
-
-      call = make_function_stdc(notify_enable_viewport);
-      SubscribeAction(Self->Viewport, AC_Enable, &call);
+      vecSubscribeKeyboard(Self->Viewport, FUNCTION(key_event));
+      SubscribeAction(Self->Focus, AC_Focus, FUNCTION(notify_focus_viewport));
+      SubscribeAction(Self->Focus, AC_LostFocus, FUNCTION(notify_lostfocus_viewport));
+      SubscribeAction(Self->Viewport, AC_Disable, FUNCTION(notify_disable_viewport));
+      SubscribeAction(Self->Viewport, AC_Enable, FUNCTION(notify_enable_viewport));
    }
 
-   auto call = make_function_stdc(notify_free_viewport);
-   SubscribeAction(Self->Viewport, AC_Free, &call);
+   SubscribeAction(Self->Viewport, AC_Free, FUNCTION(notify_free_viewport));
 
    Self->Viewport->get(FID_Width, &Self->VPWidth);
    Self->Viewport->get(FID_Height, &Self->VPHeight);
@@ -724,20 +714,17 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
 
       if (Self->Page->Scene->SurfaceID) {
-         auto callback = make_function_stdc(consume_input_events);
-         vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
+         vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(consume_input_events));
       }
    }
    else return ERR_CreateObject;
 
-   call = make_function_stdc(feedback_view);
-   vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, &call);
+   vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, FUNCTION(feedback_view));
 
    // Flash the cursor via the timer
 
    if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
-      auto call = make_function_stdc(flash_cursor);
-      SubscribeTimer(0.5, &call, &Self->FlashTimer);
+      SubscribeTimer(0.5, FUNCTION(flash_cursor), &Self->FlashTimer);
    }
 
    // Load a document file into the line array if required

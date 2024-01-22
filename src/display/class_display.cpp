@@ -2665,8 +2665,7 @@ static ERROR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
       if (Self->ResizeFeedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
       Self->ResizeFeedback = *Value;
       if (Self->ResizeFeedback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_resize_free);
-         SubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free, FUNCTION(notify_resize_free));
       }
    }
    else Self->ResizeFeedback.Type = CALL_NONE;

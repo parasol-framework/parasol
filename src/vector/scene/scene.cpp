@@ -102,8 +102,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->KeyHandle) {
-      auto callback = make_function_stdc(scene_key_event);
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(scene_key_event), Self, &Self->KeyHandle);
    }
 }
 
@@ -112,15 +111,15 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
 -METHOD-
 AddDef: Registers a named definition object within a scene graph.
 
-This method will add a new definition object to the root of a vector tree and gives it a name.  This feature is 
-provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name 
+This method will add a new definition object to the root of a vector tree and gives it a name.  This feature is
+provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name
 with the definition object, the object can then be referenced in URL strings.
 
 For example, if creating a gradient with a name of "redGradient" it would be possible to reference it with
 `url(#redGradient)` in common graphics attributes such as `fill` and `stroke`.
 
-At the time of writing, the provided object must belong to one of the following classes to be valid: @Vector, 
-@VectorScene, @VectorGradient, @VectorImage, @VectorPath, @VectorPattern, @VectorFilter, @VectorTransition, 
+At the time of writing, the provided object must belong to one of the following classes to be valid: @Vector,
+@VectorScene, @VectorGradient, @VectorImage, @VectorPath, @VectorPattern, @VectorFilter, @VectorTransition,
 @VectorClip.
 
 -INPUT-
@@ -361,9 +360,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
    if (Self->SurfaceID) {
       pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
-         auto callback = make_function_stdc(render_to_surface);
-         struct drwAddCallback args = { &callback };
-         Action(MT_DrwAddCallback, *surface, &args);
+         drwAddCallback(*surface, APTR(render_to_surface));
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;
@@ -371,25 +368,17 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
             surface->get(FID_Height, &Self->PageHeight);
          }
 
-         callback = make_function_stdc(notify_redimension);
-         SubscribeAction(*surface, AC_Redimension, &callback);
-
-         callback = make_function_stdc(notify_free);
-         SubscribeAction(*surface, AC_Free, &callback);
-
-         callback = make_function_stdc(notify_focus);
-         SubscribeAction(*surface, AC_Focus, &callback);
-
-         callback = make_function_stdc(notify_lostfocus);
-         SubscribeAction(*surface, AC_LostFocus, &callback);
+         SubscribeAction(*surface, AC_Redimension, FUNCTION(notify_redimension));
+         SubscribeAction(*surface, AC_Free, FUNCTION(notify_free));
+         SubscribeAction(*surface, AC_Focus, FUNCTION(notify_focus));
+         SubscribeAction(*surface, AC_LostFocus, FUNCTION(notify_lostfocus));
 
          if (surface->hasFocus()) {
-            callback = make_function_stdc(scene_key_event);
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(scene_key_event), Self, &Self->KeyHandle);
          }
       }
 
-      auto callback = make_function_stdc(scene_input_events);
+      auto callback = FUNCTION(scene_input_events);
       if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::FEEDBACK|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle)) {
          return ERR_Function;
       }

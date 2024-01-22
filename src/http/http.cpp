@@ -647,14 +647,14 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    else {
       log.trace("Re-using existing socket/server connection.");
 
-      Self->Socket->setIncoming(make_function_stdc(socket_incoming));
-      Self->Socket->setFeedback(make_function_stdc(socket_feedback));
+      Self->Socket->setIncoming(FUNCTION(socket_incoming));
+      Self->Socket->setFeedback(FUNCTION(socket_feedback));
    }
 
    if (!Self->Tunneling) {
       if (Self->CurrentState != HGS::AUTHENTICATING) {
          if ((Self->Method IS HTM::PUT) or (Self->Method IS HTM::POST)) {
-            Self->Socket->setOutgoing(make_function_stdc(socket_outgoing));
+            Self->Socket->setOutgoing(FUNCTION(socket_outgoing));
          }
          else Self->Socket->set(FID_Outgoing, (APTR)NULL);
       }
@@ -671,10 +671,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
-            else {
-               auto call = make_function_stdc(timeout_manager);
-               SubscribeTimer(Self->ConnectTimeout, &call, &Self->TimeoutManager);
-            }
+            else SubscribeTimer(Self->ConnectTimeout, FUNCTION(timeout_manager), &Self->TimeoutManager);
 
             return ERR_Okay;
          }
@@ -915,8 +912,7 @@ static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
       if (Self->AuthCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
       Self->AuthCallback = *Value;
       if (Self->AuthCallback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_auth_callback);
-         SubscribeAction(Self->AuthCallback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->AuthCallback.Script.Script, AC_Free, FUNCTION(notify_free_auth_callback));
       }
    }
    else Self->AuthCallback.Type = CALL_NONE;
@@ -1062,8 +1058,7 @@ static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
       if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
       Self->Incoming = *Value;
       if (Self->Incoming.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_incoming);
-         SubscribeAction(Self->Incoming.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->Incoming.Script.Script, AC_Free, FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.Type = CALL_NONE;
@@ -1302,8 +1297,7 @@ static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
       Self->Outgoing = *Value;
       if (Self->Outgoing.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_outgoing);
-         SubscribeAction(Self->Outgoing.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->Outgoing.Script.Script, AC_Free, FUNCTION(notify_free_outgoing));
       }
    }
    else Self->Outgoing.Type = CALL_NONE;
@@ -1587,8 +1581,7 @@ static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
       if (Self->StateChanged.Type IS CALL_SCRIPT) UnsubscribeAction(Self->StateChanged.Script.Script, AC_Free);
       Self->StateChanged = *Value;
       if (Self->StateChanged.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_state_changed);
-         SubscribeAction(Self->StateChanged.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->StateChanged.Script.Script, AC_Free, FUNCTION(notify_free_state_changed));
       }
    }
    else Self->StateChanged.Type = CALL_NONE;

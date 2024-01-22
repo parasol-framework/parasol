@@ -57,7 +57,7 @@ If a document defines a default script in its content, it will have priority ove
 
 *********************************************************************************************************************/
 
-static ERROR SET_ClientScript(extDocument *Self, OBJECTPTR Value)
+static ERROR SET_ClientScript(extDocument *Self, objScript *Value)
 {
    Self->ClientScript = Value;
    return ERR_Okay;
@@ -106,8 +106,7 @@ static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
       if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_event);
-         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.Type = CALL_NONE;

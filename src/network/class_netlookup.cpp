@@ -462,8 +462,7 @@ static ERROR SET_Callback(extNetLookup *Self, FUNCTION *Value)
       if (Self->Callback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
       Self->Callback = *Value;
       if (Self->Callback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_callback);
-         SubscribeAction(Self->Callback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->Callback.Script.Script, AC_Free, FUNCTION(notify_free_callback));
       }
    }
    else Self->Callback.Type = CALL_NONE;

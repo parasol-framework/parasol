@@ -2588,6 +2588,22 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_EXTRA_EXPANDED 0x8c599b5f
 #define SVF_ULTRA_EXPANDED 0x87e8c363
 
+
+INLINE ERROR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
+   struct vecSubscribeInput args = { Mask, &Callback };
+   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vecSubscribeKeyboard(APTR Ob, FUNCTION Callback) {
+   struct vecSubscribeKeyboard args = { &Callback };
+   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
+   struct vecSubscribeFeedback args = { Mask, &Callback };
+   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
+}
+
 namespace fl {
    using namespace pf;
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }

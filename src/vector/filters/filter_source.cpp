@@ -249,8 +249,7 @@ static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 
    if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
    Self->Source = Value;
-   auto callback = make_function_stdc(notify_free_source);
-   SubscribeAction(Value, AC_Free, &callback);
+   SubscribeAction(Value, AC_Free, FUNCTION(notify_free_source));
    Self->Render = true;
    return ERR_Okay;
 }
@@ -282,8 +281,7 @@ static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    if (!scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src)) {
       if (src->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
       Self->Source = src;
-      auto callback = make_function_stdc(notify_free_source);
-      SubscribeAction(src, AC_Free, &callback);
+      SubscribeAction(src, AC_Free, FUNCTION(notify_free_source));
       Self->Render = true;
       return ERR_Okay;
    }

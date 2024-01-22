@@ -1933,8 +1933,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a Surface object's Redimension action and respond to resize events:</p>
-<pre>auto callback = make_function_stdc(notify_resize);
-SubscribeAction(surface, AC_Redimension, &amp;callback);
+<pre>SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize));
 </pre>
 <p>The template below illustrates how the Callback function should be constructed:</p>
 <pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)

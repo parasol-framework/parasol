@@ -48,7 +48,7 @@ static ERROR menu_doc_events(objDocument *DocMenu, DEF Event, KEYVALUE *EventDat
             }
          }
       }
-      
+
       kv_item = EventData->find("value");
       if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
          for (auto &item : menu->m_items) {
@@ -76,12 +76,12 @@ void doc_menu::define_font(objFont *Font)
 
 //********************************************************************************************************************
 
-objSurface * doc_menu::create(DOUBLE Width) 
+objSurface * doc_menu::create(DOUBLE Width)
 {
    pf::Log log(__FUNCTION__);
-   
+
    log.branch();
-   
+
    auto Self = (extDocument *)CurrentContext();
 
    if (m_surface.empty()) {
@@ -99,7 +99,7 @@ objSurface * doc_menu::create(DOUBLE Width)
       auto scene = objVectorScene::create::global({
          fl::Name("menu_scene"),
          fl::Flags(VPF::RESIZE),
-         fl::Surface(m_surface->UID) 
+         fl::Surface(m_surface->UID)
       });
 
       auto vp = objVectorViewport::create::global({
@@ -113,11 +113,10 @@ objSurface * doc_menu::create(DOUBLE Width)
          fl::EventMask(DEF::LINK_ACTIVATED),
          fl::EventCallback(APTR(menu_doc_events))
       })));
-      
+
       m_doc->CreatorMeta = this;
 
-      auto call = make_function_stdc(menu_lost_focus);
-      SubscribeAction(*m_surface, AC_LostFocus, &call);
+      SubscribeAction(*m_surface, AC_LostFocus, FUNCTION(menu_lost_focus));
 
       refresh();
    }
@@ -136,9 +135,9 @@ void doc_menu::refresh()
    LONG total_icons = 0;
 
    std::ostringstream buf;
-   buf << "<body margins=\"" << GAP << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " << 
+   buf << "<body margins=\"" << GAP << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
-   
+
    if (!m_style.empty()) {
       buf << m_style;
    }
@@ -147,7 +146,7 @@ void doc_menu::refresh()
 
       for (auto &item : m_items) {
          if (!item.icon.empty()) {
-            buf << "    <image id=\"" << item.icon << "\" xlink:href=\"" << item.icon << "\" " << 
+            buf << "    <image id=\"" << item.icon << "\" xlink:href=\"" << item.icon << "\" " <<
                "width=\"" << m_font_size * 2 << "\" height=\"" << m_font_size * 2 << "\"/>\n";
             total_icons++;
          }
@@ -157,7 +156,7 @@ void doc_menu::refresh()
    }
 
    buf << "<page name=\"Index\">";
-   
+
    for (auto &item : m_items) {
       buf << "<p no-wrap leading=\"" << LEADING << "\">";
 
@@ -197,7 +196,7 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
 {
    DISPLAYINFO *info;
    gfxGetDisplayInfo(0, &info);
-   
+
    pf::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
    if (lk_surface.granted()) {
       DOUBLE w_absx, w_absy, vp_absx, vp_absy, vp_height;
@@ -208,7 +207,7 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
       RelativeViewport->get(FID_AbsX, &vp_absx);
       RelativeViewport->get(FID_AbsY, &vp_absy);
       RelativeViewport->get(FID_Height, &vp_height);
-      
+
       // Invert the menu position if it will drop off the display
 
       DOUBLE y = w_absy + vp_absy + vp_height;

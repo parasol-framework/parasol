@@ -162,7 +162,7 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
          }
       }
 
-      ((extNetLookup *)Self->NetLookup)->Callback = make_function_stdc(connect_name_resolved_nl);
+      ((extNetLookup *)Self->NetLookup)->Callback = FUNCTION(connect_name_resolved_nl);
       if (nlResolveName(Self->NetLookup, Self->Address) != ERR_Okay) {
          return log.warning(Self->Error = ERR_HostNotFound);
       }
@@ -972,8 +972,7 @@ static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
       if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
       Self->Feedback = *Value;
       if (Self->Feedback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_feedback);
-         SubscribeAction(Self->Feedback.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->Feedback.Script.Script, AC_Free, FUNCTION(notify_free_feedback));
       }
    }
    else Self->Feedback.Type = CALL_NONE;
@@ -1016,8 +1015,7 @@ static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
       if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
       Self->Incoming = *Value;
       if (Self->Incoming.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_incoming);
-         SubscribeAction(Self->Incoming.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->Incoming.Script.Script, AC_Free, FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.Type = CALL_NONE;
@@ -1061,10 +1059,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
    else {
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_outgoing);
-         SubscribeAction(Self->Outgoing.Script.Script, AC_Free, &callback);
-      }
+      if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free, FUNCTION(notify_free_outgoing));
 
       if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {

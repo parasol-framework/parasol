@@ -220,7 +220,7 @@ static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
 
    tlXMLCounter = 0;
 
-   auto call = make_function_stdc(xml_count);
+   auto call = FUNCTION(xml_count);
    Self->findTag(Args->XPath, &call);
 
    Args->Result = tlXMLCounter;

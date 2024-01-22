@@ -3223,7 +3223,7 @@ void parser::tag_script(XMLTag &Tag)
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             OBJECTID id;
             if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::NIL, &id)) {
-               Self->DefaultScript = GetObjectPtr(id);
+               Self->DefaultScript = (objScript *)GetObjectPtr(id);
                return;
             }
             else {
@@ -3845,7 +3845,7 @@ void parser::tag_trigger(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    DRT trigger_code;
-   OBJECTPTR script;
+   objScript *script;
    LARGE function_id;
 
    std::string event, function_name;
@@ -3880,7 +3880,7 @@ void parser::tag_trigger(XMLTag &Tag)
       std::string args;
       if (!extract_script(Self, function_name.c_str(), &script, function_name, args)) {
          if (!scGetProcedureID(script, function_name.c_str(), &function_id)) {
-            Self->Triggers[LONG(trigger_code)].emplace_back(make_function_script(script, function_id));
+            Self->Triggers[LONG(trigger_code)].emplace_back(FUNCTION(script, function_id));
          }
          else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name.c_str(), script->UID);
       }

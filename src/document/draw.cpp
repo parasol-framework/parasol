@@ -220,7 +220,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                };
 
                auto vp = objVectorPath::create::global({
-                  fl::Owner(Viewport->UID), fl::Stroke("rgb(255,0,0,255)"), fl::StrokeWidth(2) 
+                  fl::Owner(Viewport->UID), fl::Stroke("rgb(255,0,0,255)"), fl::StrokeWidth(2)
                });
 
                vpSetCommand(vp, seq.size(), seq.data(), seq.size() * sizeof(PathCommand));
@@ -261,7 +261,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                       (stack_list.top()->type IS bc_list::ORDERED)) {
                      if (!para.icon.empty()) {
                         para.icon->setFields(
-                           fl::X(segment.area.X - para.item_indent), 
+                           fl::X(segment.area.X - para.item_indent),
                            fl::Y(segment.area.Y + segment.area.Height - segment.gutter)
                         );
                      }
@@ -270,7 +270,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      if (!para.icon.empty()) {
                         const DOUBLE radius = segment.area.Height * 0.2;
                         para.icon->setFields(
-                           fl::CenterX(segment.area.X - para.item_indent + radius), 
+                           fl::CenterX(segment.area.X - para.item_indent + radius),
                            fl::CenterY(segment.area.Y + (segment.area.Height * 0.5)),
                            fl::Radius(radius));
                      }
@@ -333,9 +333,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                stack_row.push(&segment.stream->lookup<bc_row>(cursor));
                auto row = stack_row.top();
                if (!row->rect_fill.empty()) {
-                  row->rect_fill->setFields(fl::X(0), 
+                  row->rect_fill->setFields(fl::X(0),
                      fl::Y(row->y - stack_table.top()->y),
-                     fl::Width(stack_table.top()->width),    
+                     fl::Width(stack_table.top()->width),
                      fl::Height(row->row_height));
                }
                break;
@@ -353,7 +353,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                auto &cell = segment.stream->lookup<bc_cell>(cursor);
                auto table = stack_table.top();
-               
+
                if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
                   if (!cell.stroke.empty()) {
                      cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width));
@@ -481,8 +481,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      }));
 
                      if (button.viewport->Scene->SurfaceID) {
-                        auto call = make_function_stdc(inputevent_button);
-                        vecSubscribeInput(*button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                        vecSubscribeInput(*button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_button));
                      }
                   }
 
@@ -547,8 +546,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.processed) {
                   checkbox.processed = true;
                   if (checkbox.viewport->Scene->SurfaceID) {
-                     auto call = make_function_stdc(inputevent_checkbox);
-                     vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                     vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_checkbox));
                   }
                }
                Self->Widgets.emplace(checkbox.viewport->UID, ui_widget { &checkbox });
@@ -576,7 +574,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                            fl::Fill(stack_style.top()->fill)
                         });
                      }
-                     
+
                      combo.label_text->setFields(fl::X(F2T(x_advance + combo.label_pad)), fl::Y(F2T(y)));
 
                      x_advance += combo.label_width + combo.label_pad;
@@ -613,18 +611,16 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Width(combo.full_height()) // Button width matches the widget height
                   });
 
-                  auto call = make_function_stdc(inputevent_dropdown);
-                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_dropdown));
 
-                  call = make_function_stdc(combo_feedback);
-                  vecSubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &call);
+                  vecSubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, FUNCTION(combo_feedback));
 
                   combo.clip_vp = objVectorViewport::create::global({
                      fl::Name("vp_clip_combo"),
                      fl::Owner(combo.viewport->UID),
                      fl::Overflow(VOF::HIDDEN)
                   });
-                  
+
                   DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
                   combo.input = objVectorText::create::global({
@@ -640,7 +636,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                }
 
                if (!combo.clip_vp.empty()) {
-                  combo.clip_vp->setFields(fl::X(combo.label_pad * 0.75), fl::Y(0), 
+                  combo.clip_vp->setFields(fl::X(combo.label_pad * 0.75), fl::Y(0),
                      fl::XOffset(combo.label_pad + (combo.height * 0.75)), fl::YOffset(0));
                }
 
@@ -680,7 +676,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                            fl::Fill(stack_style.top()->fill)
                         });
                      }
-                     
+
                      input.label_text->setFields(fl::X(F2T(x_advance + input.label_pad)), fl::Y(F2T(y)));
 
                      x_advance += input.label_width + input.label_pad;
@@ -713,7 +709,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Owner(input.viewport->UID),
                      fl::Overflow(VOF::HIDDEN)
                   });
-                  
+
                   auto flags = VTXF::EDITABLE;
                   if (input.secret) flags |= VTXF::SECRET;
 

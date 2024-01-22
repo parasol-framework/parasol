@@ -192,10 +192,7 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
    pf::SwitchContext context(Audio);
 
    if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
-   else {
-      auto call = make_function_stdc(audio_timer);
-      SubscribeTimer(MIX_INTERVAL, &call, &((extAudio *)Audio)->Timer);
-   }
+   else SubscribeTimer(MIX_INTERVAL, FUNCTION(audio_timer), &((extAudio *)Audio)->Timer);
 
    return ERR_Okay;
 }
@@ -505,10 +502,7 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
    if (channel->State IS CHS::PLAYING) {
       pf::SwitchContext context(Audio);
       if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
-      else {
-         auto call = make_function_stdc(audio_timer);
-         SubscribeTimer(MIX_INTERVAL, &call, &((extAudio *)Audio)->Timer);
-      }
+      else SubscribeTimer(MIX_INTERVAL, FUNCTION(audio_timer), &((extAudio *)Audio)->Timer);
    }
 
    return ERR_Okay;

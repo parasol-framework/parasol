@@ -384,9 +384,8 @@ int fcmd_subscribe_event(lua_State *Lua)
       return 1;
    }
    else {
-      auto call = make_function_stdc(receive_event);
       APTR handle;
-      if (auto error = SubscribeEvent(event_id, &call, NULL, &handle); !error) {
+      if (auto error = SubscribeEvent(event_id, FUNCTION(receive_event), NULL, &handle); !error) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
          prv->EventList.emplace_back(luaL_ref(Lua, LUA_REGISTRYINDEX), event_id, handle);

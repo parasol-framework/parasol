@@ -612,8 +612,7 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
       if (Self->RequestHandler.Type IS CALL_SCRIPT) UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
       Self->RequestHandler = *Value;
       if (Self->RequestHandler.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_script_free);
-         SubscribeAction(Self->RequestHandler.Script.Script, AC_Free, &callback);
+         SubscribeAction(Self->RequestHandler.Script.Script, AC_Free, FUNCTION(notify_script_free));
       }
    }
    else Self->RequestHandler.Type = CALL_NONE;

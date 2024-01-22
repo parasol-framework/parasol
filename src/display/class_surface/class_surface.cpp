@@ -68,8 +68,7 @@ void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
       pf::SwitchContext context(glModule);
-      auto call = make_function_stdc(refresh_pointer_timer);
-      SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
+      SubscribeTimer(0.02, FUNCTION(refresh_pointer_timer), &glRefreshPointerTimer);
    }
 }
 
@@ -700,8 +699,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
    }
 
    if (Args->Callback->Type IS CALL_SCRIPT) {
-      auto callback = make_function_stdc(notify_free_callback);
-      SubscribeAction(Args->Callback->Script.Script, AC_Free, &callback);
+      SubscribeAction(Args->Callback->Script.Script, AC_Free, FUNCTION(notify_free_callback));
    }
 
    return ERR_Okay;
@@ -1121,16 +1119,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Subscribe to the surface parent's Resize and Redimension actions
 
-      auto callback = make_function_stdc(notify_free_parent);
-      SubscribeAction(*parent, AC_Free, &callback);
-
-      callback = make_function_stdc(notify_redimension_parent);
-      SubscribeAction(*parent, AC_Redimension, &callback);
+      SubscribeAction(*parent, AC_Free, FUNCTION(notify_free_parent));
+      SubscribeAction(*parent, AC_Redimension, FUNCTION(notify_redimension_parent));
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
       if (Self->transparent()) {
-         auto func = make_function_stdc(draw_region);
+         auto func = FUNCTION(draw_region);
          struct drwAddCallback args = { &func };
          Action(MT_DrwAddCallback, *parent, &args);
 
@@ -1380,10 +1375,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          // can be used by the host to notify of window exposures.
 
          if (Self->DisplayWindow) {
-            display->setResizeFeedback(make_function_stdc(display_resized));
+            display->setResizeFeedback(FUNCTION(display_resized));
 
-            auto callback = make_function_stdc(notify_draw_display);
-            SubscribeAction(display, AC_Draw, &callback);
+            SubscribeAction(display, AC_Draw, FUNCTION(notify_draw_display));
          }
 
          Self->DisplayID = display->UID;
@@ -2123,18 +2117,17 @@ Okay
 static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
 {
    // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
-   #define FPS 60.0
+   const DOUBLE FPS = 60.0;
 
    if (Self->RedrawScheduled) return ERR_Okay;
 
    if (Self->RedrawTimer) {
-      Self->RedrawScheduled = TRUE;
+      Self->RedrawScheduled = true;
       return ERR_Okay;
    }
 
-   auto call = make_function_stdc(redraw_timer);
-   if (!SubscribeTimer(1.0/FPS, &call, &Self->RedrawTimer)) {
-      Self->RedrawCountdown = FPS * 30;
+   if (!SubscribeTimer(1.0 / FPS, FUNCTION(redraw_timer), &Self->RedrawTimer)) {
+      Self->RedrawCountdown = FPS * 30.0;
       Self->RedrawScheduled = TRUE;
       return ERR_Okay;
    }

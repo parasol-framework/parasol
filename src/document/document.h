@@ -964,8 +964,8 @@ class extDocument : public objDocument {
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
    XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
-   OBJECTPTR ClientScript;     // Allows the developer to define a custom default script.
-   OBJECTPTR DefaultScript;
+   objScript *ClientScript;    // Allows the developer to define a custom default script.
+   objScript *DefaultScript;
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene    *Scene; // A document specific scene is required to keep our resources away from the host
    DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport

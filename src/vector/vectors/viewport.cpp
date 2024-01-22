@@ -116,10 +116,7 @@ static ERROR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
       }
    }
 
-   if (Self->vpDragCallback.Type) {
-      auto callback = make_function_stdc(drag_callback);
-      vecSubscribeInput(Self, JTYPE::NIL, &callback);
-   }
+   if (Self->vpDragCallback.Type) vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
 
    return ERR_Okay;
 }
@@ -351,15 +348,13 @@ static ERROR VIEW_GET_DragCallback(extVectorViewport *Self, FUNCTION **Value)
 
 static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
 {
-   auto callback = make_function_stdc(drag_callback);
-
    if (Value) {
       if ((!Self->Scene) or (!Self->Scene->SurfaceID)) {
          pf::Log log;
          return log.warning(ERR_FieldNotSet);
       }
 
-      if (vecSubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, &callback)) {
+      if (vecSubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(drag_callback))) {
          return ERR_Failed;
       }
 
@@ -367,7 +362,7 @@ static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
    }
    else {
       Self->vpDragCallback.Type = CALL_NONE;
-      vecSubscribeInput(Self, JTYPE::NIL, &callback);
+      vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
    }
    return ERR_Okay;
 }

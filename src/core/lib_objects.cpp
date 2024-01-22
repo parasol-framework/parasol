@@ -82,7 +82,7 @@ static ERROR object_free(BaseClass *Object)
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
       return ERR_Okay;
    }
-   
+
    // If the object is locked then we mark it for collection and return.
    // Collection is achieved via the message queue for maximum safety.
 
@@ -627,7 +627,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       // Execute the thread that will call the action.  Refer to thread_action() for the routine.
 
       if (!error) {
-         thread->Routine = make_function_stdc(thread_action);
+         thread->Routine = FUNCTION(thread_action);
 
          auto call = (thread_data *)call_data;
          call->Object   = Object;
@@ -1814,8 +1814,7 @@ The following example illustrates how to listen to a Surface object's Redimensio
 events:
 
 <pre>
-auto callback = make_function_stdc(notify_resize);
-SubscribeAction(surface, AC_Redimension, &callback);
+SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize));
 </pre>
 
 The template below illustrates how the Callback function should be constructed:

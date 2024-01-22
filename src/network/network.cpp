@@ -310,7 +310,8 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #endif
 
-   auto recv_function = make_function_stdc(resolve_name_receiver, CurrentTask());
+   auto recv_function = FUNCTION(resolve_name_receiver);
+   recv_function.StdC.Context = CurrentTask();
    if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler)) {
       return ERR_Failed;
    }

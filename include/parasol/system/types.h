@@ -34,24 +34,34 @@ enum {
    CALL_SCRIPT
 };
 
-typedef struct rkFunction {
+struct FUNCTION {
    unsigned char Type;
    unsigned char PadA;
    unsigned short ID; // Unused.  Unique identifier for the function.
    union {
       struct {
-         OBJECTPTR Context;
+         OBJECTPTR Context; // The context at the time the function was created
          void * Routine;
+         void * Meta;       // Additional meta data provided by the client.
       } StdC;
 
       struct {
-         OBJECTPTR Script;  // Equivalent to the StdC Context
+         class objScript *Script;  // Equivalent to the StdC Context
          LARGE ProcedureID; // Function identifier, usually a hash
       } Script;
    };
-} rkFunction, FUNCTION;
 
-inline bool operator==(const struct rkFunction &A, const struct rkFunction &B)
+   FUNCTION() : Type(0) { }
+
+   template <class T> FUNCTION(T *pRoutine);
+
+   FUNCTION(class objScript *pScript, LARGE pProcedure) {
+      Type = CALL_SCRIPT;
+      Script = { pScript, pProcedure };
+   }
+};
+
+inline bool operator==(const struct FUNCTION &A, const struct FUNCTION &B)
 {
    if (A.Type == CALL_STDC) return (A.Type == B.Type) and (A.StdC.Context == B.StdC.Context) and (A.StdC.Routine == B.StdC.Routine);
    else if (A.Type == CALL_SCRIPT) return (A.Type == B.Type) and (A.Script.Script == B.Script.Script) and (A.Script.ProcedureID == B.Script.ProcedureID);

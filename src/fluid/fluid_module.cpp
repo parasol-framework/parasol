@@ -165,7 +165,7 @@ static int module_call(lua_State *Lua)
    }
 
    APTR function = mod->Functions[index].Address;
-   FUNCTION func = { .Type = 0 };
+   FUNCTION func;
    ffi_cif cif;
    ffi_arg rc;
    ffi_type *arg_types[MAX_MODULE_ARGS];
@@ -268,14 +268,14 @@ static int module_call(lua_State *Lua)
          switch(lua_type(Lua, i)) {
             case LUA_TSTRING: { // Name of function to call
                lua_getglobal(Lua, lua_tostring(Lua, i));
-               func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+               func = FUNCTION(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
                ((FUNCTION **)(buffer + j))[0] = &func;
                break;
             }
 
             case LUA_TFUNCTION: { // Direct function reference
                lua_pushvalue(Lua, i);
-               func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+               func = FUNCTION(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
                ((FUNCTION **)(buffer + j))[0] = &func;
                break;
             }

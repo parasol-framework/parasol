@@ -147,7 +147,7 @@ static void  check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
 static ERROR consume_input_events(objVector *, const InputEvent *);
 static void  deactivate_edit(extDocument *, bool);
 static void  deselect_text(extDocument *);
-static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
+static ERROR extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
 static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);

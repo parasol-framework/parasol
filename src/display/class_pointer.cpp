@@ -288,8 +288,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
             Self->X, Self->Y, Self->OverX, Self->OverY);
       //}
 
-      auto call = make_function_stdc(repeat_timer);
-      SubscribeTimer(0.02, &call, &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
+      SubscribeTimer(0.02, FUNCTION(repeat_timer), &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
    }
 
    if ((Self->DragSourceID) and (!Self->Buttons[bi].LastClicked)) {
