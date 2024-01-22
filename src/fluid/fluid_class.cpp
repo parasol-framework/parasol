@@ -595,7 +595,7 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
 
    if (!Args) return ERR_NullArgs;
 
-   if ((Args->Procedure) and (Args->Procedure->Type IS CALL_SCRIPT)) {
+   if ((Args->Procedure) and (Args->Procedure->isScript())) {
       if (Args->Procedure->Script.Script IS Self) { // Verification of ownership
          auto prv = (prvFluid *)Self->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);

@@ -319,7 +319,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
 
 static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extScintilla *)CurrentContext())->EventCallback.Type = CALL_NONE;
+   ((extScintilla *)CurrentContext())->EventCallback.clear();
 }
 
 //********************************************************************************************************************
@@ -475,19 +475,16 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
                for (auto &a : tag.Attribs) {
                   if (!StrMatch("path", a.Name)) {
-                     if (Self->FileDrop.Type IS CALL_STDC) {
+                     if (Self->FileDrop.isC()) {
                         pf::SwitchContext ctx(Self->FileDrop.StdC.Context);
-                        auto routine = (void (*)(extScintilla *, CSTRING))Self->FileDrop.StdC.Routine;
-                        routine(Self, a.Value.c_str());
+                        auto routine = (void (*)(extScintilla *, CSTRING, APTR))Self->FileDrop.StdC.Routine;
+                        routine(Self, a.Value.c_str(), Self->FileDrop.StdC.Meta);
                      }
-                     else if (Self->FileDrop.Type IS CALL_SCRIPT) {
+                     else if (Self->FileDrop.isScript()) {
                         ScriptArg args[] = {
-                           { "Scintilla", FD_OBJECTPTR },
-                           { "Path",      FD_STR }
+                           ScriptArg("Scintilla", Self, FD_OBJECTPTR),
+                           ScriptArg("Path",      a.Value.c_str(), FD_STR)
                         };
-
-                        args[0].Address = Self;
-                        args[1].Address = APTR(a.Value.c_str());
 
                         struct scCallback exec;
                         exec.ProcedureID = Self->FileDrop.Script.ProcedureID;
@@ -1560,7 +1557,7 @@ static ERROR GET_FileDrop(extScintilla *Self, FUNCTION **Value)
 static ERROR SET_FileDrop(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) Self->FileDrop = *Value;
-   else Self->FileDrop.Type = CALL_NONE;
+   else Self->FileDrop.clear();
    return ERR_Okay;
 }
 
@@ -1879,13 +1876,13 @@ static ERROR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 static ERROR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
       Self->EventCallback = *Value;
-      if (Self->EventCallback.Type IS CALL_SCRIPT) {
+      if (Self->EventCallback.isScript()) {
          SubscribeAction(Self->EventCallback.Script.Script, AC_Free, FUNCTION(notify_free_event));
       }
    }
-   else Self->EventCallback.Type = CALL_NONE;
+   else Self->EventCallback.clear();
    return ERR_Okay;
 }
 
@@ -2364,20 +2361,18 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 static void report_event(extScintilla *Self, SEF Event)
 {
    if ((Event & Self->EventFlags) != SEF::NIL) {
-      if (Self->EventCallback.Type) {
-          if (Self->EventCallback.Type IS CALL_STDC) {
-            pf::SwitchContext ctx(Self->EventCallback.StdC.Context);
-            auto routine = (void (*)(extScintilla *, SEF)) Self->EventCallback.StdC.Routine;
-            routine(Self, Event);
-         }
-         else if (Self->EventCallback.Type IS CALL_SCRIPT) {
-            ScriptArg args[] = {
-               ScriptArg("Scintilla", Self, FD_OBJECTPTR),
-               ScriptArg("EventFlags", LARGE(Event))
-            };
+       if (Self->EventCallback.isC()) {
+         pf::SwitchContext ctx(Self->EventCallback.StdC.Context);
+         auto routine = (void (*)(extScintilla *, SEF, APTR)) Self->EventCallback.StdC.Routine;
+         routine(Self, Event, Self->EventCallback.StdC.Meta);
+      }
+      else if (Self->EventCallback.isScript()) {
+         ScriptArg args[] = {
+            ScriptArg("Scintilla", Self, FD_OBJECTPTR),
+            ScriptArg("EventFlags", LARGE(Event))
+         };
 
-            scCallback(Self->EventCallback.Script.Script, Self->EventCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+         scCallback(Self->EventCallback.Script.Script, Self->EventCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }

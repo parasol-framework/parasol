@@ -141,12 +141,12 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       return;
    }
 
-   if (Self->Feedback.Type IS CALL_STDC) {
+   if (Self->Feedback.isC()) {
       pf::SwitchContext context(Self->Feedback.StdC.Context);
-      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Self->Feedback.StdC.Routine;
-      if (routine) routine(Self, client_socket, NTC::CONNECTED);
+      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.StdC.Routine;
+      if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.StdC.Meta);
    }
-   else if (Self->Feedback.Type IS CALL_SCRIPT) {
+   else if (Self->Feedback.isScript()) {
       const ScriptArg args[] = {
          { "NetSocket",    Self, FD_OBJECTPTR },
          { "ClientSocket", client_socket, FD_OBJECTPTR },
@@ -203,9 +203,8 @@ static void free_client(extNetSocket *Self, struct NetClient *Client)
    recursive--;
 }
 
-/*********************************************************************************************************************
-** Terminates the connection to the client and removes associated resources.
-*/
+//********************************************************************************************************************
+// Terminates the connection to the client and removes associated resources.
 
 static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSocket, BYTE Signal)
 {
@@ -215,13 +214,13 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
 
    log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->UID, ClientSocket->UID);
 
-   if ((Signal) and (Socket->Feedback.Type)) {
-      if (Socket->Feedback.Type IS CALL_STDC) {
+   if (Signal) {
+      if (Socket->Feedback.isC()) {
          pf::SwitchContext context(Socket->Feedback.StdC.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Socket->Feedback.StdC.Routine;
-         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.StdC.Routine;
+         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.StdC.Meta);
       }
-      else if (Socket->Feedback.Type IS CALL_SCRIPT) {
+      else if (Socket->Feedback.isScript()) {
          const ScriptArg args[] = {
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR },

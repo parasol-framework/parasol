@@ -707,15 +707,12 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 
    if (!Self->Feedback.Type) return ERR_Okay;
 
-   if (Self->Feedback.Type IS CALL_STDC) {
-      auto routine = (ERROR (*)(extCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
-      if (Self->Feedback.StdC.Context) {
-         pf::SwitchContext context(Self->Feedback.StdC.Context);
-         error = routine(Self, Feedback);
-      }
-      else error = routine(Self, Feedback);
+   if (Self->Feedback.isC()) {
+      auto routine = (ERROR (*)(extCompression *, CompressionFeedback *, APTR Meta))Self->Feedback.StdC.Routine;
+      pf::SwitchContext context(Self->Feedback.StdC.Context);
+      error = routine(Self, Feedback, Self->Feedback.StdC.Meta);
    }
-   else if (Self->Feedback.Type IS CALL_SCRIPT) {
+   else if (Self->Feedback.isScript()) {
       const ScriptArg args[] = {
          { "Compression", Self, FD_OBJECTPTR },
          { "CompressionFeedback:Feedback", Feedback, FD_POINTER|FD_STRUCT }

@@ -14,7 +14,7 @@ elements.  Unfortunately we do not support all SVG capabilities at this time, bu
 
 static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extSVG *)CurrentContext())->FrameCallback.Type = CALL_NONE;
+   ((extSVG *)CurrentContext())->FrameCallback.clear();
 }
 
 /*********************************************************************************************************************
@@ -78,9 +78,9 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
-   if (Self->FrameCallback.Type IS CALL_SCRIPT) {
+   if (Self->FrameCallback.isScript()) {
       UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
-      Self->FrameCallback.Type = CALL_NONE;
+      Self->FrameCallback.clear();
    }
 
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
@@ -401,13 +401,13 @@ static ERROR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 static ERROR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->FrameCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
       Self->FrameCallback = *Value;
-      if (Self->FrameCallback.Type IS CALL_SCRIPT) {
+      if (Self->FrameCallback.isScript()) {
          SubscribeAction(Self->FrameCallback.Script.Script, AC_Free, FUNCTION(notify_free_frame_callback));
       }
    }
-   else Self->FrameCallback.Type = CALL_NONE;
+   else Self->FrameCallback.clear();
    return ERR_Okay;
 }
 

@@ -77,17 +77,17 @@ static ERROR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
 
 static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extNetSocket *)CurrentContext())->Feedback.Type = CALL_NONE;
+   ((extNetSocket *)CurrentContext())->Feedback.clear();
 }
 
 static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extNetSocket *)CurrentContext())->Incoming.Type = CALL_NONE;
+   ((extNetSocket *)CurrentContext())->Incoming.clear();
 }
 
 static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extNetSocket *)CurrentContext())->Outgoing.Type = CALL_NONE;
+   ((extNetSocket *)CurrentContext())->Outgoing.clear();
 }
 
 /*********************************************************************************************************************
@@ -969,13 +969,13 @@ static ERROR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
       Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) {
+      if (Self->Feedback.isScript()) {
          SubscribeAction(Self->Feedback.Script.Script, AC_Free, FUNCTION(notify_free_feedback));
       }
    }
-   else Self->Feedback.Type = CALL_NONE;
+   else Self->Feedback.clear();
 
    return ERR_Okay;
 }
@@ -1012,13 +1012,13 @@ static ERROR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
+      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
       Self->Incoming = *Value;
-      if (Self->Incoming.Type IS CALL_SCRIPT) {
+      if (Self->Incoming.isScript()) {
          SubscribeAction(Self->Incoming.Script.Script, AC_Free, FUNCTION(notify_free_incoming));
       }
    }
-   else Self->Incoming.Type = CALL_NONE;
+   else Self->Incoming.clear();
    return ERR_Okay;
 }
 
@@ -1057,9 +1057,9 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       return log.warning(ERR_NoSupport);
    }
    else {
-      if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
+      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free, FUNCTION(notify_free_outgoing));
+      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Script.Script, AC_Free, FUNCTION(notify_free_outgoing));
 
       if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
@@ -1154,23 +1154,21 @@ static ERROR SET_State(extNetSocket *Self, NTC Value)
 
       Self->State = Value;
 
-      if (Self->Feedback.Type) {
+      if (Self->Feedback.defined()) {
          log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", LONG(Self->State), Self->Feedback.StdC.Context);
 
-         if (Self->Feedback.Type IS CALL_STDC) {
+         if (Self->Feedback.isC()) {
             pf::SwitchContext context(Self->Feedback.StdC.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Self->Feedback.StdC.Routine;
-            if (routine) routine(Self, NULL, Self->State);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.StdC.Routine;
+            if (routine) routine(Self, NULL, Self->State, Self->Feedback.StdC.Meta);
          }
-         else if (Self->Feedback.Type IS CALL_SCRIPT) {
-            if (auto script = Self->Feedback.Script.Script) {
-               const ScriptArg args[] = {
-                  { "NetSocket",    Self, FD_OBJECTPTR },
-                  { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
-                  { "State",        LONG(Self->State) }
-               };
-               scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-            }
+         else if (Self->Feedback.isScript()) {
+            const ScriptArg args[] = {
+               { "NetSocket",    Self, FD_OBJECTPTR },
+               { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
+               { "State",        LONG(Self->State) }
+            };
+            scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
 

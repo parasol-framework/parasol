@@ -1042,12 +1042,12 @@ static ERROR report_event(extDocument *Self, DEF Event, KEYVALUE *EventData)
    if ((Event & Self->EventMask) != DEF::NIL) {
       log.branch("Reporting event $%.8x", LONG(Event));
 
-      if (Self->EventCallback.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extDocument *, DEF, KEYVALUE *))Self->EventCallback.StdC.Routine;
+      if (Self->EventCallback.isC()) {
+         auto routine = (ERROR (*)(extDocument *, DEF, KEYVALUE *, APTR))Self->EventCallback.StdC.Routine;
          pf::SwitchContext context(Self->EventCallback.StdC.Context);
-         result = routine(Self, Event, EventData);
+         result = routine(Self, Event, EventData, Self->EventCallback.StdC.Meta);
       }
-      else if (Self->EventCallback.Type IS CALL_SCRIPT) {
+      else if (Self->EventCallback.isScript()) {
          if (auto script = Self->EventCallback.Script.Script) {
             if (EventData) {
                ScriptArg args[3] = {

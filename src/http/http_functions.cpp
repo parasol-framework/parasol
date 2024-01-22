@@ -187,12 +187,12 @@ redo_upload:
    }
 
    LONG len = 0;
-   if (Self->Outgoing.Type != CALL_NONE) {
-      if (Self->Outgoing.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extHTTP *, APTR, LONG, LONG *))Self->Outgoing.StdC.Routine;
-         error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len);
+   if (Self->Outgoing.defined()) {
+      if (Self->Outgoing.isC()) {
+         auto routine = (ERROR (*)(extHTTP *, APTR, LONG, LONG *, APTR))Self->Outgoing.StdC.Routine;
+         error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len, Self->Outgoing.StdC.Meta);
       }
-      else if (Self->Outgoing.Type IS CALL_SCRIPT) {
+      else if (Self->Outgoing.isScript()) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
          const ScriptArg args[] = {
             { "HTTP",       Self, FD_OBJECTPTR },
@@ -1004,15 +1004,15 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       else SET_ERROR(Self, ERR_ReallocMemory);
    }
 
-   if (Self->Incoming.Type != CALL_NONE) {
+   if (Self->Incoming.defined()) {
       log.trace("Incoming callback is set.");
 
       ERROR error;
-      if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extHTTP *, APTR, LONG))Self->Incoming.StdC.Routine;
-         error = routine(Self, Buffer, Length);
+      if (Self->Incoming.isC()) {
+         auto routine = (ERROR (*)(extHTTP *, APTR, LONG, APTR))Self->Incoming.StdC.Routine;
+         error = routine(Self, Buffer, Length, Self->Incoming.StdC.Meta);
       }
-      else if (Self->Incoming.Type IS CALL_SCRIPT) {
+      else if (Self->Incoming.isScript()) {
          // For speed, the client will receive a direct pointer to the buffer memory via the 'mem' interface.
 
          log.trace("Calling script procedure %" PF64, Self->Incoming.Script.ProcedureID);
@@ -1023,8 +1023,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
             { "BufferSize", Length, FD_LONG|FD_BUFSIZE }
          };
 
-         auto script = Self->Incoming.Script.Script;
-         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+         if (scCallback(Self->Incoming.Script.Script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
       else error = ERR_InvalidValue;
 

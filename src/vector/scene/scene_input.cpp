@@ -66,15 +66,15 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
       if (((Event->Mask & JTYPE::REPEATED) != JTYPE::NIL) and ((sub.Mask & JTYPE::REPEATED) IS JTYPE::NIL)) it++;
       else if ((sub.Mask & Event->Mask) != JTYPE::NIL) {
          ERROR result = ERR_Terminate;
-         if (sub.Callback.Type IS CALL_STDC) {
+         if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(objVector *, InputEvent *))sub.Callback.StdC.Routine;
-            result = callback(Vector, Event);
+            auto callback = (ERROR (*)(objVector *, InputEvent *, APTR))sub.Callback.StdC.Routine;
+            result = callback(Vector, Event, sub.Callback.StdC.Meta);
          }
-         else if (sub.Callback.Type IS CALL_SCRIPT) {
+         else if (sub.Callback.isScript()) {
             ScriptArg args[] = {
-               { "Vector",            Vector, FDF_OBJECT },
-               { "InputEvent:Events", Event, FDF_STRUCT }
+               ScriptArg("Vector", Vector, FDF_OBJECT),
+               ScriptArg("InputEvent:Events", Event, FDF_STRUCT)
             };
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }
@@ -218,9 +218,9 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
             if (!Self->ButtonLock) {
                // If the button has been released then we need to compute the correct cursor and check if
-               // an enter event is required.  This code has been pulled from the JTYPE::MOVEMENT handler 
+               // an enter event is required.  This code has been pulled from the JTYPE::MOVEMENT handler
                // and reduced appropriately.
-               
+
                if (cursor IS PTC::NIL) cursor = PTC::DEFAULT;
                bool processed = false;
                for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
@@ -236,7 +236,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                   auto vector = lock.obj;
 
                   if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
-                  
+
                   if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
                   if (bounds.pass_through) {
@@ -248,7 +248,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                      send_enter_event(vector, input, bounds.x, bounds.y);
                   }
 
-                  if (!processed) { 
+                  if (!processed) {
                      DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
                      auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
                      invert.transform(&tx, &ty);
@@ -315,7 +315,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             }
 
             if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
-            
+
             if (bounds.pass_through) {
                // For pass-through subscriptions input events are ignored, but cursor changes still apply.
                continue;

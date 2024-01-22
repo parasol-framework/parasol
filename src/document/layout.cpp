@@ -1246,7 +1246,7 @@ static void layout_doc(extDocument *Self)
       }
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
-         if (trigger.Type IS CALL_SCRIPT) {
+         if (trigger.isScript()) {
             const ScriptArg args[] = {
                { "ViewWidth",  Self->VPWidth },
                { "ViewHeight", Self->VPHeight },
@@ -1255,10 +1255,10 @@ static void layout_doc(extDocument *Self)
             };
             scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
-         else if (trigger.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger.StdC.Routine;
+         else if (trigger.isC()) {
+            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG, APTR))trigger.StdC.Routine;
             pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight, Self->CalcWidth, Self->PageHeight);
+            routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight, Self->CalcWidth, Self->PageHeight, trigger.StdC.Meta);
          }
       }
    }

@@ -661,7 +661,7 @@ static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
          func.StdC.Context = caller;
          func.StdC.Routine = (APTR)Data;
       }
-      else func.Type = CALL_NONE;
+      else func.clear();
       return ((ERROR (*)(APTR, FUNCTION *))(Field->SetValue))(Object, &func);
    }
    else return ERR_SetValueNotFunction;

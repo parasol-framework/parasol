@@ -335,13 +335,13 @@ timer_cycle:
             timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
             bool relock = false;
-            if (timer->Routine.Type IS CALL_STDC) { // C/C++ callback
+            if (timer->Routine.isC()) {
                OBJECTPTR subscriber;
                if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
-                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
+                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.StdC.Routine;
                   glmTimer.unlock();
                   relock = true;
-                  error = routine(NULL, elapsed, current_time);
+                  error = routine(NULL, elapsed, current_time, timer->Routine.StdC.Meta);
                }
                else if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
                   pf::SwitchContext context(subscriber);
@@ -356,7 +356,7 @@ timer_cycle:
                }
                else error = ERR_AccessObject;
             }
-            else if (timer->Routine.Type IS CALL_SCRIPT) { // Script callback
+            else if (timer->Routine.isScript()) {
                const ScriptArg scargs[] = {
                   { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
                   { "Elapsed",     elapsed },
@@ -374,7 +374,7 @@ timer_cycle:
             timer->Locked = false;
 
             if (error IS ERR_Terminate) {
-               if (timer->Routine.Type IS CALL_SCRIPT) {
+               if (timer->Routine.isScript()) {
                   scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
                }
 
@@ -404,12 +404,12 @@ timer_cycle:
          for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
             if ((!hdl->MsgType) or (hdl->MsgType IS glQueue[i].Type)) {
                ERROR result = ERR_NoSupport;
-               if (hdl->Function.Type IS CALL_STDC) {
-                  auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))hdl->Function.StdC.Routine;
-                  if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size);
-                  else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0);
+               if (hdl->Function.isC()) {
+                  auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG, APTR))hdl->Function.StdC.Routine;
+                  if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.StdC.Meta);
+                  else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.StdC.Meta);
                }
-               else if (hdl->Function.Type IS CALL_SCRIPT) {
+               else if (hdl->Function.isScript()) {
                   const ScriptArg args[] = {
                      { "Custom",   hdl->Custom },
                      { "UID",      glQueue[i].UID },

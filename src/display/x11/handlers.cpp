@@ -101,12 +101,12 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                      auto func = &glWindowHooks[hook];
                      ERROR result;
 
-                     if (func->Type IS CALL_STDC) {
+                     if (func->isC()) {
                         pf::SwitchContext ctx(func->StdC.Context);
-                        auto callback = (ERROR (*)(OBJECTID))func->StdC.Routine;
-                        result = callback(surface_id);
+                        auto callback = (ERROR (*)(OBJECTID, APTR))func->StdC.Routine;
+                        result = callback(surface_id, func->StdC.Meta);
                      }
-                     else if (func->Type IS CALL_SCRIPT) {
+                     else if (func->isScript()) {
                         ScriptArg args[] = {
                            { "SurfaceID", surface_id, FDF_OBJECTID }
                         };

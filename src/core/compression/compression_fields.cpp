@@ -62,7 +62,7 @@ The &CompressionFeedback structure consists of the following fields:
 
 static ERROR GET_Feedback(extCompression *Self, FUNCTION **Value)
 {
-   if (Self->Feedback.Type != CALL_NONE) {
+   if (Self->Feedback.defined()) {
       *Value = &Self->Feedback;
       return ERR_Okay;
    }
@@ -72,13 +72,13 @@ static ERROR GET_Feedback(extCompression *Self, FUNCTION **Value)
 static ERROR SET_Feedback(extCompression *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
       Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) {
+      if (Self->Feedback.isScript()) {
          SubscribeAction(Self->Feedback.Script.Script, AC_Free, FUNCTION(notify_free_feedback));
       }
    }
-   else Self->Feedback.Type = CALL_NONE;
+   else Self->Feedback.clear();
    return ERR_Okay;
 }
 

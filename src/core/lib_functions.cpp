@@ -980,7 +980,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
          lock.release();
 
-         if (timer->Routine.Type IS CALL_SCRIPT) {
+         if (timer->Routine.isScript()) {
             scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
          }
 

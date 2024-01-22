@@ -514,27 +514,28 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 
    for (LONG i=0; i < Self->CallbackCount; i++) {
       Bitmap->Opacity = 255;
-      if (Self->Callback[i].Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extSurface *, objBitmap *))Self->Callback[i].Function.StdC.Routine;
+      auto &cb = Self->Callback[i].Function;
+      if (cb.isC()) {
+         auto routine = (void (*)(APTR, extSurface *, objBitmap *, APTR))cb.StdC.Routine;
 
          #ifdef DBG_DRAW_ROUTINES
             pf::Log log(__FUNCTION__);
-            log.branch("%d/%d: Routine: %p, Object: %p, Context: %p", i, Self->CallbackCount, routine, Self->Callback[i].Object, Self->Callback[i].Function.StdC.Context);
+            log.branch("%d/%d: Routine: %p, Object: %p, Context: %p", i, Self->CallbackCount, routine, Self->Callback[i].Object, cb.StdC.Context);
          #endif
 
-         if (Self->Callback[i].Function.StdC.Context) {
-            pf::SwitchContext context(Self->Callback[i].Function.StdC.Context);
-            routine(Self->Callback[i].Function.StdC.Context, Self, Bitmap);
+         if (cb.StdC.Context) {
+            pf::SwitchContext context(cb.StdC.Context);
+            routine(cb.StdC.Context, Self, Bitmap, cb.StdC.Meta);
          }
-         else routine(Self->Callback[i].Object, Self, Bitmap);
+         else routine(Self->Callback[i].Object, Self, Bitmap, cb.StdC.Meta);
       }
-      else if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
+      else if (cb.isScript()) {
          const ScriptArg args[] = {
             { "Surface", Self, FD_OBJECTPTR },
             { "Bitmap",  Bitmap, FD_OBJECTPTR }
          };
-         auto script = Self->Callback[i].Function.Script.Script;
-         scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         auto script = cb.Script.Script;
+         scCallback(script, cb.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 

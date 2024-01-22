@@ -750,12 +750,12 @@ static void process_resize_msgs(extVectorScene *Self)
             ERROR result;
             auto vector = sub.first;
             auto func   = sub.second;
-            if (func.Type IS CALL_STDC) {
+            if (func.isC()) {
                pf::SwitchContext ctx(func.StdC.Context);
-               auto callback = (ERROR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
-               result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
+               auto callback = (ERROR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.StdC.Routine;
+               result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.StdC.Meta);
             }
-            else if (func.Type IS CALL_SCRIPT) {
+            else if (func.isScript()) {
                ScriptArg args[] = {
                   { "Viewport",       view, FDF_OBJECT },
                   { "Vector",         vector, FDF_OBJECT },
@@ -781,12 +781,12 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
    for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
       ERROR result = ERR_Terminate;
       auto &sub = *it;
-      if (sub.Callback.Type IS CALL_STDC) {
+      if (sub.Callback.isC()) {
          pf::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERROR (*)(objVector *, KQ, KEY, LONG))sub.Callback.StdC.Routine;
-         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
+         auto callback = (ERROR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.StdC.Routine;
+         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.StdC.Meta);
       }
-      else if (sub.Callback.Type IS CALL_SCRIPT) {
+      else if (sub.Callback.isScript()) {
          // In this implementation the script function will receive all the events chained via the Next field
          ScriptArg args[] = {
             { "Vector",     Vector, FDF_OBJECT },

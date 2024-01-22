@@ -434,9 +434,9 @@ static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
    auto Self = (extSurface *)CurrentContext();
 
    for (LONG i=0; i < Self->CallbackCount; i++) {
-      if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
+      if (Self->Callback[i].Function.isScript()) {
          if (Self->Callback[i].Function.Script.Script->UID IS Object->UID) {
-            Self->Callback[i].Function.Type = CALL_NONE;
+            Self->Callback[i].Function.clear();
 
             LONG j;
             for (j=i; j < Self->CallbackCount-1; j++) { // Shorten the array
@@ -592,10 +592,10 @@ static ERROR SURFACE_Activate(extSurface *Self, APTR Void)
 -METHOD-
 AddCallback: Inserts a function hook into the drawing process of a surface object.
 
-The AddCallback() method provides a gateway for custom functions to draw directly to a surface.  Whenever a surface
+The AddCallback() method provides a hook for custom functions to draw directly to a surface.  Whenever a surface
 object performs a redraw event, all functions inserted by this method will be called in their original subscription
 order with a direct reference to the Surface's target bitmap.  The C/C++ prototype is
-`Function(APTR Context, *Surface, *Bitmap)`.
+`Function(APTR Context, *Surface, *Bitmap, APTR Meta)`.
 
 The Fluid prototype is `function draw(Surface, Bitmap)`
 
@@ -624,8 +624,8 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 
    OBJECTPTR context = GetParentContext();
    OBJECTPTR call_context = NULL;
-   if (Args->Callback->Type IS CALL_STDC) call_context = (OBJECTPTR)Args->Callback->StdC.Context;
-   else if (Args->Callback->Type IS CALL_SCRIPT) call_context = context; // Scripts use runtime ID resolution...
+   if (Args->Callback->isC()) call_context = (OBJECTPTR)Args->Callback->StdC.Context;
+   else if (Args->Callback->isScript()) call_context = context; // Scripts use runtime ID resolution...
 
    if (context->UID < 0) {
       log.warning("Public objects may not draw directly to surfaces.");
@@ -642,10 +642,10 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
       LONG i;
       for (i=0; i < Self->CallbackCount; i++) {
          if (Self->Callback[i].Object IS context) {
-            if ((Self->Callback[i].Function.Type IS CALL_STDC) and (Args->Callback->Type IS CALL_STDC)) {
+            if ((Self->Callback[i].Function.isC()) and (Args->Callback->isC())) {
                if (Self->Callback[i].Function.StdC.Routine IS Args->Callback->StdC.Routine) break;
             }
-            else if ((Self->Callback[i].Function.Type IS CALL_SCRIPT) and (Args->Callback->Type IS CALL_SCRIPT)) {
+            else if ((Self->Callback[i].Function.isScript()) and (Args->Callback->isScript())) {
                if (Self->Callback[i].Function.Script.ProcedureID IS Args->Callback->Script.ProcedureID) break;
             }
          }
@@ -1934,7 +1934,7 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
    OBJECTPTR context = NULL;
 
    if (Args) {
-      if ((Args->Callback) and (Args->Callback->Type IS CALL_STDC)) {
+      if ((Args->Callback) and (Args->Callback->isC())) {
          context = (OBJECTPTR)Args->Callback->StdC.Context;
          log.trace("Context: %d, Routine %p, Current Total: %d", context->UID, Args->Callback->StdC.Routine, Self->CallbackCount);
       }
@@ -1946,7 +1946,7 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
 
    if (!Self->Callback) return ERR_Okay;
 
-   if ((!Args) or (!Args->Callback) or (Args->Callback->Type IS CALL_NONE)) {
+   if ((!Args) or (!Args->Callback) or (!Args->Callback->defined())) {
       // Remove everything relating to this context if no callback was specified.
 
       LONG i;
@@ -1962,7 +1962,7 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
       return ERR_Okay;
    }
 
-   if (Args->Callback->Type IS CALL_SCRIPT) {
+   if (Args->Callback->isScript()) {
       UnsubscribeAction(Args->Callback->Script.Script, AC_Free);
    }
 
@@ -1972,11 +1972,11 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
    for (i=0; i < Self->CallbackCount; i++) {
       //log.msg("  %d: #%d, Routine %p", i, Self->Callback[i].Object->UID, Self->Callback[i].Function.StdC.Routine);
 
-      if ((Self->Callback[i].Function.Type IS CALL_STDC) and
+      if ((Self->Callback[i].Function.isC()) and
           (Self->Callback[i].Function.StdC.Context IS context) and
           (Self->Callback[i].Function.StdC.Routine IS Args->Callback->StdC.Routine)) break;
 
-      if ((Self->Callback[i].Function.Type IS CALL_SCRIPT) and
+      if ((Self->Callback[i].Function.isScript()) and
           (Self->Callback[i].Function.Script.Script IS context) and
           (Self->Callback[i].Function.Script.ProcedureID IS Args->Callback->Script.ProcedureID)) break;
    }

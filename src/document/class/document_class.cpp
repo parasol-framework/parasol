@@ -117,7 +117,7 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
    Self->VPHeight = height;
 
    for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
-      if (trigger.Type IS CALL_SCRIPT) {
+      if (trigger.isScript()) {
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
 
@@ -127,10 +127,10 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
          };
          scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
-      else if (trigger.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extDocument *, LONG, LONG))trigger.StdC.Routine;
+      else if (trigger.isC()) {
+         auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.StdC.Routine;
          pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight);
+         routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight, trigger.StdC.Meta);
       }
    }
 
@@ -614,9 +614,9 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
 
-   if (Self->EventCallback.Type IS CALL_SCRIPT) {
+   if (Self->EventCallback.isScript()) {
       UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
-      Self->EventCallback.Type = CALL_NONE;
+      Self->EventCallback.clear();
    }
 
    unload_doc(Self, ULD::TERMINATE);
@@ -1034,24 +1034,21 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
    Self->Processing++;
 
    for (auto &trigger : Self->Triggers[LONG(DRT::REFRESH)]) {
-      if (trigger.Type IS CALL_SCRIPT) {
+      if (trigger.isScript()) {
          // The refresh trigger can return ERR_Skip to prevent a complete reload of the document.
 
-         if (auto script = trigger.Script.Script) {
-            ERROR error;
-            if (!scCallback(script, trigger.Script.ProcedureID, NULL, 0, &error)) {
-               if (error IS ERR_Skip) {
-                  log.msg("The refresh request has been handled by an event trigger.");
-                  return ERR_Okay;
-               }
+         ERROR error;
+         if (!scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, &error)) {
+            if (error IS ERR_Skip) {
+               log.msg("The refresh request has been handled by an event trigger.");
+               return ERR_Okay;
             }
          }
       }
-      else if (trigger.Type IS CALL_STDC) {
-         if (auto routine = (void (*)(APTR, extDocument *))trigger.StdC.Routine) {
-            pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self);
-         }
+      else if (trigger.isC()) {
+         auto routine = (void (*)(APTR, extDocument *))trigger.StdC.Routine;
+         pf::SwitchContext context(trigger.StdC.Context);
+         routine(trigger.StdC.Context, Self);
       }
    }
 
@@ -1126,17 +1123,17 @@ static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener
 {
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
 
-   if (Args->Function->Type IS CALL_STDC) {
+   if (Args->Function->isC()) {
       for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
-         if ((it->Type IS CALL_STDC) and (it->StdC.Routine IS Args->Function->StdC.Routine)) {
+         if ((it->isC()) and (it->StdC.Routine IS Args->Function->StdC.Routine)) {
             Self->Triggers[Args->Trigger].erase(it);
             return ERR_Okay;
          }
       }
    }
-   else if (Args->Function->Type IS CALL_SCRIPT) {
+   else if (Args->Function->isScript()) {
       for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
-         if ((it->Type IS CALL_SCRIPT) and
+         if ((it->isScript()) and
              (it->Script.Script IS Args->Function->Script.Script) and
              (it->Script.ProcedureID IS Args->Function->Script.ProcedureID)) {
             Self->Triggers[Args->Trigger].erase(it);

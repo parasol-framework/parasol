@@ -81,12 +81,12 @@ static ERROR win32_audio_stream(extSound *, LARGE, LARGE);
 
 static void sound_stopped_event(extSound *Self)
 {
-   if (Self->OnStop.Type IS CALL_STDC) {
+   if (Self->OnStop.isC()) {
       pf::SwitchContext context(Self->OnStop.StdC.Context);
-      auto routine = (void (*)(extSound *))Self->OnStop.StdC.Routine;
-      routine(Self);
+      auto routine = (void (*)(extSound *, APTR))Self->OnStop.StdC.Routine;
+      routine(Self, Self->OnStop.StdC.Meta);
    }
-   else if (Self->OnStop.Type IS CALL_SCRIPT) {
+   else if (Self->OnStop.isScript()) {
       auto script = Self->OnStop.Script.Script;
       const ScriptArg args[] = { { "Sound",  Self, FD_OBJECTPTR } };
       ERROR error;
@@ -361,7 +361,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
 
          if (Self->OnStop.Type) stream.OnStop = FUNCTION(onstop_event);
-         else stream.OnStop.Type = CALL_NONE;
+         else stream.OnStop.clear();
 
          stream.PlayOffset   = Self->Position;
          stream.Callback     = FUNCTION(read_stream);
@@ -405,7 +405,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             }
 
             if (Self->OnStop.Type) add.OnStop = FUNCTION(onstop_event);
-            else add.OnStop.Type = CALL_NONE;
+            else add.OnStop.clear();
 
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
@@ -492,7 +492,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
 static void notify_onstop_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extSound *)CurrentContext())->OnStop.Type = CALL_NONE;
+   ((extSound *)CurrentContext())->OnStop.clear();
 }
 
 /*********************************************************************************************************************
@@ -597,9 +597,9 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    if (Self->StreamTimer)   { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
-   if (Self->OnStop.Type IS CALL_SCRIPT) {
+   if (Self->OnStop.isScript()) {
       UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
-      Self->OnStop.Type = CALL_NONE;
+      Self->OnStop.clear();
    }
 
 #if defined(USE_WIN32_PLAYBACK)
@@ -1463,13 +1463,13 @@ static ERROR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
 static ERROR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->OnStop.Type IS CALL_SCRIPT) UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
       Self->OnStop = *Value;
-      if (Self->OnStop.Type IS CALL_SCRIPT) {
+      if (Self->OnStop.isScript()) {
          SubscribeAction(Self->OnStop.Script.Script, AC_Free, FUNCTION(notify_onstop_free));
       }
    }
-   else Self->OnStop.Type = CALL_NONE;
+   else Self->OnStop.clear();
    return ERR_Okay;
 }
 

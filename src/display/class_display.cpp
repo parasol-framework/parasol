@@ -158,12 +158,12 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
 
    log.traceBranch("%dx%d, %dx%d", X, Y, Width, Height);
 
-   if (Feedback->Type IS CALL_STDC) {
-      auto routine = (ERROR (*)(OBJECTID, LONG, LONG, LONG, LONG))Feedback->StdC.Routine;
+   if (Feedback->isC()) {
+      auto routine = (ERROR (*)(OBJECTID, LONG, LONG, LONG, LONG, APTR))Feedback->StdC.Routine;
       pf::SwitchContext ctx(Feedback->StdC.Context);
-      routine(DisplayID, X, Y, Width, Height);
+      routine(DisplayID, X, Y, Width, Height, Feedback->StdC.Meta);
    }
-   else if (Feedback->Type IS CALL_SCRIPT) {
+   else if (Feedback->isScript()) {
       const ScriptArg args[] = {
          { "Display", DisplayID, FD_OBJECTID },
          { "X",       X },
@@ -179,7 +179,7 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
 
 static void notify_resize_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extDisplay *)CurrentContext())->ResizeFeedback.Type = CALL_NONE;
+   ((extDisplay *)CurrentContext())->ResizeFeedback.clear();
 }
 
 /*********************************************************************************************************************
@@ -2652,7 +2652,7 @@ The value in this field reflects the refresh rate of the currently active displa
 
 static ERROR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 {
-   if (Self->ResizeFeedback.Type != CALL_NONE) {
+   if (Self->ResizeFeedback.defined()) {
       *Value = &Self->ResizeFeedback;
       return ERR_Okay;
    }
@@ -2662,13 +2662,13 @@ static ERROR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 static ERROR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->ResizeFeedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
+      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
       Self->ResizeFeedback = *Value;
-      if (Self->ResizeFeedback.Type IS CALL_SCRIPT) {
+      if (Self->ResizeFeedback.isScript()) {
          SubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free, FUNCTION(notify_resize_free));
       }
    }
-   else Self->ResizeFeedback.Type = CALL_NONE;
+   else Self->ResizeFeedback.clear();
    return ERR_Okay;
 }
 

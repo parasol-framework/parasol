@@ -180,30 +180,27 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
    if ((!Callback) or (!Feedback)) return FFR::OKAY;
 
-   if (Callback->Type IS CALL_STDC) {
-      auto routine = (FFR (*)(FileFeedback *))Callback->StdC.Routine;
-      return routine(Feedback);
+   if (Callback->isC()) {
+      auto routine = (FFR (*)(FileFeedback *, APTR))Callback->StdC.Routine;
+      return routine(Feedback, Callback->StdC.Meta);
    }
-   else if (Callback->Type IS CALL_SCRIPT) {
-      if (auto script = Callback->Script.Script) {
-         const ScriptArg args[] = {
-            { "Size",       Feedback->Size },
-            { "Position",   Feedback->Position },
-            { "Path",       Feedback->Path },
-            { "Dest",       Feedback->Dest },
-            { "FeedbackID", LONG(Feedback->FeedbackID) }
-         };
+   else if (Callback->isScript()) {
+      const ScriptArg args[] = {
+         { "Size",       Feedback->Size },
+         { "Position",   Feedback->Position },
+         { "Path",       Feedback->Path },
+         { "Dest",       Feedback->Dest },
+         { "FeedbackID", LONG(Feedback->FeedbackID) }
+      };
 
-         ERROR error;
-         if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+      ERROR error;
+      if (scCallback(Callback->Script.Script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
 
-         if (!error) {
-            CSTRING *results;
-            LONG size;
-            if ((!GetFieldArray(script, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
-               return FFR(StrToInt(results[0]));
-            }
-            else return FFR::OKAY;
+      if (!error) {
+         CSTRING *results;
+         LONG size;
+         if ((!GetFieldArray(Callback->Script.Script, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
+            return FFR(StrToInt(results[0]));
          }
          else return FFR::OKAY;
       }

@@ -15,12 +15,12 @@ static ERROR process_commands(extAudio *, SAMPLE);
 static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 {
    auto &sample = Audio.Samples[SampleHandle];
-   if (sample.OnStop.Type IS CALL_STDC) {
+   if (sample.OnStop.isC()) {
       pf::SwitchContext context(sample.OnStop.StdC.Context);
-      auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
-      routine(&Audio, SampleHandle);
+      auto routine = (void (*)(extAudio *, LONG, APTR))sample.OnStop.StdC.Routine;
+      routine(&Audio, SampleHandle, sample.OnStop.StdC.Meta);
    }
-   else if (sample.OnStop.Type IS CALL_SCRIPT) {
+   else if (sample.OnStop.isScript()) {
       auto script = sample.OnStop.Script.Script;
       const ScriptArg args[] = {
          { "Audio",  &Audio, FD_OBJECTPTR },
@@ -36,12 +36,12 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 
 static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 {
-   if (Sample.Callback.Type IS CALL_STDC) {
+   if (Sample.Callback.isC()) {
       pf::SwitchContext context(Sample.Callback.StdC.Context);
-      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG))Sample.Callback.StdC.Routine;
-      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType));
+      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG, APTR))Sample.Callback.StdC.Routine;
+      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType), Sample.Callback.StdC.Meta);
    }
-   else if (Sample.Callback.Type IS CALL_SCRIPT) {
+   else if (Sample.Callback.isScript()) {
       auto script = Sample.Callback.Script.Script;
       const ScriptArg args[] = {
          { "Handle", Handle },
@@ -53,7 +53,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
       LONG result = 0;
       ERROR error;
       if (scCallback(script, Sample.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result)) error = ERR_Failed;
-      return BYTELEN(result);      
+      return BYTELEN(result);
    }
 
    return BYTELEN(0);

@@ -86,13 +86,13 @@ restart:
       }
    }
 
-   if (SVG->FrameCallback.Type != CALL_NONE) {
-      if (SVG->FrameCallback.Type IS CALL_STDC) {
+   if (SVG->FrameCallback.defined()) {
+      if (SVG->FrameCallback.isC()) {
          pf::SwitchContext context(SVG->FrameCallback.StdC.Context);
-         auto routine = (void (*)(extSVG *))SVG->FrameCallback.StdC.Routine;
-         routine(SVG);
+         auto routine = (void (*)(extSVG *, APTR))SVG->FrameCallback.StdC.Routine;
+         routine(SVG, SVG->FrameCallback.StdC.Meta);
       }
-      else if (SVG->FrameCallback.Type IS CALL_SCRIPT) {
+      else if (SVG->FrameCallback.isScript()) {
          auto script = SVG->FrameCallback.Script.Script;
          const ScriptArg args[] = { { "SVG", SVG, FD_OBJECTPTR } };
          scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);

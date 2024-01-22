@@ -208,11 +208,11 @@ ERROR extXML::find_tag(CSTRING XPath)
          if (Callback.Type IS CALL_NONE) return ERR_Okay; // End of query, successfully found tag
 
          ERROR error = ERR_Okay;
-         if (Callback.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(extXML *, LONG, CSTRING))Callback.StdC.Routine;
-            error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str());
+         if (Callback.isC()) {
+            auto routine = (ERROR (*)(extXML *, LONG, CSTRING, APTR))Callback.StdC.Routine;
+            error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.StdC.Meta);
          }
-         else if (Callback.Type IS CALL_SCRIPT) {
+         else if (Callback.isScript()) {
             const ScriptArg args[] = {
                { "XML",  this, FD_OBJECTPTR },
                { "Tag",  Cursor->ID },

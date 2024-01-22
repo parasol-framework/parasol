@@ -46,19 +46,19 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
             DOUBLE x = glDragOriginX + (event->AbsX - glAnchorX);
             DOUBLE y = glDragOriginY + (event->AbsY - glAnchorY);
 
-            if (Viewport->vpDragCallback.Type IS CALL_STDC) {
+            if (Viewport->vpDragCallback.isC()) {
                pf::SwitchContext context(Viewport->vpDragCallback.StdC.Context);
-               auto routine = (void (*)(extVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))Viewport->vpDragCallback.StdC.Routine;
-               routine(Viewport, x, y, glDragOriginX, glDragOriginY);
+               auto routine = (void (*)(extVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR Meta))Viewport->vpDragCallback.StdC.Routine;
+               routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.StdC.Meta);
             }
-            else if (Viewport->vpDragCallback.Type IS CALL_SCRIPT) {
+            else if (Viewport->vpDragCallback.isScript()) {
                if (auto script = Viewport->vpDragCallback.Script.Script) {
                   const ScriptArg args[] = {
-                     { "Viewport", Viewport, FD_OBJECTPTR },
-                     { "X",        x },
-                     { "Y",        y },
-                     { "OriginX",  glDragOriginX },
-                     { "OriginY",  glDragOriginY }
+                     ScriptArg("Viewport", Viewport, FD_OBJECTPTR),
+                     ScriptArg("X", x),
+                     ScriptArg("Y", y),
+                     ScriptArg("OriginX", glDragOriginX),
+                     ScriptArg("OriginY", glDragOriginY)
                   };
                   scCallback(script, Viewport->vpDragCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                }
@@ -361,7 +361,7 @@ static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
       Self->vpDragCallback = *Value;
    }
    else {
-      Self->vpDragCallback.Type = CALL_NONE;
+      Self->vpDragCallback.clear();
       vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
    }
    return ERR_Okay;

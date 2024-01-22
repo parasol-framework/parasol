@@ -296,7 +296,7 @@ ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extCompression *)CurrentContext();
-   Self->Feedback.Type = CALL_NONE;
+   Self->Feedback.clear();
 }
 
 /*********************************************************************************************************************
@@ -533,16 +533,16 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
 
          log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
 
-         if (Args->Callback->Type IS CALL_STDC) {
+         if (Args->Callback->isC()) {
             pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-            error = routine(Self, output, len);
+            auto routine = (ERROR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->StdC.Routine;
+            error = routine(Self, output, len, Args->Callback->StdC.Meta);
          }
-         else if (Args->Callback->Type IS CALL_SCRIPT) {
+         else if (Args->Callback->isScript()) {
             const ScriptArg args[] = {
-               { "Compression",  Self,   FD_OBJECTPTR },
-               { "Output",       output, FD_BUFFER },
-               { "OutputLength", LONG(len), FD_LONG|FD_BUFSIZE }
+               ScriptArg("Compression",  Self, FD_OBJECTPTR),
+               ScriptArg("Output",       output, FD_BUFFER),
+               ScriptArg("OutputLength", LONG(len), FD_LONG|FD_BUFSIZE)
             };
             auto script = Args->Callback->Script.Script;
             if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
@@ -624,12 +624,12 @@ static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompr
 
       Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
 
-      if (Args->Callback->Type IS CALL_STDC) {
+      if (Args->Callback->isC()) {
          pf::SwitchContext context(Args->Callback->StdC.Context);
-         auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out);
+         auto routine = (ERROR (*)(extCompression *, APTR, LONG, APTR Meta))Args->Callback->StdC.Routine;
+         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->StdC.Meta);
       }
-      else if (Args->Callback->Type IS CALL_SCRIPT) {
+      else if (Args->Callback->isScript()) {
          const ScriptArg args[] = {
             { "Compression",  Self,   FD_OBJECTPTR },
             { "Output",       output, FD_BUFFER },
@@ -778,12 +778,12 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
 
       LONG len = outputsize - Self->InflateStream.avail_out;
       if (len > 0) {
-         if (Args->Callback->Type IS CALL_STDC) {
+         if (Args->Callback->isC()) {
             pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-            error = routine(Self, output, len);
+            auto routine = (ERROR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->StdC.Routine;
+            error = routine(Self, output, len, Args->Callback->StdC.Meta);
          }
-         else if (Args->Callback->Type IS CALL_SCRIPT) {
+         else if (Args->Callback->isScript()) {
             const ScriptArg args[] = {
                { "Compression",  Self,   FD_OBJECTPTR },
                { "Output",       output, FD_BUFFER },
@@ -1746,9 +1746,9 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
       Self->ArchiveHash = 0;
    }
 
-   if (Self->Feedback.Type IS CALL_SCRIPT) {
+   if (Self->Feedback.isScript()) {
       UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
-      Self->Feedback.Type = CALL_NONE;
+      Self->Feedback.clear();
    }
 
    if (Self->Inflating)    { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
@@ -2020,18 +2020,17 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       zipfile_to_item(item, meta);
 
       {
-         if (Args->Callback->Type IS CALL_STDC) {
+         if (Args->Callback->isC()) {
             pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERROR (*)(extCompression *, CompressedItem *))Args->Callback->StdC.Routine;
-            error = routine(Self, &meta);
+            auto routine = (ERROR (*)(extCompression *, CompressedItem *, APTR))Args->Callback->StdC.Routine;
+            error = routine(Self, &meta, Args->Callback->StdC.Meta);
          }
-         else if (Args->Callback->Type IS CALL_SCRIPT) {
-            auto script = Args->Callback->Script.Script;
+         else if (Args->Callback->isScript()) {
             const ScriptArg args[] = {
                { "Compression", Self, FD_OBJECTPTR },
                { "CompressedItem:Item", &meta, FD_STRUCT|FD_PTR }
             };
-            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+            if (scCallback(Args->Callback->Script.Script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else error = log.warning(ERR_WrongType);
 

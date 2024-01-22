@@ -142,7 +142,7 @@ void parser::process_page(objXML *pXML)
    pf::Log log(__FUNCTION__);
 
    log.branch("Page: %s", Self->PageName.c_str());
-   
+
    if (!pXML) { Self->Error = ERR_NoData; return; }
    m_xml = pXML;
 
@@ -243,13 +243,13 @@ void parser::process_page(objXML *pXML)
 
    if (!Self->PageProcessed) {
       for (auto &trigger : Self->Triggers[LONG(DRT::PAGE_PROCESSED)]) {
-         if (trigger.Type IS CALL_SCRIPT) {
+         if (trigger.isScript()) {
             scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, NULL);
          }
-         else if (trigger.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, extDocument *))trigger.StdC.Routine;
+         else if (trigger.isC()) {
+            auto routine = (void (*)(APTR, extDocument *, APTR))trigger.StdC.Routine;
             pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self);
+            routine(trigger.StdC.Context, Self, trigger.StdC.Meta);
          }
       }
    }
@@ -1831,8 +1831,8 @@ void parser::tag_combobox(XMLTag &Tag)
          }
          else if (!StrMatch("option", scan.name())) {
             std::string value;
-            
-            if (scan.hasContent()) { 
+
+            if (scan.hasContent()) {
                STRING xml_ser;
                if (!xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser)) {
                   value = xml_ser;
@@ -1842,7 +1842,7 @@ void parser::tag_combobox(XMLTag &Tag)
 
             if (!value.empty()) {
                auto &option = widget.menu.m_items.emplace_back(value);
-               
+
                auto id = scan.attrib("id");
                if ((id) and (!id->empty())) option.id = *id;
 
@@ -1884,7 +1884,7 @@ void parser::tag_combobox(XMLTag &Tag)
          });
 
          vp->setFields(fl::AspectRatio(ARF::X_MAX|ARF::Y_MIN|ARF::MEET),
-            fl::ViewX(-PAD), fl::ViewY(-PAD), 
+            fl::ViewX(-PAD), fl::ViewY(-PAD),
             fl::ViewWidth(29+(PAD*2)), fl::ViewHeight(29+(PAD*2)));
 
          scAddDef(Self->Viewport->Scene, "/widget/combobox", pattern_cb);

@@ -54,6 +54,8 @@ struct FUNCTION {
    FUNCTION() : Type(0) { }
 
    template <class T> FUNCTION(T *pRoutine);
+   template <class T> FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta);
+   template <class T> FUNCTION(T *pRoutine, APTR pMeta);
 
    FUNCTION(class objScript *pScript, LARGE pProcedure) {
       Type = CALL_SCRIPT;
@@ -61,12 +63,9 @@ struct FUNCTION {
    }
 
    void clear() { Type = CALL_NONE; }
-
-   bool isC() { return Type IS CALL_STDC; }
-
-   bool isScript() { return Type IS CALL_SCRIPT; }
-
-   bool defined() { return Type != CALL_NONE; }
+   bool isC() const { return Type IS CALL_STDC; }
+   bool isScript() const { return Type IS CALL_SCRIPT; }
+   bool defined() const { return Type != CALL_NONE; }
 };
 
 inline bool operator==(const struct FUNCTION &A, const struct FUNCTION &B)

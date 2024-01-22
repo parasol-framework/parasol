@@ -141,7 +141,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
    if (Self->FeedbackSubscriptions) {
       for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
          auto &sub = *it;
-         if ((sub.Callback.Type IS CALL_SCRIPT) and (sub.Callback.Script.Script->UID IS Object->UID)) {
+         if ((sub.Callback.isScript()) and (sub.Callback.Script.Script->UID IS Object->UID)) {
             it = Self->FeedbackSubscriptions->erase(it);
          }
          else it++;
@@ -991,7 +991,7 @@ TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for
 each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback
-function is `ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y)`.
+function is `ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
 
 The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
 the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.
@@ -1022,18 +1022,18 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
    DOUBLE x, y;
    LONG cmd = -1;
 
-  if (Args->Callback->Type IS CALL_STDC) {
-      auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
+  if (Args->Callback->isC()) {
+      auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->StdC.Routine));
 
       pf::SwitchContext context(GetParentContext());
 
       LONG index = 0;
       do {
         cmd = Self->BasePath.vertex(&x, &y);
-        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
+        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y, Args->Callback->StdC.Meta);
       } while (cmd != agg::path_cmd_stop);
    }
-   else if (Args->Callback->Type IS CALL_SCRIPT) {
+   else if (Args->Callback->isScript()) {
       ScriptArg args[] = {
          { "Vector",  Self->UID, FD_OBJECTID },
          { "Index",   LONG(0) },
@@ -2261,12 +2261,12 @@ void send_feedback(extVector *Vector, FM Event)
       if ((sub.Mask & Event) != FM::NIL) {
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
-         if (sub.Callback.Type IS CALL_STDC) {
+         if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(extVector *, FM))sub.Callback.StdC.Routine;
-            result = callback(Vector, Event);
+            auto callback = (ERROR (*)(extVector *, FM, APTR))sub.Callback.StdC.Routine;
+            result = callback(Vector, Event, sub.Callback.StdC.Meta);
          }
-         else if (sub.Callback.Type IS CALL_SCRIPT) {
+         else if (sub.Callback.isScript()) {
             // In this implementation the script function will receive all the events chained via the Next field
             ScriptArg args[] = {
                { "Vector", Vector, FDF_OBJECT },

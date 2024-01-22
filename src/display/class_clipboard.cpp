@@ -89,7 +89,7 @@ static std::string get_datatype(CLIPTYPE Datatype)
 static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (objClipboard *)CurrentContext();
-   Self->RequestHandler.Type = CALL_NONE;
+   Self->RequestHandler.clear();
 }
 
 //********************************************************************************************************************
@@ -370,12 +370,12 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       log.branch("Data request from #%d received for item %d, datatype %d", Args->Object->UID, request->Item, request->Preference[0]);
 
       ERROR error = ERR_Okay;
-      if (Self->RequestHandler.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objClipboard *, OBJECTPTR, LONG, char *))Self->RequestHandler.StdC.Routine;
+      if (Self->RequestHandler.isC()) {
+         auto routine = (ERROR (*)(objClipboard *, OBJECTPTR, LONG, char *, APTR))Self->RequestHandler.StdC.Routine;
          pf::SwitchContext ctx(Self->RequestHandler.StdC.Context);
-         error = routine(Self, Args->Object, request->Item, request->Preference);
+         error = routine(Self, Args->Object, request->Item, request->Preference, Self->RequestHandler.StdC.Meta);
       }
-      else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+      else if (Self->RequestHandler.isScript()) {
          const ScriptArg args[] = {
             { "Clipboard", Self, FD_OBJECTPTR },
             { "Requester", Args->Object, FD_OBJECTPTR },
@@ -401,9 +401,9 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
 static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
-   if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+   if (Self->RequestHandler.isScript()) {
       UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
-      Self->RequestHandler.Type = CALL_NONE;
+      Self->RequestHandler.clear();
    }
 
    return ERR_Okay;
@@ -599,7 +599,7 @@ If this cannot be achieved then `ERR_NoSupport` should be returned by the functi
 
 static ERROR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 {
-   if (Self->RequestHandler.Type != CALL_NONE) {
+   if (Self->RequestHandler.defined()) {
       *Value = &Self->RequestHandler;
       return ERR_Okay;
    }
@@ -609,13 +609,13 @@ static ERROR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->RequestHandler.Type IS CALL_SCRIPT) UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
       Self->RequestHandler = *Value;
-      if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+      if (Self->RequestHandler.isScript()) {
          SubscribeAction(Self->RequestHandler.Script.Script, AC_Free, FUNCTION(notify_script_free));
       }
    }
-   else Self->RequestHandler.Type = CALL_NONE;
+   else Self->RequestHandler.clear();
    return ERR_Okay;
 }
 

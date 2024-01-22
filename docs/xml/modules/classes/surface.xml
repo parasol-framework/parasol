@@ -149,7 +149,7 @@ the surface area first).</li>
         <param type="FUNCTION *" name="Callback">Pointer to the callback routine or NULL to remove callbacks for the given Object.</param>
       </input>
       <description>
-<p>The AddCallback() method provides a gateway for custom functions to draw directly to a surface.  Whenever a surface object performs a redraw event, all functions inserted by this method will be called in their original subscription order with a direct reference to the Surface's target bitmap.  The C/C++ prototype is <code>Function(APTR Context, *Surface, *Bitmap)</code>.</p>
+<p>The AddCallback() method provides a hook for custom functions to draw directly to a surface.  Whenever a surface object performs a redraw event, all functions inserted by this method will be called in their original subscription order with a direct reference to the Surface's target bitmap.  The C/C++ prototype is <code>Function(APTR Context, *Surface, *Bitmap, APTR Meta)</code>.</p>
 <p>The Fluid prototype is <code>function draw(Surface, Bitmap)</code></p>
 <p>The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the <class name="Bitmap">Bitmap</class> class).  To get the width and height of the available drawing space, please read the Width and Height fields from the Surface object.  If writing to the bitmap directly, please observe the bitmap's clipping region and the XOffset and YOffset values.</p>
       </description>

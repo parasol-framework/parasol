@@ -285,12 +285,12 @@ void MsgWindowClose(OBJECTID SurfaceID)
          auto func = &glWindowHooks[hook];
          ERROR result;
 
-         if (func->Type IS CALL_STDC) {
+         if (func->isC()) {
             pf::SwitchContext ctx(func->StdC.Context);
-            auto callback = (ERROR (*)(OBJECTID SurfaceID))func->StdC.Routine;
-            result = callback(SurfaceID);
+            auto callback = (ERROR (*)(OBJECTID SurfaceID, APTR))func->StdC.Routine;
+            result = callback(SurfaceID, func->StdC.Meta);
          }
-         else if (func->Type IS CALL_SCRIPT) {
+         else if (func->isScript()) {
             ScriptArg args[] = { { "SurfaceID", SurfaceID, FDF_OBJECTID } };
             scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }

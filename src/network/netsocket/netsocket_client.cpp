@@ -111,13 +111,13 @@ restart:
 
    LONG result;
    ERROR error = ERR_Okay;
-   if (Self->Incoming.Type) {
-      if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extNetSocket *))Self->Incoming.StdC.Routine;
+   if (Self->Incoming.defined()) {
+      if (Self->Incoming.isC()) {
+         auto routine = (ERROR (*)(extNetSocket *, APTR))Self->Incoming.StdC.Routine;
          pf::SwitchContext context(Self->Incoming.StdC.Context);
-         error = routine(Self);
+         error = routine(Self, Self->Incoming.StdC.Meta);
       }
-      else if (Self->Incoming.Type IS CALL_SCRIPT) {
+      else if (Self->Incoming.isScript()) {
          const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
          auto script = Self->Incoming.Script.Script;
          if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
@@ -229,19 +229,19 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    // Before feeding new data into the queue, the current buffer must be empty.
 
    if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
-      if (Self->Outgoing.Type) {
-         if (Self->Outgoing.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;
+      if (Self->Outgoing.defined()) {
+         if (Self->Outgoing.isC()) {
+            auto routine = (ERROR (*)(extNetSocket *, APTR))Self->Outgoing.StdC.Routine;
             pf::SwitchContext context(Self->Outgoing.StdC.Context);
-            error = routine(Self);
+            error = routine(Self, Self->Outgoing.StdC.Meta);
          }
-         else if (Self->Outgoing.Type IS CALL_SCRIPT) {
+         else if (Self->Outgoing.isScript()) {
             const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
             auto script = Self->Outgoing.Script.Script;
             if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
 
-         if (error) Self->Outgoing.Type = CALL_NONE;
+         if (error) Self->Outgoing.clear();
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that

@@ -170,19 +170,18 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 
    buffer[bytes_read] = 0;
 
-   if (Self->InputCallback.Type IS CALL_STDC) {
-      auto routine = (void (*)(extTask *, APTR, LONG, ERROR))Self->InputCallback.StdC.Routine;
-      routine(Self, buffer, bytes_read, error);
+   if (Self->InputCallback.isC()) {
+      auto routine = (void (*)(extTask *, APTR, LONG, ERROR, APTR))Self->InputCallback.StdC.Routine;
+      routine(Self, buffer, bytes_read, error, Self->InputCallback.StdC.Meta);
    }
-   else if (Self->InputCallback.Type IS CALL_SCRIPT) {
-      auto script = Self->InputCallback.Script.Script;
+   else if (Self->InputCallback.isScript()) {
       const ScriptArg args[] = {
          { "Task",       Self },
          { "Buffer",     buffer, FD_PTRBUFFER },
          { "BufferSize", bytes_read, FD_LONG|FD_BUFSIZE },
          { "Status",     error, FD_ERROR }
       };
-      scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      scCallback(Self->InputCallback.Script.Script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 }
 
@@ -228,20 +227,17 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
       buffer[len] = 0;
 
       auto task = (extTask *)Task;
-      if (task->OutputCallback.Type IS CALL_STDC) {
-         auto routine = (void (*)(extTask *, APTR, LONG))task->OutputCallback.StdC.Routine;
-         routine(task, buffer, len);
+      if (task->OutputCallback.isC()) {
+         auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->OutputCallback.StdC.Routine;
+         routine(task, buffer, len, task->OutputCallback.Meta);
       }
-      else if (task->OutputCallback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = task->OutputCallback.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Task",       Task,   FD_OBJECTPTR },
-               { "Buffer",     buffer, FD_PTRBUFFER },
-               { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
-            };
-            scCallback(script, task->OutputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+      else if (task->OutputCallback.isScript()) {
+         const ScriptArg args[] = {
+            { "Task",       Task,   FD_OBJECTPTR },
+            { "Buffer",     buffer, FD_PTRBUFFER },
+            { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
+         };
+         scCallback(task->OutputCallback.Script.Script, task->OutputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
    recursive--;
@@ -261,13 +257,12 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 
       auto task = (extTask *)Task;
       if (task->ErrorCallback.Type) {
-         if (task->ErrorCallback.Type IS CALL_STDC) {
-            auto routine = (void (*)(extTask *, APTR, LONG))task->ErrorCallback.StdC.Routine;
-            routine(task, buffer, len);
+         if (task->ErrorCallback.isC()) {
+            auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->ErrorCallback.StdC.Routine;
+            routine(task, buffer, len, task->ErrorCallback.Meta);
          }
-         else if (task->ErrorCallback.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = task->ErrorCallback.Script.Script)) {
+         else if (task->ErrorCallback.isScript()) {
+            if (auto script = task->ErrorCallback.Script.Script) {
                const ScriptArg args[] = {
                   { "Task", Task, FD_OBJECTPTR },
                   { "Data", buffer, FD_PTRBUFFER },
@@ -289,11 +284,11 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 #ifdef _WIN32
 static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG Size)
 {
-   if (Callback->Type IS CALL_STDC) {
-      auto routine = (void (*)(extTask *, APTR, LONG))Callback->StdC.Routine;
-      routine(Task, Buffer, Size);
+   if (Callback->isC()) {
+      auto routine = (void (*)(extTask *, APTR, LONG, APTR))Callback->StdC.Routine;
+      routine(Task, Buffer, Size, Callback->StdC.Meta);
    }
-   else if (Callback->Type IS CALL_SCRIPT) {
+   else if (Callback->isScript()) {
       auto script = Callback->Script.Script;
       const ScriptArg args[] = {
          { "Task", Task, FD_OBJECTPTR },
@@ -560,11 +555,11 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    // Call ExitCallback, if specified
 
-   if (Task->ExitCallback.Type IS CALL_STDC) {
-      auto routine = (void (*)(extTask *))Task->ExitCallback.StdC.Routine;
-      routine(Task);
+   if (Task->ExitCallback.isC()) {
+      auto routine = (void (*)(extTask *, APTR))Task->ExitCallback.StdC.Routine;
+      routine(Task, Task->ExitCallback.StdC.Meta);
    }
-   else if (Task->ExitCallback.Type IS CALL_SCRIPT) {
+   else if (Task->ExitCallback.isScript()) {
       auto script = Task->ExitCallback.Script.Script;
       const ScriptArg args[] = { { "Task", Task, FD_OBJECTPTR } };
       scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
@@ -658,7 +653,8 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (!glJanitorActive) {
       pf::SwitchContext ctx(glCurrentTask);
-      SubscribeTimer(60, FUNCTION(process_janitor), &glProcessJanitor);
+      auto call = FUNCTION(process_janitor);
+      SubscribeTimer(60, &call, &glProcessJanitor);
       glJanitorActive = true;
    }
 
@@ -1802,7 +1798,7 @@ static ERROR GET_ExitCallback(extTask *Self, FUNCTION **Value)
 static ERROR SET_ExitCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->ExitCallback = *Value;
-   else Self->ExitCallback.Type = CALL_NONE;
+   else Self->ExitCallback.clear();
    return ERR_Okay;
 }
 
@@ -1821,7 +1817,7 @@ indicated by the Size.  The data pointer is temporary and will be invalid once t
 
 static ERROR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->ErrorCallback.Type != CALL_NONE) {
+   if (Self->ErrorCallback.defined()) {
       *Value = &Self->ErrorCallback;
       return ERR_Okay;
    }
@@ -1831,7 +1827,7 @@ static ERROR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
 static ERROR SET_ErrorCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->ErrorCallback = *Value;
-   else Self->ErrorCallback.Type = CALL_NONE;
+   else Self->ErrorCallback.clear();
    return ERR_Okay;
 }
 
@@ -1882,7 +1878,7 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
       #else
       if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #endif
-      Self->InputCallback.Type = CALL_NONE;
+      Self->InputCallback.clear();
    }
 
    return ERR_Okay;
@@ -1903,7 +1899,7 @@ by the Size.  The data pointer is temporary and will be invalid once the callbac
 
 static ERROR GET_OutputCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->OutputCallback.Type != CALL_NONE) {
+   if (Self->OutputCallback.defined()) {
       *Value = &Self->OutputCallback;
       return ERR_Okay;
    }
@@ -1913,7 +1909,7 @@ static ERROR GET_OutputCallback(extTask *Self, FUNCTION **Value)
 static ERROR SET_OutputCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->OutputCallback = *Value;
-   else Self->OutputCallback.Type = CALL_NONE;
+   else Self->OutputCallback.clear();
    return ERR_Okay;
 }
 

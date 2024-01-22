@@ -169,11 +169,11 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    auto msg = (ThreadActionMessage *)Message;
    if (!msg) return ERR_Okay;
 
-   if (msg->Callback.Type IS CALL_STDC) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERROR, LONG))msg->Callback.StdC.Routine;
-      routine(msg->ActionID, msg->Object, msg->Error, msg->Key);
+   if (msg->Callback.isC()) {
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERROR, LONG, APTR))msg->Callback.StdC.Routine;
+      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.StdC.Meta);
    }
-   else if (msg->Callback.Type IS CALL_SCRIPT) {
+   else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Script.Script;
       if (!LockObject(script, 5000)) {
          const ScriptArg args[] = {
@@ -202,11 +202,11 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
    log.branch("Executing completion callback for thread #%d", uid);
 
-   if (msg->Callback.Type IS CALL_STDC) {
-      auto callback = (void (*)(OBJECTID))msg->Callback.StdC.Routine;
-      callback(uid);
+   if (msg->Callback.isC()) {
+      auto callback = (void (*)(OBJECTID, APTR))msg->Callback.StdC.Routine;
+      callback(uid, msg->Callback.StdC.Meta);
    }
-   else if (msg->Callback.Type IS CALL_SCRIPT) {
+   else if (msg->Callback.isScript()) {
       if (auto script = msg->Callback.Script.Script) {
          if (!LockObject(script, 5000)) {
             const ScriptArg args[] = { { "Thread", uid, FD_OBJECTID } };
@@ -265,11 +265,11 @@ static void * thread_entry(extThread *Self)
       // Replace the default dummy context with one that pertains to the thread
       ObjectContext thread_ctx(Self, 0);
 
-      if (Self->Routine.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extThread *))Self->Routine.StdC.Routine;
-         Self->Error = routine(Self);
+      if (Self->Routine.isC()) {
+         auto routine = (ERROR (*)(extThread *, APTR))Self->Routine.StdC.Routine;
+         Self->Error = routine(Self, Self->Routine.StdC.Meta);
       }
-      else if (Self->Routine.Type IS CALL_SCRIPT) {
+      else if (Self->Routine.isScript()) {
          ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
          if (script.granted()) {
             const ScriptArg args[] = { { "Thread", Self, FD_OBJECTPTR } };
@@ -521,7 +521,7 @@ The synopsis for the callback routine is `void Callback(objThread *Thread)`.
 
 static ERROR GET_Callback(extThread *Self, FUNCTION **Value)
 {
-   if (Self->Callback.Type != CALL_NONE) {
+   if (Self->Callback.defined()) {
       *Value = &Self->Callback;
       return ERR_Okay;
    }
@@ -531,7 +531,7 @@ static ERROR GET_Callback(extThread *Self, FUNCTION **Value)
 static ERROR SET_Callback(extThread *Self, FUNCTION *Value)
 {
    if (Value) Self->Callback = *Value;
-   else Self->Callback.Type = CALL_NONE;
+   else Self->Callback.clear();
    return ERR_Okay;
 }
 
@@ -587,7 +587,7 @@ static ERROR GET_Routine(extThread *Self, FUNCTION **Value)
 static ERROR SET_Routine(extThread *Self, FUNCTION *Value)
 {
    if (Value) Self->Routine = *Value;
-   else Self->Routine.Type = CALL_NONE;
+   else Self->Routine.clear();
    return ERR_Okay;
 }
 

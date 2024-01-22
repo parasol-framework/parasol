@@ -308,22 +308,22 @@ static ERROR CMDExpunge(void)
 
 static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extHTTP *)CurrentContext())->Outgoing.Type = CALL_NONE;
+   ((extHTTP *)CurrentContext())->Outgoing.clear();
 }
 
 static void notify_free_state_changed(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extHTTP *)CurrentContext())->StateChanged.Type = CALL_NONE;
+   ((extHTTP *)CurrentContext())->StateChanged.clear();
 }
 
 static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extHTTP *)CurrentContext())->Incoming.Type = CALL_NONE;
+   ((extHTTP *)CurrentContext())->Incoming.clear();
 }
 
 static void notify_free_auth_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extHTTP *)CurrentContext())->AuthCallback.Type = CALL_NONE;
+   ((extHTTP *)CurrentContext())->AuthCallback.clear();
 }
 
 /*********************************************************************************************************************
@@ -909,13 +909,13 @@ static ERROR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
 static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->AuthCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
+      if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
       Self->AuthCallback = *Value;
-      if (Self->AuthCallback.Type IS CALL_SCRIPT) {
+      if (Self->AuthCallback.isScript()) {
          SubscribeAction(Self->AuthCallback.Script.Script, AC_Free, FUNCTION(notify_free_auth_callback));
       }
    }
-   else Self->AuthCallback.Type = CALL_NONE;
+   else Self->AuthCallback.clear();
    return ERR_Okay;
 }
 
@@ -1055,13 +1055,13 @@ static ERROR GET_Incoming(extHTTP *Self, FUNCTION **Value)
 static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
+      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
       Self->Incoming = *Value;
-      if (Self->Incoming.Type IS CALL_SCRIPT) {
+      if (Self->Incoming.isScript()) {
          SubscribeAction(Self->Incoming.Script.Script, AC_Free, FUNCTION(notify_free_incoming));
       }
    }
-   else Self->Incoming.Type = CALL_NONE;
+   else Self->Incoming.clear();
    return ERR_Okay;
 }
 
@@ -1294,13 +1294,13 @@ static ERROR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
 static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
+      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.Type IS CALL_SCRIPT) {
+      if (Self->Outgoing.isScript()) {
          SubscribeAction(Self->Outgoing.Script.Script, AC_Free, FUNCTION(notify_free_outgoing));
       }
    }
-   else Self->Outgoing.Type = CALL_NONE;
+   else Self->Outgoing.clear();
    return ERR_Okay;
 }
 
@@ -1518,13 +1518,13 @@ static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
    }
    else Self->CurrentState = Value;
 
-   if (Self->StateChanged.Type != CALL_NONE) {
+   if (Self->StateChanged.defined()) {
       ERROR error;
-      if (Self->StateChanged.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extHTTP *, HGS))Self->StateChanged.StdC.Routine;
-         error = routine(Self, Self->CurrentState);
+      if (Self->StateChanged.isC()) {
+         auto routine = (ERROR (*)(extHTTP *, HGS, APTR))Self->StateChanged.StdC.Routine;
+         error = routine(Self, Self->CurrentState, Self->StateChanged.StdC.Meta);
       }
-      else if (Self->StateChanged.Type IS CALL_SCRIPT) {
+      else if (Self->StateChanged.isScript()) {
          const ScriptArg args[] = {
             { "HTTP", Self->UID, FD_OBJECTID },
             { "State", LONG(Self->CurrentState) }
@@ -1578,13 +1578,13 @@ static ERROR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
 static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->StateChanged.Type IS CALL_SCRIPT) UnsubscribeAction(Self->StateChanged.Script.Script, AC_Free);
+      if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Script.Script, AC_Free);
       Self->StateChanged = *Value;
-      if (Self->StateChanged.Type IS CALL_SCRIPT) {
+      if (Self->StateChanged.isScript()) {
          SubscribeAction(Self->StateChanged.Script.Script, AC_Free, FUNCTION(notify_free_state_changed));
       }
    }
-   else Self->StateChanged.Type = CALL_NONE;
+   else Self->StateChanged.clear();
    return ERR_Okay;
 }
 

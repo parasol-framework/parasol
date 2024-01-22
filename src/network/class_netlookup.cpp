@@ -138,7 +138,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
 
 static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extNetLookup *)CurrentContext())->Callback.Type = CALL_NONE;
+   ((extNetLookup *)CurrentContext())->Callback.clear();
 }
 
 /*********************************************************************************************************************
@@ -245,7 +245,7 @@ static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
    if (Self->Threads) { delete Self->Threads; Self->Threads = NULL; }
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
 
-   if (Self->Callback.Type IS CALL_SCRIPT) {
+   if (Self->Callback.isScript()) {
       UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
       Self->Callback.Type = 0;
    }
@@ -459,13 +459,13 @@ static ERROR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 static ERROR SET_Callback(extNetLookup *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Callback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
+      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
       Self->Callback = *Value;
-      if (Self->Callback.Type IS CALL_SCRIPT) {
+      if (Self->Callback.isScript()) {
          SubscribeAction(Self->Callback.Script.Script, AC_Free, FUNCTION(notify_free_callback));
       }
    }
-   else Self->Callback.Type = CALL_NONE;
+   else Self->Callback.clear();
 
    return ERR_Okay;
 }
@@ -674,18 +674,17 @@ static void resolve_callback(extNetLookup *Self, ERROR Error, const std::string 
    pf::Log log(__FUNCTION__);
    log.traceBranch("Host: %s", HostName.c_str());
 
-   if (Self->Callback.Type IS CALL_STDC) {
+   if (Self->Callback.isC()) {
       pf::SwitchContext context(Self->Callback.StdC.Context);
-      auto routine = (ERROR (*)(extNetLookup *, ERROR, const std::string &, const std::vector<IPAddress> &))(Self->Callback.StdC.Routine);
-      routine(Self, Error, HostName, Addresses);
+      auto routine = (ERROR (*)(extNetLookup *, ERROR, const std::string &, const std::vector<IPAddress> &, APTR))(Self->Callback.StdC.Routine);
+      routine(Self, Error, HostName, Addresses, Self->Callback.StdC.Meta);
    }
-   else if (Self->Callback.Type IS CALL_SCRIPT) {
+   else if (Self->Callback.isScript()) {
       const ScriptArg args[] = {
          { "NetLookup", Self, FDF_OBJECT },
          { "Error",     Error }
       };
-      auto script = Self->Callback.Script.Script;
-      scCallback(script, Self->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      scCallback(Self->Callback.Script.Script, Self->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 }
 

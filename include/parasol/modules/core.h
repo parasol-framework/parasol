@@ -2395,16 +2395,16 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 
-inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION Callback) { 
+inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
-inline ERROR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR Handle) { 
-   return SubscribeEvent(Event,&Callback,Custom,Handle); 
+inline ERROR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR Handle) {
+   return SubscribeEvent(Event,&Callback,Custom,Handle);
 }
 
-inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR Subscription) { 
-   return SubscribeTimer(Interval,&Callback,Subscription); 
+inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR Subscription) {
+   return SubscribeTimer(Interval,&Callback,Subscription);
 }
 
 inline ERROR ReleaseMemory(const void *Address) {
@@ -4872,6 +4872,20 @@ template <class T> FUNCTION::FUNCTION(T *pRoutine) {
    Type = CALL_STDC;
    StdC.Context = CurrentContext();
    StdC.Routine = (APTR)pRoutine;
+};
+
+template <class T> FUNCTION::FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta) {
+   Type = CALL_STDC;
+   StdC.Context = pContext;
+   StdC.Routine = (APTR)pRoutine;
+   StdC.Meta    = pMeta;
+};
+
+template <class T> FUNCTION::FUNCTION(T *pRoutine, APTR pMeta) {
+   Type = CALL_STDC;
+   StdC.Context = CurrentContext();
+   StdC.Routine = (APTR)pRoutine;
+   StdC.Meta    = pMeta;
 };
 
 inline CSTRING BaseClass::className() { return Class->ClassName; }

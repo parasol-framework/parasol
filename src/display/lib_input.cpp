@@ -192,15 +192,15 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
          glInputLock.unlock();
 
          auto &cb = sub.Callback;
-         if (cb.Type IS CALL_STDC) {
+         if (sub.Callback.isC()) {
             pf::ScopedObjectLock lock(cb.StdC.Context, 2000); // Ensure that the object can't be removed until after input processing
             if (lock.granted()) {
                pf::SwitchContext ctx(cb.StdC.Context);
-               auto func = (ERROR (*)(InputEvent *, LONG))cb.StdC.Routine;
-               func(first, handle);
+               auto func = (ERROR (*)(InputEvent *, LONG, APTR))cb.StdC.Routine;
+               func(first, handle, cb.StdC.Meta);
             }
          }
-         else if (cb.Type IS CALL_SCRIPT) {
+         else if (sub.Callback.isScript()) {
             const ScriptArg args[] = {
                { "Events:InputEvent", first, FD_PTR|FDF_STRUCT },
                { "Handle", handle },

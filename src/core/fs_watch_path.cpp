@@ -187,19 +187,13 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
          ERROR error;
          if (flags != MFF::NIL) {
-            if (glFileMonitor[i].Routine.Type IS CALL_STDC) {
-               ERROR (*routine)(extFile *File, CSTRING path, LARGE Custom, MFF Flags);
+            if (glFileMonitor[i].Routine.isC()) {
+               ERROR (*routine)(extFile *, CSTRING path, LARGE Custom, MFF Flags, APTR);
                routine = glFileMonitor[i].Routine.StdC.Routine;
-
-               OBJECTPTR context;
-               if (glFileMonitor[i].Context) context = SetContext(glFileMonitor[i].Context);
-               else context = NULL;
-
-               error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags);
-
-               if (context) SetContext(context);
+               pf::SwitchContext context(glFileMonitor[i].Routine.StdC.Context);
+               error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags, glFileMonitor[i].Routine.StdC.Meta);
             }
-            else if (glFileMonitor[i].Routine.Type IS CALL_SCRIPT) {
+            else if (glFileMonitor[i].Routine.isScript()) {
                if (auto script = tlFeedback.Script.Script) {
                   const ScriptArg args[] = {
                      { "File",   glFileMonitor[i].File },
@@ -243,16 +237,15 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
    pf::Log log(__FUNCTION__);
 
-   static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
+   static THREADVAR bool recursion = false; // Recursion avoidance is essential for correct queuing
    if ((recursion) or (!File->prvWatch)) return;
-   recursion = TRUE;
+   recursion = true;
 
    AdjustLogLevel(2);
 
    log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->UID);
 
    ERROR error;
-   ERROR (*routine)(extFile *, CSTRING path, LARGE Custom, LONG Flags);
    if (File->prvWatch->Handle) {
       char path[256];
       LONG status;
@@ -266,42 +259,33 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
             if (path[i] IS '\\') continue;
          }
 
-         if (File->prvWatch->Routine.StdC.Context) {
-            pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
 
-            if (File->prvWatch->Routine.Type IS CALL_STDC) {
-               routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
-               error = routine(File, path, File->prvWatch->Custom, status);
-            }
-            else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
-               if (auto script = File->prvWatch->Routine.Script.Script) {
-                  const ScriptArg args[] = {
-                     { "File",   File, FD_OBJECTPTR },
-                     { "Path",   path },
-                     { "Custom", File->prvWatch->Custom },
-                     { "Flags",  0 }
-                  };
-                  if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-               }
-               else error = ERR_Terminate;
+         if (File->prvWatch->Routine.isC()) {
+            pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
+            auto routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.StdC.Routine;
+            error = routine(File, path, File->prvWatch->Custom, status, File->prvWatch->Routine.StdC.Meta);
+         }
+         else if (File->prvWatch->Routine.isScript()) {
+            if (auto script = File->prvWatch->Routine.Script.Script) {
+               const ScriptArg args[] = {
+                  { "File",   File, FD_OBJECTPTR },
+                  { "Path",   path },
+                  { "Custom", File->prvWatch->Custom },
+                  { "Flags",  0 }
+               };
+               if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }
-         else {
-            routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
-            error = routine(File, path, File->prvWatch->Custom, status);
-         }
+         else error = ERR_Terminate;
 
          if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
       }
    }
    else {
-      routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
-      if (File->prvWatch->Routine.StdC.Context) {
-         pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
-         error = routine(File, File->Path, File->prvWatch->Custom, 0);
-      }
-      else error = routine(File, File->Path, File->prvWatch->Custom, 0);
+      auto routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.StdC.Routine;
+      pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
+      error = routine(File, File->Path, File->prvWatch->Custom, 0, File->prvWatch->Routine.StdC.Meta);
 
       if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
    }

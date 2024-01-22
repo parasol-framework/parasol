@@ -30,26 +30,25 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
 
    ERROR error = ERR_Okay;
-   if (Socket->Incoming.Type) {
-      if (Socket->Incoming.Type IS CALL_STDC) {
+   if (Socket->Incoming.defined()) {
+      if (Socket->Incoming.isC()) {
          pf::SwitchContext context(Socket->Incoming.StdC.Context);
-         auto routine = (ERROR (*)(extNetSocket *, extClientSocket *))Socket->Incoming.StdC.Routine;
-         if (routine) error = routine(Socket, ClientSocket);
+         auto routine = (ERROR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.StdC.Routine;
+         error = routine(Socket, ClientSocket, Socket->Incoming.StdC.Meta);
       }
-      else if (Socket->Incoming.Type IS CALL_SCRIPT) {
+      else if (Socket->Incoming.isScript()) {
          const ScriptArg args[] = {
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR }
          };
 
-         auto script = Socket->Incoming.Script.Script;
-         if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+         if (scCallback(Socket->Incoming.Script.Script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
       else error = ERR_InvalidValue;
 
       if (error) {
          log.msg("Received error %d, incoming callback will be terminated.", error);
-         Socket->Incoming.Type = CALL_NONE;
+         Socket->Incoming.clear();
       }
 
       if (error IS ERR_Terminate) {
@@ -141,15 +140,13 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    // Before feeding new data into the queue, the current buffer must be empty.
 
    if ((!ClientSocket->WriteQueue.Buffer) or (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
-      if (ClientSocket->Outgoing.Type) {
-         if (ClientSocket->Outgoing.Type IS CALL_STDC) {
-            ERROR (*routine)(extNetSocket *, extClientSocket *);
-            if ((routine = reinterpret_cast<ERROR (*)(extNetSocket *, extClientSocket *)>(ClientSocket->Outgoing.StdC.Routine))) {
-               pf::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
-               error = routine(Socket, ClientSocket);
-            }
+      if (ClientSocket->Outgoing.defined()) {
+         if (ClientSocket->Outgoing.isC()) {
+            auto routine = (ERROR (*)(extNetSocket *, extClientSocket *, APTR))(ClientSocket->Outgoing.StdC.Routine);
+            pf::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
+            error = routine(Socket, ClientSocket, ClientSocket->Outgoing.StdC.Meta);
          }
-         else if (ClientSocket->Outgoing.Type IS CALL_SCRIPT) {
+         else if (ClientSocket->Outgoing.isScript()) {
             const ScriptArg args[] = {
                { "NetSocket", Socket, FD_OBJECTPTR },
                { "ClientSocket", ClientSocket, FD_OBJECTPTR }
@@ -157,13 +154,13 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
             if (scCallback(ClientSocket->Outgoing.Script.Script, ClientSocket->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
 
-         if (error) ClientSocket->Outgoing.Type = CALL_NONE;
+         if (error) ClientSocket->Outgoing.clear();
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((ClientSocket->Outgoing.Type IS CALL_NONE) and (!ClientSocket->WriteQueue.Buffer)) {
+      if ((!ClientSocket->Outgoing.defined()) and (!ClientSocket->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);
