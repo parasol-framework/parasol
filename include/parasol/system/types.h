@@ -59,6 +59,14 @@ struct FUNCTION {
       Type = CALL_SCRIPT;
       Script = { pScript, pProcedure };
    }
+
+   void clear() { Type = NONE; }
+
+   bool isC() { return Type IS F_STDC; }
+
+   bool isScript() { return Type IS SCRIPT; }
+
+   bool defined() { return Type != NONE; }
 };
 
 inline bool operator==(const struct FUNCTION &A, const struct FUNCTION &B)

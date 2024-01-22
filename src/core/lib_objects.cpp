@@ -1859,7 +1859,7 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 
    if ((!Object) or (!Callback)) return log.warning(ERR_NullArgs);
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_OutOfRange);
-   if (Callback->Type != CALL_STDC) return log.warning(ERR_Args);
+   if (!Callback->isC()) return log.warning(ERR_Args);
    if (Object->collecting()) return ERR_Okay;
 
    if (glSubReadOnly) {
