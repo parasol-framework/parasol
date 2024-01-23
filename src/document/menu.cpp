@@ -101,15 +101,20 @@ objSurface * doc_menu::create(DOUBLE Width)
          fl::Flags(VPF::RESIZE),
          fl::Surface(m_surface->UID)
       });
-
-      auto vp = objVectorViewport::create::global({
+      
+      auto view = objVectorViewport::create::global({
          fl::Owner(scene->UID),
-         fl::X(0), fl::Y(0), fl::XOffset(0), fl::YOffset(0)
+         fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
+      });
+
+      auto page = objVectorViewport::create::global({
+         fl::Owner(view->UID),
+         fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
       });
 
       m_doc.set((extDocument *)(objDocument::create::global({
          fl::Owner(Self->UID),
-         fl::Viewport(vp),
+         fl::Viewport(page),
          fl::EventMask(DEF::LINK_ACTIVATED),
          fl::EventCallback(APTR(menu_doc_events))
       })));
@@ -119,6 +124,8 @@ objSurface * doc_menu::create(DOUBLE Width)
       SubscribeAction(*m_surface, AC_LostFocus, FUNCTION(menu_lost_focus));
 
       refresh();
+
+      m_scroll = scroll_mgr(Self, page, view);
    }
 
    return *m_surface;

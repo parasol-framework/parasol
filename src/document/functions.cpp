@@ -217,19 +217,20 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 //********************************************************************************************************************
 // Process an XML tree by setting correct style information and then calling parse_tags().
 
-static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex,
+static ERROR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex,
    STYLE StyleFlags, IPF Options)
 {
    pf::Log log(__FUNCTION__);
 
-   if (TargetIndex < 0) TargetIndex = Stream.size();
+   if (TargetIndex < 0) TargetIndex = Stream->size();
 
    log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(StyleFlags), Tag[0].Attribs[0].Name.c_str());
 
    if ((StyleFlags & STYLE::INHERIT_STYLE) != STYLE::NIL) { // Do nothing to change the style
-      parser parse(Self, XML);
+      parser parse(Self, XML, Stream);
+      parse.m_index = stream_char(TargetIndex);
 
-      if (Stream.data.empty()) {
+      if (Stream->data.empty()) {
          parse.parse_tags(Tag, Options);
       }
       else {
@@ -238,10 +239,6 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
          parse.parse_tags(Tag, Options);
          parse.m_paragraph_depth--;
       }
-
-      Stream.data.insert(Stream.data.begin() + TargetIndex, 
-         make_move_iterator(parse.m_stream.data.begin()), 
-         make_move_iterator(parse.m_stream.data.end()));
    }
    else {
       bc_font style;
@@ -252,16 +249,16 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
       }
       else {
          for (auto i = TargetIndex - 1; i >= 0; i--) {
-            if (Stream[i].code IS SCODE::FONT) {
-               style = Stream.lookup<bc_font>(i);
+            if (Stream[0][i].code IS SCODE::FONT) {
+               style = Stream->lookup<bc_font>(i);
                break;
             }
-            else if (Stream[i].code IS SCODE::PARAGRAPH_START) {
-               style = Stream.lookup<bc_paragraph>(i).font;
+            else if (Stream[0][i].code IS SCODE::PARAGRAPH_START) {
+               style = Stream->lookup<bc_paragraph>(i).font;
                break;
             }
-            else if (Stream[i].code IS SCODE::LINK) {
-               style = Stream.lookup<bc_link>(i).font;
+            else if (Stream[0][i].code IS SCODE::LINK) {
+               style = Stream->lookup<bc_link>(i).font;
                break;
             }
          }
@@ -274,24 +271,16 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
          style.point = font->Point;
       }
 
-      parser parse(Self, XML);
-      if (Stream.data.empty()) {
+      parser parse(Self, XML, Stream);
+      parse.m_index = stream_char(TargetIndex);
+
+      if (Stream->data.empty()) {
          parse.parse_tags_with_style(Tag, style, Options);
       }
       else {
          parse.m_paragraph_depth++;
          parse.parse_tags_with_style(Tag, style, Options);
          parse.m_paragraph_depth--;
-      }
-
-      if (Stream.data.empty()) {
-         Stream = std::move(parse.m_stream);
-      }
-      else {
-         Stream.data.insert(Stream.data.begin() + TargetIndex, 
-            make_move_iterator(parse.m_stream.data.begin()), 
-            make_move_iterator(parse.m_stream.data.end()));
-         Stream.codes.merge(parse.m_stream.codes);
       }
    }
 
@@ -309,7 +298,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
 //
 // Preformat must be set to true if all consecutive whitespace characters in Text are to be inserted.
 
-static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index, const std::string &Text, bool Preformat)
+static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, const std::string &Text, bool Preformat)
 {
    // Check if there is content to be processed
 
@@ -321,7 +310,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index,
 
    if (Preformat) {
       bc_text et(Text, true);
-      Stream.emplace<bc_text>(Index, et);
+      Stream->emplace<bc_text>(Index, et);
    }
    else {
       bc_text et;
@@ -339,7 +328,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index,
          }
       }
       Self->NoWhitespace = ws;
-      Stream.emplace(Index, et);
+      Stream->emplace(Index, et);
    }
 
    return ERR_Okay;
@@ -376,15 +365,13 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
          #ifndef RETAIN_LOG_LEVEL
          pf::LogLevel level(3);
          #endif
-         parser parse(Self);
+         parser parse(Self, &Self->Stream);
 
          if (Self->PretextXML) {
             parse.process_page(Self->PretextXML);
          }
 
          parse.process_page(*xml);
-
-         Self->Stream = std::move(parse.m_stream);
 
          if (Self->initialised()) {
             Self->UpdatingLayout = true;

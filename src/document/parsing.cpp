@@ -21,7 +21,8 @@ struct parser {
    extDocument *Self;
    objXML *m_xml;
 
-   RSTREAM m_stream;                 // Generated stream content
+   RSTREAM *m_stream;                 // Generated stream content
+   std::unique_ptr<RSTREAM> m_stream_alloc;
    objXML *m_inject_xml = NULL;
    objXML::TAGS *m_inject_tag = NULL, *m_header_tag = NULL, *m_footer_tag = NULL, *m_body_tag = NULL;
    objTime *m_time = NULL;
@@ -35,13 +36,34 @@ struct parser {
    bool  m_button_patterns   = false;
    bool  m_checkbox_patterns = false;
    bool  m_combobox_patterns = false;
-   stream_char  m_index;
+   stream_char m_index;
    bc_font m_style;
    std::stack<bc_list *> m_list_stack;
    std::stack<process_table> m_table_stack;
 
-   parser(extDocument *pSelf) : Self(pSelf), m_index(0) { }
-   parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML), m_index(0) { }
+   parser(extDocument *pSelf, RSTREAM *pStream = NULL) : Self(pSelf) { 
+      if (pStream) {
+         m_stream = pStream;
+         m_index = stream_char(pStream->size());
+      }
+      else {
+         m_stream_alloc = std::make_unique<RSTREAM>();
+         m_stream = m_stream_alloc.get();
+         m_index = 0;
+      }
+   }
+
+   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = NULL) : Self(pSelf), m_xml(pXML) { 
+      if (pStream) {
+         m_stream = pStream;
+         m_index = stream_char(pStream->size());
+      }
+      else {
+         m_stream_alloc = std::make_unique<RSTREAM>();
+         m_stream = m_stream_alloc.get();
+         m_index = 0;
+      }
+   }
 
    inline ERROR calc(const std::string &, DOUBLE *, std::string &);
    inline TRF   parse_tag(XMLTag &, IPF &);
@@ -182,11 +204,11 @@ void parser::process_page(objXML *pXML)
       Self->UpdatingLayout = true;
       Self->Error          = ERR_Okay;
 
-      m_index = stream_char(m_stream.size());
+      m_index = stream_char(m_stream->size());
       parse_tags(m_xml->Tags, IPF::NO_CONTENT);
 
       if ((m_header_tag) and (!no_header)) {
-         insert_xml(Self, m_stream, m_xml, m_header_tag[0], m_stream.size(), STYLE::RESET_STYLE);
+         insert_xml(Self, m_stream, m_xml, m_header_tag[0], m_stream->size(), STYLE::RESET_STYLE);
       }
 
       if (m_body_tag) {
@@ -197,7 +219,7 @@ void parser::process_page(objXML *pXML)
          m_inject_tag = &page->Children;
          m_in_template++;
 
-         insert_xml(Self, m_stream, m_inject_xml, m_body_tag[0], m_stream.size(), STYLE::RESET_STYLE);
+         insert_xml(Self, m_stream, m_inject_xml, m_body_tag[0], m_stream->size(), STYLE::RESET_STYLE);
 
          m_in_template--;
          m_inject_tag = tags;
@@ -206,11 +228,11 @@ void parser::process_page(objXML *pXML)
          pf::Log log(__FUNCTION__);
          auto page_name = page->attrib("name");
          log.traceBranch("Processing page '%s'.", page_name ? page_name->c_str() : "");
-         insert_xml(Self, m_stream, m_xml, page->Children, m_stream.size(), STYLE::RESET_STYLE);
+         insert_xml(Self, m_stream, m_xml, page->Children, m_stream->size(), STYLE::RESET_STYLE);
       }
 
       if ((m_footer_tag) and (!no_footer)) {
-         insert_xml(Self, m_stream, m_xml, m_footer_tag[0], m_stream.size(), STYLE::RESET_STYLE);
+         insert_xml(Self, m_stream, m_xml, m_footer_tag[0], m_stream->size(), STYLE::RESET_STYLE);
       }
 
       // If an error occurred then we have to kill the document as the stream may contain unsynchronised
@@ -227,10 +249,10 @@ void parser::process_page(objXML *pXML)
       else {
          // If no name was specified and there is no page to process, revert to performing a standard insert
 
-         auto orig_size = m_stream.size();
-         Self->Error = insert_xml(Self, Self->Stream, m_xml, m_xml->Tags, m_stream.size(), STYLE::NIL); //STYLE::RESET_STYLE);
+         auto orig_size = m_stream->size();
+         Self->Error = insert_xml(Self, &Self->Stream, m_xml, m_xml->Tags, m_stream->size(), STYLE::NIL); //STYLE::RESET_STYLE);
 
-         if (Self->Error) m_stream.data.resize(orig_size);
+         if (Self->Error) m_stream->data.resize(orig_size);
       }
    }
 
@@ -1211,13 +1233,13 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
       font_change = true;
    }
 
-   TRF result = TRF::NIL;
+   auto result = TRF::NIL;
    if (font_change) {
       Style.uid = glByteCodeID++;
 
       auto save_status = m_style;
       m_style = Style;
-      m_stream.insert(m_index, m_style);
+      m_stream->insert(m_index, m_style);
 
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
@@ -1225,7 +1247,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
       }
 
       m_style = save_status;
-      m_stream.emplace<bc_font_end>(m_index);
+      m_stream->emplace<bc_font_end>(m_index);
    }
    else {
       for (auto &tag : Tags) {
@@ -1374,8 +1396,8 @@ void parser::trim_preformat(extDocument *Self)
 {
    auto i = m_index.index - 1;
    for (; i > 0; i--) {
-      if (m_stream[i].code IS SCODE::TEXT) {
-         auto &text = m_stream.lookup<bc_text>(i);
+      if (m_stream[0][i].code IS SCODE::TEXT) {
+         auto &text = m_stream->lookup<bc_text>(i);
 
          static const std::string ws(" \t\f\v\n\r");
          auto found = text.text.find_last_not_of(ws);
@@ -1394,7 +1416,7 @@ void parser::trim_preformat(extDocument *Self)
 
 void parser::tag_advance(XMLTag &Tag)
 {
-   auto &adv = m_stream.emplace<bc_advance>(m_index);
+   auto &adv = m_stream->emplace<bc_advance>(m_index);
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -1609,7 +1631,7 @@ void parser::tag_button(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_button &widget = m_stream.emplace<bc_button>(m_index);
+   bc_button &widget = m_stream->emplace<bc_button>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1688,7 +1710,7 @@ void parser::tag_checkbox(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_checkbox &widget = m_stream.emplace<bc_checkbox>(m_index);
+   bc_checkbox &widget = m_stream->emplace<bc_checkbox>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1789,7 +1811,7 @@ void parser::tag_combobox(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_combobox &widget = m_stream.emplace<bc_combobox>(m_index);
+   bc_combobox &widget = m_stream->emplace<bc_combobox>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1911,7 +1933,7 @@ void parser::tag_input(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_input &widget = m_stream.emplace<bc_input>(m_index);
+   bc_input &widget = m_stream->emplace<bc_input>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -2013,7 +2035,7 @@ void parser::tag_use(XMLTag &Tag)
    }
 
    if (!id.empty()) {
-      auto &use = m_stream.emplace<bc_use>(m_index);
+      auto &use = m_stream->emplace<bc_use>(m_index);
       use.id = id;
    }
 }
@@ -2257,7 +2279,7 @@ void parser::tag_image(XMLTag &Tag)
       if (img.height < 0) img.height = 0;
 
       if (!img.floating_x()) Self->NoWhitespace = false; // Images count as characters when inline.
-      m_stream.emplace(m_index, img);
+      m_stream->emplace(m_index, img);
    }
    else {
       log.warning("No src defined for <image> tag.");
@@ -2304,7 +2326,7 @@ void parser::tag_index(XMLTag &Tag)
    if (name) {
       bc_index index(name, glUID++, 0, visible, Self->Invisible ? false : true);
 
-      auto &stream_index = m_stream.emplace(m_index, index);
+      auto &stream_index = m_stream->emplace(m_index, index);
 
       if (!Tag.Children.empty()) {
          if (!visible) Self->Invisible++;
@@ -2313,7 +2335,7 @@ void parser::tag_index(XMLTag &Tag)
       }
 
       bc_index_end end(stream_index.id);
-      m_stream.emplace(m_index, end);
+      m_stream->emplace(m_index, end);
    }
    else if (!Tag.Children.empty()) parse_tags(Tag.Children);
 }
@@ -2400,11 +2422,11 @@ void parser::tag_link(XMLTag &Tag)
       link.font.options |= FSO::UNDERLINE;
       link.font.fill = link.fill;
 
-      auto &stream_link = m_stream.emplace(m_index, link);
+      auto &stream_link = m_stream->emplace(m_index, link);
 
       parse_tags_with_embedded_style(Tag.Children, stream_link.font);
 
-      m_stream.emplace<bc_link_end>(m_index);
+      m_stream->emplace<bc_link_end>(m_index);
 
       // Links are added to the list of tab locations
 
@@ -2454,7 +2476,7 @@ void parser::tag_list(XMLTag &Tag)
       else log.msg("Unknown list attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   auto &stream_list = m_stream.emplace(m_index, list);
+   auto &stream_list = m_stream->emplace(m_index, list);
    m_list_stack.push(&stream_list);
 
       // Refer to tag_li() to see how list items are managed
@@ -2462,7 +2484,7 @@ void parser::tag_list(XMLTag &Tag)
       if (!Tag.Children.empty()) parse_tags(Tag.Children);
 
    m_list_stack.pop();
-   m_stream.emplace<bc_list_end>(m_index);
+   m_stream->emplace<bc_list_end>(m_index);
 
    Self->NoWhitespace = true;
 }
@@ -2500,14 +2522,14 @@ void parser::tag_paragraph(XMLTag &Tag)
       else check_font_attrib(Tag.Attribs[i], para.font);
    }
 
-   auto &stream_para = m_stream.emplace(m_index, para);
+   auto &stream_para = m_stream->emplace(m_index, para);
 
    Self->NoWhitespace = stream_para.trim;
 
    parse_tags_with_embedded_style(Tag.Children, stream_para.font);
 
    bc_paragraph_end end;
-   m_stream.emplace(m_index, end);
+   m_stream->emplace(m_index, end);
    Self->NoWhitespace = true;
    m_paragraph_depth--;
 }
@@ -2722,9 +2744,7 @@ extension.  Here are some examples:
 [file.location]
 </pre>
 
-A string such as `[mywindow.height] + [mywindow.width]` could be translated to `255 + 120` for instance.  References to
-string based fields can expand the Buffer very quickly, which is why large buffer spaces are recommended for all-purpose
-translations.
+A string such as `[mywindow.height] + [mywindow.width]` could be translated to `255 + 120` for instance.
 
 Simple calculations are possible by enclosing a statement within a `[=...]` section.  For example the aforementioned
 string can be expanded to `[=[mywindow.height] + [mywindow.width]]`, which would give a result of 375.
@@ -2753,7 +2773,7 @@ ERROR parser::tag_xml_content_eval(std::string &Buffer)
 
    // Skip to the end of the buffer (translation occurs 'backwards')
 
-   auto pos = LONG(Buffer.size() - 1);
+   auto pos = std::ssize(Buffer) - 1;
    while (pos >= 0) {
       if ((Buffer[pos] IS '[') and ((Buffer[pos+1] IS '@') or (Buffer[pos+1] IS '%'))) {
          // Ignore arguments, e.g. [@id] or [%id].  It's also useful for ignoring [@attrib] in xpath.
@@ -3075,7 +3095,7 @@ void parser::tag_object(XMLTag &Tag)
             }
             else escobj.in_line = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
-            m_stream.emplace(Index, escobj);
+            m_stream->emplace(Index, escobj);
 
             if (Self->ObjectCache) {
                switch (object->Class->ClassID) {
@@ -3378,11 +3398,11 @@ void parser::tag_li(XMLTag &Tag)
    m_paragraph_depth++;
 
    if ((list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
-      auto &stream_para = m_stream.emplace(m_index, para);
+      auto &stream_para = m_stream->emplace(m_index, para);
 
          parse_tags_with_embedded_style(Tag.Children, stream_para.font);
 
-      m_stream.emplace<bc_paragraph_end>(m_index);
+      m_stream->emplace<bc_paragraph_end>(m_index);
    }
    else if (list->type IS bc_list::ORDERED) {
       auto list_size = list->buffer.size();
@@ -3396,11 +3416,11 @@ void parser::tag_li(XMLTag &Tag)
       if (para.aggregate) for (auto &p : list->buffer) para.value += p;
       else para.value = list->buffer.back();
 
-      auto &stream_para = m_stream.emplace(m_index, para);
+      auto &stream_para = m_stream->emplace(m_index, para);
 
          parse_tags_with_embedded_style(Tag.Children, stream_para.font);
 
-      m_stream.emplace<bc_paragraph_end>(m_index);
+      m_stream->emplace<bc_paragraph_end>(m_index);
 
       list->item_num = save_item;
       list->buffer.resize(list_size);
@@ -3408,11 +3428,11 @@ void parser::tag_li(XMLTag &Tag)
       list->item_num++;
    }
    else { // BULLET
-      auto &stream_para = m_stream.emplace(m_index, para);
+      auto &stream_para = m_stream->emplace(m_index, para);
 
          parse_tags_with_embedded_style(Tag.Children, stream_para.font);
 
-      m_stream.emplace<bc_paragraph_end>(m_index);
+      m_stream->emplace<bc_paragraph_end>(m_index);
       Self->NoWhitespace = true;
    }
 
@@ -3507,7 +3527,7 @@ void parser::tag_table(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   auto &start = m_stream.emplace<bc_table>(m_index);
+   auto &start = m_stream->emplace<bc_table>(m_index);
    start.min_width  = 1;
    start.min_height = 1;
 
@@ -3625,7 +3645,7 @@ void parser::tag_table(XMLTag &Tag)
    }
 
    bc_table_end end;
-   m_stream.emplace(m_index, end);
+   m_stream->emplace(m_index, end);
 
    Self->NoWhitespace = true; // Setting this to true will prevent the possibility of blank spaces immediately following the table.
 }
@@ -3656,7 +3676,7 @@ void parser::tag_row(XMLTag &Tag)
 
    auto &table = m_table_stack.top();
 
-   m_stream.emplace(m_index, escrow);
+   m_stream->emplace(m_index, escrow);
 
    table.table->rows++;
    table.row_col = 0;
@@ -3666,7 +3686,7 @@ void parser::tag_row(XMLTag &Tag)
    }
 
    bc_row_end end;
-   m_stream.emplace(m_index, end);
+   m_stream->emplace(m_index, end);
 
    if (table.row_col > std::ssize(table.table->columns)) {
       table.table->columns.resize(table.row_col);
@@ -3786,16 +3806,14 @@ void parser::tag_cell(XMLTag &Tag)
 
       // Cell content is managed in an internal stream
 
-      parser parse(Self);
+      parser parse(Self, cell.stream);
 
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);
       parse.m_paragraph_depth--;
-
-      cell.stream = new RSTREAM(parse.m_stream);
    }
 
-   auto &stream_cell = m_stream.emplace(m_index, cell);
+   auto &stream_cell = m_stream->emplace(m_index, cell);
 
    m_table_stack.top().row_col += stream_cell.col_span;
 

@@ -237,8 +237,8 @@ CELL layout::lay_cell(bc_table *Table)
       return CELL::ABORT;
    }
 
-   if (cell.column >= LONG(Table->columns.size())) {
-      DLAYOUT("Cell %d exceeds total table column limit of %d.", cell.column, LONG(Table->columns.size()));
+   if (cell.column >= std::ssize(Table->columns)) {
+      DLAYOUT("Cell %d exceeds total table column limit of %d.", cell.column, (LONG)std::ssize(Table->columns));
       return CELL::NIL;
    }
 

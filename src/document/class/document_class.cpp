@@ -394,11 +394,10 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       if (xml.ok()) {
          if (Self->Stream.data.empty()) {
             // If the document is empty then we use the same process as load_doc()
-            parser parse(Self);
+            parser parse(Self, &Self->Stream);
             parse.process_page(*xml);
-            Self->Stream = parse.m_stream;
          }
-         else Self->Error = insert_xml(Self, Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
+         else Self->Error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
 
          Self->UpdatingLayout = true;
          if (Self->initialised()) redraw(Self, true);
@@ -878,7 +877,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!xml.ok()) {
       Self->UpdatingLayout = true;
 
-      ERROR error = insert_xml(Self, Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
+      ERROR error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
       if (error) log.warning("Insert failed for: %s", Args->XML);
 
       return error;
@@ -920,7 +919,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    pf::Log log(__FUNCTION__);
 
    if ((!Args) or (!Args->Text)) return log.warning(ERR_NullArgs);
-   if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
+   if ((Args->Index < -1) or (Args->Index > std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
 
    log.traceBranch("Index: %d, Preformat: %d", Args->Index, Args->Preformat);
 
@@ -930,7 +929,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    if (index < 0) index = Self->Stream.size();
 
    stream_char sc(index, 0);
-   ERROR error = insert_text(Self, Self->Stream, sc, std::string(Args->Text), Args->Preformat);
+   ERROR error = insert_text(Self, &Self->Stream, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
       print_stream(Self->Stream);
@@ -983,8 +982,8 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
    Args->Result = NULL;
 
-   if ((Args->Start < 0) or (Args->Start >= LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
-   if ((Args->End < 0) or (Args->End >= LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
+   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
+   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
    if (Args->End <= Args->Start) return log.warning(ERR_Args);
 
    if (Args->Format IS DATA::TEXT) {
@@ -1089,8 +1088,8 @@ static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((Args->Start < 0) or (Args->Start >= LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
-   if ((Args->End < 0) or (Args->End >= LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
+   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
+   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
    if (Args->End <= Args->Start) return log.warning(ERR_Args);
 
    CopyMemory(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
@@ -1240,7 +1239,7 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 
       return log.warning(ERR_NoSupport);
    }
-   else if ((Args->Index >= 0) and (Args->Index < LONG(Self->Tabs.size()))) {
+   else if ((Args->Index >= 0) and (Args->Index < std::ssize(Self->Tabs))) {
       Self->FocusIndex = Args->Index;
       set_focus(Self, Args->Index, "SelectLink");
       return ERR_Okay;

@@ -156,8 +156,8 @@ static LONG  find_tabfocus(extDocument *, TT, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 inline std::string get_font_style(const FSO);
 static LONG  getutf8(CSTRING, LONG *);
-static ERROR insert_text(extDocument *, RSTREAM &, stream_char &, const std::string &, bool);
-static ERROR insert_xml(extDocument *, RSTREAM &, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
+static ERROR insert_text(extDocument *, RSTREAM *, stream_char &, const std::string &, bool);
+static ERROR insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
@@ -375,6 +375,7 @@ inline void layout_doc_fast(extDocument *Self)
 
 //********************************************************************************************************************
 
+#include "scrollbar.cpp"
 #include "streamchar.cpp"
 #include "parsing.cpp"
 #include "class/fields.cpp"

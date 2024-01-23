@@ -161,6 +161,44 @@ DEFINE_ENUM_FLAG_OPERATORS(TRF)
 class RSTREAM;
 
 //********************************************************************************************************************
+
+struct scroll_mgr {
+   struct scroll_slider {
+      DOUBLE offset = 0;
+      DOUBLE length = 20;
+   };
+
+   struct scroll_bar {
+      objVectorViewport *m_viewport = NULL;
+      objVectorViewport *m_slider_host = NULL;
+      objVectorViewport *m_slider_vp = NULL;
+      scroll_slider m_slider_pos;
+      char m_direction; // 'V' or 'H'
+   };
+
+   extDocument *m_doc = NULL;
+   objVectorViewport *m_target = NULL; // The viewport that will own the scrollbars, usually the owner of m_view
+   objVectorViewport *m_page = NULL; // Monitored page
+   objVectorViewport *m_view = NULL; // Monitored owner of the page
+   DOUBLE m_breadth = 16;
+   DOUBLE m_min_width = 0;    // For dynamic width mode, this is the minimum required width
+   bool m_fixed_mode = false;
+
+   scroll_bar m_vbar;
+   scroll_bar m_hbar;
+
+   scroll_mgr() {}
+   scroll_mgr(extDocument *, objVectorViewport *, objVectorViewport *);
+
+   void   scroll_page(DOUBLE, DOUBLE);
+   scroll_bar create(char);
+   void   recalc_sliders_from_view();
+   scroll_slider calc_slider(DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+   void   set_fixed_page_size(DOUBLE Width, DOUBLE Height);
+   void   set_dynamic_page_size(DOUBLE NominalWidth, DOUBLE MinWidth, DOUBLE Height);
+};
+
+//********************************************************************************************************************
 // Tab is used to represent interactive entities within the document that can be tabbed to.
 
 struct tab {
@@ -676,11 +714,11 @@ struct bc_row_end : public base_code {
 struct bc_cell : public base_code {
    GuardedObject<objVectorViewport> viewport;
    GuardedObject<objVectorRectangle> rect_fill;
-   RSTREAM *stream = NULL;        // Internally managed byte code content for the cell
+   RSTREAM *stream;               // Internally managed byte code content for the cell
    LONG cell_id = 0;              // UID for the cell
    LONG column = 0;               // Column number that the cell starts in
-   LONG col_span = 0;             // Number of columns spanned by this cell (normally set to 1)
-   LONG row_span = 0;             // Number of rows spanned by this cell
+   LONG col_span = 1;             // Number of columns spanned by this cell (normally set to 1)
+   LONG row_span = 1;             // Number of rows spanned by this cell
    CB border = CB::NIL;           // Border options
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
    DOUBLE width = 0, height = 0;  // Width and height of the cell
@@ -693,13 +731,9 @@ struct bc_cell : public base_code {
    std::string fill;
    bool modified = false;         // Set to true when content in the cell has been modified
 
-   bc_cell(LONG pCellID, LONG pColumn) :
-      base_code(SCODE::CELL), cell_id(pCellID), column(pColumn),
-      col_span(1), row_span(1), x(0), y(0), width(0), height(0)
-      { }
-
+   bc_cell(LONG pCellID, LONG pColumn);
    ~bc_cell();
-   bc_cell (const bc_cell &Other);
+   bc_cell(const bc_cell &Other);
 };
 
 struct bc_text : public base_code {
@@ -782,6 +816,7 @@ struct doc_menu {
    std::function<void(doc_menu &, dropdown_item &)> m_callback; // Callback for item selection
    std::variant<bc_combobox *> m_ref;    // User customisable reference.
    std::string m_style;                  // Optional style override
+   scroll_mgr m_scroll;
 
    // Font options for items in the list
 
@@ -798,6 +833,8 @@ struct doc_menu {
    objSurface * get();
    void reposition(objVectorViewport *);
    void refresh();
+
+   doc_menu() { }
 
    doc_menu(std::function<void(doc_menu &, dropdown_item &)> pCallback) : m_callback(pCallback) { }
 
@@ -882,9 +919,11 @@ struct ui_link {
 
 //********************************************************************************************************************
 
-using CODEMAP = std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
+using CODEVAR = std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_font_end, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>>;
+      bc_font, bc_font_end, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>;
+
+using CODEMAP = std::unordered_map<ULONG, CODEVAR>;
 
 class RSTREAM {
 public:
@@ -1004,6 +1043,14 @@ class extDocument : public objDocument {
 
 bc_cell::~bc_cell() {
    delete stream;
+}
+
+bc_cell::bc_cell(LONG pCellID, LONG pColumn)
+{ 
+   code    = SCODE::CELL;
+   cell_id = pCellID;
+   column  = pColumn;
+   stream  = new RSTREAM();
 }
 
 bc_cell::bc_cell(const bc_cell &Other) {
