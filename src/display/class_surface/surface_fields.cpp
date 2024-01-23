@@ -319,7 +319,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
       if (class_id != ID_SURFACE) {
          OBJECTPTR obj;
          if (!AccessObject(Value, 3000, &obj)) {
-            obj->get(FID_Surface, &Value);
+            Value = obj->get<OBJECTID>(FID_Surface);
             ReleaseObject(obj);
          }
          else return ERR_AccessObject;

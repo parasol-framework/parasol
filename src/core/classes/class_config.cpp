@@ -154,8 +154,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
       objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
-         LONG filesize;
-         file->get(FID_Size, &filesize);
+         auto filesize = file->get<LONG>(FID_Size);
 
          if (filesize > 0) {
             STRING data;

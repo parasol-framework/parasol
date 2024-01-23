@@ -223,16 +223,14 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 
    objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
-      LONG minwidth, minheight, maxwidth, maxheight;
-      LONG left, right, top, bottom;
-      surface->get(FID_MinWidth, &minwidth);
-      surface->get(FID_MinHeight, &minheight);
-      surface->get(FID_MaxWidth, &maxwidth);
-      surface->get(FID_MaxHeight, &maxheight);
-      surface->get(FID_LeftMargin, &left);
-      surface->get(FID_TopMargin, &top);
-      surface->get(FID_BottomMargin, &bottom);
-      surface->get(FID_RightMargin, &right);
+      auto minwidth  = surface->get<LONG>(FID_MinWidth);
+      auto minheight = surface->get<LONG>(FID_MinHeight);
+      auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
+      auto maxheight = surface->get<LONG>(FID_MaxHeight);
+      auto left      = surface->get<LONG>(FID_LeftMargin);
+      auto top       = surface->get<LONG>(FID_TopMargin);
+      auto bottom    = surface->get<LONG>(FID_BottomMargin);
+      auto right     = surface->get<LONG>(FID_RightMargin);
 
       if (*Width < minwidth + left + right)   *Width  = minwidth + left + right;
       if (*Height < minheight + top + bottom) *Height = minheight + top + bottom;

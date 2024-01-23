@@ -105,9 +105,8 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
-   DOUBLE width, height;
-   View->get(FID_Width, &width);
-   View->get(FID_Height, &height);
+   auto width  = View->get<DOUBLE>(FID_Width);
+   auto height = View->get<DOUBLE>(FID_Height);
 
    if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR_Okay;
 
@@ -682,8 +681,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    SubscribeAction(Self->Viewport, AC_Free, FUNCTION(notify_free_viewport));
 
-   Self->Viewport->get(FID_Width, &Self->VPWidth);
-   Self->Viewport->get(FID_Height, &Self->VPHeight);
+   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
+   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
 
    FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
    Self->Viewport->setFillColour(bkgd, 4);

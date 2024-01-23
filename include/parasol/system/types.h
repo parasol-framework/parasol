@@ -10,9 +10,11 @@
 template <class Tag, typename T>
 class strong_typedef {
    public:
+      // Constructors
       strong_typedef() : val() { }
-
       constexpr explicit strong_typedef(const T &Value) : val(Value) { }
+
+      // Accessors
       explicit operator T&() noexcept { return val; }
       explicit operator const T&() const noexcept { return val; }
 

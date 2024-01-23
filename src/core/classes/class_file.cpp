@@ -1290,9 +1290,7 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
       Self->Position = (LARGE)Args->Offset;
    }
    else if (Args->Position IS SEEK::END) {
-      LARGE filesize;
-      Self->get(FID_Size, &filesize);
-      Self->Position = filesize - (LARGE)Args->Offset;
+      Self->Position = Self->get<LARGE>(FID_Size) - (LARGE)Args->Offset;
    }
    else if (Args->Position IS SEEK::CURRENT) {
       Self->Position = Self->Position + (LARGE)Args->Offset;

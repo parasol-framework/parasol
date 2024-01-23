@@ -1769,9 +1769,7 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
 static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
 {
    pf::Log log;
-   STRING path;
-
-   Self->get(FID_Path, &path);
+   auto path = Self->get<STRING>(FID_Path);
 
    if (!path) {
       // If no location has been set, assume that the developer only wants to use the buffer or stream compression routines.

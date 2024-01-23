@@ -1559,6 +1559,19 @@ class LogLevel {
 } // namespace
 
 //********************************************************************************************************************
+// Refer to BaseClass->get() to see what this is about...
+
+template <class T> inline LARGE FIELD_TAG()   { return 0; }
+template <> inline LARGE FIELD_TAG<DOUBLE>()  { return TDOUBLE; }
+template <> inline LARGE FIELD_TAG<LONG>()    { return TLONG; }
+template <> inline LARGE FIELD_TAG<FLOAT>()   { return TFLOAT; }
+template <> inline LARGE FIELD_TAG<APTR>()    { return TPTR; }
+template <> inline LARGE FIELD_TAG<LARGE>()   { return TLARGE; }
+template <> inline LARGE FIELD_TAG<CSTRING>() { return TSTRING; }
+template <> inline LARGE FIELD_TAG<STRING>()  { return TSTRING; }
+template <> inline LARGE FIELD_TAG<SCALE>()   { return TDOUBLE|TSCALE; }
+
+//********************************************************************************************************************
 // Header used for all objects.
 
 struct BaseClass { // Must be 64-bit aligned
@@ -1636,6 +1649,9 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline ERROR setScale(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
 
+   // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
+   // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
+
    inline ERROR get(ULONG FieldID, LONG *Value)     { return GetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERROR get(ULONG FieldID, LARGE *Value)    { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
    inline ERROR get(ULONG FieldID, DOUBLE *Value)   { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
@@ -1644,6 +1660,12 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
    inline ERROR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
    inline ERROR getScale(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
+   
+   template <class T> inline T get(ULONG FieldID) { // Validity of the result is not guaranteed
+      T val; 
+      GetField(this, (FIELD)FieldID|FIELD_TAG<T>(), &val); 
+      return val; 
+   };
 
    template <typename... Args> ERROR setFields(Args&&... pFields) {
       pf::Log log("setFields");

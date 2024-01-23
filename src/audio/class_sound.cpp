@@ -746,7 +746,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Setup the sound structure
 
-   Self->File->get(FID_Position, &Self->DataOffset);
+   Self->DataOffset = Self->File->get<LONG>(FID_Position);
 
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
@@ -793,8 +793,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       else return log.warning(ERR_AccessObject);
    }
 
-   STRING path = NULL;
-   Self->get(FID_Path, &path);
+   auto path = Self->get<STRING>(FID_Path);
 
    if (((Self->Flags & SDF::NEW) != SDF::NIL) or (!path)) {
       log.msg("Sample created as new (without sample data).");
@@ -844,7 +843,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Look for the cue chunk for loop information
 
-   Self->File->get(FID_Position, &pos);
+   pos = Self->File->get<LONG>(FID_Position);
 #if 0
    if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
       data_p += 32;
@@ -871,7 +870,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
-   Self->File->get(FID_Position, &Self->DataOffset);
+   Self->DataOffset = Self->File->get<LONG>(FID_Position);
 
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;

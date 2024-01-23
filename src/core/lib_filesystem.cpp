@@ -913,9 +913,8 @@ ERROR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
    objFile::create file = { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
    if (file.ok()) {
-      LARGE timestamp, file_size;
-      file->get(FID_Size, &file_size);
-      file->get(FID_TimeStamp, &timestamp);
+      auto file_size = file->get<LARGE>(FID_Size);
+      auto timestamp = file->get<LARGE>(FID_TimeStamp);
 
       CacheFileIndex index(path, timestamp, file_size);
 
