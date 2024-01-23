@@ -486,7 +486,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             //
             // To post data from a string, use an InputFile setting as follows:  string:data=to&send
 
-            if (Self->Outgoing.Type != CALL_NONE) {
+            if (Self->Outgoing.defined()) {
                // User has specified an Outgoing function.  No preparation is necessary.  It is recommended that
                // ContentLength is set beforehand if the amount of data to be sent is known, otherwise
                // the developer should set ContentLength to -1.
@@ -899,7 +899,7 @@ AuthCallback: Private.  This field is reserved for future use.
 
 static ERROR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
 {
-   if (Self->AuthCallback.Type != CALL_NONE) {
+   if (Self->AuthCallback.defined()) {
       *Value = &Self->AuthCallback;
       return ERR_Okay;
    }
@@ -1045,7 +1045,7 @@ cancelled.
 
 static ERROR GET_Incoming(extHTTP *Self, FUNCTION **Value)
 {
-   if (Self->Incoming.Type != CALL_NONE) {
+   if (Self->Incoming.defined()) {
       *Value = &Self->Incoming;
       return ERR_Okay;
    }
@@ -1284,7 +1284,7 @@ frame.  All other error codes apart from `ERR_Okay` indicate failure.
 
 static ERROR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
 {
-   if (Self->Outgoing.Type != CALL_NONE) {
+   if (Self->Outgoing.defined()) {
       *Value = &Self->Outgoing;
       return ERR_Okay;
    }
@@ -1568,7 +1568,7 @@ cancelled.
 
 static ERROR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
 {
-   if (Self->StateChanged.Type != CALL_NONE) {
+   if (Self->StateChanged.defined()) {
       *Value = &Self->StateChanged;
       return ERR_Okay;
    }

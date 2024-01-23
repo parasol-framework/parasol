@@ -247,7 +247,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((Self->Outgoing.Type IS CALL_NONE) and (!Self->WriteQueue.Buffer)) {
+      if ((!Self->Outgoing.defined()) and (!Self->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);

@@ -187,7 +187,7 @@ ERROR extXML::find_tag(CSTRING XPath)
                Cursor     = Cursor->Children.begin();
 
                ERROR error = find_tag(XPath);
-               if ((!error) and (Callback.Type IS CALL_NONE)) return ERR_Okay;
+               if ((!error) and (!Callback.defined())) return ERR_Okay;
 
                Cursor     = save_cursor;
                CursorTags = save_tags;
@@ -205,7 +205,7 @@ ERROR extXML::find_tag(CSTRING XPath)
          if (XPath[pos]) Attrib.assign(XPath + pos + 2);
          else Attrib.clear();
 
-         if (Callback.Type IS CALL_NONE) return ERR_Okay; // End of query, successfully found tag
+         if (!Callback.defined()) return ERR_Okay; // End of query, successfully found tag
 
          ERROR error = ERR_Okay;
          if (Callback.isC()) {
@@ -237,7 +237,7 @@ ERROR extXML::find_tag(CSTRING XPath)
          Cursor     = Cursor->Children.begin();
 
          ERROR error = find_tag(XPath+pos);
-         if ((!error) and (Callback.Type IS CALL_NONE)) return ERR_Okay;
+         if ((!error) and (!Callback.defined())) return ERR_Okay;
 
          if (error IS ERR_Terminate) return ERR_Terminate;
 

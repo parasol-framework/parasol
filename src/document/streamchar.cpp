@@ -10,7 +10,7 @@ template <class T> T & RSTREAM::lookup(const INDEX Index) {
 }
 
 //********************************************************************************************************************
-// Inserts a byte code sequence into the text stream.
+// Inserts a byte code sequence into the text stream.  Makes a copy of the incoming Code object.
 
 template <class T> T & RSTREAM::insert(stream_char &Cursor, T &Code)
 {
@@ -22,7 +22,7 @@ template <class T> T & RSTREAM::insert(stream_char &Cursor, T &Code)
       pf::Log log(__FUNCTION__);
       log.warning("Code #%d is already registered.", Code.uid);
    }
-   else codes[Code.uid] = Code;
+   else codes[Code.uid] = Code; // Intentional copy
 
    if (Cursor.index IS INDEX(data.size())) {
       data.emplace_back(Code.code, Code.uid);
@@ -62,9 +62,8 @@ template <class T> T & RSTREAM::emplace(stream_char &Cursor, T &Code)
 
 template <class T> T & RSTREAM::emplace(stream_char &Cursor)
 {
-   auto key = glByteCodeID;
-   codes.emplace(key, T());
-   auto &result = std::get<T>(codes[key]);
+   auto key = glByteCodeID; // Get the key prior to it being incremented by T()
+   auto &result = std::get<T>(codes.emplace(key, T()).first->second);
 
    if (Cursor.index IS INDEX(data.size())) {
       data.emplace_back(result.code, result.uid);

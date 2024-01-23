@@ -58,7 +58,7 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
 static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
-   Self->EventCallback.Type = CALL_NONE;
+   Self->EventCallback.clear();
 }
 
 //********************************************************************************************************************

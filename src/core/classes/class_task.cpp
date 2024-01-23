@@ -1788,7 +1788,7 @@ called on termination because the Task object no longer exists for the control o
 
 static ERROR GET_ExitCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->ExitCallback.Type != CALL_NONE) {
+   if (Self->ExitCallback.defined()) {
       *Value = &Self->ExitCallback;
       return ERR_Okay;
    }
@@ -1849,7 +1849,7 @@ A status of ERR_Finished is sent if the stdinput handle has been closed.
 
 static ERROR GET_InputCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->InputCallback.Type != CALL_NONE) {
+   if (Self->InputCallback.defined()) {
       *Value = &Self->InputCallback;
       return ERR_Okay;
    }

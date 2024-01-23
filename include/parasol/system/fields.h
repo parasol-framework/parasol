@@ -854,6 +854,7 @@
 #define FID_Degree 0xf880fbf1LL
 #define FID_DestBitmap 0xae246132LL
 #define FID_DeviceID 0x3f093642LL
+#define FID_DragCallback 0xcd1ba3b0LL
 #define FID_EffectXML 0xa7fe50e3LL
 #define FID_EnableBkgd 0xdb56fba4LL
 #define FID_FX 0x005977e3LL

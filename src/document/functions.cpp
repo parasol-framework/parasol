@@ -239,7 +239,9 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
          parse.m_paragraph_depth--;
       }
 
-      Stream.data.insert(Stream.data.begin() + TargetIndex, parse.m_stream.data.begin(), parse.m_stream.data.end());
+      Stream.data.insert(Stream.data.begin() + TargetIndex, 
+         make_move_iterator(parse.m_stream.data.begin()), 
+         make_move_iterator(parse.m_stream.data.end()));
    }
    else {
       bc_font style;
@@ -282,9 +284,13 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
          parse.m_paragraph_depth--;
       }
 
-      if (Stream.data.empty()) Stream = parse.m_stream;
+      if (Stream.data.empty()) {
+         Stream = std::move(parse.m_stream);
+      }
       else {
-         Stream.data.insert(Stream.data.begin() + TargetIndex, parse.m_stream.data.begin(), parse.m_stream.data.end());
+         Stream.data.insert(Stream.data.begin() + TargetIndex, 
+            make_move_iterator(parse.m_stream.data.begin()), 
+            make_move_iterator(parse.m_stream.data.end()));
          Stream.codes.merge(parse.m_stream.codes);
       }
    }
@@ -292,7 +298,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
    // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
    // incorrectly used).
 
-   if (Self->FocusIndex >= LONG(Self->Tabs.size())) Self->FocusIndex = -1;
+   if (Self->FocusIndex >= std::ssize(Self->Tabs)) Self->FocusIndex = -1;
 
    return ERR_Okay;
 }
@@ -378,7 +384,7 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
 
          parse.process_page(*xml);
 
-         Self->Stream = parse.m_stream;
+         Self->Stream = std::move(parse.m_stream);
 
          if (Self->initialised()) {
             Self->UpdatingLayout = true;

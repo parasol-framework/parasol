@@ -978,7 +978,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
       std::vector<doc_clip> saved_clips(m_clips.begin() + Table.total_clips, m_clips.end() + m_clips.size());
       m_clips.resize(Table.total_clips);
       ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
-      m_clips.insert(m_clips.end(), saved_clips.begin(), saved_clips.end());
+      m_clips.insert(m_clips.end(), make_move_iterator(saved_clips.begin()), make_move_iterator(saved_clips.end()));
    }
    else ww = check_wordwrap(idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
 

@@ -464,7 +464,7 @@ static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
 
 static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   LONG *offset = (LONG *)((BYTE *)Object + Field->Offset);
+   auto offset = (LONG *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LONG)        *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (LONG)(*((LARGE *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
@@ -475,7 +475,7 @@ static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
 
 static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   LARGE *offset = (LARGE *)((BYTE *)Object + Field->Offset);
+   auto offset = (LARGE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LARGE)       *offset = *((LARGE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
@@ -486,7 +486,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
 
 static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   DOUBLE *offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
+   auto offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
    if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((DOUBLE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (*((LARGE *)Data));
@@ -497,7 +497,7 @@ static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
 
 static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   FUNCTION *offset = (FUNCTION *)((BYTE *)Object + Field->Offset);
+   auto offset = (FUNCTION *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_FUNCTION) {
       offset[0] = ((FUNCTION *)Data)[0];
    }
@@ -512,7 +512,7 @@ static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR 
 
 static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   APTR *offset = (APTR *)((BYTE *)Object + Field->Offset);
+   auto offset = (APTR *)((BYTE *)Object + Field->Offset);
    if (Flags & (FD_POINTER|FD_STRING)) *offset = (void *)Data;
    else return ERR_SetValueNotPointer;
    return ERR_Okay;

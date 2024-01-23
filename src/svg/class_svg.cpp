@@ -391,7 +391,7 @@ The function prototype is `void Function(*SVG)`.
 
 static ERROR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 {
-   if (Self->FrameCallback.Type != CALL_NONE) {
+   if (Self->FrameCallback.defined()) {
       *Value = &Self->FrameCallback;
       return ERR_Okay;
    }

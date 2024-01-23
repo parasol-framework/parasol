@@ -959,7 +959,7 @@ the new value in the #State field.
 
 static ERROR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 {
-   if (Self->Feedback.Type != CALL_NONE) {
+   if (Self->Feedback.defined()) {
       *Value = &Self->Feedback;
       return ERR_Okay;
    }
@@ -1002,7 +1002,7 @@ longer be called.  All other error codes are ignored.
 
 static ERROR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 {
-   if (Self->Incoming.Type != CALL_NONE) {
+   if (Self->Incoming.defined()) {
       *Value = &Self->Incoming;
       return ERR_Okay;
    }
@@ -1042,7 +1042,7 @@ The Outgoing field is ineffective if the NetSocket is in server mode (target a c
 
 static ERROR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 {
-   if (Self->Incoming.Type != CALL_NONE) {
+   if (Self->Incoming.defined()) {
       *Value = &Self->Incoming;
       return ERR_Okay;
    }
@@ -1172,7 +1172,7 @@ static ERROR SET_State(extNetSocket *Self, NTC Value)
          }
       }
 
-      if ((Self->State IS NTC::CONNECTED) and ((Self->WriteQueue.Buffer) or (Self->Outgoing.Type != CALL_NONE))) {
+      if ((Self->State IS NTC::CONNECTED) and ((Self->WriteQueue.Buffer) or (Self->Outgoing.defined()))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);

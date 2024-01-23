@@ -577,7 +577,7 @@ finished processing, the resulting error code will be stored in the thread objec
 
 static ERROR GET_Routine(extThread *Self, FUNCTION **Value)
 {
-   if (Self->Routine.Type != CALL_NONE) {
+   if (Self->Routine.defined()) {
       *Value = &Self->Routine;
       return ERR_Okay;
    }

@@ -339,7 +339,7 @@ It is required that the parent @VectorScene is associated with a @Surface for th
 
 static ERROR VIEW_GET_DragCallback(extVectorViewport *Self, FUNCTION **Value)
 {
-   if (Self->vpDragCallback.Type != CALL_NONE) {
+   if (Self->vpDragCallback.defined()) {
       *Value = &Self->vpDragCallback;
       return ERR_Okay;
    }

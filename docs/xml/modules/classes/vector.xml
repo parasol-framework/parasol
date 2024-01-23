@@ -250,7 +250,7 @@
         <param type="FUNCTION *" name="Callback">The function to call with each coordinate of the path.</param>
       </input>
       <description>
-<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback function is <code>ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y)</code>.</p>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback function is <code>ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
 <p>The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
 <p>If the Callback returns <code>ERR_Terminate</code>, then no further coordinates will be processed.</p>
       </description>

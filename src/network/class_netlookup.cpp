@@ -449,7 +449,7 @@ The Fluid prototype is as follows, with results readable from the #HostName and 
 
 static ERROR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 {
-   if (Self->Callback.Type != CALL_NONE) {
+   if (Self->Callback.defined()) {
       *Value = &Self->Callback;
       return ERR_Okay;
    }

@@ -1452,7 +1452,7 @@ in most cases.
 
 static ERROR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
 {
-   if (Self->OnStop.Type != CALL_NONE) {
+   if (Self->OnStop.defined()) {
       *Value = &Self->OnStop;
       return ERR_Okay;
    }

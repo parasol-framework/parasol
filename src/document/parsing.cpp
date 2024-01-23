@@ -1609,7 +1609,7 @@ void parser::tag_button(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_button widget;
+   bc_button &widget = m_stream.emplace<bc_button>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1680,7 +1680,6 @@ void parser::tag_button(XMLTag &Tag)
    widget.label_pad = m_style.get_font()->Ascent;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
-   m_stream.emplace(m_index, widget);
 }
 
 //********************************************************************************************************************
@@ -1689,7 +1688,7 @@ void parser::tag_checkbox(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_checkbox widget;
+   bc_checkbox &widget = m_stream.emplace<bc_checkbox>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1782,7 +1781,6 @@ void parser::tag_checkbox(XMLTag &Tag)
    if (!widget.label.empty()) widget.label_pad = widget.height - m_style.get_font()->Ascent;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
-   m_stream.emplace(m_index, widget);
 }
 
 //********************************************************************************************************************
@@ -1791,7 +1789,7 @@ void parser::tag_combobox(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_combobox widget;
+   bc_combobox &widget = m_stream.emplace<bc_combobox>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1905,7 +1903,6 @@ void parser::tag_combobox(XMLTag &Tag)
    widget.label_pad = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
-   m_stream.emplace(m_index, widget);
 }
 
 //********************************************************************************************************************
@@ -1914,7 +1911,7 @@ void parser::tag_input(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_input widget;
+   bc_input &widget = m_stream.emplace<bc_input>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
@@ -1958,7 +1955,6 @@ void parser::tag_input(XMLTag &Tag)
    widget.label_pad = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
-   m_stream.emplace(m_index, widget);
 }
 
 //********************************************************************************************************************
@@ -2857,7 +2853,7 @@ repeat:
                      else error = ERR_AccessObject;
                   }
                   else { // Convert the object reference to an ID
-                     Buffer.insert(end-pos+1, std::string("#") + std::to_string(objectid));
+                     Buffer.insert(end-pos+1, std::move(std::string("#") + std::to_string(objectid)));
                   }
                }
                else {

@@ -1547,7 +1547,7 @@ If multiple files are dropped, the callback will be repeatedly called until all 
 
 static ERROR GET_FileDrop(extScintilla *Self, FUNCTION **Value)
 {
-   if (Self->FileDrop.Type != CALL_NONE) {
+   if (Self->FileDrop.defined()) {
       *Value = &Self->FileDrop;
       return ERR_Okay;
    }
@@ -1866,7 +1866,7 @@ supported events and additional details.
 
 static ERROR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 {
-   if (Self->EventCallback.Type != CALL_NONE) {
+   if (Self->EventCallback.defined()) {
       *Value = &Self->EventCallback;
       return ERR_Okay;
    }

@@ -1889,7 +1889,7 @@ Use ResizeEvent to receive feedback when the viewport that hosts the vector is r
 follows:
 
 <pre>
-void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Meta)
 </pre>
 
 The dimension values refer to the current location and size of the viewport.

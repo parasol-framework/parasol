@@ -93,7 +93,7 @@ order to prevent the event from being processed any further.
 
 static ERROR GET_EventCallback(extDocument *Self, FUNCTION **Value)
 {
-   if (Self->EventCallback.Type != CALL_NONE) {
+   if (Self->EventCallback.defined()) {
       *Value = &Self->EventCallback;
       return ERR_Okay;
    }
