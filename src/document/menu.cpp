@@ -2,11 +2,11 @@
 // Default template for building the menu's layout.
 
 static const char * glSVGHeader = R"LONGSTRING(
-<svg>
+<svg placement="background">
   <defs>
     <linearGradient id="Gradient" gradientUnits="objectBoundingBox" gradientTransform="rotate(90)">
-      <stop offset="0" stop-color="rgb(255,255,255,246)"/>
-      <stop offset="1" stop-color="rgb(235,235,235,190)"/>
+      <stop offset="0" stop-color="rgb(255,255,255,255)"/>
+      <stop offset="1" stop-color="rgb(235,235,235,255)"/>
     </linearGradient>
 )LONGSTRING";
 
@@ -201,24 +201,22 @@ void doc_menu::refresh()
 
 void doc_menu::reposition(objVectorViewport *RelativeViewport)
 {
-   DISPLAYINFO *info;
-   gfxGetDisplayInfo(0, &info);
+   DISPLAYINFO *display;
+   gfxGetDisplayInfo(0, &display);
 
    pf::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
    if (lk_surface.granted()) {
-      DOUBLE w_absx, w_absy, vp_absx, vp_absy, vp_height;
+      auto w_absx = lk_surface->get<DOUBLE>(FID_AbsX);
+      auto w_absy = lk_surface->get<DOUBLE>(FID_AbsY);
 
-      lk_surface->get(FID_AbsX, &w_absx);
-      lk_surface->get(FID_AbsY, &w_absy);
-
-      RelativeViewport->get(FID_AbsX, &vp_absx);
-      RelativeViewport->get(FID_AbsY, &vp_absy);
-      RelativeViewport->get(FID_Height, &vp_height);
+      auto vp_absx = RelativeViewport->get<DOUBLE>(FID_AbsX);
+      auto vp_absy = RelativeViewport->get<DOUBLE>(FID_AbsY);
+      auto vp_height = RelativeViewport->get<DOUBLE>(FID_Height);
 
       // Invert the menu position if it will drop off the display
 
       DOUBLE y = w_absy + vp_absy + vp_height;
-      if (y + m_surface->Height > info->Height) {
+      if (y + m_surface->Height > display->Height) {
          y -= m_surface->Height + vp_height;
       }
 

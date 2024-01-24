@@ -1636,21 +1636,11 @@ void parser::tag_button(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label) {
-         widget.label = value;
-      }
-      else if (hash IS HASH_fill) {
-         widget.fill = value;
-      }
-      else if (hash IS HASH_name) {
-         widget.name = value;
-      }
-      else if (hash IS HASH_width) {
-         read_unit(value.c_str(), widget.width, widget.width_pct);
-      }
-      else if (hash IS HASH_height) {
-         read_unit(value.c_str(), widget.height, widget.height_pct);
-      }
+      if (hash IS HASH_label)       widget.label = value;
+      else if (hash IS HASH_fill)   widget.fill = value;
+      else if (hash IS HASH_name)   widget.name = value;
+      else if (hash IS HASH_width)  read_unit(value.c_str(), widget.width, widget.width_pct);
+      else if (hash IS HASH_height) read_unit(value.c_str(), widget.height, widget.height_pct);
       else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
@@ -1938,28 +1928,16 @@ void parser::tag_input(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label) {
-         widget.label = value;
-      }
-      else if (hash IS HASH_value) {
-         widget.value = value;
-      }
-      else if (hash IS HASH_fill) {
-         widget.fill = value;
-      }
+      if (hash IS HASH_label) widget.label = value;
+      else if (hash IS HASH_value) widget.value = value;
+      else if (hash IS HASH_fill) widget.fill = value;
       else if (hash IS HASH_label_pos) {
          if (!StrMatch("left", value)) widget.label_pos = 0;
          else if (!StrMatch("right", value)) widget.label_pos = 1;
       }
-      else if (hash IS HASH_width) {
-         read_unit(value.c_str(), widget.width, widget.width_pct);
-      }
-      else if (hash IS HASH_font_fill) {
-         widget.font_fill = value;
-      }
-      else if (hash IS HASH_name) {
-         widget.name = value;
-      }
+      else if (hash IS HASH_width) read_unit(value.c_str(), widget.width, widget.width_pct);
+      else if (hash IS HASH_font_fill) widget.font_fill = value;
+      else if (hash IS HASH_name) widget.name = value;
       else log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
@@ -2002,16 +1980,27 @@ void parser::tag_svg(XMLTag &Tag)
    pf::Log log(__FUNCTION__);
 
    if (Self->SVG) {
-      Self->Error = ERR_Failed;
+      Self->Error = ERR_AlreadyDefined;
       log.warning("Illegal attempt to declare <svg/> more than once.");
       return;
    }
+   
+   objVectorViewport *target = Self->Page;
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      if (!StrMatch("placement", Tag.Attribs[i].Name)) {
+         if (!StrMatch("foreground", Tag.Attribs[i].Value)) target = Self->Page;
+         else if (!StrMatch("background", Tag.Attribs[i].Value)) target = Self->View;
+         Tag.Attribs.erase(Tag.Attribs.begin() + i);
+         i--;
+      }
+   }
 
    STRING xml_svg;
-   auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg);
-   if (!err) {
-      if ((Self->SVG = objSVG::create::integral({ fl::Statement(xml_svg), fl::Target(Self->Page) }))) {
-
+   if (auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg); !err) {
+      if ((Self->SVG = objSVG::create::integral({ fl::Statement(xml_svg), fl::Target(target) }))) {
+         if (target IS Self->View) { // Put the page back in front of the background objects
+            acMoveToFront(Self->Page);
+         }
       }
       else Self->Error = ERR_CreateObject;
    }

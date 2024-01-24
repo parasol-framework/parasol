@@ -515,6 +515,16 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
          for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
       }
    }
+   
+   if (Self->View) {
+      // Client generated objects can appear in the view if <svg placement="background"/> was used.
+      pf::vector<ChildEntry> list;
+      if (!ListChildren(Self->View->UID, &list)) {
+         for (auto it=list.rbegin(); it != list.rend(); it++) {
+            if (it->ObjectID != Self->Page->UID) FreeResource(it->ObjectID);
+         }
+      }
+   }
 
    Self->UIObjects.clear();
 
