@@ -241,7 +241,7 @@ struct ActionSubscription {
 
    ActionSubscription() : Subscriber(NULL), SubscriberID(0), Callback(NULL), Meta(NULL) { }
 
-   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR, APTR), APTR pMeta) : 
+   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR, APTR), APTR pMeta) :
       Subscriber(pContext), SubscriberID(pContext->UID), Callback(pCallback), Meta(pMeta) { }
 
    ActionSubscription(OBJECTPTR pContext, APTR pCallback, APTR pMeta) :
@@ -816,8 +816,8 @@ class TaskMessage {
 
       if (pSize <= Buffer.size()) CopyMemory(pData, Buffer.data(), pSize);
       else {
-         ExtBuffer = new char[pSize];
-         CopyMemory(pData, ExtBuffer, pSize);
+         ExtBuffer = new (std::nothrow) char[pSize];
+         if (ExtBuffer) CopyMemory(pData, ExtBuffer, pSize);
       }
 
       Size = pSize;

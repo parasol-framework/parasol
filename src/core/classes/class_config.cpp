@@ -447,7 +447,7 @@ static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 
 static ERROR CONFIG_NewObject(extConfig *Self, APTR Void)
 {
-   Self->Groups = new ConfigGroups;
+   if (!(Self->Groups = new (std::nothrow) ConfigGroups)) return ERR_Memory;
    return ERR_Okay;
 }
 

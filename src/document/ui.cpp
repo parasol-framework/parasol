@@ -3,7 +3,7 @@
 // Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is
 // presented.
 
-static ERROR combo_feedback(objVectorViewport *View, FM Event)
+static ERROR combo_feedback(objVectorViewport *View, FM Event, OBJECTPTR EventObject, APTR Meta)
 {
    auto Self = (extDocument *)CurrentContext();
    ui_widget &widget = Self->Widgets[View->UID];

@@ -346,11 +346,11 @@ timer_cycle:
                else if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
                   pf::SwitchContext context(subscriber);
 
-                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
+                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.StdC.Routine;
                   glmTimer.unlock();
                   relock = true;
 
-                  error = routine(subscriber, elapsed, current_time);
+                  error = routine(subscriber, elapsed, current_time, timer->Routine.StdC.Meta);
 
                   ReleaseObject(subscriber);
                }

@@ -279,8 +279,8 @@ restart:
 
 static ERROR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
 {
-   Self->Threads = new std::unordered_set<OBJECTID>;
-   Self->ThreadLock = new std::mutex;
+   if (!(Self->Threads = new (std::nothrow) std::unordered_set<OBJECTID>)) return ERR_Memory;
+   if (!(Self->ThreadLock = new (std::nothrow) std::mutex)) return ERR_Memory;
    return ERR_Okay;
 }
 

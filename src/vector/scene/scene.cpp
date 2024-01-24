@@ -718,7 +718,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
          pf::ScopedObjectLock<extVector> vec(fgv, 1000);
          if (vec.granted()) {
-            send_feedback((extVector *)fgv, focus_event);
+            send_feedback((extVector *)fgv, focus_event, Vector);
             focus_event = FM::CHILD_HAS_FOCUS;
          }
       }
@@ -729,12 +729,12 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    for (auto const fv : glVectorFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
          pf::ScopedObjectLock<extVector> vec(fv, 1000);
-         if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS);
+         if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS, Vector);
       }
       else break;
    }
 
-   glVectorFocusList = focus_gained;
+   glVectorFocusList = std::move(focus_gained);
 }
 
 //********************************************************************************************************************

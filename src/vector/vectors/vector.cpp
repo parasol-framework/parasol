@@ -2250,7 +2250,7 @@ Visibility: Controls the visibility of a vector and its children.
 //********************************************************************************************************************
 // For sending events to the client
 
-void send_feedback(extVector *Vector, FM Event)
+void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
 {
    if (!Vector->initialised()) return;
    if (!Vector->FeedbackSubscriptions) return;
@@ -2263,14 +2263,15 @@ void send_feedback(extVector *Vector, FM Event)
 
          if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(extVector *, FM, APTR))sub.Callback.StdC.Routine;
-            result = callback(Vector, Event, sub.Callback.StdC.Meta);
+            auto callback = (ERROR (*)(extVector *, FM, APTR, APTR))sub.Callback.StdC.Routine;
+            result = callback(Vector, Event, EventObject, sub.Callback.StdC.Meta);
          }
          else if (sub.Callback.isScript()) {
             // In this implementation the script function will receive all the events chained via the Next field
             ScriptArg args[] = {
                { "Vector", Vector, FDF_OBJECT },
-               { "Event",  LONG(Event) }
+               { "Event",  LONG(Event) },
+               { "EventObject", EventObject, FDF_OBJECT }
             };
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }

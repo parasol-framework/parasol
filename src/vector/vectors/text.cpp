@@ -210,7 +210,7 @@ static void raster_text_to_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
 static void reset_font(extVectorText *);
 static ERROR text_input_events(extVector *, const InputEvent *);
-static ERROR text_focus_event(extVector *, FM);
+static ERROR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
 
 //********************************************************************************************************************
 
@@ -1935,7 +1935,7 @@ static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG 
 
 //********************************************************************************************************************
 
-static ERROR text_focus_event(extVector *Vector, FM Event)
+static ERROR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, APTR Meta)
 {
    auto Self = (extVectorText *)CurrentContext();
 

@@ -478,7 +478,7 @@ extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool Includ
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
-extern void send_feedback(extVector *, FM);
+extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
 extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);

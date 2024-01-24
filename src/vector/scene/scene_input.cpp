@@ -66,6 +66,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
       if (((Event->Mask & JTYPE::REPEATED) != JTYPE::NIL) and ((sub.Mask & JTYPE::REPEATED) IS JTYPE::NIL)) it++;
       else if ((sub.Mask & Event->Mask) != JTYPE::NIL) {
          ERROR result = ERR_Terminate;
+
          if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
             auto callback = (ERROR (*)(objVector *, InputEvent *, APTR))sub.Callback.StdC.Routine;
