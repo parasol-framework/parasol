@@ -36,7 +36,8 @@ struct eventsub {
    struct eventsub *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void     (*Callback)(APTR Custom, APTR Info, LONG Size);
+   void     (*Callback)(APTR Custom, APTR Info, LONG Size, APTR Meta);
+   APTR     CallbackMeta;
    EVG      Group;
    UBYTE    Called;
    OBJECTID ContextID;
@@ -202,7 +203,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 
    if ((!Callback) or (!EventID) or (!Handle)) return ERR_NullArgs;
 
-   if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
+   if (!Callback->isC()) return ERR_Args; // Currently only StdC callbacks are accepted.
 
    auto gid = EVG(UBYTE(EventID>>56));
 
@@ -210,15 +211,15 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
       return log.warning(ERR_Args);
    }
 
-   struct eventsub *event;
-   if ((event = (struct eventsub *)malloc(sizeof(struct eventsub)))) {
+   if (auto event = (struct eventsub *)malloc(sizeof(struct eventsub))) {
       LARGE mask = 0xff00000000000000LL;
       if (EventID & 0x00ffffff00000000LL) mask |= 0x00ffffff00000000LL;
       if (EventID & 0x00000000ffffffffLL) mask |= 0x00000000ffffffffLL;
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
+      event->Callback  = (void (*)(APTR, APTR, LONG, APTR))Callback->StdC.Routine;
+      event->CallbackMeta = Callback->StdC.Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
@@ -326,7 +327,7 @@ restart:
          pf::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
             pf::SwitchContext ctx(lock.obj);
-            event->Callback(event->Custom, Message, MsgSize);
+            event->Callback(event->Custom, Message, MsgSize, event->CallbackMeta);
          }
 
          if (glEventListAltered) goto restart;
