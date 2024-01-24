@@ -1699,17 +1699,20 @@ FreeResource(memory);  // Reference is no longer valid
 <pre>SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
-<p>Fields are referenced by unique ID's that reflect their names.  On occasion you may find that there is no reserved ID for the field that you wish to access.  To convert field names into their relevant IDs, call the <function module="Core">StrHash</function> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
-<p>The type of the Value parameter must be OR'd into the Field parameter. When writing a field you must give consideration to the type of the target, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
+<p>Fields are referenced as hashed UID's calculated from the <function module="Core">StrHash</function> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
+<p>The type of the Value parameter must be OR'd into the Field parameter.  If the provided type does not match that of the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be converted to a numeric value automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
 <types>
 <type name="TLONG">A 32-bit integer value.</type>
 <type name="TDOUBLE">A 64-bit floating point value.</type>
+<type name="TSCALE">A 64-bit floating point value that represents a scaled multiplier or percentage (1.0 is equivalent to 100%).</type>
 <type name="TLARGE">A 64-bit integer value.</type>
-<type name="TPTR">A standard 32-bit address space pointer.</type>
-<type name="TSTR">A 32-bit pointer that refers to a string.</type>
+<type name="TPTR">A standard address space pointer.</type>
+<type name="TSTR">A pointer that refers to a string.</type>
+<type name="TFUNCTION">A pointer to a FUNCTION structure.</type>
+<type name="TVAR">A pointer to a Variable structure.</type>
 </types>
-<p>There is no requirement for you to have a working knowledge of the target object's field configuration in order to write information to it.</p>
+<p>There is no requirement for the client to have a working knowledge of the target object's field configuration in order to write information to it.</p>
 <p>To set a field with a fixed-size array, please use the <function module="Core">SetArray</function> function.</p>
     </description>
     <result type="ERROR">
@@ -1933,10 +1936,10 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a Surface object's Redimension action and respond to resize events:</p>
-<pre>SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize));
+<pre>SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize, meta_ptr));
 </pre>
 <p>The template below illustrates how the Callback function should be constructed:</p>
-<pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)
+<pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters, APTR CallbackMeta)
 {
    auto Self = (objClassType *)CurrentContext();
 
@@ -1946,7 +1949,7 @@ SetField(Object, FID_Statement|TSTR, "string");
    }
 }
 </pre>
-<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR_Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, we can use <function module="Core">CurrentContext</function> to get a reference to the object that initiated the subscription.</p>
+<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR_Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, <function module="Core">CurrentContext</function> can be used to get a reference to the object that initiated the subscription.</p>
 <p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.  Subscriptions are not resource tracked, so it is critical to match the original call with an unsubscription.</p>
     </description>
     <result type="ERROR">

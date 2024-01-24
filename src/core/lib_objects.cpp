@@ -438,7 +438,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
          if (it->second.contains(ActionID)) {
             for (auto &list : it->second[ActionID]) {
                pf::SwitchContext ctx(list.Subscriber);
-               list.Callback(Object, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
+               list.Callback(Object, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters, list.Meta);
             }
          }
       }
@@ -1415,7 +1415,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
          if (sub.Subscriber) {
             pf::SwitchContext ctx(sub.Subscriber);
-            sub.Callback(Object, ActionID, ErrorCode, Parameters);
+            sub.Callback(Object, ActionID, ErrorCode, Parameters, sub.Meta);
          }
       }
       glSubReadOnly--;
@@ -1423,7 +1423,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
       if (!glSubReadOnly) {
          if (!glDelayedSubscribe.empty()) {
             for (auto &entry : glDelayedSubscribe) {
-               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.StdC.Context, entry.Callback.StdC.Routine);
+               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.StdC.Context, entry.Callback.StdC.Routine, entry.Callback.StdC.Meta);
             }
             glDelayedSubscribe.clear();
          }
@@ -1814,13 +1814,13 @@ The following example illustrates how to listen to a Surface object's Redimensio
 events:
 
 <pre>
-SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize));
+SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize, meta_ptr));
 </pre>
 
 The template below illustrates how the Callback function should be constructed:
 
 <pre>
-void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)
+void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters, APTR CallbackMeta)
 {
    auto Self = (objClassType *)CurrentContext();
 
@@ -1835,7 +1835,7 @@ The Object is the original subscription target, as-is the Action ID.  The Result
 at the end of the action call.  If this is not set to `ERR_Okay`, assume that the action did not have an effect on
 state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be
 NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context
-sensitive, we can use ~CurrentContext() to get a reference to the object that initiated the subscription.
+sensitive, ~CurrentContext() can be used to get a reference to the object that initiated the subscription.
 
 To terminate an action subscription, use the ~UnsubscribeAction() function.  Subscriptions are not resource tracked,
 so it is critical to match the original call with an unsubscription.
@@ -1869,7 +1869,7 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    else {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
-      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine);
+      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine, Callback->StdC.Meta);
       Object->NotifyFlags.fetch_or(1LL<<(ActionID & 63), std::memory_order::relaxed);
    }
 

@@ -120,27 +120,28 @@ SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
 
-Fields are referenced by unique ID's that reflect their names.  On occasion you may find that there is no reserved ID
-for the field that you wish to access.  To convert field names into their relevant IDs, call the
-~StrHash() function.  Reserved field ID's are listed in the `parasol/system/fields.h` include file.
+Fields are referenced as hashed UID's calculated from the ~StrHash() function.  The majority of field ID's are 
+predefined in the `parasol/system/fields.h` include file.
 
-The type of the Value parameter must be OR'd into the Field parameter. When writing a field you must give
-consideration to the type of the target, in order to prevent a type mismatch from occurring.  All numeric types are
-compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types
-are interchangeable.
+The type of the Value parameter must be OR'd into the Field parameter.  If the provided type does not match that of
+the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be 
+converted to a numeric value automatically.  String and pointer types are interchangeable.
 
 Available field types are as follows:
 
 <types>
 <type name="TLONG">A 32-bit integer value.</>
 <type name="TDOUBLE">A 64-bit floating point value.</>
+<type name="TSCALE">A 64-bit floating point value that represents a scaled multiplier or percentage (1.0 is equivalent to 100%).</>
 <type name="TLARGE">A 64-bit integer value.</>
-<type name="TPTR">A standard 32-bit address space pointer.</>
-<type name="TSTR">A 32-bit pointer that refers to a string.</>
+<type name="TPTR">A standard address space pointer.</>
+<type name="TSTR">A pointer that refers to a string.</>
+<type name="TFUNCTION">A pointer to a FUNCTION structure.</>
+<type name="TVAR">A pointer to a Variable structure.</>
 </>
 
-There is no requirement for you to have a working knowledge of the target object's field configuration in order to
-write information to it.
+There is no requirement for the client to have a working knowledge of the target object's field configuration in 
+order to write information to it.
 
 To set a field with a fixed-size array, please use the ~SetArray() function.
 
@@ -170,13 +171,13 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       // Validation
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", FieldName(field->FieldID), Object->className());
-         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
+         if (field->Name) log.warning("%s.%s is immutable.", Object->className(), field->Name);
+         else log.warning("%s.%s is immutable.", Object->className(), FieldName(field->FieldID));
          return ERR_NoFieldAccess;
       }
       else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", FieldName(field->FieldID), Object->className());
-         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, Object->className());
+         if (field->Name) log.warning("%s.%s is init-only.", Object->className(), field->Name);
+         else log.warning("%s.%s is init-only.", Object->className(), FieldName(field->FieldID));
          return ERR_NoFieldAccess;
       }
 
