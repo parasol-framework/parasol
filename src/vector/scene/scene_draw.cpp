@@ -1001,7 +1001,7 @@ private:
 
       if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
       else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
-      
+
       // Solid colour.  Bitmap fonts will set DisableFill.Colour to ensure texture maps are used instead
 
       if ((Painter.Colour.Alpha > 0) and (!Vector.DisableFillColour)) {

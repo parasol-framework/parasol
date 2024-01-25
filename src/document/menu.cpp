@@ -4,27 +4,39 @@
 static const char * glSVGHeader = R"LONGSTRING(
 <svg placement="background">
   <defs>
-    <linearGradient id="Gradient" gradientUnits="objectBoundingBox" gradientTransform="rotate(90)">
-      <stop offset="0" stop-color="rgb(255,255,255,255)"/>
-      <stop offset="1" stop-color="rgb(235,235,235,255)"/>
-    </linearGradient>
+    <pattern id="Background" x="0" y="0" width="40" height="20" patternUnits="userSpaceOnUse">
+      <rect width="40" height="20" fill="#ffffff"/>
+      <rect width="20" height="20" fill="#f9f9f9"/>
+    </pattern>
+
+    <clipPath id="PageClip">
+      <rect x="3" y="4" xOffset="3" yOffset="3"/>
+    </clipPath>
+
 )LONGSTRING";
 
 static const char * glSVGTail = R"LONGSTRING(
   </defs>
 
-  <rect rx="3%" ry="3%" x="1" y="1" xOffset="2" yOffset="2" fill="url(#Gradient)" stroke="rgb(0,0,0,40)" stroke-width="1"/>
-  <rect rx="3%" ry="3%" x="3" y="3" xOffset="1" yOffset="1" fill="rgb(0,0,0,0)" stroke="rgb(0,0,0,90)" stroke-width="1"/>
+  <rect rx="3%" ry="3%" x="1" y="1" xOffset="2" yOffset="2" fill="rgb(245,245,245)" stroke="rgb(0,0,0,40)" stroke-width="0.5%"/>
+  <rect rx="3%" ry="3%" x="3" y="3" xOffset="1" yOffset="1" fill="none" stroke="rgb(0,0,0,90)" stroke-width="0.5%"/>
 </svg>
 )LONGSTRING";
 
 //********************************************************************************************************************
 
-static void menu_lost_focus(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args)
+static void menu_lost_focus(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
 {
    if (Error) return;
-
    acHide(Surface);
+}
+
+//********************************************************************************************************************
+
+static void menu_hidden(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
+{
+   if (Error) return;
+   Menu->m_hide_time = PreciseTime();
 }
 
 //********************************************************************************************************************
@@ -36,6 +48,8 @@ static ERROR menu_doc_events(objDocument *DocMenu, DEF Event, KEYVALUE *EventDat
 
    if ((Event & DEF::LINK_ACTIVATED) != DEF::NIL) {
       auto menu = (doc_menu *)DocMenu->CreatorMeta;
+
+      acHide(*menu->m_surface);
 
       if (!menu->m_callback) return ERR_Skip;
 
@@ -59,7 +73,7 @@ static ERROR menu_doc_events(objDocument *DocMenu, DEF Event, KEYVALUE *EventDat
          }
       }
 
-      log.warning("No id or name defined for selected menu item.");
+      log.warning("No id or value defined for selected menu item.");
    }
 
    return ERR_Skip;
@@ -82,8 +96,6 @@ objSurface * doc_menu::create(DOUBLE Width)
 
    log.branch();
 
-   auto Self = (extDocument *)CurrentContext();
-
    if (m_surface.empty()) {
       DOUBLE height = m_items.size() * 20;
       if (height < 20) height = 20;
@@ -96,36 +108,30 @@ objSurface * doc_menu::create(DOUBLE Width)
          fl::X(0), fl::Y(0), fl::Width(Width), fl::Height(height)
       }));
 
-      auto scene = objVectorScene::create::global({
+      m_scene = objVectorScene::create::global({
          fl::Name("menu_scene"),
          fl::Flags(VPF::RESIZE),
          fl::Surface(m_surface->UID)
       });
-      
-      auto view = objVectorViewport::create::global({
-         fl::Owner(scene->UID),
+
+      m_view = objVectorViewport::create::global({
+         fl::Owner(m_scene->UID),
          fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
       });
 
-      auto page = objVectorViewport::create::global({
-         fl::Owner(view->UID),
-         fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
-      });
-
-      m_doc.set((extDocument *)(objDocument::create::global({
-         fl::Owner(Self->UID),
-         fl::Viewport(page),
+      m_doc = objDocument::create::global({
+         fl::Owner(m_surface->UID),
+         fl::Viewport(m_view),
          fl::EventMask(DEF::LINK_ACTIVATED),
          fl::EventCallback(APTR(menu_doc_events))
-      })));
+      });
 
       m_doc->CreatorMeta = this;
 
-      SubscribeAction(*m_surface, AC_LostFocus, FUNCTION(menu_lost_focus));
+      SubscribeAction(*m_surface, AC_LostFocus, FUNCTION(menu_lost_focus, this));
+      SubscribeAction(*m_surface, AC_Hide, FUNCTION(menu_hidden, this));
 
       refresh();
-
-      m_scroll = scroll_mgr(Self, page, view);
    }
 
    return *m_surface;
@@ -137,12 +143,14 @@ void doc_menu::refresh()
 {
    pf::Log log(__FUNCTION__);
 
-   const DOUBLE GAP = m_font_size * 0.5;
+   const DOUBLE VGAP = m_font_size * 0.5;
+   const DOUBLE HGAP = m_font_size * 1.0;
+   const DOUBLE GAP = VGAP;
    const DOUBLE LEADING = 0.2;
    LONG total_icons = 0;
 
    std::ostringstream buf;
-   buf << "<body margins=\"" << GAP << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
+   buf << "<body margins=\"" << HGAP << " " << VGAP << " " << HGAP << " " << VGAP << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
 
    if (!m_style.empty()) {
@@ -184,17 +192,48 @@ void doc_menu::refresh()
 
    buf << "</page>";
 
-   acClear(*m_doc);
-   acDataXML(*m_doc, buf.str().c_str());
+   acClear(m_doc);
+   acDataXML(m_doc, buf.str().c_str());
+   
+   #ifdef DBG_LAYOUT
+      log.warning("%s", buf.str().c_str());
+   #endif
 
-   DOUBLE page_width, page_height;
-   m_doc->get(FID_PageHeight, &page_height);
-   m_doc->get(FID_PageWidth, &page_width);
+   // Resize the menu to match the new content.  If the height of the menu is excessive (relative to the height
+   // of the display), we reduce it and utilise a scrollbar to see all menu items.
 
-   if (page_width > m_surface->Width) {
-      acResize(*m_surface, page_width, page_height, 0);
+   auto doc_width  = m_doc->get<DOUBLE>(FID_PageWidth);
+   auto doc_height = m_doc->get<DOUBLE>(FID_PageHeight);
+
+   DOUBLE view_width  = doc_width;
+   DOUBLE view_height = doc_height;
+
+   DISPLAYINFO *display;
+   if (!gfxGetDisplayInfo(0, &display)) {
+      if (view_height > display->Height * 0.25) view_height = display->Height * 0.25;
    }
-   else m_surface->setHeight(page_height);
+
+   if (view_width > m_surface->Width) {
+      acResize(*m_surface, view_width, view_height, 0);
+   }
+   else m_surface->setHeight(view_height);
+
+   if (doc_height > view_height) {
+      m_view->setFields(fl::Height(view_height));
+
+      objVectorViewport *doc_page, *doc_view;
+      if (!m_doc->getPtr(FID_Page, &doc_page)) {
+         if (!m_doc->getPtr(FID_View, &doc_view)) {
+            m_scroll.init((extDocument *)CurrentContext(), doc_page, doc_view);
+            m_scroll.m_auto_adjust_view_size = false;
+
+            OBJECTPTR clip;
+            if (!scFindDef(m_scene, "PageClip", &clip)) {
+               doc_page->set(FID_Mask, clip);
+            }
+         }
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -238,7 +277,6 @@ bool doc_menu::toggle(objVectorViewport *Relative)
    if (m_show_time > m_hide_time) { // Hide the menu
       if (current_time - m_show_time >= time_lapse) {
          acHide(*m_surface);
-         m_hide_time = current_time;
       }
       return false;
    }

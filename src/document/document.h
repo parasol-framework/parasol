@@ -169,33 +169,37 @@ struct scroll_mgr {
    };
 
    struct scroll_bar {
-      objVectorViewport *m_viewport = NULL;
+      scroll_mgr *m_mgr;
+      objVectorViewport *m_bar_vp = NULL; // Main viewport for managing the scrollbar
       objVectorViewport *m_slider_host = NULL;
       objVectorViewport *m_slider_vp = NULL;
+      objVectorRectangle *m_slider_rect = NULL;
       scroll_slider m_slider_pos;
-      char m_direction; // 'V' or 'H'
+      char m_direction = 0; // 'V' or 'H'
+      DOUBLE m_breadth = 10;
+
+      scroll_slider calc_slider(DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+      void init(scroll_mgr *, char, objVectorViewport *);
+      void clear();
    };
 
    extDocument *m_doc = NULL;
-   objVectorViewport *m_target = NULL; // The viewport that will own the scrollbars, usually the owner of m_view
    objVectorViewport *m_page = NULL; // Monitored page
    objVectorViewport *m_view = NULL; // Monitored owner of the page
-   DOUBLE m_breadth = 16;
    DOUBLE m_min_width = 0;    // For dynamic width mode, this is the minimum required width
    bool m_fixed_mode = false;
+   bool m_auto_adjust_view_size = true; // Automatically adjust the view to accomodate the visibility of the scrollbars
 
    scroll_bar m_vbar;
    scroll_bar m_hbar;
 
    scroll_mgr() {}
-   scroll_mgr(extDocument *, objVectorViewport *, objVectorViewport *);
 
+   void   init(extDocument *, objVectorViewport *, objVectorViewport *);
    void   scroll_page(DOUBLE, DOUBLE);
-   scroll_bar create(char);
    void   recalc_sliders_from_view();
-   scroll_slider calc_slider(DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void   set_fixed_page_size(DOUBLE Width, DOUBLE Height);
-   void   set_dynamic_page_size(DOUBLE NominalWidth, DOUBLE MinWidth, DOUBLE Height);
+   void   fix_page_size(DOUBLE, DOUBLE);
+   void   dynamic_page_size(DOUBLE, DOUBLE, DOUBLE);
 };
 
 //********************************************************************************************************************
@@ -811,7 +815,9 @@ struct dropdown_item {
 
 struct doc_menu {
    GuardedObject<objSurface>  m_surface; // Surface container for the menu UI
-   GuardedObject<extDocument> m_doc;     // Independent document for managing the menu layout
+   objVectorScene *           m_scene;
+   objDocument *              m_doc;     // Independent document for managing the menu layout
+   objVectorViewport *        m_view;
    std::vector<dropdown_item> m_items;   // List of items to appear in the menu
    std::function<void(doc_menu &, dropdown_item &)> m_callback; // Callback for item selection
    std::variant<bc_combobox *> m_ref;    // User customisable reference.

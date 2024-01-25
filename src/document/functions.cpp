@@ -516,7 +516,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
       }
    }
    
-   if (Self->View) {
+   if ((Self->View) and (Self->Page)) {
       // Client generated objects can appear in the view if <svg placement="background"/> was used.
       pf::vector<ChildEntry> list;
       if (!ListChildren(Self->View->UID, &list)) {

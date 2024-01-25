@@ -42,16 +42,16 @@
   <option value="saab">Saab</option>
   <option icon="icons:items/cancel" value="mercedes">Mercedes</option>
   <option icon="icons:items/start" value="audi">Audi</option>
-  <option>Ferrari</option>
-  <option>Toyota</option>
-  <option>Subaru</option>
-  <option>Mitsubishi</option>
-  <option>BMW</option>
-  <option>Ford</option>
-  <option>Rover</option>
-  <option>Rolls Royce</option>
-  <option>Lamborgini</option>
-  <option>Tesla</option>
+  <option value="Ferrari">Ferrari</option>
+  <option value="Toyota">Toyota</option>
+  <option value="Subaru">Subaru</option>
+  <option value="Mitsubishi">Mitsubishi</option>
+  <option value="BMW">BMW</option>
+  <option value="Ford">Ford</option>
+  <option value="Rover">Rover</option>
+  <option value="Rolls Royce">Rolls Royce</option>
+  <option value="Lamborgini">Lamborgini</option>
+  <option value="Tesla">Tesla</option>
 </combobox> Not a label</p>
 
 <p><combobox width="200" label-pos="left" label="Left Label: " value="pre-defined content">

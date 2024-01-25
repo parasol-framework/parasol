@@ -1349,12 +1349,15 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
    switch (StrHash(Attrib.Name)) {
       case HASH_colour:
          log.warning("Font 'colour' attrib is deprecated, use 'fill'");
-      case HASH_font_fill:
+         [[fallthrough]];
+      case HASH_font_fill: 
+         [[fallthrough]];
       case HASH_fill:
          Style.fill = Attrib.Value;
          return true;
 
       case HASH_font_face:
+         [[fallthrough]];
       case HASH_face: {
          auto j = Attrib.Value.find(':');
          if (j != std::string::npos) { // Point size follows
@@ -1375,11 +1378,13 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       }
 
       case HASH_font_size:
+         [[fallthrough]];
       case HASH_size:
          Style.point = StrToFloat(Attrib.Value);
          return true;
 
       case HASH_font_style:
+         [[fallthrough]];
       case HASH_style:
          if (!StrMatch("bold", Attrib.Value)) Style.options |= FSO::BOLD;
          else if (!StrMatch("italic", Attrib.Value)) Style.options |= FSO::ITALIC;
@@ -1492,6 +1497,7 @@ void parser::tag_body(XMLTag &Tag)
          }
 
          case HASH_page_width:
+            [[fallthrough]];
          case HASH_width:
             Self->PageWidth = StrToFloat(Tag.Attribs[i].Value);
             if (Self->PageWidth < 1) Self->PageWidth = 1;
@@ -1508,6 +1514,7 @@ void parser::tag_body(XMLTag &Tag)
             break;
 
          case HASH_face:
+            [[fallthrough]];
          case HASH_font_face:
             Self->FontFace = Tag.Attribs[i].Value;
             break;
@@ -1518,6 +1525,7 @@ void parser::tag_body(XMLTag &Tag)
 
          case HASH_font_colour: // DEPRECATED, use font fill
             log.warning("The fontcolour attrib is deprecated, use font-fill.");
+            [[fallthrough]];
          case HASH_font_fill: // Default font fill
             Self->FontFill = Tag.Attribs[i].Value;
             break;

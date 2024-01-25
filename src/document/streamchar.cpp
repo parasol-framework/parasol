@@ -41,21 +41,25 @@ template <class T> T & RSTREAM::emplace(stream_char &Cursor, T &Code)
 {
    // All byte codes are saved to a global container.
 
-   if (codes.contains(Code.uid)) {
+   auto uid     = Code.uid;
+   auto code_no = Code.code;
+
+   if (codes.contains(uid)) {
       pf::Log log(__FUNCTION__);
-      log.warning("Code #%d is already registered.", Code.uid);
+      log.warning("Code #%d is already registered.", uid);
    }
-   else codes[Code.uid] = std::move(Code);
+   else codes[uid] = std::move(Code);
 
    if (Cursor.index IS INDEX(data.size())) {
-      data.emplace_back(Code.code, Code.uid);
+      data.emplace_back(code_no, uid);
    }
    else {
-      const stream_code insert(Code.code, Code.uid);
+      const stream_code insert(code_no, uid);
       data.insert(data.begin() + Cursor.index, insert);
    }
+
    Cursor.next_code();
-   return std::get<T>(codes[Code.uid]);
+   return std::get<T>(codes[uid]);
 }
 
 // Optimal construction of new stream codes in-place.

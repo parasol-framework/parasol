@@ -658,12 +658,11 @@ static ERROR SET_Surface(extVectorScene *Self, OBJECTID Value)
 -FIELD-
 Viewport: References the first object in the scene, which must be a VectorViewport object.
 
-The first object in the vector scene is referenced here.  It must belong to the @VectorViewport class, because it will
+The first object in the vector scene is referenced here.  It must belong to the @VectorViewport class, which will
 be used to define the size and location of the area rendered by the scene.
 
-The Viewport field must not be set by the client.  The VectorViewport object will configure its ownership to
-the VectorScene prior to initialisation.  The Viewport field value will then be set automatically when the
-VectorViewport object is initialised.
+The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport 
+owned by the VectorScene is initialised.
 -END-
 
 *********************************************************************************************************************/

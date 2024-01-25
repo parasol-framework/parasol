@@ -56,8 +56,6 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y
 
 static void send_input_events(extVector *Vector, InputEvent *Event)
 {
-   pf::Log log(__FUNCTION__);
-
    if (!Vector->InputSubscriptions) return;
 
    for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {

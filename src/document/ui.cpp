@@ -10,10 +10,15 @@ static ERROR combo_feedback(objVectorViewport *View, FM Event, OBJECTPTR EventOb
    auto combo = std::get<bc_combobox *>(widget.widget);
 
    if (Event IS FM::LOST_FOCUS) {
-      // If the client moves away from the combobox' focus then we hide the drop-down
+      auto surface_focus_id = gfxGetUserFocus();
+      if (surface_focus_id IS combo->menu.m_surface->UID) {
+      }
+      else {
+         // If the client moves away from the combobox' focus then we hide the drop-down
 
 
-      combo->menu.hide();
+         combo->menu.hide();
+      }
    }
    else if ((Event IS FM::HAS_FOCUS) or (Event IS FM::CHILD_HAS_FOCUS)) {
       CSTRING str;
@@ -124,7 +129,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
          case KEY::ENTER: {
             delete_selected(Self);
 
-            insert_text(Self, Self->Stream, Self->CursorIndex, "\n", true);
+            insert_text(Self, &Self->Stream, Self->CursorIndex, "\n", true);
             Self->CursorIndex.next_char(Self->Stream);
 
             layout_doc_fast(Self);
@@ -760,7 +765,7 @@ static LONG add_tabfocus(extDocument *Self, TT Type, LONG Reference)
       }
    }
 
-   auto index = Self->Tabs.size();
+   auto index = std::ssize(Self->Tabs);
    Self->Tabs.emplace_back(Type, Reference, Self->Invisible ^ 1);
    return index;
 }
