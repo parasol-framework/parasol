@@ -1214,7 +1214,17 @@ private:
 
                if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
                   auto saved_mask = state.mClipMask;
-                  if (view->vpClipMask) state.mClipMask = view->vpClipMask;
+                  if (view->vpClipMask) {
+                     // TODO: Need to be able to merge with the client ClipMask if one is defined
+                     state.mClipMask = view->vpClipMask;
+                  }
+                  else if (view->ClipMask) {
+                     state.mClipMask = view->ClipMask;
+
+                     state.mClipMask->TargetVector = shape;
+                     acDraw(state.mClipMask);
+                     state.mClipMask->TargetVector = NULL;
+                  }
 
                   auto save_rb_clip = mRenderBase.clip_box();
                   if (state.mClip.x1 > save_rb_clip.x1) mRenderBase.m_clip_box.x1 = state.mClip.x1;
