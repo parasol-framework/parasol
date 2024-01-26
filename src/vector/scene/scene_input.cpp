@@ -58,12 +58,14 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
 {
    if (!Vector->InputSubscriptions) return;
 
+   bool consumed = false;
    for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {
       auto &sub = *it;
 
       if (((Event->Mask & JTYPE::REPEATED) != JTYPE::NIL) and ((sub.Mask & JTYPE::REPEATED) IS JTYPE::NIL)) it++;
       else if ((sub.Mask & Event->Mask) != JTYPE::NIL) {
          ERROR result = ERR_Terminate;
+         consumed = true;
 
          if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
@@ -82,6 +84,14 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
          else it++;
       }
       else it++;
+   }
+
+   // Some events can bubble-up if they are not intercepted by the target vector.
+
+   if ((!consumed) and (Event->Type IS JET::WHEEL)) {
+      if ((Vector->Parent) and (Vector->Parent->Class->BaseClassID IS ID_VECTOR)) {
+         send_input_events((extVector *)Vector->Parent, Event);
+      }
    }
 }
 
