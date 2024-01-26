@@ -98,13 +98,13 @@
 #define HASH_on_click 0x6ff95575UL
 #define HASH_on_enter 0x701ece4dUL
 #define HASH_on_exit 0x683f27a9UL
+#define HASH_on_motion 0x86b40685UL
 #define HASH_p 0x0002b615UL
 #define HASH_padding 0x9ac8cc5cUL
 #define HASH_page 0x7c9c2442UL
 #define HASH_PageProcessed 0x6dd40a2aUL
 #define HASH_page_width 0xfc47a28fUL
 #define HASH_parse 0x1020dd80UL
-#define HASH_pointer_motion 0x51e7a629UL
 #define HASH_pre 0x0b889e6cUL
 #define HASH_preformat 0x729fef55UL
 #define HASH_print 0x102a0912UL

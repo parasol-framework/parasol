@@ -560,7 +560,7 @@ struct bc_link : public base_code {
    GuardedObject<objVectorPath> path;
    LINK  type;                    // Link type (either a function or hyperlink)
    UWORD id;
-   std::string pointer_motion;    // Function to call for pointer motion events
+   std::string on_motion;         // Function to call for pointer motion events
    std::string ref;               // Function name or a path, depending on the Type
    std::vector<std::pair<std::string,std::string>> args;
    std::string fill;              // Fill instruction from the client

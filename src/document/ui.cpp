@@ -791,8 +791,8 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
    std::string argstring, func_name;
 
    if ((Event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
-      if (!link->origin.pointer_motion.empty()) {
-         if (!extract_script(Self, link->origin.pointer_motion, &script, func_name, argstring)) {
+      if (!link->origin.on_motion.empty()) {
+         if (!extract_script(Self, link->origin.on_motion, &script, func_name, argstring)) {
             const ScriptArg args[] = { { "Element", link->origin.id }, { "Status", 1 }, { "Args", argstring } };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
@@ -800,8 +800,8 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
    }
    else if (Event->Type IS JET::ENTERED_AREA) {
       link->hover = true;
-      if (!link->origin.pointer_motion.empty()) {
-         if (!extract_script(Self, link->origin.pointer_motion, &script, func_name, argstring)) {
+      if (!link->origin.on_motion.empty()) {
+         if (!extract_script(Self, link->origin.on_motion, &script, func_name, argstring)) {
             const ScriptArg args[] = { { "Element", link->origin.id }, { "Status", 1 }, { "Args", argstring } };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
@@ -818,8 +818,8 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
    }
    else if (Event->Type IS JET::LEFT_AREA) {
       link->hover = false;
-      if (!link->origin.pointer_motion.empty()) {
-         if (!extract_script(Self, link->origin.pointer_motion, &script, func_name, argstring)) {
+      if (!link->origin.on_motion.empty()) {
+         if (!extract_script(Self, link->origin.on_motion, &script, func_name, argstring)) {
             const ScriptArg args[] = { { "Element", link->origin.id }, { "Status", 1 }, { "Args", argstring } };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }

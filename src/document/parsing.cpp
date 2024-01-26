@@ -41,7 +41,7 @@ struct parser {
    std::stack<bc_list *> m_list_stack;
    std::stack<process_table> m_table_stack;
 
-   parser(extDocument *pSelf, RSTREAM *pStream = NULL) : Self(pSelf) { 
+   parser(extDocument *pSelf, RSTREAM *pStream = NULL) : Self(pSelf) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -53,7 +53,7 @@ struct parser {
       }
    }
 
-   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = NULL) : Self(pSelf), m_xml(pXML) { 
+   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = NULL) : Self(pSelf), m_xml(pXML) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -1350,7 +1350,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       case HASH_colour:
          log.warning("Font 'colour' attrib is deprecated, use 'fill'");
          [[fallthrough]];
-      case HASH_font_fill: 
+      case HASH_font_fill:
          [[fallthrough]];
       case HASH_fill:
          Style.fill = Attrib.Value;
@@ -1992,7 +1992,7 @@ void parser::tag_svg(XMLTag &Tag)
       log.warning("Illegal attempt to declare <svg/> more than once.");
       return;
    }
-   
+
    objVectorViewport *target = Self->Page;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("placement", Tag.Attribs[i].Name)) {
@@ -2356,7 +2356,7 @@ void parser::tag_link(XMLTag &Tag)
 
    bc_link link;
    bool select = false;
-   std::string hint, pointermotion;
+   std::string hint, on_motion;
    link.fill = Self->LinkFill;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -2376,18 +2376,17 @@ void parser::tag_link(XMLTag &Tag)
             break;
 
          case HASH_hint:
+            [[fallthrough]];
          case HASH_title: // 'title' is the http equivalent of our 'hint'
             log.msg("No support for <a> hints yet.");
             hint = Tag.Attribs[i].Value;
             break;
 
-         case HASH_fill:
-            link.fill = Tag.Attribs[i].Value;
+         case HASH_on_motion: // Function to execute on pointer motion
+            on_motion = Tag.Attribs[i].Value;
             break;
 
-         case HASH_pointer_motion: // Function to execute on pointer motion
-            pointermotion = Tag.Attribs[i].Value;
-            break;
+         case HASH_fill: link.fill = Tag.Attribs[i].Value; break;
 
          case HASH_select: select = true; break;
 
@@ -2407,9 +2406,9 @@ void parser::tag_link(XMLTag &Tag)
       if (link.type IS LINK::FUNCTION) buffer << link.ref << '\0';
       else buffer << link.ref << '\0';
 
-      if (!pointermotion.empty()) {
-         link.pointer_motion = pos;
-         buffer << pointermotion << '\0';
+      if (!on_motion.empty()) {
+         link.on_motion = pos;
+         buffer << on_motion << '\0';
       }
 
       // Font modifications are saved with the link as opposed to inserting a new bc_font as it's a lot cleaner
@@ -3713,11 +3712,11 @@ void parser::tag_cell(XMLTag &Tag)
             pf::split(Tag.Attribs[i].Value, std::back_inserter(list));
 
             for (auto &v : list) {
-               if (!StrMatch("all", v)) cell.border = CB::ALL;
-               else if (!StrMatch("top", v)) cell.border |= CB::TOP;
-               else if (!StrMatch("left", v)) cell.border |= CB::LEFT;
+               if (!StrMatch("all", v))         cell.border = CB::ALL;
+               else if (!StrMatch("top", v))    cell.border |= CB::TOP;
+               else if (!StrMatch("left", v))   cell.border |= CB::LEFT;
                else if (!StrMatch("bottom", v)) cell.border |= CB::BOTTOM;
-               else if (!StrMatch("right", v)) cell.border |= CB::RIGHT;
+               else if (!StrMatch("right", v))  cell.border |= CB::RIGHT;
             }
 
             break;
@@ -3751,10 +3750,6 @@ void parser::tag_cell(XMLTag &Tag)
             break;
          }
 
-         case HASH_select: select = true; break;
-
-         case HASH_fill: cell.fill = Tag.Attribs[i].Value; break;
-
          case HASH_stroke:
             cell.stroke = Tag.Attribs[i].Value;
             if (!cell.stroke_width) {
@@ -3763,17 +3758,15 @@ void parser::tag_cell(XMLTag &Tag)
             }
             break;
 
-         case HASH_stroke_width:
-            cell.stroke_width = StrToFloat(Tag.Attribs[i].Value);
-            break;
+         case HASH_select: select = true; break;
 
-         case HASH_no_wrap:
-            new_style.options |= FSO::NO_WRAP;
-            break;
+         case HASH_fill: cell.fill = Tag.Attribs[i].Value; break;
 
-         case HASH_on_click:
-            cell.onclick = Tag.Attribs[i].Value;
-            break;
+         case HASH_stroke_width: cell.stroke_width = StrToFloat(Tag.Attribs[i].Value); break;
+
+         case HASH_no_wrap: new_style.options |= FSO::NO_WRAP; break;
+
+         case HASH_on_click: cell.onclick = Tag.Attribs[i].Value; break;
 
          default:
             if (Tag.Attribs[i].Name.starts_with('@')) {
