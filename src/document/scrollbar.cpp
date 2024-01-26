@@ -230,7 +230,7 @@ void scroll_mgr::scroll_bar::init(scroll_mgr *Manager, char Direction, objVector
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Initialising scrollbar to viewport #%d", Viewport->OwnerID);
+   log.branch("Target: #%d", Viewport->OwnerID);
 
    m_mgr = Manager;
 
@@ -337,8 +337,6 @@ void scroll_mgr::dynamic_page_size(DOUBLE NominalWidth, DOUBLE MinWidth, DOUBLE 
 
 void scroll_mgr::init(extDocument *pDoc, objVectorViewport *pPage, objVectorViewport *pView)
 {
-   pf::Log log(__FUNCTION__);
-
    m_doc  = pDoc;
    m_page = pPage;
    m_view = pView;

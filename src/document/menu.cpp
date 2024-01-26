@@ -265,27 +265,22 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
 
 //********************************************************************************************************************
 
-bool doc_menu::toggle(objVectorViewport *Relative)
+void doc_menu::toggle(objVectorViewport *Relative)
 {
    pf::Log log(__FUNCTION__);
-
    log.branch();
 
-   const DOUBLE time_lapse = 20000;
+   const DOUBLE time_lapse = 20000; // Amount of time that must elapse to trigger the toggle.
 
    auto current_time = PreciseTime();
    if (m_show_time > m_hide_time) { // Hide the menu
       if (current_time - m_show_time >= time_lapse) {
          acHide(*m_surface);
       }
-      return false;
    }
-   else {
-      if (current_time - m_hide_time >= time_lapse) {
-         reposition(Relative);
-         acShow(*m_surface);
-         m_show_time = current_time;
-      }
-      return true;
+   else if (current_time - m_hide_time >= time_lapse) {
+      reposition(Relative);
+      acShow(*m_surface);
+      m_show_time = current_time;
    }
 }

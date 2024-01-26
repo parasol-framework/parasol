@@ -835,7 +835,7 @@ struct doc_menu {
    
    void define_font(objFont *);
    objSurface * create(DOUBLE);
-   bool toggle(objVectorViewport *);
+   void toggle(objVectorViewport *);
    objSurface * get();
    void reposition(objVectorViewport *);
    void refresh();
