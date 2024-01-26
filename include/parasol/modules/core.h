@@ -2844,14 +2844,15 @@ struct BaseClass { // Must be 64-bit aligned
 
       std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
+      auto ctx = CurrentContext();
       for (auto &f : Fields) {
          OBJECTPTR target;
          if (auto field = FindField(this, f.FieldID, &target)) {
-            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
-               log.warning("Field \"%s\" of class %s is not writeable.", field->Name, className());
+            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (ctx != target)) {
+               log.warning("%s.%s is immutable.", className(), field->Name);
             }
-            else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
-               log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
+            else if ((field->Flags & FD_INIT) and (target->initialised()) and (ctx != target)) {
+               log.warning("%s.%s is init-only.", className(), field->Name);
             }
             else {
                if (target != this) target->lock();
@@ -2871,18 +2872,17 @@ struct BaseClass { // Must be 64-bit aligned
                if (target != this) target->unlock();
 
                // NB: NoSupport is considered a 'soft' error that does not warrant failure.
-
+               
                if ((error) and (error != ERR_NoSupport)) {
-                  log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
+                  log.warning("%s.%s: %s", target->className(), field->Name, GetErrorMsg(error));
                   unlock();
                   return error;
                }
             }
          }
          else {
-            log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
             unlock();
-            return ERR_UnsupportedField;
+            return log.warning(ERR_UnsupportedField);
          }
       }
 
@@ -2970,11 +2970,7 @@ class Create {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
-                  if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
-                     error = log.warning(ERR_NoFieldAccess);
-                     return;
-                  }
-                  else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
+                  if (!(field->Flags & (FD_WRITE|FD_INIT))) {
                      error = log.warning(ERR_NoFieldAccess);
                      return;
                   }
@@ -2990,9 +2986,7 @@ class Create {
                      else if (f.Type & FD_LARGE) {
                         error = field->WriteValue(target, field, f.Type, &f.Large, 1);
                      }
-                     else {
-                        error = field->WriteValue(target, field, f.Type, &f.Long, 1);
-                     }
+                     else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
 
                      target->unlock();
 
@@ -3002,7 +2996,7 @@ class Create {
                   }
                }
                else {
-                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  log.warning("%s.%s field not supported.", T::CLASS_NAME, FieldName(f.FieldID));
                   error = log.warning(ERR_UnsupportedField);
                   return;
                }
