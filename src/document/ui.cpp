@@ -10,20 +10,15 @@ static ERROR combo_feedback(objVectorViewport *View, FM Event, OBJECTPTR EventOb
    auto combo = std::get<bc_combobox *>(widget.widget);
 
    if (Event IS FM::LOST_FOCUS) {
-      auto surface_focus_id = gfxGetUserFocus();
-      if (surface_focus_id IS combo->menu.m_surface->UID) {
+      if (gfxGetUserFocus() IS combo->menu.m_surface->UID) {
+         // The drop-down surface has been given the focus - so don't hide it.
       }
       else {
-         // If the client moves away from the combobox' focus then we hide the drop-down
-
-
          combo->menu.hide();
       }
    }
    else if ((Event IS FM::HAS_FOCUS) or (Event IS FM::CHILD_HAS_FOCUS)) {
-      CSTRING str;
-      combo->input->get(FID_String, &str);
-      combo->last_good_input = str;
+      combo->last_good_input = combo->input->get<CSTRING>(FID_String);
    }
 
    View->draw();
