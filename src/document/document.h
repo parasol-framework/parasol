@@ -172,6 +172,21 @@ struct ui_hooks {
 
 //********************************************************************************************************************
 
+struct padding {
+   DOUBLE left = 0, top = 0, right = 0, bottom = 0;
+   bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
+   bool configured = false;
+
+   padding() = default;
+
+   padding(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom) :
+      left(pLeft), top(pTop), right(pRight), bottom(pBottom), configured(true) { }
+
+   void parse(const std::string &Value);
+}; 
+
+//********************************************************************************************************************
+
 struct scroll_mgr {
    struct scroll_slider {
       DOUBLE offset = 0;
@@ -615,8 +630,8 @@ struct bc_table : public entity {
    std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
+   padding cell_padding; // Spacing inside each cell (margins)
    DOUBLE cell_v_spacing = 0, cell_h_spacing = 0; // Spacing between each cell
-   DOUBLE cell_padding = 0;              // Spacing inside each cell (margins)
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
    DOUBLE min_width = 0, min_height = 0; // User-determined minimum table width/height
@@ -789,19 +804,15 @@ struct widget_mgr {
    std::string font_fill;              // Default fill instruction for user input text
    GuardedObject<objVectorViewport> viewport;
    GuardedObject<objVectorRectangle> rect;    // A vector will host the widget and define a clipping mask for it
+   padding pad, final_pad;             // Padding defines whitespace around the widget
    DOUBLE width = 0, height = 0;       // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DOUBLE final_width, final_height;   // Final dimensions computed during layout
    DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
-   bool width_pct = false, height_pct = false, padding = false;
+   bool width_pct = false, height_pct = false;
    bool alt_state = false, internal_label = false;
    UBYTE label_pos = 1;                // 0 = left, 1 = right
-
-   struct {
-      DOUBLE left = 0, right = 0, top = 0, bottom = 0;
-      bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
-   } pad, final_pad; // Padding defines whitespace around the widget
 
    inline bool floating_y() {
       return false;

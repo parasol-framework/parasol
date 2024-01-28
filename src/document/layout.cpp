@@ -60,7 +60,7 @@ private:
    objFont *m_font = NULL;
    RSTREAM *m_stream = NULL;
    objVectorViewport *m_viewport = NULL; // Target viewport
-   ClipRectangle m_margins;
+   padding m_margins;
 
    DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
    DOUBLE m_page_width = 0;
@@ -179,7 +179,7 @@ private:
    }
 
    inline const LONG wrap_edge() const { // Marks the boundary at which graphics and text will need to wrap.
-      return m_page_width - m_margins.Right;
+      return m_page_width - m_margins.right;
    }
 
    void size_widget(widget_mgr &);
@@ -207,7 +207,7 @@ private:
       DOUBLE &, DOUBLE &);
 
 public:
-   layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, ClipRectangle &pMargins) :
+   layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, padding &pMargins) :
       Self(pSelf), m_stream(pStream), m_viewport(pViewport), m_margins(pMargins) { }
 
    ERROR do_layout(objFont **, DOUBLE &, DOUBLE &, bool &);
@@ -292,8 +292,7 @@ CELL layout::lay_cell(bc_table *Table)
    if (!cell.stream->data.empty()) {
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
-      ClipRectangle cell_margins(Table->cell_padding);
-      layout sl(Self, cell.stream, *cell.viewport, cell_margins);
+      layout sl(Self, cell.stream, *cell.viewport, Table->cell_padding);
       sl.m_depth = m_depth + 1;
       sl.do_layout(&m_font, cell.width, cell.height, vertical_repass);
 
@@ -390,12 +389,12 @@ void layout::size_widget(widget_mgr &Widget)
    // Calculate the final width and height.
 
    if (Widget.width_pct) {
-      Widget.final_width = Widget.width * (m_page_width - m_left_margin - m_margins.Right);
+      Widget.final_width = Widget.width * (m_page_width - m_left_margin - m_margins.right);
    }
    else if (!Widget.width) {
       if (Widget.height) {
          if (Widget.height_pct) {
-            if (Widget.floating_x()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_margins.Right);
+            if (Widget.floating_x()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_margins.right);
             else Widget.final_width = Widget.height * m_font->Ascent;
          }
          else Widget.final_width = Widget.height;
@@ -405,7 +404,7 @@ void layout::size_widget(widget_mgr &Widget)
    else Widget.final_width = Widget.width;
 
    if (Widget.height_pct) {
-      if (Widget.floating_x()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_margins.Right);
+      if (Widget.floating_x()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_margins.right);
       else Widget.final_height = Widget.height * m_font->Ascent;
    }
    else if (!Widget.height) {
@@ -417,7 +416,7 @@ void layout::size_widget(widget_mgr &Widget)
    if (Widget.final_height < 0.01) Widget.final_height = 0.01;
    if (Widget.final_width < 0.01) Widget.final_width = 0.01;
 
-   if (Widget.padding) {
+   if (Widget.pad.configured) {
       auto hypot = fast_hypot(Widget.final_width, Widget.final_height);
       Widget.final_pad.left   = Widget.pad.left_pct ? (Widget.pad.left * hypot) : Widget.pad.left;
       Widget.final_pad.top    = Widget.pad.top_pct ? (Widget.pad.top * hypot) : Widget.pad.top;
@@ -608,7 +607,7 @@ WRAP layout::lay_text()
    }
 
    if ((m_no_wrap) and (m_cursor_x + m_word_width > m_page_width)) {
-      m_page_width = m_cursor_x + m_word_width + m_margins.Right;
+      m_page_width = m_cursor_x + m_word_width + m_margins.right;
       wrap_result = WRAP::EXTEND_PAGE;
    }
 
@@ -937,7 +936,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    // Restart if the width of the table will force an extension of the page.
 
-   DOUBLE right_side = Table.x + Table.width + m_margins.Right;
+   DOUBLE right_side = Table.x + Table.width + m_margins.right;
    if ((right_side > Width) and (Width < WIDTH_LIMIT)) {
       DLAYOUT("Table width (%g+%g) increases page width to %g, layout restart forced.",
          Table.x, Table.width, right_side);
@@ -1178,7 +1177,7 @@ static void layout_doc(extDocument *Self)
       log.branch("Area: %gx%g --------------------------------", Self->VPWidth, Self->VPHeight);
    #endif
 
-   ClipRectangle margins(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin);
+   padding margins { Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin };
 
    layout l(Self, &Self->Stream, Self->Page, margins);
    bool repeat = true;
@@ -1295,8 +1294,8 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, bool &Ver
    auto page_height = Height;
    m_page_width = Width;
 
-   if (m_margins.Left + m_margins.Right > m_page_width) {
-      m_page_width = m_margins.Left + m_margins.Right;
+   if (m_margins.left + m_margins.right > m_page_width) {
+      m_page_width = m_margins.left + m_margins.right;
    }
 
    #ifdef DBG_LAYOUT
@@ -1334,10 +1333,10 @@ extend_page:
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
-   m_left_margin    = m_margins.Left;  // Retain the margin in an adjustable variable, in case we adjust the margin
+   m_left_margin    = m_margins.left;  // Retain the margin in an adjustable variable, in case we adjust the margin
    m_align_width    = wrap_edge();
-   m_cursor_x       = m_margins.Left;
-   m_cursor_y       = m_margins.Top;
+   m_cursor_x       = m_margins.left;
+   m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
    m_font           = *Font;
    m_space_width    = fntCharWidth(m_font, ' ', 0, NULL);
@@ -1345,7 +1344,7 @@ extend_page:
 
    m_word_index.reset();
    m_line.index.set(0);
-   m_line.full_reset(m_margins.Left);
+   m_line.full_reset(m_margins.left);
 
    for (idx = 0; (idx < INDEX(m_stream->size())) and (!Self->Error); idx++) {
       if ((m_cursor_x >= MAX_PAGE_WIDTH) or (m_cursor_y >= MAX_PAGE_HEIGHT)) {
@@ -1584,21 +1583,24 @@ wrap_table_start:
             {
                DOUBLE width;
                if (table->width_pct) {
-                  width = ((Width - m_cursor_x - m_margins.Right) * table->min_width) * 0.01;
+                  width = ((Width - m_cursor_x - m_margins.right) * table->min_width) * 0.01;
                }
                else width = table->min_width;
 
                if (width < 0) width = 0;
 
                {
-                  DOUBLE min = (table->stroke_width * 2) + (table->cell_h_spacing * (table->columns.size()-1)) + (table->cell_padding * 2 * table->columns.size());
+                  DOUBLE min = (table->stroke_width * 2) + 
+                     (table->cell_h_spacing * (table->columns.size()-1)) + 
+                     ((table->cell_padding.left + table->cell_padding.right) * table->columns.size());
+
                   if (table->collapsed) min -= table->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
                   if (width < min) width = min;
                }
 
-               if (width > WIDTH_LIMIT - m_cursor_x - m_margins.Right) {
+               if (width > WIDTH_LIMIT - m_cursor_x - m_margins.right) {
                   log.traceWarning("Table width in excess of allowable limits.");
-                  width = WIDTH_LIMIT - m_cursor_x - m_margins.Right;
+                  width = WIDTH_LIMIT - m_cursor_x - m_margins.right;
                   if (m_break_loop > 4) m_break_loop = 4;
                }
 
@@ -1647,7 +1649,7 @@ wrap_table_cell:
          }
 
          case SCODE::TABLE_END: {
-            auto action = lay_table_end(*table, m_margins.Top, m_margins.Bottom, Height, Width);
+            auto action = lay_table_end(*table, m_margins.top, m_margins.bottom, Height, Width);
             if (action != TE::NIL) {
                auto req_width = m_page_width;
                *this = tablestate;
@@ -1856,7 +1858,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
       if ((Floating) or (X IS m_left_margin) or (m_no_wrap)) {
          // Force an extension of the page width and recalculate from scratch.
          // NB: Floating vectors are permitted to wrap when colliding with other clip regions.  In all other cases a width increase is required.
-         DOUBLE min_width = X + Width + m_margins.Right;
+         DOUBLE min_width = X + Width + m_margins.right;
          if (min_width > m_page_width) {
             m_page_width = min_width;
             DWRAP("Forcing an extension of the page width to %g", min_width);
@@ -1990,10 +1992,10 @@ DOUBLE layout::calc_page_height()
       if (clip.bottom > page_height) page_height = clip.bottom;
    }
 
-   page_height += m_margins.Bottom;
+   page_height += m_margins.bottom;
 
    log.trace("Page Height: %g + %g -> %g, Bottom: %g",
-      m_segments.back().area.Y, m_segments.back().area.Height, page_height, m_margins.Bottom);
+      m_segments.back().area.Y, m_segments.back().area.Height, page_height, m_margins.bottom);
 
    return page_height;
 }

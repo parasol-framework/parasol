@@ -117,7 +117,7 @@ void doc_menu::refresh()
    }
 
    buf << "<page name=\"Index\">";
-   buf << "<table width=\"100%\" v-spacing=\"6\" h-spacing=\"4\">";
+   buf << "<table width=\"100%\" v-spacing=\"6\" h-spacing=\"4\" padding=\"6 0 6 0\">";
 
    for (auto &item : m_items) {
       buf << "<row>";

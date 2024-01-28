@@ -2227,48 +2227,45 @@ void parser::tag_image(XMLTag &Tag)
    bc_image img;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_src) {
-         img.fill = value;
-      }
-      else if ((hash IS HASH_float) or (hash IS HASH_align)) {
-         // Setting the horizontal alignment of an image will cause it to float above the text.
-         // If the image is declared inside a paragraph, it will be completely de-anchored as a result.
-         auto vh = StrHash(value);
-         if (vh IS HASH_left)        img.align = ALIGN::LEFT;
-         else if (vh IS HASH_right)  img.align = ALIGN::RIGHT;
-         else if (vh IS HASH_center) img.align = ALIGN::CENTER;
-         else if (vh IS HASH_middle) img.align = ALIGN::CENTER;
-         else log.warning("Invalid alignment value '%s'", value.c_str());
-      }
-      else if (hash IS HASH_v_align) {
-         // If the image is anchored and the line is taller than the image, the image can be vertically aligned.
-         auto vh = StrHash(value);
-         if (vh IS HASH_top) img.align = ALIGN::TOP;
-         else if (vh IS HASH_center) img.align = ALIGN::VERTICAL;
-         else if (vh IS HASH_middle) img.align = ALIGN::VERTICAL;
-         else if (vh IS HASH_bottom) img.align = ALIGN::BOTTOM;
-         else log.warning("Invalid valign value '%s'", value.c_str());
-      }
-      else if (hash IS HASH_padding) {
-         // Set padding values in clockwise order.  For percentages, the final value is calculated from the area of
-         // the image itself (area being taken as the diagonal length).
 
-         auto str = value.c_str();
-         str = read_unit(str, img.pad.left, img.pad.left_pct);
-         str = read_unit(str, img.pad.top, img.pad.top_pct);
-         str = read_unit(str, img.pad.right, img.pad.right_pct);
-         str = read_unit(str, img.pad.bottom, img.pad.bottom_pct);
-         img.padding = true;
+      switch (StrHash(Tag.Attribs[i].Name)) {
+         case HASH_float:
+         case HASH_align:
+            // Setting the horizontal alignment of an image will cause it to float above the text.
+            // If the image is declared inside a paragraph, it will be completely de-anchored as a result.
+            switch (StrHash(value)) {
+               case HASH_left:   img.align = ALIGN::LEFT; break;
+               case HASH_right:  img.align = ALIGN::RIGHT; break;
+               case HASH_center: img.align = ALIGN::CENTER; break;
+               case HASH_middle: img.align = ALIGN::CENTER; break;
+               default: 
+                  log.warning("Invalid alignment value '%s'", value.c_str());
+                  break;
+            }
+            break;
+
+         case HASH_v_align:
+            // If the image is anchored and the line is taller than the image, the image can be vertically aligned.
+            switch(StrHash(value)) {
+               case HASH_top:    img.align = ALIGN::TOP; break;
+               case HASH_center: img.align = ALIGN::VERTICAL; break;
+               case HASH_middle: img.align = ALIGN::VERTICAL; break;
+               case HASH_bottom: img.align = ALIGN::BOTTOM; break;
+               default: 
+                  log.warning("Invalid valign value '%s'", value.c_str());
+                  break;
+            }
+            break;
+
+         case HASH_padding: img.pad.parse(value); break;
+         case HASH_src:     img.fill = value; break;      
+         case HASH_width:   read_unit(value.c_str(), img.width, img.width_pct); break;
+         case HASH_height:  read_unit(value.c_str(), img.height, img.height_pct); break;
+         
+         default:
+            log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
       }
-      else if (hash IS HASH_width) {
-         read_unit(value.c_str(), img.width, img.width_pct);
-      }
-      else if (hash IS HASH_height) {
-         read_unit(value.c_str(), img.height, img.height_pct);
-      }
-      else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
    if (!img.fill.empty()) {
@@ -3512,9 +3509,9 @@ void parser::tag_table(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   auto &start = m_stream->emplace<bc_table>(m_index);
-   start.min_width  = 1;
-   start.min_height = 1;
+   auto &table = m_stream->emplace<bc_table>(m_index);
+   table.min_width  = 1;
+   table.min_height = 1;
 
    std::string columns;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -3526,84 +3523,82 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_width:
-            start.min_width = StrToInt(value);
-            start.width_pct = false;
+            table.min_width = StrToInt(value);
+            table.width_pct = false;
             if (value.find_first_of('%') != std::string::npos) {
-               start.width_pct = true;
+               table.width_pct = true;
             }
-            if (start.min_width < 1) start.min_width = 1;
-            else if (start.min_width > 10000) start.min_width = 10000;
+            if (table.min_width < 1) table.min_width = 1;
+            else if (table.min_width > 10000) table.min_width = 10000;
             break;
 
          case HASH_height:
-            start.min_height = StrToInt(value);
+            table.min_height = StrToInt(value);
             if (value.find_first_of('%') != std::string::npos) {
-               start.height_pct = true;
+               table.height_pct = true;
             }
-            if (start.min_height < 1) start.min_height = 1;
-            else if (start.min_height > 10000) start.min_height = 10000;
+            if (table.min_height < 1) table.min_height = 1;
+            else if (table.min_height > 10000) table.min_height = 10000;
             break;
 
          case HASH_fill:
-            start.fill = value;
+            table.fill = value;
             break;
 
          case HASH_stroke:
-            start.stroke = value;
-            if (start.stroke_width < 1) start.stroke_width = 1;
+            table.stroke = value;
+            if (table.stroke_width < 1) table.stroke_width = 1;
             break;
 
          case HASH_spacing: // Spacing between the cells (H & V)
-            start.cell_v_spacing = StrToInt(value);
-            if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
-            else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
-            start.cell_h_spacing = start.cell_v_spacing;
+            table.cell_v_spacing = StrToInt(value);
+            if (table.cell_v_spacing < 0) table.cell_v_spacing = 0;
+            else if (table.cell_v_spacing > 200) table.cell_v_spacing = 200;
+            table.cell_h_spacing = table.cell_v_spacing;
             break;
 
          case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'h-spacing') on the sides
-            start.collapsed = true;
+            table.collapsed = true;
             break;
 
          case HASH_v_spacing: // Spacing between the cells (V)
-            start.cell_v_spacing = StrToInt(value);
-            if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
-            else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
+            table.cell_v_spacing = StrToInt(value);
+            if (table.cell_v_spacing < 0) table.cell_v_spacing = 0;
+            else if (table.cell_v_spacing > 200) table.cell_v_spacing = 200;
             break;
 
          case HASH_h_spacing: // Spacing between the cells (H)
-            start.cell_h_spacing = StrToInt(value);
-            if (start.cell_h_spacing < 0) start.cell_h_spacing = 0;
-            else if (start.cell_h_spacing > 200) start.cell_h_spacing = 200;
+            table.cell_h_spacing = StrToInt(value);
+            if (table.cell_h_spacing < 0) table.cell_h_spacing = 0;
+            else if (table.cell_h_spacing > 200) table.cell_h_spacing = 200;
             break;
 
          case HASH_align: {
             auto align = StrHash(value);
-            if (align IS HASH_left)        start.align = ALIGN::LEFT;
-            else if (align IS HASH_right)  start.align = ALIGN::RIGHT;
-            else if (align IS HASH_center) start.align = ALIGN::CENTER;
-            else if (align IS HASH_middle) start.align = ALIGN::CENTER;
+            if (align IS HASH_left)        table.align = ALIGN::LEFT;
+            else if (align IS HASH_right)  table.align = ALIGN::RIGHT;
+            else if (align IS HASH_center) table.align = ALIGN::CENTER;
+            else if (align IS HASH_middle) table.align = ALIGN::CENTER;
             else log.warning("Invalid alignment value '%s'", value.c_str());
             break;
          }
 
          case HASH_margins:
-         case HASH_padding: // Padding inside the cells
-            start.cell_padding = StrToInt(value);
-            if (start.cell_padding < 0) start.cell_padding = 0;
-            else if (start.cell_padding > 200) start.cell_padding = 200;
+         case HASH_padding:
+            table.cell_padding.parse(value);
             break;
 
          case HASH_stroke_width: {
             auto j = StrToFloat(value);
             if (j < 0.0) j = 0.0;
             else if (j > 255.0) j = 255.0;
-            start.stroke_width = j;
+            table.stroke_width = j;
             break;
          }
       }
    }
 
-   m_table_stack.push(process_table { &start, 0 });
+   m_table_stack.push(process_table { &table, 0 });
 
       parse_tags(Tag.Children, IPF::NO_CONTENT|IPF::FILTER_TABLE);
 
@@ -3621,12 +3616,12 @@ void parser::tag_table(XMLTag &Tag)
       }
 
       unsigned i;
-      for (i=0; (i < start.columns.size()) and (i < list.size()); i++) {
-         start.columns[i].preset_width = StrToFloat(list[i]);
-         if (list[i].find_first_of('%') != std::string::npos) start.columns[i].preset_width_rel = true;
+      for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
+         table.columns[i].preset_width = StrToFloat(list[i]);
+         if (list[i].find_first_of('%') != std::string::npos) table.columns[i].preset_width_rel = true;
       }
 
-      if (i < start.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(start.columns.size()));
+      if (i < table.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(table.columns.size()));
    }
 
    bc_table_end end;

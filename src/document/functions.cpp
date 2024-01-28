@@ -25,7 +25,7 @@ static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Sourc
 
 //********************************************************************************************************************
 
-static DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
+constexpr DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
 {
    if (Width > Height) std::swap(Width, Height);
    if ((Height / Width) <= 1.5) return 5.0 * (Width + Height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
@@ -1009,4 +1009,25 @@ static ERROR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE
    else log.trace("No subscriber for event $%.8x", (LONG)Event);
 
    return result;
+}
+
+//********************************************************************************************************************
+// Set padding values in clockwise order.  For percentages, the final value is calculated from the diagonal of the
+// parent.
+
+void padding::parse(const std::string &Value)
+{
+   auto str = Value.c_str();
+   str = read_unit(str, left, left_pct);
+            
+   if (*str) str = read_unit(str, top, top_pct);
+   else { top = left; top_pct = left_pct; }
+
+   if (*str) str = read_unit(str, right, right_pct);
+   else { right = top; right_pct = top_pct; }
+
+   if (*str) str = read_unit(str, bottom, bottom_pct);
+   else { bottom = right; bottom_pct = right_pct; }
+
+   configured = true;
 }
