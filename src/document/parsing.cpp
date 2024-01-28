@@ -722,7 +722,7 @@ static bool eval_condition(const std::string &String)
    };
 
    LONG start = 0;
-   while ((start < LONG(String.size())) and (String[start] <= 0x20)) start++;
+   while ((start < LONG(String.size())) and (unsigned(String[start]) <= 0x20)) start++;
 
    bool reverse = false;
 
@@ -769,7 +769,7 @@ static bool eval_condition(const std::string &String)
       }
    }
 
-   while ((String[i]) and (String[i] <= 0x20)) i++; // skip white-space
+   while ((String[i]) and (unsigned(String[i]) <= 0x20)) i++; // skip white-space
 
    bool truth = false;
    if (!test.empty()) {
@@ -1946,8 +1946,8 @@ void parser::tag_input(XMLTag &Tag)
             if (!StrMatch("left", value)) widget.label_pos = 0;
             else if (!StrMatch("right", value)) widget.label_pos = 1;
             break;
-         default: 
-            log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str()); 
+         default:
+            log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
             break;
       }
    }
@@ -2242,7 +2242,7 @@ void parser::tag_image(XMLTag &Tag)
                case HASH_right:  img.align = ALIGN::RIGHT; break;
                case HASH_center: img.align = ALIGN::CENTER; break;
                case HASH_middle: img.align = ALIGN::CENTER; break;
-               default: 
+               default:
                   log.warning("Invalid alignment value '%s'", value.c_str());
                   break;
             }
@@ -2255,17 +2255,17 @@ void parser::tag_image(XMLTag &Tag)
                case HASH_center: img.align = ALIGN::VERTICAL; break;
                case HASH_middle: img.align = ALIGN::VERTICAL; break;
                case HASH_bottom: img.align = ALIGN::BOTTOM; break;
-               default: 
+               default:
                   log.warning("Invalid valign value '%s'", value.c_str());
                   break;
             }
             break;
 
          case HASH_padding: img.pad.parse(value); break;
-         case HASH_src:     img.fill = value; break;      
+         case HASH_src:     img.fill = value; break;
          case HASH_width:   read_unit(value.c_str(), img.width, img.width_pct); break;
          case HASH_height:  read_unit(value.c_str(), img.height, img.height_pct); break;
-         
+
          default:
             log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
       }
@@ -2641,7 +2641,7 @@ ERROR parser::calc(const std::string &String, DOUBLE *Result, std::string &Outpu
    SIGN sign      = PLUS;
    bool number    = false;
    for (unsigned s=0; in[s];) {
-      if (in[s] <= 0x20); // Do nothing with whitespace
+      if (unsigned(in[s]) <= 0x20); // Do nothing with whitespace
       else if (in[s] IS '\'') {
          if (number) { // Write the current floating point number to the buffer before the next calculation
             Output  += write_calc(total, precision);

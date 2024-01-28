@@ -123,7 +123,7 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
 {
    bool isnumber = true;
    auto v = Input;
-   while ((*v) and (*v <= 0x20)) v++;
+   while ((*v) and (unsigned(*v) <= 0x20)) v++;
 
    auto str = v;
    if ((*str IS '-') or (*str IS '+')) str++;
@@ -268,7 +268,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index,
 
    if ((!Preformat) and (Self->NoWhitespace)) {
       unsigned i;
-      for (i=0; i < Text.size(); i++) if (Text[i] > 0x20) break;
+      for (i=0; i < Text.size(); i++) if (unsigned(Text[i]) > 0x20) break;
       if (i IS Text.size()) return ERR_Okay;
    }
 
@@ -281,8 +281,8 @@ static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index,
       et.text.reserve(Text.size());
       auto ws = Self->NoWhitespace; // Retrieve previous whitespace state
       for (unsigned i=0; i < Text.size(); ) {
-         if (Text[i] <= 0x20) { // Whitespace encountered
-            for (++i; (Text[i] <= 0x20) and (i < Text.size()); i++);
+         if (unsigned(Text[i]) <= 0x20) { // Whitespace encountered
+            for (++i; (unsigned(Text[i]) <= 0x20) and (i < Text.size()); i++);
             if (!ws) et.text += ' ';
             ws = true;
          }
@@ -1019,7 +1019,7 @@ void padding::parse(const std::string &Value)
 {
    auto str = Value.c_str();
    str = read_unit(str, left, left_pct);
-            
+
    if (*str) str = read_unit(str, top, top_pct);
    else { top = left; top_pct = left_pct; }
 

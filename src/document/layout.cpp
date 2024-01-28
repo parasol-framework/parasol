@@ -559,7 +559,7 @@ WRAP layout::lay_text()
          end_line(NL::PARAGRAPH, stream_char(idx, i));
          i++;
       }
-      else if (str[i] <= 0x20) { // Whitespace encountered
+      else if (unsigned(str[i]) <= 0x20) { // Whitespace encountered
          check_line_height();
 
          if ((m_word_width) and (!m_no_wrap)) { // Existing word finished, check if it will wordwrap
@@ -1021,7 +1021,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    // occurring in whitespace at the end of the line during word-wrapping.
 
    auto trim_stop = Stop;
-   while ((trim_stop.get_prev_char_or_inline(m_stream[0]) <= 0x20) and (trim_stop > Start)) {
+   while ((unsigned(trim_stop.get_prev_char_or_inline(m_stream[0])) <= 0x20) and (trim_stop > Start)) {
       if (!trim_stop.get_prev_char_or_inline(m_stream[0])) break;
       trim_stop.prev_char(m_stream[0]);
    }
@@ -1590,8 +1590,8 @@ wrap_table_start:
                if (width < 0) width = 0;
 
                {
-                  DOUBLE min = (table->stroke_width * 2) + 
-                     (table->cell_h_spacing * (table->columns.size()-1)) + 
+                  DOUBLE min = (table->stroke_width * 2) +
+                     (table->cell_h_spacing * (table->columns.size()-1)) +
                      ((table->cell_padding.left + table->cell_padding.right) * table->columns.size());
 
                   if (table->collapsed) min -= table->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
