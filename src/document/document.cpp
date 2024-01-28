@@ -283,8 +283,7 @@ static const std::array<std::string_view, LONG(SCODE::END)> strCodes = {
 };
 
 template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T Index) {
-   if (Stream[Index].code < std::ssize(strCodes)) return strCodes[LONG(Stream[Index].code)];
-   return strCodes[0];
+   return strCodes[LONG(Stream[Index].code)];
 }
 
 //********************************************************************************************************************

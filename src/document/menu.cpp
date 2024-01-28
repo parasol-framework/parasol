@@ -126,7 +126,7 @@ void doc_menu::refresh()
       else if (!item.value.empty()) buf << "<cell on-click on-crossing @value=\"" << item.value << "\">";
       else buf << "<cell on-click on-crossing>";
 
-      buf << "<p no-wrap>";
+      buf << "<p no-wrap v-align=\"middle\">";
 
       if (item.icon.empty()) {
          if (total_icons) buf << "<advance x=\"[=" << GAP << "+[%line-height]]\"/>";

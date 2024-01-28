@@ -39,10 +39,11 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
 
    if (Widget.floating_x()) Y = Segment.area.Y + Widget.final_pad.top;
    else {
-      if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) Y = Segment.area.Y + Widget.final_pad.top;
+      if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) {
+         Y = Segment.area.Y + Widget.final_pad.top;
+      }
       else if ((Style->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
-         DOUBLE avail_space = Segment.area.Height - Segment.gutter;
-         Y = Segment.area.Y + ((avail_space - (Widget.final_height + Widget.final_pad.top + Widget.final_pad.bottom)) * 0.5);
+         Y = Segment.area.Y + ((Segment.area.Height - (Widget.final_height + Widget.final_pad.top + Widget.final_pad.bottom)) * 0.5);
       }
       else {
          // Bottom alignment.  Aligning to the gutter produces better results compared to base line alignment.
@@ -232,10 +233,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
       auto x_advance = segment.area.X;
       for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {
          switch (segment.stream[0][cursor.index].code) {
-            case SCODE::FONT: {
+            case SCODE::FONT:
                stack_style.push(&segment.stream->lookup<bc_font>(cursor));
                break;
-            }
 
             case SCODE::FONT_END:
                stack_style.pop();
