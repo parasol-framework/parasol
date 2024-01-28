@@ -273,6 +273,10 @@ CELL layout::lay_cell(bc_table *Table)
          fl::X(0), fl::Y(0),
          fl::Width(1), fl::Height(1)
       }));
+
+      if (cell.hooks.events != JTYPE::NIL) {
+         vecSubscribeInput(*cell.viewport, cell.hooks.events, FUNCTION(inputevent_cell));
+      }
    }
 
    if ((!cell.fill.empty()) or (!cell.stroke.empty())) {

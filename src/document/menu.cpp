@@ -4,9 +4,8 @@
 static const char * glSVGHeader = R"LONGSTRING(
 <svg placement="background">
   <defs>
-    <pattern id="Background" x="0" y="0" width="40" height="20" patternUnits="userSpaceOnUse">
-      <rect width="40" height="20" fill="#ffffff"/>
-      <rect width="20" height="20" fill="#f9f9f9"/>
+    <pattern id="Highlight">
+      <rect rx="2%" ry="2%" width="100%" height="100%" fill="rgb(245,175,155)"/>
     </pattern>
 
     <clipPath id="PageClip">
@@ -23,61 +22,9 @@ static const char * glSVGTail = R"LONGSTRING(
 </svg>
 )LONGSTRING";
 
-//********************************************************************************************************************
-
-static void menu_lost_focus(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
-{
-   if (Error) return;
-   acHide(Surface);
-}
-
-//********************************************************************************************************************
-
-static void menu_hidden(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
-{
-   if (Error) return;
-   Menu->m_hide_time = PreciseTime();
-}
-
-//********************************************************************************************************************
-// Intercept hyperlink interaction with menu items
-
-static ERROR menu_doc_events(objDocument *DocMenu, DEF Event, KEYVALUE *EventData)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((Event & DEF::LINK_ACTIVATED) != DEF::NIL) {
-      auto menu = (doc_menu *)DocMenu->CreatorMeta;
-
-      acHide(*menu->m_surface);
-
-      if (!menu->m_callback) return ERR_Skip;
-
-      auto kv_item = EventData->find("id");
-      if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
-         for (auto &item : menu->m_items) {
-            if (item.id IS kv_item->second) {
-               menu->m_callback(*menu, item);
-               return ERR_Skip;
-            }
-         }
-      }
-
-      kv_item = EventData->find("value");
-      if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
-         for (auto &item : menu->m_items) {
-            if (item.value IS kv_item->second) {
-               menu->m_callback(*menu, item);
-               return ERR_Skip;
-            }
-         }
-      }
-
-      log.warning("No id or value defined for selected menu item.");
-   }
-
-   return ERR_Skip;
-}
+static ERROR menu_doc_events(extDocument *, DEF, KEYVALUE *, entity *, APTR);
+static void menu_hidden(OBJECTPTR, ACTIONID, ERROR, APTR, doc_menu *);
+static void menu_lost_focus(OBJECTPTR, ACTIONID, ERROR, APTR, doc_menu *);
 
 //********************************************************************************************************************
 
@@ -122,8 +69,8 @@ objSurface * doc_menu::create(DOUBLE Width)
       m_doc = objDocument::create::global({
          fl::Owner(m_surface->UID),
          fl::Viewport(m_view),
-         fl::EventMask(DEF::LINK_ACTIVATED),
-         fl::EventCallback(APTR(menu_doc_events))
+         fl::EventMask(DEF::LINK_ACTIVATED|DEF::ON_CLICK|DEF::ON_CROSSING),
+         fl::EventCallback(FUNCTION(menu_doc_events))
       });
 
       m_doc->CreatorMeta = this;
@@ -144,13 +91,12 @@ void doc_menu::refresh()
    pf::Log log(__FUNCTION__);
 
    const DOUBLE VGAP = m_font_size * 0.5;
-   const DOUBLE HGAP = m_font_size * 1.0;
+   const DOUBLE HGAP = m_font_size * 0.2;
    const DOUBLE GAP = VGAP;
-   const DOUBLE LEADING = 0.2;
    LONG total_icons = 0;
 
    std::ostringstream buf;
-   buf << "<body margins=\"" << HGAP << " " << VGAP << " " << HGAP << " " << VGAP << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
+   buf << "<body margins=\"" << HGAP << " " << VGAP << " " << HGAP << " " << 0 << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
 
    if (!m_style.empty()) {
@@ -171,13 +117,16 @@ void doc_menu::refresh()
    }
 
    buf << "<page name=\"Index\">";
+   buf << "<table width=\"100%\" v-spacing=\"6\" h-spacing=\"4\">";
 
    for (auto &item : m_items) {
-      buf << "<p no-wrap leading=\"" << LEADING << "\">";
+      buf << "<row>";
 
-      if (!item.id.empty()) buf << "<a @id=\"" << item.id << "\">";
-      else if (!item.value.empty()) buf << "<a @value=\"" << item.value << "\">";
-      else buf << "<a>";
+      if (!item.id.empty()) buf << "<cell on-click on-crossing @id=\"" << item.id << "\">";
+      else if (!item.value.empty()) buf << "<cell on-click on-crossing @value=\"" << item.value << "\">";
+      else buf << "<cell on-click on-crossing>";
+
+      buf << "<p no-wrap>";
 
       if (item.icon.empty()) {
          if (total_icons) buf << "<advance x=\"[=" << GAP << "+[%line-height]]\"/>";
@@ -187,14 +136,15 @@ void doc_menu::refresh()
       if (!item.content.empty()) buf << item.content;
       else buf << item.value;
 
-      buf << "</a></p>\n";
+      buf << "</p></cell></row>\n";
    }
 
+   buf << "</table>";
    buf << "</page>";
 
    acClear(m_doc);
    acDataXML(m_doc, buf.str().c_str());
-   
+
    #ifdef DBG_LAYOUT
       log.warning("%s", buf.str().c_str());
    #endif
@@ -255,7 +205,7 @@ void doc_menu::reposition(objVectorViewport *RelativeViewport)
       // Invert the menu position if it will drop off the display
 
       DOUBLE y = w_absy + vp_absy + vp_height;
-      if (y + m_surface->Height > display->Height) {
+      if (y + m_surface->Height > (display->Height * 0.97)) {
          y -= m_surface->Height + vp_height;
       }
 
@@ -283,4 +233,70 @@ void doc_menu::toggle(objVectorViewport *Relative)
       acShow(*m_surface);
       m_show_time = current_time;
    }
+}
+
+//********************************************************************************************************************
+
+static void menu_lost_focus(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
+{
+   if (Error) return;
+   acHide(Surface);
+}
+
+//********************************************************************************************************************
+
+static void menu_hidden(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
+{
+   if (Error) return;
+   Menu->m_hide_time = PreciseTime();
+}
+
+//********************************************************************************************************************
+// Intercept interactions with menu items
+
+static ERROR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventData, entity *Entity, APTR Meta)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (((Event & DEF::ON_CLICK) != DEF::NIL) or ((Event & DEF::LINK_ACTIVATED) != DEF::NIL)) {
+      auto menu = (doc_menu *)DocMenu->CreatorMeta;
+
+      acHide(*menu->m_surface);
+
+      if (!menu->m_callback) return ERR_Okay;
+
+      auto kv_item = EventData->find("id");
+      if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
+         for (auto &item : menu->m_items) {
+            if (item.id IS kv_item->second) {
+               menu->m_callback(*menu, item);
+               return ERR_Okay;
+            }
+         }
+      }
+
+      kv_item = EventData->find("value");
+      if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
+         for (auto &item : menu->m_items) {
+            if (item.value IS kv_item->second) {
+               menu->m_callback(*menu, item);
+               return ERR_Okay;
+            }
+         }
+      }
+
+      log.warning("No id or value defined for selected menu item.");
+   }
+   else if ((Event & DEF::ON_CROSSING_IN) != DEF::NIL) {
+      auto cell = (bc_cell *)Entity;
+      cell->set_fill("url(#Highlight)");
+      cell->viewport->draw();
+   }
+   else if ((Event & DEF::ON_CROSSING_OUT) != DEF::NIL) {
+      auto cell = (bc_cell *)Entity;
+      cell->set_fill("none");
+      cell->viewport->draw();
+   }
+
+   return ERR_Okay;
 }

@@ -38,15 +38,15 @@
 </combobox> Suffix</p>
 
 <p font-face="Courier" font-size="20"><combobox width="300" value="Courier 20pt" label="Default Label">
-  <option icon="icons:items/add" value="volvo">Volvo</option>
-  <option value="saab">Saab</option>
-  <option icon="icons:items/cancel" value="mercedes">Mercedes</option>
-  <option icon="icons:items/start" value="audi">Audi</option>
-  <option value="Ferrari">Ferrari</option>
+  <option icon="icons:items/add" value="Volvo">Volvo</option>
+  <option value="Saab">Saab</option>
+  <option icon="icons:items/cancel" value="Mercedes">Mercedes</option>
+  <option icon="icons:items/start" value="Audi">Audi</option>
+  <option value="Ferrari"><i>Ferrari</i></option>
   <option value="Toyota">Toyota</option>
   <option value="Subaru">Subaru</option>
   <option value="Mitsubishi">Mitsubishi</option>
-  <option value="BMW">BMW</option>
+  <option value="BMW"><b>BMW</b></option>
   <option value="Ford">Ford</option>
   <option value="Rover">Rover</option>
   <option value="Rolls Royce">Rolls Royce</option>
@@ -64,6 +64,7 @@
     </svg>
     <body font-fill="rgb(255,255,255)" link="rgb(255,255,255)" v-link="rgb(255,255,255)"/>
   </style>
+
   <option value="volvo">This is a <b>really long</b> option <image src="url(#cancel)"/> to expand the width of the item list.</option>
   <option value="saab">Saab</option>
   <option value="mercedes">Mercedes</option>

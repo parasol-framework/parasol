@@ -111,7 +111,7 @@ ERROR layout::gen_scene_init(objVectorViewport *Viewport)
    m_cursor_drawn = false;
 
    Self->Links.clear();
-   Self->Widgets.clear(); // NB: Widgets are cleared and re-added because they use direct pointers to the std::vector stream
+   Self->VPToEntity.clear(); // NB: Widgets are cleared and re-added because they use direct pointers to the std::vector stream
 
    if (Self->UpdatingLayout) return ERR_NothingDone; // Drawing is disabled if the layout is being updated
 
@@ -401,11 +401,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                         }
                      }
                   }
-                  else cell.viewport->setFields(fl::Width(0), fl::Height(0));
 
                   gen_scene_graph(*cell.viewport, cell.segments);
                }
 
+               Self->VPToEntity.emplace(cell.viewport->UID, vp_to_entity { &cell });
                break;
             }
 
@@ -426,7 +426,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].type IS TT::LINK) and
-                        (Self->Tabs[Self->FocusIndex].ref IS link->id) and
+                        (std::get<BYTECODE>(Self->Tabs[Self->FocusIndex].ref) IS link->uid) and
                         (Self->Tabs[Self->FocusIndex].active)) {
                      link->font.fill = Self->LinkSelectFill;
                   }
@@ -485,7 +485,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      }
                   }
 
-                  Self->Widgets.emplace(button.viewport->UID, ui_widget { &button });
+                  Self->VPToEntity.emplace(button.viewport->UID, vp_to_entity { &button });
                   button.label_text->setFields(fl::X(x), fl::Y(F2T(y)));
                }
                break;
@@ -549,7 +549,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_checkbox));
                   }
                }
-               Self->Widgets.emplace(checkbox.viewport->UID, ui_widget { &checkbox });
+               Self->VPToEntity.emplace(checkbox.viewport->UID, vp_to_entity { &checkbox });
                break;
             }
 
@@ -644,7 +644,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                combo.menu.m_ref   = &combo;
                combo.menu.m_style = combo.style;
 
-               Self->Widgets.emplace(combo.viewport->UID, ui_widget { &combo });
+               Self->VPToEntity.emplace(combo.viewport->UID, vp_to_entity { &combo });
                break;
             }
 

@@ -86,7 +86,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].type IS TT::LINK) {
          for (auto &link : Self->Links) {
-            if (link.origin.id IS Self->Tabs[Self->FocusIndex].ref) {
+            if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Self->FocusIndex].ref)) {
                Self->Page->draw();
                break;
             }
@@ -711,9 +711,11 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          fl::X(0), fl::Y(0),
          fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
 
-      if (Self->Page->Scene->SurfaceID) {
-         vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(consume_input_events));
-      }
+      // Recent changes mean that page input handling could be merged with inputevent_cell()
+      // if necessary (VectorScene already manages existing use-cases).
+      //if (Self->Page->Scene->SurfaceID) {
+      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(consume_input_events));
+      //}
    }
    else return ERR_CreateObject;
 
@@ -813,7 +815,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                }
                else if (code IS SCODE::LINK) {
                   auto &esclink = Self->Stream.lookup<bc_link>(i);
-                  if ((tab = find_tabfocus(Self, TT::LINK, esclink.id)) >= 0) {
+                  if ((tab = find_tabfocus(Self, TT::LINK, esclink.uid)) >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
@@ -1329,7 +1331,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                   }
                }
                else if (code IS SCODE::LINK) {
-                  if (auto tab = find_tabfocus(Self, TT::LINK, Self->Stream.lookup<bc_link>(i).id); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT::LINK, Self->Stream.lookup<bc_link>(i).uid); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }

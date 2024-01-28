@@ -161,6 +161,16 @@ DEFINE_ENUM_FLAG_OPERATORS(TRF)
 class RSTREAM;
 
 //********************************************************************************************************************
+// UI hooks for the client
+
+struct ui_hooks {
+   std::string on_click;     // Function to call after a button event in the UI
+   std::string on_motion;    // Function to call after a motion event in the UI
+   std::string on_crossing;  // Function to call after a crossing event in the UI (enter/leave)
+   JTYPE events = JTYPE::NIL; // Input events that the client is interested in.
+};
+
+//********************************************************************************************************************
 
 struct scroll_mgr {
    struct scroll_slider {
@@ -169,7 +179,7 @@ struct scroll_mgr {
    };
 
    struct scroll_bar {
-      scroll_mgr *m_mgr;
+      scroll_mgr *m_mgr = NULL;
       objVectorViewport *m_bar_vp = NULL; // Main viewport for managing the scrollbar
       objVectorViewport *m_slider_host = NULL;
       objVectorViewport *m_slider_vp = NULL;
@@ -207,17 +217,17 @@ struct scroll_mgr {
 
 struct tab {
    // The ref is a UID for the Type, so you can use it to find the tab in the document stream
-   LONG  ref;        // For TT::VECTOR: VectorID; TT::LINK: LinkID
+   std::variant<LONG, ULONG> ref; // For TT::VECTOR: VectorID; TT::LINK: LinkID
    TT    type;
    bool  active;     // true if the tabbable entity is active/visible
 
-   tab(TT pType, LONG pReference, bool pActive) : ref(pReference), type(pType), active(pActive) { }
+   tab(TT pType, BYTECODE pReference, bool pActive) : ref(pReference), type(pType), active(pActive) { }
 };
 
 //********************************************************************************************************************
 
 struct edit_cell {
-   LONG cell_id;
+   CELL_ID cell_id;
    DOUBLE x, y, width, height;
 };
 
@@ -233,21 +243,21 @@ struct link_activated {
 
 struct stream_code {
    SCODE code;  // Type
-   ULONG uid; // Lookup for the Codes table
+   BYTECODE uid; // Lookup for the Codes table
 
    stream_code() : code(SCODE::NIL), uid(0) { }
-   stream_code(SCODE pCode, ULONG pID) : code(pCode), uid(pID) { }
+   stream_code(SCODE pCode, BYTECODE pID) : code(pCode), uid(pID) { }
 };
 
 //********************************************************************************************************************
 
-class base_code {
+class entity {
 public:
-   ULONG uid;   // Unique identifier for lookup
+   BYTECODE uid;   // Unique identifier for lookup
    SCODE code = SCODE::NIL; // Byte code
 
-   base_code() { uid = glByteCodeID++; }
-   base_code(SCODE pCode) : code(pCode) { uid = glByteCodeID++; }
+   entity() { uid = glByteCodeID++; }
+   entity(SCODE pCode) : code(pCode) { uid = glByteCodeID++; }
 };
 
 //********************************************************************************************************************
@@ -366,7 +376,7 @@ struct font_entry {
 // bc_font has a dual purpose - it can maintain current font style information during parsing as well as being embedded
 // in the document stream.
 
-struct bc_font : public base_code {
+struct bc_font : public entity {
    WORD font_index;     // Font lookup (will reflect the true font face, point size, style)
    FSO  options;        // Style options, like underline and italics
    ALIGN valign;        // Vertical alignment of text within the available line height
@@ -385,8 +395,8 @@ struct bc_font : public base_code {
    }
 };
 
-struct bc_font_end : public base_code {
-   bc_font_end() : base_code(SCODE::FONT_END) { }
+struct bc_font_end : public entity {
+   bc_font_end() : entity(SCODE::FONT_END) { }
 };
 
 //********************************************************************************************************************
@@ -477,11 +487,11 @@ struct doc_segment {
    stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
    FloatRect area;          // Dimensions of the segment.
-   DOUBLE gutter;           // The largest gutter value after taking into account all fonts used on the line.
-   DOUBLE align_width;      // Full width of this segment if it were non-breaking
+   DOUBLE  gutter;          // The largest gutter value after taking into account all fonts used on the line.
+   DOUBLE  align_width;     // Full width of this segment if it were non-breaking
    RSTREAM *stream;         // The stream that this segment refers to
-   bool  edit;              // true if this segment represents content that can be edited
-   bool  allow_merge;       // true if this segment can be merged with siblings that have allow_merge set to true
+   bool    edit;            // true if this segment represents content that can be edited
+   bool    allow_merge;     // true if this segment can be merged with siblings that have allow_merge set to true
 };
 
 struct doc_clip {
@@ -532,13 +542,13 @@ struct tablecol {
 
 //********************************************************************************************************************
 
-struct bc_advance : public base_code {
+struct bc_advance : public entity {
    DOUBLE x, y;
 
    bc_advance() : x(0), y(0) { code = SCODE::ADVANCE; }
 };
 
-struct bc_index : public base_code {
+struct bc_index : public entity {
    ULONG  name_hash = 0;          // The name of the index is held here as a hash
    LONG   id = 0;                 // UID for matching to the correct bc_index_end
    DOUBLE y = 0;                  // The cursor's vertical position of when the index was encountered during layout
@@ -551,30 +561,30 @@ struct bc_index : public base_code {
    }
 };
 
-struct bc_index_end : public base_code {
+struct bc_index_end : public entity {
    LONG id; // UID matching to the correct bc_index
    bc_index_end(LONG pID) : id(pID) { code = SCODE::INDEX_END; }
 };
 
-struct bc_link : public base_code {
+struct bc_link : public entity {
    GuardedObject<objVectorPath> path;
-   LINK  type;                    // Link type (either a function or hyperlink)
-   UWORD id;
-   std::string on_motion;         // Function to call for pointer motion events
+   LINK type;                     // Link type (either a function or hyperlink)
+   ui_hooks hooks;                // UI hooks defined by the client
    std::string ref;               // Function name or a path, depending on the Type
+   std::string hint;              // Hint/title to display when hovering
    std::vector<std::pair<std::string,std::string>> args;
    std::string fill;              // Fill instruction from the client
    bc_font font;                  // Font style from the parser
 
-   bc_link() : type(LINK::NIL), id(0)
+   bc_link() : type(LINK::NIL)
       { code = SCODE::LINK; }
 };
 
-struct bc_link_end : public base_code {
+struct bc_link_end : public entity {
    bc_link_end() { code = SCODE::LINK_END; }
 };
 
-struct bc_list : public base_code {
+struct bc_list : public entity {
    enum {
       ORDERED=0,
       BULLET,
@@ -595,11 +605,11 @@ struct bc_list : public base_code {
    bc_list() { code = SCODE::LIST_START; }
 };
 
-struct bc_list_end : public base_code {
+struct bc_list_end : public entity {
    bc_list_end() { code = SCODE::LIST_END; }
 };
 
-struct bc_table : public base_code {
+struct bc_table : public entity {
    GuardedObject<objVectorPath> path;
    GuardedObject<objVectorViewport> viewport;
    std::vector<PathCommand> seq;
@@ -660,7 +670,7 @@ struct bc_table : public base_code {
    }
 };
 
-struct bc_table_end : public base_code {
+struct bc_table_end : public entity {
    bc_table_end() { code = SCODE::TABLE_END; }
 };
 
@@ -668,7 +678,7 @@ struct bc_table_end : public base_code {
 // FONT code raises the chance of confusion for the user, because features like leading are calculated using the
 // style registered in the paragraph.
 
-class bc_paragraph : public base_code {
+class bc_paragraph : public entity {
    public:
    GuardedObject<objVector> icon; // Icon representation if this is an item
    bc_font font;         // Default font that applies to this paragraph.  Embedding the font style in this way ensures that vertical placement can be computed immediately without looking for a FONT code.
@@ -686,7 +696,7 @@ class bc_paragraph : public base_code {
    bool trim;
    bool aggregate;
 
-   bc_paragraph() : base_code(SCODE::PARAGRAPH_START), x(0), y(0), height(0),
+   bc_paragraph() : entity(SCODE::PARAGRAPH_START), x(0), y(0), height(0),
       block_indent(0), item_indent(0), indent(0), line_height(1.0), leading(1.0),
       relative(false), list_item(false), trim(false), aggregate(false) { }
 
@@ -696,11 +706,11 @@ class bc_paragraph : public base_code {
    }
 };
 
-struct bc_paragraph_end : public base_code {
-   bc_paragraph_end() : base_code(SCODE::PARAGRAPH_END) { }
+struct bc_paragraph_end : public entity {
+   bc_paragraph_end() : entity(SCODE::PARAGRAPH_END) { }
 };
 
-struct bc_row : public base_code {
+struct bc_row : public entity {
    GuardedObject<objVectorRectangle> rect_fill;
    DOUBLE y = 0;
    DOUBLE row_height = 0; // height of all cells on this row, used when drawing the cells
@@ -708,18 +718,20 @@ struct bc_row : public base_code {
    std::string stroke, fill;
    bool vertical_repass = false;
 
-   bc_row() : base_code(SCODE::ROW) { }
+   bc_row() : entity(SCODE::ROW) { }
 };
 
-struct bc_row_end : public base_code {
-   bc_row_end() : base_code(SCODE::ROW_END) { }
+struct bc_row_end : public entity {
+   bc_row_end() : entity(SCODE::ROW_END) { }
 };
 
-struct bc_cell : public base_code {
+struct bc_cell : public entity {
    GuardedObject<objVectorViewport> viewport;
    GuardedObject<objVectorRectangle> rect_fill;
+   KEYVALUE args;                 // Cell attributes, intended for event hooks
+   std::vector<doc_segment> segments;
    RSTREAM *stream;               // Internally managed byte code content for the cell
-   LONG cell_id = 0;              // UID for the cell
+   CELL_ID cell_id = 0;           // UID for the cell
    LONG column = 0;               // Column number that the cell starts in
    LONG col_span = 1;             // Number of columns spanned by this cell (normally set to 1)
    LONG row_span = 1;             // Number of rows spanned by this cell
@@ -727,20 +739,21 @@ struct bc_cell : public base_code {
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
    DOUBLE width = 0, height = 0;  // Width and height of the cell
    DOUBLE stroke_width = 0;
-   std::string onclick;           // name of an onclick function
+   ui_hooks hooks;                // UI hooks defined by the client
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
-   std::vector<std::pair<std::string, std::string>> args;
-   std::vector<doc_segment> segments;
    std::string stroke;
    std::string fill;
    bool modified = false;         // Set to true when content in the cell has been modified
+   // NOTE: Update the copy constructor if modifying the field list.
+
+   void set_fill(const std::string);
 
    bc_cell(LONG pCellID, LONG pColumn);
    ~bc_cell();
    bc_cell(const bc_cell &Other);
 };
 
-struct bc_text : public base_code {
+struct bc_text : public entity {
    std::string text;
    std::vector<objVectorText *> vector_text;
    bool formatted = false;
@@ -751,7 +764,7 @@ struct bc_text : public base_code {
    bc_text(std::string pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; }
 };
 
-struct bc_use : public base_code {
+struct bc_use : public entity {
    std::string id; // Reference to a symbol registered in the Document's SVG object
    bool processed = false;
 
@@ -759,7 +772,7 @@ struct bc_use : public base_code {
    bc_use(std::string pID) : id(pID) { code = SCODE::USE; }
 };
 
-struct bc_xml : public base_code {
+struct bc_xml : public entity {
    OBJECTID object_id = 0;   // Reference to the object
    bool owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
    bc_xml() { code = SCODE::XML; }
@@ -833,10 +846,10 @@ struct doc_menu {
    LARGE m_show_time = 0; // Time of last acShow()
    LARGE m_hide_time = 0; // Time of last acHide()
    
-   void define_font(objFont *);
    objSurface * create(DOUBLE);
-   void toggle(objVectorViewport *);
    objSurface * get();
+   void define_font(objFont *);
+   void toggle(objVectorViewport *);
    void reposition(objVectorViewport *);
    void refresh();
 
@@ -851,25 +864,24 @@ struct doc_menu {
 
    void hide() {
       acHide(*m_surface);
-      m_hide_time = PreciseTime();
    }
 };
 
 //********************************************************************************************************************
 
-struct bc_button : public base_code, widget_mgr {
+struct bc_button : public entity, widget_mgr {
    bc_button() { code = SCODE::BUTTON; }
    GuardedObject<objVectorText> label_text;
    bool processed = false;
 };
 
-struct bc_checkbox : public base_code, widget_mgr {
+struct bc_checkbox : public entity, widget_mgr {
    bc_checkbox() { code = SCODE::CHECKBOX; }
    GuardedObject<objVectorText> label_text;
    bool processed = false;
 };
 
-struct bc_combobox : public base_code, widget_mgr {
+struct bc_combobox : public entity, widget_mgr {
    GuardedObject<objVectorText> label_text;
    GuardedObject<objVectorViewport> clip_vp;
    objVectorText *input;
@@ -883,7 +895,7 @@ struct bc_combobox : public base_code, widget_mgr {
    bc_combobox() : menu(&callback) { code = SCODE::COMBOBOX; }
 };
 
-struct bc_input : public base_code, widget_mgr {
+struct bc_input : public entity, widget_mgr {
    std::string value;
    GuardedObject<objVectorText> label_text;
    GuardedObject<objVectorViewport> clip_vp;
@@ -892,17 +904,19 @@ struct bc_input : public base_code, widget_mgr {
    bc_input() { code = SCODE::INPUT; }
 };
 
-struct bc_image : public base_code, widget_mgr {
+struct bc_image : public entity, widget_mgr {
    // Images inherit from widget graphics management since the rules are identical
    bc_image() { code = SCODE::IMAGE; }
 };
 
 //********************************************************************************************************************
 
-struct ui_widget {
-   std::variant<bc_checkbox *, bc_image *, bc_input *, bc_combobox *, bc_button *> widget;
-   bool hover = false;                   // True if the mouse pointer is hovering over the widget
+struct vp_to_entity {
+   std::variant<bc_cell *, bc_checkbox *, bc_image *, bc_input *, bc_combobox *, bc_button *> widget;
+   bool hover = false;                   // True if the mouse pointer is hovering over the entity
 };
+
+//********************************************************************************************************************
 
 struct ui_link {
    bc_link origin;                       // A copy of the original link information (stable pointers are unavailable)
@@ -929,7 +943,7 @@ using CODEVAR = std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row
       bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
       bc_font, bc_font_end, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>;
 
-using CODEMAP = std::unordered_map<ULONG, CODEVAR>;
+using CODEMAP = std::unordered_map<ULONG, CODEVAR>; // Pointer stability is required and guaranteed by unordered_map
 
 class RSTREAM {
 public:
@@ -959,11 +973,11 @@ public:
    template <class T> T & lookup(const stream_char Index);
    template <class T> T & lookup(const INDEX Index);
 
-   template <class T = base_code> T & insert(stream_char &, T &);
-   template <class T = base_code> T & emplace(stream_char &, T &);
-   template <class T = base_code> T & emplace(stream_char &);
+   template <class T = entity> T & insert(stream_char &, T &);
+   template <class T = entity> T & emplace(stream_char &, T &);
+   template <class T = entity> T & emplace(stream_char &);
 
-   inline INDEX find_cell(LONG);
+   inline INDEX find_cell(CELL_ID);
    inline INDEX find_editable_cell(std::string_view);
 };
 
@@ -982,18 +996,12 @@ class extDocument : public objDocument {
    FUNCTION EventCallback;
    std::unordered_map<std::string, std::string> Vars; // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
    std::unordered_map<std::string, std::string> Params; // Incoming parameters provided via the URI
-   std::string Path;               // Optional file to load on Init()
-   std::string PageName;           // Page name to load from the Path
-   std::string Bookmark;           // Bookmark name processed from the Path
-   std::string WorkingPath;        // String storage for the WorkingPath field
-   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
-   RSTREAM Stream;                 // Internal stream buffer
    std::map<ULONG, XMLTag *>   TemplateIndex;
    std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<ui_link>        Links;
-   std::unordered_map<OBJECTID, ui_widget> Widgets; // For UI matching viewport interactivity to widgets.
+   std::unordered_map<OBJECTID, vp_to_entity> VPToEntity; // Lookup table for VP -> StreamCode.
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
@@ -1002,9 +1010,15 @@ class extDocument : public objDocument {
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
+   RSTREAM Stream;             // Internal stream buffer
    stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
    stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    stream_char SelectIndex;    // The end of the selected text area, if text is selected.
+   std::string Path;           // Optional file to load on Init()
+   std::string PageName;       // Page name to load from the Path
+   std::string Bookmark;       // Bookmark name processed from the Path
+   std::string WorkingPath;    // String storage for the WorkingPath field
+   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
@@ -1012,7 +1026,7 @@ class extDocument : public objDocument {
    objScript *ClientScript;    // Allows the developer to define a custom default script.
    objScript *DefaultScript;
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
-   objVectorScene    *Scene; // A document specific scene is required to keep our resources away from the host
+   objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport
    DOUBLE FontSize;
    DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
@@ -1027,21 +1041,18 @@ class extDocument : public objDocument {
    LONG   TemplatesModified;  // For tracking modifications to Self->Templates (compared to Self->Templates->Modified)
    SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
    SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
-   TIMER  FlashTimer;         // For flashing the cursor
-   LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
+   TIMER    FlashTimer;       // For flashing the cursor
+   CELL_ID  ActiveEditCellID; // If editing is active, this refers to the ID of the cell being edited
    ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
    WORD   FocusIndex;         // Tab focus index
    WORD   Invisible;          // Incremented for sections within a hidden index
    UBYTE  Processing;         // If > 0, the page layout is being altered
-   UBYTE  State:3;
    bool   RefreshTemplates; // True if the template index requires refreshing.
    bool   RelPageWidth;     // Relative page width
    bool   UpdatingLayout;   // True if the page layout is in the process of being updated
-   bool   MouseInPage;      // True if the mouse cursor is in the page area
    bool   PageProcessed;    // True if the parsing of page content has been completed
    bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
    bool   HasFocus;         // True if the main viewport has the focus
-   bool   LMB;              // True if the LMB is depressed.
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
    std::vector<sorted_segment> & get_sorted_segments();
@@ -1069,7 +1080,7 @@ bc_cell::bc_cell(const bc_cell &Other) {
    x = Other.x, y = Other.y;
    width = Other.width, height = Other.height;
    stroke_width = Other.stroke_width;
-   onclick = Other.onclick;
+   hooks = Other.hooks;
    edit_def = Other.edit_def;
    args = Other.args;
    segments = Other.segments;

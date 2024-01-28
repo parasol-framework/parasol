@@ -63,9 +63,11 @@ static const DOUBLE MIN_LINE_HEIGHT = 0.001;
 static const DOUBLE MAX_LINE_HEIGHT = 10.0;
 static const DOUBLE MIN_LEADING     = 0;
 
-static ULONG glByteCodeID = 1;
+using BYTECODE = ULONG;
+using CELL_ID = ULONG;
+
+static BYTECODE glByteCodeID = 1;
 static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
-static UWORD glLinkID = 1; // Unique counter for links
 
 using namespace pf;
 
@@ -139,20 +141,15 @@ struct layout; // Pre-def
 
 static ERROR activate_cell_edit(extDocument *, LONG, stream_char);
 static ERROR add_document_class(void);
-static LONG  add_tabfocus(extDocument *, TT, LONG);
+static LONG  add_tabfocus(extDocument *, TT, BYTECODE);
 static void  advance_tabfocus(extDocument *, BYTE);
-static void  check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
-static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
-static void  check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
-static ERROR consume_input_events(objVector *, const InputEvent *);
 static void  deactivate_edit(extDocument *, bool);
-static void  deselect_text(extDocument *);
 static ERROR extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
 static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
-static LONG  find_tabfocus(extDocument *, TT, LONG);
+static LONG  find_tabfocus(extDocument *, TT, BYTECODE);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 inline std::string get_font_style(const FSO);
 static LONG  getutf8(CSTRING, LONG *);
@@ -171,10 +168,9 @@ static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
 static void  redraw(extDocument *, bool);
-static ERROR report_event(extDocument *, DEF, KEYVALUE *);
+static ERROR report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void  reset_cursor(extDocument *);
 static ERROR resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
-static ERROR resolve_font_pos(doc_segment &, DOUBLE, DOUBLE &, stream_char &);
 static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
@@ -287,7 +283,7 @@ static const std::array<std::string_view, LONG(SCODE::END)> strCodes = {
 };
 
 template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T Index) {
-   if (LONG(Stream[Index].code) < strCodes.size()) return strCodes[LONG(Stream[Index].code)];
+   if (Stream[Index].code < std::ssize(strCodes)) return strCodes[LONG(Stream[Index].code)];
    return strCodes[0];
 }
 
@@ -328,7 +324,7 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-inline INDEX RSTREAM::find_cell(LONG ID)
+inline INDEX RSTREAM::find_cell(CELL_ID ID)
 {
    for (INDEX i=0; i < INDEX(data.size()); i++) {
       if (data[i].code IS SCODE::CELL) {
@@ -386,6 +382,7 @@ inline void layout_doc_fast(extDocument *Self)
 #include "layout.cpp"
 #include "menu.cpp"
 #include "draw.cpp"
+#include "entities.cpp"
 
 //********************************************************************************************************************
 

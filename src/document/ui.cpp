@@ -3,11 +3,11 @@
 // Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is
 // presented.
 
-static ERROR combo_feedback(objVectorViewport *View, FM Event, OBJECTPTR EventObject, APTR Meta)
+static ERROR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR EventObject, APTR Meta)
 {
    auto Self = (extDocument *)CurrentContext();
-   ui_widget &widget = Self->Widgets[View->UID];
-   auto combo = std::get<bc_combobox *>(widget.widget);
+
+   auto combo = std::get<bc_combobox *>(Self->VPToEntity[Viewport->UID].widget);
 
    if (Event IS FM::LOST_FOCUS) {
       if (gfxGetUserFocus() IS combo->menu.m_surface->UID) {
@@ -21,7 +21,7 @@ static ERROR combo_feedback(objVectorViewport *View, FM Event, OBJECTPTR EventOb
       combo->last_good_input = combo->input->get<CSTRING>(FID_String);
    }
 
-   View->draw();
+   Viewport->draw();
    return ERR_Okay;
 }
 
@@ -257,7 +257,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
             if ((Self->Tabs[tab].type IS TT::LINK) and (Self->Tabs[tab].active)) {
                for (auto &link : Self->Links) {
-                  if (link.origin.id IS Self->Tabs[tab].ref) {
+                  if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[tab].ref)) {
                      link.exec(Self);
                      break;
                   }
@@ -404,7 +404,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
    // Set the focus index to the relevant TT::EDIT entry
 
    for (unsigned tab=0; tab < Self->Tabs.size(); tab++) {
-      if ((Self->Tabs[tab].type IS TT::EDIT) and (Self->Tabs[tab].ref IS cell.cell_id)) {
+      if ((Self->Tabs[tab].type IS TT::EDIT) and (std::get<CELL_ID>(Self->Tabs[tab].ref) IS cell.cell_id)) {
          Self->FocusIndex = tab;
          break;
       }
@@ -420,7 +420,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
       objScript *script;
       std::string function_name, argstring;
 
-      log.msg("Calling onenter callback function.");
+      log.msg("Calling on-enter callback function.");
 
       if (!extract_script(Self, edit.on_enter, &script, function_name, argstring)) {
          ScriptArg args[] = { { "ID", edit.name } };
@@ -495,35 +495,8 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 }
 
 //********************************************************************************************************************
-// Sends motion events for zones that the mouse pointer has departed.
-
-static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
-{
-   for (auto it = Self->MouseOverChain.begin(); it != Self->MouseOverChain.end(); ) {
-      if ((X < it->left) or (Y < it->top) or (X >= it->right) or (Y >= it->bottom)) {
-         // Pointer has left this zone
-
-         std::string function_name, argstring;
-         objScript *script;
-         if (!extract_script(Self, it->function, &script, function_name, argstring)) {
-            const ScriptArg args[] = {
-               { "Element", it->element_id },
-               { "Status",  0 },
-               { "Args",    argstring }
-            };
-
-            scExec(script, function_name.c_str(), args, ARRAYSIZE(args));
-         }
-
-         it = Self->MouseOverChain.erase(it);
-      }
-      else it++;
-   }
-}
-
-//********************************************************************************************************************
 // TODO: This code needs to utilise cell viewports for managing UI interactivity.
-
+#if 0
 static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
    pf::Log log(__FUNCTION__);
@@ -622,20 +595,9 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
       deactivate_edit(Self, true);
    }
 }
-
+#endif
 //********************************************************************************************************************
-
-static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
-{
-   if ((std::abs(X - Self->ClickX) > 3) or (std::abs(Y - Self->ClickY) > 3)) {
-      pf::Log log(__FUNCTION__);
-      log.trace("User click cancelled due to mouse shift.");
-      return;
-   }
-}
-
-//********************************************************************************************************************
-
+#if 0
 static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
    Self->MouseOverSegment = -1;
@@ -722,23 +684,23 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
       }
    }
 }
-
+#endif
 //********************************************************************************************************************
 // The text will be deselected, but the cursor and editing area will remain active.
-
+#if 0
 static void deselect_text(extDocument *Self)
 {
    if (Self->CursorIndex IS Self->SelectIndex) return; // Nothing to deselect
    Self->SelectIndex.reset();
    Self->Viewport->draw();
 }
-
+#endif
 //********************************************************************************************************************
 
-static LONG find_tabfocus(extDocument *Self, TT Type, LONG Reference)
+static LONG find_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 {
    for (unsigned i=0; i < Self->Tabs.size(); i++) {
-      if ((Self->Tabs[i].type IS Type) and (Reference IS Self->Tabs[i].ref)) return i;
+      if ((Self->Tabs[i].type IS Type) and (Reference IS std::get<BYTECODE>(Self->Tabs[i].ref))) return i;
    }
    return -1;
 }
@@ -746,7 +708,7 @@ static LONG find_tabfocus(extDocument *Self, TT Type, LONG Reference)
 //********************************************************************************************************************
 // This function is used in tags.c by the link and object insertion code.
 
-static LONG add_tabfocus(extDocument *Self, TT Type, LONG Reference)
+static LONG add_tabfocus(extDocument *Self, TT Type, BYTECODE Reference)
 {
    pf::Log log(__FUNCTION__);
 
@@ -754,7 +716,7 @@ static LONG add_tabfocus(extDocument *Self, TT Type, LONG Reference)
 
    if (Type IS TT::LINK) { // For TT::LINK types, check that the link isn't already registered
       for (unsigned i=0; i < Self->Tabs.size(); i++) {
-         if ((Self->Tabs[i].type IS TT::LINK) and (Self->Tabs[i].ref IS Reference)) {
+         if ((Self->Tabs[i].type IS TT::LINK) and (std::get<BYTECODE>(Self->Tabs[i].ref) IS Reference)) {
             return i;
          }
       }
@@ -766,7 +728,7 @@ static LONG add_tabfocus(extDocument *Self, TT Type, LONG Reference)
 }
 
 //********************************************************************************************************************
-// Input events received for hyperlinks.
+// Hook for receiving input events from hyperlink regions
 
 static ERROR link_callback(objVector *Vector, InputEvent *Event)
 {
@@ -791,21 +753,34 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
    std::string argstring, func_name;
 
    if ((Event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
-      if (!link->origin.on_motion.empty()) {
-         if (!extract_script(Self, link->origin.on_motion, &script, func_name, argstring)) {
-            const ScriptArg args[] = { { "Element", link->origin.id }, { "Status", 1 }, { "Args", argstring } };
+      if (!link->origin.hooks.on_motion.empty()) {
+         if (!extract_script(Self, link->origin.hooks.on_motion, &script, func_name, argstring)) {
+            const ScriptArg args[] = {
+               { "Element", link->origin.uid },
+               { "X", Event->X },
+               { "Y", Event->Y },
+               { "Args", argstring }
+            };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
    }
    else if (Event->Type IS JET::ENTERED_AREA) {
       link->hover = true;
-      if (!link->origin.on_motion.empty()) {
-         if (!extract_script(Self, link->origin.on_motion, &script, func_name, argstring)) {
-            const ScriptArg args[] = { { "Element", link->origin.id }, { "Status", 1 }, { "Args", argstring } };
+      if (!link->origin.hooks.on_crossing.empty()) {
+         if (!extract_script(Self, link->origin.hooks.on_crossing, &script, func_name, argstring)) {
+            const ScriptArg args[] = {
+               { "Element", link->origin.uid },
+               { "X", Event->X },
+               { "Y", Event->Y },
+               { "Args", argstring }
+            };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
+
+      // Change the fill of link text.  TODO: This should also be applied to SVG icons or anything
+      // that inherits fill styles
 
       for (auto cursor=link->cursor_start; cursor < link->cursor_end; cursor.next_code()) {
          if (link->stream[0][cursor.index].code IS SCODE::TEXT) {
@@ -818,12 +793,17 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
    }
    else if (Event->Type IS JET::LEFT_AREA) {
       link->hover = false;
-      if (!link->origin.on_motion.empty()) {
-         if (!extract_script(Self, link->origin.on_motion, &script, func_name, argstring)) {
-            const ScriptArg args[] = { { "Element", link->origin.id }, { "Status", 1 }, { "Args", argstring } };
+      if (!link->origin.hooks.on_crossing.empty()) {
+         if (!extract_script(Self, link->origin.hooks.on_crossing, &script, func_name, argstring)) {
+            const ScriptArg args[] = {
+               { "Element", link->origin.uid },
+               { "Args", argstring } };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
+
+      // Change the fill of link text.  TODO: This should also be applied to SVG icons or anything
+      // that inherits fill styles
 
       for (auto cursor=link->cursor_start; cursor < link->cursor_end; cursor.next_code()) {
          if (link->stream[0][cursor.index].code IS SCODE::TEXT) {
@@ -857,8 +837,9 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
       return;
    }
 
-   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, LONG(Self->Tabs.size()),
-      Index != -1 ? LONG(Self->Tabs[Index].type) : -1, Index != -1 ? Self->Tabs[Index].ref : -1, Self->HasFocus, Caller);
+   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s",
+      Index, LONG(std::ssize(Self->Tabs)), (Index != -1) ? LONG(Self->Tabs[Index].type) : -1,
+      (Index != -1) ? std::get<ULONG>(Self->Tabs[Index].ref) : -1, Self->HasFocus, Caller);
 
    if (Self->ActiveEditDef) deactivate_edit(Self, true);
 
@@ -881,16 +862,16 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    if (Self->Tabs[Index].type IS TT::EDIT) {
       acFocus(Self->Page);
 
-      if (auto cell_index = Self->Stream.find_cell(Self->Tabs[Self->FocusIndex].ref); cell_index >= 0) {
+      if (auto cell_index = Self->Stream.find_cell(std::get<CELL_ID>(Self->Tabs[Self->FocusIndex].ref)); cell_index >= 0) {
          activate_cell_edit(Self, cell_index, stream_char());
       }
    }
    else if (Self->Tabs[Index].type IS TT::VECTOR) {
       if (Self->HasFocus) {
-         CLASSID class_id = GetClassID(Self->Tabs[Index].ref);
-         OBJECTPTR input;
+         CLASSID class_id = GetClassID(std::get<OBJECTID>(Self->Tabs[Index].ref));
          if (class_id IS ID_VECTORTEXT) {
-            if (!AccessObject(Self->Tabs[Index].ref, 1000, &input)) {
+            OBJECTPTR input;
+            if (!AccessObject(std::get<OBJECTID>(Self->Tabs[Index].ref), 1000, &input)) {
                acFocus(input);
                //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
@@ -898,17 +879,17 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
                ReleaseObject(input);
             }
          }
-         else acFocus(Self->Tabs[Index].ref);
+         else acFocus(std::get<OBJECTID>(Self->Tabs[Index].ref));
       }
    }
    else if (Self->Tabs[Index].type IS TT::LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          for (unsigned i=0; i < Self->Links.size(); i++) {
             auto &link = Self->Links[i];
-            if (link.origin.id IS Self->Tabs[Index].ref) {
+            if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
                DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
-                  if (link.origin.id IS Self->Tabs[Index].ref) {
+                  if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
                      vecGetBoundary(*link.origin.path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
                   }
                }
@@ -988,7 +969,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
    OBJECTID currentfocus = gfxGetUserFocus();
    for (unsigned i=0; i < Self->Tabs.size(); i++) {
-      if (Self->Tabs[i].ref IS currentfocus) {
+      if (std::get<OBJECTID>(Self->Tabs[i].ref) IS currentfocus) {
          Self->FocusIndex = i;
          break;
       }
@@ -1035,19 +1016,6 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 }
 
 //********************************************************************************************************************
-// Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
-// automatically adjust in the background.
-
-static void calc_scroll(extDocument *Self) __attribute__((unused));
-static void calc_scroll(extDocument *Self)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.traceBranch("PageHeight: %d/%g, PageWidth: %g/%g, XPos: %g, YPos: %g",
-      Self->PageHeight, Self->VPHeight, Self->CalcWidth, Self->VPWidth, Self->XPosition, Self->YPosition);
-}
-
-//********************************************************************************************************************
 
 static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
 {
@@ -1088,15 +1056,104 @@ static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const Inp
 }
 
 //********************************************************************************************************************
+// Incoming events from cell viewports
+
+static ERROR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (!Self->VPToEntity.contains(Viewport->UID)) return ERR_Terminate;
+
+   auto cell = std::get<bc_cell *>(Self->VPToEntity[Viewport->UID].widget);
+
+   std::string func_name, s_args;
+   objScript *script;
+   for (; Event; Event = Event->Next) {
+      if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         if ((Self->EventMask & DEF::ON_CLICK) != DEF::NIL) {
+            if (report_event(Self, DEF::ON_CLICK, cell, &cell->args) IS ERR_Skip) continue;
+         }
+
+         if (!cell->hooks.on_click.empty()) {
+            if (!extract_script(Self, cell->hooks.on_click, &script, func_name, s_args)) {
+               const ScriptArg args[] = {
+                  { "Entity", cell->uid },
+                  { "Button", LONG(Event->Type) }, // JET::LMB etc
+                  { "State", Event->Value }, // 1 = Pressed
+                  { "X", Event->X },
+                  { "Y", Event->Y },
+                  { "Args", s_args }
+               };
+               scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            }
+         }
+      }
+      else if ((Event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+         if ((Self->EventMask & DEF::ON_MOTION) != DEF::NIL) {
+            if (report_event(Self, DEF::ON_MOTION, cell, &cell->args) IS ERR_Skip) continue;
+
+            if (!cell->hooks.on_motion.empty()) {
+               if (!extract_script(Self, cell->hooks.on_motion, &script, func_name, s_args)) {
+                  const ScriptArg args[] = {
+                     { "Entity", cell->uid },
+                     { "X", Event->X },
+                     { "Y", Event->Y },
+                     { "Args", s_args }
+                  };
+                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+               }
+            }
+         }
+      }
+      else if (Event->Type IS JET::ENTERED_AREA) {
+         if ((Self->EventMask & DEF::ON_CROSSING_IN) != DEF::NIL) {
+            if (report_event(Self, DEF::ON_CROSSING_IN, cell, &cell->args) IS ERR_Skip) continue;
+
+            if (!cell->hooks.on_crossing.empty()) {
+               if (!extract_script(Self, cell->hooks.on_crossing, &script, func_name, s_args)) {
+                  const ScriptArg args[] = {
+                     { "Entity", cell->uid },
+                     { "X", Event->X },
+                     { "Y", Event->Y },
+                     { "Args", s_args }
+                  };
+                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+               }
+            }
+         }
+      }
+      else if (Event->Type IS JET::LEFT_AREA) {
+         if ((Self->EventMask & DEF::ON_CROSSING_OUT) != DEF::NIL) {
+            if (report_event(Self, DEF::ON_CROSSING_OUT, cell, &cell->args) IS ERR_Skip) continue;
+
+            if (!cell->hooks.on_crossing.empty()) {
+               if (!extract_script(Self, cell->hooks.on_crossing, &script, func_name, s_args)) {
+                  const ScriptArg args[] = {
+                     { "Entity", cell->uid },
+                     { "X", Event->X },
+                     { "Y", Event->Y },
+                     { "Args", s_args }
+                  };
+                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+               }
+            }
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Incoming events from the button viewport
 
 static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Event)
 {
    auto Self = (extDocument *)CurrentContext();
 
-   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+   if (!Self->VPToEntity.contains(Viewport->UID)) return ERR_Terminate;
 
-   ui_widget &widget = Self->Widgets[Viewport->UID];
+   vp_to_entity &widget = Self->VPToEntity[Viewport->UID];
    auto button = std::get<bc_button *>(widget.widget);
 
    handle_widget_event(Self, *button, Event);
@@ -1122,13 +1179,11 @@ static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Ev
 
 static ERROR inputevent_dropdown(objVectorViewport *Viewport, const InputEvent *Event)
 {
-   pf::Log log;
    auto Self = (extDocument *)CurrentContext();
 
-   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+   if (!Self->VPToEntity.contains(Viewport->UID)) return ERR_Terminate;
 
-   ui_widget &widget = Self->Widgets[Viewport->UID];
-   auto &combo = *std::get<bc_combobox *>(widget.widget);
+   auto &combo = *std::get<bc_combobox *>(Self->VPToEntity[Viewport->UID].widget);
 
    handle_widget_event(Self, combo, Event);
 
@@ -1137,12 +1192,8 @@ static ERROR inputevent_dropdown(objVectorViewport *Viewport, const InputEvent *
          combo.menu.create(combo.width);
 
          if (Event->Type IS JET::LMB) {
-
-            if (Event->Value IS 1) {
-               combo.menu.toggle(*combo.viewport);
-            }
+            if (Event->Value) combo.menu.toggle(*combo.viewport);
          }
-
 
          Self->Viewport->draw();
       }
@@ -1158,10 +1209,9 @@ static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *
 {
    auto Self = (extDocument *)CurrentContext();
 
-   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+   if (!Self->VPToEntity.contains(Viewport->UID)) return ERR_Terminate;
 
-   ui_widget &widget = Self->Widgets[Viewport->UID];
-   auto checkbox = std::get<bc_checkbox *>(widget.widget);
+   auto checkbox = std::get<bc_checkbox *>(Self->VPToEntity[Viewport->UID].widget);
 
    handle_widget_event(Self, *checkbox, Event);
 
@@ -1180,3 +1230,74 @@ static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *
 
    return ERR_Okay;
 }
+
+//********************************************************************************************************************
+// Using only a stream index, this function will determine the x coordinate of the character at that index.  This is
+// slower than resolve_font_pos(), because the segment has to be resolved by this function.
+
+static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE &CharX)
+{
+   pf::Log log("resolve_fontx");
+
+   log.branch("Index: %d", Char.index);
+
+   bc_font *style = find_style(Self->Stream, Char);
+   auto font = style ? style->get_font() : glFonts[0].font;
+   if (!font) return log.warning(ERR_Search);
+
+   // Find the segment linked to this character.  This is so that we can derive an x coordinate for the character
+   // string.
+
+   if (SEGINDEX segment = find_segment(Self->Segments, Char, true); segment >= 0) {
+      auto i = Self->Segments[segment].start;
+      while ((i <= Self->Segments[segment].stop) and (i < Char)) {
+         if (Self->Stream[i.index].code IS SCODE::TEXT) {
+            CharX = fntStringWidth(font, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
+            return ERR_Okay;
+         }
+         i.next_code();
+      }
+   }
+
+   log.warning("Failed to find a segment for index %d.", Char.index);
+   return ERR_Search;
+}
+
+//********************************************************************************************************************
+// This is the old version of page input management and not currently in use.  Instead we rely on the VectorScene
+// performing input management for us.
+/*
+static ERROR consume_input_events(objVector *Vector, const InputEvent *Events)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   for (auto input=Events; input; input=input->Next) {
+      if ((input->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+         for (auto scan=input->Next; (scan) and ((scan->Flags & JTYPE::MOVEMENT) != JTYPE::NIL); scan=scan->Next) {
+            input = scan;
+         }
+
+         if (input->OverID IS Self->Page->UID) Self->MouseInPage = true;
+         else Self->MouseInPage = false;
+
+
+         check_mouse_pos(Self, input->X, input->Y);
+
+         // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
+      }
+
+      if (input->Type IS JET::LMB) {
+         if (input->Value > 0) {
+            Self->LMB = true;
+            check_mouse_click(Self, input->X, input->Y);
+         }
+         else {
+            Self->LMB = false;
+            check_mouse_release(Self, input->X, input->Y);
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+*/

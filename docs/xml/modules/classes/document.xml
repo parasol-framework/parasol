@@ -632,6 +632,11 @@
 
     <constants lookup="DEF" comment="Event flags for selectively receiving events from the Document object.">
       <const name="LINK_ACTIVATED">The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.</const>
+      <const name="ON_CLICK">The user has interacted with an element that has an on-click definition.</const>
+      <const name="ON_CROSSING">Synonym for ON_CROSSING_IN | ON_CROSSING_OUT</const>
+      <const name="ON_CROSSING_IN">The mouse pointer has crossed into an element.</const>
+      <const name="ON_CROSSING_OUT">The mouse pointer has crossed out of an element.</const>
+      <const name="ON_MOTION">The user has triggered a motion event in an element that supports motion monitoring.</const>
       <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
     </constants>
 

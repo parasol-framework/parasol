@@ -4,7 +4,7 @@ The parsing code converts XML data to a serial byte stream, after which the XML 
 of the original XML content is not maintained.  After parsing, the stream will be ready for presentation via the
 layout code elsewhere in this code base.
 
-The stream consists of byte codes represented by the base_code class.  Each type of code is represented by a C++
+The stream consists of byte codes represented by the entity class.  Each type of code is represented by a C++
 class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph,
 hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
 
@@ -255,14 +255,14 @@ void parser::process_page(objXML *pXML)
          if (Self->Error) m_stream->data.resize(orig_size);
       }
    }
-
+/*
    if ((!Self->Error) and (Self->MouseInPage)) {
       DOUBLE x, y;
       if (!gfxGetRelativeCursorPos(Self->Page->UID, &x, &y)) {
          check_mouse_pos(Self, x, y);
       }
    }
-
+*/
    if (!Self->PageProcessed) {
       for (auto &trigger : Self->Triggers[LONG(DRT::PAGE_PROCESSED)]) {
          if (trigger.isScript()) {
@@ -1850,7 +1850,7 @@ void parser::tag_combobox(XMLTag &Tag)
          else if (!StrMatch("option", scan.name())) {
             std::string value;
 
-            if (scan.hasContent()) {
+            if (!scan.Children.empty()) {
                STRING xml_ser;
                if (!xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser)) {
                   value = xml_ser;
@@ -2356,7 +2356,6 @@ void parser::tag_link(XMLTag &Tag)
 
    bc_link link;
    bool select = false;
-   std::string hint, on_motion;
    link.fill = Self->LinkFill;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -2368,6 +2367,12 @@ void parser::tag_link(XMLTag &Tag)
             }
             break;
 
+         case HASH_hint:
+            [[fallthrough]];
+         case HASH_title: // 'title' is the http equivalent of our 'hint'
+            link.hint = Tag.Attribs[i].Value;
+            break;
+
          case HASH_on_click:
             if (link.type IS LINK::NIL) { // Function to execute on click
                link.ref = Tag.Attribs[i].Value;
@@ -2375,15 +2380,12 @@ void parser::tag_link(XMLTag &Tag)
             }
             break;
 
-         case HASH_hint:
-            [[fallthrough]];
-         case HASH_title: // 'title' is the http equivalent of our 'hint'
-            log.msg("No support for <a> hints yet.");
-            hint = Tag.Attribs[i].Value;
+         case HASH_on_motion: // Function to execute on cursor motion
+            link.hooks.on_motion = Tag.Attribs[i].Value;
             break;
 
-         case HASH_on_motion: // Function to execute on pointer motion
-            on_motion = Tag.Attribs[i].Value;
+         case HASH_on_crossing: // Function to execute on cursor crossing in/out
+            link.hooks.on_crossing = Tag.Attribs[i].Value;
             break;
 
          case HASH_fill: link.fill = Tag.Attribs[i].Value; break;
@@ -2397,20 +2399,7 @@ void parser::tag_link(XMLTag &Tag)
       }
    }
 
-   std::ostringstream buffer;
-
    if ((link.type != LINK::NIL) or (!Tag.Children.empty())) {
-      link.id = glLinkID++;
-
-      auto pos = sizeof(link);
-      if (link.type IS LINK::FUNCTION) buffer << link.ref << '\0';
-      else buffer << link.ref << '\0';
-
-      if (!on_motion.empty()) {
-         link.on_motion = pos;
-         buffer << on_motion << '\0';
-      }
-
       // Font modifications are saved with the link as opposed to inserting a new bc_font as it's a lot cleaner
       // this way - especially for run-time modifications.
 
@@ -2426,7 +2415,7 @@ void parser::tag_link(XMLTag &Tag)
 
       // Links are added to the list of tab locations
 
-      auto i = add_tabfocus(Self, TT::LINK, stream_link.id);
+      auto i = add_tabfocus(Self, TT::LINK, stream_link.uid);
       if (select) Self->FocusIndex = i;
    }
    else parse_tags(Tag.Children);
@@ -3564,24 +3553,24 @@ void parser::tag_table(XMLTag &Tag)
             if (start.stroke_width < 1) start.stroke_width = 1;
             break;
 
-         case HASH_spacing: // Spacing between the cells
+         case HASH_spacing: // Spacing between the cells (H & V)
             start.cell_v_spacing = StrToInt(value);
             if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
             else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
             start.cell_h_spacing = start.cell_v_spacing;
             break;
 
-         case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'hspacing') on the sides
+         case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'h-spacing') on the sides
             start.collapsed = true;
             break;
 
-         case HASH_v_spacing: // Spacing between the cells
+         case HASH_v_spacing: // Spacing between the cells (V)
             start.cell_v_spacing = StrToInt(value);
             if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
             else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
             break;
 
-         case HASH_h_spacing: // Spacing between the cells
+         case HASH_h_spacing: // Spacing between the cells (H)
             start.cell_h_spacing = StrToInt(value);
             if (start.cell_h_spacing < 0) start.cell_h_spacing = 0;
             else if (start.cell_h_spacing > 200) start.cell_h_spacing = 200;
@@ -3734,7 +3723,7 @@ void parser::tag_cell(XMLTag &Tag)
             else if (cell.row_span > 1000) cell.row_span = 1000;
             break;
 
-         case HASH_edit: {
+         case HASH_edit:
             if (edit_recurse) {
                log.warning("Edit cells cannot be embedded recursively.");
                Self->Error = ERR_Recursion;
@@ -3746,9 +3735,7 @@ void parser::tag_cell(XMLTag &Tag)
                log.warning("Edit definition '%s' does not exist.", Tag.Attribs[i].Value.c_str());
                cell.edit_def.clear();
             }
-
             break;
-         }
 
          case HASH_stroke:
             cell.stroke = Tag.Attribs[i].Value;
@@ -3766,15 +3753,29 @@ void parser::tag_cell(XMLTag &Tag)
 
          case HASH_no_wrap: new_style.options |= FSO::NO_WRAP; break;
 
-         case HASH_on_click: cell.onclick = Tag.Attribs[i].Value; break;
+         // NOTE: For the following events, if the client is embedding a document with the intention of using
+         // event hooks, they can opt to define an empty string so that the relevant input_events flag is set.
+
+         case HASH_on_click:
+            cell.hooks.events |= JTYPE::BUTTON;
+            cell.hooks.on_click = Tag.Attribs[i].Value;
+            break;
+
+         case HASH_on_motion:
+            cell.hooks.events |= JTYPE::MOVEMENT;
+            cell.hooks.on_motion = Tag.Attribs[i].Value;
+            break;
+
+         case HASH_on_crossing:
+            cell.hooks.events |= JTYPE::FEEDBACK;
+            cell.hooks.on_crossing = Tag.Attribs[i].Value;
+            break;
 
          default:
             if (Tag.Attribs[i].Name.starts_with('@')) {
-               cell.args.emplace_back(std::make_pair(Tag.Attribs[i].Name.substr(1), Tag.Attribs[i].Value));
+               cell.args[Tag.Attribs[i].Name.substr(1)] = Tag.Attribs[i].Value;
             }
-            else if (Tag.Attribs[i].Name.starts_with('_')) {
-               cell.args.emplace_back(std::make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
-            }
+            else cell.args[Tag.Attribs[i].Name] = Tag.Attribs[i].Value;
       }
    }
 

@@ -94,6 +94,7 @@
 #define HASH_middle 0x0dc5ebd4UL
 #define HASH_name 0x7c9b0c46UL
 #define HASH_no_wrap 0x1da3d7c9UL
+#define HASH_on_crossing 0xa53975f7UL
 #define HASH_on_change 0x6ed76db5UL
 #define HASH_on_click 0x6ff95575UL
 #define HASH_on_enter 0x701ece4dUL

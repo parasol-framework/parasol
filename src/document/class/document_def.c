@@ -2,7 +2,12 @@
 
 static const struct FieldDef clDocumentEventMask[] = {
    { "Path", 0x00000001 },
-   { "LinkActivated", 0x00000002 },
+   { "OnClick", 0x00000002 },
+   { "OnMotion", 0x00000004 },
+   { "OnCrossingIn", 0x00000008 },
+   { "OnCrossingOut", 0x00000010 },
+   { "OnCrossing", 0x00000018 },
+   { "LinkActivated", 0x00000020 },
    { NULL, 0 }
 };
 

@@ -28,7 +28,7 @@ static ERROR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE
 }
 
 //********************************************************************************************************************
-// Hook for input events over the slider 
+// Hook for input events over the slider
 
 static ERROR slider_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
 {
@@ -182,7 +182,7 @@ void scroll_mgr::recalc_sliders_from_view()
 {
    auto v_width  = m_view->get<DOUBLE>(FID_Width);
    auto v_height = m_view->get<DOUBLE>(FID_Height);
-   
+
    auto p_width  = m_page->get<DOUBLE>(FID_Width);
    auto p_height = m_page->get<DOUBLE>(FID_Height);
 
@@ -191,14 +191,14 @@ void scroll_mgr::recalc_sliders_from_view()
 
       if (p_height > v_height) {
          if (!m_vbar.m_bar_vp) m_vbar.init(this, 'V', m_view);
-      
+
          acMoveToFront(m_vbar.m_bar_vp);
 
-         auto s = m_vbar.calc_slider(v_height, p_height, 
-            m_vbar.m_slider_host->get<DOUBLE>(FID_Height), 
+         auto s = m_vbar.calc_slider(v_height, p_height,
+            m_vbar.m_slider_host->get<DOUBLE>(FID_Height),
             -m_page->get<DOUBLE>(FID_Y));
 
-         if ((s.offset != m_vbar.m_slider_pos.offset) or 
+         if ((s.offset != m_vbar.m_slider_pos.offset) or
              (s.length != m_vbar.m_slider_pos.length)) {
             m_vbar.m_slider_pos = s;
             m_vbar.m_slider_vp->setFields(fl::Y(s.offset), fl::Height(s.length));
@@ -266,7 +266,7 @@ void scroll_mgr::scroll_bar::init(scroll_mgr *Manager, char Direction, objVector
       fl::Width(m_breadth), fl::Height(SCALE(1.0))
    });
 
-   // Slider graphic 
+   // Slider graphic
 
    m_slider_rect = objVectorRectangle::create::global({
       fl::Owner(m_slider_vp->UID),

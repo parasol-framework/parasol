@@ -117,42 +117,6 @@ static std::string write_calc(DOUBLE Value, WORD Precision)
 }
 
 //********************************************************************************************************************
-
-static ERROR consume_input_events(objVector *Vector, const InputEvent *Events)
-{
-   auto Self = (extDocument *)CurrentContext();
-
-   for (auto input=Events; input; input=input->Next) {
-      if ((input->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
-         for (auto scan=input->Next; (scan) and ((scan->Flags & JTYPE::MOVEMENT) != JTYPE::NIL); scan=scan->Next) {
-            input = scan;
-         }
-
-         if (input->OverID IS Self->Page->UID) Self->MouseInPage = true;
-         else Self->MouseInPage = false;
-
-
-         check_mouse_pos(Self, input->X, input->Y);
-
-         // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-      }
-
-      if (input->Type IS JET::LMB) {
-         if (input->Value > 0) {
-            Self->LMB = true;
-            check_mouse_click(Self, input->X, input->Y);
-         }
-         else {
-            Self->LMB = false;
-            check_mouse_release(Self, input->X, input->Y);
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
 static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
@@ -515,7 +479,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
          for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
       }
    }
-   
+
    if ((Self->View) and (Self->Page)) {
       // Client generated objects can appear in the view if <svg placement="background"/> was used.
       pf::vector<ChildEntry> list;
@@ -669,7 +633,7 @@ static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 
 //********************************************************************************************************************
 // For a given line segment, convert a horizontal coordinate to the corresponding character index and its coordinate.
-
+/*
 static ERROR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, stream_char &Char)
 {
    pf::Log log(__FUNCTION__);
@@ -694,39 +658,7 @@ static ERROR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, str
   log.trace("Failed to convert coordinate %d to a font-relative cursor position.", X);
    return ERR_Failed;
 }
-
-//********************************************************************************************************************
-// Using only a stream index, this function will determine the x coordinate of the character at that index.  This is
-// slower than resolve_font_pos(), because the segment has to be resolved by this function.
-
-static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE &CharX)
-{
-   pf::Log log("resolve_fontx");
-
-   log.branch("Index: %d", Char.index);
-
-   bc_font *style = find_style(Self->Stream, Char);
-   auto font = style ? style->get_font() : glFonts[0].font;
-   if (!font) return log.warning(ERR_Search);
-
-   // Find the segment linked to this character.  This is so that we can derive an x coordinate for the character
-   // string.
-
-   if (SEGINDEX segment = find_segment(Self->Segments, Char, true); segment >= 0) {
-      auto i = Self->Segments[segment].start;
-      while ((i <= Self->Segments[segment].stop) and (i < Char)) {
-         if (Self->Stream[i.index].code IS SCODE::TEXT) {
-            CharX = fntStringWidth(font, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
-            return ERR_Okay;
-         }
-         i.next_code();
-      }
-   }
-
-   log.warning("Failed to find a segment for index %d.", Char.index);
-   return ERR_Search;
-}
-
+*/
 //********************************************************************************************************************
 // For a given character in the stream, find its representative line segment.
 
@@ -935,7 +867,7 @@ void ui_link::exec(extDocument *Self)
          else params.emplace(origin.args[i].first, origin.args[i].second);
       }
 
-      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &params);
+      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &origin, &params);
       if (result IS ERR_Skip) goto end;
    }
 
@@ -1036,36 +968,40 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 }
 
 //********************************************************************************************************************
+// Generic function for reporting events that relate to entities.
 
-static ERROR report_event(extDocument *Self, DEF Event, KEYVALUE *EventData)
+static ERROR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *EventData)
 {
    pf::Log log(__FUNCTION__);
    ERROR result = ERR_Okay;
 
    if ((Event & Self->EventMask) != DEF::NIL) {
-      log.branch("Reporting event $%.8x", LONG(Event));
+      log.traceBranch("Event $%x -> Entity %d", LONG(Event), Entity->uid);
 
       if (Self->EventCallback.isC()) {
-         auto routine = (ERROR (*)(extDocument *, DEF, KEYVALUE *, APTR))Self->EventCallback.StdC.Routine;
+         auto routine = (ERROR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.StdC.Routine;
          pf::SwitchContext context(Self->EventCallback.StdC.Context);
-         result = routine(Self, Event, EventData, Self->EventCallback.StdC.Meta);
+         result = routine(Self, Event, EventData, Entity, Self->EventCallback.StdC.Meta);
       }
       else if (Self->EventCallback.isScript()) {
          if (auto script = Self->EventCallback.Script.Script) {
             if (EventData) {
-               ScriptArg args[3] = {
-                  ScriptArg("Document", Self, FD_OBJECTPTR),
-                  ScriptArg("EventMask", LONG(Event)),
-                  ScriptArg("KeyValue:Parameters", EventData, FD_STRUCT)
+               ScriptArg args[] = {
+                  { "Document", Self, FD_OBJECTPTR },
+                  { "EventMask", LONG(Event) },
+                  { "KeyValue:Parameters", EventData, FD_STRUCT },
+                  { "Entity", Entity->uid }
                };
-               scCallback(script, Self->EventCallback.Script.ProcedureID, args, 3, &result);
+               scCallback(script, Self->EventCallback.Script.ProcedureID, args, std::ssize(args), &result);
             }
             else {
-               ScriptArg args[2] = {
-                  ScriptArg("Document", Self, FD_OBJECTPTR),
-                  ScriptArg("EventMask", LONG(Event))
+               ScriptArg args[] = {
+                  { "Document", Self, FD_OBJECTPTR },
+                  { "EventMask", LONG(Event) },
+                  { "KeyValue", LONG(0) },
+                  { "Entity", Entity->uid }
                };
-               scCallback(script, Self->EventCallback.Script.ProcedureID, args, 2, &result);
+               scCallback(script, Self->EventCallback.Script.ProcedureID, args, std::ssize(args), &result);
             }
          }
       }

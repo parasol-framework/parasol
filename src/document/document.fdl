@@ -10,14 +10,20 @@ module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, f
   loadFile(glPath .. 'common.fdl')
 
   const("RIPL", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
-    VERSION = "\"20231123\""
+    VERSION = "\"20240126\""
   })
 
   enum("TT", { type="char", start=1 }, "VECTOR", "LINK", "EDIT")
 
   flags("DEF", { comment="Event flags for selectively receiving events from the Document object." },
     "PATH: The source file path has changed.  Useful for detecting when the user has left the page.",
-    "LINK_ACTIVATED: The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.")
+    "ON_CLICK: The user has interacted with an element that has an on-click definition.",
+    "ON_MOTION: The user has triggered a motion event in an element that supports motion monitoring.",
+    "ON_CROSSING_IN: The mouse pointer has crossed into an element.",
+    "ON_CROSSING_OUT: The mouse pointer has crossed out of an element.",
+    "LINK_ACTIVATED: The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.",
+    { ON_CROSSING = "ON_CROSSING_IN|ON_CROSSING_OUT" }
+  )
 
   enum("DRT", { type="int", start=0, comment="Internal trigger codes" },
     "BEFORE_LAYOUT",
@@ -89,6 +95,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, f
 namespace fl {
    using namespace pf;
 
+constexpr FieldValue EventCallback(const FUNCTION &Value) { return FieldValue(FID_EventCallback, &Value); }
 constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }
 constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, LONG(Value)); }
 constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, LONG(Value)); }

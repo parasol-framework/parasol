@@ -258,7 +258,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
    }
    else Self->Error = ERR_AllocMemory;
 
-   report_event(Self, DEF::PATH, NULL);
+   report_event(Self, DEF::PATH, 0, NULL);
 
    return Self->Error;
 }

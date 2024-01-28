@@ -1295,6 +1295,11 @@ static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
          Self->FGFill = true;
       }
       else Self->FGFill = false;
+
+      // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
+
+      if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+
       return ERR_Okay;
    }
    else return error;
@@ -1328,11 +1333,15 @@ static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
       if (Elements >= 3) Self->Fill[0].Colour.Blue  = Value[2];
       if (Elements >= 4) Self->Fill[0].Colour.Alpha = Value[3];
       else Self->Fill[0].Colour.Alpha = 1;
+
+      // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
+
+      if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
    }
    else Self->Fill[0].Colour.Alpha = 0;
 
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
-
+   
    return ERR_Okay;
 }
 
@@ -1358,6 +1367,8 @@ static ERROR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
 
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->FillOpacity = Value;
+
+      if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
       return ERR_Okay;
    }
    else return log.warning(ERR_OutOfRange);

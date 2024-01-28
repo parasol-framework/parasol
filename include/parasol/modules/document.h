@@ -17,7 +17,7 @@ class objDocument;
 
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
-#define RIPL_VERSION "20231123"
+#define RIPL_VERSION "20240126"
 
 enum class TT : BYTE {
    NIL = 0,
@@ -31,7 +31,12 @@ enum class TT : BYTE {
 enum class DEF : ULONG {
    NIL = 0,
    PATH = 0x00000001,
-   LINK_ACTIVATED = 0x00000002,
+   ON_CLICK = 0x00000002,
+   ON_MOTION = 0x00000004,
+   ON_CROSSING_IN = 0x00000008,
+   ON_CROSSING_OUT = 0x00000010,
+   ON_CROSSING = 0x00000018,
+   LINK_ACTIVATED = 0x00000020,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(DEF)
@@ -337,6 +342,7 @@ class objDocument : public BaseClass {
 namespace fl {
    using namespace pf;
 
+constexpr FieldValue EventCallback(const FUNCTION &Value) { return FieldValue(FID_EventCallback, &Value); }
 constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }
 constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, LONG(Value)); }
 constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, LONG(Value)); }

@@ -1492,6 +1492,7 @@ struct Edges {
 
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 typedef std::map<std::string, std::string> KEYVALUE;
+typedef std::map<std::string_view, std::string_view> CONST_KEYVALUE;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
