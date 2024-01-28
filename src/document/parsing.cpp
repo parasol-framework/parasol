@@ -1934,19 +1934,22 @@ void parser::tag_input(XMLTag &Tag)
    bc_input &widget = m_stream->emplace<bc_input>(m_index);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label) widget.label = value;
-      else if (hash IS HASH_value) widget.value = value;
-      else if (hash IS HASH_fill) widget.fill = value;
-      else if (hash IS HASH_label_pos) {
-         if (!StrMatch("left", value)) widget.label_pos = 0;
-         else if (!StrMatch("right", value)) widget.label_pos = 1;
+      switch (StrHash(Tag.Attribs[i].Name)) {
+         case HASH_label:     widget.label = value; break;
+         case HASH_value:     widget.value = value; break;
+         case HASH_fill:      widget.fill = value; break;
+         case HASH_width:     read_unit(value.c_str(), widget.width, widget.width_pct); break;
+         case HASH_font_fill: widget.font_fill = value; break;
+         case HASH_name:      widget.name = value; break;
+         case HASH_label_pos:
+            if (!StrMatch("left", value)) widget.label_pos = 0;
+            else if (!StrMatch("right", value)) widget.label_pos = 1;
+            break;
+         default: 
+            log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str()); 
+            break;
       }
-      else if (hash IS HASH_width) read_unit(value.c_str(), widget.width, widget.width_pct);
-      else if (hash IS HASH_font_fill) widget.font_fill = value;
-      else if (hash IS HASH_name) widget.name = value;
-      else log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
    if (widget.fill.empty()) {
@@ -3523,22 +3526,13 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_width:
-            table.min_width = StrToInt(value);
-            table.width_pct = false;
-            if (value.find_first_of('%') != std::string::npos) {
-               table.width_pct = true;
-            }
-            if (table.min_width < 1) table.min_width = 1;
-            else if (table.min_width > 10000) table.min_width = 10000;
+            table.min_width = std::clamp(StrToFloat(value), 1.0, 10000.0);
+            table.width_pct = (value.find_first_of('%') != std::string::npos);
             break;
 
          case HASH_height:
-            table.min_height = StrToInt(value);
-            if (value.find_first_of('%') != std::string::npos) {
-               table.height_pct = true;
-            }
-            if (table.min_height < 1) table.min_height = 1;
-            else if (table.min_height > 10000) table.min_height = 10000;
+            table.min_height = std::clamp(StrToFloat(value), 1.0, 10000.0);
+            table.height_pct = (value.find_first_of('%') != std::string::npos);
             break;
 
          case HASH_fill:
@@ -3551,9 +3545,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_spacing: // Spacing between the cells (H & V)
-            table.cell_v_spacing = StrToInt(value);
-            if (table.cell_v_spacing < 0) table.cell_v_spacing = 0;
-            else if (table.cell_v_spacing > 200) table.cell_v_spacing = 200;
+            table.cell_v_spacing = std::clamp(StrToFloat(value), 0.0, 200.0);
             table.cell_h_spacing = table.cell_v_spacing;
             break;
 
@@ -3562,15 +3554,11 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_v_spacing: // Spacing between the cells (V)
-            table.cell_v_spacing = StrToInt(value);
-            if (table.cell_v_spacing < 0) table.cell_v_spacing = 0;
-            else if (table.cell_v_spacing > 200) table.cell_v_spacing = 200;
+            table.cell_v_spacing = std::clamp(StrToFloat(value), 0.0, 200.0);
             break;
 
          case HASH_h_spacing: // Spacing between the cells (H)
-            table.cell_h_spacing = StrToInt(value);
-            if (table.cell_h_spacing < 0) table.cell_h_spacing = 0;
-            else if (table.cell_h_spacing > 200) table.cell_h_spacing = 200;
+            table.cell_h_spacing = std::clamp(StrToFloat(value), 0.0, 200.0);
             break;
 
          case HASH_align: {
@@ -3588,13 +3576,9 @@ void parser::tag_table(XMLTag &Tag)
             table.cell_padding.parse(value);
             break;
 
-         case HASH_stroke_width: {
-            auto j = StrToFloat(value);
-            if (j < 0.0) j = 0.0;
-            else if (j > 255.0) j = 255.0;
-            table.stroke_width = j;
+         case HASH_stroke_width:
+            table.stroke_width = std::clamp(StrToFloat(value), 0.0, 255.0);
             break;
-         }
       }
    }
 
@@ -3646,9 +3630,7 @@ void parser::tag_row(XMLTag &Tag)
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("height", Tag.Attribs[i].Name)) {
-         escrow.min_height = StrToInt(Tag.Attribs[i].Value);
-         if (escrow.min_height < 0) escrow.min_height = 0;
-         else if (escrow.min_height > 4000) escrow.min_height = 4000;
+         escrow.min_height = std::clamp(StrToFloat(Tag.Attribs[i].Value), 0.0, 4000.0);
       }
       else if (!StrMatch("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
       else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
@@ -3707,15 +3689,11 @@ void parser::tag_cell(XMLTag &Tag)
          }
 
          case HASH_col_span:
-            cell.col_span = StrToInt(Tag.Attribs[i].Value);
-            if (cell.col_span < 1) cell.col_span = 1;
-            else if (cell.col_span > 1000) cell.col_span = 1000;
+            cell.col_span = std::clamp(LONG(StrToInt(Tag.Attribs[i].Value)), 1, 1000);
             break;
 
          case HASH_row_span:
-            cell.row_span = StrToInt(Tag.Attribs[i].Value);
-            if (cell.row_span < 1) cell.row_span = 1;
-            else if (cell.row_span > 1000) cell.row_span = 1000;
+            cell.row_span = std::clamp(LONG(StrToInt(Tag.Attribs[i].Value)), 1, 1000);
             break;
 
          case HASH_edit:
