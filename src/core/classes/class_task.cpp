@@ -229,7 +229,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
       auto task = (extTask *)Task;
       if (task->OutputCallback.isC()) {
          auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->OutputCallback.StdC.Routine;
-         routine(task, buffer, len, task->OutputCallback.Meta);
+         routine(task, buffer, len, task->OutputCallback.StdC.Meta);
       }
       else if (task->OutputCallback.isScript()) {
          const ScriptArg args[] = {
@@ -259,7 +259,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
       if (task->ErrorCallback.Type) {
          if (task->ErrorCallback.isC()) {
             auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->ErrorCallback.StdC.Routine;
-            routine(task, buffer, len, task->ErrorCallback.Meta);
+            routine(task, buffer, len, task->ErrorCallback.StdC.Meta);
          }
          else if (task->ErrorCallback.isScript()) {
             if (auto script = task->ErrorCallback.Script.Script) {
