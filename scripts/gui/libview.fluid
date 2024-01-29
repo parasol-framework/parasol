@@ -618,7 +618,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
                vw.scene.surface.mtScheduleRedraw()
             end
-         elseif (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+         elseif (ev.type == JET_ABS_XY) then
             if vw.activeZone and vw.activeZone.clickMove then
                vw.activeZone.clickMove(ev)
             end

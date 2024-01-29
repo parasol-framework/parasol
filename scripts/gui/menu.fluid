@@ -512,7 +512,7 @@ gui.menu = function(Options)
                   self.surface.acHide()
                end
             end
-         elseif (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+         elseif (ev.type == JET_ABS_XY) then
             local highlightFound = false
             if (ev.overID == self.surface.id) then
                for _, item in pairs(self.items) do

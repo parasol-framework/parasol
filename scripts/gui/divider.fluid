@@ -187,7 +187,7 @@ gui.divider = function(Options)
    check(self._dividerVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
       local ev = Events
       while ev do
-         if (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+         if (ev.type == JET_ABS_XY) then
             if self._buttonHeld then
                if (self._orientation == 'h') then
                   arrangeAll(self, ev.absX - self._vp.absX)
