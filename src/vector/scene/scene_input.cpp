@@ -54,9 +54,14 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y
 
 //********************************************************************************************************************
 
-static void send_input_events(extVector *Vector, InputEvent *Event)
+static void send_input_events(extVector *Vector, InputEvent *Event, bool Propagate = false)
 {
-   if (!Vector->InputSubscriptions) return;
+   if (!Vector->InputSubscriptions) {
+      if ((Propagate) and (Vector->Parent) and (Vector->Parent->Class->BaseClassID IS ID_VECTOR)) {
+         send_input_events((extVector *)Vector->Parent, Event, true);
+      }
+      return;
+   }
 
    bool consumed = false;
    for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {
@@ -90,7 +95,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
 
    if ((!consumed) and (Event->Type IS JET::WHEEL)) {
       if ((Vector->Parent) and (Vector->Parent->Class->BaseClassID IS ID_VECTOR)) {
-         send_input_events((extVector *)Vector->Parent, Event);
+         send_input_events((extVector *)Vector->Parent, Event, true);
       }
    }
 }
