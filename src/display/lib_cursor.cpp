@@ -202,12 +202,12 @@ ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
 -FUNCTION-
 GetCursorPos: Returns the coordinates of the UI pointer.
 
-This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen
-based then the coordinates will reflect the last position that a touch event occurred.
+This function will return the current coordinates of the mouse cursor.  If the device is touch-screen based then the 
+coordinates will reflect the last position that a touch event occurred.
 
 -INPUT-
-&double X: 32-bit variable that will store the pointer's horizontal coordinate.
-&double Y: 32-bit variable that will store the pointer's vertical coordinate.
+&double X: Variable that will store the pointer's horizontal coordinate.
+&double Y: Variable that will store the pointer's vertical coordinate.
 
 -ERRORS-
 Okay
@@ -244,8 +244,8 @@ The X and Y parameters will not be set if a failure occurs.
 
 -INPUT-
 oid Surface: Unique ID of the surface that the coordinates need to be relative to.
-&double X: 32-bit variable that will store the pointer's horizontal coordinate.
-&double Y: 32-bit variable that will store the pointer's vertical coordinate.
+&double X: Variable that will store the pointer's horizontal coordinate.
+&double Y: Variable that will store the pointer's vertical coordinate.
 
 -ERRORS-
 Okay:

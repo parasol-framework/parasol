@@ -53,6 +53,7 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y
 }
 
 //********************************************************************************************************************
+// Send input event(s) to client subscribers
 
 static void send_input_events(extVector *Vector, InputEvent *Event, bool Propagate = false)
 {
@@ -178,7 +179,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
    auto cursor = PTC::NIL;
 
-   // Distribute input events to any vectors that have subscribed.
+   // Distribute input events to vectors that have subscriptions.
    // Be mindful that client code can potentially destroy the scene's surface at any time.
    //
    // NOTE: The ActiveVector refers to the vector that received the most recent input movement event.  It
@@ -217,12 +218,12 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             pf::ScopedObjectLock<extVector> lk_vector(target);
             if (lk_vector.granted()) {
                InputEvent event = *input;
-               event.Next = NULL;
+               event.Next   = NULL;
                event.OverID = Self->ActiveVector;
-               event.AbsX = input->X; // Absolute coordinates are not translated.
-               event.AbsY = input->Y;
-               event.X    = Self->ActiveVectorX;
-               event.Y    = Self->ActiveVectorY;
+               event.AbsX   = input->X; // Absolute coordinates are not translated.
+               event.AbsY   = input->Y;
+               event.X      = Self->ActiveVectorX;
+               event.Y      = Self->ActiveVectorY;
                send_input_events(lk_vector.obj, &event);
 
                if ((input->Type IS JET::LMB) and ((input->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
@@ -341,12 +342,12 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                invert.transform(&tx, &ty);
 
                InputEvent event = *input;
-               event.Next = NULL;
+               event.Next   = NULL;
                event.OverID = vector->UID;
-               event.AbsX = input->X; // Absolute coordinates are not translated.
-               event.AbsY = input->Y;
-               event.X    = tx;
-               event.Y    = ty;
+               event.AbsX   = input->X; // Absolute coordinates are not translated.
+               event.AbsY   = input->Y;
+               event.X      = tx;
+               event.Y      = ty;
                send_input_events(vector, &event);
 
                if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {

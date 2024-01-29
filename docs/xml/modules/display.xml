@@ -299,11 +299,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Returns the coordinates of the UI pointer.</comment>
     <prototype>ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
-      <param type="DOUBLE *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
-      <param type="DOUBLE *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+      <param type="DOUBLE *" name="X">Variable that will store the pointer's horizontal coordinate.</param>
+      <param type="DOUBLE *" name="Y">Variable that will store the pointer's vertical coordinate.</param>
     </input>
     <description>
-<p>This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen based then the coordinates will reflect the last position that a touch event occurred.</p>
+<p>This function will return the current coordinates of the mouse cursor.  If the device is touch-screen based then the coordinates will reflect the last position that a touch event occurred.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -375,8 +375,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <prototype>ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Unique ID of the surface that the coordinates need to be relative to.</param>
-      <param type="DOUBLE *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
-      <param type="DOUBLE *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+      <param type="DOUBLE *" name="X">Variable that will store the pointer's horizontal coordinate.</param>
+      <param type="DOUBLE *" name="Y">Variable that will store the pointer's vertical coordinate.</param>
     </input>
     <description>
 <p>This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the surface object that is specified in the Surface argument.</p>

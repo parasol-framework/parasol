@@ -383,6 +383,9 @@ void gen_vector_path(extVector *Vector)
    else log.warning("Target vector is not a shape.");
 
    send_feedback(Vector, FM::PATH_CHANGED);
+
+   // Changes to the path could mean that the mouse cursor needs to be refreshed.
+   ((extVectorScene *)Vector->Scene)->RefreshCursor = true;
 }
 
 //********************************************************************************************************************

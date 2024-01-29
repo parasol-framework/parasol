@@ -237,6 +237,35 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 
    process_resize_msgs(Self);
 
+   // Send a dummy input event to the mouse cursor to ensure that the movement of underlying
+   // vectors generates the necessary crossing events.
+
+   if (Self->RefreshCursor) {
+      DOUBLE absx, absy;
+      LONG s_x, s_y;
+
+      Self->RefreshCursor = false;
+      gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
+      gfxGetCursorPos(&absx, &absy);
+   
+      const InputEvent event = {
+         .Next        = NULL,
+         .Value       = 0,
+         .Timestamp   = 0,
+         .RecipientID = Self->SurfaceID,
+         .OverID      = Self->SurfaceID,
+         .AbsX        = absx,
+         .AbsY        = absy,
+         .X           = absx - s_x,
+         .Y           = absy - s_y,
+         .DeviceID    = 0,
+         .Type        = JET::ABS_XY,
+         .Flags       = JTYPE::MOVEMENT,
+         .Mask        = JTYPE::MOVEMENT
+      };
+      scene_input_events(&event, 0);
+   }
+
    // Allocate the adaptor, or if the existing adaptor doesn't match the Bitmap pixel type, reallocate it.
 
    VMAdaptor *adaptor;

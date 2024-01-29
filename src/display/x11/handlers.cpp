@@ -726,19 +726,16 @@ void process_movement(Window Window, LONG X, LONG Y)
       // Refer to the handler code in the Display class to see how the HostX and HostY fields are updated from afar.
 
       struct acDataFeed feed;
-      struct dcDeviceInput input[2];
+      struct dcDeviceInput input;
       feed.Object   = NULL;
       feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
-      input[0].Type      = JET::ABS_X;
+      input[0].Type      = JET::ABS_XY;
       input[0].Flags     = JTYPE::NIL;
-      input[0].Value     = X;
+      input[0].Values[0] = X;
+      input[0].Values[1] = Y;
       input[0].Timestamp = PreciseTime();
-      input[1].Type      = JET::ABS_Y;
-      input[1].Flags     = JTYPE::NIL;
-      input[1].Value     = Y;
-      input[1].Timestamp = input[0].Timestamp;
       Action(AC_DataFeed, pointer, &feed);
 
       ReleaseObject(pointer);

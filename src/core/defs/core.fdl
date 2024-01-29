@@ -77,8 +77,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "PIPE: Enable the output pipe to the launched process so that it can read data.")
 
   hash("AHASH", "0x%s",
-    "ACTIVATE",     "ACCESSOBJECT",  "CLEAR",     "FREEWARNING", "COPYDATA",
-    "DATAFEED",     "DEACTIVATE",    "DRAW",      "FLUSH",       "FOCUS",        "FREE",         "RELEASEOBJECT",
+    "ACTIVATE",     "CLEAR",         "FREEWARNING", "COPYDATA",
+    "DATAFEED",     "DEACTIVATE",    "DRAW",      "FLUSH",       "FOCUS",        "FREE",
     "GETVAR",       "DRAGDROP",      "HIDE",      "INIT",        "LOCK",         "LOSTFOCUS",    "MOVE",
     "MOVETOBACK",   "MOVETOFRONT",   "NEWCHILD",  "NEWOWNER",    "NEWOBJECT",    "REDO",         "QUERY",
     "READ",         "RENAME",        "RESET",     "RESIZE",      "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",

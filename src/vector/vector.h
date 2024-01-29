@@ -354,6 +354,7 @@ class extVectorScene : public objVectorScene {
    LONG InputHandle;
    PTC Cursor; // Current cursor image
    UBYTE AdaptorType;
+   bool RefreshCursor;
 };
 
 //********************************************************************************************************************

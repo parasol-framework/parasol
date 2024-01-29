@@ -348,49 +348,43 @@ DEFINE_ENUM_FLAG_OPERATORS(JTYPE)
 
 enum class JET : LONG {
    NIL = 0,
-   DIGITAL_X = 1,
-   DIGITAL_Y = 2,
-   BUTTON_1 = 3,
-   LMB = 3,
-   BUTTON_2 = 4,
-   RMB = 4,
-   BUTTON_3 = 5,
-   MMB = 5,
-   BUTTON_4 = 6,
-   BUTTON_5 = 7,
-   BUTTON_6 = 8,
-   BUTTON_7 = 9,
-   BUTTON_8 = 10,
-   BUTTON_9 = 11,
-   BUTTON_10 = 12,
-   TRIGGER_LEFT = 13,
-   TRIGGER_RIGHT = 14,
-   BUTTON_START = 15,
-   BUTTON_SELECT = 16,
-   LEFT_BUMPER_1 = 17,
-   LEFT_BUMPER_2 = 18,
-   RIGHT_BUMPER_1 = 19,
-   RIGHT_BUMPER_2 = 20,
-   ANALOG_X = 21,
-   ANALOG_Y = 22,
-   ANALOG_Z = 23,
-   ANALOG2_X = 24,
-   ANALOG2_Y = 25,
-   ANALOG2_Z = 26,
-   WHEEL = 27,
-   WHEEL_TILT = 28,
-   PEN_TILT_VERTICAL = 29,
-   PEN_TILT_HORIZONTAL = 30,
-   ABS_X = 31,
-   ABS_Y = 32,
-   CROSSED_IN = 33,
-   CROSSED_OUT = 34,
-   PRESSURE = 35,
-   DEVICE_TILT_X = 36,
-   DEVICE_TILT_Y = 37,
-   DEVICE_TILT_Z = 38,
-   DISPLAY_EDGE = 39,
-   END = 40,
+   DIGITAL_XY = 1,
+   BUTTON_1 = 2,
+   LMB = 2,
+   BUTTON_2 = 3,
+   RMB = 3,
+   BUTTON_3 = 4,
+   MMB = 4,
+   BUTTON_4 = 5,
+   BUTTON_5 = 6,
+   BUTTON_6 = 7,
+   BUTTON_7 = 8,
+   BUTTON_8 = 9,
+   BUTTON_9 = 10,
+   BUTTON_10 = 11,
+   TRIGGER_LEFT = 12,
+   TRIGGER_RIGHT = 13,
+   BUTTON_START = 14,
+   BUTTON_SELECT = 15,
+   LEFT_BUMPER_1 = 16,
+   LEFT_BUMPER_2 = 17,
+   RIGHT_BUMPER_1 = 18,
+   RIGHT_BUMPER_2 = 19,
+   ANALOG_XY = 20,
+   ANALOG_Z = 21,
+   ANALOG2_XY = 22,
+   ANALOG2_Z = 23,
+   WHEEL = 24,
+   WHEEL_TILT = 25,
+   PEN_TILT_XY = 26,
+   ABS_XY = 27,
+   CROSSED_IN = 28,
+   CROSSED_OUT = 29,
+   PRESSURE = 30,
+   DEVICE_TILT_XY = 31,
+   DEVICE_TILT_Z = 32,
+   DISPLAY_EDGE = 33,
+   END = 34,
 };
 
 // Field descriptors.
@@ -1336,11 +1330,11 @@ struct dcKeyEntry {
 };
 
 struct dcDeviceInput {
-   DOUBLE   Value;     // The value associated with the Type
-   LARGE    Timestamp; // PreciseTime() of the recorded input
-   OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-   JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
-   JET      Type;      // JET constant
+   DOUBLE   Values[3];  // The value(s) associated with the Type
+   LARGE    Timestamp;  // PreciseTime() of the recorded input
+   OBJECTID DeviceID;   // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
+   JTYPE    Flags;      // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
+   JET      Type;       // JET constant
 };
 
 struct DateTime {
@@ -1430,7 +1424,6 @@ struct Edges {
 };
 
 #define AHASH_ACTIVATE 0xdbaf4876
-#define AHASH_ACCESSOBJECT 0xbcf3b98e
 #define AHASH_CLEAR 0x0f3b6d8c
 #define AHASH_FREEWARNING 0xb903ddbd
 #define AHASH_COPYDATA 0x47b0d1fa
@@ -1440,7 +1433,6 @@ struct Edges {
 #define AHASH_FLUSH 0x0f71fd67
 #define AHASH_FOCUS 0x0f735645
 #define AHASH_FREE 0x7c96f087
-#define AHASH_RELEASEOBJECT 0x9e22661d
 #define AHASH_GETVAR 0xff87a74e
 #define AHASH_DRAGDROP 0xf69e8a58
 #define AHASH_HIDE 0x7c97e2df

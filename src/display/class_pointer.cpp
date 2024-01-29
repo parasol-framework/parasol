@@ -164,7 +164,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    LONG buttonflag, bi;
 
    ClearMemory(&userinput, sizeof(userinput));
-   userinput.Value     = Input->Value;
+   userinput.Value     = Input->Values[0];
    userinput.Timestamp = Input->Timestamp;
    userinput.Type      = Input->Type;
    userinput.Flags     = Input->Flags;
@@ -319,7 +319,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
    msg.Type        = JET::WHEEL;
    msg.Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT | Input->Flags;
    msg.Mask        = JTYPE::EXT_MOVEMENT;
-   msg.Value       = Input->Value;
+   msg.Value       = Input->Values[0];
    msg.Timestamp   = Input->Timestamp;
    msg.DeviceID    = Input->DeviceID;
    msg.RecipientID = Self->OverObjectID;
@@ -337,7 +337,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
    // Convert wheel mouse usage into scroll messages
 
    DOUBLE scrollrate = 0;
-   DOUBLE wheel = Input->Value;
+   DOUBLE wheel = Input->Values[0];
    if (wheel > 0) {
       for (LONG i=1; i <= wheel; i++) scrollrate += Self->WheelSpeed * i;
    }
@@ -348,7 +348,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 
    struct acScroll scroll = {
       .DeltaX = 0,
-      .DeltaY = scrollrate / 100, //(wheel * Self->WheelSpeed) / 100
+      .DeltaY = scrollrate * 0.01, //(wheel * Self->WheelSpeed) / 100
       .DeltaZ = 0
    };
    ActionMsg(AC_Scroll, Self->OverObjectID, &scroll);
@@ -362,7 +362,8 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    InputEvent userinput;
 
    ClearMemory(&userinput, sizeof(userinput));
-   userinput.Value     = Input->Value;
+   userinput.X         = Input->Values[0];
+   userinput.Y         = Input->Values[1];
    userinput.Timestamp = Input->Timestamp;
    userinput.Type      = Input->Type;
    userinput.Flags     = Input->Flags;
@@ -372,21 +373,24 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
    // All X/Y movement passed through the pointer object must be expressed in absolute coordinates.
 
-   if ((userinput.Type IS JET::DIGITAL_X) or (userinput.Type IS JET::ANALOG_X)) {
-      userinput.Type  = JET::ABS_X;
-      userinput.Value += Self->X;
-   }
-   else if ((userinput.Type IS JET::DIGITAL_Y) or (userinput.Type IS JET::ANALOG_Y)) {
-      userinput.Type = JET::ABS_Y;
-      userinput.Value += Self->Y;
+   if ((userinput.Type IS JET::DIGITAL_XY) or (userinput.Type IS JET::ANALOG_XY)) {
+      userinput.Type = JET::ABS_XY;
+      userinput.X += Self->X;
+      userinput.Y += Self->Y;
    }
 
    bool moved = false, underlying_change = false;
    DOUBLE current_x = Self->X;
    DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
-      case JET::ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
-      case JET::ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
+      case JET::ABS_XY: 
+         current_x = userinput.X; 
+         if (current_x != Self->X) moved = true;
+
+         current_y = userinput.Y; 
+         if (current_y != Self->Y) moved = true; 
+         break;
+
       default: break;
    }
 

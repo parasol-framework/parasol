@@ -54,22 +54,18 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
       gfxReleasePointer(pointer);
 
-      struct dcDeviceInput joy[2];
-      joy[0].Type  = JET::ABS_X;
+      struct dcDeviceInput joy[1];
+      joy[0].Type  = JET::ABS_XY;
       joy[0].Flags = JTYPE::NIL;
-      joy[0].Value = AbsX;
+      joy[0].Values[0] = AbsX;
+      joy[0].Values[1] = AbsY;
       joy[0].Timestamp = PreciseTime();
-
-      joy[1].Type  = JET::ABS_Y;
-      joy[1].Flags = JTYPE::NIL;
-      joy[1].Value = AbsY;
-      joy[1].Timestamp = joy[0].Timestamp;
 
       struct acDataFeed feed = {
          .Object   = NULL,
          .Datatype = DATA::DEVICE_INPUT,
          .Buffer   = &joy,
-         .Size     = sizeof(struct dcDeviceInput) * 2
+         .Size     = sizeof(struct dcDeviceInput)
       };
       ActionMsg(AC_DataFeed, glPointerID, &feed);
    }
@@ -86,7 +82,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
    struct dcDeviceInput joy;
    joy.Type      = JET::WHEEL;
    joy.Flags     = JTYPE::NIL;
-   joy.Value     = Wheel;
+   joy.Values[0] = Wheel;
    joy.Timestamp = PreciseTime();
 
    struct acDataFeed feed;
@@ -123,7 +119,7 @@ void MsgButtonPress(LONG button, LONG State)
       if (button & 0x0001) {
          joy[i].Type  = JET::BUTTON_1;
          joy[i].Flags = JTYPE::NIL;
-         joy[i].Value = State;
+         joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
@@ -131,7 +127,7 @@ void MsgButtonPress(LONG button, LONG State)
       if (button & 0x0002) {
          joy[i].Type  = JET::BUTTON_2;
          joy[i].Flags = JTYPE::NIL;
-         joy[i].Value = State;
+         joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
@@ -139,7 +135,7 @@ void MsgButtonPress(LONG button, LONG State)
       if (button & 0x0004) {
          joy[i].Type  = JET::BUTTON_3;
          joy[i].Flags = JTYPE::NIL;
-         joy[i].Value = State;
+         joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
       }

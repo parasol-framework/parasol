@@ -1134,7 +1134,7 @@ static ERROR VECTOR_SET_Cursor(extVector *Self, PTC Value)
          .X           = x,
          .Y           = y,
          .DeviceID    = 0,
-         .Type        = JET::ABS_X,
+         .Type        = JET::ABS_XY,
          .Flags       = JTYPE::MOVEMENT,
          .Mask        = JTYPE::MOVEMENT
       };
@@ -1341,7 +1341,7 @@ static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
    else Self->Fill[0].Colour.Alpha = 0;
 
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
-   
+
    return ERR_Okay;
 }
 
