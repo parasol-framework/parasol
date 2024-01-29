@@ -331,7 +331,7 @@ enum class JTYPE : ULONG {
    SECONDARY = 0x00000001,
    ANCHORED = 0x00000002,
    DRAGGED = 0x00000004,
-   FEEDBACK = 0x00000008,
+   CROSSING = 0x00000008,
    DIGITAL = 0x00000010,
    ANALOG = 0x00000020,
    EXT_MOVEMENT = 0x00000040,
@@ -383,8 +383,8 @@ enum class JET : LONG {
    PEN_TILT_HORIZONTAL = 30,
    ABS_X = 31,
    ABS_Y = 32,
-   ENTERED_AREA = 33,
-   LEFT_AREA = 34,
+   CROSSED_INTO = 33,
+   CROSSED_OUT = 34,
    PRESSURE = 35,
    DEVICE_TILT_X = 36,
    DEVICE_TILT_Y = 37,
@@ -2873,7 +2873,7 @@ struct BaseClass { // Must be 64-bit aligned
                if (target != this) target->unlock();
 
                // NB: NoSupport is considered a 'soft' error that does not warrant failure.
-               
+
                if ((error) and (error != ERR_NoSupport)) {
                   log.warning("%s.%s: %s", target->className(), field->Name, GetErrorMsg(error));
                   unlock();

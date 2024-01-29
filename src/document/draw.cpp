@@ -481,7 +481,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      }));
 
                      if (button.viewport->Scene->SurfaceID) {
-                        vecSubscribeInput(*button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_button));
+                        vecSubscribeInput(*button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_button));
                      }
                   }
 
@@ -546,7 +546,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.processed) {
                   checkbox.processed = true;
                   if (checkbox.viewport->Scene->SurfaceID) {
-                     vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_checkbox));
+                     vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_checkbox));
                   }
                }
                Self->VPToEntity.emplace(checkbox.viewport->UID, vp_to_entity { &checkbox });
@@ -611,7 +611,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Width(combo.full_height()) // Button width matches the widget height
                   });
 
-                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(inputevent_dropdown));
+                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_dropdown));
 
                   vecSubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, FUNCTION(combo_feedback));
 

@@ -1453,7 +1453,7 @@ extend_page:
                }));
 
                if (link.path->Scene->SurfaceID) {
-                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::FEEDBACK, FUNCTION(link_callback));
+                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(link_callback));
                }
             }
             break;

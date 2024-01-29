@@ -33,13 +33,13 @@ static ERROR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE
 static ERROR slider_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
 {
    for (auto msg=Events; msg; msg=msg->Next) {
-      if (msg->Type IS JET::ENTERED_AREA) {
+      if (msg->Type IS JET::CROSSED_INTO) {
          if (Viewport IS Scroll->m_vbar.m_slider_vp) {
             Scroll->m_vbar.m_slider_rect->setFields(fl::Fill(glSliderHighlight));
             Scroll->m_vbar.m_slider_vp->draw();
          }
       }
-      else if (msg->Type IS JET::LEFT_AREA) {
+      else if (msg->Type IS JET::CROSSED_OUT) {
          if (Viewport IS Scroll->m_vbar.m_slider_vp) {
             Scroll->m_vbar.m_slider_rect->setFields(fl::Fill(glSliderColour));
             Scroll->m_vbar.m_slider_vp->draw();
@@ -279,7 +279,7 @@ void scroll_mgr::scroll_bar::init(scroll_mgr *Manager, char Direction, objVector
 
    vecSubscribeInput(m_slider_host, JTYPE::BUTTON|JTYPE::REPEATED, FUNCTION(bkgd_input, Manager));
 
-   vecSubscribeInput(m_slider_vp, JTYPE::FEEDBACK, FUNCTION(slider_input, Manager));
+   vecSubscribeInput(m_slider_vp, JTYPE::CROSSING, FUNCTION(slider_input, Manager));
 }
 
 //********************************************************************************************************************

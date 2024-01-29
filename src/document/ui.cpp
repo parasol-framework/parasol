@@ -765,7 +765,7 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
          }
       }
    }
-   else if (Event->Type IS JET::ENTERED_AREA) {
+   else if (Event->Type IS JET::CROSSED_INTO) {
       link->hover = true;
       if (!link->origin.hooks.on_crossing.empty()) {
          if (!extract_script(Self, link->origin.hooks.on_crossing, &script, func_name, argstring)) {
@@ -791,7 +791,7 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
 
       Self->Viewport->draw();
    }
-   else if (Event->Type IS JET::LEFT_AREA) {
+   else if (Event->Type IS JET::CROSSED_OUT) {
       link->hover = false;
       if (!link->origin.hooks.on_crossing.empty()) {
          if (!extract_script(Self, link->origin.hooks.on_crossing, &script, func_name, argstring)) {
@@ -1044,11 +1044,11 @@ static void reset_cursor(extDocument *Self)
 static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const InputEvent *Event)
 {
    for (; Event; Event = Event->Next) {
-      if (Event->Type IS JET::ENTERED_AREA) {
+      if (Event->Type IS JET::CROSSED_INTO) {
          //Widget.hover = true;
          //Self->Viewport->draw();
       }
-      else if (Event->Type IS JET::LEFT_AREA) {
+      else if (Event->Type IS JET::CROSSED_OUT) {
          //Widget.hover = false;
          //Self->Viewport->draw();
       }
@@ -1105,7 +1105,7 @@ static ERROR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Even
             }
          }
       }
-      else if (Event->Type IS JET::ENTERED_AREA) {
+      else if (Event->Type IS JET::CROSSED_INTO) {
          if ((Self->EventMask & DEF::ON_CROSSING_IN) != DEF::NIL) {
             if (report_event(Self, DEF::ON_CROSSING_IN, cell, &cell->args) IS ERR_Skip) continue;
 
@@ -1122,7 +1122,7 @@ static ERROR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Even
             }
          }
       }
-      else if (Event->Type IS JET::LEFT_AREA) {
+      else if (Event->Type IS JET::CROSSED_OUT) {
          if ((Self->EventMask & DEF::ON_CROSSING_OUT) != DEF::NIL) {
             if (report_event(Self, DEF::ON_CROSSING_OUT, cell, &cell->args) IS ERR_Skip) continue;
 

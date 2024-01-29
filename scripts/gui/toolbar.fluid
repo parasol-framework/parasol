@@ -478,9 +478,9 @@ gui.toolbar = function(HostVP, Options)
    local function inputFeedback(Viewport, Events) -- Internal input handler
       local ev = Events
       while ev do
-         if (ev.type == JET_ENTERED_AREA) then
+         if (ev.type == JET_CROSSED_INTO) then
 
-         elseif (ev.type == JET_LEFT_AREA) then
+         elseif (ev.type == JET_CROSSED_OUT) then
             resetTipTimer()
             if self._current then
                hoverUpdate(nil)
@@ -622,7 +622,7 @@ gui.toolbar = function(HostVP, Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), inputFeedback)
+   self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), inputFeedback)
 
    local fill = 'rgb(0,0,0,128)'
    if (Options.theme != 'light') then

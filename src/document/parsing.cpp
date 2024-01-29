@@ -1430,7 +1430,7 @@ void parser::tag_advance(XMLTag &Tag)
       }
    }
 
-   if (adv.x < 0) adv.x =  0;
+   if (adv.x < 0) adv.x = 0;
    else if (adv.x > 4000) adv.x = 4000;
 
    if (adv.y < 0) adv.y = 0;
@@ -1499,9 +1499,7 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_page_width:
             [[fallthrough]];
          case HASH_width:
-            Self->PageWidth = StrToFloat(Tag.Attribs[i].Value);
-            if (Self->PageWidth < 1) Self->PageWidth = 1;
-            else if (Self->PageWidth > 6000) Self->PageWidth = 6000;
+            Self->PageWidth = std::clamp(StrToFloat(Tag.Attribs[i].Value), 1.0, 6000.0);
 
             if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
             else Self->RelPageWidth = false;
@@ -3740,7 +3738,7 @@ void parser::tag_cell(XMLTag &Tag)
             break;
 
          case HASH_on_crossing:
-            cell.hooks.events |= JTYPE::FEEDBACK;
+            cell.hooks.events |= JTYPE::CROSSING;
             cell.hooks.on_crossing = Tag.Attribs[i].Value;
             break;
 

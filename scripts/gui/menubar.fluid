@@ -337,12 +337,12 @@ gui.menubar = function(HostVP, Options)
          self.viewport.acDraw()
       end
 
-      self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Viewport, Events)
+      self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), function(Viewport, Events)
          local ev = Events
          while ev do
-            if (ev.type == JET_ENTERED_AREA) then
+            if (ev.type == JET_CROSSED_INTO) then
 
-            elseif (ev.type == JET_LEFT_AREA) then
+            elseif (ev.type == JET_CROSSED_OUT) then
                if self._currentItem then
                   hoverUpdate(nil)
                end

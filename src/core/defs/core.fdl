@@ -1705,7 +1705,7 @@ struct BaseClass { // Must be 64-bit aligned
                if (target != this) target->unlock();
 
                // NB: NoSupport is considered a 'soft' error that does not warrant failure.
-               
+
                if ((error) and (error != ERR_NoSupport)) {
                   log.warning("%s.%s: %s", target->className(), field->Name, GetErrorMsg(error));
                   unlock();
