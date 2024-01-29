@@ -110,7 +110,7 @@ The FindField() function checks if an object supports a specified field by scann
 If a matching field is declared, its descriptor is returned.  For example:
 
 <pre>
-if (auto field = FindField(Screen, FID_Width, NULL)) {
+if (auto field = FindField(Display, FID_Width, NULL)) {
    log.msg("The field name is \"%s\".", field-&gt;Name);
 }
 </pre>

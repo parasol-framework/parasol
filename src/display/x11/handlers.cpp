@@ -723,7 +723,7 @@ void process_movement(Window Window, LONG X, LONG Y)
          pointer->set(FID_Surface, GetOwnerID(display_id)); // Alter the surface of the pointer so that it refers to the correct root window
       }
 
-      // Refer to the handler code in the Screen class to see how the HostX and HostY fields are updated from afar.
+      // Refer to the handler code in the Display class to see how the HostX and HostY fields are updated from afar.
 
       struct acDataFeed feed;
       struct dcDeviceInput input[2];

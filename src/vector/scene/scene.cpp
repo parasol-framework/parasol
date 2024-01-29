@@ -250,8 +250,8 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 
       adaptor = new (std::nothrow) VMAdaptor;
       if (!adaptor) return log.warning(ERR_AllocMemory);
-      adaptor->Scene = Self;
-      Self->Adaptor = adaptor;
+      adaptor->Scene    = Self;
+      Self->Adaptor     = adaptor;
       Self->AdaptorType = type;
    }
    else adaptor = static_cast<VMAdaptor *> (Self->Adaptor);
@@ -364,8 +364,8 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;
-            surface->get(FID_Width, &Self->PageWidth);
-            surface->get(FID_Height, &Self->PageHeight);
+            Self->PageWidth = surface->get<LONG>(FID_Width);
+            Self->PageWidth = surface->get<LONG>(FID_Height);
          }
 
          SubscribeAction(*surface, AC_Redimension, FUNCTION(notify_redimension));

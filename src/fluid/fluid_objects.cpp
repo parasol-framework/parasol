@@ -338,7 +338,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
 }
 
 /*********************************************************************************************************************
-** Usage: object = obj.new("Screen", { field1 = value1, field2 = value2, ...})
+** Usage: object = obj.new("Display", { field1 = value1, field2 = value2, ...})
 **
 ** If fields are provided in the second argument, the object will be initialised automatically.  If no field list is
 ** provided, InitObject() must be used to initialise the object.
