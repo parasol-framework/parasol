@@ -115,7 +115,7 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET::CROSSED_INTO,
+      .Type        = JET::CROSSED_IN,
       .Flags       = JTYPE::CROSSING,
       .Mask        = JTYPE::CROSSING
    };
@@ -209,7 +209,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else if (input->Type IS JET::CROSSED_INTO);
+      else if (input->Type IS JET::CROSSED_IN);
       else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 

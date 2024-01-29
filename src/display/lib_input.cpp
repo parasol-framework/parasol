@@ -65,7 +65,7 @@ ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
 All processable events are referenced in the InputEvent structure in the Events parameter.
 
-JET constants are as follows and take note of `CROSSED_INTO` and `CROSSED_OUT` which are software generated and not
+JET constants are as follows and take note of `CROSSED_IN` and `CROSSED_OUT` which are software generated and not
 a device event:
 
 <types lookup="JET"/>

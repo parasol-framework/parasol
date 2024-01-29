@@ -765,7 +765,7 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
          }
       }
    }
-   else if (Event->Type IS JET::CROSSED_INTO) {
+   else if (Event->Type IS JET::CROSSED_IN) {
       link->hover = true;
       if (!link->origin.hooks.on_crossing.empty()) {
          if (!extract_script(Self, link->origin.hooks.on_crossing, &script, func_name, argstring)) {
@@ -1044,7 +1044,7 @@ static void reset_cursor(extDocument *Self)
 static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const InputEvent *Event)
 {
    for (; Event; Event = Event->Next) {
-      if (Event->Type IS JET::CROSSED_INTO) {
+      if (Event->Type IS JET::CROSSED_IN) {
          //Widget.hover = true;
          //Self->Viewport->draw();
       }
@@ -1105,7 +1105,7 @@ static ERROR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Even
             }
          }
       }
-      else if (Event->Type IS JET::CROSSED_INTO) {
+      else if (Event->Type IS JET::CROSSED_IN) {
          if ((Self->EventMask & DEF::ON_CROSSING_IN) != DEF::NIL) {
             if (report_event(Self, DEF::ON_CROSSING_IN, cell, &cell->args) IS ERR_Skip) continue;
 

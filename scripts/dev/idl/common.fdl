@@ -226,7 +226,7 @@ enum("JET", { type="int", start=1, comment="JET constants are documented in GetI
     "PEN_TILT_HORIZONTAL: For pen-based input, this type indicates the horizontal tilt of the pen device.",
     "ABS_X: Value is an absolute horizontal coordinate that corresponds to a page area (usually the display or touchpad).",
     "ABS_Y: Value is an absolute vertical coordinate that corresponds to a page area (usually the display or touchpad).",
-    "CROSSED_INTO: This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.",
+    "CROSSED_IN: This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.",
     "CROSSED_OUT: This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.",
     "PRESSURE: Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough",
     "DEVICE_TILT_X: Controller tilted on the X axis (left/right).  Value indicates angle, -ve = left, +ve = right",

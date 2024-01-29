@@ -874,7 +874,7 @@ SubscribeInput: Create a subscription for input events that relate to the vector
 
 The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target
 vector.  The original events are transferred with some modifications - `X`, `Y`, `AbsX` and `AbsY` are converted to
-the vector's coordinate system, and `CROSSED_INTO` and `CROSSED_OUT` events are triggered during passage through
+the vector's coordinate system, and `CROSSED_IN` and `CROSSED_OUT` events are triggered during passage through
 the clipping area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.

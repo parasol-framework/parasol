@@ -478,7 +478,7 @@ gui.toolbar = function(HostVP, Options)
    local function inputFeedback(Viewport, Events) -- Internal input handler
       local ev = Events
       while ev do
-         if (ev.type == JET_CROSSED_INTO) then
+         if (ev.type == JET_CROSSED_IN) then
 
          elseif (ev.type == JET_CROSSED_OUT) then
             resetTipTimer()

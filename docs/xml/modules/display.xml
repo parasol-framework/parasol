@@ -813,7 +813,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 }
 </pre>
 <p>All processable events are referenced in the InputEvent structure in the Events parameter.</p>
-<p>JET constants are as follows and take note of <code>CROSSED_INTO</code> and <code>CROSSED_OUT</code> which are software generated and not a device event:</p>
+<p>JET constants are as follows and take note of <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> which are software generated and not a device event:</p>
 <types lookup="JET"/>
 <p>The <code>JTYPE</code> values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate <code>JTYPE</code> flag must have been set in the original subscription call.</p>
 <types lookup="JTYPE"/>

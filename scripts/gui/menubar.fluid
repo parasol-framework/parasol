@@ -340,7 +340,7 @@ gui.menubar = function(HostVP, Options)
       self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), function(Viewport, Events)
          local ev = Events
          while ev do
-            if (ev.type == JET_CROSSED_INTO) then
+            if (ev.type == JET_CROSSED_IN) then
 
             elseif (ev.type == JET_CROSSED_OUT) then
                if self._currentItem then

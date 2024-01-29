@@ -33,7 +33,7 @@ static ERROR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE
 static ERROR slider_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
 {
    for (auto msg=Events; msg; msg=msg->Next) {
-      if (msg->Type IS JET::CROSSED_INTO) {
+      if (msg->Type IS JET::CROSSED_IN) {
          if (Viewport IS Scroll->m_vbar.m_slider_vp) {
             Scroll->m_vbar.m_slider_rect->setFields(fl::Fill(glSliderHighlight));
             Scroll->m_vbar.m_slider_vp->draw();

@@ -383,7 +383,7 @@ enum class JET : LONG {
    PEN_TILT_HORIZONTAL = 30,
    ABS_X = 31,
    ABS_Y = 32,
-   CROSSED_INTO = 33,
+   CROSSED_IN = 33,
    CROSSED_OUT = 34,
    PRESSURE = 35,
    DEVICE_TILT_X = 36,

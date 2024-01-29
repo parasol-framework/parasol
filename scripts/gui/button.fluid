@@ -182,7 +182,7 @@ gui.button = function(Options)
 
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_CROSSING, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Msg)
       repeat
-         if (Msg.type == JET_CROSSED_INTO) then
+         if (Msg.type == JET_CROSSED_IN) then
             local highlight = gui.strToRGB(gui.colours.rgb('widgetBkgd'))
             highlight.a = highlight.a * 0.5
             self.bkgd.fill = gui.rgbToSVG(highlight)
