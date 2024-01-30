@@ -1777,6 +1777,7 @@ void parser::tag_checkbox(XMLTag &Tag)
    }
 
    if (widget.height < m_style.point * 1.8) widget.height = m_style.point * 1.8;
+
    widget.min_height = DUNIT(1.8, DU::FONT_SIZE);
 
    if (!widget.label.empty()) widget.label_pad = widget.height - m_style.get_font()->Ascent;
@@ -1897,9 +1898,7 @@ void parser::tag_combobox(XMLTag &Tag)
 
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
-   if (widget.height < m_style.point * 2.2) {
-      widget.height = m_style.point * 2.2;
-   }
+   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
 
    widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
    widget.label_pad  = m_style.get_font()->Ascent * 0.5;
@@ -1941,9 +1940,7 @@ void parser::tag_input(XMLTag &Tag)
 
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
-   if (widget.height < m_style.point * 2.2) {
-      widget.height = m_style.point * 2.2;
-   }
+   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
 
    widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
    widget.label_pad  = m_style.get_font()->Ascent * 0.5;
