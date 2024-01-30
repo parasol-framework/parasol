@@ -875,11 +875,11 @@ struct widget_mgr {
    GuardedObject<objVectorViewport> viewport;
    GuardedObject<objVectorRectangle> rect;    // A vector will host the widget and define a clipping mask for it
    padding pad, final_pad;             // Padding defines whitespace around the widget
-   DOUBLE width = 0, height = 0;       // Client can define a fixed width/height, or leave at 0 for auto-sizing
+   DUNIT width, height;                // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DOUBLE final_width, final_height;   // Final dimensions computed during layout
    DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
-   DUNIT min_height;
+   DUNIT def_size = DUNIT(1.0, DU::FONT_SIZE); // Default height or width if not otherwise specified.
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
    bool width_pct = false, height_pct = false;
    bool alt_state = false, internal_label = false;

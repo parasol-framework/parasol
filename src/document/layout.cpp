@@ -390,31 +390,28 @@ void layout::size_widget(widget_mgr &Widget)
 
    // Calculate the final width and height.
 
-   if (Widget.width_pct) {
-      Widget.final_width = Widget.width * (m_page_width - m_left_margin - m_margins.right);
-   }
-   else if (!Widget.width) {
-      if (Widget.height) {
-         if (Widget.height_pct) {
-            if (Widget.floating_x()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_margins.right);
-            else Widget.final_width = Widget.height * m_font->Ascent;
-         }
-         else Widget.final_width = Widget.height;
+   if (Widget.width.empty()) {
+      if (Widget.height.empty()) Widget.final_width = Widget.def_size.px(*this);
+      else if (Widget.height.type IS DU::SCALED) {
+         if (Widget.floating_x()) Widget.final_width = Widget.height.value * (m_page_width - m_left_margin - m_margins.right);
+         else Widget.final_width = Widget.height.px(*this);
       }
-      else Widget.final_width = m_font->Ascent;
+      else Widget.final_width = Widget.height.px(*this);
    }
-   else Widget.final_width = Widget.width;
+   else if (Widget.width.type IS DU::SCALED) {
+      Widget.final_width = Widget.width.value * (m_page_width - m_left_margin - m_margins.right);
+   }
+   else Widget.final_width = Widget.width.px(*this);
 
-   if (Widget.height_pct) {
-      if (Widget.floating_x()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_margins.right);
-      else Widget.final_height = Widget.height * m_font->Ascent;
+   if (Widget.height.type IS DU::SCALED) {
+      if (Widget.floating_x()) Widget.final_height = Widget.height.value * (m_page_width - m_left_margin - m_margins.right);
+      else Widget.final_height = Widget.height.px(*this) * m_font->Ascent;
    }
-   else if (!Widget.height) {
-      if (Widget.floating_x()) Widget.final_height = Widget.final_width;
-      else Widget.final_height = m_font->Ascent;
+   else if (Widget.height.empty()) {
+      Widget.final_height = Widget.def_size.px(*this);
    }
-   else Widget.final_height = Widget.height;
-
+   else Widget.final_height = Widget.height.px(*this);
+   
    if (Widget.final_height < 0.01) Widget.final_height = 0.01;
    if (Widget.final_width < 0.01) Widget.final_width = 0.01;
 
@@ -1998,13 +1995,13 @@ DOUBLE layout::calc_page_height()
 
 DOUBLE DUNIT::px(class layout &Layout) {
    switch (type) {
-      case DU::PIXEL:       return value;
-      case DU::FONT_SIZE:   return std::trunc(value * Layout.m_font->Ascent);
+      case DU::PIXEL:            return value;
+      case DU::FONT_SIZE:        return std::trunc(value * Layout.m_font->Ascent);
       case DU::TRUE_LINE_HEIGHT: return std::trunc(value * Layout.m_line.height);
-      case DU::LINE_HEIGHT: return std::trunc(value * Layout.m_font->LineSpacing);
-      case DU::CHAR:        return std::trunc(value * DOUBLE(fntCharWidth(Layout.m_font, '0', 0, NULL))); // Equivalent to CSS
-      case DU::VP_WIDTH:    return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01);
-      case DU::VP_HEIGHT:   return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01);
+      case DU::LINE_HEIGHT:      return std::trunc(value * Layout.m_font->LineSpacing);
+      case DU::CHAR:             return std::trunc(value * DOUBLE(fntCharWidth(Layout.m_font, '0', 0, NULL))); // Equivalent to CSS
+      case DU::VP_WIDTH:         return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01);
+      case DU::VP_HEIGHT:        return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01);
       case DU::ROOT_FONT_SIZE:   return std::trunc(value * Layout.Self->FontSize);
       case DU::ROOT_LINE_HEIGHT: return std::trunc(value * (Layout.Self->FontSize * 1.3)); // Guesstimate
          

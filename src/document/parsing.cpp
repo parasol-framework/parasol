@@ -1631,11 +1631,11 @@ void parser::tag_button(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label)       widget.label = value;
-      else if (hash IS HASH_fill)   widget.fill = value;
-      else if (hash IS HASH_name)   widget.name = value;
-      else if (hash IS HASH_width)  read_unit(value.c_str(), widget.width, widget.width_pct);
-      else if (hash IS HASH_height) read_unit(value.c_str(), widget.height, widget.height_pct);
+      if (hash IS HASH_label)       widget.label  = value;
+      else if (hash IS HASH_fill)   widget.fill   = value;
+      else if (hash IS HASH_name)   widget.name   = value;
+      else if (hash IS HASH_width)  widget.width  = DUNIT(value);
+      else if (hash IS HASH_height) widget.height = DUNIT(value);
       else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
@@ -1682,9 +1682,8 @@ void parser::tag_button(XMLTag &Tag)
    if (widget.fill.empty()) widget.fill = "url(#/widget/button/off)";
    if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/button/on)";
    if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
-   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
 
-   widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
+   widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = m_style.get_font()->Ascent;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
@@ -1705,7 +1704,7 @@ void parser::tag_checkbox(XMLTag &Tag)
       if (hash IS HASH_label) widget.label = value;
       else if (hash IS HASH_name) widget.name = value;
       else if (hash IS HASH_fill) widget.fill = value;
-      else if (hash IS HASH_width) read_unit(value.c_str(), widget.width, widget.width_pct);
+      else if (hash IS HASH_width) widget.width = DUNIT(value);
       else if (hash IS HASH_label_pos) {
          if (!StrMatch("left", value)) widget.label_pos = 0;
          else if (!StrMatch("right", value)) widget.label_pos = 1;
@@ -1776,11 +1775,9 @@ void parser::tag_checkbox(XMLTag &Tag)
       }
    }
 
-   if (widget.height < m_style.point * 1.8) widget.height = m_style.point * 1.8;
+   widget.def_size = DUNIT(1.4, DU::FONT_SIZE);
 
-   widget.min_height = DUNIT(1.8, DU::FONT_SIZE);
-
-   if (!widget.label.empty()) widget.label_pad = widget.height - m_style.get_font()->Ascent;
+   if (!widget.label.empty()) widget.label_pad = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -1805,9 +1802,7 @@ void parser::tag_combobox(XMLTag &Tag)
          if (!StrMatch("left", value)) widget.label_pos = 0;
          else if (!StrMatch("right", value)) widget.label_pos = 1;
       }
-      else if (hash IS HASH_width) {
-         read_unit(value.c_str(), widget.width, widget.width_pct);
-      }
+      else if (hash IS HASH_width) widget.width = DUNIT(value);
       else log.warning("<combobox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
@@ -1898,10 +1893,8 @@ void parser::tag_combobox(XMLTag &Tag)
 
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
-   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
-
-   widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
-   widget.label_pad  = m_style.get_font()->Ascent * 0.5;
+   widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
+   widget.label_pad = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -1919,8 +1912,8 @@ void parser::tag_input(XMLTag &Tag)
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_label:     widget.label = value; break;
          case HASH_value:     widget.value = value; break;
-         case HASH_fill:      widget.fill = value; break;
-         case HASH_width:     read_unit(value.c_str(), widget.width, widget.width_pct); break;
+         case HASH_fill:      widget.fill  = value; break;
+         case HASH_width:     widget.width = DUNIT(value); break;
          case HASH_font_fill: widget.font_fill = value; break;
          case HASH_name:      widget.name = value; break;
          case HASH_label_pos:
@@ -1940,10 +1933,8 @@ void parser::tag_input(XMLTag &Tag)
 
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
-   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
-
-   widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
-   widget.label_pad  = m_style.get_font()->Ascent * 0.5;
+   widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
+   widget.label_pad = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -2243,8 +2234,8 @@ void parser::tag_image(XMLTag &Tag)
 
          case HASH_padding: img.pad.parse(value); break;
          case HASH_src:     img.fill = value; break;
-         case HASH_width:   read_unit(value.c_str(), img.width, img.width_pct); break;
-         case HASH_height:  read_unit(value.c_str(), img.height, img.height_pct); break;
+         case HASH_width:   img.width  = DUNIT(value); break;
+         case HASH_height:  img.height = DUNIT(value); break;
 
          default:
             log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -2252,8 +2243,8 @@ void parser::tag_image(XMLTag &Tag)
    }
 
    if (!img.fill.empty()) {
-      if (img.width < 0) img.width = 0; // Zero is equivalent to 'auto', meaning on-the-fly computation
-      if (img.height < 0) img.height = 0;
+      if (img.width.value <= 0) img.width.clear(); // Zero is equivalent to 'auto', meaning on-the-fly computation
+      if (img.height.value <= 0) img.height.clear();
 
       if (!img.floating_x()) Self->NoWhitespace = false; // Images count as characters when inline.
       m_stream->emplace(m_index, img);

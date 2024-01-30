@@ -908,7 +908,7 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
    if (Args->Mask != JTYPE::NIL) {
-      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return ERR_FieldNotSet;
 
       if (!Self->InputSubscriptions) {
          Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
