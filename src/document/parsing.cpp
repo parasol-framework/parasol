@@ -1420,16 +1420,10 @@ void parser::tag_advance(XMLTag &Tag)
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
-         case HASH_x: adv.x = StrToFloat(Tag.Attribs[i].Value); break;
-         case HASH_y: adv.y = StrToFloat(Tag.Attribs[i].Value); break;
+         case HASH_x: adv.x = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
+         case HASH_y: adv.y = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
       }
    }
-
-   if (adv.x < 0) adv.x = 0;
-   else if (adv.x > 4000) adv.x = 4000;
-
-   if (adv.y < 0) adv.y = 0;
-   else if (adv.y > 4000) adv.y = 4000;
 }
 
 //********************************************************************************************************************

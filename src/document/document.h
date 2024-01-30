@@ -182,6 +182,8 @@ struct DUNIT {
    DOUBLE value;
    DU type;
 
+   DUNIT() : value(0), type(DU::NIL) { }
+
    DUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
 
    DUNIT(const std::string &pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : DUNIT(pValue.c_str(), pDefaultType, pMin) { }
@@ -225,7 +227,8 @@ struct DUNIT {
    }
 
    DOUBLE px(class layout &Layout);
-
+   
+   constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }
 };
 
@@ -627,9 +630,9 @@ struct tablecol {
 //********************************************************************************************************************
 
 struct bc_advance : public entity {
-   DOUBLE x, y;
+   DUNIT x, y;
 
-   bc_advance() : x(0), y(0) { code = SCODE::ADVANCE; }
+   bc_advance() : x(0.0), y(0.0) { code = SCODE::ADVANCE; }
 };
 
 struct bc_index : public entity {

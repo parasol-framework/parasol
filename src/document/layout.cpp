@@ -821,7 +821,8 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
    DOUBLE min_height;
 
    if (Table.cells_expanded IS false) {
-      LONG unfixed, colwidth;
+      LONG unfixed;
+      DOUBLE colwidth;
 
       // Table cells need to match the available width inside the table.  This routine checks for that - if the cells
       // are short then the table processing is restarted.
@@ -1419,9 +1420,9 @@ extend_page:
 
          case SCODE::ADVANCE: {
             auto adv = &m_stream->lookup<bc_advance>(idx);
-            m_cursor_x += adv->x;
-            m_cursor_y += adv->y;
-            if (adv->x) reset_broken_segment();
+            m_cursor_x += adv->x.px(*this);
+            m_cursor_y += adv->y.px(*this);
+            if (adv->x.value) reset_broken_segment();
             break;
          }
 
@@ -1992,33 +1993,35 @@ DOUBLE layout::calc_page_height()
 }
 
 //********************************************************************************************************************
+// Return values are truncated because true floating point values can lead to subtle computational bugs that aren't 
+// worth the time of investigation.
 
 DOUBLE DUNIT::px(class layout &Layout) {
    switch (type) {
       case DU::PIXEL:       return value;
-      case DU::FONT_SIZE:   return value * Layout.m_font->Ascent;
-      case DU::TRUE_LINE_HEIGHT: return value * Layout.m_line.height;
-      case DU::LINE_HEIGHT: return value * Layout.m_font->LineSpacing;
-      case DU::CHAR:        return value * DOUBLE(fntCharWidth(Layout.m_font, '0', 0, NULL)); // Equivalent to CSS
-      case DU::VP_WIDTH:    return value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;
-      case DU::VP_HEIGHT:   return value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01;
-      case DU::ROOT_FONT_SIZE:   return value * Layout.Self->FontSize;
-      case DU::ROOT_LINE_HEIGHT: return value * (Layout.Self->FontSize * 1.3); // Guesstimate
+      case DU::FONT_SIZE:   return std::trunc(value * Layout.m_font->Ascent);
+      case DU::TRUE_LINE_HEIGHT: return std::trunc(value * Layout.m_line.height);
+      case DU::LINE_HEIGHT: return std::trunc(value * Layout.m_font->LineSpacing);
+      case DU::CHAR:        return std::trunc(value * DOUBLE(fntCharWidth(Layout.m_font, '0', 0, NULL))); // Equivalent to CSS
+      case DU::VP_WIDTH:    return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01);
+      case DU::VP_HEIGHT:   return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01);
+      case DU::ROOT_FONT_SIZE:   return std::trunc(value * Layout.Self->FontSize);
+      case DU::ROOT_LINE_HEIGHT: return std::trunc(value * (Layout.Self->FontSize * 1.3)); // Guesstimate
          
       case DU::VP_MIN: {
-         auto w = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;
-         auto h = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01;
+         auto w = std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01);
+         auto h = std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01);
          return std::min(w, h);
       }
 
       case DU::VP_MAX: {
-         auto w = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;
-         auto h = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01;
+         auto w = std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01);
+         auto h = std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01);
          return std::max(w, h);
       }
 
       case DU::SCALED: // wrap_edge equates to m_page_width - m_margins.right;
-         return value * 0.01 * (Layout.wrap_edge() - Layout.m_cursor_x);
+         return std::trunc(value * 0.01 * (Layout.wrap_edge() - Layout.m_cursor_x));
          //return value * 0.01 * (Layout.wrap_edge() - m_margins.left);
 
       default: return 0;

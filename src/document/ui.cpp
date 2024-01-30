@@ -1189,7 +1189,7 @@ static ERROR inputevent_dropdown(objVectorViewport *Viewport, const InputEvent *
 
    for (; Event; Event = Event->Next) {
       if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
-         combo.menu.create(combo.width);
+         combo.menu.create(combo.final_width);
 
          if (Event->Type IS JET::LMB) {
             if (Event->Value) combo.menu.toggle(*combo.viewport);
