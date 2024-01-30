@@ -1312,7 +1312,7 @@ extend_page:
    if (Self->Error) {
       return Self->Error;
    }
-   else if (!m_break_loop) {
+   else if (m_break_loop <= 0) {
       Self->Error = ERR_Loop;
       return Self->Error;
    }
@@ -1603,6 +1603,7 @@ wrap_table_start:
 
 wrap_table_end:
 wrap_table_cell:
+            m_break_loop--;
             table->cursor_x    = m_cursor_x;
             table->cursor_y    = m_cursor_y;
             table->x           = m_cursor_x;
@@ -1821,7 +1822,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 {
    pf::Log log(__FUNCTION__);
 
-   if (!m_break_loop) return WRAP::DO_NOTHING;
+   if (m_break_loop <= 0) return WRAP::DO_NOTHING;
    if (Width < 1) Width = 1;
 
    if ((X > MAX_PAGE_WIDTH) or (Y > MAX_PAGE_HEIGHT) or (m_page_width > MAX_PAGE_WIDTH)) {
@@ -1998,6 +1999,7 @@ DOUBLE DUNIT::px(class layout &Layout) {
    switch (type) {
       case DU::PIXEL:       return value;
       case DU::FONT_SIZE:   return value * Layout.m_font->Ascent;
+      case DU::TRUE_LINE_HEIGHT: return value * Layout.m_line.height;
       case DU::LINE_HEIGHT: return value * Layout.m_font->LineSpacing;
       case DU::CHAR:        return value * DOUBLE(fntCharWidth(Layout.m_font, '0', 0, NULL)); // Equivalent to CSS
       case DU::VP_WIDTH:    return value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;

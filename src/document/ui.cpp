@@ -10,7 +10,7 @@ static ERROR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR Eve
    auto combo = std::get<bc_combobox *>(Self->VPToEntity[Viewport->UID].widget);
 
    if (Event IS FM::LOST_FOCUS) {
-      if (gfxGetUserFocus() IS combo->menu.m_surface->UID) {
+      if (gfxGetUserFocus() IS combo->menu.m_surface.id) {
          // The drop-down surface has been given the focus - so don't hide it.
       }
       else {

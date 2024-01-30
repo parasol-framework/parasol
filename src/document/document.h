@@ -169,6 +169,7 @@ enum class DU : UBYTE {
    FONT_SIZE,         // em
    CHAR,              // ch: The advance (width) of the '0' character
    LINE_HEIGHT,       // lh:  Current line height
+   TRUE_LINE_HEIGHT,  // lh:  Current line height
    ROOT_FONT_SIZE,    // rem: Font size of the root element
    ROOT_LINE_HEIGHT,  // rlh: Line height of the root element
    VP_WIDTH,          // vw:  1% of the viewport's width

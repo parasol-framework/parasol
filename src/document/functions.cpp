@@ -1,5 +1,5 @@
 
-static const LONG MAXLOOP = 100000;
+static const LONG MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
 "<template name=\"h1\"><p leading=\"1.5\" font-face=\"Open Sans\" font-size=\"18\" font-style=\"bold\"><inject/></p></template>\n\
