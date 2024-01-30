@@ -879,6 +879,7 @@ struct widget_mgr {
    DOUBLE final_width, final_height;   // Final dimensions computed during layout
    DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
+   DUNIT min_height;
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
    bool width_pct = false, height_pct = false;
    bool alt_state = false, internal_label = false;

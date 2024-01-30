@@ -1684,6 +1684,7 @@ void parser::tag_button(XMLTag &Tag)
    if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
    if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
 
+   widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
    widget.label_pad = m_style.get_font()->Ascent;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
@@ -1700,25 +1701,17 @@ void parser::tag_checkbox(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label) {
-         widget.label = value;
-      }
+
+      if (hash IS HASH_label) widget.label = value;
+      else if (hash IS HASH_name) widget.name = value;
+      else if (hash IS HASH_fill) widget.fill = value;
+      else if (hash IS HASH_width) read_unit(value.c_str(), widget.width, widget.width_pct);
       else if (hash IS HASH_label_pos) {
          if (!StrMatch("left", value)) widget.label_pos = 0;
          else if (!StrMatch("right", value)) widget.label_pos = 1;
       }
       else if (hash IS HASH_value) {
-         if ((value == "1") or (value == "true")) widget.alt_state = true;
-         else widget.alt_state = false;
-      }
-      else if (hash IS HASH_fill) {
-         widget.fill = value;
-      }
-      else if (hash IS HASH_width) {
-         read_unit(value.c_str(), widget.width, widget.width_pct);
-      }
-      else if (hash IS HASH_name) {
-         widget.name = value;
+         widget.alt_state = (value == "1") or (value == "true");
       }
       else log.warning("<checkbox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
@@ -1784,6 +1777,7 @@ void parser::tag_checkbox(XMLTag &Tag)
    }
 
    if (widget.height < m_style.point * 1.8) widget.height = m_style.point * 1.8;
+   widget.min_height = DUNIT(1.8, DU::FONT_SIZE);
 
    if (!widget.label.empty()) widget.label_pad = widget.height - m_style.get_font()->Ascent;
 
@@ -1907,7 +1901,8 @@ void parser::tag_combobox(XMLTag &Tag)
       widget.height = m_style.point * 2.2;
    }
 
-   widget.label_pad = m_style.get_font()->Ascent * 0.5;
+   widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
+   widget.label_pad  = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -1950,7 +1945,8 @@ void parser::tag_input(XMLTag &Tag)
       widget.height = m_style.point * 2.2;
    }
 
-   widget.label_pad = m_style.get_font()->Ascent * 0.5;
+   widget.min_height = DUNIT(2.2, DU::FONT_SIZE);
+   widget.label_pad  = m_style.get_font()->Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -3498,8 +3494,8 @@ void parser::tag_table(XMLTag &Tag)
    pf::Log log(__FUNCTION__);
 
    auto &table = m_stream->emplace<bc_table>(m_index);
-   table.min_width  = 1;
-   table.min_height = 1;
+   table.min_width  = DUNIT(1, DU::PIXEL);
+   table.min_height = DUNIT(1, DU::PIXEL);
 
    std::string columns;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
