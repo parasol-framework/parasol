@@ -754,15 +754,13 @@ void layout::lay_paragraph()
       else para.indent = list->item_indent;
    }
 
-   if (para.indent.value) {
-      para.block_indent = para.indent.px(*this);
-   }
+   if (para.indent.value > 0) para.block_indent = para.indent;
 
-   para.x = m_left_margin + para.block_indent;
+   para.x = m_left_margin + para.block_indent.px(*this);
 
-   m_left_margin += para.block_indent + para.item_indent.px(*this);
-   m_cursor_x    += para.block_indent + para.item_indent.px(*this);
-   m_line.x      += para.block_indent + para.item_indent.px(*this);
+   m_left_margin += para.block_indent.px(*this) + para.item_indent.px(*this);
+   m_cursor_x    += para.block_indent.px(*this) + para.item_indent.px(*this);
+   m_line.x      += para.block_indent.px(*this) + para.item_indent.px(*this);
 
    // Paragraph management variables
 
@@ -800,9 +798,9 @@ void layout::lay_paragraph_end()
 
       end_line(NL::PARAGRAPH, stream_char(idx + 1));
 
-      m_left_margin = para->x - para->block_indent;
-      m_cursor_x    = para->x - para->block_indent;
-      m_line.x      = para->x - para->block_indent;
+      m_left_margin = para->x - para->block_indent.px(*this);
+      m_cursor_x    = para->x - para->block_indent.px(*this);
+      m_line.x      = para->x - para->block_indent.px(*this);
       stack_para.pop();
    }
    else end_line(NL::PARAGRAPH, stream_char(idx + 1)); // Technically an error when there's no matching PS code.
@@ -1292,8 +1290,8 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, bool &Ver
 
    #ifdef DBG_LAYOUT
    log.branch("Dimensions: %gx%g (edge %g), LM %d RM %d TM %d BM %d",
-      m_page_width, page_height, m_page_width - m_margins.Right,
-      m_margins.Left, m_margins.Right, m_margins.Top, m_margins.Bottom);
+      m_page_width, page_height, m_page_width - m_margins.right,
+      m_margins.left, m_margins.right, m_margins.top, m_margins.bottom);
    #endif
 
    layout tablestate(Self, m_stream, m_viewport, m_margins), rowstate(Self, m_stream, m_viewport, m_margins), liststate(Self, m_stream, m_viewport, m_margins);
@@ -1612,9 +1610,9 @@ wrap_table_cell:
             table->total_clips = m_clips.size();
             table->height      = table->stroke_width;
 
-            DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g%s, page width %g.",
+            DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g, page width %g.",
                idx, LONG(table->columns.size()), table->rows, table->x, table->y,
-               table->width, table->min_height, table->height_pct ? "%" : "", Width);
+               table->width, table->min_height.px(*this), Width);
 
             table->computeColumns();
 
@@ -1879,7 +1877,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 
       X = m_left_margin;
       if (stack_para.empty()) Y += m_line.height;
-      else Y += m_line.height * stack_para.top()->line_height;
+      else Y += stack_para.top()->line_height.px(*this);
 
       m_cursor_x = X;
       m_cursor_y = Y;

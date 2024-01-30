@@ -1312,11 +1312,7 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
          // Line height affects the advance of m_cursor_y whenever a word-wrap occurs.  It is expressed as a multiplier
          // that is applied to m_line.height.
 
-         if (Para) {
-            Para->line_height = StrToFloat(Attrib.Value);
-            if (Para->line_height < MIN_LINE_HEIGHT) Para->line_height = MIN_LINE_HEIGHT;
-            else if (Para->line_height > MAX_LINE_HEIGHT) Para->line_height = MAX_LINE_HEIGHT;
-         }
+         if (Para) Para->line_height = DUNIT(Attrib.Value, DU::LINE_HEIGHT, DBL_MIN);
          return true;
 
       case HASH_trim:

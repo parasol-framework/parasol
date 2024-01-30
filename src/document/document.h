@@ -766,10 +766,10 @@ class bc_paragraph : public entity {
    bc_font font;         // Default font that applies to this paragraph.  Embedding the font style in this way ensures that vertical placement can be computed immediately without looking for a FONT code.
    std::string value = "";
    DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
-   DOUBLE block_indent;  // Indentation; also equivalent to setting a left margin value
+   DUNIT  block_indent;  // Indentation; also equivalent to setting a left margin value
    DUNIT  item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
    DUNIT  indent;        // Client specified indent value
-   DOUBLE line_height;   // Spacing between paragraph lines on word-wrap, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
+   DUNIT  line_height;   // Spacing between paragraph lines on word-wrap, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
    DUNIT  leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
    //DOUBLE trailing;    // Not implemented: Trailing whitespace
    // Options
@@ -778,7 +778,8 @@ class bc_paragraph : public entity {
    bool aggregate;
 
    bc_paragraph() : entity(SCODE::PARAGRAPH_START), x(0), y(0), height(0),
-      block_indent(0), item_indent(0.0, DU::PIXEL), indent(0.0, DU::PIXEL), line_height(1.0), leading(1.0, DU::LINE_HEIGHT),
+      block_indent(0.0, DU::PIXEL), item_indent(0.0, DU::PIXEL), indent(0.0, DU::PIXEL),
+      line_height(1.0, DU::TRUE_LINE_HEIGHT), leading(1.0, DU::LINE_HEIGHT),
       list_item(false), trim(false), aggregate(false) { }
 
    bc_paragraph(const bc_font &Style) : bc_paragraph() {

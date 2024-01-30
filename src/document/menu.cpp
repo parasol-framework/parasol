@@ -141,12 +141,12 @@ void doc_menu::refresh()
    buf << "</table>";
    buf << "</page>";
 
-   acClear(m_doc);
-   acDataXML(m_doc, buf.str().c_str());
-
    #ifdef DBG_LAYOUT
       log.warning("%s", buf.str().c_str());
    #endif
+
+   acClear(m_doc);
+   acDataXML(m_doc, buf.str().c_str());
 
    // Resize the menu to match the new content.  If the height of the menu is excessive (relative to the height
    // of the display), we reduce it and utilise a scrollbar to see all menu items.
