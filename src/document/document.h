@@ -161,6 +161,74 @@ DEFINE_ENUM_FLAG_OPERATORS(TRF)
 class RSTREAM;
 
 //********************************************************************************************************************
+
+enum class DU : UBYTE {
+   NIL = 0,
+   PIXEL,             // px
+   SCALED,            // %: Scale to fill empty space
+   FONT_SIZE,         // em
+   CHAR,              // ch: The advance (width) of the '0' character
+   LINE_HEIGHT,       // lh:  Current line height
+   ROOT_FONT_SIZE,    // rem: Font size of the root element
+   ROOT_LINE_HEIGHT,  // rlh: Line height of the root element
+   VP_WIDTH,          // vw:  1% of the viewport's width
+   VP_HEIGHT,         // vh:  1% of the viewport's height
+   VP_MIN,            // vmin: 1% of the viewport's smallest axis
+   VP_MAX             // vmax: 1% of the viewport's largest axis
+};
+
+struct DUNIT {
+   DOUBLE value;
+   DU type;
+
+   DUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
+
+   DUNIT(const std::string &pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : DUNIT(pValue.c_str(), pDefaultType, pMin) { }
+
+   DUNIT(CSTRING pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) {
+      bool is_number = true;
+      auto v = pValue;
+      while ((*v) and (unsigned(*v) <= 0x20)) v++;
+
+      auto str = v;
+      if ((*str IS '-') or (*str IS '+')) str++;
+
+      if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
+         while ((*str >= '0') and (*str <= '9')) str++;
+
+         if (*str IS '.') {
+            str++;
+            if ((*str >= '0') and (*str <= '9')) {
+               while ((*str >= '0') and (*str <= '9')) str++;
+            }
+            else is_number = false;
+         }
+
+         const DOUBLE dpi = 96.0;
+         const DOUBLE fv = StrToFloat(v);
+
+         if (str[0] IS '%') { value = fv * 0.01; type = DU::SCALED; }
+         else if ((str[0] IS 'p') and (str[1] IS 'x')) { value = fv; type = DU::PIXEL; }
+         else if ((str[0] IS 'e') and (str[1] IS 'm')) { value = fv; type = DU::FONT_SIZE; }
+         else if ((str[0] IS 'e') and (str[1] IS 'x')) { value = fv * 2.0; type = DU::FONT_SIZE; }
+         else if ((str[0] IS 'i') and (str[1] IS 'n')) { value = fv * dpi; type = DU::PIXEL; } // Inches -> Pixels
+         else if ((str[0] IS 'c') and (str[1] IS 'm')) { value = fv * (1.0 / 2.56) * dpi; type = DU::PIXEL; } // Centimetres -> Pixels
+         else if ((str[0] IS 'm') and (str[1] IS 'm')) { value = fv * (1.0 / 20.56) * dpi; type = DU::PIXEL; } // Millimetres -> Pixels
+         else if ((str[0] IS 'p') and (str[1] IS 't')) { value = fv * (4.0 / 3.0); type = DU::PIXEL; } // Points -> Pixels.  A point is 4/3 of a pixel
+         else if ((str[0] IS 'p') and (str[1] IS 'c')) { value = fv * (4.0 / 3.0) * 12.0; type = DU::PIXEL; } // Pica -> Pixels.  1 Pica is equal to 12 Points
+         else { value = fv; type = pDefaultType; }
+
+         if (value < pMin) value = pMin;
+      }
+      else value = 0;
+   }
+
+   DOUBLE px(class layout &Layout);
+
+   constexpr void clear() { value = 0; type = DU::PIXEL; }
+};
+
+//********************************************************************************************************************
 // UI hooks for the client
 
 struct ui_hooks {
@@ -609,11 +677,11 @@ struct bc_list : public entity {
    std::string fill;                   // Fill to use for bullet points (valid for BULLET only).
    std::vector<std::string> buffer;    // Temp buffer, used for ordered lists
    LONG   start        = 1;            // Starting value for ordered lists (default: 1)
-   LONG   item_indent  = BULLET_INDENT; // Minimum indentation for text printed for each item
-   LONG   block_indent = BULLET_INDENT; // Indentation for each set of items
+   DUNIT  item_indent  = DUNIT(BULLET_INDENT); // Minimum indentation for text printed for each item
+   DUNIT  block_indent = DUNIT(BULLET_INDENT); // Indentation for each set of items
    LONG   item_num     = 0;
    LONG   order_insert = 0;
-   DOUBLE v_spacing    = 0.5;           // Spacing between list items, expressed as a ratio
+   DUNIT  v_spacing    = DUNIT(0.5, DU::LINE_HEIGHT);  // Spacing between list items, equivalent to paragraph leading, expressed as a ratio
    UBYTE  type         = BULLET;
    bool   repass       = false;
 
@@ -631,10 +699,10 @@ struct bc_table : public entity {
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
    padding cell_padding; // Spacing inside each cell (margins)
-   DOUBLE cell_v_spacing = 0, cell_h_spacing = 0; // Spacing between each cell
+   DUNIT  cell_v_spacing = DUNIT(0.0), cell_h_spacing = DUNIT(0.0); // Spacing between each cell
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
-   DOUBLE min_width = 0, min_height = 0; // User-determined minimum table width/height
+   DUNIT  min_width = DUNIT(0.0), min_height = DUNIT(0.0); // User-determined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
    DOUBLE stroke_width = 0;              // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
@@ -642,8 +710,6 @@ struct bc_table : public entity {
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
    UBYTE  compute_columns = 0;
    ALIGN  align = ALIGN::NIL;            // Horizontal alignment.  If defined, the table will be floating.
-   bool   width_pct = false;             // true if width is a percentage
-   bool   height_pct = false;            // true if height is a percentage
    bool   cells_expanded = false;        // false if the table cells have not been expanded to match the inside table width
    bool   reset_row_height = false;      // true if the height of all rows needs to be reset in the current pass
    bool   wrap = false;
@@ -700,20 +766,19 @@ class bc_paragraph : public entity {
    std::string value = "";
    DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
    DOUBLE block_indent;  // Indentation; also equivalent to setting a left margin value
-   DOUBLE item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
-   DOUBLE indent;        // Client specified indent value
+   DUNIT  item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
+   DUNIT  indent;        // Client specified indent value
    DOUBLE line_height;   // Spacing between paragraph lines on word-wrap, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
-   DOUBLE leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
+   DUNIT  leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
    //DOUBLE trailing;    // Not implemented: Trailing whitespace
    // Options
-   bool relative;        // True if the indent value is relative
    bool list_item;       // True if this paragraph represents a list item
    bool trim;
    bool aggregate;
 
    bc_paragraph() : entity(SCODE::PARAGRAPH_START), x(0), y(0), height(0),
-      block_indent(0), item_indent(0), indent(0), line_height(1.0), leading(1.0),
-      relative(false), list_item(false), trim(false), aggregate(false) { }
+      block_indent(0), item_indent(0.0, DU::PIXEL), indent(0.0, DU::PIXEL), line_height(1.0), leading(1.0, DU::LINE_HEIGHT),
+      list_item(false), trim(false), aggregate(false) { }
 
    bc_paragraph(const bc_font &Style) : bc_paragraph() {
       font = Style;

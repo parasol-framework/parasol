@@ -261,7 +261,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                       (stack_list.top()->type IS bc_list::ORDERED)) {
                      if (!para.icon.empty()) {
                         para.icon->setFields(
-                           fl::X(segment.area.X - para.item_indent),
+                           fl::X(segment.area.X - para.item_indent.px(*this)),
                            fl::Y(segment.area.Y + segment.area.Height - segment.gutter)
                         );
                      }
@@ -270,7 +270,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      if (!para.icon.empty()) {
                         const DOUBLE radius = segment.area.Height * 0.2;
                         para.icon->setFields(
-                           fl::CenterX(segment.area.X - para.item_indent + radius),
+                           fl::CenterX(segment.area.X - para.item_indent.px(*this) + radius),
                            fl::CenterY(segment.area.Y + (segment.area.Height * 0.5)),
                            fl::Radius(radius));
                      }

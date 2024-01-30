@@ -90,13 +90,12 @@ void doc_menu::refresh()
 {
    pf::Log log(__FUNCTION__);
 
-   const DOUBLE VGAP = m_font_size * 0.5;
    const DOUBLE HGAP = m_font_size * 0.2;
-   const DOUBLE GAP = VGAP;
    LONG total_icons = 0;
 
    std::ostringstream buf;
-   buf << "<body margins=\"" << HGAP << " " << VGAP << " " << HGAP << " " << 0 << "\" link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
+   buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " << 
+      "link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
 
    if (!m_style.empty()) {
@@ -117,7 +116,7 @@ void doc_menu::refresh()
    }
 
    buf << "<page name=\"Index\">";
-   buf << "<table width=\"100%\" v-spacing=\"6\" h-spacing=\"4\" padding=\"6 0 6 0\">";
+   buf << "<table width=\"100%\" v-spacing=\"0.3em\" h-spacing=\"0.2em\" padding=\"6 0 6 0\">";
 
    for (auto &item : m_items) {
       buf << "<row>";
@@ -129,9 +128,9 @@ void doc_menu::refresh()
       buf << "<p no-wrap v-align=\"middle\">";
 
       if (item.icon.empty()) {
-         if (total_icons) buf << "<advance x=\"[=" << GAP << "+[%line-height]]\"/>";
+         if (total_icons) buf << "<advance x=\"[=1.5*[%line-height]]\"/>";
       }
-      else buf << "<image src=\"url(#" << item.icon << ")\"/><advance x=\"" << GAP << "\"/>";
+      else buf << "<image src=\"url(#" << item.icon << ")\"/><advance x=\"[=0.5*[%line-height]]\"/>";
 
       if (!item.content.empty()) buf << item.content;
       else buf << item.value;

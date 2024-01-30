@@ -41,6 +41,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include <parasol/modules/vector.h>
 #include <parasol/strings.hpp>
 
+#include <float.h>
 #include <iomanip>
 #include <algorithm>
 #include <array>

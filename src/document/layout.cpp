@@ -33,6 +33,8 @@ given clipping zones.  This allows text to be laid out around the table with no 
 // State machine for the layout process.  This information is discarded post-layout.
 
 struct layout {
+   friend class DUNIT;
+
    extDocument *Self;
    LONG  m_break_loop = MAXLOOP;
    UWORD m_depth = 0;     // Section depth - increases when do_layout() recurses, e.g. into table cells
@@ -59,7 +61,7 @@ private:
    bc_row *m_row = NULL;                 // Active table row (a persistent state is required in case of loop back)
    objFont *m_font = NULL;
    RSTREAM *m_stream = NULL;
-   objVectorViewport *m_viewport = NULL; // Target viewport
+   objVectorViewport *m_viewport = NULL; // Target viewport (the page)
    padding m_margins;
 
    DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
@@ -253,9 +255,9 @@ CELL layout::lay_cell(bc_table *Table)
 
    if (Table->collapsed) {
       //if (cell.column IS 0);
-      //else cell.AbsX += Table->cell_h_spacing;
+      //else cell.AbsX += Table->cell_h_spacing.px(*this);
    }
-   else cell.x += Table->cell_h_spacing;
+   else cell.x += Table->cell_h_spacing.px(*this);
 
    if (cell.column IS 0) cell.x += Table->stroke_width;
 
@@ -343,9 +345,9 @@ CELL layout::lay_cell(bc_table *Table)
 
    Table->row_width += Table->columns[cell.column].width;
 
-   if (!Table->collapsed) Table->row_width += Table->cell_h_spacing;
+   if (!Table->collapsed) Table->row_width += Table->cell_h_spacing.px(*this);
    else if ((cell.column + cell.col_span) < std::ssize(Table->columns)-1) {
-      Table->row_width += Table->cell_h_spacing;
+      Table->row_width += Table->cell_h_spacing.px(*this);
    }
 
    if ((cell.height > m_row->row_height) or (m_row->vertical_repass)) {
@@ -365,8 +367,8 @@ CELL layout::lay_cell(bc_table *Table)
 
    m_cursor_x += Table->columns[cell.column].width;
 
-   if (!Table->collapsed) m_cursor_x += Table->cell_h_spacing;
-   else if ((cell.column + cell.col_span) < std::ssize(Table->columns)) m_cursor_x += Table->cell_h_spacing;
+   if (!Table->collapsed) m_cursor_x += Table->cell_h_spacing.px(*this);
+   else if ((cell.column + cell.col_span) < std::ssize(Table->columns)) m_cursor_x += Table->cell_h_spacing.px(*this);
 
    if (cell.column IS 0) m_cursor_x += Table->stroke_width;
 
@@ -684,15 +686,15 @@ void layout::lay_row_end(bc_table *Table)
 
    // Increase the table height if the row exceeds it
 
-   auto bottom = Row->y + Row->row_height + Table->cell_v_spacing;
+   auto bottom = Row->y + Row->row_height + Table->cell_v_spacing.px(*this);
    if (bottom > Table->y + Table->height) Table->height = bottom - Table->y;
 
    // Advance the cursor by the height of this row
 
-   m_cursor_y += Row->row_height + Table->cell_v_spacing;
+   m_cursor_y += Row->row_height + Table->cell_v_spacing.px(*this);
    m_cursor_x = Table->x;
    DLAYOUT("Row ends, advancing down by %g+%g, new height: %g, y-cursor: %g",
-      Row->row_height, Table->cell_v_spacing, Table->height, m_cursor_y);
+      Row->row_height, Table->cell_v_spacing.px(*this), Table->height, m_cursor_y);
 
    if (Table->row_width > Table->width) Table->width = Table->row_width;
 
@@ -718,12 +720,11 @@ void layout::lay_paragraph()
       auto list = stack_list.top();
       if (para.list_item) {
          if (stack_para.size() > 1) para.indent = list->block_indent;
-         para.item_indent = list->item_indent;
-         para.relative    = false;
+         para.item_indent = DUNIT(list->item_indent.value, DU::PIXEL);
 
          if (!para.value.empty()) {
             auto strwidth = fntStringWidth(m_font, para.value.c_str(), -1) + 10;
-            if (strwidth > list->item_indent) {
+            if (strwidth > list->item_indent.px(*this)) {
                list->item_indent = strwidth;
                para.item_indent  = strwidth;
                list->repass      = true;
@@ -753,24 +754,19 @@ void layout::lay_paragraph()
       else para.indent = list->item_indent;
    }
 
-   if (para.indent) {
-      if (para.relative) {
-         // To ensure that relative indenting remains constant, the multiple is a factor of the
-         // paragraph's font size.
-         para.block_indent = para.indent * para.font.get_font()->LineSpacing;
-      }
-      else para.block_indent = para.indent;
+   if (para.indent.value) {
+      para.block_indent = para.indent.px(*this);
    }
 
    para.x = m_left_margin + para.block_indent;
 
-   m_left_margin += para.block_indent + para.item_indent;
-   m_cursor_x    += para.block_indent + para.item_indent;
-   m_line.x      += para.block_indent + para.item_indent;
+   m_left_margin += para.block_indent + para.item_indent.px(*this);
+   m_cursor_x    += para.block_indent + para.item_indent.px(*this);
+   m_line.x      += para.block_indent + para.item_indent.px(*this);
 
    // Paragraph management variables
 
-   if (!stack_list.empty()) para.leading = stack_list.top()->v_spacing;
+   if (!stack_list.empty()) para.leading = stack_list.top()->v_spacing.px(*this);
 
    m_font = para.font.get_font();
 
@@ -783,7 +779,7 @@ void layout::lay_paragraph()
 
    apply_style(para.font);
 
-   if (m_line_count > 0) m_cursor_y += para.leading * m_font->LineSpacing;
+   if (m_line_count > 0) m_cursor_y += para.leading.px(*this);
 
    para.y = m_cursor_y;
    para.height = 0;
@@ -824,7 +820,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 {
    pf::Log log(__FUNCTION__);
 
-   DOUBLE minheight;
+   DOUBLE min_height;
 
    if (Table.cells_expanded IS false) {
       LONG unfixed, colwidth;
@@ -837,19 +833,19 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
       Table.cells_expanded = true;
 
       if (!Table.columns.empty()) {
-         colwidth = (Table.stroke_width * 2) + Table.cell_h_spacing;
+         colwidth = (Table.stroke_width * 2) + Table.cell_h_spacing.px(*this);
          for (auto &col : Table.columns) {
-            colwidth += col.width + Table.cell_h_spacing;
+            colwidth += col.width + Table.cell_h_spacing.px(*this);
          }
-         if (Table.collapsed) colwidth -= Table.cell_h_spacing * 2; // Collapsed tables have no spacing allocated on the sides
+         if (Table.collapsed) colwidth -= Table.cell_h_spacing.px(*this) * 2; // Collapsed tables have no spacing allocated on the sides
 
          if (colwidth < Table.width) { // Cell layout is less than the pre-determined table width
             // Calculate the amount of additional space that is available for cells to expand into
 
             DOUBLE avail_width = Table.width - (Table.stroke_width * 2) -
-               (Table.cell_h_spacing * (Table.columns.size() - 1));
+               (Table.cell_h_spacing.px(*this) * (Table.columns.size() - 1));
 
-            if (!Table.collapsed) avail_width -= (Table.cell_h_spacing * 2);
+            if (!Table.collapsed) avail_width -= (Table.cell_h_spacing.px(*this) * 2);
 
             // Count the number of columns that do not have a fixed size
 
@@ -905,25 +901,21 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    // Cater for the minimum height requested
 
-   if (Table.height_pct) {
-      // If the table height is expressed as a percentage, it is calculated with
-      // respect to the height of the display port.
+   if (Table.min_height.type IS DU::SCALED) {
+      // If the table height is expressed as a percentage, it is calculated against the line width
+      // so that it remains proportional.
 
-      if (!m_depth) {
-         minheight = ((Self->VPHeight - BottomMargin - Table.y) * Table.min_height) / 100;
-      }
-      else minheight = ((Height - BottomMargin - TopMargin) * Table.min_height) / 100;
-
-      if (minheight < 0) minheight = 0;
+      min_height = (wrap_edge() - m_margins.left) * Table.min_width.value;
+      if (min_height < 0) min_height = 0;
    }
-   else minheight = Table.min_height;
+   else min_height = Table.min_height.px(*this);
 
-   if (minheight > Table.height + Table.cell_v_spacing + Table.stroke_width) {
+   if (min_height > Table.height + Table.cell_v_spacing.px(*this) + Table.stroke_width) {
       // The last row in the table needs its height increased
       if (m_row) {
-         auto h = minheight - (Table.height + Table.cell_v_spacing + Table.stroke_width);
+         auto h = min_height - (Table.height + Table.cell_v_spacing.px(*this) + Table.stroke_width);
          DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
-            minheight, m_row->row_height, h, Table.min_height, Table.y);
+            min_height, m_row->row_height, h, Table.min_height.px(*this), Table.y);
          m_row->row_height += h;
          return TE::REPASS_ROW_HEIGHT;
       }
@@ -932,7 +924,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    // Adjust for cellspacing at the bottom
 
-   Table.height += Table.cell_v_spacing + Table.stroke_width;
+   Table.height += Table.cell_v_spacing.px(*this) + Table.stroke_width;
 
    // Restart if the width of the table will force an extension of the page.
 
@@ -1582,19 +1574,19 @@ wrap_table_start:
 
             {
                DOUBLE width;
-               if (table->width_pct) {
-                  width = ((Width - m_cursor_x - m_margins.right) * table->min_width) * 0.01;
+               if (table->min_width.type IS DU::SCALED) {
+                  width = (Width - m_cursor_x - m_margins.right) * table->min_width.value;
                }
-               else width = table->min_width;
+               else width = table->min_width.px(*this);
 
                if (width < 0) width = 0;
 
                {
                   DOUBLE min = (table->stroke_width * 2) +
-                     (table->cell_h_spacing * (table->columns.size()-1)) +
+                     (table->cell_h_spacing.px(*this) * (std::ssize(table->columns)-1)) +
                      ((table->cell_padding.left + table->cell_padding.right) * table->columns.size());
 
-                  if (table->collapsed) min -= table->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
+                  if (table->collapsed) min -= table->cell_h_spacing.px(*this) * 2; // Thin tables do not have spacing on the left and right borders
                   if (width < min) width = min;
                }
 
@@ -1643,7 +1635,7 @@ wrap_table_cell:
             }
 
             m_cursor_x = table->x; // Configure cursor location to help with the layout of rows and cells.
-            m_cursor_y = table->y + table->stroke_width + table->cell_v_spacing;
+            m_cursor_y = table->y + table->stroke_width + table->cell_v_spacing.px(*this);
             new_code_segment();
             break;
          }
@@ -1680,7 +1672,7 @@ wrap_table_cell:
 repass_row_height:
             m_row->vertical_repass = false;
             m_row->y = m_cursor_y;
-            table->row_width = (table->stroke_width * 2) + table->cell_h_spacing;
+            table->row_width = (table->stroke_width * 2) + table->cell_h_spacing.px(*this);
 
             new_code_segment();
             break;
@@ -1998,4 +1990,39 @@ DOUBLE layout::calc_page_height()
       m_segments.back().area.Y, m_segments.back().area.Height, page_height, m_margins.bottom);
 
    return page_height;
+}
+
+//********************************************************************************************************************
+
+DOUBLE DUNIT::px(class layout &Layout) {
+   switch (type) {
+      case DU::PIXEL:       return value;
+      case DU::FONT_SIZE:   return value * Layout.m_font->Ascent;
+      case DU::LINE_HEIGHT: return value * Layout.m_font->LineSpacing;
+      case DU::CHAR:        return value * DOUBLE(fntCharWidth(Layout.m_font, '0', 0, NULL)); // Equivalent to CSS
+      case DU::VP_WIDTH:    return value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;
+      case DU::VP_HEIGHT:   return value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01;
+      case DU::ROOT_FONT_SIZE:   return value * Layout.Self->FontSize;
+      case DU::ROOT_LINE_HEIGHT: return value * (Layout.Self->FontSize * 1.3); // Guesstimate
+         
+      case DU::VP_MIN: {
+         auto w = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;
+         auto h = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01;
+         return std::min(w, h);
+      }
+
+      case DU::VP_MAX: {
+         auto w = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01;
+         auto h = value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01;
+         return std::max(w, h);
+      }
+
+      case DU::SCALED: // wrap_edge equates to m_page_width - m_margins.right;
+         return value * 0.01 * (Layout.wrap_edge() - Layout.m_cursor_x);
+         //return value * 0.01 * (Layout.wrap_edge() - m_margins.left);
+
+      default: return 0;
+   }
+
+   return 0;
 }

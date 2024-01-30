@@ -240,7 +240,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
    // Send a dummy input event to the mouse cursor to ensure that the movement of underlying
    // vectors generates the necessary crossing events.
 
-   if (Self->RefreshCursor) {
+   if ((Self->SurfaceID) and (Self->RefreshCursor)) {
       DOUBLE absx, absy;
       LONG s_x, s_y;
 

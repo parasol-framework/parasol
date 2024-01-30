@@ -1326,12 +1326,11 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
       case HASH_indent:
          if (Para) {
             if (Attrib.Value.empty()) {
-               Para->indent = 3;
-               Para->relative = true;
+               Para->indent = DUNIT(3.0, DU::LINE_HEIGHT);
             }
             else {
-               read_unit(Attrib.Value.c_str(), Para->indent, Para->relative);
-               if (Para->indent < 0) Para->indent = 0;
+               Para->indent = DUNIT(Attrib.Value.c_str(), DU::PIXEL);
+               if (Para->indent.value < 0) Para->indent.clear();
             }
          }
          return true;
@@ -2435,13 +2434,13 @@ void parser::tag_list(XMLTag &Tag)
       }
       else if (!StrMatch("indent", Tag.Attribs[i].Name)) {
          // Affects the indenting to apply to child items.
-         list.block_indent = StrToInt(Tag.Attribs[i].Value);
+         list.block_indent = DUNIT(Tag.Attribs[i].Value, DU::PIXEL);
       }
       else if (!StrMatch("v-spacing", Tag.Attribs[i].Name)) {
          // Affects the vertical advance from one list-item paragraph to the next.
-         // Not equivalent to paragraph v-spacing, which affects each line
-         list.v_spacing = StrToFloat(Tag.Attribs[i].Value);
-         if (list.v_spacing < 0) list.v_spacing = 0;
+         // Equivalent to paragraph leading, not v-spacing, which affects each line
+         list.v_spacing = DUNIT(Tag.Attribs[i].Value, DU::LINE_HEIGHT);
+         if (list.v_spacing.value < 0) list.v_spacing.clear();
       }
       else if (!StrMatch("type", Tag.Attribs[i].Name)) {
          if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
@@ -2449,11 +2448,11 @@ void parser::tag_list(XMLTag &Tag)
          }
          else if (!StrMatch("ordered", Tag.Attribs[i].Value)) {
             list.type = bc_list::ORDERED;
-            list.item_indent = 0;
+            list.item_indent.clear();
          }
          else if (!StrMatch("custom", Tag.Attribs[i].Value)) {
             list.type = bc_list::CUSTOM;
-            list.item_indent = 0;
+            list.item_indent.clear();
          }
       }
       else log.msg("Unknown list attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -2497,9 +2496,7 @@ void parser::tag_paragraph(XMLTag &Tag)
          // The leading is a line height multiplier that applies to the first line in the paragraph only.
          // It is typically used for things like headers.
 
-         para.leading = StrToFloat(Tag.Attribs[i].Value);
-         if (para.leading < MIN_LEADING) para.leading = MIN_LEADING;
-         else if (para.leading > MAX_LEADING) para.leading = MAX_LEADING;
+         para.leading = DUNIT(Tag.Attribs[i].Value, DU::LINE_HEIGHT, DBL_MIN);
       }
       else if (check_para_attrib(Tag.Attribs[i], &para, para.font));
       else check_font_attrib(Tag.Attribs[i], para.font);
@@ -3524,13 +3521,11 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_width:
-            table.min_width = std::clamp(StrToFloat(value), 1.0, 10000.0);
-            table.width_pct = (value.find_first_of('%') != std::string::npos);
+            table.min_width = DUNIT(value, DU::PIXEL, DBL_MIN);
             break;
 
          case HASH_height:
-            table.min_height = std::clamp(StrToFloat(value), 1.0, 10000.0);
-            table.height_pct = (value.find_first_of('%') != std::string::npos);
+            table.min_height = DUNIT(value, DU::PIXEL, DBL_MIN);
             break;
 
          case HASH_fill:
@@ -3542,32 +3537,32 @@ void parser::tag_table(XMLTag &Tag)
             if (table.stroke_width < 1) table.stroke_width = 1;
             break;
 
-         case HASH_spacing: // Spacing between the cells (H & V)
-            table.cell_v_spacing = std::clamp(StrToFloat(value), 0.0, 200.0);
-            table.cell_h_spacing = table.cell_v_spacing;
-            break;
-
          case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'h-spacing') on the sides
             table.collapsed = true;
             break;
 
+         case HASH_spacing: // Spacing between the cells (H & V)
+            table.cell_v_spacing = DUNIT(value, DU::PIXEL, 0);
+            table.cell_h_spacing = table.cell_v_spacing;
+            break;
+
          case HASH_v_spacing: // Spacing between the cells (V)
-            table.cell_v_spacing = std::clamp(StrToFloat(value), 0.0, 200.0);
+            table.cell_v_spacing = DUNIT(value, DU::PIXEL, 0);
             break;
 
          case HASH_h_spacing: // Spacing between the cells (H)
-            table.cell_h_spacing = std::clamp(StrToFloat(value), 0.0, 200.0);
+            table.cell_h_spacing = DUNIT(value, DU::PIXEL, 0);
             break;
 
-         case HASH_align: {
-            auto align = StrHash(value);
-            if (align IS HASH_left)        table.align = ALIGN::LEFT;
-            else if (align IS HASH_right)  table.align = ALIGN::RIGHT;
-            else if (align IS HASH_center) table.align = ALIGN::CENTER;
-            else if (align IS HASH_middle) table.align = ALIGN::CENTER;
-            else log.warning("Invalid alignment value '%s'", value.c_str());
+         case HASH_align:
+            switch(StrHash(value)) {
+               case HASH_left:   table.align = ALIGN::LEFT; break;
+               case HASH_right:  table.align = ALIGN::RIGHT; break;
+               case HASH_center: table.align = ALIGN::CENTER; break;
+               case HASH_middle: table.align = ALIGN::CENTER; break;
+               default: log.warning("Invalid alignment value '%s'", value.c_str()); break;
+            }
             break;
-         }
 
          case HASH_margins:
          case HASH_padding:

@@ -74,8 +74,11 @@
 <p><combobox width="200" label-pos="left" label="Left Label: " value="pre-defined content">
   <style>
     <svg>
-      <rect x="1" y="1" xOffset="1" yOffset="1" fill="rgb(255,0,0)" stroke="rgb(255,255,255)" stroke-width="2"/>
+      <rect rx="1%" ry="1%" x="1" y="1" xOffset="1" yOffset="1" fill="rgb(255,0,0)" stroke="rgb(255,255,255)" stroke-width="2"/>
       <defs>
+        <pattern id="Highlight">
+          <rect width="100%" height="100%" fill="rgb(128,64,64)"/>
+        </pattern>
         <image id="cancel" xlink:href="icons:items/cancel" width="32" height="32"/>
       </defs>
     </svg>
