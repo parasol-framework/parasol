@@ -708,7 +708,7 @@ struct bc_table : public entity {
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
    DUNIT  min_width = DUNIT(0.0), min_height = DUNIT(0.0); // User-determined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
-   DOUBLE stroke_width = 0;              // Stroke width
+   DUNIT  stroke_width = DUNIT();        // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
    LONG   rows = 0;                      // Total number of rows in table
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
@@ -823,7 +823,7 @@ struct bc_cell : public entity {
    CB border = CB::NIL;           // Border options
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
    DOUBLE width = 0, height = 0;  // Width and height of the cell
-   DOUBLE stroke_width = 0;
+   DUNIT stroke_width = DUNIT();
    ui_hooks hooks;                // UI hooks defined by the client
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::string stroke;

@@ -3524,7 +3524,7 @@ void parser::tag_table(XMLTag &Tag)
 
          case HASH_stroke:
             table.stroke = value;
-            if (table.stroke_width < 1) table.stroke_width = 1;
+            if (table.stroke_width.empty()) table.stroke_width = DUNIT(1.0, DU::PIXEL);
             break;
 
          case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'h-spacing') on the sides
@@ -3695,9 +3695,9 @@ void parser::tag_cell(XMLTag &Tag)
 
          case HASH_stroke:
             cell.stroke = Tag.Attribs[i].Value;
-            if (!cell.stroke_width) {
+            if (cell.stroke_width.empty()) {
                cell.stroke_width = m_table_stack.top().table->stroke_width;
-               if (!cell.stroke_width) cell.stroke_width = 1;
+               if (cell.stroke_width.empty()) cell.stroke_width = DUNIT(1.0, DU::PIXEL);
             }
             break;
 
@@ -3705,7 +3705,7 @@ void parser::tag_cell(XMLTag &Tag)
 
          case HASH_fill: cell.fill = Tag.Attribs[i].Value; break;
 
-         case HASH_stroke_width: cell.stroke_width = StrToFloat(Tag.Attribs[i].Value); break;
+         case HASH_stroke_width: cell.stroke_width = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
 
          case HASH_no_wrap: new_style.options |= FSO::NO_WRAP; break;
 

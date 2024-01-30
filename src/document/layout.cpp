@@ -52,9 +52,9 @@ private:
       link_marker(DOUBLE pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
    };
 
-   std::stack<bc_list *>      stack_list;
-   std::stack<bc_paragraph *> stack_para;
-   std::stack<bc_font *>      stack_font;
+   std::stack<bc_list *>      m_stack_list;
+   std::stack<bc_paragraph *> m_stack_para;
+   std::stack<bc_font *>      m_stack_font;
 
    std::vector<doc_clip> m_clips;
 
@@ -68,9 +68,9 @@ private:
    DOUBLE m_page_width = 0;
    INDEX idx = 0;                 // Current seek position for processing of the stream
    stream_char m_word_index;      // Position of the word currently being operated on
-   LONG m_align_width = 0;        // Available space for horizontal alignment.  Typically equivalent to wrap_edge(), but can be smaller if a clip region exists on the line.
+   DOUBLE m_align_width = 0;      // Available space for horizontal alignment.  Typically equivalent to wrap_edge(), but can be smaller if a clip region exists on the line.
    LONG m_kernchar    = 0;        // Previous character of the word being operated on
-   LONG m_left_margin = 0;
+   DOUBLE m_left_margin = 0;
    LONG m_paragraph_bottom = 0;   // Bottom Y coordinate of the current paragraph; defined on paragraph end.
    SEGINDEX m_line_seg_start = 0; // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
    LONG m_word_width   = 0;       // Pixel width of the current word
@@ -109,9 +109,9 @@ private:
       m_ecells.clear();
       m_segments.clear();
 
-      stack_list = {};
-      stack_para = {};
-      stack_font = {};
+      m_stack_list = {};
+      m_stack_para = {};
+      m_stack_font = {};
 
       m_paragraph_bottom = 0;
       m_word_width       = 0;
@@ -122,7 +122,7 @@ private:
    // Break and reset the content management variables for the active line.  Usually done when a string
    // has been broken up on the current line due to a vector or table graphic for example.
 
-   inline void reset_broken_segment(INDEX Index, LONG X) {
+   inline void reset_broken_segment(INDEX Index, DOUBLE X) {
       m_word_index.reset();
 
       m_line.index.set(Index);
@@ -259,7 +259,7 @@ CELL layout::lay_cell(bc_table *Table)
    }
    else cell.x += Table->cell_h_spacing.px(*this);
 
-   if (cell.column IS 0) cell.x += Table->stroke_width;
+   if (cell.column IS 0) cell.x += Table->stroke_width.px(*this);
 
    cell.width  = Table->columns[cell.column].width; // Minimum width for the cell's column
    cell.height = m_row->row_height;
@@ -370,7 +370,7 @@ CELL layout::lay_cell(bc_table *Table)
    if (!Table->collapsed) m_cursor_x += Table->cell_h_spacing.px(*this);
    else if ((cell.column + cell.col_span) < std::ssize(Table->columns)) m_cursor_x += Table->cell_h_spacing.px(*this);
 
-   if (cell.column IS 0) m_cursor_x += Table->stroke_width;
+   if (cell.column IS 0) m_cursor_x += Table->stroke_width.px(*this);
 
    if (!cell.edit_def.empty()) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
@@ -519,7 +519,7 @@ void layout::lay_font()
       if (!m_word_width) m_word_index.set(idx);
    }
 
-   stack_font.push(&m_stream->lookup<bc_font>(idx));
+   m_stack_font.push(&m_stream->lookup<bc_font>(idx));
 }
 
 void layout::lay_font_end()
@@ -530,10 +530,10 @@ void layout::lay_font_end()
       m_line.gutter = m_font->Gutter;
    }
 
-   stack_font.pop();
-   if (!stack_font.empty()) {
-      m_font = stack_font.top()->get_font();
-      apply_style(*stack_font.top());
+   m_stack_font.pop();
+   if (!m_stack_font.empty()) {
+      m_font = m_stack_font.top()->get_font();
+      apply_style(*m_stack_font.top());
    }
 }
 
@@ -621,19 +621,19 @@ WRAP layout::lay_text()
 
 bool layout::lay_list_end()
 {
-   if (stack_list.empty()) return false;
+   if (m_stack_list.empty()) return false;
 
    // If it is a custom list, a repass may be required
 
-   if ((stack_list.top()->type IS bc_list::CUSTOM) and (stack_list.top()->repass)) {
+   if ((m_stack_list.top()->type IS bc_list::CUSTOM) and (m_stack_list.top()->repass)) {
       return true;
    }
 
-   stack_list.pop();
+   m_stack_list.pop();
 
-   if (stack_list.empty()) {
+   if (m_stack_list.empty()) {
       // At the end of a list, increase the whitespace to that of a standard paragraph.
-      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stream_char(idx));
+      if (!m_stack_para.empty()) end_line(NL::PARAGRAPH, stream_char(idx));
       else end_line(NL::PARAGRAPH, stream_char(idx));
    }
 
@@ -705,21 +705,21 @@ void layout::lay_row_end(bc_table *Table)
 
 void layout::lay_paragraph()
 {
-   if (!stack_para.empty()) { // Embedded paragraph detected - end the current line.
-      m_left_margin = stack_para.top()->x; // Reset the margin so that the next line will be flush with the parent
+   if (!m_stack_para.empty()) { // Embedded paragraph detected - end the current line.
+      m_left_margin = m_stack_para.top()->x; // Reset the margin so that the next line will be flush with the parent
       end_line(NL::PARAGRAPH, stream_char(idx));
    }
 
    auto &para = m_stream->lookup<bc_paragraph>(idx);
-   stack_para.push(&para);
+   m_stack_para.push(&para);
 
-   if (!stack_list.empty()) {
+   if (!m_stack_list.empty()) {
       // If a paragraph is inside a list then it's treated as a list item.
       // Indentation values are inherited from the list.
 
-      auto list = stack_list.top();
+      auto list = m_stack_list.top();
       if (para.list_item) {
-         if (stack_para.size() > 1) para.indent = list->block_indent;
+         if (m_stack_para.size() > 1) para.indent = list->block_indent;
          para.item_indent = DUNIT(list->item_indent.value, DU::PIXEL);
 
          if (!para.value.empty()) {
@@ -764,7 +764,7 @@ void layout::lay_paragraph()
 
    // Paragraph management variables
 
-   if (!stack_list.empty()) para.leading = stack_list.top()->v_spacing.px(*this);
+   if (!m_stack_list.empty()) para.leading = m_stack_list.top()->v_spacing.px(*this);
 
    m_font = para.font.get_font();
 
@@ -782,18 +782,18 @@ void layout::lay_paragraph()
    para.y = m_cursor_y;
    para.height = 0;
 
-   stack_font.push(&para.font);
+   m_stack_font.push(&para.font);
 }
 
 //********************************************************************************************************************
 
 void layout::lay_paragraph_end()
 {
-   if (!stack_para.empty()) {
+   if (!m_stack_para.empty()) {
       // The paragraph height reflects the true size of the paragraph after we take into account
       // any inline graphics within the paragraph.
 
-      auto para = stack_para.top();
+      auto para = m_stack_para.top();
       m_paragraph_bottom = para->y + para->height;
 
       end_line(NL::PARAGRAPH, stream_char(idx + 1));
@@ -801,14 +801,14 @@ void layout::lay_paragraph_end()
       m_left_margin = para->x - para->block_indent.px(*this);
       m_cursor_x    = para->x - para->block_indent.px(*this);
       m_line.x      = para->x - para->block_indent.px(*this);
-      stack_para.pop();
+      m_stack_para.pop();
    }
    else end_line(NL::PARAGRAPH, stream_char(idx + 1)); // Technically an error when there's no matching PS code.
 
-   stack_font.pop();
-   if (!stack_font.empty()) {
-      m_font = stack_font.top()->get_font();
-      apply_style(*stack_font.top());
+   m_stack_font.pop();
+   if (!m_stack_font.empty()) {
+      m_font = m_stack_font.top()->get_font();
+      apply_style(*m_stack_font.top());
    }
 }
 
@@ -832,7 +832,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
       Table.cells_expanded = true;
 
       if (!Table.columns.empty()) {
-         colwidth = (Table.stroke_width * 2) + Table.cell_h_spacing.px(*this);
+         colwidth = (Table.stroke_width.px(*this) * 2) + Table.cell_h_spacing.px(*this);
          for (auto &col : Table.columns) {
             colwidth += col.width + Table.cell_h_spacing.px(*this);
          }
@@ -841,7 +841,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
          if (colwidth < Table.width) { // Cell layout is less than the pre-determined table width
             // Calculate the amount of additional space that is available for cells to expand into
 
-            DOUBLE avail_width = Table.width - (Table.stroke_width * 2) -
+            DOUBLE avail_width = Table.width - (Table.stroke_width.px(*this) * 2) -
                (Table.cell_h_spacing.px(*this) * (Table.columns.size() - 1));
 
             if (!Table.collapsed) avail_width -= (Table.cell_h_spacing.px(*this) * 2);
@@ -909,10 +909,10 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
    }
    else min_height = Table.min_height.px(*this);
 
-   if (min_height > Table.height + Table.cell_v_spacing.px(*this) + Table.stroke_width) {
+   if (min_height > Table.height + Table.cell_v_spacing.px(*this) + Table.stroke_width.px(*this)) {
       // The last row in the table needs its height increased
       if (m_row) {
-         auto h = min_height - (Table.height + Table.cell_v_spacing.px(*this) + Table.stroke_width);
+         auto h = min_height - (Table.height + Table.cell_v_spacing.px(*this) + Table.stroke_width.px(*this));
          DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
             min_height, m_row->row_height, h, Table.min_height.px(*this), Table.y);
          m_row->row_height += h;
@@ -923,7 +923,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    // Adjust for cellspacing at the bottom
 
-   Table.height += Table.cell_v_spacing.px(*this) + Table.stroke_width;
+   Table.height += Table.cell_v_spacing.px(*this) + Table.stroke_width.px(*this);
 
    // Restart if the width of the table will force an extension of the page.
 
@@ -952,9 +952,9 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
       if (Table.height > m_line.height) m_line.height = Table.height;
    }
 
-   if (!stack_para.empty()) {
-      DOUBLE j = (Table.y + Table.height) - stack_para.top()->y;
-      if (j > stack_para.top()->height) stack_para.top()->height = j;
+   if (!m_stack_para.empty()) {
+      DOUBLE j = (Table.y + Table.height) - m_stack_para.top()->y;
+      if (j > m_stack_para.top()->height) m_stack_para.top()->height = j;
    }
 
    // Check if the table collides with clipping boundaries and adjust its position accordingly.
@@ -1433,7 +1433,7 @@ extend_page:
          case SCODE::LINK: {
             auto &link = m_stream->lookup<bc_link>(idx);
 
-            stack_font.push(&link.font);
+            m_stack_font.push(&link.font);
 
             if (link.path.empty()) {
                // This 'invisible' viewport will be used to receive user input
@@ -1451,8 +1451,8 @@ extend_page:
          }
 
          case SCODE::LINK_END:
-            stack_font.pop();
-            if (!stack_font.empty()) m_font = stack_font.top()->get_font();
+            m_stack_font.pop();
+            if (!m_stack_font.empty()) m_font = m_stack_font.top()->get_font();
             break;
 
          case SCODE::PARAGRAPH_START: lay_paragraph(); break;
@@ -1463,8 +1463,8 @@ extend_page:
             // cursor position is advanced by the size of the item graphics element.
 
             liststate = *this;
-            stack_list.push(&m_stream->lookup<bc_list>(idx));
-            stack_list.top()->repass = false;
+            m_stack_list.push(&m_stream->lookup<bc_list>(idx));
+            m_stack_list.top()->repass = false;
             break;
 
          case SCODE::LIST_END:
@@ -1563,7 +1563,7 @@ extend_page:
                if (!table->fill.empty()) table->path->set(FID_Fill, table->fill);
 
                if (!table->stroke.empty()) {
-                  table->path->setFields(fl::Stroke(table->stroke), fl::StrokeWidth(table->stroke_width));
+                  table->path->setFields(fl::Stroke(table->stroke), fl::StrokeWidth(table->stroke_width.px(*this)));
                }
             }
 
@@ -1581,7 +1581,7 @@ wrap_table_start:
                if (width < 0) width = 0;
 
                {
-                  DOUBLE min = (table->stroke_width * 2) +
+                  DOUBLE min = (table->stroke_width.px(*this) * 2) +
                      (table->cell_h_spacing.px(*this) * (std::ssize(table->columns)-1)) +
                      ((table->cell_padding.left + table->cell_padding.right) * table->columns.size());
 
@@ -1609,7 +1609,7 @@ wrap_table_cell:
             table->y           = m_cursor_y;
             table->row_index   = 0;
             table->total_clips = m_clips.size();
-            table->height      = table->stroke_width;
+            table->height      = table->stroke_width.px(*this);
 
             DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g, page width %g.",
                idx, LONG(table->columns.size()), table->rows, table->x, table->y,
@@ -1635,7 +1635,7 @@ wrap_table_cell:
             }
 
             m_cursor_x = table->x; // Configure cursor location to help with the layout of rows and cells.
-            m_cursor_y = table->y + table->stroke_width + table->cell_v_spacing.px(*this);
+            m_cursor_y = table->y + table->stroke_width.px(*this) + table->cell_v_spacing.px(*this);
             new_code_segment();
             break;
          }
@@ -1672,7 +1672,7 @@ wrap_table_cell:
 repass_row_height:
             m_row->vertical_repass = false;
             m_row->y = m_cursor_y;
-            table->row_width = (table->stroke_width * 2) + table->cell_h_spacing.px(*this);
+            table->row_width = (table->stroke_width.px(*this) * 2) + table->cell_h_spacing.px(*this);
 
             new_code_segment();
             break;
@@ -1877,8 +1877,8 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
       sanitise_line_height();
 
       X = m_left_margin;
-      if (stack_para.empty()) Y += m_line.height;
-      else Y += stack_para.top()->line_height.px(*this);
+      if (m_stack_para.empty()) Y += m_line.height;
+      else Y += m_stack_para.top()->line_height.px(*this);
 
       m_cursor_x = X;
       m_cursor_y = Y;

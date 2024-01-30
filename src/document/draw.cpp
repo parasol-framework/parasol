@@ -356,7 +356,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
                   if (!cell.stroke.empty()) {
-                     cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width));
+                     cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width.px(*this)));
                   }
                   if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
                }
