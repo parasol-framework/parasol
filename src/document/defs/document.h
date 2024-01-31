@@ -161,6 +161,8 @@ DEFINE_ENUM_FLAG_OPERATORS(TRF)
 class RSTREAM;
 
 //********************************************************************************************************************
+// Display Unit class.  Reads CSS metric values during parsing and returns them as pixel values during the layout
+// process.
 
 enum class DU : UBYTE {
    NIL = 0,
@@ -186,7 +188,8 @@ struct DUNIT {
 
    DUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
 
-   DUNIT(const std::string &pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : DUNIT(pValue.c_str(), pDefaultType, pMin) { }
+   DUNIT(const std::string &pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : 
+      DUNIT(pValue.c_str(), pDefaultType, pMin) { }
 
    DUNIT(CSTRING pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) {
       bool is_number = true;
@@ -706,9 +709,9 @@ struct bc_table : public entity {
    DUNIT  cell_v_spacing, cell_h_spacing; // Spacing between each cell
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
-   DUNIT  min_width, min_height; // User-determined minimum table width/height
+   DUNIT  min_width, min_height;         // Client-defined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
-   DUNIT  stroke_width = DUNIT();        // Stroke width
+   DUNIT  stroke_width;                  // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
    LONG   rows = 0;                      // Total number of rows in table
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
@@ -823,7 +826,7 @@ struct bc_cell : public entity {
    CB border = CB::NIL;           // Border options
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
    DOUBLE width = 0, height = 0;  // Width and height of the cell
-   DUNIT stroke_width = DUNIT();
+   DUNIT stroke_width;
    ui_hooks hooks;                // UI hooks defined by the client
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::string stroke;

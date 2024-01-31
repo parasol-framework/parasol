@@ -49,7 +49,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include <stack>
 #include <cmath>
 #include <mutex>
-#include "hashes.h"
+#include "defs/hashes.h"
 
 static const LONG MAX_PAGE_WIDTH    = 30000;
 static const LONG MAX_PAGE_HEIGHT   = 100000;
@@ -58,8 +58,6 @@ static const LONG MAX_DEPTH         = 50;    // Limits the number of tables-with
 static const LONG BULLET_INDENT     = 14;    // Minimum indentation for bullet point lists
 static const LONG WIDTH_LIMIT       = 4000;
 static const LONG DEFAULT_FONTSIZE  = 10;
-static const DOUBLE MAX_VSPACING    = 6.0;
-static const DOUBLE MAX_LEADING     = 6.0;
 static const DOUBLE MIN_LINE_HEIGHT = 0.001;
 static const DOUBLE MAX_LINE_HEIGHT = 10.0;
 static const DOUBLE MIN_LEADING     = 0;
@@ -77,7 +75,7 @@ JUMPTABLE_FONT
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
-#include "document.h"
+#include "defs/document.h"
 
 //********************************************************************************************************************
 
@@ -136,7 +134,7 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 //********************************************************************************************************************
 // Function prototypes.
 
-#include "module_def.c"
+#include "defs/module_def.c"
 
 struct layout; // Pre-def
 

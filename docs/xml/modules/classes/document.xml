@@ -21,8 +21,8 @@
 <p>By default, script execution is not enabled when parsing a document source.  If support for scripts is enabled, there is no meaningful level of safety on offer when the document is processed.  This feature should not be used unless the source document has been written by the client, or has otherwise been received from a trusted source.</p>
 <p>To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation https://github.com/microsoft/win32-app-isolation is one potential way of doing this.</p></description>
     <source>
-      <file path="class/">document_class.cpp</file>
-      <file path="class/">fields.cpp</file>
+      <file path="../class/">document_class.cpp</file>
+      <file path="../class/">fields.cpp</file>
     </source>
   </info>
 
