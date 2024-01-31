@@ -684,8 +684,8 @@ struct bc_list : public entity {
    std::string fill;                   // Fill to use for bullet points (valid for BULLET only).
    std::vector<std::string> buffer;    // Temp buffer, used for ordered lists
    LONG   start        = 1;            // Starting value for ordered lists (default: 1)
-   DUNIT  item_indent  = DUNIT(BULLET_INDENT); // Minimum indentation for text printed for each item
-   DUNIT  block_indent = DUNIT(BULLET_INDENT); // Indentation for each set of items
+   DUNIT  item_indent  = DUNIT(1.0, DU::LINE_HEIGHT); // Minimum indentation for text printed for each item
+   DUNIT  block_indent = DUNIT(1.0, DU::LINE_HEIGHT); // Indentation for each set of items
    LONG   item_num     = 0;
    LONG   order_insert = 0;
    DUNIT  v_spacing    = DUNIT(0.5, DU::LINE_HEIGHT);  // Spacing between list items, equivalent to paragraph leading, expressed as a ratio

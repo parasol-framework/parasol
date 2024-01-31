@@ -717,13 +717,13 @@ void layout::lay_paragraph()
       auto list = m_stack_list.top();
       if (para.list_item) {
          if (m_stack_para.size() > 1) para.indent = list->block_indent;
-         para.item_indent = DUNIT(list->item_indent.value, DU::PIXEL);
+         para.item_indent = list->item_indent;
 
          if (!para.value.empty()) {
             auto strwidth = fntStringWidth(m_font, para.value.c_str(), -1) + 10;
             if (strwidth > list->item_indent.px(*this)) {
-               list->item_indent = strwidth;
-               para.item_indent  = strwidth;
+               list->item_indent = DUNIT(strwidth, DU::PIXEL);
+               para.item_indent  = DUNIT(strwidth, DU::PIXEL);
                list->repass      = true;
             }
 
@@ -751,13 +751,15 @@ void layout::lay_paragraph()
       else para.indent = list->item_indent;
    }
 
-   if (para.indent.value > 0) para.block_indent = para.indent;
+   if (!para.indent.empty()) para.block_indent = para.indent;
 
    para.x = m_left_margin + para.block_indent.px(*this);
 
-   m_left_margin += para.block_indent.px(*this) + para.item_indent.px(*this);
-   m_cursor_x    += para.block_indent.px(*this) + para.item_indent.px(*this);
-   m_line.x      += para.block_indent.px(*this) + para.item_indent.px(*this);
+   auto advance = para.block_indent.px(*this) + para.item_indent.px(*this);
+
+   m_left_margin += advance;
+   m_cursor_x    += advance;
+   m_line.x      += advance;
 
    // Paragraph management variables
 
@@ -795,9 +797,10 @@ void layout::lay_paragraph_end()
 
       end_line(NL::PARAGRAPH, stream_char(idx + 1));
 
-      m_left_margin = para->x - para->block_indent.px(*this);
-      m_cursor_x    = para->x - para->block_indent.px(*this);
-      m_line.x      = para->x - para->block_indent.px(*this);
+      auto x = para->x - para->block_indent.px(*this);
+      m_left_margin = x;
+      m_cursor_x    = x;
+      m_line.x      = x;
       m_stack_para.pop();
    }
    else end_line(NL::PARAGRAPH, stream_char(idx + 1)); // Technically an error when there's no matching PS code.

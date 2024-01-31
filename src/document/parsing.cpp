@@ -1321,13 +1321,8 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
 
       case HASH_indent:
          if (Para) {
-            if (Attrib.Value.empty()) {
-               Para->indent = DUNIT(3.0, DU::LINE_HEIGHT);
-            }
-            else {
-               Para->indent = DUNIT(Attrib.Value.c_str(), DU::PIXEL);
-               if (Para->indent.value < 0) Para->indent.clear();
-            }
+            if (Attrib.Value.empty()) Para->indent = DUNIT(3.0, DU::LINE_HEIGHT);
+            else Para->indent = DUNIT(Attrib.Value, DU::PIXEL, 0);
          }
          return true;
    }
@@ -2404,33 +2399,35 @@ void parser::tag_list(XMLTag &Tag)
    list.item_num = list.start;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("fill", Tag.Attribs[i].Name)) {
-         list.fill = Tag.Attribs[i].Value;
+      auto &name  = Tag.Attribs[i].Name;
+      auto &value = Tag.Attribs[i].Value;
+      if (!StrMatch("fill", name)) {
+         list.fill = value;
       }
-      else if (!StrMatch("indent", Tag.Attribs[i].Name)) {
+      else if (!StrMatch("indent", name)) {
          // Affects the indenting to apply to child items.
-         list.block_indent = DUNIT(Tag.Attribs[i].Value, DU::PIXEL);
+         list.block_indent = DUNIT(value, DU::PIXEL);
       }
-      else if (!StrMatch("v-spacing", Tag.Attribs[i].Name)) {
+      else if (!StrMatch("v-spacing", name)) {
          // Affects the vertical advance from one list-item paragraph to the next.
          // Equivalent to paragraph leading, not v-spacing, which affects each line
-         list.v_spacing = DUNIT(Tag.Attribs[i].Value, DU::LINE_HEIGHT);
+         list.v_spacing = DUNIT(value, DU::LINE_HEIGHT);
          if (list.v_spacing.value < 0) list.v_spacing.clear();
       }
-      else if (!StrMatch("type", Tag.Attribs[i].Name)) {
-         if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
+      else if (!StrMatch("type", name)) {
+         if (!StrMatch("bullet", value)) {
             list.type = bc_list::BULLET;
          }
-         else if (!StrMatch("ordered", Tag.Attribs[i].Value)) {
+         else if (!StrMatch("ordered", value)) {
             list.type = bc_list::ORDERED;
             list.item_indent.clear();
          }
-         else if (!StrMatch("custom", Tag.Attribs[i].Value)) {
+         else if (!StrMatch("custom", value)) {
             list.type = bc_list::CUSTOM;
             list.item_indent.clear();
          }
       }
-      else log.msg("Unknown list attribute '%s'", Tag.Attribs[i].Name.c_str());
+      else log.msg("Unknown list attribute '%s'", name.c_str());
    }
 
    auto &stream_list = m_stream->emplace(m_index, list);
