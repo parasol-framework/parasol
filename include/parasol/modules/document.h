@@ -260,7 +260,7 @@ class objDocument : public BaseClass {
 
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -286,33 +286,21 @@ class objDocument : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setBackground(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setCursorStroke(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    inline ERROR setClientScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -324,14 +312,14 @@ class objDocument : public BaseClass {
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[10];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    template <class T> inline ERROR setPretext(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 

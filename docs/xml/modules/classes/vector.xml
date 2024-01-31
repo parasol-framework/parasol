@@ -202,7 +202,7 @@
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>ENTERED_AREA</code> and <code>LEFT_AREA</code> events are triggered during passage through the clipping area.</p>
+<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> events are triggered during passage through the clipping area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
 <p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
@@ -568,7 +568,7 @@
       <type>FUNCTION</type>
       <description>
 <p>Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as follows:</p>
-<pre>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+<pre>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Meta)
 </pre>
 <p>The dimension values refer to the current location and size of the viewport.</p>
 <p>Note that this callback feature is provided for convenience.  Only one subscription to the viewport is possible at any time.  The conventional means for monitoring the size and position of any vector is to subscribe to the <code>PATH_CHANGED</code> event.</p>

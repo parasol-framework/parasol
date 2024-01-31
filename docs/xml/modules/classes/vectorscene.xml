@@ -219,8 +219,8 @@
       <access read="R">Read</access>
       <type class="VectorViewport">*VectorViewport</type>
       <description>
-<p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, because it will be used to define the size and location of the area rendered by the scene.</p>
-<p>The Viewport field must not be set by the client.  The VectorViewport object will configure its ownership to the VectorScene prior to initialisation.  The Viewport field value will then be set automatically when the VectorViewport object is initialised.</p>
+<p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, which will be used to define the size and location of the area rendered by the scene.</p>
+<p>The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport owned by the VectorScene is initialised.</p>
       </description>
     </field>
 

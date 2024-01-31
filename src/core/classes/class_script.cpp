@@ -125,29 +125,29 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
 
-   LARGE save_id = Self->ProcedureID;
-   CSTRING save_name = Self->Procedure;
+   auto save_id      = Self->ProcedureID;
+   auto save_name    = Self->Procedure;
    Self->ProcedureID = Args->ProcedureID;
-   Self->Procedure = NULL;
+   Self->Procedure   = NULL;
 
-   const ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *save_args = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
-   LONG savetotal = Self->TotalArgs;
-   Self->TotalArgs = Args->TotalArgs;
+   auto save_total  = Self->TotalArgs;
+   Self->TotalArgs  = Args->TotalArgs;
    auto saved_error = Self->Error;
    auto saved_error_msg = Self->ErrorString;
    Self->ErrorString = NULL;
-   Self->Error = ERR_Okay;
+   Self->Error       = ERR_Okay;
 
    ERROR error = acActivate(Self);
 
    Args->Error = Self->Error;
    Self->Error = saved_error;
    Self->ProcedureID = save_id;
-   Self->Procedure = save_name;
-   Self->ProcArgs  = saveargs;
-   Self->TotalArgs = savetotal;
+   Self->Procedure   = save_name;
+   Self->ProcArgs    = save_args;
+   Self->TotalArgs   = save_total;
    if (Self->ErrorString) FreeResource(Self->ErrorString);
    Self->ErrorString = saved_error_msg;
 
@@ -226,23 +226,23 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR_Args);
 
-   LARGE save_id = Self->ProcedureID;
+   auto save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
    Self->ProcedureID = 0;
    Self->Procedure = Args->Procedure;
 
-   const ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *save_args = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
-   LONG savetotal = Self->TotalArgs;
+   auto save_total = Self->TotalArgs;
    Self->TotalArgs = Args->TotalArgs;
 
    ERROR error = acActivate(Self);
 
    Self->ProcedureID = save_id;
-   Self->Procedure = save_name;
-   Self->ProcArgs  = saveargs;
-   Self->TotalArgs = savetotal;
+   Self->Procedure   = save_name;
+   Self->ProcArgs    = save_args;
+   Self->TotalArgs   = save_total;
 
    return error;
 }
@@ -649,10 +649,10 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Procedure: Allows you to specify a procedure to be executed from within a script.
+Procedure: Specifies a procedure to be executed from within a script.
 
 Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main'
-area of the script.  If a script that you have loaded contains procedures, you can set the Procedure field to execute a
+area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a
 specific routine whenever the script is activated with the Activate action.
 
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
@@ -768,7 +768,7 @@ field is not set, the root-level objects in the script will be initialised to th
 TotalArgs: Reflects the total number of arguments used in a script object.
 
 The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected
-in the value of this field.  If you have not set any arguments then the field value will be zero.
+in the value of this field.
 -END-
 *********************************************************************************************************************/
 
@@ -799,7 +799,7 @@ loaded, without the file name.  If this cannot be determined then the working pa
 
 The working path is always fully qualified with a slash or colon at the end of the string.
 
-You can manually change the working path by setting this field with a custom string.
+A client can manually change the working path by setting this field with a custom string.
 -END-
 
 *********************************************************************************************************************/
@@ -841,16 +841,16 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          Self->Path[j] = save;
       }
       else {
-         STRING workingpath;
-         if ((!CurrentTask()->get(FID_Path, &workingpath)) and (workingpath)) {
+         STRING working_path;
+         if ((!CurrentTask()->get(FID_Path, &working_path)) and (working_path)) {
             // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
-            std::string buf = workingpath;
+            std::string buf = working_path;
             if (j > 0) buf.append(Self->Path, 0, j);         
 
             pf::SwitchContext ctx(Self);
             if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
-               Self->WorkingPath = StrClone(workingpath);
+               Self->WorkingPath = StrClone(working_path);
             }
          }
          else log.warning("No working path.");

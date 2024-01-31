@@ -25,6 +25,7 @@
 #define HASH_cell 0x7c951505UL
 #define HASH_center 0xf62fb286UL
 #define HASH_checkbox 0x11a6290cUL
+#define HASH_clip_path 0x455423a7UL
 #define HASH_collapsed 0xeb60fadcUL
 #define HASH_colour 0xf6e37b99UL
 #define HASH_colour 0xf6e37b99UL

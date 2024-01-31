@@ -373,16 +373,6 @@
     </field>
 
     <field>
-      <name>Background</name>
-      <comment>Optional background fill instruction for the document.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
-      <description>
-<p>Set the Background field with an SVG fill instruction to create a customised background.</p>
-      </description>
-    </field>
-
-    <field>
       <name>ClientScript</name>
       <comment>Allows an external script object to be used by a document file.</comment>
       <access write="S">Set</access>
@@ -400,16 +390,6 @@
       <type>STRING</type>
       <description>
 <p>If a document declares copyright information under a head tag, the copyright string will be readable from this field. This field is always NULL if a document does not declare a copyright string.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>CursorStroke</name>
-      <comment>The colour or brush stroke to use for the document cursor.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
-      <description>
-<p>The colour or brush stroke used for the document cursor may be changed by setting this field.  Formatting is equivalent to the SVG stroke property.  This is relevant only when a document is in edit mode.</p>
       </description>
     </field>
 

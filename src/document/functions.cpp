@@ -470,6 +470,8 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    }
 
    if (Self->Page) {
+      Self->Page->setMask(NULL); // Reset the clipping mask if it was defined by <body>
+
       pf::vector<ChildEntry> list;
       if (!ListChildren(Self->Page->UID, &list)) {
          for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);

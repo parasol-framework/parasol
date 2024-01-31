@@ -1446,6 +1446,14 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_select_fill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
             Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
+         
+         case HASH_clip_path: {
+            OBJECTPTR clip;
+            if (!scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip)) {
+               Self->Page->set(FID_Mask, clip);
+            }
+            break;
+         }
 
          case HASH_cursor_stroke:
             Self->CursorStroke = Tag.Attribs[i].Value;
