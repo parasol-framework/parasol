@@ -384,7 +384,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    Self->LinkSelectFill = "rgb(255,0,0)";
 
    if (Self->Background) FreeResource(Self->Background);
-   Self->Background   = StrClone("rgb(255,255,255,255)");
+   Self->Background = StrClone("rgb(255,255,255,255)");
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;

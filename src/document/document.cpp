@@ -54,12 +54,9 @@ that is distributed with this package.  Please refer to it for further informati
 static const LONG MAX_PAGE_WIDTH    = 30000;
 static const LONG MAX_PAGE_HEIGHT   = 100000;
 static const LONG MIN_PAGE_WIDTH    = 20;
-static const LONG MAX_DEPTH         = 50;    // Limits the number of tables-within-tables
+static const LONG MAX_DEPTH         = 40;    // Limits recursion from tables-within-tables
 static const LONG WIDTH_LIMIT       = 4000;
 static const LONG DEFAULT_FONTSIZE  = 10;
-static const DOUBLE MIN_LINE_HEIGHT = 0.001;
-static const DOUBLE MAX_LINE_HEIGHT = 10.0;
-static const DOUBLE MIN_LEADING     = 0;
 
 using BYTECODE = ULONG;
 using CELL_ID = ULONG;
@@ -380,6 +377,7 @@ inline void layout_doc_fast(extDocument *Self)
 #include "menu.cpp"
 #include "draw.cpp"
 #include "entities.cpp"
+#include "dunit.cpp"
 
 //********************************************************************************************************************
 

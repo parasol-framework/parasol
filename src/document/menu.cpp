@@ -115,8 +115,8 @@ void doc_menu::refresh()
       buf << glSVGTail;
    }
 
-   buf << "<page name=\"Index\">";
-   buf << "<table width=\"100%\" v-spacing=\"0.3em\" h-spacing=\"0.2em\" padding=\"6 0 6 0\">";
+   buf << "<page name=\"Index\">\n";
+   buf << "<table width=\"100%\" v-spacing=\"0.3em\" h-spacing=\"0.2em\" padding=\"6 0 6 0\">\n";
 
    for (auto &item : m_items) {
       buf << "<row>";
@@ -138,11 +138,11 @@ void doc_menu::refresh()
       buf << "</p></cell></row>\n";
    }
 
-   buf << "</table>";
+   buf << "</table>\n";
    buf << "</page>";
 
    #ifdef DBG_LAYOUT
-      log.warning("%s", buf.str().c_str());
+      log.msg("%s", buf.str().c_str());
    #endif
 
    acClear(m_doc);
