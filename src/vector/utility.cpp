@@ -276,6 +276,9 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
          DOUBLE bx1, by1, bx2, by2;
 
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
+            // When a ClipMask is defined, we give priority to the mask and then fall-through to the vector path so that we
+            // get a completely accurate view of the visible boundary.
+
             if (IncludeTransforms) {
                agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
                bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
@@ -287,7 +290,8 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
             if (bx2 > Bounds[2]) Bounds[2] = bx2;
             if (by2 > Bounds[3]) Bounds[3] = by2;
          }
-         else if (Vector->BasePath.total_vertices()) {
+         
+         if (Vector->BasePath.total_vertices()) {
             if (IncludeTransforms) {
                if (Vector->Transform.is_complex()) {
                   auto simple_path = basic_path(Vector->BX1, Vector->BY1, Vector->BX2, Vector->BY2);
