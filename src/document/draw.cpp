@@ -407,9 +407,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   }
 
                   gen_scene_graph(*cell.viewport, cell.segments);
+
+                  Self->VPToEntity.emplace(cell.viewport.id, vp_to_entity { &cell });
                }
 
-               Self->VPToEntity.emplace(cell.viewport->UID, vp_to_entity { &cell });
                break;
             }
 
@@ -489,7 +490,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      }
                   }
 
-                  Self->VPToEntity.emplace(button.viewport->UID, vp_to_entity { &button });
+                  Self->VPToEntity.emplace(button.viewport.id, vp_to_entity { &button });
                   button.label_text->setFields(fl::X(x), fl::Y(F2T(y)));
                }
                break;
@@ -549,11 +550,12 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                if (!checkbox.processed) {
                   checkbox.processed = true;
-                  if (checkbox.viewport->Scene->SurfaceID) {
+                  if ((!checkbox.viewport.empty()) and (checkbox.viewport->Scene->SurfaceID)) {
                      vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_checkbox));
                   }
                }
-               Self->VPToEntity.emplace(checkbox.viewport->UID, vp_to_entity { &checkbox });
+
+               if (!checkbox.viewport.empty()) Self->VPToEntity.emplace(checkbox.viewport.id, vp_to_entity { &checkbox });
                break;
             }
 
@@ -648,7 +650,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                combo.menu.m_ref   = &combo;
                combo.menu.m_style = combo.style;
 
-               Self->VPToEntity.emplace(combo.viewport->UID, vp_to_entity { &combo });
+               Self->VPToEntity.emplace(combo.viewport.id, vp_to_entity { &combo });
                break;
             }
 

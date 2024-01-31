@@ -200,7 +200,7 @@ objFont * bc_font::get_font()
       return NULL;
    }
 
-   if ((font_index < INDEX(glFonts.size())) and (font_index >= 0)) return glFonts[font_index].font;
+   if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return glFonts[font_index].font;
 
    // Sanity check the face and point values
 
@@ -226,7 +226,7 @@ objFont * bc_font::get_font()
    if (font_index IS -1) { // Font not in cache
       std::lock_guard lk(glFontsMutex);
 
-      log.branch("Index: %d, %s, %s, %g", LONG(glFonts.size()), face.c_str(), style_name.c_str(), point);
+      log.branch("Index: %d, %s, %s, %g", LONG(std::ssize(glFonts)), face.c_str(), style_name.c_str(), point);
 
       #ifndef RETAIN_LOG_LEVEL
          pf::LogLevel level(2);
@@ -239,7 +239,7 @@ objFont * bc_font::get_font()
          // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
          // is a little different to what we requested (e.g. scalable instead of fixed, or a different face).
 
-         for (unsigned i=0; i < glFonts.size(); i++) {
+         for (LONG i=0; i < std::ssize(glFonts); i++) {
             if ((font->Point IS glFonts[i].point) and
                 (!StrMatch(font->Face, glFonts[i].font->Face)) and
                 (!StrMatch(font->Style, glFonts[i].font->Style))) {
@@ -250,7 +250,7 @@ objFont * bc_font::get_font()
          }
 
          if (font_index IS -1) { // Add the font to the cache
-            font_index = glFonts.size();
+            font_index = std::ssize(glFonts);
             glFonts.emplace_back(font, point);
          }
       }
@@ -320,7 +320,7 @@ static ERROR CMDExpunge(void)
 
 inline INDEX RSTREAM::find_cell(CELL_ID ID)
 {
-   for (INDEX i=0; i < INDEX(data.size()); i++) {
+   for (INDEX i=0; i < std::ssize(data); i++) {
       if (data[i].code IS SCODE::CELL) {
          auto &cell = std::get<bc_cell>(codes[data[i].uid]);
          if ((ID) and (ID IS cell.cell_id)) return i;
@@ -332,7 +332,7 @@ inline INDEX RSTREAM::find_cell(CELL_ID ID)
 
 inline INDEX RSTREAM::find_editable_cell(std::string_view EditDef)
 {
-   for (INDEX i=0; i < INDEX(data.size()); i++) {
+   for (INDEX i=0; i < std::ssize(data); i++) {
       if (data[i].code IS SCODE::CELL) {
          auto &cell = lookup<bc_cell>(i);
          if (EditDef == cell.edit_def) return i;

@@ -48,7 +48,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 
    // Calculate the bounds of all the paths defined and contained by the clip object
 
-   std::array<DOUBLE, 4> bounds = { 1000000, 1000000, -1000000, -1000000 };
+   std::array<DOUBLE, 4> bounds = { FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX };
 
    if (Self->ClipPath) {
       // The ClipPath is internal and can be used by the likes of VectorViewport.

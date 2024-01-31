@@ -228,12 +228,12 @@ void gen_vector_path(extVector *Vector)
       if (((Vector->Transform.shx) or (Vector->Transform.shy)) and
           ((view->vpOverflowX != VOF::VISIBLE) or (view->vpOverflowY != VOF::VISIBLE))) {
          log.trace("A clip path will be created for viewport #%d.", Vector->UID);
-         if (!view->vpClipMask) {
-            view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));
-         }
+
+         if (!view->vpClipMask) view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));
+
          if (view->vpClipMask) {
             delete view->vpClipMask->ClipPath;
-            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(Vector->BasePath);
+            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(Vector->BasePath); // NB: Path is already transformed
             acDraw(view->vpClipMask);
          }
       }
