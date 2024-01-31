@@ -703,10 +703,10 @@ struct bc_table : public entity {
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
    padding cell_padding; // Spacing inside each cell (margins)
-   DUNIT  cell_v_spacing = DUNIT(0.0), cell_h_spacing = DUNIT(0.0); // Spacing between each cell
+   DUNIT  cell_v_spacing, cell_h_spacing; // Spacing between each cell
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
-   DUNIT  min_width = DUNIT(0.0), min_height = DUNIT(0.0); // User-determined minimum table width/height
+   DUNIT  min_width, min_height; // User-determined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
    DUNIT  stroke_width = DUNIT();        // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
@@ -876,12 +876,11 @@ struct widget_mgr {
    GuardedObject<objVectorRectangle> rect;    // A vector will host the widget and define a clipping mask for it
    padding pad, final_pad;             // Padding defines whitespace around the widget
    DUNIT width, height;                // Client can define a fixed width/height, or leave at 0 for auto-sizing
+   DUNIT def_size = DUNIT(1.0, DU::FONT_SIZE); // Default height or width if not otherwise specified.
    DOUBLE final_width, final_height;   // Final dimensions computed during layout
    DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
-   DUNIT def_size = DUNIT(1.0, DU::FONT_SIZE); // Default height or width if not otherwise specified.
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
-   bool width_pct = false, height_pct = false;
    bool alt_state = false, internal_label = false;
    UBYTE label_pos = 1;                // 0 = left, 1 = right
 

@@ -40,15 +40,19 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
    if (Widget.floating_x()) Y = Segment.area.Y + Widget.final_pad.top;
    else {
       if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) {
-         Y = Segment.area.Y + Widget.final_pad.top;
+         Y = Widget.final_pad.top;
       }
       else if ((Style->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
-         Y = Segment.area.Y + ((Segment.area.Height - (Widget.final_height + Widget.final_pad.top + Widget.final_pad.bottom)) * 0.5);
+         Y = (Segment.area.Height - Widget.full_height()) * 0.5;
       }
       else {
-         // Bottom alignment.  Aligning to the gutter produces better results compared to base line alignment.
-         Y = Segment.area.Y + Segment.area.Height - Widget.final_height - Widget.final_pad.bottom;
+         // Bottom alignment.  Aligning to the base-line is preferable, but if the widget is tall then we take up the gutter space too.
+         auto h = Widget.final_height - Widget.final_pad.bottom;
+         if (h > Segment.area.Height - Segment.gutter) Y = Segment.area.Height - h;
+         else Y = Segment.area.Height - Segment.gutter - h;
       }
+
+      Y += Segment.area.Y;
    }
 
    const DOUBLE width = Widget.final_width + ExtWidth;

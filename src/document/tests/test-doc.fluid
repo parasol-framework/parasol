@@ -65,17 +65,17 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testAlignment()   crcTest('Alignment', 'alignment.rpl', 0xc7c3427e) end
-function testDialog()      crcTest('Dialog', 'dialog.rpl', 0xcee1bd50) end
+function testDialog()      crcTest('Dialog', 'dialog.rpl', 0x1496ffa9) end
 function testFonts()       crcTest('Fonts', 'fonts.rpl', 0x6652edc4) end
-function testImages()      crcTest('Images', 'images.rpl', 0x093aba09) end
+function testImages()      crcTest('Images', 'images.rpl', 0x627d8776) end
 function testLayout()      crcTest('Layout', 'layout.rpl', 0x2eb161db) end
 function testLinks1()      crcTest('Links1', 'links.rpl', 0x13b537f7) end
 function testLinks2()      crcTest('Links2', 'links.rpl?font=Open Sans&font-size=16', 0xceb2b589) end
 function testLists()       crcTest('Lists', 'lists.rpl', 0x24f4d0a1) end
 function testLogic()       crcTest('Logic', 'logic.rpl', 0x564b167d) end
 function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0x8ecfc368) end
-function testTables()      crcTest('Tables', 'tables.rpl', 0xdae6d192) end
-function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0x0c3ac770) end
+function testTables()      crcTest('Tables', 'tables.rpl', 0xca6853f8) end
+function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0x312c98b0) end
 
 -----------------------------------------------------------------------------------------------------------------------
 

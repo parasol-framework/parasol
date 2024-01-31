@@ -2199,6 +2199,7 @@ void parser::tag_image(XMLTag &Tag)
    pf::Log log(__FUNCTION__);
 
    bc_image img;
+   img.def_size = DUNIT(0.9, DU::FONT_SIZE);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto &value = Tag.Attribs[i].Value;
