@@ -33,6 +33,7 @@
 #define HASH_columns 0xd35616e6UL
 #define HASH_combobox 0x3f17305eUL
 #define HASH_continue 0x42aefb8aUL
+#define HASH_cursor_stroke 0x05f4d608UL
 #define HASH_data 0x7c95915fUL
 #define HASH_debug 0x0f49a52cUL
 #define HASH_defs 0x7c95a0a7UL

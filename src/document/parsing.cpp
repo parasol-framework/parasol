@@ -1447,6 +1447,10 @@ void parser::tag_body(XMLTag &Tag)
             Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
 
+         case HASH_cursor_stroke:
+            Self->CursorStroke = Tag.Attribs[i].Value;
+            break;
+
          // This subroutine support "N" for setting all margins to "N" and "L T R B" for setting individual
          // margins clockwise
 
@@ -1490,9 +1494,8 @@ void parser::tag_body(XMLTag &Tag)
             log.msg("Page width forced to %g%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
             break;
 
-         case HASH_fill: // Background fill
-            if (Self->Background) FreeResource(Self->Background);
-            Self->Background = StrClone(Tag.Attribs[i].Value.c_str());
+         case HASH_fill:
+            Self->Background = Tag.Attribs[i].Value;
             break;
 
          case HASH_face:

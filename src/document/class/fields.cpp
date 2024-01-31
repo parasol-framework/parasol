@@ -8,43 +8,10 @@ If a document declares the names of its author(s) under a head tag, the author s
 This field is always NULL if a document does not declare an author string.
 
 -FIELD-
-Background: Optional background fill instruction for the document.
-
-Set the Background field with an SVG fill instruction to create a customised background.
-
-*********************************************************************************************************************/
-
-static ERROR SET_Background(extDocument *Self, CSTRING Value)
-{
-   if (Self->Background) { FreeResource(Self->Background); Self->Background = NULL; }
-   if ((Value) and (*Value)) Self->Background = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Copyright: Copyright information for the document.
 
 If a document declares copyright information under a head tag, the copyright string will be readable from this field.
 This field is always NULL if a document does not declare a copyright string.
-
--FIELD-
-CursorStroke: The colour or brush stroke to use for the document cursor.
-
-The colour or brush stroke used for the document cursor may be changed by setting this field.  Formatting is
-equivalent to the SVG stroke property.  This is relevant only when a document is in edit mode.
-
-*********************************************************************************************************************/
-
-static ERROR SET_CursorStroke(extDocument *Self, CSTRING Value)
-{
-   if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke = NULL; }
-   if ((Value) and (*Value)) Self->CursorStroke = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 ClientScript: Allows an external script object to be used by a document file.

@@ -205,8 +205,6 @@ class objDocument : public BaseClass {
    STRING   Author;                 // The author(s) of the document.
    STRING   Copyright;              // Copyright information for the document.
    STRING   Keywords;               // Includes keywords declared by the source document.
-   STRING   Background;             // Optional background fill instruction for the document.
-   STRING   CursorStroke;           // The colour or brush stroke to use for the document cursor.
    objVectorViewport * Viewport;    // A client-specific viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
    objVectorViewport * View;        // An internally created viewport that hosts the Page
@@ -260,18 +258,6 @@ class objDocument : public BaseClass {
 
    // Customised field setting
 
-   template <class T> inline ERROR setBackground(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setCursorStroke(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
@@ -298,6 +284,18 @@ class objDocument : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setBackground(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setCursorStroke(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setClientScript(OBJECTPTR Value) {

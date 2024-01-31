@@ -78,8 +78,6 @@ module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, f
     str Author           # The author of the document
     str Copyright        # Copyright information for the document
     str Keywords         # Keywords for the document
-    str Background       # Fill for document background
-    str CursorStroke     # The stroke style of the cursor
     obj(VectorViewport) Viewport  # The viewport that will host the document
     obj(VectorViewport) Focus     # Monitor this viewport for focus events
     obj(VectorViewport) View      # An internally created viewport that hosts the Page

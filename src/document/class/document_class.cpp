@@ -603,9 +603,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    Self->Page = NULL; // Page and View are freed by their parent Viewport.
    Self->View = NULL;
 
-   if (Self->Background)   { FreeResource(Self->Background);   Self->Background     = NULL; }
-   if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke   = NULL; }
-
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 
    if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
@@ -1369,8 +1366,6 @@ static const FieldArray clFields[] = {
    { "Author",       FDF_STRING|FDF_R },
    { "Copyright",    FDF_STRING|FDF_R },
    { "Keywords",     FDF_STRING|FDF_R },
-   { "Background",   FDF_STRING|FDF_RW, NULL, SET_Background },
-   { "CursorStroke", FDF_STRING|FDF_RW, NULL, SET_CursorStroke },
    { "Viewport",     FDF_OBJECT|FDF_RW, NULL, SET_Viewport, ID_VECTORVIEWPORT },
    { "Focus",        FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORVIEWPORT },
    { "View",         FDF_OBJECT|FDF_R, NULL, NULL, ID_VECTORVIEWPORT },

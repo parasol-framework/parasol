@@ -1030,6 +1030,8 @@ class extDocument : public objDocument {
    std::string Bookmark;       // Bookmark name processed from the Path
    std::string WorkingPath;    // String storage for the WorkingPath field
    std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
+   std::string Background;     // Background fill instruction
+   std::string CursorStroke;   // Stroke instruction for the text cursor
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
