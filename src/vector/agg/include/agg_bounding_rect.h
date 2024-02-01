@@ -1,4 +1,3 @@
-//----------------------------------------------------------------------------
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
@@ -7,10 +6,6 @@
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
-//
-// bounding_rect function template
-//
-//----------------------------------------------------------------------------
 #ifndef AGG_BOUNDING_RECT_INCLUDED
 #define AGG_BOUNDING_RECT_INCLUDED
 
@@ -18,94 +13,74 @@
 
 namespace agg
 {
+template<class VertexSource, class GetId, class V>
+bool bounding_rect(VertexSource& vs, GetId& gi, unsigned start, unsigned num, V* x1, V* y1, V* x2, V* y2)
+{
+   double x, y;
+   bool first = true;
 
-    //-----------------------------------------------------------bounding_rect
-    template<class VertexSource, class GetId, class CoordT>
-    bool bounding_rect(VertexSource& vs, GetId& gi, 
-                       unsigned start, unsigned num, 
-                       CoordT* x1, CoordT* y1, CoordT* x2, CoordT* y2)
-    {
-        unsigned i;
-        double x;
-        double y;
-        bool first = true;
+   *x1 = V(1);
+   *y1 = V(1);
+   *x2 = V(0);
+   *y2 = V(0);
 
-        *x1 = CoordT(1);
-        *y1 = CoordT(1);
-        *x2 = CoordT(0);
-        *y2 = CoordT(0);
-
-        for(i = 0; i < num; i++)
-        {
-            vs.rewind(gi[start + i]);
-            unsigned cmd;
-            while(!is_stop(cmd = vs.vertex(&x, &y)))
-            {
-                if(is_vertex(cmd))
-                {
-                    if(first)
-                    {
-                        *x1 = CoordT(x);
-                        *y1 = CoordT(y);
-                        *x2 = CoordT(x);
-                        *y2 = CoordT(y);
-                        first = false;
-                    }
-                    else
-                    {
-                        if(CoordT(x) < *x1) *x1 = CoordT(x);
-                        if(CoordT(y) < *y1) *y1 = CoordT(y);
-                        if(CoordT(x) > *x2) *x2 = CoordT(x);
-                        if(CoordT(y) > *y2) *y2 = CoordT(y);
-                    }
-                }
+   for (unsigned i = 0; i < num; i++) {
+      vs.rewind(gi[start + i]);
+      unsigned cmd;
+      while (!is_stop(cmd = vs.vertex(&x, &y))) {
+         if (is_vertex(cmd)) {
+            if (first) {
+               *x1 = V(x);
+               *y1 = V(y);
+               *x2 = V(x);
+               *y2 = V(y);
+               first = false;
             }
-        }
-        return *x1 <= *x2 && *y1 <= *y2;
-    }
-
-
-    //-----------------------------------------------------bounding_rect_single
-    template<class VertexSource, class CoordT> 
-    bool bounding_rect_single(VertexSource& vs, unsigned path_id,
-                              CoordT* x1, CoordT* y1, CoordT* x2, CoordT* y2)
-    {
-        double x;
-        double y;
-        bool first = true;
-
-        *x1 = CoordT(1);
-        *y1 = CoordT(1);
-        *x2 = CoordT(0);
-        *y2 = CoordT(0);
-
-        vs.rewind(path_id);
-        unsigned cmd;
-        while(!is_stop(cmd = vs.vertex(&x, &y)))
-        {
-            if(is_vertex(cmd))
-            {
-                if(first)
-                {
-                    *x1 = CoordT(x);
-                    *y1 = CoordT(y);
-                    *x2 = CoordT(x);
-                    *y2 = CoordT(y);
-                    first = false;
-                }
-                else
-                {
-                    if(CoordT(x) < *x1) *x1 = CoordT(x);
-                    if(CoordT(y) < *y1) *y1 = CoordT(y);
-                    if(CoordT(x) > *x2) *x2 = CoordT(x);
-                    if(CoordT(y) > *y2) *y2 = CoordT(y);
-                }
+            else {
+               if (V(x) < *x1) *x1 = V(x);
+               if (V(y) < *y1) *y1 = V(y);
+               if (V(x) > *x2) *x2 = V(x);
+               if (V(y) > *y2) *y2 = V(y);
             }
-        }
-        return *x1 <= *x2 && *y1 <= *y2;
-    }
-
-
+         }
+      }
+   }
+   return (*x1 <= *x2) and (*y1 <= *y2);
 }
+
+template<class VertexSource, class V> 
+bool bounding_rect_single(VertexSource& vs, unsigned path_id, V* x1, V* y1, V* x2, V* y2)
+{
+   double x, y;
+   bool first = true;
+
+   *x1 = V(1);
+   *y1 = V(1);
+   *x2 = V(0);
+   *y2 = V(0);
+
+   vs.rewind(path_id);
+   unsigned cmd;
+   while (!is_stop(cmd = vs.vertex(&x, &y))) {
+      if (is_vertex(cmd)) {
+         if (first) {
+            *x1 = V(x);
+            *y1 = V(y);
+            *x2 = V(x);
+            *y2 = V(y);
+            first = false;
+         }
+         else {
+            if (V(x) < *x1) *x1 = V(x);
+            if (V(y) < *y1) *y1 = V(y);
+            if (V(x) > *x2) *x2 = V(x);
+            if (V(y) > *y2) *y2 = V(y);
+         }
+      }
+   }
+   return (*x1 <= *x2) and (*y1 <= *y2);
+}
+
+} // namespace
 
 #endif

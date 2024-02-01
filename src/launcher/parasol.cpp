@@ -34,8 +34,7 @@ static bool glTime = false;
 static ERROR exec_source(CSTRING, LONG, const std::string);
 
 static const char glHelp[] = {
-"This command-line program can execute scripts and PARC files developed for the Parasol framework.  The\n\
-Fluid scripting language (.fluid files) are supported in the default distribution.  Quick start:\n\
+"This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.\n\
 \n\
    parasol [args] [script.ext] arg1 arg2=value ...\n\
 \n\

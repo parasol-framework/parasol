@@ -429,10 +429,9 @@ class extVectorClip : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorClip";
    using create = pf::Create<extVectorClip>;
 
-   UBYTE *ClipData;
+   std::vector<UBYTE> ClipData;
    agg::rendering_buffer ClipRenderer;
    VUNIT ClipUnits;
-   LONG ClipSize;
    bool RefreshBounds;
 
    inline void set_transform(struct VectorMatrix *pMatrices) {

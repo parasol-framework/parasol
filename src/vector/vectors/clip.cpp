@@ -107,29 +107,18 @@ extern void draw_clipmask(extVectorClip *Self, extVector *ClientShape)
       log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", Self->Bounds[0], Self->Bounds[1], Self->Bounds[2], Self->Bounds[3], width, height);
    #endif
 
-   LONG size = width * height;
-   if ((Self->ClipData) and (size > Self->ClipSize)) {
-      FreeResource(Self->ClipData);
-      Self->ClipData = NULL;
-      Self->ClipSize = 0;
-   }
-
-   if (!Self->ClipData) {
-      if (!AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &Self->ClipData)) {
-         Self->ClipSize = size;
-      }
-      else return;
-   }
+   size_t size = width * height;
+   if (Self->ClipData.size() < size) Self->ClipData.resize(size);
 
    // Configure an 8-bit monochrome bitmap for holding the mask
 
-   Self->ClipRenderer.attach(Self->ClipData, width-1, height-1, width);
+   Self->ClipRenderer.attach(Self->ClipData.data(), width-1, height-1, width);
    agg::pixfmt_gray8 pixf(Self->ClipRenderer);
    agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
    agg::rasterizer_scanline_aa<> rasterizer;
 
-   ClearMemory(Self->ClipData, Self->ClipSize);
+   ClearMemory(Self->ClipData.data(), Self->ClipData.size());
 
    solid.color(agg::gray8(0xff, 0xff));
 
@@ -154,8 +143,6 @@ extern void draw_clipmask(extVectorClip *Self, extVector *ClientShape)
 
 static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 {
-   if (Self->ClipData) { FreeResource(Self->ClipData); Self->ClipData = NULL; }
-
    Self->~extVectorClip();
    return ERR_Okay;
 }
@@ -194,34 +181,6 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 
 /*********************************************************************************************************************
 -FIELD-
-Transform: Applies a transform to the paths in the clipping mask.
-
-A transform can be applied to the paths in the clipping mask by setting this field with an SVG compliant transform
-string.
-
-*********************************************************************************************************************/
-
-static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
-{
-   pf::Log log;
-
-   if (!Commands) return log.warning(ERR_InvalidValue);
-
-   Self->RefreshBounds = true;
-
-   if (!Self->Matrices) {
-      VectorMatrix *matrix;
-      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
-      else return ERR_CreateResource;
-   }
-   else {
-      vecResetMatrix(Self->Matrices);
-      return vecParseTransform(Self->Matrices, Commands);
-   }
-}
-
-/*********************************************************************************************************************
--FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
 The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region against the vector
@@ -254,8 +213,7 @@ static const ActionArray clClipActions[] = {
 };
 
 static const FieldArray clClipFields[] = {
-   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
-   { "Transform", FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, CLIP_SET_Transform },
+   { "Units", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
    END_FIELD
 };
 
