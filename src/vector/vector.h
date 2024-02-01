@@ -612,7 +612,7 @@ template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_
    };
 
    agg::span_allocator<agg::rgba8> spanalloc;
-   agg::scanline_u8 scanline;
+   agg::scanline32_u8 scanline;
 
    if (Opacity < 1.0) {
       spanconv_image sci(Opacity);

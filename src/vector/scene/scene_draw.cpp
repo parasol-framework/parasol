@@ -475,11 +475,11 @@ static void draw_pattern(VectorState &State, DOUBLE *Bounds, agg::path_storage *
 
    if (State.mClipMask) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+      agg::scanline32_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
       drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
    }
    else {
-      agg::scanline_u8 scanline;
+      agg::scanline32_u8 scanline;
       drawBitmap(scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
    }
 }
@@ -651,11 +651,11 @@ static void draw_image(VectorState &State, DOUBLE *Bounds, agg::path_storage &Pa
 
    if (State.mClipMask) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+      agg::scanline32_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
       drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
    }
    else {
-      agg::scanline_u8 scanline;
+      agg::scanline32_u8 scanline;
       drawBitmap(scanline, SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
    }
 }
@@ -675,7 +675,7 @@ static void draw_gradient(VectorState &State, DOUBLE *Bounds, agg::path_storage 
    typedef agg::pod_auto_array<agg::rgba8, 256> color_array_type;
    typedef agg::renderer_base<agg::pixfmt_psl>  RENDERER_BASE_TYPE;
 
-   agg::scanline_u8    scanline;
+   agg::scanline32_u8    scanline;
    agg::trans_affine   transform;
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
@@ -962,7 +962,7 @@ class VMAdaptor
 private:
    agg::renderer_base<agg::pixfmt_psl> mRenderBase;
    agg::pixfmt_psl mFormat;
-   agg::scanline_u8 mScanLine;  // Use scanline_p for large solid polygons and scanline_u for things like text and gradients
+   agg::scanline32_u8 mScanLine;  // Use scanline_p for large solid polygons and scanline_u for things like text and gradients
    extVectorViewport *mView; // The current view
    objBitmap *mBitmap;
 
@@ -1029,7 +1029,7 @@ private:
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::scanline32_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
             else agg::render_scanlines(Raster, mScanLine, renderer);
@@ -1040,7 +1040,7 @@ private:
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::scanline32_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
             else agg::render_scanlines(Raster, mScanLine, renderer);
@@ -1097,7 +1097,7 @@ private:
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::scanline32_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
             else agg::render_scanlines(Raster, mScanLine, renderer);
@@ -1108,7 +1108,7 @@ private:
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::scanline32_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
             else agg::render_scanlines(Raster, mScanLine, renderer);
@@ -1453,11 +1453,11 @@ private:
             mFormat.setBitmap(*mBitmap);
             if (state.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
-               agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+               agg::scanline32_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
                drawBitmap(masked_scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);            
             }
             else {
-               agg::scanline_u8 scanline;
+               agg::scanline32_u8 scanline;
                drawBitmap(scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);
             }
             FreeResource(bmpBkgd);
@@ -1473,7 +1473,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 {
    pf::Log log("draw_path");
 
-   agg::scanline_u8 scanline;
+   agg::scanline32_u8 scanline;
    agg::pixfmt_psl format;
    agg::trans_affine transform;
 
