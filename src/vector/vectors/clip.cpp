@@ -9,20 +9,22 @@ creating Vector shapes that are initialised to the VectorClip as child objects.
 Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
 
 VectorClip objects must always be owned by their relevant @VectorScene or @VectorViewport.  It is valid for a VectorClip
-to be shared by multiple vector objects within the same scene.
+to be shared by multiple vector objects within the same scene.  We recommend that for optimum drawing efficiency, any
+given VectorClip is associated with one vector only.  This will reduce the chances of a redraw being required at
+any given time.
 
 -END-
 
 *********************************************************************************************************************/
 
 //********************************************************************************************************************
-// NB: Considered a shape (can be transformed)
+// Basic function for recursively drawing all child vectors to a bitmap mask.
 
 static void draw_clips(extVectorClip *Self, extVector *Branch,
    agg::rasterizer_scanline_aa<> &Rasterizer,
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
 {
-   agg::scanline_p8 sl;
+   agg::scanline32_p8 sl;
    for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
       if (scan->Class->BaseClassID IS ID_VECTOR) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
@@ -57,10 +59,10 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 
    if (Self->Child) calc_full_boundary((extVector *)Self->Child, bounds);
 
-   if (bounds[0] >= 1000000) return ERR_Okay; // Return if there are no valid paths.
+   if (bounds[0] IS FLT_MAX) return ERR_Okay; // Return if there are no valid paths.
 
-   LONG width = bounds[2] + 1; // Vector->BX2 - Vector->BX1 + 1;
-   LONG height = bounds[3] + 1; // Vector->BY2 - Vector->BY1 + 1;
+   LONG width = F2T(bounds[2]) + 1; // Vector->BX2 - Vector->BX1 + 1;
+   LONG height = F2T(bounds[3]) + 1; // Vector->BY2 - Vector->BY1 + 1;
 
    if ((width <= 0) or (height <= 0)) {
       log.warning("Invalid mask size of %dx%d detected.", width, height);
@@ -80,7 +82,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
    }
 
    #ifdef DBG_DRAW
-      log.trace("Drawing clipping mask with bounds %.2f %.2f %.2f %.2f (%dx%d)", bounds[0], bounds[1], bounds[2], bounds[3], width, height);
+      log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", bounds[0], bounds[1], bounds[2], bounds[3], width, height);
    #endif
 
    LONG size = width * height;
@@ -115,7 +117,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 
    if (Self->ClipPath) {
       agg::rasterizer_scanline_aa<> rasterizer;
-      agg::scanline_p8 sl;
+      agg::scanline32_p8 sl;
       agg::path_storage final_path(*Self->ClipPath);
       rasterizer.reset();
       rasterizer.add_path(final_path);

@@ -55,7 +55,7 @@ static ERROR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
 
    agg::rasterizer_scanline_aa<> raster;
    agg::renderer_base<agg::pixfmt_psl> renderBase;
-   agg::scanline_p8 scanline;
+   agg::scanline32_p8 scanline;
    agg::pixfmt_psl format(*Self->Target);
    renderBase.attach(format);
 

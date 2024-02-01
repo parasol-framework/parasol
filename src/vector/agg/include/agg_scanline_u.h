@@ -1,16 +1,22 @@
-//********************************************************************************************************************
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
-// This software is provided "as is" without express or implied
-// warranty, and with no claim as to its suitability for any purpose.
+// Permission to copy, use, modify, sell and distribute this software is granted provided this copyright notice 
+// appears in all copies.  This software is provided "as is" without express or implied warranty, and with no 
+// claim as to its suitability for any purpose.
 //
+// This is a general purpose scanline container with *packed* spans.  It is best used in conjunction with cover
+// values that mostly continuous.  See description of scanline_u8 for details.
+// 
 //********************************************************************************************************************
 //
-// Unpacked scanline container class
+// One of the key concepts in AGG is the scanline. The scanline is a container that consist of a number of horizontal 
+// spans that can carry Anti-Aliasing information. The scanline renderer decomposes provided scanline into a number 
+// of spans and in simple cases (like solid fill) calls basic renderer. In more complex cases it can call span 
+// generator.
 //
+// Unpacked scanline container class
+// =================================
 // This class is used to transfer data from a scanline rasterizer to the rendering buffer. It's organized very simple. 
 // The class stores information of horizontal spans to render it into a pixel-map buffer.  Each span has staring X, 
 // length, and an array of bytes that determine the cover-values for each pixel. 
@@ -61,7 +67,7 @@
 //
 // The question is: why should we accumulate the whole scanline when we could render just separate spans when they're 
 // ready? That's because using the scanline is generally faster. When is consists of more than one span the 
-// conditions for the processor cash system are better, because switching between two different areas of memory 
+// conditions for the processor cache system are better, because switching between two different areas of memory 
 // (that can be very large) occurs less frequently.
 
 #ifndef AGG_SCANLINE_U_INCLUDED
@@ -73,9 +79,9 @@ namespace agg {
 
 //********************************************************************************************************************
 
-class scanline32_u8 {
+class scanline_u8 {
 public:
-   typedef scanline32_u8 self_type;
+   typedef scanline_u8 self_type;
    typedef int8u cover_type;
    typedef int32 coord_type;
 
@@ -117,9 +123,9 @@ public:
       unsigned         m_span_idx;
    };
 
-   scanline32_u8() : m_min_x(0), m_last_x(0x7FFFFFF0), m_covers() { }
+   scanline_u8() : m_min_x(0), m_last_x(0x7FFFFFF0), m_covers() { }
 
-   void reset(int min_x, int max_x) {
+   inline void reset(int min_x, int max_x) {
       unsigned max_len = max_x - min_x + 2;
       if (max_len > m_covers.size()) m_covers.resize(max_len);
       m_last_x = 0x7FFFFFF0;
@@ -127,7 +133,7 @@ public:
       m_spans.remove_all();
    }
 
-   void add_cell(int x, unsigned cover) {
+   inline void add_cell(int x, unsigned cover) {
       x -= m_min_x;
       m_covers[x] = cover_type(cover);
       if (x == m_last_x+1) m_spans.last().len++;
@@ -135,7 +141,7 @@ public:
       m_last_x = x;
    }
 
-   void add_cells(int x, unsigned len, const cover_type* covers) {
+   inline void add_cells(int x, unsigned len, const cover_type* covers) {
       x -= m_min_x;
       memcpy(&m_covers[x], covers, len * sizeof(cover_type));
       if (x == m_last_x+1) m_spans.last().len += coord_type(len);
@@ -143,7 +149,7 @@ public:
       m_last_x = x + len - 1;
    }
 
-   void add_span(int x, unsigned len, unsigned cover) {
+   inline void add_span(int x, unsigned len, unsigned cover) {
       x -= m_min_x;
       memset(&m_covers[x], cover, len);
       if (x == m_last_x+1) m_spans.last().len += coord_type(len);
@@ -151,22 +157,22 @@ public:
       m_last_x = x + len - 1;
    }
 
-   void finalize(int y) {
+   inline void finalize(int y) {
       m_y = y; 
    }
 
-   void reset_spans() {
+   inline void reset_spans() {
       m_last_x = 0x7FFFFFF0;
       m_spans.remove_all();
    }
 
-   int y() const { return m_y; }
-   unsigned num_spans() const { return m_spans.size(); }
+   constexpr int y() const { return m_y; }
+   inline unsigned num_spans() const { return m_spans.size(); }
    const_iterator begin() const { return const_iterator(m_spans); }
    iterator begin() { return iterator(m_spans); }
 
 private:
-   scanline32_u8(const self_type&);
+   scanline_u8(const self_type&);
    const self_type& operator = (const self_type&);
 
 private:
@@ -174,21 +180,22 @@ private:
    int m_last_x;
    int m_y;
    pod_array<cover_type> m_covers;
-   span_array_type       m_spans;
+   span_array_type m_spans;
 };
 
-// The scanline container with alpha-masking
+// The scanline container with alpha-masking.  It is viable to initialise with a NULL mask, in which case behaviour
+// will revert to the non-masked default without a performance penalty.
 
 template<class AlphaMask> 
-class scanline32_u8_am : public scanline32_u8 {
+class scanline_u8_am : public scanline_u8 {
 public:
-   typedef scanline32_u8 base_type;
+   typedef scanline_u8 base_type;
    typedef AlphaMask alpha_mask_type;
    typedef base_type::cover_type cover_type;
    typedef base_type::coord_type coord_type;
 
-   scanline32_u8_am() : base_type(), m_alpha_mask(0) {}
-   scanline32_u8_am(const AlphaMask& am) : base_type(), m_alpha_mask(&am) {}
+   scanline_u8_am() : base_type(), m_alpha_mask(0) {}
+   scanline_u8_am(const AlphaMask& am) : base_type(), m_alpha_mask(&am) {}
 
    void finalize(int span_y) {
       base_type::finalize(span_y);
@@ -203,7 +210,7 @@ public:
    }
 
 private:
-   const AlphaMask* m_alpha_mask;
+   const AlphaMask *m_alpha_mask;
 };
 
 } // namespace
