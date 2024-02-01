@@ -548,14 +548,17 @@ inline static void apply_transforms(const T &Vector, agg::trans_affine &AGGTrans
 
 namespace agg {
 
-// This is a customised caller into AGG's drawing process.
+// This template function is a customised caller into AGG's drawing process.
 //
+// U: Must be a scanline class or derivative; e.g. agg::scanline_u8
 // RenderBase: The target bitmap.  Use the clip_box() method to limit the drawing region.
 // Raster: Chooses the algorithm used to rasterise the vector path (affects AA, outlining etc).  Also configures the
 //   filling rule, gamma and related drawing options.
 
-template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity = 1.0)
+template <class T, class U> static void drawBitmapRender(U &Input,
+   agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   agg::rasterizer_scanline_aa<> &Raster, 
+   T &spangen, DOUBLE Opacity = 1.0)
 {
    class spanconv_image {
       public:
@@ -575,15 +578,15 @@ template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_p
    };
 
    agg::span_allocator<agg::rgba8> spanalloc;
-   agg::scanline_u8 scanline;
 
    // Refer to pixfmt_psl::blend_color_hspan() if you're looking for the code that does the actual drawing.
+
    if (Opacity < 1.0) {
       spanconv_image sci(Opacity);
       agg::span_converter<T, spanconv_image> sc(spangen, sci);
-      agg::render_scanlines_aa(Raster, scanline, RenderBase, spanalloc, sc);
+      agg::render_scanlines_aa(Raster, Input, RenderBase, spanalloc, sc);
    }
-   else agg::render_scanlines_aa(Raster, scanline, RenderBase, spanalloc, spangen);
+   else agg::render_scanlines_aa(Raster, Input, RenderBase, spanalloc, spangen);
 };
 
 //********************************************************************************************************************

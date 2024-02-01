@@ -327,7 +327,7 @@ void set_filter(agg::image_filter_lut &Filter, VSM Method)
 //********************************************************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
 
-static void drawBitmap(VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
+template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
    objBitmap *SrcBitmap, VSPREAD SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
 {
    agg::pixfmt_psl pixels(*SrcBitmap);
@@ -340,22 +340,22 @@ static void drawBitmap(VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &Re
       if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_reflect_x, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
-         drawBitmapRender(RenderBase, Raster, spangen, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
          agg::span_reflect_y source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_reflect_y, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
-         drawBitmapRender(RenderBase, Raster, spangen, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
          agg::span_repeat_rkl source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_repeat_rkl, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
-         drawBitmapRender(RenderBase, Raster, spangen, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
          agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
-         drawBitmapRender(RenderBase, Raster, spangen, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
    }
    else {
@@ -368,19 +368,19 @@ static void drawBitmap(VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &Re
 
       if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
-         drawBitmapRender(RenderBase, Raster, source, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
          agg::span_reflect_y source(pixels, XOffset, YOffset);
-         drawBitmapRender(RenderBase, Raster, source, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
          agg::span_repeat_rkl source(pixels, XOffset, YOffset);
-         drawBitmapRender(RenderBase, Raster, source, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
          agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
-         drawBitmapRender(RenderBase, Raster, source, Opacity);
+         drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
    }
 }
@@ -394,7 +394,7 @@ static void drawBitmap(VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &Re
 // Patterns rendered with BOUNDING_BOX require real-time calculation as they have a dependency on the target
 // vector's dimensions.
 
-static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
+static void draw_pattern(VectorState &State, DOUBLE *Bounds, agg::path_storage *Path,
    VSM SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
@@ -473,7 +473,15 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
 
    transform.invert(); // Required
 
-   drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
+   if (State.mClipMask) {
+      agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+      drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
+   }
+   else {
+      agg::scanline_u8 scanline;
+      drawBitmap(scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
+   }
 }
 
 //********************************************************************************************************************
@@ -579,7 +587,7 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_brush(const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+void draw_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
@@ -621,7 +629,7 @@ void draw_brush(const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl>
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.
 
-static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, VSM SampleMethod,
+static void draw_image(VectorState &State, DOUBLE *Bounds, agg::path_storage &Path, VSM SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha = 1.0)
@@ -641,14 +649,22 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, VSM SampleMethod
 
    transform.invert();
 
-   drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
+   if (State.mClipMask) {
+      agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+      drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
+   }
+   else {
+      agg::scanline_u8 scanline;
+      drawBitmap(scanline, SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
+   }
 }
 
 //********************************************************************************************************************
 // Gradient fills
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
-static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
+static void draw_gradient(VectorState &State, DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
    DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient, GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
@@ -1032,19 +1048,19 @@ private:
       }
 
       if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
+         draw_image(State, (DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
       }
 
       if (Painter.Gradient) {
          if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
+            draw_gradient(State, (DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
                view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster, 0);
          }
       }
 
       if (Painter.Pattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
+         draw_pattern(State, (DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
       }
    }
@@ -1057,12 +1073,12 @@ private:
 
       if (Vector.Stroke.Gradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
+            draw_gradient(State, (DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
                view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.Stroke.Pattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
+         draw_pattern(State, (DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, Raster);
       }
       else if (Vector.Stroke.Image) {
@@ -1072,9 +1088,9 @@ private:
          auto transform = Vector.Transform * State.mTransform;
          agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
-         draw_brush(*Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
+         draw_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
       }
-      else {
+      else { // Solid colour
          if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
@@ -1435,7 +1451,15 @@ private:
 
             mBitmap = bmpSave;
             mFormat.setBitmap(*mBitmap);
-            drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);
+            if (state.mClipMask) {
+               agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
+               agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+               drawBitmap(masked_scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);            
+            }
+            else {
+               agg::scanline_u8 scanline;
+               drawBitmap(scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);
+            }
             FreeResource(bmpBkgd);
          }
       }
@@ -1462,7 +1486,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
    DOUBLE bounds[4];
    bounding_rect_single(mPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
-
+   VectorState state;
    if (FillStyle) {
       mRaster.reset();
       mRaster.add_path(mPath);
@@ -1475,14 +1499,14 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*FillStyle;
-         draw_image(bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
+         draw_image(state, bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORGRADIENT) {
          extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
-         draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
+         draw_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORPATTERN) {
-         draw_pattern(bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
+         draw_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
       else log.warning("The FillStyle is not supported.");
    }
@@ -1494,19 +1518,19 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          mRaster.add_path(stroke_path);
 
          extVectorGradient &gradient = (extVectorGradient &)*StrokeStyle;
-         draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
+         draw_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORPATTERN) {
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
-         draw_pattern(bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
+         draw_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;
          agg::trans_affine transform;
          agg::conv_transform<agg::path_storage, agg::trans_affine> path(mPath, transform);
-         draw_brush(image, mRenderer, path, StrokeWidth);
+         draw_brush(state, image, mRenderer, path, StrokeWidth);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORCOLOUR) {
          agg::renderer_scanline_aa_solid solid(mRenderer);
