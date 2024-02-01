@@ -8,7 +8,7 @@ creating Vector shapes that are initialised to the VectorClip as child objects.
 
 Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
 
-VectorClip objects must always be owned by their relevant @VectorScene or @VectorViewport.  It is valid for a VectorClip
+VectorClip objects must be owned by their relevant @VectorScene or @VectorViewport.  It is valid for a VectorClip
 to be shared by multiple vector objects within the same scene.  We recommend that for optimum drawing efficiency, any
 given VectorClip is associated with one vector only.  This will reduce the chances of a redraw being required at
 any given time.
