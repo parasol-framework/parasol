@@ -17,6 +17,14 @@ any given time.
 
 *********************************************************************************************************************/
 
+static void reset_bounds(extVectorClip *Self)
+{
+   Self->BX1 = FLT_MAX;
+   Self->BY1 = FLT_MAX;
+   Self->BX2 = -FLT_MAX;
+   Self->BY2 = -FLT_MAX;
+}
+
 //********************************************************************************************************************
 // Basic function for recursively drawing all child vectors to a bitmap mask.
 
@@ -37,43 +45,57 @@ static void draw_clips(extVectorClip *Self, extVector *Branch,
    }
 }
 
-/*********************************************************************************************************************
--ACTION-
-Name:  Draw
-Short: Renders the vector clipping shape(s) to an internal buffer.
--END-
-*********************************************************************************************************************/
+//********************************************************************************************************************
+// Called by the scene graph renderer
 
-static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
+extern void draw_clipmask(extVectorClip *Self, extVector *ClientShape)
 {
    pf::Log log;
 
-   // Calculate the bounds of all the paths defined and contained by the clip object
+   // Ensure that the Bounds are up to date and refresh them if necessary.
 
-   std::array<DOUBLE, 4> bounds = { FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX };
-
-   if (Self->ClipPath) {
-      // The ClipPath is internal and can be used by the likes of VectorViewport.
-      bounding_rect_single(*Self->ClipPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+   if ((Self->Child) and (!Self->RefreshBounds)) {
+      if (check_branch_dirty((extVector *)Self->Child)) Self->RefreshBounds = true;
    }
 
-   if (Self->Child) calc_full_boundary((extVector *)Self->Child, bounds);
+   if (Self->RefreshBounds) {
+      // Calculate the bounds of all the paths defined and contained by the clip object
 
-   if (bounds[0] IS FLT_MAX) return ERR_Okay; // Return if there are no valid paths.
+      Self->RefreshBounds = false;
 
-   LONG width = F2T(bounds[2]) + 1; // Vector->BX2 - Vector->BX1 + 1;
-   LONG height = F2T(bounds[3]) + 1; // Vector->BY2 - Vector->BY1 + 1;
+      reset_bounds(Self);
+
+      if (!Self->BasePath.empty()) { // Get the boundary of the ClipPath if defined by the client.
+         bounding_rect_single(Self->BasePath, 0, &Self->BX1, &Self->BY1, &Self->BX2, &Self->BY2);
+      }
+
+      if (Self->Child) {
+         std::array<DOUBLE, 4> bounds = { Self->BX1, Self->BY1, Self->BX2, Self->BY2 };
+         calc_full_boundary((extVector *)Self->Child, bounds);
+         Self->BX1 = bounds[0];
+         Self->BY1 = bounds[1];
+         Self->BX2 = bounds[2];
+         Self->BY2 = bounds[3];
+      }
+   }
+   else {
+      // If the bounds don't require refreshing then the existing ClipData is also going to be current,
+      // so we can return immediately.
+      return;
+   }
+
+   if (Self->BX1 IS FLT_MAX) return; // Return if no paths were defined.
+
+   // Allocate a bitmap that is large enough to contain the mask (persists between draw sessions).
+
+   LONG width  = F2T(Self->BX2) + 1;
+   LONG height = F2T(Self->BY2) + 1;
 
    if ((width <= 0) or (height <= 0)) {
-      log.warning("Invalid mask size of %dx%d detected.", width, height);
       DEBUG_BREAK
+      log.warning(ERR_InvalidDimension);
+      return;
    }
-
-   if (width < 0) width = -width;
-   else if (!width) width = 1;
-
-   if (height < 0) height = -height;
-   else if (!height) height = 1;
 
    if ((width > 4096) or (height > 4096)) {
       log.warning("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
@@ -82,7 +104,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
    }
 
    #ifdef DBG_DRAW
-      log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", bounds[0], bounds[1], bounds[2], bounds[3], width, height);
+      log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", Self->Bounds[0], Self->Bounds[1], Self->Bounds[2], Self->Bounds[3], width, height);
    #endif
 
    LONG size = width * height;
@@ -96,8 +118,10 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
       if (!AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &Self->ClipData)) {
          Self->ClipSize = size;
       }
-      else return ERR_AllocMemory;
+      else return;
    }
+
+   // Configure an 8-bit monochrome bitmap for holding the mask
 
    Self->ClipRenderer.attach(Self->ClipData, width-1, height-1, width);
    agg::pixfmt_gray8 pixf(Self->ClipRenderer);
@@ -113,18 +137,17 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 
    if (Self->Child) draw_clips(Self, (extVector *)Self->Child, rasterizer, solid);
 
-   // Internal paths can only be set by other vector classes, such as VectorViewport.
+   // A client can provide its own clipping path by setting ClipPath property.  This is more optimal than
+   // using child vectors - the VectorViewport is one such client that uses this feature.
 
-   if (Self->ClipPath) {
-      agg::rasterizer_scanline_aa<> rasterizer;
+   if (!Self->BasePath.empty()) {
       agg::scanline32_p8 sl;
-      agg::path_storage final_path(*Self->ClipPath);
+      agg::path_storage final_path(Self->BasePath);
+
       rasterizer.reset();
       rasterizer.add_path(final_path);
       agg::render_scanlines(rasterizer, sl, solid);
    }
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -132,10 +155,8 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 {
    if (Self->ClipData) { FreeResource(Self->ClipData); Self->ClipData = NULL; }
-   if (Self->ClipPath) { delete Self->ClipPath; Self->ClipPath = NULL; }
 
-   using agg::rendering_buffer;
-   Self->ClipRenderer.~rendering_buffer();
+   Self->~extVectorClip();
    return ERR_Okay;
 }
 
@@ -162,9 +183,12 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 
 static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
+   new (Self) extVectorClip;
+
    Self->ClipUnits  = VUNIT::BOUNDING_BOX;
    Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
-   new (&Self->ClipRenderer) agg::rendering_buffer;
+   Self->RefreshBounds = true;
+   reset_bounds(Self);
    return ERR_Okay;
 }
 
@@ -182,6 +206,8 @@ static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
    pf::Log log;
 
    if (!Commands) return log.warning(ERR_InvalidValue);
+
+   Self->RefreshBounds = true;
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
@@ -211,6 +237,7 @@ static ERROR CLIP_GET_Units(extVectorClip *Self, VUNIT *Value)
 
 static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 {
+   Self->RefreshBounds = true;
    Self->ClipUnits = Value;
    return ERR_Okay;
 }
@@ -220,7 +247,6 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 #include "clip_def.cpp"
 
 static const ActionArray clClipActions[] = {
-   { AC_Draw,      CLIP_Draw },
    { AC_Free,      CLIP_Free },
    { AC_Init,      CLIP_Init },
    { AC_NewObject, CLIP_NewObject },

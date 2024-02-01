@@ -275,15 +275,15 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
       if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;
 
-         if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
+         if ((Vector->ClipMask) and (!Vector->ClipMask->BasePath.empty())) {
             // When a ClipMask is defined, we give priority to the mask and then fall-through to the vector path so that we
             // get a completely accurate view of the visible boundary.
 
             if (IncludeTransforms) {
-               agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
+               agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->ClipMask->BasePath, Vector->Transform);
                bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
             }
-            else bounding_rect_single(*Vector->ClipMask->ClipPath, 0, &bx1, &by1, &bx2, &by2);
+            else bounding_rect_single(Vector->ClipMask->BasePath, 0, &bx1, &by1, &bx2, &by2);
 
             if (bx1 < Bounds[0]) Bounds[0] = bx1;
             if (by1 < Bounds[1]) Bounds[1] = by1;

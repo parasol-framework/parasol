@@ -232,9 +232,8 @@ void gen_vector_path(extVector *Vector)
          if (!view->vpClipMask) view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));
 
          if (view->vpClipMask) {
-            delete view->vpClipMask->ClipPath;
-            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(Vector->BasePath); // NB: Path is already transformed
-            acDraw(view->vpClipMask);
+            view->vpClipMask->set_clip_path(Vector->BasePath); // NB: Path is already transformed
+            draw_clipmask(view->vpClipMask, view);
          }
       }
       else if (view->vpClipMask) { FreeResource(view->vpClipMask); view->vpClipMask = NULL; }

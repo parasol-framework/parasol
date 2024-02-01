@@ -38,9 +38,9 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y
          // The viewport will generate a clip mask if complex transforms are applicable (other than scaling).
          // We can take advantage of this rather than generate our own path.
 
-         if ((vp->vpClipMask) and (vp->vpClipMask->ClipPath)) {
+         if ((vp->vpClipMask) and (!vp->vpClipMask->BasePath.empty())) {
             agg::rasterizer_scanline_aa<> raster;
-            raster.add_path(vp->vpClipMask->ClipPath[0]);
+            raster.add_path(vp->vpClipMask->BasePath);
             if (raster.hit_test(X, Y)) return vp;
          }
          else return vp; // If no complex transforms are present, the hit-test is passed

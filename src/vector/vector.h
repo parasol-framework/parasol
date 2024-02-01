@@ -430,11 +430,20 @@ class extVectorClip : public extVector {
    using create = pf::Create<extVectorClip>;
 
    UBYTE *ClipData;
-   agg::path_storage *ClipPath; // Client generated path
    agg::rendering_buffer ClipRenderer;
-   extVector *TargetVector;
    VUNIT ClipUnits;
    LONG ClipSize;
+   bool RefreshBounds;
+
+   inline void set_transform(struct VectorMatrix *pMatrices) {
+      Matrices = pMatrices;
+      RefreshBounds = true;
+   }
+
+   inline void set_clip_path(agg::path_storage &Path) {
+      BasePath = Path;
+      RefreshBounds = true;
+   }
 };
 
 //********************************************************************************************************************
@@ -466,24 +475,25 @@ extern ERROR init_transition(void);
 extern ERROR init_turbulencefx(void);
 extern ERROR init_vectorscene(void);
 
-extern void debug_tree(extVector *, LONG &);
-extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
-extern ERROR scene_input_events(const InputEvent *, LONG);
-extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, DOUBLE);
-extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
 extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
+extern void debug_tree(extVector *, LONG &);
+extern void draw_clipmask(extVectorClip *, extVector *);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
+extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, DOUBLE);
+extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
+extern objBitmap * get_source_graphic(extVectorFilter *);
+extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
+extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
+extern ERROR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
-extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
-extern objBitmap * get_source_graphic(extVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
@@ -499,6 +509,18 @@ inline static void mark_dirty(objVector *Vector, const RC Flags)
       if ((scan->Dirty & Flags) == Flags) continue;
       mark_dirty(scan, Flags);
    }
+}
+
+//********************************************************************************************************************
+// Return true if any vector in a tree branch is dirty (includes siblings of the target)
+
+inline static bool check_branch_dirty(extVector *Vector) 
+{
+   for (auto scan=(extVector *)Vector; scan; scan=(extVector *)scan->Next) {
+      if ((scan->Dirty & RC::ALL) != RC::NIL) return true;
+      if ((scan->Child) and (check_branch_dirty((extVector *)scan->Child))) return true;
+   }
+   return false;
 }
 
 //********************************************************************************************************************

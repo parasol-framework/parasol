@@ -323,6 +323,8 @@ namespace agg
             return m_curve4.cusp_limit();
         }
 
+        bool empty() const { return total_vertices() == 0; }
+
         // Accessors
         //--------------------------------------------------------------------
         const container_type& vertices() const { return m_vertices; }

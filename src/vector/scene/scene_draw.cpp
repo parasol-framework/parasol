@@ -1231,15 +1231,19 @@ private:
                if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
                   auto saved_mask = state.mClipMask;
                   if (view->vpClipMask) {
-                     // TODO: Need to be able to merge with the client ClipMask if one is defined
-                     state.mClipMask = view->vpClipMask;
+                     if (view->ClipMask) {
+                        // TODO: Need to draw the vpClipMask and merge it with ClipMask
+                        state.mClipMask = view->vpClipMask;
+                        draw_clipmask(state.mClipMask, shape);
+                     }
+                     else {
+                        state.mClipMask = view->vpClipMask;
+                        draw_clipmask(state.mClipMask, shape);
+                     }
                   }
                   else if (view->ClipMask) {
                      state.mClipMask = view->ClipMask;
-
-                     state.mClipMask->TargetVector = shape;
-                     acDraw(state.mClipMask);
-                     state.mClipMask->TargetVector = NULL;
+                     draw_clipmask(state.mClipMask, shape);
                   }
 
                   auto save_rb_clip = mRenderBase.clip_box();
@@ -1329,11 +1333,7 @@ private:
             // clip path).  Because masks are cached however, redraws can be limited by ensuring that any given VectorClip 
             // is associated with only one vector.
 
-            if (shape->ClipMask) {
-               shape->ClipMask->TargetVector = shape;
-               acDraw(shape->ClipMask);
-               shape->ClipMask->TargetVector = NULL;
-            }
+            if (shape->ClipMask) draw_clipmask(shape->ClipMask, shape);
 
             if (shape->GeneratePath) { // A vector that generates a path can be drawn
                #ifdef DBG_DRAW
@@ -1398,8 +1398,8 @@ private:
                   DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
                   DOUBLE bx1, by1, bx2, by2;
 
-                  if ((shape->ClipMask) and (shape->ClipMask->ClipPath)) {
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->ClipMask->ClipPath, shape->Transform);
+                  if ((shape->ClipMask) and (!shape->ClipMask->BasePath.empty())) {
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(shape->ClipMask->BasePath, shape->Transform);
                      bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
                   }
                   else if (shape->BasePath.total_vertices()) {
