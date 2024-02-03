@@ -197,10 +197,10 @@ static ERROR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
    const LONG width = Self->Target->Clip.Right - Self->Target->Clip.Left;
 
    if (Self->Stitch) {
-      std::array<DOUBLE, 4> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
+      TClipRectangle<DOUBLE> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
       calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
-      const DOUBLE tile_width  = bounds[2] - bounds[0];
-      const DOUBLE tile_height = bounds[3] - bounds[1];
+      const DOUBLE tile_width  = bounds.width();
+      const DOUBLE tile_height = bounds.height();
 
       // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
 

@@ -123,10 +123,7 @@ static void generate_rectangle(extVectorRectangle *Vector)
       Vector->BasePath.close_polygon();
    }
 
-   Vector->BX1 = x;
-   Vector->BY1 = y;
-   Vector->BX2 = x + width;
-   Vector->BY2 = y + height;
+   Vector->Bounds = { x, y, x + width, y + height };
 }
 
 /*********************************************************************************************************************

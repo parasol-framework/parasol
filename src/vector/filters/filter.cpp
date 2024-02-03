@@ -68,12 +68,12 @@ static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEf
 
 static void compute_target_area(extVectorFilter *Self)
 {
-   std::array<DOUBLE, 4> bounds = { Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 0, 0 };
+   TClipRectangle<DOUBLE> bounds = { Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 0, 0 };
    calc_full_boundary(Self->ClientVector, bounds, false, false);
-   DOUBLE boundX = trunc(bounds[0]);
-   DOUBLE boundY = trunc(bounds[1]);
-   Self->BoundWidth  = bounds[2] - bounds[0];
-   Self->BoundHeight = bounds[3] - bounds[1];
+   DOUBLE boundX = trunc(bounds.left);
+   DOUBLE boundY = trunc(bounds.top);
+   Self->BoundWidth  = bounds.width();
+   Self->BoundHeight = bounds.height();
 
    if (Self->Units IS VUNIT::BOUNDING_BOX) {
       if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = boundX;
@@ -340,23 +340,23 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
       // The bounds are oriented to the client vector's transforms.
 
-      std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
+      TClipRectangle<DOUBLE> bounds = { container_width, container_height, 0, 0 };
       calc_full_boundary(Vector, bounds, false, true);
 
-      if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
+      if ((bounds.right <= bounds.left) or (bounds.bottom <= bounds.top)) {
          // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
-         bounds = Viewport->vpBounds.as_array();
+         bounds = Viewport->vpBounds;
       }
-      auto const bound_width  = bounds[2] - bounds[0];
-      auto const bound_height = bounds[3] - bounds[1];
+      auto const bound_width  = bounds.width();
+      auto const bound_height = bounds.height();
 
-      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.left = F2T(bounds[0] + Self->X);
-      else if (Self->Dimensions & DMF_SCALED_X) Self->VectorClip.left = F2T(bounds[0]) + (Self->X * bound_width);
-      else Self->VectorClip.left = F2T(bounds[0]);
+      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.left = F2T(bounds.left + Self->X);
+      else if (Self->Dimensions & DMF_SCALED_X) Self->VectorClip.left = F2T(bounds.left) + (Self->X * bound_width);
+      else Self->VectorClip.left = F2T(bounds.left);
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.top = F2T(bounds[1] + Self->Y);
-      else if (Self->Dimensions & DMF_SCALED_Y) Self->VectorClip.top = F2T(bounds[1] + (Self->Y * bound_height));
-      else Self->VectorClip.top = F2T(bounds[1]);
+      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.top = F2T(bounds.top + Self->Y);
+      else if (Self->Dimensions & DMF_SCALED_Y) Self->VectorClip.top = F2T(bounds.top + (Self->Y * bound_height));
+      else Self->VectorClip.top = F2T(bounds.top);
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
       else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);

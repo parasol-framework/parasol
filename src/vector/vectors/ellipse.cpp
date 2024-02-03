@@ -61,10 +61,7 @@ static void generate_ellipse(extVectorEllipse *Vector)
    }
    Vector->BasePath.close_polygon();
 
-   Vector->BX1 = cx - rx;
-   Vector->BY1 = cy - ry;
-   Vector->BX2 = cx + rx;
-   Vector->BY2 = cy + ry;
+   Vector->Bounds = { cx - rx, cy - ry, cx + rx, cy + ry };
 }
 
 /*********************************************************************************************************************

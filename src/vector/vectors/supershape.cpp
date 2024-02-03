@@ -139,7 +139,7 @@ static void generate_supershape(extVectorShape *Vector)
    transform.translate(cx, cy);
    Vector->BasePath.transform(transform);
 
-   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
+   Vector->Bounds = get_bounds(Vector->BasePath);
 }
 
 //********************************************************************************************************************

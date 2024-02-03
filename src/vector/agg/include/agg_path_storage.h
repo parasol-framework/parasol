@@ -251,14 +251,17 @@ namespace agg
         typedef VertexContainer            container_type;
         typedef path_base<VertexContainer> self_type;
 
-        //--------------------------------------------------------------------
         path_base() : m_last_x(0), m_last_y(0), m_vertices(), m_iterator(0) {}
         void remove_all() { m_vertices.remove_all(); m_iterator = 0; }
         void free_all()   { m_vertices.free_all();   m_iterator = 0; }
 
         // Make path functions
-        //--------------------------------------------------------------------
+
         unsigned start_new_path();
+        void move_to(const point_d &);
+        void move_rel(point_d);
+        void line_to(const point_d &);
+        void line_rel(point_d);
         void move_to(double x, double y);
         void move_rel(double dx, double dy);
         void line_to(double x, double y);
@@ -476,7 +479,6 @@ namespace agg
         unsigned        m_iterator;
     };
 
-    //------------------------------------------------------------------------
     template<class VC>
     unsigned path_base<VC>::start_new_path()
     {
@@ -486,19 +488,38 @@ namespace agg
         return m_vertices.total_vertices();
     }
 
+   template<class VC>
+   inline void path_base<VC>::rel_to_abs(double* x, double* y) const {
+      if (m_vertices.total_vertices()) {
+         double x2, y2;
+         if (is_vertex(m_vertices.last_vertex(&x2, &y2))) {
+            *x += x2;
+            *y += y2;
+         }
+      }
+   }
 
-    //------------------------------------------------------------------------
-    template<class VC>
-    inline void path_base<VC>::rel_to_abs(double* x, double* y) const
-    {
-        if (m_vertices.total_vertices()) {
-            double x2, y2;
-            if (is_vertex(m_vertices.last_vertex(&x2, &y2))) {
-                *x += x2;
-                *y += y2;
-            }
-        }
-    }
+   template<class VC>
+   inline void path_base<VC>::move_to(const point_d &Point) {
+      m_vertices.add_vertex(Point.x, Point.y, path_cmd_move_to);
+   }
+
+   template<class VC>
+   inline void path_base<VC>::move_rel(point_d Point) {
+      rel_to_abs(&Point.x, &Point.y);
+      m_vertices.add_vertex(Point.x, Point.y, path_cmd_move_to);
+   }
+
+   template<class VC>
+   inline void path_base<VC>::line_to(const point_d &Point) {
+      m_vertices.add_vertex(Point.x, Point.y, path_cmd_line_to);
+   }
+
+   template<class VC>
+   inline void path_base<VC>::line_rel(point_d Point) {
+      rel_to_abs(&Point.x, &Point.y);
+      m_vertices.add_vertex(Point.x, Point.y, path_cmd_line_to);
+   }
 
    template<class VC>
    inline void path_base<VC>::move_to(double x, double y) {

@@ -53,10 +53,7 @@ static void generate_spiral(extVectorSpiral *Vector)
       angle += Vector->Step;
    }
 
-   Vector->BX1 = min_x;
-   Vector->BY1 = min_y;
-   Vector->BX2 = max_x;
-   Vector->BY2 = max_y;
+   Vector->Bounds = { min_x, min_y, max_x, max_y };
 }
 
 //********************************************************************************************************************

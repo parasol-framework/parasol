@@ -265,7 +265,7 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
 //
 // See also VECTOR_GetBoundary(), for which this function is intended, and set_clip_region() for filters.
 
-void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
+void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
 {
    if (!Vector) return;
 
@@ -273,49 +273,32 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
       if (Vector->dirty()) gen_vector_path(Vector);
 
       if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
-         DOUBLE bx1, by1, bx2, by2;
-
          if ((Vector->ClipMask) and (!Vector->ClipMask->BasePath.empty())) {
             // When a ClipMask is defined, we give priority to the mask and then fall-through to the vector path so that we
             // get a completely accurate view of the visible boundary.
 
             if (IncludeTransforms) {
                agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->ClipMask->BasePath, Vector->Transform);
-               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+               Bounds.expanding(get_bounds(path));
             }
-            else bounding_rect_single(Vector->ClipMask->BasePath, 0, &bx1, &by1, &bx2, &by2);
-
-            if (bx1 < Bounds[0]) Bounds[0] = bx1;
-            if (by1 < Bounds[1]) Bounds[1] = by1;
-            if (bx2 > Bounds[2]) Bounds[2] = bx2;
-            if (by2 > Bounds[3]) Bounds[3] = by2;
+            else Bounds.expanding(get_bounds(Vector->ClipMask->BasePath));
          }
          
          if (Vector->BasePath.total_vertices()) {
             if (IncludeTransforms) {
                if (Vector->Transform.is_complex()) {
-                  auto simple_path = basic_path(Vector->BX1, Vector->BY1, Vector->BX2, Vector->BY2);
+                  auto simple_path = Vector->Bounds.as_path();
                   agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
-                  bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-
-                  if (bx1 < Bounds[0]) Bounds[0] = bx1;
-                  if (by1 < Bounds[1]) Bounds[1] = by1;
-                  if (bx2 > Bounds[2]) Bounds[2] = bx2;
-                  if (by2 > Bounds[3]) Bounds[3] = by2;
+                  Bounds.expanding(get_bounds(path));
                }
                else {
-                  if (Vector->BX1 + Vector->Transform.tx < Bounds[0]) Bounds[0] = Vector->BX1 + Vector->Transform.tx;
-                  if (Vector->BY1 + Vector->Transform.ty < Bounds[1]) Bounds[1] = Vector->BY1 + Vector->Transform.ty;
-                  if (Vector->BX2 + Vector->Transform.tx > Bounds[2]) Bounds[2] = Vector->BX2 + Vector->Transform.tx;
-                  if (Vector->BY2 + Vector->Transform.ty > Bounds[3]) Bounds[3] = Vector->BY2 + Vector->Transform.ty;
+                  if (Vector->Bounds.left + Vector->Transform.tx   < Bounds.left)   Bounds.left   = Vector->Bounds.left + Vector->Transform.tx;
+                  if (Vector->Bounds.top + Vector->Transform.ty    < Bounds.top)    Bounds.top    = Vector->Bounds.top + Vector->Transform.ty;
+                  if (Vector->Bounds.right + Vector->Transform.tx  > Bounds.right)  Bounds.right  = Vector->Bounds.right + Vector->Transform.tx;
+                  if (Vector->Bounds.bottom + Vector->Transform.ty > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + Vector->Transform.ty;
                }
             }
-            else {
-               if (Vector->BX1 < Bounds[0]) Bounds[0] = Vector->BX1;
-               if (Vector->BY1 < Bounds[1]) Bounds[1] = Vector->BY1;
-               if (Vector->BX2 > Bounds[2]) Bounds[2] = Vector->BX2;
-               if (Vector->BY2 > Bounds[3]) Bounds[3] = Vector->BY2;
-            }
+            else Bounds.expanding(Vector);
          }
       }
 

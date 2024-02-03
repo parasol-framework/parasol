@@ -148,7 +148,7 @@ static void generate_wave(extVectorWave *Vector)
 
    if ((Vector->wClose != WVC::NIL) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
 
-   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
+   Vector->Bounds = get_bounds(Vector->BasePath);
 }
 
 /*********************************************************************************************************************

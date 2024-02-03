@@ -445,26 +445,25 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
 
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-      std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
+      TClipRectangle<DOUBLE> bounds = { DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX };
 
       if ((Args->Flags & VBF::NO_TRANSFORM) != VBF::NIL) {
-         bounds[0] = Self->BX1 + Self->FinalX;
-         bounds[1] = Self->BY1 + Self->FinalY;
-         bounds[2] = Self->BX2 + Self->FinalX;
-         bounds[3] = Self->BY2 + Self->FinalY;
+         bounds.left   = Self->Bounds.left + Self->FinalX;
+         bounds.top    = Self->Bounds.top + Self->FinalY;
+         bounds.right  = Self->Bounds.right + Self->FinalX;
+         bounds.bottom = Self->Bounds.bottom + Self->FinalY;
       }
       else {
-         auto simple_path = basic_path(Self->BX1, Self->BY1, Self->BX2, Self->BY2);
-         agg::conv_transform<agg::path_storage, agg::trans_affine> path(simple_path, Self->Transform);
-         bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+         auto path = Self->Bounds.as_path(Self->Transform);
+         bounds = get_bounds(path);
       }
 
       if ((Args->Flags & VBF::INCLUSIVE) != VBF::NIL) calc_full_boundary((extVector *)Self->Child, bounds, true);
 
-      Args->X      = bounds[0];
-      Args->Y      = bounds[1];
-      Args->Width  = bounds[2] - bounds[0];
-      Args->Height = bounds[3] - bounds[1];
+      Args->X      = bounds.left;
+      Args->Y      = bounds.top;
+      Args->Width  = bounds.width();
+      Args->Height = bounds.height();
       return ERR_Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
@@ -681,9 +680,9 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
-      agg::vertex_d w, x, y, z;
-
       auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
+
+      agg::vertex_d w, x, y, z;
       vertices.vertex(0, &x.x, &x.y);
       vertices.vertex(1, &y.x, &y.y);
       vertices.vertex(2, &z.x, &z.y);
@@ -692,10 +691,10 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR_Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORRECTANGLE) {
-      agg::vertex_d w, x, y, z;
       agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
 
       t_path.rewind(0);
+      agg::vertex_d w, x, y, z;
       t_path.vertex(&x.x, &x.y);
       t_path.vertex(&y.x, &y.y);
       t_path.vertex(&z.x, &z.y);
@@ -706,14 +705,11 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
    else {
       // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
 
-      auto simple_path = basic_path(Self->BX1, Self->BY1, Self->BX2, Self->BY2);
-      agg::conv_transform<agg::path_storage, agg::trans_affine> tb_path(simple_path, Self->Transform);
-      DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(tb_path, 0, &bx1, &by1, &bx2, &by2);
-      if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
+      auto path = Self->Bounds.as_path(Self->Transform);
+      if (get_bounds(path).hit_test(Args->X, Args->Y)) {
          if ((Self->DisableHitTesting) or (Self->Class->ClassID IS ID_VECTORTEXT)) return ERR_Okay;
          else {
-            // Full hit testing.  TODO: Find out if there are more optimal hit testing methods.
+            // Full hit testing using the true path.  TODO: Find out if there are more optimal hit testing methods.
 
             agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
             agg::rasterizer_scanline_aa<> raster;

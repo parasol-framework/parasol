@@ -107,13 +107,61 @@ template<class T = double> struct TClipRectangle {
       return (X >= left) and (Y >= top) and (X < right) and (Y < bottom);
    }
 
-   std::array<T, 4> as_array() const {
+   inline std::array<T, 4> as_array() const {
       return std::array<T, 4> { left, top, right, bottom };
+   }
+   
+   inline agg::path_storage as_path() const {
+      agg::path_storage path;
+      path.move_to(left, top);
+      path.line_to(right, top);
+      path.line_to(right, bottom);
+      path.line_to(left, bottom);
+      path.close_polygon();
+      return std::move(path);
+   }
+
+   // Return the boundary as a path, with a transform already applied.
+
+   inline agg::path_storage as_path(const agg::trans_affine &Transform) const {
+      agg::path_storage path;
+      path.move_to(Transform.transform({ left, top }));
+      path.line_to(Transform.transform({ right, top }));
+      path.line_to(Transform.transform({ right, bottom }));
+      path.line_to(Transform.transform({ left, bottom }));
+      path.close_polygon();
+      return std::move(path);
    }
 
    inline bool valid() const { return (left < right) and (top < bottom); }
    inline T width() const { return right - left; }
    inline T height() const { return bottom - top; }
+
+   TClipRectangle<T> & operator+=(const TClipRectangle<T> &Other) {
+      expanding(Other);
+      return *this;
+   }
+
+   TClipRectangle<T> & operator-=(const TClipRectangle<T> &Other) {
+      shrinking(Other);
+      return *this;
+   }
+
+   TClipRectangle<T> & operator+=(const agg::point_base<T> &Delta) {
+      left   += Delta.x;
+      top    += Delta.y;
+      right  += Delta.x;
+      bottom += Delta.y;
+      return *this;
+   }
+
+   TClipRectangle<T> & operator-=(const agg::point_base<T> &Delta) {
+      left   -= Delta.x;
+      top    -= Delta.y;
+      right  -= Delta.x;
+      bottom -= Delta.y;
+      return *this;
+   }
 };
 
 static const TClipRectangle<DOUBLE> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
@@ -327,7 +375,7 @@ class extVector : public objVector {
 
    extPainter Fill[2], Stroke;
    DOUBLE FinalX, FinalY;
-   DOUBLE BX1, BY1, BX2, BY2; // Must be calculated by GeneratePath() and called from calc_full_boundary()
+   TClipRectangle<DOUBLE> Bounds; // Must be calculated by GeneratePath() and called from calc_full_boundary()
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;
    agg::trans_affine Transform;
@@ -519,7 +567,7 @@ extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
-extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
+extern void calc_full_boundary(extVector *, TClipRectangle<DOUBLE> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void debug_tree(extVector *, LONG &);
 extern void gen_vector_path(extVector *);
@@ -541,7 +589,7 @@ extern std::vector<extVector *> glVectorFocusList; // The first reference is the
 //********************************************************************************************************************
 
 template<class VertexSource, class T = DOUBLE>
-TClipRectangle<T> get_bounds(VertexSource &vs, unsigned path_id = 0)
+TClipRectangle<T> get_bounds(VertexSource &vs, const unsigned path_id = 0)
 {
    TClipRectangle<T> rect;
    bounding_rect_single(vs, path_id, &rect.left, &rect.top, &rect.right, &rect.bottom);
@@ -1007,10 +1055,7 @@ extern "C" ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 
 template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {
-   left   = pVector->BX1;
-   top    = pVector->BY1;
-   right  = pVector->BX2;
-   bottom = pVector->BY2;
+   *this = pVector->Bounds;
 }
 
 template <class T> TClipRectangle<T>::TClipRectangle(const class extVectorViewport *pVector) {

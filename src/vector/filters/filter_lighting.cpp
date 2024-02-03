@@ -294,16 +294,16 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // Light source coordinates are expressed as relative to the client vector's bounding box in this mode.
       auto &client = Self->Filter->ClientVector;
-      const DOUBLE c_width  = (client->BX2 - client->BX1);
-      const DOUBLE c_height = (client->BY2 - client->BY1);
+      const DOUBLE c_width  = client->Bounds.width();
+      const DOUBLE c_height = client->Bounds.height();
 
-      ltx = (ltx * c_width) + client->BX1;
-      lty = (lty * c_height) + client->BY1;
+      ltx = (ltx * c_width) + client->Bounds.left;
+      lty = (lty * c_height) + client->Bounds.top;
       ltz = ltz * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
 
       if (Self->LightSource IS LS::SPOT) {
-         ptx = (ptx * c_width) + client->BX1;
-         pty = (pty * c_height) + client->BY1;
+         ptx = (ptx * c_width) + client->Bounds.left;
+         pty = (pty * c_height) + client->Bounds.top;
          ptz = ptz * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
       }
    }

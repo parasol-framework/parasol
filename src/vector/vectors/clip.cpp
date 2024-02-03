@@ -48,8 +48,7 @@ static void generate_clip(extVectorClip *Clip)
                b.expanding(scan);
             }
             else {
-               auto simple_path = basic_path(scan->BX1, scan->BY1, scan->BX2, scan->BY2);
-               agg::conv_transform<agg::path_storage, agg::trans_affine> path(simple_path, scan->Transform);
+               auto path = scan->Bounds.as_path(scan->Transform);
                b.expanding(get_bounds(path));
             }
          }
@@ -66,10 +65,7 @@ static void generate_clip(extVectorClip *Clip)
       b.shrinking(get_bounds(Clip->BasePath));
    }
 
-   Clip->BX1 = b.left;
-   Clip->BY1 = b.top;
-   Clip->BX2 = b.right;
-   Clip->BY2 = b.bottom;
+   Clip->Bounds = b;
 }
 
 //********************************************************************************************************************

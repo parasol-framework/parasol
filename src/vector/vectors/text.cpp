@@ -1476,11 +1476,8 @@ static void generate_text(extVectorText *Vector)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->BX1 = 0;
-   Vector->BY1 = -Vector->txFont->Ascent;
-   Vector->BX2 = Vector->txWidth;
-   Vector->BY2 = 1;
-   if (Vector->txLines.size() > 1) Vector->BY2 += (Vector->txLines.size() - 1) * Vector->txFont->LineSpacing;
+   Vector->Bounds = { 0.0, DOUBLE(-Vector->txFont->Ascent), Vector->txWidth, 1.0 };
+   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * Vector->txFont->LineSpacing;
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in
    // mind it will provide tighter numbers, which is normal).
@@ -1633,10 +1630,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->BX1 = 0;
-   Vector->BY1 = 0;
-   Vector->BX2 = Vector->txWidth;
-   Vector->BY2 = dy;
+   Vector->Bounds = { 0, 0, Vector->txWidth, DOUBLE(dy) };
 }
 
 //********************************************************************************************************************

@@ -49,17 +49,9 @@ static void generate_polygon(extVectorPoly *Vector)
 
       if ((Vector->TotalPoints > 2) and (Vector->Closed)) Vector->BasePath.close_polygon();
 
-      Vector->BX1 = min_x;
-      Vector->BY1 = min_y;
-      Vector->BX2 = max_x;
-      Vector->BY2 = max_y;
+      Vector->Bounds = { min_x, min_y, max_x, max_y };
    }
-   else {
-      Vector->BX1 = 0;
-      Vector->BY1 = 0;
-      Vector->BX2 = 0;
-      Vector->BY2 = 0;
-   }
+   else Vector->Bounds = { 0, 0, 0, 0 };
 }
 
 //********************************************************************************************************************
@@ -144,10 +136,10 @@ static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
       Self->Points[i].Y += Args->DeltaY;
    }
 
-   Self->BX1 += Args->DeltaX;
-   Self->BY1 += Args->DeltaY;
-   Self->BX2 += Args->DeltaX;
-   Self->BY2 += Args->DeltaY;
+   Self->Bounds.left   += Args->DeltaX;
+   Self->Bounds.top    += Args->DeltaY;
+   Self->Bounds.right  += Args->DeltaX;
+   Self->Bounds.bottom += Args->DeltaY;
 
    reset_path(Self);
    return ERR_Okay;
@@ -179,22 +171,22 @@ static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
 
    if ((Args->Flags & MTF::X) != MTF::NIL) {
-      DOUBLE center_x = (Self->BX2 - Self->BX1) * 0.5;
+      DOUBLE center_x = Self->Bounds.width() * 0.5;
       DOUBLE xchange = Args->X - center_x;
       for (i=0; i < Self->TotalPoints; i++) {
          Self->Points[i].X += xchange;
          Self->Points[i].XScaled = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
       }
-      Self->BX1 += xchange;
-      Self->BX2 += xchange;
+      Self->Bounds.left += xchange;
+      Self->Bounds.right += xchange;
    }
 
    if ((Args->Flags & MTF::Y) != MTF::NIL) {
-      DOUBLE center_y = (Self->BY2 - Self->BY1) * 0.5;
+      DOUBLE center_y = Self->Bounds.height() * 0.5;
       DOUBLE ychange = Args->Y - center_y;
       for (i=0; i < Self->TotalPoints; i++) Self->Points[i].Y += ychange;
-      Self->BY1 += ychange;
-      Self->BY2 += ychange;
+      Self->Bounds.top += ychange;
+      Self->Bounds.bottom += ychange;
    }
 
    reset_path(Self);
@@ -229,8 +221,8 @@ static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   DOUBLE current_width = Self->BX2 - Self->BX1;
-   DOUBLE current_height = Self->BY2 - Self->BY1;
+   DOUBLE current_width = Self->Bounds.width();
+   DOUBLE current_height = Self->Bounds.height();
    DOUBLE xratio = (Args->Width > 0) ? (current_width / Args->Width) : current_width;
    DOUBLE yratio = (Args->Height > 0) ? (current_height / Args->Height) : current_height;
 

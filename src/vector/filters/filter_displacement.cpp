@@ -94,8 +94,8 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    const LONG in_height  = inBmp->Clip.Bottom  - inBmp->Clip.Top;
 
    auto &client = Self->Filter->ClientVector;
-   const DOUBLE c_width  = (client->BX2 - client->BX1);
-   const DOUBLE c_height = (client->BY2 - client->BY1);
+   const DOUBLE c_width  = client->Bounds.width();
+   const DOUBLE c_height = client->Bounds.height();
 
    DOUBLE sx, sy;
    DOUBLE scale_against;
