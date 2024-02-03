@@ -430,10 +430,9 @@ class extVectorClip : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorClip";
    using create = pf::Create<extVectorClip>;
 
-   std::vector<UBYTE> ClipData;
-   agg::rendering_buffer ClipRenderer;
    VUNIT ClipUnits;
    bool RefreshBounds;
+   bool Viewport; // Set by VectorViewport to inform that the BasePath represents a clipped container
 
    inline void set_transform(struct VectorMatrix *pMatrices) {
       Matrices = pMatrices;
@@ -482,7 +481,6 @@ extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBL
 extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void debug_tree(extVector *, LONG &);
-extern void draw_clipmask(extVectorClip *, extVector *);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
 extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, DOUBLE);
@@ -536,6 +534,7 @@ template<class T = double> struct TClipRectangle {
       if (Other.bottom < bottom) bottom = Other.bottom;
    }
 
+   inline bool valid() const { return (left < right) and (top < bottom); }
    inline int width() const { return right - left; }
    inline int height() const { return bottom - top; }
 };

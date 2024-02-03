@@ -17,126 +17,59 @@ any given time.
 
 *********************************************************************************************************************/
 
-static void reset_bounds(extVectorClip *Self)
+// Path generation for the VectorClip.  Since the requisite paths already exist in child objects and the BasePath,
+// the only job we need to do here is to compute the boundary.  Regular paths are additive to the overall clipping
+// shape, whilst viewports are restrictive.
+
+static void generate_clip(extVectorClip *Clip)
 {
-   Self->BX1 = FLT_MAX;
-   Self->BY1 = FLT_MAX;
-   Self->BX2 = -FLT_MAX;
-   Self->BY2 = -FLT_MAX;
-}
+   TClipRectangle<DOUBLE> b;
 
-//********************************************************************************************************************
-// Basic function for recursively drawing all child vectors to a bitmap mask.
+   std::function<void(extVector *, bool)> scan_bounds;
 
-static void draw_clips(extVectorClip *Self, extVector *Branch,
-   agg::rasterizer_scanline_aa<> &Rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
-{
-   agg::scanline32_p8 sl;
-   for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
-      if (scan->Class->BaseClassID IS ID_VECTOR) {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
-         Rasterizer.reset();
-         Rasterizer.add_path(final_path);
-         agg::render_scanlines(Rasterizer, sl, Solid);
+   scan_bounds = [&b, &scan_bounds](extVector *Branch, bool IncSiblings) -> void {
+      for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
+         if (scan->dirty()) gen_vector_path(scan);
+
+         if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
+            // If vpClipMask is set, then the viewport is masked.  Unmasked viewports can be ignored.
+            if (((extVectorViewport *)scan)->vpClipMask) {
+               auto vp_bounds = ((extVectorViewport *)scan)->vpClipMask;
+               b.shrinking(vp_bounds);
+            }
+            if (((extVectorViewport *)scan)->ClipMask) {
+               auto vp_bounds = ((extVectorViewport *)scan)->ClipMask;
+               b.shrinking(vp_bounds);
+            }
+         }
+         else if (scan->Class->BaseClassID IS ID_VECTOR) {           
+            TClipRectangle bounds;
+            if (scan->Transform.is_normal()) {
+               b.expanding(scan);
+            }
+            else {
+               auto simple_path = basic_path(scan->BX1, scan->BY1, scan->BX2, scan->BY2);
+               agg::conv_transform<agg::path_storage, agg::trans_affine> path(simple_path, scan->Transform);
+               b.expanding(get_bounds(path));
+            }
+         }
+
+         if (scan->Child) scan_bounds((extVector *)scan->Child, true);
       }
+   };
 
-      if (scan->Child) draw_clips(Self, (extVector *)scan->Child, Rasterizer, Solid);
-   }
-}
+   b = TCR_EXPANDING;
 
-//********************************************************************************************************************
-// Called by the scene graph renderer
-
-extern void draw_clipmask(extVectorClip *Self, extVector *ClientShape)
-{
-   pf::Log log;
-
-   // Ensure that the Bounds are up to date and refresh them if necessary.
-
-   if ((Self->Child) and (!Self->RefreshBounds)) {
-      if (check_branch_dirty((extVector *)Self->Child)) Self->RefreshBounds = true;
+   if (Clip->Child) scan_bounds((extVector *)Clip->Child, true);
+   
+   if (!Clip->BasePath.empty()) {
+      b.shrinking(get_bounds(Clip->BasePath));
    }
 
-   if (Self->RefreshBounds) {
-      // Calculate the bounds of all the paths defined and contained by the clip object
-
-      Self->RefreshBounds = false;
-
-      reset_bounds(Self);
-
-      if (!Self->BasePath.empty()) { // Get the boundary of the ClipPath if defined by the client.
-         bounding_rect_single(Self->BasePath, 0, &Self->BX1, &Self->BY1, &Self->BX2, &Self->BY2);
-      }
-
-      if (Self->Child) {
-         std::array<DOUBLE, 4> bounds = { Self->BX1, Self->BY1, Self->BX2, Self->BY2 };
-         calc_full_boundary((extVector *)Self->Child, bounds);
-         Self->BX1 = bounds[0];
-         Self->BY1 = bounds[1];
-         Self->BX2 = bounds[2];
-         Self->BY2 = bounds[3];
-      }
-   }
-   else {
-      // If the bounds don't require refreshing then the existing ClipData is also going to be current,
-      // so we can return immediately.
-      return;
-   }
-
-   if (Self->BX1 IS FLT_MAX) return; // Return if no paths were defined.
-
-   // Allocate a bitmap that is large enough to contain the mask (persists between draw sessions).
-
-   LONG width  = F2T(Self->BX2) + 1;
-   LONG height = F2T(Self->BY2) + 1;
-
-   if ((width <= 0) or (height <= 0)) {
-      DEBUG_BREAK
-      log.warning(ERR_InvalidDimension);
-      return;
-   }
-
-   if ((width > 4096) or (height > 4096)) {
-      log.warning("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
-      if (width > 4096)  width = 4096;
-      if (height > 4096) height = 4096;
-   }
-
-   #ifdef DBG_DRAW
-      log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", Self->Bounds[0], Self->Bounds[1], Self->Bounds[2], Self->Bounds[3], width, height);
-   #endif
-
-   size_t size = width * height;
-   if (Self->ClipData.size() < size) Self->ClipData.resize(size);
-
-   // Configure an 8-bit monochrome bitmap for holding the mask
-
-   Self->ClipRenderer.attach(Self->ClipData.data(), width-1, height-1, width);
-   agg::pixfmt_gray8 pixf(Self->ClipRenderer);
-   agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
-   agg::rasterizer_scanline_aa<> rasterizer;
-
-   ClearMemory(Self->ClipData.data(), Self->ClipData.size());
-
-   solid.color(agg::gray8(0xff, 0xff));
-
-   // Every child vector of the VectorClip that exports a path will be rendered to the mask.
-
-   if (Self->Child) draw_clips(Self, (extVector *)Self->Child, rasterizer, solid);
-
-   // A client can provide its own clipping path by setting ClipPath property.  This is more optimal than
-   // using child vectors - the VectorViewport is one such client that uses this feature.
-
-   if (!Self->BasePath.empty()) {
-      agg::scanline32_p8 sl;
-      agg::path_storage final_path(Self->BasePath);
-
-      rasterizer.reset();
-      rasterizer.add_path(final_path);
-      agg::render_scanlines(rasterizer, sl, solid);
-   }
+   Clip->BX1 = b.left;
+   Clip->BY1 = b.top;
+   Clip->BX2 = b.right;
+   Clip->BY2 = b.bottom;
 }
 
 //********************************************************************************************************************
@@ -172,10 +105,11 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
    new (Self) extVectorClip;
 
-   Self->ClipUnits  = VUNIT::BOUNDING_BOX;
-   Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
+   Self->GeneratePath  = (void (*)(extVector *))&generate_clip;
+   Self->ClipUnits     = VUNIT::BOUNDING_BOX;
+   Self->Visibility    = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    Self->RefreshBounds = true;
-   reset_bounds(Self);
+   Self->Viewport      = false;
    return ERR_Okay;
 }
 

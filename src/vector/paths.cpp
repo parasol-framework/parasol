@@ -233,7 +233,7 @@ void gen_vector_path(extVector *Vector)
 
          if (view->vpClipMask) {
             view->vpClipMask->set_clip_path(Vector->BasePath); // NB: Path is already transformed
-            draw_clipmask(view->vpClipMask, view);
+            view->vpClipMask->Viewport = true;
          }
       }
       else if (view->vpClipMask) { FreeResource(view->vpClipMask); view->vpClipMask = NULL; }

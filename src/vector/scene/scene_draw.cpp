@@ -1,11 +1,36 @@
+
+#include "agg_span_gradient_contour.h"
+
+class VectorState;
+
+//********************************************************************************************************************
+// The ClipBuffer is used to hold any alpha-masks that are generated as the scene is rendered.
+
+class ClipBuffer {
+   VectorState *m_state;
+   std::vector<UBYTE> m_bitmap;
+   LONG m_width, m_height;
+   extVector *m_shape;
+
+public:
+   agg::rendering_buffer m_renderer;
+   extVectorClip *m_clip;
+
+public:
+   ClipBuffer() : m_shape(NULL), m_clip(NULL) { }
+   ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) : m_state(&pState), m_shape(pShape), m_clip(pClip) { }
+
+   void draw();
+
+   void draw_clips(extVector *, agg::rasterizer_scanline_aa<> &,
+      agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &);
+};
+
 //********************************************************************************************************************
 // This class holds the current state as the vector scene is parsed for drawing.  It is most useful for managing use of
 // the 'inherit' attribute values.
 
-#include "agg_span_gradient_contour.h"
-
-class VectorState
-{
+class VectorState {
 public:
    struct vsclip {
       double x1, y1, x2, y2;
@@ -20,7 +45,7 @@ public:
    VIS mVisible;
    VOF mOverflowX;
    VOF mOverflowY;
-   extVectorClip *mClipMask;
+   std::shared_ptr<std::stack<ClipBuffer>> mClipStack;
    agg::trans_affine mTransform;
    bool mLinearRGB;
    bool mBackgroundActive;
@@ -36,11 +61,106 @@ public:
       mVisible(VIS::VISIBLE),
       mOverflowX(VOF::VISIBLE),
       mOverflowY(VOF::VISIBLE),
-      mClipMask(NULL),
+      mClipStack(std::make_shared<std::stack<ClipBuffer>>()),
       mLinearRGB(false),
       mBackgroundActive(false)
       { }
 };
+
+//********************************************************************************************************************
+// Basic function for recursively drawing all child vectors to a bitmap mask.
+
+void ClipBuffer::draw_clips(extVector *Branch,
+   agg::rasterizer_scanline_aa<> &Rasterizer,
+   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
+{
+   agg::scanline32_p8 sl;
+   for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
+      if (scan->Class->BaseClassID IS ID_VECTOR) {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
+         Rasterizer.reset();
+         Rasterizer.add_path(final_path);
+         agg::render_scanlines(Rasterizer, sl, Solid);
+      }
+
+      if (scan->Child) draw_clips((extVector *)scan->Child, Rasterizer, Solid);
+   }
+}
+
+//********************************************************************************************************************
+// Called by the scene graph renderer to generate a bitmap mask.
+// 
+// TODO: Currently mask bitmaps are created and torn down on each drawing cycle.  We may be able to cache the bitmaps 
+// with Vectors when they request a mask.  Bear in mind that caching has to be on a per-vector basis and not in the
+// VectorClip itself due to the fact that a given VectorClip can be referenced by many vectors.
+
+void ClipBuffer::draw()
+{
+   pf::Log log;
+
+   // Ensure that the Bounds are up to date and refresh them if necessary.
+
+   if ((m_clip->Child) and (!m_clip->RefreshBounds)) {
+      if (check_branch_dirty((extVector *)m_clip->Child)) m_clip->RefreshBounds = true;
+   }
+
+   if (m_clip->RefreshBounds) {
+      m_clip->RefreshBounds = false;
+      m_clip->GeneratePath(m_clip);
+   }
+
+   if (m_clip->BX1 > m_clip->BX2) return; // Return if no paths were defined.
+
+   m_width  = F2T(m_clip->BX2) + 1;
+   m_height = F2T(m_clip->BY2) + 1;
+
+   if ((m_width <= 0) or (m_height <= 0)) {
+      DEBUG_BREAK
+      log.warning(ERR_InvalidDimension);
+      return;
+   }
+
+   if (m_width > 8192)  m_width = 8192;
+   if (m_height > 8192) m_height = 8192;
+
+   #ifdef DBG_DRAW
+      log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", m_clip->Bounds[0], m_clip->Bounds[1], m_clip->Bounds[2], m_clip->Bounds[3], width, height);
+   #endif
+
+   m_bitmap.resize(m_width * m_height);
+
+   // Configure an 8-bit monochrome bitmap for holding the mask
+
+   m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
+   agg::pixfmt_gray8 pixf(m_renderer);
+   agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
+   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
+   agg::rasterizer_scanline_aa<> rasterizer;
+
+   ClearMemory(m_bitmap.data(), m_bitmap.size()); // TODO: Clear the bound area only (post-transforms), not the entire bitmap
+
+   solid.color(agg::gray8(0xff, 0xff));
+
+   // Every child vector of the VectorClip that exports a path will be rendered to the mask.
+
+   if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid);
+
+   // A client can provide its own clipping path by setting the BasePath.  This is more optimal than
+   // using child vectors - the VectorViewport is one such client that uses this feature.
+   //
+   // NB: The client should opt to use either BasePath or Children and not both - this is because
+   // both will be additive when the intention may be for children to be additive and BasePath 
+   // subtractive.
+
+   if (!m_clip->BasePath.empty()) {
+      agg::scanline32_p8 sl;
+      agg::path_storage final_path(m_clip->BasePath);
+
+      rasterizer.reset();
+      rasterizer.add_path(final_path);
+      agg::render_scanlines(rasterizer, sl, solid);
+   }
+}
 
 //********************************************************************************************************************
 
@@ -473,8 +593,8 @@ static void draw_pattern(VectorState &State, DOUBLE *Bounds, agg::path_storage *
 
    transform.invert(); // Required
 
-   if (State.mClipMask) {
-      agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+   if (!State.mClipStack->empty()) {
+      agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
       agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
       drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
    }
@@ -649,8 +769,8 @@ static void draw_image(VectorState &State, DOUBLE *Bounds, agg::path_storage &Pa
 
    transform.invert();
 
-   if (State.mClipMask) {
-      agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+   if (!State.mClipStack->empty()) {
+      agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
       agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
       drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
    }
@@ -1027,8 +1147,8 @@ private:
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(colour);
 
-            if (State.mClipMask) {
-               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+            if (!State.mClipStack->empty()) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
                agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
@@ -1038,8 +1158,8 @@ private:
             agg::renderer_scanline_aa_solid renderer(mRenderBase);
             renderer.color(colour);
 
-            if (State.mClipMask) {
-               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+            if (!State.mClipStack->empty()) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
                agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
@@ -1095,8 +1215,8 @@ private:
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
-            if (State.mClipMask) {
-               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+            if (!State.mClipStack->empty()) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
                agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
@@ -1106,8 +1226,8 @@ private:
             agg::renderer_scanline_aa_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
-            if (State.mClipMask) {
-               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+            if (!State.mClipStack->empty()) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
                agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
                agg::render_scanlines(Raster, mScanLineMasked, renderer);
             }
@@ -1229,21 +1349,14 @@ private:
                #endif
 
                if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
-                  auto saved_mask = state.mClipMask;
                   if (view->vpClipMask) {
-                     if (view->ClipMask) {
-                        // TODO: Need to draw the vpClipMask and merge it with ClipMask
-                        state.mClipMask = view->vpClipMask;
-                        draw_clipmask(state.mClipMask, shape);
-                     }
-                     else {
-                        state.mClipMask = view->vpClipMask;
-                        draw_clipmask(state.mClipMask, shape);
-                     }
+                     state.mClipStack->emplace(state, view->vpClipMask, view);
+                     state.mClipStack->top().draw();
                   }
-                  else if (view->ClipMask) {
-                     state.mClipMask = view->ClipMask;
-                     draw_clipmask(state.mClipMask, shape);
+
+                  if (view->ClipMask) {
+                     state.mClipStack->emplace(state, view->ClipMask, view);
+                     state.mClipStack->top().draw();
                   }
 
                   auto save_rb_clip = mRenderBase.clip_box();
@@ -1316,7 +1429,9 @@ private:
 
                   if (view->Child) draw_vectors((extVector *)view->Child, state);
 
-                  state.mClipMask = saved_mask;
+                  if (view->ClipMask) state.mClipStack->pop();
+
+                  if (view->vpClipMask) state.mClipStack->pop();
 
                   mView = saved_viewport;
 
@@ -1328,26 +1443,21 @@ private:
             }
          }
          else {
-            // Clip masks are redrawn every cycle and for each vector, due to the fact that their look is dependent on the
-            // vector to which they are applied (e.g. transforms that are active for the target vector will also affect the
-            // clip path).  Because masks are cached however, redraws can be limited by ensuring that any given VectorClip 
-            // is associated with only one vector.
+            if (shape->ClipMask) {
+               state.mClipStack->emplace(state, shape->ClipMask, shape);
+               state.mClipStack->top().draw();
+            }
 
-            if (shape->ClipMask) draw_clipmask(shape->ClipMask, shape);
-
-            if (shape->GeneratePath) { // A vector that generates a path can be drawn
+            if (shape->GeneratePath) { // A vector that generates a path is one that can be drawn
                #ifdef DBG_DRAW
                   log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->UID, shape->ClipMask);
                #endif
 
                if (!mView) {
-                  // Vectors not inside a viewport cannot be drawn (they may exist as definitions for other objects,
+                  // Vector shapes not inside a viewport cannot be drawn (they may exist as definitions for other objects,
                   // e.g. as morph paths).
                   return;
                }
-
-               auto saved_mask = state.mClipMask;
-               if (shape->ClipMask) state.mClipMask = shape->ClipMask;
 
                if (shape->FillRaster) {
                   if (state.mApplyTransform) {
@@ -1394,56 +1504,39 @@ private:
 
                if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
                   // If the vector receives user input events then we record the collision box for the mouse cursor.
-                  DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
-                  DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
-                  DOUBLE bx1, by1, bx2, by2;
 
-                  if ((shape->ClipMask) and (!shape->ClipMask->BasePath.empty())) {
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(shape->ClipMask->BasePath, shape->Transform);
-                     bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-                  }
-                  else if (shape->BasePath.total_vertices()) {
-                     if (shape->Transform.is_normal()) {
-                        bx1 = shape->BX1;
-                        by1 = shape->BY1;
-                        bx2 = shape->BX2;
-                        by2 = shape->BY2;
-                     }
+                  TClipRectangle b;
+
+                  if (!shape->BasePath.empty()) {
+                     if (shape->Transform.is_normal()) b = shape;
                      else {
                         auto simple_path = basic_path(shape->BX1, shape->BY1, shape->BX2, shape->BY2);
                         agg::conv_transform<agg::path_storage, agg::trans_affine> path(simple_path, shape->Transform);
-                        bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+                        b = get_bounds(path);
+                     }
+
+                     // Clipping masks can reduce the boundary further.
+
+                     if ((!state.mClipStack->empty()) and (!state.mClipStack->top().m_clip->BasePath.empty())) {
+                        agg::conv_transform<agg::path_storage, agg::trans_affine> path(state.mClipStack->top().m_clip->BasePath, shape->Transform);
+                        b.shrinking(get_bounds(path));
                      }
                   }
-                  else {
-                     bx1 = -1;
-                     by1 = -1;
-                     bx2 = -1;
-                     by2 = -1;
-                  }
+                  else b = { -1, -1, -1, -1 };
 
-                  DOUBLE absx = bx1;
-                  DOUBLE absy = by1;
+                  const DOUBLE abs_x = b.left;
+                  const DOUBLE abs_y = b.top;
 
-                  if (xmin > bx1) bx1 = xmin;
-                  if (ymin > by1) by1 = ymin;
-                  if (xmax < bx2) bx2 = xmax;
-                  if (ymax < by2) by2 = ymax;
+                  TClipRectangle<DOUBLE> rb_bounds = { DOUBLE(mRenderBase.xmin()), DOUBLE(mRenderBase.ymin()), DOUBLE(mRenderBase.xmax()), DOUBLE(mRenderBase.ymax()) };
+                  b.shrinking(rb_bounds);
 
-                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy, shape->InputSubscriptions ? false : true);
+                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, b.left, b.top, b.right, b.bottom, abs_x, abs_y, shape->InputSubscriptions ? false : true);
                }
+            } // if: shape->GeneratePath
 
-               state.mClipMask = saved_mask;
-            }
+            if (shape->Child) draw_vectors((extVector *)shape->Child, state);
 
-            if (shape->Child) {
-               auto saved_mask = state.mClipMask;
-               if (shape->ClipMask) state.mClipMask = shape->ClipMask;
-
-               draw_vectors((extVector *)shape->Child, state);
-
-               state.mClipMask = saved_mask;
-            }
+            if (shape->ClipMask) state.mClipStack->pop();
          }
 
          if (bmpBkgd) {
@@ -1452,8 +1545,8 @@ private:
 
             mBitmap = bmpSave;
             mFormat.setBitmap(*mBitmap);
-            if (state.mClipMask) {
-               agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
+            if (!state.mClipStack->empty()) {
+               agg::alpha_mask_gray8 alpha_mask(state.mClipStack->top().m_renderer);
                agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
                drawBitmap(masked_scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);            
             }
