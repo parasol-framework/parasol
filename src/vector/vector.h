@@ -80,17 +80,58 @@ class extVectorClip;
 
 //********************************************************************************************************************
 
+template<class T = double> struct TClipRectangle {
+   T left, top, right, bottom;
+
+   TClipRectangle() { }
+   TClipRectangle(T Value) : left(Value), top(Value), right(Value), bottom(Value) { }
+   TClipRectangle(T pLeft, T pTop, T pRight, T pBottom) : left(pLeft), top(pTop), right(pRight), bottom(pBottom) { }
+   TClipRectangle(const class extVector *pVector);
+   TClipRectangle(const class extVectorViewport *pVector);
+
+   inline void expanding(const TClipRectangle<T> &Other) {
+      if (Other.left   < left)   left   = Other.left;
+      if (Other.top    < top)    top    = Other.top;
+      if (Other.right  > right)  right  = Other.right;
+      if (Other.bottom > bottom) bottom = Other.bottom;
+   }
+
+   inline void shrinking(const TClipRectangle<T> &Other) {
+      if (Other.left   > left)   left   = Other.left;
+      if (Other.top    > top)    top    = Other.top;
+      if (Other.right  < right)  right  = Other.right;
+      if (Other.bottom < bottom) bottom = Other.bottom;
+   }
+
+   inline bool hit_test(const T X, const T Y) const {
+      return (X >= left) and (Y >= top) and (X < right) and (Y < bottom);
+   }
+
+   std::array<T, 4> as_array() const {
+      return std::array<T, 4> { left, top, right, bottom };
+   }
+
+   inline bool valid() const { return (left < right) and (top < bottom); }
+   inline int width() const { return right - left; }
+   inline int height() const { return bottom - top; }
+};
+
+static const TClipRectangle<DOUBLE> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
+static const TClipRectangle<DOUBLE> TCR_SHRINKING(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+
 class InputBoundary {
 public:
    OBJECTID vector_id;
    PTC cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
-   DOUBLE bx1, by1, bx2, by2; // Collision boundary
+   TClipRectangle<DOUBLE> bounds; // Collision boundary
    DOUBLE x, y; // Absolute X,Y without collision
    bool pass_through; // True if input events should be passed through (the cursor will still apply)
 
-   InputBoundary(OBJECTID pV, PTC pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6, bool pPass = false) :
-      vector_id(pV), cursor(pC), bx1(p1), by1(p2), bx2(p3), by2(p4), x(p5), y(p6), pass_through(pPass) {};
+   InputBoundary(OBJECTID pV, PTC pC, TClipRectangle<DOUBLE> &pBounds, DOUBLE p5, DOUBLE p6, bool pPass = false) :
+      vector_id(pV), cursor(pC), bounds(pBounds), x(p5), y(p6), pass_through(pPass) {};
 };
+
+//********************************************************************************************************************
 
 class InputSubscription {
 public:
@@ -131,14 +172,14 @@ public:
       if (Data) { FreeResource(Data); Data = NULL; }
    };
 
-   objBitmap * get_bitmap(LONG Width, LONG Height, ClipRectangle &Clip, bool Debug) {
+   objBitmap * get_bitmap(LONG Width, LONG Height, TClipRectangle<LONG> &Clip, bool Debug) {
       pf::Log log;
 
-      if (Width < Clip.Right) Width = Clip.Right;
-      if (Height < Clip.Bottom) Height = Clip.Bottom;
+      if (Width < Clip.right) Width = Clip.right;
+      if (Height < Clip.bottom) Height = Clip.bottom;
 
-      if ((Clip.Bottom <= Clip.Top) or (Clip.Right <= Clip.Left)) {
-         log.warning("Invalid clip region %d %d %d %d", Clip.Left, Clip.Top, Clip.Right, Clip.Bottom);
+      if ((Clip.bottom <= Clip.top) or (Clip.right <= Clip.left)) {
+         log.warning("Invalid clip region %d %d %d %d", Clip.left, Clip.top, Clip.right, Clip.bottom);
          return NULL;
       }
 
@@ -160,13 +201,13 @@ public:
          if (!Bitmap) return NULL;
       }
 
-      Bitmap->Clip = Clip;
+      Bitmap->Clip = { Clip.left, Clip.top, Clip.right, Clip.bottom };
       if (Bitmap->Clip.Left < 0) Bitmap->Clip.Left = 0;
       if (Bitmap->Clip.Top < 0) Bitmap->Clip.Top = 0;
 
       if (!Debug) {
-         const LONG canvas_width  = Clip.Right - Clip.Left;
-         const LONG canvas_height = Clip.Bottom - Clip.Top;
+         const LONG canvas_width  = Clip.width();
+         const LONG canvas_height = Clip.height();
          Bitmap->LineWidth = canvas_width * Bitmap->BytesPerPixel;
 
          if ((Data) and (DataSize < Bitmap->LineWidth * canvas_height)) {
@@ -185,7 +226,7 @@ public:
             }
          }
 
-         Bitmap->Data = Data - (Clip.Left * Bitmap->BytesPerPixel) - (Clip.Top * Bitmap->LineWidth);
+         Bitmap->Data = Data - (Clip.left * Bitmap->BytesPerPixel) - (Clip.top * Bitmap->LineWidth);
       }
 
       return Bitmap;
@@ -257,7 +298,7 @@ class extVectorFilter : public objVectorFilter {
    extFilterEffect *Effects;           // Pointer to the first effect in the chain.
    extFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
+   TClipRectangle<LONG> VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
    UBYTE BankIndex;
    DOUBLE BoundWidth, BoundHeight; // Filter boundary, computed on acDraw()
    DOUBLE TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
@@ -348,7 +389,7 @@ class extVectorScene : public objVectorScene {
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
-   std::vector<InputBoundary> InputBoundaries; // Defined on the fly each time that the scene is rendered.  Used to manage input events and cursor changes.
+   std::vector<class InputBoundary> InputBoundaries; // Defined on the fly each time that the scene is rendered.  Used to manage input events and cursor changes.
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
@@ -372,7 +413,7 @@ class extVectorViewport : public extVector {
    DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
    DOUBLE vpXScale, vpYScale;                              // Internal scaling for View -to-> Target.  Does not affect the view itself.
    DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
-   DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping
+   TClipRectangle<DOUBLE> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
    extVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
@@ -499,55 +540,10 @@ extern std::vector<extVector *> glVectorFocusList; // The first reference is the
 
 //********************************************************************************************************************
 
-template<class T = double> struct TClipRectangle {
-   T left, top, right, bottom;
-
-   TClipRectangle() { }
-   TClipRectangle(T Value) : left(Value), top(Value), right(Value), bottom(Value) { }
-   TClipRectangle(T pLeft, T pTop, T pRight, T pBottom) : left(pLeft), top(pTop), right(pRight), bottom(pBottom) { }
-   TClipRectangle(extVector *pVector) {
-      left   = pVector->BX1;
-      top    = pVector->BY1;
-      right  = pVector->BX2;
-      bottom = pVector->BY2;
-   }
-
-   inline T & operator=(const extVector & other) {
-      left   = other.BX1;
-      top    = other.BY1;
-      right  = other.BX2;
-      bottom = other.BY2;
-      return *this;
-   }
-
-   inline void expanding(const TClipRectangle<T> &Other) {
-      if (Other.left   < left)   left   = Other.left;
-      if (Other.top    < top)    top    = Other.top;
-      if (Other.right  > right)  right  = Other.right;
-      if (Other.bottom > bottom) bottom = Other.bottom;
-   }
-
-   inline void shrinking(const TClipRectangle<T> &Other) {
-      if (Other.left   > left)   left   = Other.left;
-      if (Other.top    > top)    top    = Other.top;
-      if (Other.right  < right)  right  = Other.right;
-      if (Other.bottom < bottom) bottom = Other.bottom;
-   }
-
-   inline bool valid() const { return (left < right) and (top < bottom); }
-   inline int width() const { return right - left; }
-   inline int height() const { return bottom - top; }
-};
-
-static const TClipRectangle<DOUBLE> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
-static const TClipRectangle<DOUBLE> TCR_SHRINKING(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
-
-//********************************************************************************************************************
-
-template<class VertexSource>
-TClipRectangle<DOUBLE> get_bounds(VertexSource &vs, unsigned path_id = 0)
+template<class VertexSource, class T = DOUBLE>
+TClipRectangle<T> get_bounds(VertexSource &vs, unsigned path_id = 0)
 {
-   TClipRectangle<DOUBLE> rect;
+   TClipRectangle<T> rect;
    bounding_rect_single(vs, path_id, &rect.left, &rect.top, &rect.right, &rect.bottom);
    return rect;
 }
@@ -1009,3 +1005,14 @@ extern "C" void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern "C" ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
+
+template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {
+   left   = pVector->BX1;
+   top    = pVector->BY1;
+   right  = pVector->BX2;
+   bottom = pVector->BY2;
+}
+
+template <class T> TClipRectangle<T>::TClipRectangle(const class extVectorViewport *pVector) {
+   *this = pVector->vpBounds;
+}

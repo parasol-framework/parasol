@@ -88,8 +88,8 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       acResize(Self->Scene, filter->ClientViewport->Scene->PageWidth, filter->ClientViewport->Scene->PageHeight, 0);
    }
 
-   if ((filter->VectorClip.Right > Self->Bitmap->Clip.Right) or
-       (filter->VectorClip.Bottom > Self->Bitmap->Clip.Bottom)) {
+   if ((filter->VectorClip.right > Self->Bitmap->Clip.Right) or
+       (filter->VectorClip.bottom > Self->Bitmap->Clip.Bottom)) {
       acResize(Self->Bitmap, filter->ClientViewport->Scene->PageWidth, filter->ClientViewport->Scene->PageHeight, 0);
    }
 
@@ -100,7 +100,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
    if (Self->Render) {
       auto &cache = Self->Bitmap;
-      cache->Clip = filter->VectorClip;
+      cache->Clip = { filter->VectorClip.left, filter->VectorClip.top, filter->VectorClip.right, filter->VectorClip.bottom };
 
       // Manual data management - bitmap data is restricted to the clipping region.
 

@@ -220,7 +220,7 @@ void gen_vector_path(extVector *Vector)
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
 
-      bounding_rect_single(Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
+      view->vpBounds = get_bounds(Vector->BasePath);
 
       // If the viewport uses a non-rectangular transform, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
@@ -238,8 +238,8 @@ void gen_vector_path(extVector *Vector)
       }
       else if (view->vpClipMask) { FreeResource(view->vpClipMask); view->vpClipMask = NULL; }
 
-      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
-         Vector->UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
+      log.trace("Clipping boundary for #%d is %g %g %g %g",
+         Vector->UID, view->vpBounds.left, view->vpBounds.top, view->vpBounds.right, view->vpBounds.bottom);
 
       Vector->Dirty &= ~(RC::TRANSFORM | RC::FINAL_PATH | RC::BASE_PATH);
 

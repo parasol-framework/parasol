@@ -188,8 +188,8 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
 
       if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
-         gfxCopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.Left, Self->VectorClip.Top,
-            Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
+         gfxCopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.left, Self->VectorClip.top,
+            Self->VectorClip.right - Self->VectorClip.left, Self->VectorClip.bottom - Self->VectorClip.top,
             bmp->Clip.Left, bmp->Clip.Top);
       }
    }
@@ -296,7 +296,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    }
 
    Self->SourceScene->Viewport->Child = Self->ClientVector;
-   Self->SourceGraphic->Clip = Self->VectorClip;
+   Self->SourceGraphic->Clip = { Self->VectorClip.left, Self->VectorClip.top, Self->VectorClip.right, Self->VectorClip.bottom };
 
    if (Self->SourceGraphic->Clip.Top < 0)  Self->SourceGraphic->Clip.Top = 0;
    if (Self->SourceGraphic->Clip.Left < 0) Self->SourceGraphic->Clip.Left = 0;
@@ -345,29 +345,26 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
 
       if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
          // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
-         bounds[0] = Viewport->vpBX1;
-         bounds[1] = Viewport->vpBY1;
-         bounds[2] = Viewport->vpBX2;
-         bounds[3] = Viewport->vpBY2;
+         bounds = Viewport->vpBounds.as_array();
       }
       auto const bound_width  = bounds[2] - bounds[0];
       auto const bound_height = bounds[3] - bounds[1];
 
-      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.Left = F2T(bounds[0] + Self->X);
-      else if (Self->Dimensions & DMF_SCALED_X) Self->VectorClip.Left = F2T(bounds[0]) + (Self->X * bound_width);
-      else Self->VectorClip.Left = F2T(bounds[0]);
+      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.left = F2T(bounds[0] + Self->X);
+      else if (Self->Dimensions & DMF_SCALED_X) Self->VectorClip.left = F2T(bounds[0]) + (Self->X * bound_width);
+      else Self->VectorClip.left = F2T(bounds[0]);
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.Top = F2T(bounds[1] + Self->Y);
-      else if (Self->Dimensions & DMF_SCALED_Y) Self->VectorClip.Top = F2T(bounds[1] + (Self->Y * bound_height));
-      else Self->VectorClip.Top = F2T(bounds[1]);
+      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.top = F2T(bounds[1] + Self->Y);
+      else if (Self->Dimensions & DMF_SCALED_Y) Self->VectorClip.top = F2T(bounds[1] + (Self->Y * bound_height));
+      else Self->VectorClip.top = F2T(bounds[1]);
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
-      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
-      else Self->VectorClip.Right = Self->VectorClip.Left + F2T(bound_width);
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
+      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
+      else Self->VectorClip.right = Self->VectorClip.left + F2T(bound_width);
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
-      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
-      else Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(bound_height);
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->VectorClip.bottom = Self->VectorClip.top + F2T(Self->Height * bound_height);
+      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->VectorClip.bottom = Self->VectorClip.top + F2T(Self->Height * bound_height);
+      else Self->VectorClip.bottom = Self->VectorClip.top + F2T(bound_height);
    }
    else { // USERSPACE
       DOUBLE x, y, w, h;
@@ -395,16 +392,16 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
       rect.close_polygon();
 
       agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
-      bounding_rect_single(path, 0, &Self->VectorClip.Left, &Self->VectorClip.Top, &Self->VectorClip.Right, &Self->VectorClip.Bottom);
+      Self->VectorClip = get_bounds<agg::conv_transform<agg::path_storage, agg::trans_affine>, LONG>(path);
    }
 
-   if (Self->VectorClip.Left < Viewport->vpBX1)   Self->VectorClip.Left   = Viewport->vpBX1;
-   if (Self->VectorClip.Top < Viewport->vpBY1)    Self->VectorClip.Top    = Viewport->vpBY1;
-   if (Self->VectorClip.Right > Viewport->vpBX2)  Self->VectorClip.Right  = Viewport->vpBX2;
-   if (Self->VectorClip.Bottom > Viewport->vpBY2) Self->VectorClip.Bottom = Viewport->vpBY2;
+   if (Self->VectorClip.left < Viewport->vpBounds.left)     Self->VectorClip.left   = Viewport->vpBounds.left;
+   if (Self->VectorClip.top  < Viewport->vpBounds.top)      Self->VectorClip.top    = Viewport->vpBounds.top;
+   if (Self->VectorClip.right  > Viewport->vpBounds.right)  Self->VectorClip.right  = Viewport->vpBounds.right;
+   if (Self->VectorClip.bottom > Viewport->vpBounds.bottom) Self->VectorClip.bottom = Viewport->vpBounds.bottom;
 
-   if (Self->VectorClip.Bottom <= Self->VectorClip.Top) return log.warning(ERR_InvalidDimension);
-   if (Self->VectorClip.Right <= Self->VectorClip.Left) return log.warning(ERR_InvalidDimension);
+   if (Self->VectorClip.bottom <= Self->VectorClip.top) return log.warning(ERR_InvalidDimension);
+   if (Self->VectorClip.right <= Self->VectorClip.left) return log.warning(ERR_InvalidDimension);
 
    return ERR_Okay;
 }

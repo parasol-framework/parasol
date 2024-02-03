@@ -15,9 +15,7 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVecto
 
          if (vp->dirty()) gen_vector_path(vp);
 
-         if ((X >= vp->vpBX1) and (Y >= vp->vpBY1) and (X < vp->vpBX2) and (Y < vp->vpBY2)) {
-            Collection[Branch].emplace_back(vp);
-         }
+         if (vp->vpBounds.hit_test(X, Y)) Collection[Branch].emplace_back(vp);
       }
 
       if (scan->Child) get_viewport_at_xy_scan((extVector *)scan->Child, Collection, X, Y, Branch + 1);
@@ -243,8 +241,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
                   if ((processed) and (bounds.cursor IS PTC::NIL)) continue;
 
-                  if (!((input->X >= bounds.bx1) and (input->Y >= bounds.by1) and
-                      (input->X < bounds.bx2) and (input->Y < bounds.by2))) continue;
+                  if (!bounds.bounds.hit_test(input->X, input->Y)) continue;
 
                   pf::ScopedObjectLock<extVector> lock(bounds.vector_id);
                   if (!lock.granted()) continue;
@@ -310,8 +307,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if ((Self->ButtonLock) and (Self->ButtonLock IS bounds.vector_id));
             else if ((Self->ButtonLock) and (Self->ButtonLock != bounds.vector_id)) continue;
             else { // No button lock, perform a simple bounds check
-               in_bounds = (input->X >= bounds.bx1) and (input->Y >= bounds.by1) and
-                           (input->X < bounds.bx2) and (input->Y < bounds.by2);
+               in_bounds = bounds.bounds.hit_test(input->X, input->Y);
                if (!in_bounds) continue;
             }
 

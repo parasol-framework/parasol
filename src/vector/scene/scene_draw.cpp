@@ -32,10 +32,7 @@ public:
 
 class VectorState {
 public:
-   struct vsclip {
-      double x1, y1, x2, y2;
-      vsclip(double a1, double a2, double a3, double a4) : x1(a1), y1(a2), x2(a3), y2(a4) { };
-   } mClip; // Current clip region as defined by the viewports
+   TClipRectangle<DOUBLE> mClip; // Current clip region as defined by the viewports
    agg::line_join_e  mLineJoin;
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
@@ -806,28 +803,28 @@ static void draw_gradient(VectorState &State, DOUBLE *Bounds, agg::path_storage 
    const DOUBLE y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds[1];
 
    if (Gradient.Type IS VGT::LINEAR) {
-      DOUBLE ax1, ay1, ax2, ay2;
+      TClipRectangle<DOUBLE> area;
 
-      if ((Gradient.Flags & VGF::SCALED_X1) != VGF::NIL) ax1 = x_offset + (c_width * Gradient.X1);
-      else ax1 = x_offset + Gradient.X1;
+      if ((Gradient.Flags & VGF::SCALED_X1) != VGF::NIL) area.left = x_offset + (c_width * Gradient.X1);
+      else area.left = x_offset + Gradient.X1;
 
-      if ((Gradient.Flags & VGF::SCALED_X2) != VGF::NIL) ax2 = x_offset + (c_width * Gradient.X2);
-      else ax2 = x_offset + Gradient.X2;
+      if ((Gradient.Flags & VGF::SCALED_X2) != VGF::NIL) area.right = x_offset + (c_width * Gradient.X2);
+      else area.right = x_offset + Gradient.X2;
 
-      if ((Gradient.Flags & VGF::SCALED_Y1) != VGF::NIL) ay1 = y_offset + (c_height * Gradient.Y1);
-      else ay1 = y_offset + Gradient.Y1;
+      if ((Gradient.Flags & VGF::SCALED_Y1) != VGF::NIL) area.top = y_offset + (c_height * Gradient.Y1);
+      else area.top = y_offset + Gradient.Y1;
 
-      if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) ay2 = y_offset + (c_height * Gradient.Y2);
-      else ay2 = y_offset + Gradient.Y2;
+      if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) area.bottom = y_offset + (c_height * Gradient.Y2);
+      else area.bottom = y_offset + Gradient.Y2;
 
       // Calculate the gradient's transition from the point at (x1,y1) to (x2,y2)
 
-      const DOUBLE dx = ax2 - ax1;
-      const DOUBLE dy = ay2 - ay1;
+      const DOUBLE dx = area.width();
+      const DOUBLE dy = area.height();
       transform.scale(sqrt((dx * dx) + (dy * dy)) / 256.0);
       transform.rotate(atan2(dy, dx));
 
-      transform.translate(ax1, ay1);
+      transform.translate(area.left, area.top);
       apply_transforms(Gradient, transform);
 
       transform *= Transform;
@@ -1332,23 +1329,23 @@ private:
                if (view->vpOverflowY != VOF::INHERIT) state.mOverflowY = view->vpOverflowY;
 
                auto save_clip = state.mClip;
-               DOUBLE x1 = state.mClip.x1, y1 = state.mClip.y1, x2 = state.mClip.x2, y2 = state.mClip.y2;
+               auto clip = state.mClip;
 
                if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
-                  if (view->vpBX1 > state.mClip.x1) state.mClip.x1 = view->vpBX1;
-                  if (view->vpBX2 < state.mClip.x2) state.mClip.x2 = view->vpBX2;
+                  if (view->vpBounds.left > state.mClip.left) state.mClip.left = view->vpBounds.left;
+                  if (view->vpBounds.right < state.mClip.right) state.mClip.right = view->vpBounds.right;
                }
 
                if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
-                  if (view->vpBY1 > state.mClip.y1) state.mClip.y1 = view->vpBY1;
-                  if (view->vpBY2 < state.mClip.y2) state.mClip.y2 = view->vpBY2;
+                  if (view->vpBounds.top > state.mClip.top) state.mClip.top = view->vpBounds.top;
+                  if (view->vpBounds.bottom < state.mClip.bottom) state.mClip.bottom = view->vpBounds.bottom;
                }
 
                #ifdef DBG_DRAW
-                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->UID, state.mClip.x1, state.mClip.y1, state.mClip.x2, state.mClip.y2);
+                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->UID, state.mClip.left, state.mClip.top, state.mClip.right, state.mClip.bottom);
                #endif
 
-               if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
+               if ((state.mClip.right > state.mClip.left) and (state.mClip.bottom > state.mClip.top)) { // Continue only if the clipping region is visible
                   if (view->vpClipMask) {
                      state.mClipStack->emplace(state, view->vpClipMask, view);
                      state.mClipStack->top().draw();
@@ -1360,12 +1357,12 @@ private:
                   }
 
                   auto save_rb_clip = mRenderBase.clip_box();
-                  if (state.mClip.x1 > save_rb_clip.x1) mRenderBase.m_clip_box.x1 = state.mClip.x1;
-                  if (state.mClip.y1 > save_rb_clip.y1) mRenderBase.m_clip_box.y1 = state.mClip.y1;
-                  if (state.mClip.x2 < save_rb_clip.x2) mRenderBase.m_clip_box.x2 = state.mClip.x2;
-                  if (state.mClip.y2 < save_rb_clip.y2) mRenderBase.m_clip_box.y2 = state.mClip.y2;
+                  if (state.mClip.left   > save_rb_clip.x1) mRenderBase.m_clip_box.x1 = state.mClip.left;
+                  if (state.mClip.top    > save_rb_clip.y1) mRenderBase.m_clip_box.y1 = state.mClip.top;
+                  if (state.mClip.right  < save_rb_clip.x2) mRenderBase.m_clip_box.x2 = state.mClip.right;
+                  if (state.mClip.bottom < save_rb_clip.y2) mRenderBase.m_clip_box.y2 = state.mClip.bottom;
 
-                  log.trace("ViewBox (%.2f %.2f %.2f %.2f) Scale (%.2f %.2f) Fix (%.2f %.2f %.2f %.2f)",
+                  log.trace("ViewBox (%g %g %g %g) Scale (%g %g) Fix (%g %g %g %g)",
                     view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight,
                     view->vpXScale, view->vpYScale,
                     view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
@@ -1376,11 +1373,8 @@ private:
                   // For viewports that read user input, we record the collision box for the cursor.
 
                   if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
-                     if (view->vpBX1 > x1) x1 = view->vpBX1;
-                     if (view->vpBX2 < x2) x2 = view->vpBX2;
-                     if (view->vpBY1 > y1) y1 = view->vpBY1;
-                     if (view->vpBY2 < y2) y2 = view->vpBY2;
-                     Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                     clip.shrinking(view);
+                     Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, clip, view->vpBounds.left, view->vpBounds.top);
                   }
 
                   if ((Scene->Flags & VPF::OUTLINE_VIEWPORTS) != VPF::NIL) { // Debug option: Draw the viewport's path with a green outline
@@ -1530,7 +1524,7 @@ private:
                   TClipRectangle<DOUBLE> rb_bounds = { DOUBLE(mRenderBase.xmin()), DOUBLE(mRenderBase.ymin()), DOUBLE(mRenderBase.xmax()), DOUBLE(mRenderBase.ymax()) };
                   b.shrinking(rb_bounds);
 
-                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, b.left, b.top, b.right, b.bottom, abs_x, abs_y, shape->InputSubscriptions ? false : true);
+                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, b, abs_x, abs_y, shape->InputSubscriptions ? false : true);
                }
             } // if: shape->GeneratePath
 

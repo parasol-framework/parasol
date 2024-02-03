@@ -471,10 +471,10 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       if (Self->dirty()) gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
-      Args->X      = view->vpBX1;
-      Args->Y      = view->vpBY1;
-      Args->Width  = view->vpBX2 - view->vpBX1;
-      Args->Height = view->vpBY2 - view->vpBY1;
+      Args->X      = view->vpBounds.left;
+      Args->Y      = view->vpBounds.top;
+      Args->Width  = view->vpBounds.width();
+      Args->Height = view->vpBounds.height();
       return ERR_Okay;
    }
    else return ERR_NotPossible;

@@ -249,7 +249,7 @@ static ERROR VIEW_GET_AbsX(extVectorViewport *Self, LONG *Value)
 {
    if (Self->dirty()) gen_vector_tree(Self);
 
-   *Value = Self->vpBX1;
+   *Value = Self->vpBounds.left;
    return ERR_Okay;
 }
 
@@ -267,7 +267,7 @@ static ERROR VIEW_GET_AbsY(extVectorViewport *Self, LONG *Value)
 {
    if (Self->dirty()) gen_vector_tree(Self);
 
-   *Value = Self->vpBY1;
+   *Value = Self->vpBounds.top;
    return ERR_Okay;
 }
 
