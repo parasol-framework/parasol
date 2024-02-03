@@ -107,13 +107,11 @@ namespace agg
           parl_to_parl(src, dst);
       }
 
-      inline bool is_normal() {
+      inline bool is_normal() { // Return true if the transform is normalised (does nothing if applied)
          return sx == 1.0 and shy == 0 and shx == 0 and sy == 1.0 and tx == 0.0 and ty == 0.0;
       }
 
-      // Returns true if the transform configuration is limited to translating.
-
-      inline bool is_simple() {
+      inline bool is_simple() { // Returns true if the transform configuration is limited to translating.
          return sx == 1.0 and shy == 0 and shx == 0 and sy == 1.0;
       }
 

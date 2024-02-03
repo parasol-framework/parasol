@@ -44,11 +44,11 @@ void gen_vector_tree(extVector *Vector)
 }
 
 //********************************************************************************************************************
-// (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.
-// For Viewports, the vpFixed* and boundary field values will all be set.
+// (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.  For Viewports, the vpFixed*
+// and boundary field values will all be set.  There is no recursion into child vectors.
 //
-// NOTE: If parent vectors are marked at the time of calling this function, any relative values will be
-// computed from old information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
+// NOTE: If parent vectors are marked as dirty at the time of calling this function, any relative values will be
+// computed from stale information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
 // such problems.
 
 void gen_vector_path(extVector *Vector)

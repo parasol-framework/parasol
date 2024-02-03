@@ -11,8 +11,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Enables fading-in of a viewport.
 --
--- Seconds:  Specifies the maximum number of seconds for the fade effect to complete.
--- Delay: Delays the initial start of the icon fade effect, measured in seconds.
+-- Seconds:  Specifies the maximum number of seconds for the effect to complete.
+-- Delay: Delays the initial start of the effect, measured in seconds.
 
 vfx.fadeIn = function(Viewport, Seconds, Delay)
    local state = { name = 'fadeIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }

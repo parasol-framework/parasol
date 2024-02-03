@@ -447,7 +447,7 @@ namespace agg
         T x,y;
         unsigned cmd;
         vertex_base() {}
-        vertex_base(T x_, T y_, unsigned cmd_) : x(x_), y(y_), cmd(cmd_) {}
+        vertex_base(T x_, T y_, unsigned cmd_ = 0) : x(x_), y(y_), cmd(cmd_) {}
     };
     typedef vertex_base<int>    vertex_i; //-----vertex_i
     typedef vertex_base<float>  vertex_f; //-----vertex_f

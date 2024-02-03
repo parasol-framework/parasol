@@ -19,6 +19,7 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
 #include <set>
 #include <unordered_map>
 #include <mutex>
+#include <stack>
 #include <algorithm>
 
 #include <parasol/main.h>
@@ -499,6 +500,60 @@ extern std::recursive_mutex glVectorFocusLock;
 extern std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
 
 //********************************************************************************************************************
+
+template<class T = double> struct TClipRectangle {
+   T left, top, right, bottom;
+
+   TClipRectangle() { }
+   TClipRectangle(T Value) : left(Value), top(Value), right(Value), bottom(Value) { }
+   TClipRectangle(T pLeft, T pTop, T pRight, T pBottom) : left(pLeft), top(pTop), right(pRight), bottom(pBottom) { }
+   TClipRectangle(extVector *pVector) {
+      left   = pVector->BX1;
+      top    = pVector->BY1;
+      right  = pVector->BX2;
+      bottom = pVector->BY2;
+   }
+
+   inline T & operator=(const extVector & other) {
+      left   = other.BX1;
+      top    = other.BY1;
+      right  = other.BX2;
+      bottom = other.BY2;
+      return *this;
+   }
+
+   inline void expanding(const TClipRectangle<T> &Other) {
+      if (Other.left   < left)   left   = Other.left;
+      if (Other.top    < top)    top    = Other.top;
+      if (Other.right  > right)  right  = Other.right;
+      if (Other.bottom > bottom) bottom = Other.bottom;
+   }
+
+   inline void shrinking(const TClipRectangle<T> &Other) {
+      if (Other.left   > left)   left   = Other.left;
+      if (Other.top    > top)    top    = Other.top;
+      if (Other.right  < right)  right  = Other.right;
+      if (Other.bottom < bottom) bottom = Other.bottom;
+   }
+
+   inline int width() const { return right - left; }
+   inline int height() const { return bottom - top; }
+};
+
+static const TClipRectangle<DOUBLE> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
+static const TClipRectangle<DOUBLE> TCR_SHRINKING(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+
+//********************************************************************************************************************
+
+template<class VertexSource>
+TClipRectangle<DOUBLE> get_bounds(VertexSource &vs, unsigned path_id = 0)
+{
+   TClipRectangle<DOUBLE> rect;
+   bounding_rect_single(vs, path_id, &rect.left, &rect.top, &rect.right, &rect.bottom);
+   return rect;
+}
+
+//********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
 inline static void mark_dirty(objVector *Vector, const RC Flags)
@@ -513,7 +568,7 @@ inline static void mark_dirty(objVector *Vector, const RC Flags)
 //********************************************************************************************************************
 // Return true if any vector in a tree branch is dirty (includes siblings of the target)
 
-inline static bool check_branch_dirty(extVector *Vector) 
+inline static bool check_branch_dirty(extVector *Vector)
 {
    for (auto scan=(extVector *)Vector; scan; scan=(extVector *)scan->Next) {
       if ((scan->Dirty & RC::ALL) != RC::NIL) return true;
@@ -578,7 +633,7 @@ namespace agg {
 
 template <class T, class U> static void drawBitmapRender(U &Input,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, 
+   agg::rasterizer_scanline_aa<> &Raster,
    T &spangen, DOUBLE Opacity = 1.0)
 {
    class spanconv_image {
