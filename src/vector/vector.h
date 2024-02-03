@@ -914,17 +914,15 @@ inline static extVector * get_parent(const extVector *Vector)
 
 //********************************************************************************************************************
 // Test if a point is within a rectangle (four points, must be convex)
+// This routine assumes clockwise points; for counter-clockwise you'd use < 0.
 
-static DOUBLE is_left(agg::vertex_d A, agg::vertex_d B, agg::vertex_d C)
+inline bool point_in_rectangle(const agg::vertex_d &X, const agg::vertex_d &Y, const agg::vertex_d &Z, const agg::vertex_d &W, const agg::vertex_d &P)
 {
-    return ((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y));
-}
+   auto is_left = [](agg::vertex_d A, agg::vertex_d B, agg::vertex_d C) -> DOUBLE {
+      return ((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y));
+   };
 
-static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z, agg::vertex_d W, agg::vertex_d P) __attribute__ ((unused));
-
-static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z, agg::vertex_d W, agg::vertex_d P)
-{
-    return (is_left(X, Y, P) > 0) and (is_left(Y, Z, P) > 0) and (is_left(Z, W, P) > 0) and (is_left(W, X, P) > 0);
+   return (is_left(X, Y, P) > 0) and (is_left(Y, Z, P) > 0) and (is_left(Z, W, P) > 0) and (is_left(W, X, P) > 0);
 }
 
 //********************************************************************************************************************

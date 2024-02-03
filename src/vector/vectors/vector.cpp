@@ -689,13 +689,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       vertices.vertex(2, &z.x, &z.y);
       vertices.vertex(3, &w.x, &w.y);
 
-      agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
-
-      // Test assumes clockwise points; for counter-clockwise you'd use < 0.
-      bool inside = (is_left(x, y, pt) > 0) and (is_left(y, z, pt) > 0) and
-                    (is_left(z, w, pt) > 0) and (is_left(w, x, pt) > 0);
-
-      if (inside) return ERR_Okay;
+      if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR_Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORRECTANGLE) {
       agg::vertex_d w, x, y, z;
@@ -707,12 +701,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       t_path.vertex(&z.x, &z.y);
       t_path.vertex(&w.x, &w.y);
 
-      agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
-
-      bool inside = (is_left(x, y, pt) > 0) and (is_left(y, z, pt) > 0) and
-                    (is_left(z, w, pt) > 0) and (is_left(w, x, pt) > 0);
-
-      if (inside) return ERR_Okay;
+      if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR_Okay;
    }
    else {
       // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
