@@ -112,8 +112,8 @@ template<class T = double> struct TClipRectangle {
    }
 
    inline bool valid() const { return (left < right) and (top < bottom); }
-   inline int width() const { return right - left; }
-   inline int height() const { return bottom - top; }
+   inline T width() const { return right - left; }
+   inline T height() const { return bottom - top; }
 };
 
 static const TClipRectangle<DOUBLE> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
