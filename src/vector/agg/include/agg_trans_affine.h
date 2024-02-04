@@ -71,6 +71,7 @@
 
 #include <math.h>
 #include "agg_basics.h"
+#include <sstream>
 
 namespace agg
 {
@@ -81,6 +82,12 @@ namespace agg
       // shy,shx = shear / rotate
       // tx, ty = translate
       double sx, shy, shx, sy, tx, ty;
+
+      std::string to_string() const {
+         std::ostringstream buf;
+         buf << sx << ' ' << shy << ' ' << shx << ' ' << sy << ' ' << tx << ' ' << ty;
+         return buf.str();
+      }
 
       // Identity matrix
       trans_affine() : sx(1.0), shy(0.0), shx(0.0), sy(1.0), tx(0.0), ty(0.0) {}

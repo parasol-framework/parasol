@@ -577,7 +577,7 @@ extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern ERROR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
-extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
+extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
 
 extern const FieldDef clAspectRatio[];

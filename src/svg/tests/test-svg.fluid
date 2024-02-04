@@ -12,7 +12,7 @@ function renderSVGToBitmap(Path)
    local scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
    local vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
    local svg = obj.new('svg', { target=vp, path=Path })
-   local bmp = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32 })
+   local bmp = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32, bkgd='255,255,255,255' })
    bmp.acClear()
    scene.bitmap = bmp
    scene.acDraw()
@@ -44,57 +44,57 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testCircles()            hashTestSVG('paths/circles.svg', 0x187a86c8) end
-function testClip()               hashTestSVG('paths/clip.svg', 0xaeb34098) end
-function testMorph()              hashTestSVG('paths/morph.svg', 0x4ac70889) end
-function testPolygons()           hashTestSVG('paths/polygons.svg', 0xc937512f) end
-function testShapes()             hashTestSVG('paths/shapes.svg', 0xe9e2342b) end
+function testCircles()            hashTestSVG('paths/circles.svg', 0xf6216fcb) end
+function testClip()               hashTestSVG('paths/clip.svg', 0x80d4d1c8) end
+function testMorph()              hashTestSVG('paths/morph.svg', 0x1916764a) end
+function testPolygons()           hashTestSVG('paths/polygons.svg', 0x2f17adec) end
+function testShapes()             hashTestSVG('paths/shapes.svg', 0xd67937c9) end
 function testSpirals()            hashTestSVG('paths/spirals.svg', 0x313798f4) end
-function testStrokes()            hashTestSVG('paths/strokes.svg', 0x6d8bd311) end
-function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0xa3390ddc) end
-function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0xba214845) end
-function testTransitions()        hashTestSVG('paths/transitions.svg', 0x47128d20) end
-function testWave()               hashTestSVG('paths/wave.svg', 0xaf810f99) end
+function testStrokes()            hashTestSVG('paths/strokes.svg', 0x5210d0f3) end
+function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0xc8c14b95) end
+function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0xd981df67) end
+function testTransitions()        hashTestSVG('paths/transitions.svg', 0xcd7ff017) end
+function testWave()               hashTestSVG('paths/wave.svg', 0x4e21371f) end
 
-function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x2b137e96) end
-function testComplex()            hashTestSVG('patterns/complex.svg', 0x738e4eaf) end
+function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
+function testComplex()            hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
 function testDiamonds()           hashTestSVG('patterns/diamonds.svg', 0xe14ac1e8) end
 function testDimple()             hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
 function testDot()                hashTestSVG('patterns/dot.svg', 0x13252bb4) end
 function testHoneycomb()          hashTestSVG('patterns/honeycomb.svg', 0x7b678ada) end
-function testSnake()              hashTestSVG('patterns/snake.svg', 0xd2cf802d) end
+function testSnake()              hashTestSVG('patterns/snake.svg', 0xbb7d40f0) end
 function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
 
-function testComposite()          hashTestSVG('filters/composite.svg', 0x6baf80df) end
-function testConvolve()           hashTestSVG('filters/convolve.svg', 0xc3aa6223) end
-function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0x10c58051) end
-function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0xdef14b60) end
-function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0x5928191f) end
-function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x679228f4) end
-function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0x7eb1a6e3) end
-function testW3Filters()          hashTestSVG('filters/w3-filters.svg', 0xaa0a8c67) end
-function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x351b2596) end
-function testW3Image()            hashTestSVG('filters/w3-image.svg', 0xa7d37fb3) end
-function testW3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0x6163aa9b) end
-function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0xf3bb4bfd) end
-function testW3Turbulence()       hashTestSVG('filters/w3-turbulence.svg', 0xa6119302) end
-function testW3Lighting1()        hashTestSVG('filters/w3-filters-light-01-f.svg', 0x48377102) end
-function testW3Lighting3()        hashTestSVG('filters/w3-filters-light-03-f.svg', 0x0a3eabf5) end
-function testW3LightingSpecular() hashTestSVG('filters/w3-filters-specular-01-f.svg', 0xf7d19c0e) end
-function testW3LightingDiffuse()  hashTestSVG('filters/w3-filters-diffuse-01-f.svg', 0xcc082df9) end
+function testComposite()          hashTestSVG('filters/composite.svg', 0xccc2627f) end
+function testConvolve()           hashTestSVG('filters/convolve.svg', 0xa2fad95a) end
+function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0xeaf2804b) end
+function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0x53139a3a) end
+function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf8be1e64) end
+function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x3b27ad3b) end
+function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0xdce73fcc) end
+function testW3Filters()          hashTestSVG('filters/w3-filters.svg', 0x460d9283) end
+function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x8a40dc7c) end
+function testW3Image()            hashTestSVG('filters/w3-image.svg', 0xd822620c) end
+function testW3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0xde385371) end
+function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0x51edd2d2) end
+function testW3Turbulence()       hashTestSVG('filters/w3-turbulence.svg', 0x801e24f2) end
+function testW3Lighting1()        hashTestSVG('filters/w3-filters-light-01-f.svg', 0xea61e82d) end
+function testW3Lighting3()        hashTestSVG('filters/w3-filters-light-03-f.svg', 0xa86832da) end
+function testW3LightingSpecular() hashTestSVG('filters/w3-filters-specular-01-f.svg', 0x55870521) end
+function testW3LightingDiffuse()  hashTestSVG('filters/w3-filters-diffuse-01-f.svg', 0x6e5eb4d6) end
 function testMoonSurface()        hashTestSVG('filters/moon-surface.svg', 0x8fafd05c) end
 
-function testTransformations()    hashTestSVG('transforms/transformations.svg', 0x95e505ad) end
-function testW3AspectRatio()      hashTestSVG('transforms/w3-aspectratio.svg', 0x424ff663) end
-function testW3SkewText()         hashTestSVG('transforms/w3-skew-text.svg', 0x0f707010) end
-function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xe1f6926f) end
+function testTransformations()    hashTestSVG('transforms/transformations.svg', 0xaa7e064f) end
+function testW3AspectRatio()      hashTestSVG('transforms/w3-aspectratio.svg', 0xd5a77ce9) end
+function testW3SkewText()         hashTestSVG('transforms/w3-skew-text.svg', 0xe9508cd3) end
+function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xd3c966bf) end
 
-function testCSS()                hashTestSVG('misc/css.svg', 0xeaed4ea1) end
+function testCSS()                hashTestSVG('misc/css.svg', 0xfae935d2) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0xd9b1b741) end
 function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x7b7cae5f) end
 
-function testClock()              hashTestSVG('images/clock.svg', 0x095b8b9f) end
-function testTiger()              hashTestSVG('images/tiger.svg', 0xad8c10b5) end
+function testClock()              hashTestSVG('images/clock.svg', 0x6397e169) end
+function testTiger()              hashTestSVG('images/tiger.svg', 0x3d4fa90b) end
 
 -----------------------------------------------------------------------------------------------------------------------
 

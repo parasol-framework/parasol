@@ -122,7 +122,7 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
       agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
 
-      setRasterClip(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
+      set_raster_clip(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
          Self->Target->Clip.Right - Self->Target->Clip.Left,
          Self->Target->Clip.Bottom - Self->Target->Clip.Top);
 

@@ -2,7 +2,8 @@
 #include "agg_span_gradient_contour.h"
 
 class VectorState;
-static const agg::trans_affine build_fill_transform(extVector &, bool,  VectorState &);
+
+//********************************************************************************************************************
 
 class SceneRenderer
 {
@@ -27,11 +28,12 @@ public:
       agg::rendering_buffer m_renderer;
       extVectorClip *m_clip;
 
+      public:
       ClipBuffer() : m_shape(NULL), m_clip(NULL) { }
       ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) : m_state(&pState), m_shape(pShape), m_clip(pClip) { }
-
       void draw();
-      void draw_clips(extVector *, agg::rasterizer_scanline_aa<> &, agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &);
+      void draw_clips(extVector *, agg::rasterizer_scanline_aa<> &, agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &, 
+         agg::trans_affine &);
    };
 
 private:
@@ -50,6 +52,7 @@ private:
    void render_fill(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &, extPainter &);
    void render_stroke(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &);
    void draw_vectors(extVector *, VectorState &);
+   static const agg::trans_affine build_fill_transform(extVector &, bool,  VectorState &);
 
 public:
    extVectorScene *Scene; // The top-level VectorScene performing the draw.
@@ -99,18 +102,20 @@ public:
 
 void SceneRenderer::ClipBuffer::draw_clips(extVector *Branch,
    agg::rasterizer_scanline_aa<> &Rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
+   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid,
+   agg::trans_affine &Transform)
 {
    agg::scanline32_p8 sl;
    for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
       if (scan->Class->BaseClassID IS ID_VECTOR) {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
+         auto t = scan->Transform * Transform;
+         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, t);
          Rasterizer.reset();
          Rasterizer.add_path(final_path);
          agg::render_scanlines(Rasterizer, sl, Solid);
       }
 
-      if (scan->Child) draw_clips((extVector *)scan->Child, Rasterizer, Solid);
+      if (scan->Child) draw_clips((extVector *)scan->Child, Rasterizer, Solid, Transform);
    }
 }
 
@@ -138,8 +143,10 @@ void SceneRenderer::ClipBuffer::draw()
 
    if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
-   m_width  = F2T(m_clip->Bounds.right) + 1;
-   m_height = F2T(m_clip->Bounds.bottom) + 1;
+   auto t_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
+   auto t_bound = get_bounds(t_bound_path);
+   m_width  = F2T(t_bound.right) + 1;
+   m_height = F2T(t_bound.bottom) + 1;
 
    if ((m_width <= 0) or (m_height <= 0)) {
       DEBUG_BREAK
@@ -151,7 +158,7 @@ void SceneRenderer::ClipBuffer::draw()
    if (m_height > 8192) m_height = 8192;
 
    #ifdef DBG_DRAW
-      log.trace("Drawing clipping mask with bounds %g %g %g %g (%dx%d)", m_clip->Bounds[0], m_clip->Bounds[1], m_clip->Bounds[2], m_clip->Bounds[3], width, height);
+      log.trace("%s #%d clipping mask with bounds %g %g %g %g (%dx%d)", m_shape->className(), m_shape->UID, t_bound.left, t_bound.top, t_bound.right, t_bound.bottom, m_width, m_height);
    #endif
 
    m_bitmap.resize(m_width * m_height);
@@ -164,13 +171,18 @@ void SceneRenderer::ClipBuffer::draw()
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
    agg::rasterizer_scanline_aa<> rasterizer;
 
-   ClearMemory(m_bitmap.data(), m_bitmap.size()); // TODO: Clear the bound area only (post-transforms), not the entire bitmap
+   LONG x = F2T(t_bound.left);
+   for (LONG y=t_bound.top * m_width; y < t_bound.bottom; y += m_width) {
+      ClearMemory(m_bitmap.data() + y + x, m_width - x);
+   }
 
    solid.color(agg::gray8(0xff, 0xff));
 
    // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
-   if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid);
+   auto transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
+
+   if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid, transform); // m_shape->Transform;
 
    // A client can provide its own clipping path by setting the BasePath.  This is more optimal than
    // using child vectors - the VectorViewport is one such client that uses this feature.
@@ -265,19 +277,15 @@ public:
    typedef agg::rgba8 color_type;
 
    span_reflect_x(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
-       m_src(&pixf),
-       m_wrap_x(pixf.mWidth),
-       m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x),
-       m_offset_y(offset_y)
+       m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
+       m_offset_x(offset_x), m_offset_y(offset_y)
    {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
    }
 
    void prepare() {}
 
-   void generate(agg::rgba8 *s, int x, int y, unsigned len)
-   {
+   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
       x += m_offset_x;
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
@@ -291,21 +299,18 @@ public:
       } while(--len);
    }
 
-  int8u* span(int x, int y, unsigned)
-  {
+  int8u * span(int x, int y, unsigned) {
       m_x = x;
       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
       return m_row_ptr + m_wrap_x(x) * 4;
   }
 
-  int8u* next_x()
-  {
+  int8u * next_x() {
       int x = ++m_wrap_x;
       return m_row_ptr + x * 4;
   }
 
-  int8u* next_y()
-  {
+  int8u * next_y() {
       m_row_ptr = m_src->row_ptr(++m_wrap_y);
       return m_row_ptr + m_wrap_x(m_x) * 4;
   }
@@ -333,19 +338,14 @@ public:
    typedef agg::rgba8 color_type;
 
    span_repeat_rkl(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
-       m_src(&pixf),
-       m_wrap_x(pixf.mWidth),
-       m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x),
-       m_offset_y(offset_y)
-   {
+       m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
+       m_offset_x(offset_x), m_offset_y(offset_y) {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
    }
 
    void prepare() {}
 
-   void generate(agg::rgba8 *s, int x, int y, unsigned len)
-   {
+   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
       x += m_offset_x;
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
@@ -359,26 +359,23 @@ public:
       } while(--len);
    }
 
-  int8u* span(int x, int y, unsigned)
-  {
+   int8u * span(int x, int y, unsigned) {
       m_x = x;
       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
       return m_row_ptr + m_wrap_x(x) * 4;
-  }
+   }
 
-  int8u* next_x()
-  {
+   int8u * next_x() {
       int x = ++m_wrap_x;
       return m_row_ptr + x * 4;
-  }
+   }
 
-  int8u* next_y()
-  {
+   int8u * next_y() {
       m_row_ptr = m_src->row_ptr(++m_wrap_y);
       return m_row_ptr + m_wrap_x(m_x) * 4;
-  }
+   }
 
-  agg::pixfmt_psl *m_src;
+   agg::pixfmt_psl *m_src;
 
 private:
    wrap_mode_repeat_auto_pow2 m_wrap_x;
@@ -392,6 +389,7 @@ private:
 } // namespace
 
 //********************************************************************************************************************
+// Check a Shape, its siblings and children for dirty markers.
 
 static bool check_dirty(extVector *Shape) {
    while (Shape) {
@@ -409,7 +407,7 @@ static bool check_dirty(extVector *Shape) {
 //********************************************************************************************************************
 // Return the correct transformation matrix for a fill operation.
 
-static const agg::trans_affine build_fill_transform(extVector &Vector, bool Userspace,  VectorState &State)
+const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, bool Userspace,  VectorState &State)
 {
    if (Userspace) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
       agg::trans_affine transform;
@@ -425,8 +423,9 @@ static const agg::trans_affine build_fill_transform(extVector &Vector, bool User
 }
 
 //********************************************************************************************************************
+// Generic function for setting the clip region of an AGG rasterizer
 
-void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
+void set_raster_clip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
 {
    if (Width < 0) Width = 0;
    if (Height < 0) Height = 0;
@@ -734,7 +733,9 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+//********************************************************************************************************************
+
+static void draw_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
@@ -1543,7 +1544,14 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
       if (bmpBkgd) {
          agg::rasterizer_scanline_aa raster;
-         setRasterClip(raster, 0, 0, bmpBkgd->Width, bmpBkgd->Height);
+
+         agg::path_storage clip;
+         clip.move_to(0, 0);
+         clip.line_to(bmpBkgd->Width, 0);
+         clip.line_to(bmpBkgd->Width, bmpBkgd->Height);
+         clip.line_to(0, bmpBkgd->Height);
+         clip.close_polygon();
+         raster.add_path(clip);
 
          mBitmap = bmpSave;
          mFormat.setBitmap(*mBitmap);

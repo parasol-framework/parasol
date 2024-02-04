@@ -240,7 +240,7 @@ gui.toolbar = function(HostVP, Options)
 
             if self._groupClip then
                item.clip = self._groupClip.new('VectorRectangle', {
-                  name = 'groupclip', x = self.viewport.x + x, y = self.viewport.y + y, roundX = 4, roundY = 4, width = 1, height = 1
+                  name = 'groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
                })
             end
          elseif (item.type == TI_ICON) then
