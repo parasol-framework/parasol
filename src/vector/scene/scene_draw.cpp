@@ -27,8 +27,8 @@ public:
 };
 
 //********************************************************************************************************************
-// This class holds the current state as the vector scene is parsed for drawing.  It is most useful for managing use of
-// the 'inherit' attribute values.
+// This class holds the current state as the vector scene is parsed for drawing.  It is most useful for managing
+// inheritable values.
 
 class VectorState {
 public:
@@ -37,15 +37,15 @@ public:
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
    double mOpacity;
-   bool mDirty;
-   bool mApplyTransform;
-   VIS mVisible;
-   VOF mOverflowX;
-   VOF mOverflowY;
+   bool   mDirty;
+   bool   mApplyTransform;
+   VIS    mVisible;
+   VOF    mOverflowX;
+   VOF    mOverflowY;
    std::shared_ptr<std::stack<ClipBuffer>> mClipStack;
    agg::trans_affine mTransform;
-   bool mLinearRGB;
-   bool mBackgroundActive;
+   bool   mLinearRGB;
+   bool   mBackgroundActive;
 
    VectorState() :
       mClip(0, 0, DBL_MAX, DBL_MAX),
