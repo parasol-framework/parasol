@@ -241,12 +241,12 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
    // vectors generates the necessary crossing events.
 
    if ((Self->SurfaceID) and (Self->RefreshCursor)) {
-      DOUBLE absx, absy;
+      DOUBLE abs_x, abs_y;
       LONG s_x, s_y;
 
       Self->RefreshCursor = false;
       gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
-      gfxGetCursorPos(&absx, &absy);
+      gfxGetCursorPos(&abs_x, &abs_y);
    
       const InputEvent event = {
          .Next        = NULL,
@@ -254,10 +254,10 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
          .Timestamp   = 0,
          .RecipientID = Self->SurfaceID,
          .OverID      = Self->SurfaceID,
-         .AbsX        = absx,
-         .AbsY        = absy,
-         .X           = absx - s_x,
-         .Y           = absy - s_y,
+         .AbsX        = abs_x,
+         .AbsY        = abs_y,
+         .X           = abs_x - s_x,
+         .Y           = abs_y - s_y,
          .DeviceID    = 0,
          .Type        = JET::ABS_XY,
          .Flags       = JTYPE::MOVEMENT,
@@ -266,31 +266,14 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
       scene_input_events(&event, 0);
    }
 
-   // Allocate the adaptor, or if the existing adaptor doesn't match the Bitmap pixel type, reallocate it.
-
-   VMAdaptor *adaptor;
-
-   const LONG type = (bmp->BitsPerPixel << 8) | (bmp->BytesPerPixel);
-   if (type != Self->AdaptorType) {
-      if (Self->Adaptor) {
-         delete Self->Adaptor;
-         Self->Adaptor = NULL;
-      }
-
-      adaptor = new (std::nothrow) VMAdaptor;
-      if (!adaptor) return log.warning(ERR_AllocMemory);
-      adaptor->Scene    = Self;
-      Self->Adaptor     = adaptor;
-      Self->AdaptorType = type;
-   }
-   else adaptor = static_cast<VMAdaptor *> (Self->Adaptor);
+   SceneRenderer renderer(Self);
 
    if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
-      LARGE time = PreciseTime();
-      adaptor->draw(bmp);
+      auto time = PreciseTime();
+      renderer.draw(bmp);
       if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
    }
-   else adaptor->draw(bmp);
+   else renderer.draw(bmp);
 
 // For debugging purposes, draw a boundary around the target area.
 //   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
@@ -362,7 +345,6 @@ static ERROR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
    Self->~extVectorScene();
 
    if (Self->Viewport) Self->Viewport->Parent = NULL;
-   if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
    if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
@@ -454,7 +436,6 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 
 static ERROR VECTORSCENE_Reset(extVectorScene *Self, APTR Void)
 {
-   if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
    Self->Defs.clear();
    Self->Gamma = 1.0;

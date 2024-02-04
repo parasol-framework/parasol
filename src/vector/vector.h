@@ -430,7 +430,6 @@ class extVectorScene : public objVectorScene {
    using create = pf::Create<extVectorScene>;
 
    DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
-   class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
    std::unordered_map<std::string, OBJECTPTR> Defs;
@@ -443,7 +442,6 @@ class extVectorScene : public objVectorScene {
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
    PTC Cursor; // Current cursor image
-   UBYTE AdaptorType;
    bool RefreshCursor;
 };
 

@@ -2,6 +2,7 @@
 #include "agg_span_gradient_contour.h"
 
 class VectorState;
+static const agg::trans_affine build_fill_transform(extVector &, bool,  VectorState &);
 
 //********************************************************************************************************************
 // The ClipBuffer is used to hold any alpha-masks that are generated as the scene is rendered.
@@ -36,31 +37,29 @@ public:
    agg::line_join_e  mLineJoin;
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
-   double mOpacity;
-   bool   mDirty;
-   bool   mApplyTransform;
-   VIS    mVisible;
-   VOF    mOverflowX;
-   VOF    mOverflowY;
    std::shared_ptr<std::stack<ClipBuffer>> mClipStack;
    agg::trans_affine mTransform;
+   double mOpacity;
+   VIS    mVisible;
+   VOF    mOverflowX, mOverflowY;
    bool   mLinearRGB;
    bool   mBackgroundActive;
+   bool   mDirty;
+   bool   mApplyTransform;
 
    VectorState() :
       mClip(0, 0, DBL_MAX, DBL_MAX),
       mLineJoin(agg::miter_join),
       mLineCap(agg::butt_cap),
       mInnerJoin(agg::inner_miter),
-      mOpacity(1.0),
-      mDirty(false),
-      mApplyTransform(false),
-      mVisible(VIS::VISIBLE),
-      mOverflowX(VOF::VISIBLE),
-      mOverflowY(VOF::VISIBLE),
       mClipStack(std::make_shared<std::stack<ClipBuffer>>()),
+      mOpacity(1.0),
+      mVisible(VIS::VISIBLE),
+      mOverflowX(VOF::VISIBLE), mOverflowY(VOF::VISIBLE),
       mLinearRGB(false),
-      mBackgroundActive(false)
+      mBackgroundActive(false),
+      mDirty(false),
+      mApplyTransform(false)
       { }
 };
 
@@ -1074,7 +1073,7 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 
 //********************************************************************************************************************
 
-class VMAdaptor
+class SceneRenderer
 {
 private:
    agg::renderer_base<agg::pixfmt_psl> mRenderBase;
@@ -1086,7 +1085,7 @@ private:
 public:
    extVectorScene *Scene; // The top-level VectorScene performing the draw.
 
-   VMAdaptor() { }
+   SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
 
    void draw(objBitmap *Bitmap) {
       pf::Log log;
