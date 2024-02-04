@@ -39,6 +39,7 @@ terminated arrays, use [0].
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
+#include <sstream>
 
 extern "C" {
  #include "lua.h"
@@ -703,9 +704,9 @@ static int struct_get(lua_State *Lua)
                else lua_pushinteger(Lua, ((UBYTE *)address)[0]);
             }
             else {
-               char buffer[80];
-               snprintf(buffer, sizeof(buffer), "Field '%s' does not use a supported type ($%.8x).", fieldname, field->Type);
-               luaL_error(Lua, buffer);
+               std::ostringstream buf;
+               buf << "Field '" << fieldname << "' does not use a supported type of " << std::hex << field->Type;
+               luaL_error(Lua, buf.str().c_str());
                return 0;
             }
             return 1;

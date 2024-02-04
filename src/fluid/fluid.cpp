@@ -636,12 +636,11 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
-   char name[80];
    LONG i;
-   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = Line[i];
-   name[i] = 0;
+   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] IS ':') {
+      std::string name(Line, i);
       Line += i + 1;
 
       LONG j;
@@ -669,60 +668,58 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
-   char name[80];
-   LONG i;
-   for (i=0; (*Line > 0x20) and (*Line != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = *Line++;
 
-   if (*Line != ':') {
+   LONG i;
+   for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
+
+   if (Line[i] != ':') {
       log.warning("Malformed const name in %s.", Source);
       return next_line(Line);
    }
-   else Line++;
 
-   LONG p;
-   if (name[0]) {
-      name[i++] = '_';
-      p = i;
-   }
-   else p = 0;
+   std::string prefix(Line, i);
+   prefix.reserve(200);
+
+   Line += i + 1;
+
+   if (!prefix.empty()) prefix += '_';
+   auto append_from = prefix.size();
 
    while (*Line > 0x20) {
       LONG n;
-      for (n=0; (*Line > 0x20) and (*Line != '=') and ((size_t)p+n < sizeof(name)-1); n++) name[p+n] = *Line++;
-      if ((size_t)p+n >= sizeof(name)-1) {
-         log.warning("The constant name '%s' in '%s' is too long.", name, Source);
+      for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
+
+      if (Line[n] != '=') {
+         log.warning("Malformed const definition, expected '=' after name '%s'", prefix.c_str());
          break;
       }
-      name[p+n] = 0;
 
-      if (Line[0] != '=') {
-         log.warning("Malformed const definition, expected '=' after name '%s'", name);
-         break;
-      }
-      Line++;
+      prefix.erase(append_from);
+      prefix.append(Line, n);
+      Line += n + 1;
 
-      char value[200];
-      for (n=0; ((size_t)n < sizeof(value)-1) and (*Line > 0x20) and (*Line != ','); n++) value[n] = *Line++;
-      value[n] = 0;
+      for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
+      std::string value(Line, n);
+      Line += n;
 
       if (n > 0) {
-         auto dt = StrDatatype(value);
+         auto dt = StrDatatype(value.c_str());
          if (dt IS STT::NUMBER) {
-            lua_pushinteger(Lua, strtoll(value, NULL, 0));
+            lua_pushinteger(Lua, strtoll(value.c_str(), NULL, 0));
          }
          else if (dt IS STT::FLOAT) {
-            lua_pushnumber(Lua, strtod(value, NULL));
+            lua_pushnumber(Lua, strtod(value.c_str(), NULL));
          }
          else if (dt IS STT::HEX) {
-            lua_pushnumber(Lua, strtoull(value, NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
+            lua_pushnumber(Lua, strtoull(value.c_str(), NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {
-            if (value[n-1] IS '\"') lua_pushlstring(Lua, value+1, n-2);
-            else lua_pushlstring(Lua, value, n);
+            if (value[n-1] IS '\"') lua_pushlstring(Lua, value.c_str()+1, n-2);
+            else lua_pushlstring(Lua, value.c_str(), n);
          }
-         else lua_pushlstring(Lua, value, n);
+         else lua_pushlstring(Lua, value.c_str(), n);
 
-         lua_setglobal(Lua, name);
+         lua_setglobal(Lua, prefix.c_str());
       }
 
       if (*Line IS ',') Line++;
