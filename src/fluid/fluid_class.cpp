@@ -408,31 +408,27 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
             // Format: [string "..."]:Line:Error
             if ((i = StrSearchCase("\"]:", errorstr)) != -1) {
-               char buffer[240];
                i += 3;
                LONG line = StrToInt(errorstr + i);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
-               i = snprintf(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
+
+               std::ostringstream buf;
+               buf << "Line " << line+Self->LineOffset << ": " << errorstr + i << '\n';
                CSTRING str = Self->String;
 
                for (j=1; j <= line+1; j++) {
                   if (j >= line-1) {
-                     i += snprintf(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
-                     LONG k;
-                     for (k=0; (str[k]) and (str[k] != '\n') and (str[k] != '\r') and (k < 120); k++) {
-                        if ((size_t)i >= sizeof(buffer)-1) break;
-                        buffer[i++] = str[k];
-                     }
-                     if (k IS 120) {
-                        for (k=0; (k < 3) and ((size_t)i < sizeof(buffer)-1); k++) buffer[i++] = '.';
-                     }
-                     if ((size_t)i < sizeof(buffer)-1) buffer[i++] = '\n';
-                     buffer[i] = 0;
+                     buf << (j + Self->LineOffset) << ": ";
+                     LONG col;
+                     for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
+                     buf.write(str, col);
+                     if (col IS 120) buf << "...";
+                     buf << '\n';
                   }
                   if (!(str = next_line(str))) break;
                }
-               Self->setErrorString(buffer);
+               Self->setErrorString(buf.str().c_str());
 
                log.warning("Parser Failed: %s", Self->ErrorString);
             }
