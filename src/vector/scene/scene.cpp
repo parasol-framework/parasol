@@ -37,7 +37,28 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 //#include "../vector.h"
 
+//********************************************************************************************************************
+
+class VectorState;
+
+static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage &, VSM,
+   const agg::trans_affine &, DOUBLE, DOUBLE, objVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
+   agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha = 1.0);
+
+static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *, 
+   const agg::trans_affine &, DOUBLE, DOUBLE, const extVectorGradient &, GRADIENT_TABLE *,
+   agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
+
+static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
+   VSM, const agg::trans_affine &, DOUBLE ViewWidth, DOUBLE, extVectorPattern &, 
+   agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
+
+//********************************************************************************************************************
+
 #include "scene_draw.cpp"
+#include "scene_fill.cpp"
+
+//********************************************************************************************************************
 
 static ERROR VECTORSCENE_Reset(extVectorScene *, APTR);
 
