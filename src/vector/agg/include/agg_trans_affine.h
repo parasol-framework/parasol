@@ -147,7 +147,9 @@ namespace agg
 
       // Direct transformations operations
       const trans_affine& translate(double x, double y);
+      const trans_affine& translate(const point_d);
       const trans_affine& rotate(double a);
+      const trans_affine& scale(const point_d);
       const trans_affine& scale(double s);
       const trans_affine& scale(double x, double y);
       const trans_affine& scaleX(double x);
@@ -299,6 +301,12 @@ namespace agg
       ty += y;
       return *this;
    }
+   
+   inline const trans_affine& trans_affine::translate(const point_d pt) {
+      tx += pt.x;
+      ty += pt.y;
+      return *this;
+   }
 
    inline const trans_affine& trans_affine::rotate(double a) {
       double ca = cos(a);
@@ -329,26 +337,27 @@ namespace agg
        return *this;
    }
 
+   inline const trans_affine& trans_affine::scale(const point_d pt) {
+      return scale(pt.x, pt.y);
+   }
+
    inline const trans_affine& trans_affine::scale(double x, double y) {
-       double mm0 = x; // Possible hint for the optimizer
-       double mm3 = y;
-       sx  *= mm0;
-       shx *= mm0;
-       tx  *= mm0;
-       shy *= mm3;
-       sy  *= mm3;
-       ty  *= mm3;
+       sx  *= x;
+       shx *= x;
+       tx  *= x;
+       shy *= y;
+       sy  *= y;
+       ty  *= y;
        return *this;
    }
 
    inline const trans_affine& trans_affine::scale(double s) {
-       double m = s; // Possible hint for the optimizer
-       sx  *= m;
-       shx *= m;
-       tx  *= m;
-       shy *= m;
-       sy  *= m;
-       ty  *= m;
+       sx  *= s;
+       shx *= s;
+       tx  *= s;
+       shy *= s;
+       sy  *= s;
+       ty  *= s;
        return *this;
    }
 

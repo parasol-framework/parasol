@@ -182,7 +182,7 @@ void SceneRenderer::ClipBuffer::draw()
 
    auto transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
 
-   if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid, transform); // m_shape->Transform;
+   if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid, transform);
 
    // A client can provide its own clipping path by setting the BasePath.  This is more optimal than
    // using child vectors - the VectorViewport is one such client that uses this feature.
@@ -810,13 +810,14 @@ static void draw_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
 
 //********************************************************************************************************************
 // Gradient fills
+// The Raster must contains the shape's path.
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
-static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
+static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path, 
+   const agg::trans_affine &Transform,
    DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient, GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster,
-   DOUBLE BorderWidth)
+   agg::rasterizer_scanline_aa<> &Raster)
 {
    typedef agg::span_interpolator_linear<> interpolator_type;
    typedef agg::span_allocator<agg::rgba8> span_allocator_type;
@@ -871,23 +872,23 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       agg::render_scanlines(Raster, scanline, solidgrad);
    }
    else if (Gradient.Type IS VGT::RADIAL) {
-      DOUBLE cx, cy, fx, fy;
+      agg::point_d c, f;
 
-      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
-      else cx = x_offset + Gradient.CenterX;
+      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) c.x = x_offset + (c_width * Gradient.CenterX);
+      else c.x = x_offset + Gradient.CenterX;
 
-      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
-      else cy = y_offset + Gradient.CenterY;
+      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) c.y = y_offset + (c_height * Gradient.CenterY);
+      else c.y = y_offset + Gradient.CenterY;
 
-      if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) fx = x_offset + (c_width * Gradient.FX);
-      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) fx = x_offset + Gradient.FX;
-      else fx = x_offset + cx;
+      if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) f.x = x_offset + (c_width * Gradient.FX);
+      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) f.x = x_offset + Gradient.FX;
+      else f.x = x_offset + c.x;
 
-      if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) fy = y_offset + (c_height * Gradient.FY);
-      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) fy = y_offset + Gradient.FY;
-      else fy = y_offset + cy;
+      if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) f.y = y_offset + (c_height * Gradient.FY);
+      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) f.y = y_offset + Gradient.FY;
+      else f.y = y_offset + c.y;
 
-      if ((cx IS fx) and (cy IS fy)) {
+      if ((c.x IS f.x) and (c.y IS f.y)) {
          // Standard radial gradient, where the focal point is the same as the gradient center
 
          DOUBLE length = Gradient.Radius;
@@ -925,7 +926,7 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
          renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-         transform.translate(cx, cy);
+         transform.translate(c.x, c.y);
          apply_transforms(Gradient, transform);
          transform *= Transform;
          transform.invert();
@@ -955,40 +956,54 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
-               DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781);
-               DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781);
-               if (c_height > c_width) scale_y *= c_height / c_width;
-               else if (c_width > c_height) scale_x *= c_width / c_height;
-               scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
-               scale_y *= 100.0 / length;
-               transform.scale(scale_x, scale_y);
+               auto  scale = agg::point_d(Gradient.Radius * (1.0 / 0.707106781), Gradient.Radius * (1.0 / 0.707106781));
+               if (c_height > c_width) scale.y *= c_height / c_width;
+               else if (c_width > c_height) scale.x *= c_width / c_height;
+               scale.x *= 100.0 / length; // Adjust the scale according to the gradient length.
+               scale.y *= 100.0 / length;
+               transform.scale(scale);
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
 
-         agg::gradient_radial_focus gradient_func(fix_radius, fx - cx, fy - cy);
+         agg::gradient_radial_focus gradient_func(fix_radius, f.x - c.x, f.y - c.y);
 
-         typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
-         typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-         span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
-         renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
+         if (State.mClipStack->empty()) {
+            typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
+            typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
+            span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
+            renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-         transform.translate(cx, cy);
-         apply_transforms(Gradient, transform);
-         transform *= Transform;
-         transform.invert();
+            transform.translate(c);
+            apply_transforms(Gradient, transform);
+            transform *= Transform;
+            transform.invert();
 
-         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+            agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         }
+         else { // Masked gradient
+            typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
+            typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
+            span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
+            renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
+
+            transform.translate(c);
+            apply_transforms(Gradient, transform);
+            transform *= Transform;
+            transform.invert();
+
+            agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         }
       }
    }
    else if (Gradient.Type IS VGT::DIAMOND) {
-      DOUBLE cx, cy;
+      agg::point_d c;
 
-      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
-      else cx = x_offset + Gradient.CenterX;
+      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) c.x = x_offset + (c_width * Gradient.CenterX);
+      else c.x = x_offset + Gradient.CenterX;
 
-      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
-      else cy = y_offset + Gradient.CenterY;
+      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) c.y = y_offset + (c_height * Gradient.CenterY);
+      else c.y = y_offset + Gradient.CenterY;
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
@@ -1005,13 +1020,12 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
-            DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781);
-            DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781);
-            if (c_height > c_width) scale_y *= c_height / c_width;
-            else if (c_width > c_height) scale_x *= c_width / c_height;
-            scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
-            scale_y *= 100.0 / length;
-            transform.scale(scale_x, scale_y);
+            auto scale = agg::point_d(Gradient.Radius * (1.0 / 0.707106781), Gradient.Radius * (1.0 / 0.707106781));
+            if (c_height > c_width) scale.y *= c_height / c_width;
+            else if (c_width > c_height) scale.x *= c_width / c_height;
+            scale.x *= 100.0 / length; // Adjust the scale according to the gradient length.
+            scale.y *= 100.0 / length;
+            transform.scale(scale.x, scale.y);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
@@ -1022,7 +1036,7 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-      transform.translate(cx, cy);
+      transform.translate(c);
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
@@ -1030,13 +1044,13 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
    else if (Gradient.Type IS VGT::CONIC) {
-      DOUBLE cx, cy;
+      agg::point_d c;
 
-      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
-      else cx = x_offset + Gradient.CenterX;
+      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) c.x = x_offset + (c_width * Gradient.CenterX);
+      else c.x = x_offset + Gradient.CenterX;
 
-      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
-      else cy = y_offset + Gradient.CenterY;
+      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) c.y = y_offset + (c_height * Gradient.CenterY);
+      else c.y = y_offset + Gradient.CenterY;
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
@@ -1053,13 +1067,12 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
-            DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781);
-            DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781);
-            if (c_height > c_width) scale_y *= c_height / c_width;
-            else if (c_width > c_height) scale_x *= c_width / c_height;
-            scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
-            scale_y *= 100.0 / length;
-            transform.scale(scale_x, scale_y);
+            agg::point_d scale(Gradient.Radius * (1.0 / 0.707106781), Gradient.Radius * (1.0 / 0.707106781));
+            if (c_height > c_width) scale.y *= c_height / c_width;
+            else if (c_width > c_height) scale.x *= c_width / c_height;
+            scale.x *= 100.0 / length; // Adjust the scale according to the gradient length.
+            scale.y *= 100.0 / length;
+            transform.scale(scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
@@ -1070,7 +1083,7 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-      transform.translate(cx, cy);
+      transform.translate(c);
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
@@ -1179,7 +1192,7 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    if (Painter.Gradient) {
       if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
          draw_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster, 0);
+            view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
       }
    }
 
@@ -1201,7 +1214,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
    if (Vector.Stroke.Gradient) {
       if (auto table = get_stroke_gradient_table(Vector)) {
          draw_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
+            view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster);
       }
    }
    else if (Vector.Stroke.Pattern) {
@@ -1605,7 +1618,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORGRADIENT) {
          extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
-         draw_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
+         draw_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORPATTERN) {
          draw_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
@@ -1620,7 +1633,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          mRaster.add_path(stroke_path);
 
          extVectorGradient &gradient = (extVectorGradient &)*StrokeStyle;
-         draw_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
+         draw_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORPATTERN) {
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
