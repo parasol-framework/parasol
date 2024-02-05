@@ -8,6 +8,124 @@ if (vfx == nil) then
    }
 end
 
+vfx.wipes = { shutter = { }, wipe = { }, radial = { }, shape = { }, clock = { }, pixelate = { } }
+
+----------------------------------------------------------------------------------------------------------------------
+
+vfx.wipes.shutter.wipe = function(State, Options, Progress)
+   State.clip_path.acClear()
+   local total_bars = nz(Options.bars, 10)
+   if (total_bars > State.v_height) then total_bars = State.v_height * 0.5 end
+   local pc = State.path_cmd
+   for i=0,total_bars-1 do
+      local interval   = 1.0 / total_bars
+      local bar_height = State.v_height / total_bars
+      local bar_pos    = i * bar_height
+      local stop       = (i * interval) + interval
+      local height     = (Progress / stop) * bar_height
+
+      if (height > bar_height) then height = bar_height end
+
+      pc.type = PE_Move
+      pc.x    = 0
+      pc.y    = bar_pos
+      State.clip_path.mtAddCommand(pc)
+
+      pc.type = PE_Line
+      pc.x    = State.v_width
+      pc.y    = bar_pos
+      State.clip_path.mtAddCommand(pc)
+
+      pc.type = PE_Line
+      pc.x    = State.v_width
+      pc.y    = bar_pos + height
+      State.clip_path.mtAddCommand(pc)
+
+      pc.type = PE_Line
+      pc.x    = 0
+      pc.y    = bar_pos + height
+      State.clip_path.mtAddCommand(pc)
+
+      pc.type = PE_Close
+      State.clip_path.mtAddCommand(pc)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Generic routine for initialising and processing the effect timer
+
+vfx.initTimer = function(State, Options)
+   local err
+   err, State.timerID = mSys.SubscribeTimer(1 * vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if not State.viewport.exists() then check(ERR_Terminate) end
+
+      if (State.time == nil) then State.time = CurrentTime end
+      if (State.delay > 0) then
+         if ((CurrentTime - State.time) >= State.delay * 1000000) then
+            State.delay = 0
+            mSys.UpdateTimer(State.timerID, 1 * vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+            State.time = nil
+         end
+      else
+         local value = (CurrentTime - State.time) / (State.seconds * 1000000)
+         if (value >= 1.0) then
+            if (State.free != nil) then State:free() end
+            if State.callback then State.callback(State) end
+            check(ERR_Terminate)
+         else
+            if Options.inverse then
+               State.wipe(State, Options, 1.0 - value)
+            else
+               State.wipe(State, Options, value)
+            end
+            State.viewport.acDraw()
+         end
+      end
+   end)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Use 'screen wipe' effects to display or hide a viewport.  The Viewport's Mask is utilised to achieve this.  A
+-- wipe-out can be achieved by setting inverse=true in the Options.
+--
+-- Seconds:  Specifies the maximum number of seconds for the effect to complete.
+-- Delay: Delays the initial start of the effect, measured in seconds.
+-- Style: 'shutter', 'wipe', 'radial', 'shape', 'clock', 'pixelate'
+
+vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
+   if not Options then Options = { } end
+   if not Style then Style = 'shutter' end
+
+   local state = {
+      name = 'wipe', viewport = Viewport, seconds = nz(Seconds, 1.0), delay = nz(Delay, 0),
+      v_width = Viewport.width, v_height = Viewport.height,
+      wipe = vfx.wipes[Style].wipe, callback = CallbackOnCompletion,
+      path_cmd = struct.new('PathCommand')
+   }
+
+   state.clip      = Viewport.scene.new('VectorClip', { })
+   state.clip_path = state.clip.new('VectorPath', { })
+   Viewport.mask   = state.clip
+
+   if (Options.rotate) then
+      local err
+      err, state.matrix = state.clip_path.mtNewMatrix()
+      mVector.Rotate(state.matrix, Options.rotate, state.v_width * 0.5, state.v_height * 0.5)
+   end
+
+   state.free = function(State)
+      State.viewport.mask = nil
+      State.clip.free()
+      State.clip = nil
+      State.clip_path = nil
+      collectgarbage()
+      State.viewport.acDraw()
+   end
+
+   vfx.initTimer(state, Options)
+   return state
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 -- Enables fading-in of a viewport.
 --
