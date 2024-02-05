@@ -824,7 +824,6 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
    typedef agg::pod_auto_array<agg::rgba8, 256> color_array_type;
    typedef agg::renderer_base<agg::pixfmt_psl>  RENDERER_BASE_TYPE;
 
-   agg::scanline_u8    scanline;
    agg::trans_affine   transform;
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
@@ -855,12 +854,9 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       const DOUBLE dy = area.height();
       transform.scale(sqrt((dx * dx) + (dy * dy)) / 256.0);
       transform.rotate(atan2(dy, dx));
-
       transform.translate(area.left, area.top);
       apply_transforms(Gradient, transform);
-
       transform *= Transform;
-
       transform.invert();
 
       agg::gradient_x gradient_func; // gradient_x is a horizontal gradient with infinite height
@@ -869,7 +865,16 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, 256);
       renderer_gradient_type solidgrad(RenderBase, span_allocator, span_gradient);
 
-      agg::render_scanlines(Raster, scanline, solidgrad);
+      if (State.mClipStack->empty()) {
+         agg::scanline_u8 scanline;
+         agg::render_scanlines(Raster, scanline, solidgrad);
+      }
+      else { // Masked gradient            
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+
+         agg::render_scanlines(Raster, masked_scanline, solidgrad);
+      }
    }
    else if (Gradient.Type IS VGT::RADIAL) {
       agg::point_d c, f;
@@ -931,7 +936,16 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          transform *= Transform;
          transform.invert();
 
-         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         if (State.mClipStack->empty()) {
+            agg::scanline_u8 scanline;
+            agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         }
+         else { // Masked gradient            
+            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+            agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+
+            agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+         }
       }
       else {
          // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).  NB: In early versions of
@@ -967,32 +981,26 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          }
 
          agg::gradient_radial_focus gradient_func(fix_radius, f.x - c.x, f.y - c.y);
+         
+         typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
+         typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
+         span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
+         renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
+
+         transform.translate(c);
+         apply_transforms(Gradient, transform);
+         transform *= Transform;
+         transform.invert();
 
          if (State.mClipStack->empty()) {
-            typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
-            typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-            span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
-            renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
-
-            transform.translate(c);
-            apply_transforms(Gradient, transform);
-            transform *= Transform;
-            transform.invert();
-
+            agg::scanline_u8 scanline;
             agg::render_scanlines(Raster, scanline, solidrender_gradient);
          }
-         else { // Masked gradient
-            typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
-            typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-            span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
-            renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
+         else { // Masked gradient            
+            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+            agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
-            transform.translate(c);
-            apply_transforms(Gradient, transform);
-            transform *= Transform;
-            transform.invert();
-
-            agg::render_scanlines(Raster, scanline, solidrender_gradient);
+            agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
          }
       }
    }
@@ -1040,8 +1048,17 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
+      
+      if (State.mClipStack->empty()) {
+         agg::scanline_u8 scanline;
+         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      }
+      else { // Masked gradient            
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
-      agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+      }
    }
    else if (Gradient.Type IS VGT::CONIC) {
       agg::point_d c;
@@ -1088,7 +1105,16 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       transform *= Transform;
       transform.invert();
 
-      agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      if (State.mClipStack->empty()) {
+         agg::scanline_u8 scanline;
+         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      }
+      else { // Masked gradient            
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+
+         agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+      }
    }
    else if (Gradient.Type IS VGT::CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
       if (Gradient.Units != VUNIT::BOUNDING_BOX) return;
@@ -1112,7 +1138,16 @@ static void draw_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, x1, x2);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
-      agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      if (State.mClipStack->empty()) {
+         agg::scanline_u8 scanline;
+         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      }
+      else { // Masked gradient            
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+
+         agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+      }
    }
 }
 
