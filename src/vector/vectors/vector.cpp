@@ -2063,6 +2063,7 @@ static ERROR VECTOR_SET_Stroke(extVector *Self, STRING Value)
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
    vecReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+   Self->Stroked = Self->is_stroked();
    return ERR_Okay;
 }
 
@@ -2095,6 +2096,8 @@ static ERROR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Element
       else Self->Stroke.Colour.Alpha = 1;
    }
    else Self->Stroke.Colour.Alpha = 0;
+
+   Self->Stroked = Self->is_stroked();
    return ERR_Okay;
 }
 
@@ -2120,6 +2123,7 @@ static ERROR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
+      Self->Stroked = Self->is_stroked();
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -2162,6 +2166,8 @@ static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
    if ((val >= 0.0) and (val <= 100.0)) {
       Self->StrokeWidth = val;
       Self->RelativeStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
+      Self->Stroked = Self->is_stroked();
+      mark_dirty(Self, RC::FINAL_PATH); // Not really a path change, but needed for some dependent code like clip-masks.
       return ERR_Okay;
    }
    else return ERR_OutOfRange;

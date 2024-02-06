@@ -408,12 +408,22 @@ class extVector : public objVector {
    UBYTE  DisableHitTesting:1;
    UBYTE  ResizeSubscription:1;
    UBYTE  FGFill:1;
+   UBYTE  Stroked:1;
    agg::line_join_e  LineJoin;
    agg::line_cap_e   LineCap;
    agg::inner_join_e InnerJoin;
+
    // Methods
+
    DOUBLE fixed_stroke_width();
+
    inline bool dirty() { return Dirty != RC::NIL; }
+
+   inline bool is_stroked() {
+      return (StrokeWidth > 0) and
+         ((Stroke.Pattern) or (Stroke.Gradient) or (Stroke.Image) or
+          (Stroke.Colour.Alpha * StrokeOpacity * Opacity > 0.001));
+   }
 };
 
 struct TabOrderedVector {

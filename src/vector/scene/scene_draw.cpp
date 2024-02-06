@@ -100,17 +100,30 @@ public:
 //********************************************************************************************************************
 // Basic function for recursively drawing all child vectors to a bitmap mask.
 
-void SceneRenderer::ClipBuffer::draw_clips(extVector *Branch, agg::rasterizer_scanline_aa<> &Rasterizer,
+void SceneRenderer::ClipBuffer::draw_clips(extVector *Shape, agg::rasterizer_scanline_aa<> &Rasterizer,
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid, agg::trans_affine &Transform)
 {
    agg::scanline32_p8 sl;
-   for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
+   for (auto scan=Shape; scan; scan=(extVector *)scan->Next) {
       if (scan->Class->BaseClassID IS ID_VECTOR) {
-         auto t = scan->Transform * Transform;
-         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, t);
-         Rasterizer.reset();
-         Rasterizer.add_path(final_path);
-         agg::render_scanlines(Rasterizer, sl, Solid);
+         if (!scan->BasePath.empty()) {
+            auto t = scan->Transform * Transform;
+
+            if (!scan->Stroked) { // Filled mask
+               agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, t);
+               Rasterizer.reset();
+               Rasterizer.add_path(final_path);
+               agg::render_scanlines(Rasterizer, sl, Solid);
+            }
+            else { // Stroked mask
+               agg::conv_stroke<agg::path_storage> stroked_path(scan->BasePath);
+               configure_stroke(*scan, stroked_path);
+               agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, t);
+
+               Rasterizer.add_path(final_path);
+               agg::render_scanlines(Rasterizer, sl, Solid);
+            }
+         }
       }
 
       if (scan->Child) draw_clips((extVector *)scan->Child, Rasterizer, Solid, Transform);
@@ -634,7 +647,7 @@ class pattern_rgb {
 
 //********************************************************************************************************************
 
-static void draw_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
@@ -783,7 +796,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
       auto transform = Vector.Transform * State.mTransform;
       agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
-      draw_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
+      stroke_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
    }
    else { // Solid colour
       if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
@@ -1199,7 +1212,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       else if (StrokeStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;
          agg::conv_transform<agg::path_storage, agg::trans_affine> path(mPath, transform);
-         draw_brush(state, image, mRenderer, path, StrokeWidth);
+         stroke_brush(state, image, mRenderer, path, StrokeWidth);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORCOLOUR) {
          agg::renderer_scanline_aa_solid solid(mRenderer);

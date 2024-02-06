@@ -346,10 +346,7 @@ void gen_vector_path(extVector *Vector)
          Vector->FillRaster = NULL;
       }
 
-      if ((Vector->StrokeWidth > 0) and
-          ((Vector->Stroke.Pattern) or (Vector->Stroke.Gradient) or (Vector->Stroke.Image) or
-           (Vector->Stroke.Colour.Alpha * Vector->StrokeOpacity * Vector->Opacity > 0.001))) {
-
+      if (Vector->Stroked) {
          // Configure the curve algorithm so that it generates nicer looking curves when the vector is scaled up.  This
          // is not required if the vector scale is <= 1.0 (the angle_tolerance controls this).
 
