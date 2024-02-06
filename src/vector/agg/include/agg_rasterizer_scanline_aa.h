@@ -298,7 +298,7 @@ namespace agg
    {
       if (m_auto_close) close_polygon();
       m_outline.sort_cells();
-      if (m_outline.total_cells() == 0 || y < m_outline.min_y() || y > m_outline.max_y()) {
+      if (m_outline.total_cells() == 0 or y < m_outline.min_y() or y > m_outline.max_y()) {
          return false;
       }
       m_scan_y = y;

@@ -43,7 +43,7 @@ class VectorState;
 
 static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage &, VSM,
    const agg::trans_affine &, DOUBLE, DOUBLE, objVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
-   agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha = 1.0);
+   agg::rasterizer_scanline_aa<> &, DOUBLE Alpha = 1.0);
 
 static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *, 
    const agg::trans_affine &, DOUBLE, DOUBLE, const extVectorGradient &, GRADIENT_TABLE *,

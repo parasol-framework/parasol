@@ -8,42 +8,145 @@ if (vfx == nil) then
    }
 end
 
-vfx.wipes = { shutter = { }, wipe = { }, radial = { }, shape = { }, clock = { }, pixelate = { } }
+vfx.wipes = { shutter = { }, simple = { }, radial = { }, shape = { }, clock = { }, pixelate = { } }
+
+vfx.dist = function(X1, Y1, X2, Y2)
+   local a = math.abs(X2 - X1)
+   local b = math.abs(Y2 - Y1)
+   if (a > b) then
+      local t = a
+      a = b
+      b = t
+   end
+   return b + 0.428 * a * a / b
+end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-vfx.wipes.shutter.wipe = function(State, Options, Progress)
+vfx.wipes.simple.animate = function(State, Options, Progress)
+   -- Use the diagonal to determine the bar width because the client might use rotation.
+   local bar_width = vfx.dist(0, 0, State.v_width, State.v_height)
+
    State.clip_path.acClear()
-   local total_bars = nz(Options.bars, 10)
-   if (total_bars > State.v_height) then total_bars = State.v_height * 0.5 end
+
    local pc = State.path_cmd
+   pc.type = PE_Move
+   pc.x    = -((bar_width - State.v_width) * 0.5)
+   pc.y    = 0
+   State.clip_path.mtAddCommand(pc)
+
+   pc.type = PE_Line
+   pc.x = bar_width
+   State.clip_path.mtAddCommand(pc)
+
+   pc.y = Progress * State.v_height
+   State.clip_path.mtAddCommand(pc)
+
+   pc.x = -((bar_width - State.v_width) * 0.5)
+   State.clip_path.mtAddCommand(pc)
+
+   pc.type = PE_Close
+   State.clip_path.mtAddCommand(pc)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+vfx.wipes.clock.animate = function(State, Options, Progress)
+   local radius = vfx.dist(0, 0, State.v_width+2, State.v_height+2) * 0.5
+
+   State.clip_path.acClear()
+   local bar_pos = 0
+   local height  = Progress * State.v_height
+
+   local angle = Progress * 360
+   local rad = math.rad(angle)
+   local cx = State.v_width * 0.5
+   local cy = State.v_height * 0.5
+
+   local x = (radius * math.sin(rad)) + cx
+   local y = (-radius * math.cos(rad)) + cy
+
+   local top_right_pt    = 90 - math.deg(math.atan2((State.v_height*0.5), cx))
+   local bottom_right_pt = 180 - top_right_pt
+   local bottom_left_pt  = 180 + top_right_pt
+   local top_left_pt     = 360 - top_right_pt
+
+   local pc = State.path_cmd
+
+   pc.type = PE_Move -- Center
+   pc.x    = State.v_width * 0.5
+   pc.y    = State.v_height * 0.5
+   State.clip_path.mtAddCommand(pc)
+
+   pc.type = PE_Line -- Clock hand
+   pc.x = State.v_width * 0.5
+   pc.y = -1
+   State.clip_path.mtAddCommand(pc)
+
+   if (angle > top_right_pt) then -- Fill corners
+      pc.x = State.v_width + 1
+      pc.y = -1
+      State.clip_path.mtAddCommand(pc)
+   end
+
+   if (angle > bottom_right_pt) then
+      pc.x = State.v_width + 1
+      pc.y = State.v_height + 1
+      State.clip_path.mtAddCommand(pc)
+   end
+
+   if (angle > bottom_left_pt) then
+      pc.x = -1
+      pc.y = State.v_height + 1
+      State.clip_path.mtAddCommand(pc)
+   end
+
+   if (angle > top_left_pt) then
+      pc.x = -1
+      pc.y = -1
+      State.clip_path.mtAddCommand(pc)
+   end
+
+   pc.x = x -- The angled point
+   pc.y = y
+   State.clip_path.mtAddCommand(pc)
+
+   pc.type = PE_Close
+   State.clip_path.mtAddCommand(pc)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+vfx.wipes.shutter.animate = function(State, Options, Progress)
+   local total_bars = nz(Options.bars, 10)
+   if (total_bars > State.v_height * 0.33) then total_bars = State.v_height * 0.33 end
+
+   local pc = State.path_cmd
+   local interval   = 1.0 / total_bars
+   local bar_height = State.v_height / total_bars
+   -- Use the diagonal to determine the bar width because the client might use rotation.
+   local bar_width  = vfx.dist(0, 0, State.v_width, State.v_height)
+
+   State.clip_path.acClear()
    for i=0,total_bars-1 do
-      local interval   = 1.0 / total_bars
-      local bar_height = State.v_height / total_bars
-      local bar_pos    = i * bar_height
-      local stop       = (i * interval) + interval
-      local height     = (Progress / stop) * bar_height
+      local bar_pos = i * bar_height
+      local height  = (Progress / ((i * interval) + interval)) * bar_height
 
       if (height > bar_height) then height = bar_height end
 
       pc.type = PE_Move
-      pc.x    = 0
-      pc.y    = bar_pos
+      pc.x = -((bar_width - State.v_width) * 0.5)
+      pc.y = bar_pos
       State.clip_path.mtAddCommand(pc)
 
       pc.type = PE_Line
-      pc.x    = State.v_width
-      pc.y    = bar_pos
+      pc.x = bar_width
       State.clip_path.mtAddCommand(pc)
 
-      pc.type = PE_Line
-      pc.x    = State.v_width
-      pc.y    = bar_pos + height
+      pc.y = bar_pos + height
       State.clip_path.mtAddCommand(pc)
 
-      pc.type = PE_Line
-      pc.x    = 0
-      pc.y    = bar_pos + height
+      pc.x = -((bar_width - State.v_width) * 0.5)
       State.clip_path.mtAddCommand(pc)
 
       pc.type = PE_Close
@@ -74,9 +177,9 @@ vfx.initTimer = function(State, Options)
             check(ERR_Terminate)
          else
             if Options.inverse then
-               State.wipe(State, Options, 1.0 - value)
+               State.animate(State, Options, 1.0 - value)
             else
-               State.wipe(State, Options, value)
+               State.animate(State, Options, value)
             end
             State.viewport.acDraw()
          end
@@ -90,7 +193,7 @@ end
 --
 -- Seconds:  Specifies the maximum number of seconds for the effect to complete.
 -- Delay: Delays the initial start of the effect, measured in seconds.
--- Style: 'shutter', 'wipe', 'radial', 'shape', 'clock', 'pixelate'
+-- Style: 'shutter', 'simple', 'radial', 'shape', 'clock', 'pixelate'
 
 vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
    if not Options then Options = { } end
@@ -99,13 +202,30 @@ vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
    local state = {
       name = 'wipe', viewport = Viewport, seconds = nz(Seconds, 1.0), delay = nz(Delay, 0),
       v_width = Viewport.width, v_height = Viewport.height,
-      wipe = vfx.wipes[Style].wipe, callback = CallbackOnCompletion,
+      animate = vfx.wipes[Style].animate, callback = CallbackOnCompletion,
       path_cmd = struct.new('PathCommand')
    }
 
    state.clip      = Viewport.scene.new('VectorClip', { })
    state.clip_path = state.clip.new('VectorPath', { })
    Viewport.mask   = state.clip
+
+   if (Options.inverse) then
+      local pc = state.path_cmd
+      pc.type = PE_Move
+      pc.x    = -1
+      pc.y    = -1
+      state.clip_path.mtAddCommand(pc)
+      pc.type = PE_Line
+      pc.x = state.v_width + 1
+      state.clip_path.mtAddCommand(pc)
+      pc.y = state.v_height + 1
+      state.clip_path.mtAddCommand(pc)
+      pc.x = -1
+      state.clip_path.mtAddCommand(pc)
+      pc.type = PE_Close
+      state.clip_path.mtAddCommand(pc)
+   end
 
    if (Options.rotate) then
       local err

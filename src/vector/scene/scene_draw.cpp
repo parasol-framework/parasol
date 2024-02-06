@@ -100,10 +100,8 @@ public:
 //********************************************************************************************************************
 // Basic function for recursively drawing all child vectors to a bitmap mask.
 
-void SceneRenderer::ClipBuffer::draw_clips(extVector *Branch,
-   agg::rasterizer_scanline_aa<> &Rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid,
-   agg::trans_affine &Transform)
+void SceneRenderer::ClipBuffer::draw_clips(extVector *Branch, agg::rasterizer_scanline_aa<> &Rasterizer,
+   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid, agg::trans_affine &Transform)
 {
    agg::scanline32_p8 sl;
    for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
