@@ -43,7 +43,6 @@ namespace agg
         typedef Cell cell_type; // Refer agg_rasterizer_scanline_aa::cell_aa
         typedef rasterizer_cells_aa<Cell> self_type;
 
-        ~rasterizer_cells_aa();
         rasterizer_cells_aa();
 
         void reset();
@@ -82,7 +81,7 @@ namespace agg
         unsigned                m_num_blocks;
         unsigned                m_curr_block;
         unsigned                m_num_cells;
-        std::vector<cell_type*> m_cells;
+        std::vector<std::unique_ptr<cell_type[]>> m_cells;
         cell_type*              m_curr_cell_ptr;
         std::vector<cell_type*> m_sorted_cells;
         std::vector<sorted_y>   m_sorted_y;
@@ -94,13 +93,6 @@ namespace agg
         int m_max_y;
         bool m_sorted;
     };
-
-    template<class Cell> 
-    rasterizer_cells_aa<Cell>::~rasterizer_cells_aa() {
-       for (auto &ptr : m_cells) {
-          delete [] ptr;
-       }
-    }
 
     template<class Cell> 
     rasterizer_cells_aa<Cell>::rasterizer_cells_aa() :
@@ -392,10 +384,10 @@ namespace agg
             if (m_num_blocks >= m_cells.size()) {
                 m_cells.resize(m_cells.size() + cell_block_pool);
             }
-            m_cells[m_num_blocks++] = new cell_type[cell_block_size];
+            m_cells[m_num_blocks++] = std::make_unique<cell_type[]>(cell_block_size);
         }
 
-        m_curr_cell_ptr = m_cells[m_curr_block++];
+        m_curr_cell_ptr = m_cells[m_curr_block++].get();
     }
 
     enum { qsort_threshold = 9 };
@@ -510,12 +502,13 @@ namespace agg
         memset(m_sorted_y.data(), 0, m_sorted_y.size() * sizeof(sorted_y));
 
         // Create the Y-histogram (count the numbers of cells for each Y)
-        cell_type** block_ptr = m_cells.data();
+        std::unique_ptr<cell_type[]> *block_ptr = m_cells.data();
         cell_type*  cell_ptr;
         unsigned nb = m_num_cells >> cell_block_shift;
         unsigned i;
         while(nb--) {
-            cell_ptr = *block_ptr++;
+            cell_ptr = block_ptr->get();
+            block_ptr++;
             i = cell_block_size;
             while(i--) {
                 m_sorted_y[cell_ptr->y - m_min_y].start++;
@@ -523,7 +516,8 @@ namespace agg
             }
         }
 
-        cell_ptr = *block_ptr++;
+        cell_ptr = block_ptr->get();
+        block_ptr++;
         i = m_num_cells & cell_block_mask;
         while(i--) {
             m_sorted_y[cell_ptr->y - m_min_y].start++;
@@ -542,7 +536,8 @@ namespace agg
         block_ptr = m_cells.data();
         nb = m_num_cells >> cell_block_shift;
         while(nb--) {
-            cell_ptr = *block_ptr++;
+            cell_ptr = block_ptr->get();
+            block_ptr++;
             i = cell_block_size;
             while(i--) {
                 sorted_y& curr_y = m_sorted_y[cell_ptr->y - m_min_y];
@@ -552,7 +547,8 @@ namespace agg
             }
         }
         
-        cell_ptr = *block_ptr++;
+        cell_ptr = block_ptr->get();
+        block_ptr++;
         i = m_num_cells & cell_block_mask;
         while(i--) {
             sorted_y& curr_y = m_sorted_y[cell_ptr->y - m_min_y];

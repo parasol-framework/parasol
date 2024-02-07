@@ -166,7 +166,7 @@ namespace agg
             if (m_scan_y > m_outline.max_y()) return false;
             sl.reset_spans();
             unsigned num_cells = m_outline.scanline_num_cells(m_scan_y);
-            const cell_aa* const* cells = m_outline.scanline_cells(m_scan_y);
+            auto cells = m_outline.scanline_cells(m_scan_y);
             int cover = 0;
 
             while(num_cells) {
