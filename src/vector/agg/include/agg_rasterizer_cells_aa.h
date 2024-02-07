@@ -57,9 +57,7 @@ namespace agg
 
         void sort_cells();
 
-        unsigned total_cells() const  {
-            return m_num_cells;
-        }
+        unsigned total_cells() const { return m_num_cells; }
 
         unsigned scanline_num_cells(unsigned y) const { 
             return m_sorted_y[y - m_min_y].num; 
@@ -89,13 +87,13 @@ namespace agg
         cell_type*              m_curr_cell_ptr;
         std::vector<cell_type*> m_sorted_cells;
         std::vector<sorted_y>   m_sorted_y;
-        cell_type               m_curr_cell;
-        cell_type               m_style_cell;
-        int                     m_min_x;
-        int                     m_min_y;
-        int                     m_max_x;
-        int                     m_max_y;
-        bool                    m_sorted;
+        cell_type m_curr_cell;
+        cell_type m_style_cell;
+        int m_min_x;
+        int m_min_y;
+        int m_max_x;
+        int m_max_y;
+        bool m_sorted;
     };
 
     template<class Cell> 
@@ -131,15 +129,15 @@ namespace agg
     template<class Cell> 
     void rasterizer_cells_aa<Cell>::reset()
     {
-        m_num_cells = 0; 
+        m_num_cells  = 0; 
         m_curr_block = 0;
         m_curr_cell.initial();
         m_style_cell.initial();
         m_sorted = false;
-        m_min_x =  0x7FFFFFFF;
-        m_min_y =  0x7FFFFFFF;
-        m_max_x = -0x7FFFFFFF;
-        m_max_y = -0x7FFFFFFF;
+        m_min_x  = 0x7FFFFFFF;
+        m_min_y  = 0x7FFFFFFF;
+        m_max_x  = -0x7FFFFFFF;
+        m_max_y  = -0x7FFFFFFF;
     }
 
     template<class Cell> 
@@ -429,7 +427,7 @@ namespace agg
         base  = start;
         top   = stack;
 
-        for (;;) {
+        while (true) {
             int len = int(limit - base);
 
             Cell** i;
@@ -450,7 +448,7 @@ namespace agg
                 if ((*base)->x < (*i)->x) std::swap(*base, *i);
                 if ((*j)->x < (*base)->x) std::swap(*base, *j);
 
-                for(;;) {
+                while (true) {
                     int x = (*base)->x;
                     do i++; while( (*i)->x < x );
                     do j--; while( x < (*j)->x );
@@ -464,14 +462,14 @@ namespace agg
 
                 // now, push the largest sub-array
                 if (j - base > limit - i) {
-                    top[0] = base;
-                    top[1] = j;
-                    base   = i;
+                   top[0] = base;
+                   top[1] = j;
+                   base   = i;
                 }
                 else {
-                    top[0] = i;
-                    top[1] = limit;
-                    limit  = j;
+                   top[0] = i;
+                   top[1] = limit;
+                   limit  = j;
                 }
                 top += 2;
             }
@@ -499,7 +497,7 @@ namespace agg
 
     template<class Cell> 
     void rasterizer_cells_aa<Cell>::sort_cells() {
-        if (m_sorted) return; //Perform sort only the first time.
+        if (m_sorted) return; // Perform sort only the first time.
 
         add_curr_cell();
         m_curr_cell.x     = 0x7FFFFFFF;
@@ -507,20 +505,21 @@ namespace agg
         m_curr_cell.cover = 0;
         m_curr_cell.area  = 0;
 
-        if(m_num_cells == 0) return;
+        if (m_num_cells == 0) return;
 
-// DBG: Check to see if min/max works well.
-//for(unsigned nc = 0; nc < m_num_cells; nc++)
-//{
-//    cell_type* cell = m_cells[nc >> cell_block_shift] + (nc & cell_block_mask);
-//    if(cell->x < m_min_x || 
-//       cell->y < m_min_y || 
-//       cell->x > m_max_x || 
-//       cell->y > m_max_y)
-//    {
-//        cell = cell; // Breakpoint here
-//    }
-//}
+        // DBG: Check to see if min/max works well.
+        //for(unsigned nc = 0; nc < m_num_cells; nc++)
+        //{
+        //    cell_type* cell = m_cells[nc >> cell_block_shift] + (nc & cell_block_mask);
+        //    if(cell->x < m_min_x || 
+        //       cell->y < m_min_y || 
+        //       cell->x > m_max_x || 
+        //       cell->y > m_max_y)
+        //    {
+        //        cell = cell; // Breakpoint here
+        //    }
+        //}
+
         m_sorted_cells.resize(m_num_cells);
 
         m_sorted_y.resize(m_max_y - m_min_y + 1);
@@ -579,15 +578,14 @@ namespace agg
         }
 
         // Finally arrange the X-arrays
-        for (i = 0; i < m_sorted_y.size(); i++) {
-            const sorted_y& curr_y = m_sorted_y[i];
+        for (i=0; i < m_sorted_y.size(); i++) {
+            const sorted_y &curr_y = m_sorted_y[i];
             if (curr_y.num) qsort_cells(m_sorted_cells.data() + curr_y.start, curr_y.num);
         }
         m_sorted = true;
     }
 
-    class scanline_hit_test
-    {
+    class scanline_hit_test {
     public:
         scanline_hit_test(int x) : m_x(x), m_hit(false) {}
 
@@ -598,7 +596,7 @@ namespace agg
         }
 
         void add_span(int x, int len, int) {
-            if (m_x >= x && m_x < x+len) m_hit = true;
+            if (m_x >= x and m_x < x+len) m_hit = true;
         }
         unsigned num_spans() const { return 1; }
         bool hit() const { return m_hit; }
