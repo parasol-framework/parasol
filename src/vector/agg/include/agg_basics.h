@@ -29,7 +29,6 @@ namespace agg
     //------------------------------------------------------------pod_allocator
     template<class T> struct pod_allocator
     {
-        static T*   allocate(unsigned num)       { return new T [num]; }
         static void deallocate(T* ptr) { delete [] ptr;      }
     };
 

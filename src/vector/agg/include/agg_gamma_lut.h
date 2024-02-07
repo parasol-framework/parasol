@@ -50,10 +50,9 @@ namespace agg {
          for (i=0; i < hi_res_size; i++) m_inv_gamma[i] = LoResT(i >> (hi_res_shift - gamma_shift));
       }
 
-      gamma_lut(double g) :
-         m_gamma(1.0),
-         m_dir_gamma(pod_allocator<HiResT>::allocate(gamma_size)),
-         m_inv_gamma(pod_allocator<LoResT>::allocate(hi_res_size))
+      gamma_lut(double g) : m_gamma(1.0),
+         m_dir_gamma(new HiResT[gamma_size]),
+         m_inv_gamma(new LoResT[hi_res_size])
       {
          gamma(g);
       }

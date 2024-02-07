@@ -392,10 +392,9 @@ namespace agg
             if (m_num_blocks >= m_cells.size()) {
                 m_cells.resize(m_cells.size() + cell_block_pool);
             }
-
-            m_cells[m_num_blocks++] = pod_allocator<cell_type>::allocate(cell_block_size);
-
+            m_cells[m_num_blocks++] = new cell_type[cell_block_size];
         }
+
         m_curr_cell_ptr = m_cells[m_curr_block++];
     }
 
