@@ -105,7 +105,7 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    const LONG wm  = w - 1;
    const LONG hm  = h - 1;
 
-   agg::pod_vector<agg::rgba8> stack;
+   std::vector<agg::rgba8> stack;
 
    UBYTE A = bmp->ColourFormat->AlphaPos>>3;
    UBYTE R = bmp->ColourFormat->RedPos>>3;
@@ -135,7 +135,7 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
       div = rx * 2 + 1;
       mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[rx];
       shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[rx];
-      stack.allocate(div);
+      stack.resize(div);
 
       for (y=0; y < h; y++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
@@ -240,7 +240,7 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
       div = ry * 2 + 1;
       mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[ry];
       shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[ry];
-      stack.allocate(div);
+      stack.resize(div);
 
       int stride = bmp->LineWidth;
       for (x = 0; x < w; x++) {
