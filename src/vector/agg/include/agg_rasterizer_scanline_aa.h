@@ -46,8 +46,8 @@ namespace agg
       }
    };
 
-   // Polygon rasterizer that is used to render filled polygons with high-quality Anti-Aliasing. Internally, by 
-   // default, the class uses integer coordinates in format 24.8, i.e. 24 bits for integer part and 8 bits for 
+   // Polygon rasterizer that is used to render filled polygons with high-quality Anti-Aliasing. Internally, by
+   // default, the class uses integer coordinates in format 24.8, i.e. 24 bits for integer part and 8 bits for
    // fractional - see poly_subpixel_shift. This class can be used in the following way:
    //
    // 1. filling_rule(filling_rule_e ft) - optional.

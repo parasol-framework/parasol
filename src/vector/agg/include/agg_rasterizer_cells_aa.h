@@ -35,12 +35,12 @@ namespace agg
         };
 
         struct sorted_y {
-            unsigned start;
-            unsigned num;
+            unsigned start = 0;
+            unsigned num = 0;
         };
 
     public:
-        typedef Cell cell_type;
+        typedef Cell cell_type; // Refer agg_rasterizer_scanline_aa::cell_aa
         typedef rasterizer_cells_aa<Cell> self_type;
 
         ~rasterizer_cells_aa();
@@ -87,8 +87,8 @@ namespace agg
         unsigned                m_num_cells;
         cell_type**             m_cells;
         cell_type*              m_curr_cell_ptr;
-        pod_vector<cell_type*>  m_sorted_cells;
-        pod_vector<sorted_y>    m_sorted_y;
+        std::vector<cell_type*> m_sorted_cells;
+        std::vector<sorted_y>   m_sorted_y;
         cell_type               m_curr_cell;
         cell_type               m_style_cell;
         int                     m_min_x;
@@ -118,8 +118,6 @@ namespace agg
         m_num_cells(0),
         m_cells(0),
         m_curr_cell_ptr(0),
-        m_sorted_cells(),
-        m_sorted_y(),
         m_min_x(0x7FFFFFFF),
         m_min_y(0x7FFFFFFF),
         m_max_x(-0x7FFFFFFF),
@@ -523,12 +521,10 @@ namespace agg
 //        cell = cell; // Breakpoint here
 //    }
 //}
-        // Allocate the array of cell pointers
-        m_sorted_cells.allocate(m_num_cells, 16);
+        m_sorted_cells.resize(m_num_cells);
 
-        // Allocate and zero the Y array
-        m_sorted_y.allocate(m_max_y - m_min_y + 1, 16);
-        m_sorted_y.zero();
+        m_sorted_y.resize(m_max_y - m_min_y + 1);
+        memset(m_sorted_y.data(), 0, m_sorted_y.size() * sizeof(sorted_y));
 
         // Create the Y-histogram (count the numbers of cells for each Y)
         cell_type** block_ptr = m_cells;
