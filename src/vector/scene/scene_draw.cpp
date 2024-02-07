@@ -106,7 +106,8 @@ void SceneRenderer::ClipBuffer::draw_clips(extVector *Shape, agg::rasterizer_sca
    agg::scanline32_p8 sl;
    for (auto scan=Shape; scan; scan=(extVector *)scan->Next) {
       if (scan->Class->BaseClassID IS ID_VECTOR) {
-         if (!scan->BasePath.empty()) {
+         if (scan->Visibility != VIS::VISIBLE);
+         else if (!scan->BasePath.empty()) {
             auto t = scan->Transform * Transform;
 
             if (!scan->Stroked) { // Filled mask
