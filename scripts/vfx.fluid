@@ -10,6 +10,8 @@ end
 
 vfx.wipes = { shutter = { }, simple = { }, radial = { }, shape = { }, clock = { }, pixelate = { } }
 
+----------------------------------------------------------------------------------------------------------------------
+
 vfx.dist = function(X1, Y1, X2, Y2)
    local a = math.abs(X2 - X1)
    local b = math.abs(Y2 - Y1)
@@ -99,6 +101,18 @@ vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
 
    vfx.initTimer(state, Options)
    return state
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Move the viewport to its indicated (x,y) position within the allotted time.  By default the move will commence from
+-- an out-of-bounds position on the left.  The client can override this with a custom FromX, FromY position.
+
+vfx.moveIn = function(Viewport, Seconds, Delay, FromX, FromY)
+
+end
+
+vfx.moveOut = function(Viewport, Seconds, Delay, FromX, FromY)
+
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -223,18 +237,6 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    end)
 
    return state
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Move the viewport to its indicated (x,y) position within the allotted time.  By default the move will commence from
--- an out-of-bounds position on the left.  The client can override this with a custom FromX, FromY position.
-
-vfx.moveIn = function(Viewport, Seconds, Delay, FromX, FromY)
-
-end
-
-vfx.moveOut = function(Viewport, Seconds, Delay, FromX, FromY)
-
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -428,26 +430,36 @@ vfx.wipes.clock.animate = function(State, Options, Progress)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- segments: Total number of radial segments
+-- cx: Horizontal position of the radius (scaled)
+-- cy: Vertical position of the radius (scaled)
 
 vfx.wipes.radial.animate = function(State, Options, Progress)
-   local total_bars = nz(Options.bars, 10)
-   local max_dim = vfx.dist(0, 0, State.v_width, State.v_height)
-   if (total_bars > max_dim * 0.33) then total_bars = max_dim * 0.33 end
-   local interval    = 1.0 / (total_bars + 2)
-   local stroke_size = (max_dim / total_bars) * 0.5
+   local segments = nz(Options.segments, 10)
+
+   local cx = 0.5 * State.v_width
+   if type(Options.cx) == 'number' then cx = Options.cx * State.v_width end
+
+   local cy = 0.5 * State.v_height
+   if type(Options.cy) == 'number' then cy = Options.cy * State.v_height end
+
+   local max_dim = vfx.dist(cx, cy, State.v_width, State.v_height)
+   if (segments > max_dim * 0.33) then segments = max_dim * 0.33 end
+   local interval    = 1.0 / (segments + 2)
+   local stroke_size = (max_dim / segments)
 
    if not State.ellipses then
       State.clip_path.acClear()
       State.ellipses = { }
 
       table.insert(State.ellipses, State.clip.new('VectorEllipse', {
-         cx = State.v_width * 0.5, cy = State.v_height * 0.5, rx = 0.001, ry = 0.001
+         cx = cx, cy = cy, rx = 0.001, ry = 0.001
       }))
 
-      for i=2,total_bars+1 do
+      for i=2,segments+1 do
          local radius = stroke_size + ((i-2) * stroke_size)
          table.insert(State.ellipses, State.clip.new('VectorEllipse', {
-            cx = State.v_width * 0.5, cy = State.v_height * 0.5, rx = radius, ry = radius,
+            cx = cx, cy = cy, rx = radius, ry = radius,
             stroke = 'rgb(255,255,255)'
          }))
       end
@@ -459,7 +471,7 @@ vfx.wipes.radial.animate = function(State, Options, Progress)
    State.ellipses[1].radiusX = size
    State.ellipses[1].radiusY = size
 
-   for i=2,total_bars+1 do
+   for i=2,segments+1 do
       local size = (Progress / (i * interval)) * stroke_size
       if (size > stroke_size + 0.5) then size = stroke_size + 0.5 end
       State.ellipses[i].strokeWidth = size
@@ -476,17 +488,17 @@ end
 
 vfx.wipes.shutter.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
-   local max_width  = vfx.dist(0, 0, State.v_width, State.v_height)
+   local max_width = vfx.dist(0, 0, State.v_width, State.v_height)
 
-   local total_bars = nz(Options.bars, 10)
-   if (total_bars > max_width * 0.33) then total_bars = max_width * 0.33 end
+   local segments = nz(Options.segments, 10)
+   if (segments > max_width * 0.33) then segments = max_width * 0.33 end
 
    local pc = State.path_cmd
-   local interval   = 1.0 / total_bars
-   local bar_height = State.v_height / total_bars
+   local interval   = 1.0 / segments
+   local bar_height = State.v_height / segments
 
    State.clip_path.acClear()
-   for i=0,total_bars-1 do
+   for i=0,segments-1 do
       local bar_pos = i * bar_height
       local height  = (Progress / ((i * interval) + interval)) * bar_height
 
