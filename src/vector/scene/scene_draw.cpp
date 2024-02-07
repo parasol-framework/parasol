@@ -184,7 +184,10 @@ void SceneRenderer::ClipBuffer::draw()
    agg::rasterizer_scanline_aa<> rasterizer;
 
    LONG x = F2T(t_bound.left);
-   for (LONG y=t_bound.top * m_width; y < t_bound.bottom; y += m_width) {
+   LONG y = t_bound.top * m_width;
+   if (x < 0) x = 0;
+   if (y < 0) y = 0;
+   for (; y < m_height; y += m_width) {
       ClearMemory(m_bitmap.data() + y + x, m_width - x);
    }
 
