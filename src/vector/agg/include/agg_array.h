@@ -104,7 +104,7 @@ namespace agg
         typedef T value_type;
         typedef pod_array<T> self_type;
 
-        ~pod_array() { pod_allocator<T>::deallocate(m_array, m_size); }
+        ~pod_array() { pod_allocator<T>::deallocate(m_array); }
         pod_array() : m_array(0), m_size(0) {}
 
         pod_array(unsigned size) : 
@@ -123,7 +123,7 @@ namespace agg
         {
             if(size != m_size)
             {
-                pod_allocator<T>::deallocate(m_array, m_size);
+                pod_allocator<T>::deallocate(m_array);
                 m_array = pod_allocator<T>::allocate(m_size = size);
             }
         }
@@ -478,11 +478,11 @@ namespace agg
             T** blk = m_blocks + m_num_blocks - 1;
             while(m_num_blocks--)
             {
-                pod_allocator<T>::deallocate(*blk, block_size);
+                pod_allocator<T>::deallocate(*blk);
                 --blk;
             }
         }
-        pod_allocator<T*>::deallocate(m_blocks, m_max_blocks);
+        pod_allocator<T*>::deallocate(m_blocks);
     }
 
     template<class T, unsigned S> 
@@ -497,7 +497,7 @@ namespace agg
             }
             if(m_num_blocks == 0)
             {
-                pod_allocator<T*>::deallocate(m_blocks, m_max_blocks);
+                pod_allocator<T*>::deallocate(m_blocks);
                 m_blocks = 0;
                 m_max_blocks = 0;
             }
@@ -574,7 +574,7 @@ namespace agg
                        m_blocks, 
                        m_num_blocks * sizeof(T*));
 
-                pod_allocator<T*>::deallocate(m_blocks, m_max_blocks);
+                pod_allocator<T*>::deallocate(m_blocks);
             }
             m_blocks = new_blocks;
             m_max_blocks += m_block_ptr_inc;
@@ -731,10 +731,10 @@ namespace agg
                 block_type* blk = m_blocks + m_num_blocks - 1;
                 while(m_num_blocks--)
                 {
-                    pod_allocator<int8u>::deallocate(blk->data, blk->size);
+                    pod_allocator<int8u>::deallocate(blk->data);
                     --blk;
                 }
-                pod_allocator<block_type>::deallocate(m_blocks, m_max_blocks);
+                pod_allocator<block_type>::deallocate(m_blocks);
             }
             m_num_blocks = 0;
             m_max_blocks = 0;
@@ -805,7 +805,7 @@ namespace agg
                     memcpy(new_blocks, 
                            m_blocks, 
                            m_num_blocks * sizeof(block_type));
-                    pod_allocator<block_type>::deallocate(m_blocks, m_max_blocks);
+                    pod_allocator<block_type>::deallocate(m_blocks);
                 }
                 m_blocks = new_blocks;
                 m_max_blocks += m_block_ptr_inc;

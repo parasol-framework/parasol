@@ -36,8 +36,8 @@ namespace agg {
       };
 
       ~gamma_lut() {
-         pod_allocator<LoResT>::deallocate(m_inv_gamma, hi_res_size);
-         pod_allocator<HiResT>::deallocate(m_dir_gamma, gamma_size);
+         pod_allocator<LoResT>::deallocate(m_inv_gamma);
+         pod_allocator<HiResT>::deallocate(m_dir_gamma);
       }
 
       gamma_lut() :
