@@ -80,10 +80,9 @@ namespace agg
         
     private:
         unsigned                m_num_blocks;
-        unsigned                m_max_blocks;
         unsigned                m_curr_block;
         unsigned                m_num_cells;
-        cell_type**             m_cells;
+        std::vector<cell_type*> m_cells;
         cell_type*              m_curr_cell_ptr;
         std::vector<cell_type*> m_sorted_cells;
         std::vector<sorted_y>   m_sorted_y;
@@ -98,23 +97,16 @@ namespace agg
 
     template<class Cell> 
     rasterizer_cells_aa<Cell>::~rasterizer_cells_aa() {
-        if (m_num_blocks) {
-            cell_type** ptr = m_cells + m_num_blocks - 1;
-            while (m_num_blocks--) {
-                pod_allocator<cell_type>::deallocate(*ptr);
-                ptr--;
-            }
-            pod_allocator<cell_type*>::deallocate(m_cells);
-        }
+       for (auto &ptr : m_cells) {
+          delete [] ptr;
+       }
     }
 
     template<class Cell> 
     rasterizer_cells_aa<Cell>::rasterizer_cells_aa() :
         m_num_blocks(0),
-        m_max_blocks(0),
         m_curr_block(0),
         m_num_cells(0),
-        m_cells(0),
         m_curr_cell_ptr(0),
         m_min_x(0x7FFFFFFF),
         m_min_y(0x7FFFFFFF),
@@ -397,15 +389,8 @@ namespace agg
     template<class Cell> 
     void rasterizer_cells_aa<Cell>::allocate_block() {
         if (m_curr_block >= m_num_blocks) {
-            if(m_num_blocks >= m_max_blocks) {
-                cell_type** new_cells = pod_allocator<cell_type*>::allocate(m_max_blocks + cell_block_pool);
-
-                if (m_cells) {
-                    memcpy(new_cells, m_cells, m_max_blocks * sizeof(cell_type*));
-                    pod_allocator<cell_type*>::deallocate(m_cells);
-                }
-                m_cells = new_cells;
-                m_max_blocks += cell_block_pool;
+            if (m_num_blocks >= m_cells.size()) {
+                m_cells.resize(m_cells.size() + cell_block_pool);
             }
 
             m_cells[m_num_blocks++] = pod_allocator<cell_type>::allocate(cell_block_size);
@@ -526,7 +511,7 @@ namespace agg
         memset(m_sorted_y.data(), 0, m_sorted_y.size() * sizeof(sorted_y));
 
         // Create the Y-histogram (count the numbers of cells for each Y)
-        cell_type** block_ptr = m_cells;
+        cell_type** block_ptr = m_cells.data();
         cell_type*  cell_ptr;
         unsigned nb = m_num_cells >> cell_block_shift;
         unsigned i;
@@ -555,7 +540,7 @@ namespace agg
         }
 
         // Fill the cell pointer array sorted by Y
-        block_ptr = m_cells;
+        block_ptr = m_cells.data();
         nb = m_num_cells >> cell_block_shift;
         while(nb--) {
             cell_ptr = *block_ptr++;
