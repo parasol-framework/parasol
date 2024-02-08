@@ -8,7 +8,7 @@ if (vfx == nil) then
    }
 end
 
-vfx.wipes = { shutter = { }, simple = { }, radial = { }, shape = { }, clock = { }, pixelate = { } }
+vfx.wipes = { shutter = { }, simple = { }, radial = { }, shape = { }, clock = { }, spiral = { }, pixelate = { } }
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -21,6 +21,20 @@ vfx.dist = function(X1, Y1, X2, Y2)
       b = t
    end
    return b + 0.428 * a * a / b
+end
+
+vfx.config_circle = function(State, Options)
+   State.cx = 0.5 * State.v_width
+   if (type(Options.cx) == 'number') then State.cx = Options.cx * State.v_width end
+
+   State.cy = 0.5 * State.v_height
+   if (type(Options.cy) == 'number') then State.cy = Options.cy * State.v_height end
+
+   local ex, ey
+   if (State.cx <= 0.5) then ex = State.v_width else ex = 0 end
+   if (State.cy <= 0.5) then ey = State.v_height else ey = 0 end
+
+   State.max_radius = vfx.dist(State.cx, State.cy, ex, ey)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -50,7 +64,7 @@ end
 --
 -- Seconds:  Specifies the maximum number of seconds for the effect to complete.
 -- Delay: Delays the initial start of the effect, measured in seconds.
--- Style: 'shutter', 'simple', 'radial', 'shape', 'clock', 'pixelate'
+-- Style: 'shutter', 'simple', 'radial', 'spiral', 'shape', 'clock', 'pixelate'
 
 vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
    if not Options then Options = { } end
@@ -63,38 +77,13 @@ vfx.wipe = function(Viewport, Seconds, Delay, Style, Options)
       path_cmd = struct.new('PathCommand')
    }
 
-   state.clip      = Viewport.scene.new('VectorClip', { })
-   state.clip_path = state.clip.new('VectorPath', { })
-   Viewport.mask   = state.clip
-
-   if (Options.inverse) then
-      local pc = state.path_cmd
-      pc.type = PE_Move
-      pc.x    = -1
-      pc.y    = -1
-      state.clip_path.mtAddCommand(pc)
-      pc.type = PE_Line
-      pc.x = state.v_width + 1
-      state.clip_path.mtAddCommand(pc)
-      pc.y = state.v_height + 1
-      state.clip_path.mtAddCommand(pc)
-      pc.x = -1
-      state.clip_path.mtAddCommand(pc)
-      pc.type = PE_Close
-      state.clip_path.mtAddCommand(pc)
-   end
-
-   if (Options.rotate) then
-      local err
-      err, state.matrix = state.clip_path.mtNewMatrix()
-      mVector.Rotate(state.matrix, Options.rotate, state.v_width * 0.5, state.v_height * 0.5)
-   end
+   state.clip    = Viewport.scene.new('VectorClip', { })
+   Viewport.mask = state.clip
 
    state.free = function(State)
       State.viewport.mask = nil
       State.clip.free()
       State.clip = nil
-      State.clip_path = nil
       collectgarbage()
       State.viewport.acDraw()
    end
@@ -339,9 +328,19 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+vfx.wipes.simple.init = function(State, Options)
+   if (Options.rotate) then
+      local err
+      err, State.matrix = State.clip_path.mtNewMatrix()
+      mVector.Rotate(State.matrix, Options.rotate, State.v_width * 0.5, State.v_height * 0.5)
+   end
+end
+
 vfx.wipes.simple.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
    local max_width = vfx.dist(0, 0, State.v_width, State.v_height)
+
+   if not State.clip_path then State.clip_path = State.clip.new('VectorPath', { }) end
 
    State.clip_path.acClear()
 
@@ -369,6 +368,8 @@ end
 
 vfx.wipes.clock.animate = function(State, Options, Progress)
    local radius = vfx.dist(0, 0, State.v_width+2, State.v_height+2) * 0.5
+
+   if not State.clip_path then State.clip_path = State.clip.new('VectorPath', { }) end
 
    State.clip_path.acClear()
    local bar_pos = 0
@@ -433,21 +434,11 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- segments: Total number of radial segments
--- cx: Horizontal position of the radius (scaled)
--- cy: Vertical position of the radius (scaled)
+-- cx: Horizontal position of the effect (scaled)
+-- cy: Vertical position of the effect (scaled)
 
 vfx.wipes.radial.init = function(State, Options)
-   State.cx = 0.5 * State.v_width
-   if (type(Options.cx) == 'number') then State.cx = Options.cx * State.v_width end
-
-   State.cy = 0.5 * State.v_height
-   if (type(Options.cy) == 'number') then State.cy = Options.cy * State.v_height end
-
-   local ex, ey
-   if (State.cx <= 0.5) then ex = State.v_width else ex = 0 end
-   if (State.cy <= 0.5) then ey = State.v_height else ey = 0 end
-
-   State.max_radius = vfx.dist(State.cx, State.cy, ex, ey)
+   vfx.config_circle(State, Options)
 
    State.segments = nz(Options.segments, 10)
    if (State.segments < 1) then State.segments = 1 end
@@ -456,7 +447,6 @@ vfx.wipes.radial.init = function(State, Options)
    State.interval    = 1.0 / State.segments
    State.stroke_size = State.max_radius / State.segments
 
-   State.clip_path.acClear()
    State.ellipses = { }
 
    State.center = State.clip.new('VectorEllipse', {
@@ -492,6 +482,39 @@ vfx.wipes.radial.animate = function(State, Options, Progress)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Spiral effect.  Looks its best when the segment count is kept low (1 - 3).
+-- cx: Horizontal position of the effect (scaled)
+-- cy: Vertical position of the effect (scaled)
+
+vfx.wipes.spiral.init = function(State, Options)
+   vfx.config_circle(State, Options)
+
+   State.segments = nz(Options.segments, 2)
+   if (State.segments < 1) then State.segments = 1 end
+   if (State.segments > State.max_radius * 0.33) then State.segments = math.floor(State.max_radius * 0.33) end
+
+   State.spiral = State.clip.new('VectorSpiral', {
+      cx = State.cx, cy = State.cy,
+      radius = State.max_radius + (State.max_radius / State.segments),
+      spacing = State.max_radius / State.segments,
+      fill = 'rgb(255,255,255)', visibility = VIS_HIDDEN
+   })
+end
+
+vfx.wipes.spiral.animate = function(State, Options, Progress)
+   State.spiral.visibility = VIS_VISIBLE
+   State.spiral.radius = (State.max_radius + (State.max_radius / State.segments)) * Progress
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+vfx.wipes.shutter.init = function(State, Options)
+   if (Options.rotate) then
+      local err
+      err, State.matrix = State.clip_path.mtNewMatrix()
+      mVector.Rotate(State.matrix, Options.rotate, State.v_width * 0.5, State.v_height * 0.5)
+   end
+end
 
 vfx.wipes.shutter.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
@@ -503,6 +526,8 @@ vfx.wipes.shutter.animate = function(State, Options, Progress)
    local pc = State.path_cmd
    local interval   = 1.0 / segments
    local bar_height = State.v_height / segments
+
+   if not State.clip_path then State.clip_path = State.clip.new('VectorPath', { }) end
 
    State.clip_path.acClear()
    for i=0,segments-1 do
