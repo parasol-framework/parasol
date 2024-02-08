@@ -25,9 +25,11 @@ static void generate_clip(extVectorClip *Clip)
 {
    TClipRectangle<DOUBLE> b;
 
+   DOUBLE largest_stroke = 0;
+
    std::function<void(extVector *, bool)> scan_bounds;
 
-   scan_bounds = [&b, &scan_bounds](extVector *Branch, bool IncSiblings) -> void {
+   scan_bounds = [&b, &scan_bounds, &largest_stroke](extVector *Branch, bool IncSiblings) -> void {
       for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
          if (scan->dirty()) gen_vector_path(scan);
 
@@ -51,6 +53,10 @@ static void generate_clip(extVectorClip *Clip)
                auto path = scan->Bounds.as_path(scan->Transform);
                b.expanding(get_bounds(path));
             }
+
+            if (scan->Stroked) {
+               if (scan->StrokeWidth > largest_stroke) largest_stroke = scan->StrokeWidth;
+            }
          }
 
          if (scan->Child) scan_bounds((extVector *)scan->Child, true);
@@ -65,6 +71,7 @@ static void generate_clip(extVectorClip *Clip)
       b.shrinking(get_bounds(Clip->BasePath));
    }
 
+   Clip->LargestStroke = largest_stroke;
    Clip->Bounds = b;
 }
 

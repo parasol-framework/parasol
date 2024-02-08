@@ -527,6 +527,7 @@ class extVectorClip : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorClip";
    using create = pf::Create<extVectorClip>;
 
+   DOUBLE LargestStroke;
    VUNIT ClipUnits;
    bool RefreshBounds;
    bool Viewport; // Set by VectorViewport to inform that the BasePath represents a clipped container

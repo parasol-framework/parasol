@@ -157,8 +157,8 @@ void SceneRenderer::ClipBuffer::draw()
 
    auto t_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
    auto t_bound = get_bounds(t_bound_path);
-   m_width  = F2T(t_bound.right) + 1;
-   m_height = F2T(t_bound.bottom) + 1;
+   m_width  = F2T(t_bound.right + (m_clip->LargestStroke * 0.5)) + 2;
+   m_height = F2T(t_bound.bottom + (m_clip->LargestStroke * 0.5)) + 2;
 
    if ((m_width <= 0) or (m_height <= 0)) {
       DEBUG_BREAK
