@@ -14,7 +14,7 @@
     <include>modules/vectorspiral.h</include>
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The VectorSpiral class provides the necessary functionality for generating spiral paths that extend from a central point.</p></description>
+<p>The VectorSpiral class generates spiral paths that extend from a central point.</p></description>
     <source>
       <file path="vectors/">spiral.cpp</file>
     </source>
@@ -52,8 +52,19 @@
     </field>
 
     <field>
+      <name>LoopLimit</name>
+      <comment>Used to limit the number of loops produced by the spiral path generator.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The LoopLimit can be used to impose a limit on the total number of loops that are performed by the spiral path generator.  It can be used as an alternative to, or conjunction with the <field>Radius</field> value to limit the final spiral size.</p>
+<p>If the LoopLimit is not set, the <field>Radius</field> will take precedence.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Offset</name>
-      <comment>Offset the generation of the path by a given value.</comment>
+      <comment>Offset the starting coordinate of the spiral by this value.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
@@ -82,12 +93,14 @@
     </field>
 
     <field>
-      <name>Scale</name>
-      <comment>The scale of the spiral, expressed as a multiplier.</comment>
+      <name>Spacing</name>
+      <comment>Declares the amount of empty space between each loop of the spiral.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The spiral path can be scaled by setting this field.  The points on the spiral will be scaled by being multiplied by the scale factor.</p>
+<p>Spacing tightly controls the computation of the spiral path, ensuring that a specific amount of empty space is left between each loop.  The space is declared in pixel units.</p>
+<p>If Spacing is undeclared, the spiral expands at an incremental rate of <code>
+<field>Step</field> * 0.1</code>.</p>
       </description>
     </field>
 
@@ -97,7 +110,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Step value alters the distance between each vertex in the spiral path during its generation.  The default value is 0.1.  Using larger values will create a spiral with more visible corners due to the overall reduction in vertices.</p>
+<p>The Step value affects the distance between each vertex in the spiral path during its generation.  The default value is 1.0.  Using larger values will create a spiral with jagged corners due to the reduction in vertices.</p>
       </description>
     </field>
 

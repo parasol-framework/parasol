@@ -1330,7 +1330,7 @@ struct dcKeyEntry {
 };
 
 struct dcDeviceInput {
-   DOUBLE   Values[3];  // The value(s) associated with the Type
+   DOUBLE   Values[2];  // The value(s) associated with the Type
    LARGE    Timestamp;  // PreciseTime() of the recorded input
    OBJECTID DeviceID;   // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
    JTYPE    Flags;      // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object

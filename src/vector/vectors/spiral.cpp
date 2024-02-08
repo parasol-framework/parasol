@@ -3,8 +3,7 @@
 -CLASS-
 VectorSpiral: Extends the Vector class with support for spiral path generation.
 
-The VectorSpiral class provides the necessary functionality for generating spiral paths that extend from a central
-point.
+The VectorSpiral class generates spiral paths that extend from a central point.
 -END-
 
 *********************************************************************************************************************/
@@ -17,11 +16,12 @@ class extVectorSpiral : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
    using create = pf::Create<extVectorSpiral>;
 
-   DOUBLE Scale;
+   DOUBLE Spacing;
    DOUBLE Offset;
    DOUBLE Radius;
    DOUBLE CX, CY;
    DOUBLE Step;
+   DOUBLE LoopLimit;
    LONG Dimensions;
 };
 
@@ -33,24 +33,47 @@ static void generate_spiral(extVectorSpiral *Vector)
    const DOUBLE cy = (Vector->Dimensions & DMF_SCALED_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
 
    DOUBLE min_x = DBL_MAX, max_x = DBL_MIN, min_y = DBL_MAX, max_y = DBL_MIN;
-   DOUBLE angle = 0;
-   for (int i=0; i < MAX_SPIRAL_VERTICES; i++) { // The spiral points keep generating until the max number of vertices is reached, or the radius is boundary is hit.
-      DOUBLE x = (Vector->Offset + Vector->Scale * angle) * cos(angle);
-      DOUBLE y = (Vector->Offset + Vector->Scale * angle) * sin(angle);
+   DOUBLE angle  = 0;
+   DOUBLE radius = Vector->Offset;
+   DOUBLE limit  = Vector->LoopLimit * 360.0;
+   DOUBLE max_radius = Vector->Radius ? Vector->Radius : DBL_MAX;
+   DOUBLE lx = DBL_MIN, ly = DBL_MIN;
+   DOUBLE step = Vector->Step;
 
-      if ((std::abs(x) > Vector->Radius) or (std::abs(y) > Vector->Radius)) break;
+   if (step > 180) step = 180;
+   else if (step < 0.1) step = 0.1;
+
+   if ((max_radius IS DBL_MAX) and (limit <= 0.01)) limit = 360;
+   else if (limit < 0.001) limit = DBL_MAX; // Ignore the loop limit in favour of radius limit
+
+   for (int v=0; (v < MAX_SPIRAL_VERTICES) and (angle < limit) and (radius < max_radius); v++) {
+      DOUBLE x = radius * cos(angle * DEG2RAD);
+      DOUBLE y = radius * sin(angle * DEG2RAD);
 
       x += cx;
       y += cy;
-      if (!i) Vector->BasePath.move_to(x, y);
-      else Vector->BasePath.line_to(x, y);
+      if ((std::abs(x - lx) >= 1.0) or (std::abs(y - ly) >= 1.0)) { // Only record a vertex if its position has significantly changed from the last
+         if (!v) Vector->BasePath.move_to(x, y); // First vertex
+         else Vector->BasePath.line_to(x, y);
+         lx = x;
+         ly = y;
+      }
+
+      // Boundary management
 
       if (x < min_x) min_x = x;
       if (y < min_y) min_y = y;
       if (x > max_x) max_x = x;
       if (y > max_y) max_y = y;
+      
+      // These computations control the radius, effectively changing the rate at which the spiral expands.
 
-      angle += Vector->Step;
+      if (Vector->Spacing) radius = Vector->Offset + (Vector->Spacing * (angle / 360.0));
+      else radius += step * 0.1;
+
+      // Increment the angle by the step.  A high step value results in a jagged spiral.
+
+      angle += step;
    }
 
    Vector->Bounds = { min_x, min_y, max_x, max_y };
@@ -60,10 +83,7 @@ static void generate_spiral(extVectorSpiral *Vector)
 
 static ERROR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
 {
-   Self->Radius = 100;
-   Self->Step   = 0.1;
-   Self->Offset = 1;
-   Self->Scale  = 1;
+   Self->Step   = 1.0;
    Self->GeneratePath = (void (*)(extVector *))&generate_spiral;
    return ERR_Okay;
 }
@@ -137,6 +157,60 @@ static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
+LoopLimit: Used to limit the number of loops produced by the spiral path generator.
+
+The LoopLimit can be used to impose a limit on the total number of loops that are performed by the spiral path 
+generator.  It can be used as an alternative to, or conjunction with the #Radius value to limit the final spiral size.
+
+If the LoopLimit is not set, the #Radius will take precedence.
+
+*********************************************************************************************************************/
+
+static ERROR SPIRAL_GET_LoopLimit(extVectorSpiral *Self, DOUBLE *Value)
+{
+   *Value = Self->LoopLimit;
+   return ERR_Okay;
+}
+
+static ERROR SPIRAL_SET_LoopLimit(extVectorSpiral *Self, DOUBLE Value)
+{
+   if (Value >= 0) {
+      Self->LoopLimit = Value;
+      reset_path(Self);
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+Spacing: Declares the amount of empty space between each loop of the spiral.
+
+Spacing tightly controls the computation of the spiral path, ensuring that a specific amount of empty space is left
+between each loop.  The space is declared in pixel units.
+
+If Spacing is undeclared, the spiral expands at an incremental rate of `#Step * 0.1`.
+
+*********************************************************************************************************************/
+
+static ERROR SPIRAL_GET_Spacing(extVectorSpiral *Self, DOUBLE *Value)
+{
+   *Value = Self->Spacing;
+   return ERR_Okay;
+}
+
+static ERROR SPIRAL_SET_Spacing(extVectorSpiral *Self, DOUBLE Value)
+{
+   if (Value >= 0.0) {
+      Self->Spacing = Value;
+      reset_path(Self);
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
+}
+
+/*********************************************************************************************************************
+-FIELD-
 Height: The height (vertical diameter) of the spiral.
 
 The height of the spiral is expressed as '#Radius * 2.0'.
@@ -166,7 +240,7 @@ static ERROR SPIRAL_SET_Height(extVectorSpiral *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-Offset: Offset the generation of the path by a given value.
+Offset: Offset the starting coordinate of the spiral by this value.
 
 The generation of a spiral's path can be offset by specifying a positive value in the Offset field.  By default the
 Offset is set to zero.
@@ -250,35 +324,10 @@ static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-Scale: The scale of the spiral, expressed as a multiplier.
-
-The spiral path can be scaled by setting this field.  The points on the spiral will be scaled by being multiplied by
-the scale factor.
-
-*********************************************************************************************************************/
-
-static ERROR SPIRAL_GET_Scale(extVectorSpiral *Self, DOUBLE *Value)
-{
-   *Value = Self->Scale;
-   return ERR_Okay;
-}
-
-static ERROR SPIRAL_SET_Scale(extVectorSpiral *Self, DOUBLE Value)
-{
-   if (Value > 0.001) {
-      Self->Scale = Value;
-      reset_path(Self);
-      return ERR_Okay;
-   }
-   else return ERR_InvalidValue;
-}
-
-/*********************************************************************************************************************
--FIELD-
 Step: Determines the distance between each vertex in the spiral's path.
 
-The Step value alters the distance between each vertex in the spiral path during its generation.  The default value
-is 0.1.  Using larger values will create a spiral with more visible corners due to the overall reduction in vertices.
+The Step value affects the distance between each vertex in the spiral path during its generation.  The default value
+is 1.0.  Using larger values will create a spiral with jagged corners due to the reduction in vertices.
 
 *********************************************************************************************************************/
 
@@ -344,8 +393,9 @@ static const FieldArray clVectorSpiralFields[] = {
    { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
    { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
    { "Offset",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Offset, SPIRAL_SET_Offset },
-   { "Scale",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Scale, SPIRAL_SET_Scale },
    { "Step",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Step, SPIRAL_SET_Step },
+   { "Spacing",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Spacing, SPIRAL_SET_Spacing },
+   { "LoopLimit",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_LoopLimit, SPIRAL_SET_LoopLimit },
    // Synonyms
    { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
    { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },

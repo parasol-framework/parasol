@@ -2943,6 +2943,8 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
             case SVF_OFFSET:   field_id = FID_Offset; break;
             case SVF_STEP:     field_id = FID_Step; break;
             case SVF_VERTICES: field_id = FID_Vertices; break;
+            case SVF_SPACING:  field_id = FID_Spacing; break;
+            case SVF_LOOP_LIMIT: field_id = FID_LoopLimit; break;
          }
 
          if (field_id) {

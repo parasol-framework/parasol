@@ -234,11 +234,11 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 
     <field>
       <name>Procedure</name>
-      <comment>Allows you to specify a procedure to be executed from within a script.</comment>
+      <comment>Specifies a procedure to be executed from within a script.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a script that you have loaded contains procedures, you can set the Procedure field to execute a specific routine whenever the script is activated with the Activate action.</p>
+<p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a specific routine whenever the script is activated with the Activate action.</p>
 <p>If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is executed by default.</p>
       </description>
     </field>
@@ -280,7 +280,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected in the value of this field.  If you have not set any arguments then the field value will be zero.</p>
+<p>The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected in the value of this field.</p>
       </description>
     </field>
 
@@ -292,7 +292,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <description>
 <p>The working path for a script is defined here.  By default this is defined as the location from which the script was loaded, without the file name.  If this cannot be determined then the working path for the parent process is used (this is usually set to the location of the program).</p>
 <p>The working path is always fully qualified with a slash or colon at the end of the string.</p>
-<p>You can manually change the working path by setting this field with a custom string.</p>
+<p>A client can manually change the working path by setting this field with a custom string.</p>
       </description>
     </field>
 
