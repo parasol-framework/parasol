@@ -2163,7 +2163,7 @@ static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if ((val >= 0.0) and (val <= 100.0)) {
+   if ((val >= 0.0) and (val <= 2000.0)) {
       Self->StrokeWidth = val;
       Self->RelativeStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
       Self->Stroked = Self->is_stroked();
