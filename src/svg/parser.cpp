@@ -120,7 +120,7 @@ static void process_children(extSVG *Self, svgState &State, const XMLTag &Tag, O
    objVector *sibling = NULL;
    for (auto &child : Tag.Children) {
       if (child.isTag()) {
-         xtag_default(Self, State, child, Vector, &sibling);
+         xtag_default(Self, State, child, Vector, sibling);
       }
    }
 }
@@ -1137,7 +1137,7 @@ static ERROR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Fil
          // live reference being found.
 
          if (auto tagref = find_href_tag(Self, ref)) {
-            xtag_default(Self, State, *tagref, Self->Scene, &vector);
+            xtag_default(Self, State, *tagref, Self->Scene, vector);
          }
          else log.warning("Element id '%s' not found.", ref.c_str());
       }
@@ -1475,12 +1475,12 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
 //********************************************************************************************************************
 
 static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, const XMLTag &Tag,
-   OBJECTPTR Parent, objVector **Result)
+   OBJECTPTR Parent, objVector * &Result)
 {
    pf::Log log(__FUNCTION__);
    objVector *vector;
 
-   *Result = NULL;
+   Result = NULL;
    if (auto error = NewObject(VectorID, &vector); !error) {
       SetOwner(vector, Parent);
       svgState state = State;
@@ -1519,7 +1519,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, cons
             }
          }
 
-         *Result = vector;
+         Result = vector;
          return error;
       }
       else {
@@ -1533,7 +1533,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, cons
 //********************************************************************************************************************
 // See also process_children()
 
-static ERROR xtag_default(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector **Vector)
+static ERROR xtag_default(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1577,24 +1577,24 @@ static ERROR xtag_default(extSVG *Self, svgState &State, const XMLTag &Tag, OBJE
 
       case SVF_LINE:
          process_shape(Self, ID_VECTORPOLYGON, State, Tag, Parent, Vector);
-         Vector[0]->set(FID_Closed, FALSE);
+         Vector->set(FID_Closed, FALSE);
          break;
 
       case SVF_POLYLINE:
          process_shape(Self, ID_VECTORPOLYGON, State, Tag, Parent, Vector);
-         Vector[0]->set(FID_Closed, FALSE);
+         Vector->set(FID_Closed, FALSE);
          break;
 
       case SVF_TEXT: {
          if (!process_shape(Self, ID_VECTORTEXT, State, Tag, Parent, Vector)) {
             if (!Tag.Children.empty()) {
                STRING existing_str = NULL;
-               Vector[0]->get(FID_String, &existing_str);
+               Vector->get(FID_String, &existing_str);
 
                if (auto buffer = Tag.getContent(); !buffer.empty()) {
                   pf::ltrim(buffer);
                   if (existing_str) buffer.insert(0, existing_str);
-                  Vector[0]->set(FID_String, buffer);
+                  Vector->set(FID_String, buffer);
                }
                else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
             }
@@ -1751,7 +1751,7 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector **Vector)
+static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1816,31 +1816,31 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             auto fillname = "url(#" + id + ")";
 
-            if (auto error = NewObject(ID_VECTORRECTANGLE, Vector); !error) {
-               SetOwner(Vector[0], Parent);
-               apply_state(State, Vector[0]);
+            if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
+               SetOwner(Vector, Parent);
+               apply_state(State, Vector);
             
                if (!transform.empty()) {
                   VectorMatrix *matrix;
-                  if (!vecNewMatrix(Vector[0], &matrix)) {
+                  if (!vecNewMatrix(Vector, &matrix)) {
                      vecParseTransform(matrix, transform.c_str());
                   }
                   else log.warning("Failed to create vector transform matrix.");
                }
                
-               if (!filter.empty()) Vector[0]->set(FID_Filter, filter);
+               if (!filter.empty()) Vector->set(FID_Filter, filter);
 
-               Vector[0]->set(x.field(), DOUBLE(x));
-               Vector[0]->set(y.field(), DOUBLE(y));
-               Vector[0]->set(width.field(), DOUBLE(width));
-               Vector[0]->set(height.field(), DOUBLE(height));
-               Vector[0]->set(FID_Fill, fillname);
+               Vector->set(x.field(), DOUBLE(x));
+               Vector->set(y.field(), DOUBLE(y));
+               Vector->set(width.field(), DOUBLE(width));
+               Vector->set(height.field(), DOUBLE(height));
+               Vector->set(FID_Fill, fillname);
 
-               if (!Vector[0]->init()) {
+               if (!Vector->init()) {
                   return ERR_Okay;
                }
                else {
-                  FreeResource(Vector[0]);
+                  FreeResource(Vector);
                   return ERR_Init;
                }
             }
@@ -2063,7 +2063,7 @@ static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
    if (class_id) {
       objVector *shape;
       svgState state;
-      process_shape(Self, class_id, state, tagref, Self->Scene, &shape);
+      process_shape(Self, class_id, state, tagref, Self->Scene, shape);
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
       Parent->set(FID_MorphFlags, LONG(flags));
@@ -2193,14 +2193,14 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          if (vector->init() != ERR_Okay) { FreeResource(vector); return; }
 
          objVector *sibling = NULL;
-         xtag_default(Self, state, *tagref, vector, &sibling);
+         xtag_default(Self, state, *tagref, vector, sibling);
       }
    }
 }
 
 //********************************************************************************************************************
 
-static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector **Vector)
+static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2219,11 +2219,11 @@ static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
    objVector *sibling = NULL;
    for (auto &child : Tag.Children) {
       if (child.isTag()) {
-         xtag_default(Self, state, child, group, &sibling);
+         xtag_default(Self, state, child, group, sibling);
       }
    }
 
-   if (!group->init()) *Vector = group;
+   if (!group->init()) Vector = group;
    else FreeResource(group);
 }
 
@@ -2231,7 +2231,7 @@ static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
 // <svg/> tags can be embedded inside <svg/> tags - this establishes a new viewport.
 // Refer to section 7.9 of the SVG Specification for more information.
 
-static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector **Vector)
+static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
    LONG a;
@@ -2344,12 +2344,12 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 
          switch(StrHash(child.name())) {
             case SVF_DEFS: xtag_defs(Self, state, child, viewport); break;
-            default:       xtag_default(Self, state, child, viewport, &sibling);  break;
+            default:       xtag_default(Self, state, child, viewport, sibling);  break;
          }
       }
    }
 
-   if (!viewport->init()) *Vector = viewport;
+   if (!viewport->init()) Vector = viewport;
    else FreeResource(viewport);
 }
 
