@@ -11,7 +11,7 @@
     </contourGradient>
   </defs>
 
-  <rect fill="#FFFFFF" width="1900" height="1024"/>
+  <rect fill="#ffffff" width="1900" height="1024"/>
 
   <g transform="translate(150,150)" >
     <g transform="scale(0.5,0.5) skewX(10)">
@@ -24,7 +24,8 @@
   <rect x="50" y="410" width="100" height="100" rx="50" ry="30" stroke-width="3" stroke="rgb(0,0,0)"
     transform="skewX(30)"  fill="url(#contour)"/>
 
-  <parasol:spiral id="Spiral" transform="translate(500,150)" stroke="none" stroke-width="4" fill="url(#contour)" scale="5"/>
+  <parasol:spiral id="Spiral" transform="translate(500,150)" stroke="none" stroke-width="4" fill="url(#contour)"
+    spacing="30" loop-limit="3"/>
 
   <rect x="200" y="180" width="200" height="100" fill="url(#contour)" stroke="pink" stroke-width="2" transform="rotate(40,100,100)"/>
 </svg>

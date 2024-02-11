@@ -32,12 +32,12 @@ static void generate_spiral(extVectorSpiral *Vector)
    const DOUBLE cx = (Vector->Dimensions & DMF_SCALED_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
    const DOUBLE cy = (Vector->Dimensions & DMF_SCALED_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
 
-   DOUBLE min_x = DBL_MAX, max_x = DBL_MIN, min_y = DBL_MAX, max_y = DBL_MIN;
+   DOUBLE min_x = DBL_MAX, max_x = -DBL_MAX, min_y = DBL_MAX, max_y = -DBL_MAX;
    DOUBLE angle  = 0;
    DOUBLE radius = Vector->Offset;
    DOUBLE limit  = Vector->LoopLimit * 360.0;
    DOUBLE max_radius = Vector->Radius ? Vector->Radius : DBL_MAX;
-   DOUBLE lx = DBL_MIN, ly = DBL_MIN;
+   DOUBLE lx = -DBL_MAX, ly = -DBL_MAX;
    DOUBLE step = Vector->Step;
 
    if (step > 180) step = 180;

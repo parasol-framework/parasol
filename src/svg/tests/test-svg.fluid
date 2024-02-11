@@ -45,13 +45,13 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testCircles()            hashTestSVG('paths/circles.svg', 0xf6216fcb) end
-function testClip()               hashTestSVG('paths/clip.svg', 0x80d4d1c8) end
-function testMorph()              hashTestSVG('paths/morph.svg', 0x1916764a) end
+function testClip()               hashTestSVG('paths/clip.svg', 0xc3db3581) end
+function testMorph()              hashTestSVG('paths/morph.svg', 0x1ca2a866) end
 function testPolygons()           hashTestSVG('paths/polygons.svg', 0x2f17adec) end
 function testShapes()             hashTestSVG('paths/shapes.svg', 0xd67937c9) end
-function testSpirals()            hashTestSVG('paths/spirals.svg', 0x313798f4) end
+function testSpirals()            hashTestSVG('paths/spirals.svg', 0x669dc06e) end
 function testStrokes()            hashTestSVG('paths/strokes.svg', 0x5210d0f3) end
-function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0xc8c14b95) end
+function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0xe1a1a714) end
 function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0xd981df67) end
 function testTransitions()        hashTestSVG('paths/transitions.svg', 0xcd7ff017) end
 function testWave()               hashTestSVG('paths/wave.svg', 0x4e21371f) end
@@ -91,7 +91,7 @@ function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xd3c
 
 function testCSS()                hashTestSVG('misc/css.svg', 0xfae935d2) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0xd9b1b741) end
-function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x7b7cae5f) end
+function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x9098def0) end
 
 function testClock()              hashTestSVG('images/clock.svg', 0x6397e169) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0x3d4fa90b) end

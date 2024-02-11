@@ -120,8 +120,9 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region against the vector
-that references it.  The alternative is `USERSPACE`, which positions the path relative to the current viewport.
+The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region relative to the 
+vector that references it.  The alternative is `USERSPACE`, which positions the path relative to the vector's parent 
+viewport.
 -END-
 *********************************************************************************************************************/
 

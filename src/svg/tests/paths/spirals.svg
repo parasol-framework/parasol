@@ -18,4 +18,6 @@
 
   <parasol:spiral cx="110" cy="530" r="100" spacing="12" stroke="url(#points)" stroke-width="12" fill="none"/>
 
+  <parasol:spiral transform="translate(500,100)" stroke="blue" stroke-width="4" spacing="30" loop-limit="3"/>
+
 </svg>
