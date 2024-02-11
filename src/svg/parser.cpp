@@ -1757,42 +1757,39 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
    std::string src, filter, transform;
    ARF ratio = ARF::NIL;
-   DUNIT x, y, width, height;
-   svgState state = State;
-   objPicture *pic = NULL;
+   FUNIT x, y, width, height;
 
    for (unsigned a=1; a < Tag.Attribs.size(); a++) {
-      if ((!StrMatch("xlink:href", Tag.Attribs[a].Name)) or
-          (!StrMatch("href", Tag.Attribs[a].Name))) {
-         src = Tag.Attribs[a].Value;
+      auto &name = Tag.Attribs[a].Name;
+      auto &value = Tag.Attribs[a].Value;
+      if ((!StrMatch("xlink:href", name)) or (!StrMatch("href", name))) {
+         src = value;
       }
-      else if (!StrMatch("preserveAspectRatio", Tag.Attribs[a].Name)) {
-         ratio = parse_aspect_ratio(Tag.Attribs[a].Value);
+      else if (!StrMatch("preserveAspectRatio", name)) {
+         ratio = parse_aspect_ratio(value);
       }
-      else if (!StrMatch("x", Tag.Attribs[a].Name)) {
-         x = DUNIT(Tag.Attribs[a].Value);
+      else if (!StrMatch("x", name)) {
+         x = FUNIT(FID_X, value);
       }
-      else if (!StrMatch("y", Tag.Attribs[a].Name)) {
-         y = DUNIT(Tag.Attribs[a].Value);
+      else if (!StrMatch("y", name)) {
+         y = FUNIT(FID_Y, value);
       }
-      else if (!StrMatch("width", Tag.Attribs[a].Name)) {
-         width = DUNIT(Tag.Attribs[a].Value);
-         if ((width IS DU::PIXEL) and (width < 1.0)) return log.warning(ERR_InvalidDimension);
-         else if (width < 0.01) return log.warning(ERR_InvalidDimension);
+      else if (!StrMatch("width", name)) {
+         width = FUNIT(FID_Width, value);
+         if (!width.valid_size()) return log.warning(ERR_InvalidDimension);
       }
-      else if (!StrMatch("height", Tag.Attribs[a].Name)) {
-         height = DUNIT(Tag.Attribs[a].Value);
-         if ((height IS DU::PIXEL) and (height < 1.0)) return log.warning(ERR_InvalidDimension);
-         else if (height < 0.01) return log.warning(ERR_InvalidDimension);
+      else if (!StrMatch("height", name)) {
+         height = FUNIT(FID_Height, value);
+         if (!height.valid_size()) return log.warning(ERR_InvalidDimension);
       }
-      else if (!StrMatch("filter", Tag.Attribs[a].Name)) {
-         filter = Tag.Attribs[a].Value;
+      else if (!StrMatch("filter", name)) {
+         filter = value;
       }
-      else if (!StrMatch("transform", Tag.Attribs[a].Name)) {
-         transform = Tag.Attribs[a].Value;
+      else if (!StrMatch("transform", name)) {
+         transform = value;
       }
-      else if (!StrMatch("crossorigin", Tag.Attribs[a].Name)); // Defines the value of the credentials flag for CORS requests.
-      else if (!StrMatch("decoding", Tag.Attribs[a].Name)); // Hint as to whether image decoding is synchronous or asynchronous
+      else if (!StrMatch("crossorigin", name)); // Defines the value of the credentials flag for CORS requests.
+      else if (!StrMatch("decoding", name)); // Hint as to whether image decoding is synchronous or asynchronous
    }
 
    if (!src.empty()) {
@@ -1800,6 +1797,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
       // This may appear a little confusing because an image can be invoked in SVG like a first-class shape; however to
       // do so would be inconsistent with all other scene graph members being true path-based objects.
 
+      objPicture *pic = NULL;
       load_pic(Self, src, &pic, width, height);
 
       if (pic) {
@@ -1820,7 +1818,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             if (auto error = NewObject(ID_VECTORRECTANGLE, Vector); !error) {
                SetOwner(Vector[0], Parent);
-               apply_state(state, Vector[0]);
+               apply_state(State, Vector[0]);
             
                if (!transform.empty()) {
                   VectorMatrix *matrix;
@@ -1832,10 +1830,10 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
                
                if (!filter.empty()) Vector[0]->set(FID_Filter, filter);
 
-               Vector[0]->set(x.as_field(FID_X), DOUBLE(x));
-               Vector[0]->set(y.as_field(FID_Y), DOUBLE(y));
-               Vector[0]->set(width.as_field(FID_Width), DOUBLE(width));
-               Vector[0]->set(height.as_field(FID_Height), DOUBLE(height));
+               Vector[0]->set(x.field(), DOUBLE(x));
+               Vector[0]->set(y.field(), DOUBLE(y));
+               Vector[0]->set(width.field(), DOUBLE(width));
+               Vector[0]->set(height.field(), DOUBLE(height));
                Vector[0]->set(FID_Fill, fillname);
 
                if (!Vector[0]->init()) {

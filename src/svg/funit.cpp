@@ -1,3 +1,4 @@
+// Field Unit.  Makes it user to define field values that could be fixed or scaled.
 
 enum class DU : UBYTE {
    NIL = 0,
@@ -5,18 +6,31 @@ enum class DU : UBYTE {
    SCALED, // %: Scale to fill empty space
 };
 
-struct DUNIT {
+struct FUNIT {
+   FIELD field_id;
    DOUBLE value;
    DU type;
 
-   DUNIT() : value(0), type(DU::NIL) { }
+   FUNIT() : value(0), type(DU::NIL) { }
 
-   DUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
+   // With field
 
-   DUNIT(const std::string &pValue, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : 
-      DUNIT(pValue.c_str(), pMin) { }
+   FUNIT(FIELD pField, DOUBLE pValue) : field_id(pField), value(pValue) { }
+   
+   FUNIT(FIELD pField, const std::string &pValue, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : 
+      FUNIT(pValue.c_str(), pMin) { field_id = pField; }
 
-   DUNIT(CSTRING pValue, DOUBLE pMin = std::numeric_limits<DOUBLE>::min());
+   FUNIT(FIELD pField, CSTRING pValue, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) :
+      FUNIT(pValue, pMin) { field_id = pField; };
+
+   // Without field
+
+   FUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
+
+   FUNIT(const std::string &pValue, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : 
+      FUNIT(pValue.c_str(), pMin) { }
+
+   FUNIT(CSTRING pValue, DOUBLE pMin = std::numeric_limits<DOUBLE>::min());
 
    constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }
@@ -24,12 +38,16 @@ struct DUNIT {
    operator double() const{ return value; }
    operator DU() const { return type; }
 
-   LARGE as_field(FIELD FieldID) const {
-      return  (type IS DU::SCALED) ? (FieldID|TSCALE) : FieldID;
+   LARGE field() const {
+      return (type IS DU::SCALED) ? (field_id|TSCALE) : field_id;
+   }
+
+   bool valid_size() const { // Return true if this is a valid width/height
+      return (value >= 0.01);
    }
 };
 
-DUNIT::DUNIT(CSTRING pValue, DOUBLE pMin)
+FUNIT::FUNIT(CSTRING pValue, DOUBLE pMin)
 {
    bool is_number = true;
    auto v = pValue;
