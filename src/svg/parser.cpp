@@ -1611,8 +1611,9 @@ static ERROR xtag_default(extSVG *Self, svgState &State, const XMLTag &Tag, OBJE
 }
 
 //********************************************************************************************************************
+// The Width/Height can be zero if the original image dimensions are desired.
 
-static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE Width, DOUBLE Height)
+static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE Width = 0, DOUBLE Height = 0)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1754,35 +1755,52 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 {
    pf::Log log(__FUNCTION__);
 
-   std::string src;
+   std::string src, filter, transform;
    ARF ratio = ARF::NIL;
-   DOUBLE width = 0, height = 0;
+   DUNIT x, y, width, height;
    svgState state = State;
    objPicture *pic = NULL;
 
    for (unsigned a=1; a < Tag.Attribs.size(); a++) {
-      if (!StrMatch("xlink:href", Tag.Attribs[a].Name)) {
+      if ((!StrMatch("xlink:href", Tag.Attribs[a].Name)) or
+          (!StrMatch("href", Tag.Attribs[a].Name))) {
          src = Tag.Attribs[a].Value;
       }
       else if (!StrMatch("preserveAspectRatio", Tag.Attribs[a].Name)) {
          ratio = parse_aspect_ratio(Tag.Attribs[a].Value);
       }
+      else if (!StrMatch("x", Tag.Attribs[a].Name)) {
+         x = DUNIT(Tag.Attribs[a].Value);
+      }
+      else if (!StrMatch("y", Tag.Attribs[a].Name)) {
+         y = DUNIT(Tag.Attribs[a].Value);
+      }
       else if (!StrMatch("width", Tag.Attribs[a].Name)) {
-         width = read_unit(Tag.Attribs[a].Value, NULL);
-         if (width < 1) return log.warning(ERR_InvalidDimension);
+         width = DUNIT(Tag.Attribs[a].Value);
+         if ((width IS DU::PIXEL) and (width < 1.0)) return log.warning(ERR_InvalidDimension);
+         else if (width < 0.01) return log.warning(ERR_InvalidDimension);
       }
       else if (!StrMatch("height", Tag.Attribs[a].Name)) {
-         height = read_unit(Tag.Attribs[a].Value, NULL);
-         if (height < 1) return log.warning(ERR_InvalidDimension);
+         height = DUNIT(Tag.Attribs[a].Value);
+         if ((height IS DU::PIXEL) and (height < 1.0)) return log.warning(ERR_InvalidDimension);
+         else if (height < 0.01) return log.warning(ERR_InvalidDimension);
       }
+      else if (!StrMatch("filter", Tag.Attribs[a].Name)) {
+         filter = Tag.Attribs[a].Value;
+      }
+      else if (!StrMatch("transform", Tag.Attribs[a].Name)) {
+         transform = Tag.Attribs[a].Value;
+      }
+      else if (!StrMatch("crossorigin", Tag.Attribs[a].Name)); // Defines the value of the credentials flag for CORS requests.
+      else if (!StrMatch("decoding", Tag.Attribs[a].Name)); // Hint as to whether image decoding is synchronous or asynchronous
    }
 
    if (!src.empty()) {
-      load_pic(Self, src, &pic, width, height);
-
       // Load the image and add it to the vector definition.  It will be rendered as a rectangle within the scene.
-      // This may appear a little confusing as an image can be invoked in SVG like a first-class shape, however to
-      // treat them as such would be out of step with all other scene graph members being true path-based objects.
+      // This may appear a little confusing because an image can be invoked in SVG like a first-class shape; however to
+      // do so would be inconsistent with all other scene graph members being true path-based objects.
+
+      load_pic(Self, src, &pic, width, height);
 
       if (pic) {
          if (auto image = objVectorImage::create::global(
@@ -1800,17 +1818,37 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             auto fillname = "url(#" + id + ")";
 
-            // Use a rectangle shape to host the image
+            if (auto error = NewObject(ID_VECTORRECTANGLE, Vector); !error) {
+               SetOwner(Vector[0], Parent);
+               apply_state(state, Vector[0]);
+            
+               if (!transform.empty()) {
+                  VectorMatrix *matrix;
+                  if (!vecNewMatrix(Vector[0], &matrix)) {
+                     vecParseTransform(matrix, transform.c_str());
+                  }
+                  else log.warning("Failed to create vector transform matrix.");
+               }
+               
+               if (!filter.empty()) Vector[0]->set(FID_Filter, filter);
 
-            process_shape(Self, ID_VECTORRECTANGLE, state, Tag, Parent, Vector);
-            Vector[0]->set(FID_Fill, "none");
+               Vector[0]->set(x.as_field(FID_X), DOUBLE(x));
+               Vector[0]->set(y.as_field(FID_Y), DOUBLE(y));
+               Vector[0]->set(width.as_field(FID_Width), DOUBLE(width));
+               Vector[0]->set(height.as_field(FID_Height), DOUBLE(height));
+               Vector[0]->set(FID_Fill, fillname);
 
-            if (width) Vector[0]->set(FID_Width, width);
-            if (height) Vector[0]->set(FID_Height, height);
-            Vector[0]->set(FID_Fill, fillname);
-            return ERR_Okay;
+               if (!Vector[0]->init()) {
+                  return ERR_Okay;
+               }
+               else {
+                  FreeResource(Vector[0]);
+                  return ERR_Init;
+               }
+            }
+            else return ERR_CreateObject;
          }
-         else return ERR_Failed;
+         else return ERR_CreateObject;
       }
       else log.warning("Failed to load picture via xlink:href.");
    }
@@ -2939,7 +2977,6 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
             case SVF_CX: field_id = FID_CenterX; break;
             case SVF_CY: field_id = FID_CenterY; break;
             case SVF_R:  field_id = FID_Radius; break;
-            case SVF_SCALE:    field_id = FID_Scale; break;
             case SVF_OFFSET:   field_id = FID_Offset; break;
             case SVF_STEP:     field_id = FID_Step; break;
             case SVF_VERTICES: field_id = FID_Vertices; break;

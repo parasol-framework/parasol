@@ -122,6 +122,7 @@ static void  xtag_symbol(extSVG *, const XMLTag &);
 
 //********************************************************************************************************************
 
+#include "dunit.cpp"
 #include "utility.cpp"
 #include "save_svg.cpp"
 
