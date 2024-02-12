@@ -185,6 +185,22 @@ static CSTRING folder(extSVG *Self)
 
 //********************************************************************************************************************
 
+static void parse_transform(objVector *Vector, const std::string Value) 
+{
+   if ((Vector->Class->BaseClassID IS ID_VECTOR) and (!Value.empty())) {
+      VectorMatrix *matrix;
+      if (!vecNewMatrix((objVector *)Vector, &matrix)) {
+         vecParseTransform(matrix, Value.c_str());
+      }
+      else {
+         pf::Log log(__FUNCTION__);
+         log.warning("Failed to create vector transform matrix.");
+      }
+   }
+}
+
+//********************************************************************************************************************
+
 static const std::string uri_name(const std::string Ref)
 {
    LONG skip = 0;

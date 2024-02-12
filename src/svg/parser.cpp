@@ -175,24 +175,27 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
 
    log.traceBranch("Tag: %d", Tag.ID);
 
-   OBJECTPTR clip;
+   objVector *clip;
    std::string id;
 
    if (!NewObject(ID_VECTORCLIP, &clip)) {
       clip->setFields(
          fl::Owner(Self->Scene->UID), // All clips belong to the root page to prevent hierarchy issues.
-         fl::Name("SVGClip"),
-         fl::Units(VUNIT::BOUNDING_BOX)
+         fl::Name("SVGClip")
       );
 
       for (unsigned a=1; a < Tag.Attribs.size(); a++) {
-         if (Tag.Attribs[a].Value.empty()) continue;
+         auto &value = Tag.Attribs[a].Value;
+         if (value.empty()) continue;
 
          switch(StrHash(Tag.Attribs[a].Name)) {
-            case SVF_ID: id = Tag.Attribs[a].Value; break;
-            case SVF_TRANSFORM: break;
-            case SVF_CLIPPATHUNITS: break;
-            case SVF_EXTERNALRESOURCESREQUIRED: break;
+            case SVF_ID: id = value; break;
+            case SVF_TRANSFORM: parse_transform(clip, value); break;
+            case SVF_CLIPPATHUNITS:
+               if (!StrMatch("userSpaceOnUse", value)) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
+               else if (!StrMatch("objectBoundingBox", value)) clip->set(FID_Units, LONG(VUNIT::BOUNDING_BOX));
+               break;
+            //case SVF_EXTERNALRESOURCESREQUIRED: break; // Deprecated SVG attribute
          }
       }
 
@@ -200,7 +203,9 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
          if (!InitObject(clip)) {
             svgState state;
 
-            // Valid child elements for clip-path are: circle, ellipse, line, path, polygon, polyline, rect, text, use, animate
+            // Valid child elements for clip-path are:
+            // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
+            // Commands: use, animate
 
             process_children(Self, state, Tag, clip);
             scAddDef(Self->Scene, id.c_str(), clip);
@@ -1819,15 +1824,9 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
             if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
                SetOwner(Vector, Parent);
                apply_state(State, Vector);
-            
-               if (!transform.empty()) {
-                  VectorMatrix *matrix;
-                  if (!vecNewMatrix(Vector, &matrix)) {
-                     vecParseTransform(matrix, transform.c_str());
-                  }
-                  else log.warning("Failed to create vector transform matrix.");
-               }
-               
+
+               if (!transform.empty()) parse_transform(Vector, transform);
+
                if (!filter.empty()) Vector->set(FID_Filter, filter);
 
                Vector->set(x.field(), DOUBLE(x));
@@ -3152,16 +3151,8 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
          else Vector->set(FID_Fill, StrValue);
          break;
 
-      case SVF_TRANSFORM: {
-         if (Vector->Class->BaseClassID IS ID_VECTOR) {
-            VectorMatrix *matrix;
-            if (!vecNewMatrix((objVector *)Vector, &matrix)) {
-               vecParseTransform(matrix, StrValue.c_str());
-            }
-            else log.warning("Failed to create vector transform matrix.");
-         }
-         break;
-      }
+      case SVF_TRANSFORM: parse_transform(Vector, StrValue); break;
+
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
       case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, StrToFloat(StrValue)); break;
