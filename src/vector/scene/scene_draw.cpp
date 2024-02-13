@@ -29,8 +29,12 @@ public:
       extVectorClip *m_clip;
 
       public:
+
       ClipBuffer() : m_shape(NULL), m_clip(NULL) { }
-      ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) : m_state(&pState), m_shape(pShape), m_clip(pClip) { }
+
+      ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) : 
+         m_state(&pState), m_shape(pShape), m_clip(pClip) { }
+
       void draw();
       void draw_clips(extVector *, agg::rasterizer_scanline_aa<> &, agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &, 
          agg::trans_affine &);
@@ -142,77 +146,129 @@ void SceneRenderer::ClipBuffer::draw()
 {
    pf::Log log;
 
-   // Ensure that the Bounds are up to date and refresh them if necessary.
+   if (m_clip) {
+      // Ensure that the Bounds are up to date and refresh them if necessary.
 
-   if ((m_clip->Child) and (!m_clip->RefreshBounds)) {
-      if (check_branch_dirty((extVector *)m_clip->Child)) m_clip->RefreshBounds = true;
+      if ((m_clip->Child) and (!m_clip->RefreshBounds)) {
+         if (check_branch_dirty((extVector *)m_clip->Child)) m_clip->RefreshBounds = true;
+      }
+
+      if (m_clip->RefreshBounds) {
+         m_clip->RefreshBounds = false;
+         m_clip->GeneratePath(m_clip);
+      }
+
+      if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
+
+      auto t_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
+      auto t_bound = get_bounds(t_bound_path);
+      m_width  = F2T(t_bound.right + (m_clip->LargestStroke * 0.5)) + 2;
+      m_height = F2T(t_bound.bottom + (m_clip->LargestStroke * 0.5)) + 2;
+
+      if ((m_width <= 0) or (m_height <= 0)) {
+         DEBUG_BREAK
+         log.warning(ERR_InvalidDimension);
+         return;
+      }
+
+      if (m_width > 8192)  m_width = 8192;
+      if (m_height > 8192) m_height = 8192;
+
+      #ifdef DBG_DRAW
+         log.trace("%s #%d clipping mask with bounds %g %g %g %g (%dx%d)", m_shape->className(), m_shape->UID, t_bound.left, t_bound.top, t_bound.right, t_bound.bottom, m_width, m_height);
+      #endif
+
+      m_bitmap.resize(m_width * m_height);
+
+      // Configure an 8-bit monochrome bitmap for holding the mask
+
+      m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
+      agg::pixfmt_gray8 pixf(m_renderer);
+      agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
+      agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
+      agg::rasterizer_scanline_aa<> rasterizer;
+
+      LONG x = F2T(t_bound.left);
+      LONG y = F2T(t_bound.top) * m_width;
+      if (x < 0) x = 0;
+      if (y < 0) y = 0;
+      for (; y < m_height; y += m_width) {
+         ClearMemory(m_bitmap.data() + y + x, m_width - x);
+      }
+
+      solid.color(agg::gray8(0xff, 0xff));
+
+      // Every child vector of the VectorClip that exports a path will be rendered to the mask.
+
+      auto transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
+
+      if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid, transform);
+      else if (!m_clip->BasePath.empty()) {
+         // A client can provide its own clipping path by setting the BasePath.  This is more optimal than
+         // using child vectors.
+         //
+         // NB: The client must opt to use either BasePath or Children and not both - this is because
+         // both will be additive when the intention may be for children to be additive and BasePath 
+         // subtractive.
+
+         agg::scanline32_p8 sl;
+         agg::path_storage final_path(m_clip->BasePath);
+
+         rasterizer.reset();
+         rasterizer.add_path(final_path);
+         agg::render_scanlines(rasterizer, sl, solid);
+      }
    }
+   else {
+      // If m_clip is undefined then this clip was created by a viewport.  Its vpBounds path will serve as the
+      // clipping region.
 
-   if (m_clip->RefreshBounds) {
-      m_clip->RefreshBounds = false;
-      m_clip->GeneratePath(m_clip);
-   }
+      auto vp = (extVectorViewport *)m_shape;
+      if (vp->dirty()) {
+         gen_vector_path(vp);
+         vp->Dirty = RC::NIL;
+      }
 
-   if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
+      m_width  = F2T(vp->vpBounds.right) + 2;
+      m_height = F2T(vp->vpBounds.bottom) + 2;
 
-   auto t_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
-   auto t_bound = get_bounds(t_bound_path);
-   m_width  = F2T(t_bound.right + (m_clip->LargestStroke * 0.5)) + 2;
-   m_height = F2T(t_bound.bottom + (m_clip->LargestStroke * 0.5)) + 2;
+      if ((m_width <= 0) or (m_height <= 0)) {
+         DEBUG_BREAK
+         log.warning(ERR_InvalidDimension);
+         return;
+      }
 
-   if ((m_width <= 0) or (m_height <= 0)) {
-      DEBUG_BREAK
-      log.warning(ERR_InvalidDimension);
-      return;
-   }
+      if (m_width > 8192)  m_width = 8192;
+      if (m_height > 8192) m_height = 8192;
 
-   if (m_width > 8192)  m_width = 8192;
-   if (m_height > 8192) m_height = 8192;
+      m_bitmap.resize(m_width * m_height);
 
-   #ifdef DBG_DRAW
-      log.trace("%s #%d clipping mask with bounds %g %g %g %g (%dx%d)", m_shape->className(), m_shape->UID, t_bound.left, t_bound.top, t_bound.right, t_bound.bottom, m_width, m_height);
-   #endif
+      // Configure an 8-bit monochrome bitmap for holding the mask
 
-   m_bitmap.resize(m_width * m_height);
+      m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
+      agg::pixfmt_gray8 pixf(m_renderer);
+      agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
+      agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
+      agg::rasterizer_scanline_aa<> rasterizer;
 
-   // Configure an 8-bit monochrome bitmap for holding the mask
+      LONG x = F2T(vp->vpBounds.left);
+      LONG y = F2T(vp->vpBounds.top) * m_width;
+      if (x < 0) x = 0;
+      if (y < 0) y = 0;
+      for (; y < m_height; y += m_width) {
+         ClearMemory(m_bitmap.data() + y + x, m_width - x);
+      }
 
-   m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
-   agg::pixfmt_gray8 pixf(m_renderer);
-   agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
-   agg::rasterizer_scanline_aa<> rasterizer;
+      solid.color(agg::gray8(0xff, 0xff));
 
-   LONG x = F2T(t_bound.left);
-   LONG y = t_bound.top * m_width;
-   if (x < 0) x = 0;
-   if (y < 0) y = 0;
-   for (; y < m_height; y += m_width) {
-      ClearMemory(m_bitmap.data() + y + x, m_width - x);
-   }
+      if (!vp->BasePath.empty()) {
+         agg::scanline32_p8 sl;
+         agg::path_storage final_path(vp->BasePath);
 
-   solid.color(agg::gray8(0xff, 0xff));
-
-   // Every child vector of the VectorClip that exports a path will be rendered to the mask.
-
-   auto transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
-
-   if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid, transform);
-
-   // A client can provide its own clipping path by setting the BasePath.  This is more optimal than
-   // using child vectors - the VectorViewport is one such client that uses this feature.
-   //
-   // NB: The client should opt to use either BasePath or Children and not both - this is because
-   // both will be additive when the intention may be for children to be additive and BasePath 
-   // subtractive.
-
-   if (!m_clip->BasePath.empty()) {
-      agg::scanline32_p8 sl;
-      agg::path_storage final_path(m_clip->BasePath);
-
-      rasterizer.reset();
-      rasterizer.add_path(final_path);
-      agg::render_scanlines(rasterizer, sl, solid);
+         rasterizer.reset();
+         rasterizer.add_path(final_path);
+         agg::render_scanlines(rasterizer, sl, solid);
+      }
    }
 }
 
@@ -941,8 +997,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             #endif
 
             if ((state.mClip.right > state.mClip.left) and (state.mClip.bottom > state.mClip.top)) { // Continue only if the clipping region is visible
-               if (view->vpClipMask) {
-                  state.mClipStack->emplace(state, view->vpClipMask, view);
+               if (view->vpClip) {
+                  state.mClipStack->emplace(state, (extVectorClip *)NULL, view);
                   state.mClipStack->top().draw();
                }
 
@@ -1020,7 +1076,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                if (view->ClipMask) state.mClipStack->pop();
 
-               if (view->vpClipMask) state.mClipStack->pop();
+               if (view->vpClip) state.mClipStack->pop();
 
                mView = saved_viewport;
 

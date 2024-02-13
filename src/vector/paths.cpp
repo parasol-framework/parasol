@@ -227,16 +227,8 @@ void gen_vector_path(extVector *Vector)
 
       if (((Vector->Transform.shx) or (Vector->Transform.shy)) and
           ((view->vpOverflowX != VOF::VISIBLE) or (view->vpOverflowY != VOF::VISIBLE))) {
-         log.trace("A clip path will be created for viewport #%d.", Vector->UID);
-
-         if (!view->vpClipMask) view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));
-
-         if (view->vpClipMask) {
-            view->vpClipMask->set_clip_path(Vector->BasePath); // NB: Path is already transformed
-            view->vpClipMask->Viewport = true;
-         }
+         view->vpClip = true;
       }
-      else if (view->vpClipMask) { FreeResource(view->vpClipMask); view->vpClipMask = NULL; }
 
       log.trace("Clipping boundary for #%d is %g %g %g %g",
          Vector->UID, view->vpBounds.left, view->vpBounds.top, view->vpBounds.right, view->vpBounds.bottom);

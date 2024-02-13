@@ -34,15 +34,8 @@ static void generate_clip(extVectorClip *Clip)
          if (scan->dirty()) gen_vector_path(scan);
 
          if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
-            // If vpClipMask is set, then the viewport is masked.  Unmasked viewports can be ignored.
-            if (((extVectorViewport *)scan)->vpClipMask) {
-               auto vp_bounds = ((extVectorViewport *)scan)->vpClipMask;
-               b.shrinking(vp_bounds);
-            }
-            if (((extVectorViewport *)scan)->ClipMask) {
-               auto vp_bounds = ((extVectorViewport *)scan)->ClipMask;
-               b.shrinking(vp_bounds);
-            }
+            // For the sake of keeping things simple, viewports are treated as containers and this
+            // will work fine.  Any optimisation would require tests to be constructed first.
          }
          else if (scan->Class->BaseClassID IS ID_VECTOR) {           
             TClipRectangle bounds;
