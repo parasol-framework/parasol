@@ -87,7 +87,7 @@ function declareErrors()
     "StatementUnsatisfied",
     "ObjectCorrupt",
     "OwnerPassThrough",
-    "UnsupportedOwner|BadOwner",
+    "UnsupportedOwner",
     "ExclusiveDenied|AccessObject",
     "AllocMemory",
     "NewObject",

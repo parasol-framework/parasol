@@ -97,7 +97,6 @@
 #define ERR_ObjectCorrupt 80
 #define ERR_OwnerPassThrough 81
 #define ERR_UnsupportedOwner 82
-#define ERR_BadOwner 82
 #define ERR_ExclusiveDenied 83
 #define ERR_AccessObject 83
 #define ERR_AllocMemory 84

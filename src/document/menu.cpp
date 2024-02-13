@@ -1,5 +1,8 @@
 //********************************************************************************************************************
-// Default template for building the menu's layout.
+// Default template for building the menu's layout.  The use of "placement=background" ensures that the content is
+// displayed in the view and not the page.
+//
+// The client can override this default by providing their own template in a <style> tag.
 
 static const char * glSVGHeader = R"LONGSTRING(
 <svg placement="background">
