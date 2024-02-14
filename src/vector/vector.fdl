@@ -594,6 +594,22 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "ResetMatrix")
 
   c_insert([[
+
+//********************************************************************************************************************
+
+inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
+{
+   DOUBLE t0 = This.ScaleX * Other.ScaleX + This.ShearY * Other.ShearX;
+   DOUBLE t2 = This.ShearX * Other.ScaleX + This.ScaleY * Other.ShearX;
+   DOUBLE t4 = This.TranslateX * Other.ScaleX + This.TranslateY * Other.ShearX + Other.TranslateX;
+   This.ShearY     = This.ScaleX * Other.ShearY + This.ShearY * Other.ScaleY;
+   This.ScaleY     = This.ShearX * Other.ShearY + This.ScaleY * Other.ScaleY;
+   This.TranslateY = This.TranslateX  * Other.ShearY + This.TranslateY * Other.ScaleY + Other.TranslateY;
+   This.ScaleX     = t0;
+   This.ShearX     = t2;
+   This.TranslateX = t4;
+}
+
 //********************************************************************************************************************
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {

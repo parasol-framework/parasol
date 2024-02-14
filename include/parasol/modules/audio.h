@@ -178,48 +178,48 @@ struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
-INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
+INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) noexcept {
    struct sndOpenChannels args = { Total, (LONG)0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) {
+INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) noexcept {
    struct sndCloseChannels args = { Handle };
    return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
    struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
+INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) noexcept {
    struct sndRemoveSample args = { Handle };
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
+INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) noexcept {
    struct sndSetSampleLength args = { Sample, Length };
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
    struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) {
+INLINE ERROR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) noexcept {
    struct sndBeep args = { Pitch, Duration, Volume };
    return(Action(MT_SndBeep, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) {
+INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
    struct sndSetVolume args = { Index, Name, Flags, Channel, Volume };
    return(Action(MT_SndSetVolume, (OBJECTPTR)Ob, &args));
 }
@@ -242,78 +242,78 @@ class objAudio : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
 
    // Customised field setting
 
-   inline ERROR setOutputRate(const LONG Value) {
+   inline ERROR setOutputRate(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setInputRate(const LONG Value) {
+   inline ERROR setInputRate(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->InputRate = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setQuality(const LONG Value) {
+   inline ERROR setQuality(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const ADF Value) {
+   inline ERROR setFlags(const ADF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBitDepth(const LONG Value) {
+   inline ERROR setBitDepth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPeriods(const LONG Value) {
+   inline ERROR setPeriods(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPeriodSize(const LONG Value) {
+   inline ERROR setPeriodSize(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setDevice(T && Value) {
+   template <class T> inline ERROR setDevice(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setMasterVolume(const DOUBLE Value) {
+   inline ERROR setMasterVolume(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setMute(const LONG Value) {
+   inline ERROR setMute(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setStereo(const LONG Value) {
+   inline ERROR setStereo(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -353,18 +353,18 @@ class objSound : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return InitObject(this); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERROR init() noexcept { return InitObject(this); }
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
@@ -374,133 +374,133 @@ class objSound : public BaseClass {
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERROR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+   inline ERROR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
 
    // Customised field setting
 
-   inline ERROR setVolume(const DOUBLE Value) {
+   inline ERROR setVolume(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setPan(const DOUBLE Value) {
+   inline ERROR setPan(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setPosition(const LARGE Value) {
+   inline ERROR setPosition(const LARGE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERROR setPriority(const LONG Value) {
+   inline ERROR setPriority(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLength(const LONG Value) {
+   inline ERROR setLength(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOctave(const LONG Value) {
+   inline ERROR setOctave(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const SDF Value) {
+   inline ERROR setFlags(const SDF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFrequency(const LONG Value) {
+   inline ERROR setFrequency(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Frequency = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPlayback(const LONG Value) {
+   inline ERROR setPlayback(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setCompression(const LONG Value) {
+   inline ERROR setCompression(const LONG Value) noexcept {
       this->Compression = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBytesPerSecond(const LONG Value) {
+   inline ERROR setBytesPerSecond(const LONG Value) noexcept {
       this->BytesPerSecond = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBitsPerSample(const LONG Value) {
+   inline ERROR setBitsPerSample(const LONG Value) noexcept {
       this->BitsPerSample = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAudio(OBJECTID Value) {
+   inline ERROR setAudio(OBJECTID Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->AudioID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setLoopStart(const LONG Value) {
+   inline ERROR setLoopStart(const LONG Value) noexcept {
       this->LoopStart = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setLoopEnd(const LONG Value) {
+   inline ERROR setLoopEnd(const LONG Value) noexcept {
       this->LoopEnd = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setStream(const STREAM Value) {
+   inline ERROR setStream(const STREAM Value) noexcept {
       this->Stream = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setOnStop(FUNCTION Value) {
+   inline ERROR setOnStop(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setNote(T && Value) {
+   template <class T> inline ERROR setNote(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);

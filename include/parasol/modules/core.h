@@ -2724,15 +2724,16 @@ class LogLevel {
 //********************************************************************************************************************
 // Refer to BaseClass->get() to see what this is about...
 
-template <class T> inline LARGE FIELD_TAG()   { return 0; }
-template <> inline LARGE FIELD_TAG<DOUBLE>()  { return TDOUBLE; }
-template <> inline LARGE FIELD_TAG<LONG>()    { return TLONG; }
-template <> inline LARGE FIELD_TAG<FLOAT>()   { return TFLOAT; }
-template <> inline LARGE FIELD_TAG<APTR>()    { return TPTR; }
-template <> inline LARGE FIELD_TAG<LARGE>()   { return TLARGE; }
-template <> inline LARGE FIELD_TAG<CSTRING>() { return TSTRING; }
-template <> inline LARGE FIELD_TAG<STRING>()  { return TSTRING; }
-template <> inline LARGE FIELD_TAG<SCALE>()   { return TDOUBLE|TSCALE; }
+template <class T> inline LARGE FIELD_TAG()     { return 0; }
+template <> inline LARGE FIELD_TAG<DOUBLE>()    { return TDOUBLE; }
+template <> inline LARGE FIELD_TAG<LONG>()      { return TLONG; }
+template <> inline LARGE FIELD_TAG<FLOAT>()     { return TFLOAT; }
+template <> inline LARGE FIELD_TAG<OBJECTPTR>() { return TPTR; }
+template <> inline LARGE FIELD_TAG<APTR>()      { return TPTR; }
+template <> inline LARGE FIELD_TAG<LARGE>()     { return TLARGE; }
+template <> inline LARGE FIELD_TAG<CSTRING>()   { return TSTRING; }
+template <> inline LARGE FIELD_TAG<STRING>()    { return TSTRING; }
+template <> inline LARGE FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 
 //********************************************************************************************************************
 // Header used for all objects.
@@ -3238,7 +3239,7 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
 struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
 
-INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
+INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) noexcept {
    struct mcFindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
    ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
    if (Field) *Field = args.Field;
@@ -3271,92 +3272,92 @@ class objMetaClass : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setClassVersion(const DOUBLE Value) {
+   inline ERROR setClassVersion(const DOUBLE Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ClassVersion = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
+   inline ERROR setFields(const struct FieldArray * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
-   template <class T> inline ERROR setClassName(T && Value) {
+   template <class T> inline ERROR setClassName(T && Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ClassName = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setFileExtension(T && Value) {
+   template <class T> inline ERROR setFileExtension(T && Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FileExtension = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setFileDescription(T && Value) {
+   template <class T> inline ERROR setFileDescription(T && Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FileDescription = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setFileHeader(T && Value) {
+   template <class T> inline ERROR setFileHeader(T && Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FileHeader = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Path = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSize(const LONG Value) {
+   inline ERROR setSize(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Size = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const CLF Value) {
+   inline ERROR setFlags(const CLF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setClass(const CLASSID Value) {
+   inline ERROR setClass(const CLASSID Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ClassID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBaseClass(const CLASSID Value) {
+   inline ERROR setBaseClass(const CLASSID Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->BaseClassID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCategory(const CCF Value) {
+   inline ERROR setCategory(const CCF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Category = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMethods(const APTR Value, LONG Elements) {
+   inline ERROR setMethods(const APTR Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
-   inline ERROR setActions(APTR Value) {
+   inline ERROR setActions(APTR Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08000400, Value, 1);
    }
 
-   template <class T> inline ERROR setName(T && Value) {
+   template <class T> inline ERROR setName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
@@ -3384,7 +3385,7 @@ class objStorageDevice : public BaseClass {
 
    // Customised field setting
 
-   template <class T> inline ERROR setVolume(T && Value) {
+   template <class T> inline ERROR setVolume(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800504, to_cstring(Value), 1);
@@ -3418,43 +3419,43 @@ struct flReadLine { STRING Result;  };
 struct flNext { objFile * File;  };
 struct flWatch { FUNCTION * Callback; LARGE Custom; MFF Flags;  };
 
-INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, FL Flags, LONG Length) {
+INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, FL Flags, LONG Length) noexcept {
    struct flStartStream args = { SubscriberID, Flags, Length };
    return(Action(MT_FlStartStream, (OBJECTPTR)Ob, &args));
 }
 
 #define flStopStream(obj) Action(MT_FlStopStream,(obj),0)
 
-INLINE ERROR flDelete(APTR Ob, FUNCTION * Callback) {
+INLINE ERROR flDelete(APTR Ob, FUNCTION * Callback) noexcept {
    struct flDelete args = { Callback };
    return(Action(MT_FlDelete, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR flMove(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
+INLINE ERROR flMove(APTR Ob, CSTRING Dest, FUNCTION * Callback) noexcept {
    struct flMove args = { Dest, Callback };
    return(Action(MT_FlMove, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
+INLINE ERROR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) noexcept {
    struct flCopy args = { Dest, Callback };
    return(Action(MT_FlCopy, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) {
+INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) noexcept {
    struct flSetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
    return(Action(MT_FlSetDate, (OBJECTPTR)Ob, &args));
 }
 
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
-INLINE ERROR flNext(APTR Ob, objFile ** File) {
+INLINE ERROR flNext(APTR Ob, objFile ** File) noexcept {
    struct flNext args = { (objFile *)0 };
    ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
    return(error);
 }
 
-INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) {
+INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) noexcept {
    struct flWatch args = { Callback, Custom, Flags };
    return(Action(MT_FlWatch, (OBJECTPTR)Ob, &args));
 }
@@ -3475,14 +3476,14 @@ class objFile : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR query() { return Action(AC_Query, this, NULL); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR query() noexcept { return Action(AC_Query, this, NULL); }
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
@@ -3492,25 +3493,25 @@ class objFile : public BaseClass {
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERROR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR rename(CSTRING Name) {
+   inline ERROR rename(CSTRING Name) noexcept {
       struct acRename args = { Name };
       return Action(AC_Rename, this, &args);
    }
-   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
+   inline ERROR reset() noexcept { return Action(AC_Reset, this, NULL); }
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
+   inline ERROR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -3519,7 +3520,7 @@ class objFile : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -3528,7 +3529,7 @@ class objFile : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
@@ -3536,72 +3537,72 @@ class objFile : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setPosition(const LARGE Value) {
+   inline ERROR setPosition(const LARGE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERROR setFlags(const FL Value) {
+   inline ERROR setFlags(const FL Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setStatic(const LONG Value) {
+   inline ERROR setStatic(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Static = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setTarget(OBJECTID Value) {
+   inline ERROR setTarget(OBJECTID Value) noexcept {
       this->TargetID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setDate(APTR Value) {
+   inline ERROR setDate(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERROR setCreated(APTR Value) {
+   inline ERROR setCreated(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setPermissions(const LONG Value) {
+   inline ERROR setPermissions(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setSize(const LARGE Value) {
+   inline ERROR setSize(const LARGE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   template <class T> inline ERROR setLink(T && Value) {
+   template <class T> inline ERROR setLink(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setUser(const LONG Value) {
+   inline ERROR setUser(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setGroup(const LONG Value) {
+   inline ERROR setGroup(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3635,51 +3636,51 @@ struct cfgSortByKey { CSTRING Key; LONG Descending;  };
 struct cfgMergeFile { CSTRING Path;  };
 struct cfgMerge { OBJECTPTR Source;  };
 
-INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
+INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) noexcept {
    struct cfgReadValue args = { Group, Key, (CSTRING)0 };
    ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
 }
 
-INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
    struct cfgSet args = { Group, Key, Data };
    return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
    struct cfgWriteValue args = { Group, Key, Data };
    return(Action(MT_CfgWriteValue, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgDeleteKey(APTR Ob, CSTRING Group, CSTRING Key) {
+INLINE ERROR cfgDeleteKey(APTR Ob, CSTRING Group, CSTRING Key) noexcept {
    struct cfgDeleteKey args = { Group, Key };
    return(Action(MT_CfgDeleteKey, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) {
+INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) noexcept {
    struct cfgDeleteGroup args = { Group };
    return(Action(MT_CfgDeleteGroup, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) {
+INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) noexcept {
    struct cfgGetGroupFromIndex args = { Index, (CSTRING)0 };
    ERROR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
    if (Group) *Group = args.Group;
    return(error);
 }
 
-INLINE ERROR cfgSortByKey(APTR Ob, CSTRING Key, LONG Descending) {
+INLINE ERROR cfgSortByKey(APTR Ob, CSTRING Key, LONG Descending) noexcept {
    struct cfgSortByKey args = { Key, Descending };
    return(Action(MT_CfgSortByKey, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) {
+INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) noexcept {
    struct cfgMergeFile args = { Path };
    return(Action(MT_CfgMergeFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgMerge(APTR Ob, OBJECTPTR Source) {
+INLINE ERROR cfgMerge(APTR Ob, OBJECTPTR Source) noexcept {
    struct cfgMerge args = { Source };
    return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
 }
@@ -3766,41 +3767,41 @@ class objConfig : public BaseClass {
 
    // Action stubs
 
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR sort() { return Action(AC_Sort, this, NULL); }
+   inline ERROR sort() noexcept { return Action(AC_Sort, this, NULL); }
 
    // Customised field setting
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setKeyFilter(T && Value) {
+   template <class T> inline ERROR setKeyFilter(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setGroupFilter(T && Value) {
+   template <class T> inline ERROR setGroupFilter(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setFlags(const CNF Value) {
+   inline ERROR setFlags(const CNF Value) noexcept {
       this->Flags = Value;
       return ERR_Okay;
    }
@@ -3844,24 +3845,24 @@ struct scDerefProcedure { FUNCTION * Procedure;  };
 struct scCallback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; LONG Error;  };
 struct scGetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
 
-INLINE ERROR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) {
+INLINE ERROR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) noexcept {
    struct scExec args = { Procedure, Args, TotalArgs };
    return(Action(MT_ScExec, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
+INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) noexcept {
    struct scDerefProcedure args = { Procedure };
    return(Action(MT_ScDerefProcedure, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) {
+INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) noexcept {
    struct scCallback args = { ProcedureID, Args, TotalArgs, (LONG)0 };
    ERROR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
    if (Error) *Error = args.Error;
    return(error);
 }
 
-INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
+INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) noexcept {
    struct scGetProcedureID args = { Procedure, (LARGE)0 };
    ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
    if (ProcedureID) *ProcedureID = args.ProcedureID;
@@ -3903,91 +3904,91 @@ class objScript : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR reset() noexcept { return Action(AC_Reset, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
 
    // Customised field setting
 
-   inline ERROR setTarget(OBJECTID Value) {
+   inline ERROR setTarget(OBJECTID Value) noexcept {
       this->TargetID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const SCF Value) {
+   inline ERROR setFlags(const SCF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setLineOffset(const LONG Value) {
+   inline ERROR setLineOffset(const LONG Value) noexcept {
       this->LineOffset = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setCacheFile(T && Value) {
+   template <class T> inline ERROR setCacheFile(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setErrorString(T && Value) {
+   template <class T> inline ERROR setErrorString(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setWorkingPath(T && Value) {
+   template <class T> inline ERROR setWorkingPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setProcedure(T && Value) {
+   template <class T> inline ERROR setProcedure(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setName(T && Value) {
+   template <class T> inline ERROR setName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
-   inline ERROR setOwner(OBJECTID Value) {
+   inline ERROR setOwner(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setResults(STRING * Value, LONG Elements) {
+   inline ERROR setResults(STRING * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
    }
 
-   template <class T> inline ERROR setStatement(T && Value) {
+   template <class T> inline ERROR setStatement(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -4013,21 +4014,21 @@ struct taskSetEnv { CSTRING Name; CSTRING Value;  };
 
 #define taskExpunge(obj) Action(MT_TaskExpunge,(obj),0)
 
-INLINE ERROR taskAddArgument(APTR Ob, CSTRING Argument) {
+INLINE ERROR taskAddArgument(APTR Ob, CSTRING Argument) noexcept {
    struct taskAddArgument args = { Argument };
    return(Action(MT_TaskAddArgument, (OBJECTPTR)Ob, &args));
 }
 
 #define taskQuit(obj) Action(MT_TaskQuit,(obj),0)
 
-INLINE ERROR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) {
+INLINE ERROR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) noexcept {
    struct taskGetEnv args = { Name, (CSTRING)0 };
    ERROR error = Action(MT_TaskGetEnv, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
 }
 
-INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
+INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) noexcept {
    struct taskSetEnv args = { Name, Value };
    return(Action(MT_TaskSetEnv, (OBJECTPTR)Ob, &args));
 }
@@ -4047,19 +4048,19 @@ class objTask : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -4068,7 +4069,7 @@ class objTask : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -4077,7 +4078,7 @@ class objTask : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
@@ -4085,90 +4086,90 @@ class objTask : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setTimeOut(const DOUBLE Value) {
+   inline ERROR setTimeOut(const DOUBLE Value) noexcept {
       this->TimeOut = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const TSF Value) {
+   inline ERROR setFlags(const TSF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setReturnCode(const LONG Value) {
+   inline ERROR setReturnCode(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setProcess(const LONG Value) {
+   inline ERROR setProcess(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ProcessID = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setArgs(T && Value) {
+   template <class T> inline ERROR setArgs(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
-   inline ERROR setParameters(pf::vector<std::string> *Value) {
+   inline ERROR setParameters(pf::vector<std::string> *Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08805300, Value, LONG(Value->size()));
    }
 
-   inline ERROR setErrorCallback(FUNCTION Value) {
+   inline ERROR setErrorCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setExitCallback(FUNCTION Value) {
+   inline ERROR setExitCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setInputCallback(FUNCTION Value) {
+   inline ERROR setInputCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setLaunchPath(T && Value) {
+   template <class T> inline ERROR setLaunchPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setLocation(T && Value) {
+   template <class T> inline ERROR setLocation(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setName(T && Value) {
+   template <class T> inline ERROR setName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setOutputCallback(FUNCTION Value) {
+   inline ERROR setOutputCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setPriority(const LONG Value) {
+   inline ERROR setPriority(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -4186,7 +4187,7 @@ class objTask : public BaseClass {
 
 struct thSetData { APTR Data; LONG Size;  };
 
-INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) {
+INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) noexcept {
    struct thSetData args = { Data, Size };
    return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
 }
@@ -4207,30 +4208,30 @@ class objThread : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setStackSize(const LONG Value) {
+   inline ERROR setStackSize(const LONG Value) noexcept {
       this->StackSize = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const THF Value) {
+   inline ERROR setFlags(const THF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCallback(FUNCTION Value) {
+   inline ERROR setCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setRoutine(FUNCTION Value) {
+   inline ERROR setRoutine(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -4248,7 +4249,7 @@ class objThread : public BaseClass {
 
 struct modResolveSymbol { CSTRING Name; APTR Address;  };
 
-INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
+INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) noexcept {
    struct modResolveSymbol args = { Name, (APTR)0 };
    ERROR error = Action(MT_ModResolveSymbol, (OBJECTPTR)Ob, &args);
    if (Address) *Address = args.Address;
@@ -4290,28 +4291,28 @@ class objModule : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setFunctionList(const struct Function * Value) {
+   inline ERROR setFunctionList(const struct Function * Value) noexcept {
       this->FunctionList = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setHeader(struct ModHeader * Value) {
+   inline ERROR setHeader(struct ModHeader * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERROR setFlags(const MOF Value) {
+   inline ERROR setFlags(const MOF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setName(T && Value) {
+   template <class T> inline ERROR setName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
@@ -4351,62 +4352,62 @@ class objTime : public BaseClass {
 
    // Action stubs
 
-   inline ERROR query() { return Action(AC_Query, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR query() noexcept { return Action(AC_Query, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setSystemTime(const LARGE Value) {
+   inline ERROR setSystemTime(const LARGE Value) noexcept {
       this->SystemTime = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setYear(const LONG Value) {
+   inline ERROR setYear(const LONG Value) noexcept {
       this->Year = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMonth(const LONG Value) {
+   inline ERROR setMonth(const LONG Value) noexcept {
       this->Month = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setDay(const LONG Value) {
+   inline ERROR setDay(const LONG Value) noexcept {
       this->Day = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setHour(const LONG Value) {
+   inline ERROR setHour(const LONG Value) noexcept {
       this->Hour = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMinute(const LONG Value) {
+   inline ERROR setMinute(const LONG Value) noexcept {
       this->Minute = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSecond(const LONG Value) {
+   inline ERROR setSecond(const LONG Value) noexcept {
       this->Second = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setTimeZone(const LONG Value) {
+   inline ERROR setTimeZone(const LONG Value) noexcept {
       this->TimeZone = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setDayOfWeek(const LONG Value) {
+   inline ERROR setDayOfWeek(const LONG Value) noexcept {
       this->DayOfWeek = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMilliSecond(const LONG Value) {
+   inline ERROR setMilliSecond(const LONG Value) noexcept {
       this->MilliSecond = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMicroSecond(const LONG Value) {
+   inline ERROR setMicroSecond(const LONG Value) noexcept {
       this->MicroSecond = Value;
       return ERR_Okay;
    }
@@ -4447,70 +4448,70 @@ struct cmpDecompressObject { CSTRING Path; OBJECTPTR Object;  };
 struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
 struct cmpFind { CSTRING Path; STR Flags; struct CompressedItem * Item;  };
 
-INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) {
+INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) noexcept {
    struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpCompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) {
+INLINE ERROR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) noexcept {
    struct cmpCompressFile args = { Location, Path };
    return(Action(MT_CmpCompressFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) {
+INLINE ERROR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) noexcept {
    struct cmpDecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpDecompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR cmpDecompressFile(APTR Ob, CSTRING Path, CSTRING Dest, LONG Flags) {
+INLINE ERROR cmpDecompressFile(APTR Ob, CSTRING Path, CSTRING Dest, LONG Flags) noexcept {
    struct cmpDecompressFile args = { Path, Dest, Flags };
    return(Action(MT_CmpDecompressFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpRemoveFile(APTR Ob, CSTRING Path) {
+INLINE ERROR cmpRemoveFile(APTR Ob, CSTRING Path) noexcept {
    struct cmpRemoveFile args = { Path };
    return(Action(MT_CmpRemoveFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpCompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) {
+INLINE ERROR cmpCompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
    struct cmpCompressStream args = { Input, Length, Callback, Output, OutputSize };
    return(Action(MT_CmpCompressStream, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpDecompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) {
+INLINE ERROR cmpDecompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
    struct cmpDecompressStream args = { Input, Length, Callback, Output, OutputSize };
    return(Action(MT_CmpDecompressStream, (OBJECTPTR)Ob, &args));
 }
 
 #define cmpCompressStreamStart(obj) Action(MT_CmpCompressStreamStart,(obj),0)
 
-INLINE ERROR cmpCompressStreamEnd(APTR Ob, FUNCTION * Callback, APTR Output, LONG OutputSize) {
+INLINE ERROR cmpCompressStreamEnd(APTR Ob, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
    struct cmpCompressStreamEnd args = { Callback, Output, OutputSize };
    return(Action(MT_CmpCompressStreamEnd, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpDecompressStreamEnd(APTR Ob, FUNCTION * Callback) {
+INLINE ERROR cmpDecompressStreamEnd(APTR Ob, FUNCTION * Callback) noexcept {
    struct cmpDecompressStreamEnd args = { Callback };
    return(Action(MT_CmpDecompressStreamEnd, (OBJECTPTR)Ob, &args));
 }
 
 #define cmpDecompressStreamStart(obj) Action(MT_CmpDecompressStreamStart,(obj),0)
 
-INLINE ERROR cmpDecompressObject(APTR Ob, CSTRING Path, OBJECTPTR Object) {
+INLINE ERROR cmpDecompressObject(APTR Ob, CSTRING Path, OBJECTPTR Object) noexcept {
    struct cmpDecompressObject args = { Path, Object };
    return(Action(MT_CmpDecompressObject, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callback) {
+INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callback) noexcept {
    struct cmpScan args = { Folder, Filter, Callback };
    return(Action(MT_CmpScan, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) {
+INLINE ERROR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) noexcept {
    struct cmpFind args = { Path, Flags, (struct CompressedItem *)0 };
    ERROR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
@@ -4536,63 +4537,63 @@ class objCompression : public BaseClass {
 
    // Action stubs
 
-   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setOutput(OBJECTID Value) {
+   inline ERROR setOutput(OBJECTID Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->OutputID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCompressionLevel(const LONG Value) {
+   inline ERROR setCompressionLevel(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const CMF Value) {
+   inline ERROR setFlags(const CMF Value) noexcept {
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSegmentSize(const LONG Value) {
+   inline ERROR setSegmentSize(const LONG Value) noexcept {
       this->SegmentSize = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPermissions(const PERMIT Value) {
+   inline ERROR setPermissions(const PERMIT Value) noexcept {
       this->Permissions = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setWindowBits(const LONG Value) {
+   inline ERROR setWindowBits(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setArchiveName(T && Value) {
+   template <class T> inline ERROR setArchiveName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setFeedback(FUNCTION Value) {
+   inline ERROR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setPassword(T && Value) {
+   template <class T> inline ERROR setPassword(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -4618,19 +4619,19 @@ class objCompressedStream : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setInput(OBJECTPTR Value) {
+   inline ERROR setInput(OBJECTPTR Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Input = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setOutput(OBJECTPTR Value) {
+   inline ERROR setOutput(OBJECTPTR Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Output = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFormat(const CF Value) {
+   inline ERROR setFormat(const CF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Format = Value;
       return ERR_Okay;

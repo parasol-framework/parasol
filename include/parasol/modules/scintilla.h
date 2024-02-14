@@ -108,49 +108,49 @@ struct sciReplaceLine { LONG Line; CSTRING String; LONG Length;  };
 struct sciGotoLine { LONG Line;  };
 struct sciGetPos { LONG Line; LONG Column; LONG Pos;  };
 
-INLINE ERROR sciSetFont(APTR Ob, CSTRING Face) {
+INLINE ERROR sciSetFont(APTR Ob, CSTRING Face) noexcept {
    struct sciSetFont args = { Face };
    return(Action(MT_SciSetFont, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) {
+INLINE ERROR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
    struct sciReplaceText args = { Find, Replace, Flags, Start, End };
    return(Action(MT_SciReplaceText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciDeleteLine(APTR Ob, LONG Line) {
+INLINE ERROR sciDeleteLine(APTR Ob, LONG Line) noexcept {
    struct sciDeleteLine args = { Line };
    return(Action(MT_SciDeleteLine, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciSelectRange(APTR Ob, LONG Start, LONG End) {
+INLINE ERROR sciSelectRange(APTR Ob, LONG Start, LONG End) noexcept {
    struct sciSelectRange args = { Start, End };
    return(Action(MT_SciSelectRange, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciInsertText(APTR Ob, CSTRING String, LONG Pos) {
+INLINE ERROR sciInsertText(APTR Ob, CSTRING String, LONG Pos) noexcept {
    struct sciInsertText args = { String, Pos };
    return(Action(MT_SciInsertText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciGetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) {
+INLINE ERROR sciGetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) noexcept {
    struct sciGetLine args = { Line, Buffer, Length };
    return(Action(MT_SciGetLine, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) {
+INLINE ERROR sciReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) noexcept {
    struct sciReplaceLine args = { Line, String, Length };
    return(Action(MT_SciReplaceLine, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciGotoLine(APTR Ob, LONG Line) {
+INLINE ERROR sciGotoLine(APTR Ob, LONG Line) noexcept {
    struct sciGotoLine args = { Line };
    return(Action(MT_SciGotoLine, (OBJECTPTR)Ob, &args));
 }
 
 #define sciTrimWhitespace(obj) Action(MT_SciTrimWhitespace,(obj),0)
 
-INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
+INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) noexcept {
    struct sciGetPos args = { Line, Column, (LONG)0 };
    ERROR error = Action(MT_SciGetPos, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
@@ -189,217 +189,217 @@ class objScintilla : public BaseClass {
 
    // Action stubs
 
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR clipboard(CLIPMODE Mode) {
+   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERROR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
-   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR redo(LONG Steps) {
+   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERROR focus() noexcept { return Action(AC_Focus, this, NULL); }
+   inline ERROR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR redo(LONG Steps) noexcept {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
    }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }
-   inline ERROR show() { return Action(AC_Show, this, NULL); }
-   inline ERROR undo(LONG Steps) {
+   inline ERROR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERROR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
    }
 
    // Customised field setting
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setEventFlags(const SEF Value) {
+   inline ERROR setEventFlags(const SEF Value) noexcept {
       this->EventFlags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSurface(OBJECTID Value) {
+   inline ERROR setSurface(OBJECTID Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->SurfaceID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const SCIF Value) {
+   inline ERROR setFlags(const SCIF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFocus(OBJECTID Value) {
+   inline ERROR setFocus(OBJECTID Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FocusID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setVisible(const LONG Value) {
+   inline ERROR setVisible(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Visible = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setLeftMargin(const LONG Value) {
+   inline ERROR setLeftMargin(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRightMargin(const LONG Value) {
+   inline ERROR setRightMargin(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLineHighlight(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setLineHighlight(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setSelectFore(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setSelectFore(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x01081500, Value, Elements);
    }
 
-   inline ERROR setSelectBkgd(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setSelectBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, 0x01081500, Value, Elements);
    }
 
-   inline ERROR setBkgdColour(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setBkgdColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setCursorColour(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setCursorColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setTextColour(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setTextColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setCursorRow(const LONG Value) {
+   inline ERROR setCursorRow(const LONG Value) noexcept {
       this->CursorRow = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCursorCol(const LONG Value) {
+   inline ERROR setCursorCol(const LONG Value) noexcept {
       this->CursorCol = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setLexer(const SCLEX Value) {
+   inline ERROR setLexer(const SCLEX Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setModified(const LONG Value) {
+   inline ERROR setModified(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setAllowTabs(const LONG Value) {
+   inline ERROR setAllowTabs(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setAutoIndent(const LONG Value) {
+   inline ERROR setAutoIndent(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFileDrop(FUNCTION Value) {
+   inline ERROR setFileDrop(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setFoldingMarkers(const LONG Value) {
+   inline ERROR setFoldingMarkers(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLineNumbers(const LONG Value) {
+   inline ERROR setLineNumbers(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setOrigin(T && Value) {
+   template <class T> inline ERROR setOrigin(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setShowWhitespace(const LONG Value) {
+   inline ERROR setShowWhitespace(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setEventCallback(FUNCTION Value) {
+   inline ERROR setEventCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setString(T && Value) {
+   template <class T> inline ERROR setString(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setSymbols(const LONG Value) {
+   inline ERROR setSymbols(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setTabWidth(const LONG Value) {
+   inline ERROR setTabWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setWordwrap(const LONG Value) {
+   inline ERROR setWordwrap(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -421,21 +421,21 @@ struct ssNext { LONG Pos;  };
 struct ssPrev { LONG Pos;  };
 struct ssFind { LONG Pos; STF Flags;  };
 
-INLINE ERROR ssNext(APTR Ob, LONG * Pos) {
+INLINE ERROR ssNext(APTR Ob, LONG * Pos) noexcept {
    struct ssNext args = { (LONG)0 };
    ERROR error = Action(MT_SsNext, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
-INLINE ERROR ssPrev(APTR Ob, LONG * Pos) {
+INLINE ERROR ssPrev(APTR Ob, LONG * Pos) noexcept {
    struct ssPrev args = { (LONG)0 };
    ERROR error = Action(MT_SsPrev, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
-INLINE ERROR ssFind(APTR Ob, LONG * Pos, STF Flags) {
+INLINE ERROR ssFind(APTR Ob, LONG * Pos, STF Flags) noexcept {
    struct ssFind args = { (LONG)0, Flags };
    ERROR error = Action(MT_SsFind, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
@@ -458,19 +458,19 @@ class objScintillaSearch : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setScintilla(objScintilla * Value) {
+   inline ERROR setScintilla(objScintilla * Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Scintilla = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setText(T && Value) {
+   template <class T> inline ERROR setText(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setFlags(const STF Value) {
+   inline ERROR setFlags(const STF Value) noexcept {
       this->Flags = Value;
       return ERR_Okay;
    }

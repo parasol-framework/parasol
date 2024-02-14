@@ -1564,15 +1564,16 @@ class LogLevel {
 //********************************************************************************************************************
 // Refer to BaseClass->get() to see what this is about...
 
-template <class T> inline LARGE FIELD_TAG()   { return 0; }
-template <> inline LARGE FIELD_TAG<DOUBLE>()  { return TDOUBLE; }
-template <> inline LARGE FIELD_TAG<LONG>()    { return TLONG; }
-template <> inline LARGE FIELD_TAG<FLOAT>()   { return TFLOAT; }
-template <> inline LARGE FIELD_TAG<APTR>()    { return TPTR; }
-template <> inline LARGE FIELD_TAG<LARGE>()   { return TLARGE; }
-template <> inline LARGE FIELD_TAG<CSTRING>() { return TSTRING; }
-template <> inline LARGE FIELD_TAG<STRING>()  { return TSTRING; }
-template <> inline LARGE FIELD_TAG<SCALE>()   { return TDOUBLE|TSCALE; }
+template <class T> inline LARGE FIELD_TAG()     { return 0; }
+template <> inline LARGE FIELD_TAG<DOUBLE>()    { return TDOUBLE; }
+template <> inline LARGE FIELD_TAG<LONG>()      { return TLONG; }
+template <> inline LARGE FIELD_TAG<FLOAT>()     { return TFLOAT; }
+template <> inline LARGE FIELD_TAG<OBJECTPTR>() { return TPTR; }
+template <> inline LARGE FIELD_TAG<APTR>()      { return TPTR; }
+template <> inline LARGE FIELD_TAG<LARGE>()     { return TLARGE; }
+template <> inline LARGE FIELD_TAG<CSTRING>()   { return TSTRING; }
+template <> inline LARGE FIELD_TAG<STRING>()    { return TSTRING; }
+template <> inline LARGE FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 
 //********************************************************************************************************************
 // Header used for all objects.

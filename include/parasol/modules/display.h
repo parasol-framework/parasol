@@ -503,32 +503,32 @@ struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour;
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 
-INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
+INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpCompress(APTR Ob, LONG Level) {
+INLINE ERROR bmpCompress(APTR Ob, LONG Level) noexcept {
    struct bmpCompress args = { Level };
    return(Action(MT_BmpCompress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpDecompress(APTR Ob, LONG RetainData) {
+INLINE ERROR bmpDecompress(APTR Ob, LONG RetainData) noexcept {
    struct bmpDecompress args = { RetainData };
    return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpFlip(APTR Ob, FLIP Orientation) {
+INLINE ERROR bmpFlip(APTR Ob, FLIP Orientation) noexcept {
    struct bmpFlip args = { Orientation };
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) {
+INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) {
+INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
    struct bmpSetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
    return(Action(MT_BmpSetClipRegion, (OBJECTPTR)Ob, &args));
 }
@@ -654,21 +654,21 @@ class objBitmap : public BaseClass {
 
    // Action stubs
 
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR copyData(OBJECTPTR Dest) {
+   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERROR copyData(OBJECTPTR Dest) noexcept {
       struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR lock() { return Action(AC_Lock, this, NULL); }
-   inline ERROR query() { return Action(AC_Query, this, NULL); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERROR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR lock() noexcept { return Action(AC_Lock, this, NULL); }
+   inline ERROR query() noexcept { return Action(AC_Query, this, NULL); }
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
@@ -678,29 +678,29 @@ class objBitmap : public BaseClass {
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERROR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
-   inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
+   inline ERROR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERROR unlock() noexcept { return Action(AC_Unlock, this, NULL); }
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -709,7 +709,7 @@ class objBitmap : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -718,7 +718,7 @@ class objBitmap : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
@@ -726,141 +726,141 @@ class objBitmap : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setPalette(struct RGBPalette * Value) {
+   inline ERROR setPalette(struct RGBPalette * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
-   inline ERROR setData(UBYTE * Value) {
+   inline ERROR setData(UBYTE * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERROR setWidth(const LONG Value) {
+   inline ERROR setWidth(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Width = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setHeight(const LONG Value) {
+   inline ERROR setHeight(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Height = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setType(const BMP Value) {
+   inline ERROR setType(const BMP Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Type = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setClip(struct ClipRectangle * Value) {
+   inline ERROR setClip(struct ClipRectangle * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERROR setDataFlags(const MEM Value) {
+   inline ERROR setDataFlags(const MEM Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->DataFlags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAmtColours(const LONG Value) {
+   inline ERROR setAmtColours(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->AmtColours = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const BMF Value) {
+   inline ERROR setFlags(const BMF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setTransIndex(const LONG Value) {
+   inline ERROR setTransIndex(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setBytesPerPixel(const LONG Value) {
+   inline ERROR setBytesPerPixel(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->BytesPerPixel = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBitsPerPixel(const LONG Value) {
+   inline ERROR setBitsPerPixel(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->BitsPerPixel = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setXOffset(const LONG Value) {
+   inline ERROR setXOffset(const LONG Value) noexcept {
       this->XOffset = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setYOffset(const LONG Value) {
+   inline ERROR setYOffset(const LONG Value) noexcept {
       this->YOffset = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setOpacity(const LONG Value) {
+   inline ERROR setOpacity(const LONG Value) noexcept {
       this->Opacity = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setTransRGB(const struct RGB8 * Value, LONG Elements) {
+   inline ERROR setTransRGB(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setBkgdIndex(const LONG Value) {
+   inline ERROR setBkgdIndex(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setColourSpace(const CS Value) {
+   inline ERROR setColourSpace(const CS Value) noexcept {
       this->ColourSpace = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setClipLeft(const LONG Value) {
+   inline ERROR setClipLeft(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setClipRight(const LONG Value) {
+   inline ERROR setClipRight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setClipBottom(const LONG Value) {
+   inline ERROR setClipBottom(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setClipTop(const LONG Value) {
+   inline ERROR setClipTop(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setBkgd(const BYTE * Value, LONG Elements) {
+   inline ERROR setBkgd(const BYTE * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setHandle(APTR Value) {
+   inline ERROR setHandle(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08010300, Value, 1);
@@ -893,32 +893,32 @@ struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV;
 
 #define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
 
-INLINE ERROR gfxUpdatePalette(APTR Ob, struct RGBPalette * NewPalette) {
+INLINE ERROR gfxUpdatePalette(APTR Ob, struct RGBPalette * NewPalette) noexcept {
    struct gfxUpdatePalette args = { NewPalette };
    return(Action(MT_GfxUpdatePalette, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) {
+INLINE ERROR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
    struct gfxSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
    return(Action(MT_GfxSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) {
+INLINE ERROR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
    struct gfxSizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
    return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) {
+INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
    struct gfxSetGamma args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) {
+INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
    struct gfxSetGammaLinear args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) {
+INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
    struct gfxSetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
    return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
 }
@@ -960,154 +960,154 @@ class objDisplay : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERROR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERROR focus() noexcept { return Action(AC_Focus, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   inline ERROR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC_Move, this, &args);
    }
-   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
-   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
+   inline ERROR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
+   inline ERROR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR show() { return Action(AC_Show, this, NULL); }
+   inline ERROR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR show() noexcept { return Action(AC_Show, this, NULL); }
 
    // Customised field setting
 
-   inline ERROR setRefreshRate(const DOUBLE Value) {
+   inline ERROR setRefreshRate(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setFlags(const SCR Value) {
+   inline ERROR setFlags(const SCR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setWidth(const LONG Value) {
+   inline ERROR setWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setHeight(const LONG Value) {
+   inline ERROR setHeight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setX(const LONG Value) {
+   inline ERROR setX(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setY(const LONG Value) {
+   inline ERROR setY(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setBmpX(const LONG Value) {
+   inline ERROR setBmpX(const LONG Value) noexcept {
       this->BmpX = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBmpY(const LONG Value) {
+   inline ERROR setBmpY(const LONG Value) noexcept {
       this->BmpY = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPowerMode(const DPMS Value) {
+   inline ERROR setPowerMode(const DPMS Value) noexcept {
       this->PowerMode = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPopOver(OBJECTID Value) {
+   inline ERROR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setGamma(const DOUBLE * Value, LONG Elements) {
+   inline ERROR setGamma(const DOUBLE * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
    }
 
-   inline ERROR setHDensity(const LONG Value) {
+   inline ERROR setHDensity(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setVDensity(const LONG Value) {
+   inline ERROR setVDensity(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOpacity(const DOUBLE Value) {
+   inline ERROR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setResizeFeedback(const FUNCTION Value) {
+   inline ERROR setResizeFeedback(const FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setWindowHandle(APTR Value) {
+   inline ERROR setWindowHandle(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
-   template <class T> inline ERROR setTitle(T && Value) {
+   template <class T> inline ERROR setTitle(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
@@ -1133,17 +1133,17 @@ struct clipGetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;
 struct clipAddText { CSTRING String;  };
 struct clipRemove { CLIPTYPE Datatype;  };
 
-INLINE ERROR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) {
+INLINE ERROR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
    struct clipAddFile args = { Datatype, Path, Flags };
    return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) {
+INLINE ERROR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
    struct clipAddObjects args = { Datatype, Objects, Flags };
    return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) {
+INLINE ERROR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) noexcept {
    struct clipGetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
    ERROR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
    if (Datatype) *Datatype = args.Datatype;
@@ -1152,12 +1152,12 @@ INLINE ERROR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** F
    return(error);
 }
 
-INLINE ERROR clipAddText(APTR Ob, CSTRING String) {
+INLINE ERROR clipAddText(APTR Ob, CSTRING String) noexcept {
    struct clipAddText args = { String };
    return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipRemove(APTR Ob, CLIPTYPE Datatype) {
+INLINE ERROR clipRemove(APTR Ob, CLIPTYPE Datatype) noexcept {
    struct clipRemove args = { Datatype };
    return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
 }
@@ -1178,22 +1178,22 @@ class objClipboard : public BaseClass {
 
    // Action stubs
 
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setFlags(const CPF Value) {
+   inline ERROR setFlags(const CPF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setRequestHandler(FUNCTION Value) {
+   inline ERROR setRequestHandler(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -1239,77 +1239,77 @@ class objPointer : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setSpeed(const DOUBLE Value) {
+   inline ERROR setSpeed(const DOUBLE Value) noexcept {
       this->Speed = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAcceleration(const DOUBLE Value) {
+   inline ERROR setAcceleration(const DOUBLE Value) noexcept {
       this->Acceleration = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setDoubleClick(const DOUBLE Value) {
+   inline ERROR setDoubleClick(const DOUBLE Value) noexcept {
       this->DoubleClick = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setWheelSpeed(const DOUBLE Value) {
+   inline ERROR setWheelSpeed(const DOUBLE Value) noexcept {
       this->WheelSpeed = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setX(const DOUBLE Value) {
+   inline ERROR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setY(const DOUBLE Value) {
+   inline ERROR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setMaxSpeed(const LONG Value) {
+   inline ERROR setMaxSpeed(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setInput(OBJECTID Value) {
+   inline ERROR setInput(OBJECTID Value) noexcept {
       this->InputID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSurface(OBJECTID Value) {
+   inline ERROR setSurface(OBJECTID Value) noexcept {
       this->SurfaceID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCursor(const PTC Value) {
+   inline ERROR setCursor(const PTC Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->CursorID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCursorOwner(OBJECTID Value) {
+   inline ERROR setCursorOwner(OBJECTID Value) noexcept {
       this->CursorOwnerID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const PF Value) {
+   inline ERROR setFlags(const PF Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setClickSlop(const LONG Value) {
+   inline ERROR setClickSlop(const LONG Value) noexcept {
       this->ClickSlop = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setButtonOrder(T && Value) {
+   template <class T> inline ERROR setButtonOrder(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -1343,34 +1343,34 @@ struct drwAddCallback { FUNCTION * Callback;  };
 struct drwResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
 struct drwRemoveCallback { FUNCTION * Callback;  };
 
-INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) {
+INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
    struct drwInheritedFocus args = { FocusID, Flags };
    return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
+INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR drwInvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) {
+INLINE ERROR drwInvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
    struct drwInvalidateRegion args = { X, Y, Width, Height };
    return(Action(MT_DrwInvalidateRegion, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR drwSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) {
+INLINE ERROR drwSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
    struct drwSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
    return(Action(MT_DrwSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR drwSetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) {
+INLINE ERROR drwSetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) noexcept {
    struct drwSetOpacity args = { Value, Adjustment };
    return(Action(MT_DrwSetOpacity, (OBJECTPTR)Ob, &args));
 }
 
 #define drwMinimise(obj) Action(MT_DrwMinimise,(obj),0)
 
-INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) {
+INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
    struct drwResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
    return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
 }
@@ -1434,292 +1434,292 @@ class objSurface : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
-   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR lostFocus() { return Action(AC_LostFocus, this, NULL); }
-   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERROR focus() noexcept { return Action(AC_Focus, this, NULL); }
+   inline ERROR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR lostFocus() noexcept { return Action(AC_LostFocus, this, NULL); }
+   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC_Move, this, &args);
    }
-   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
-   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
+   inline ERROR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
+   inline ERROR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
+   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) noexcept {
       struct acScroll args = { X, Y, Z };
       return Action(AC_Scroll, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }
-   inline ERROR show() { return Action(AC_Show, this, NULL); }
+   inline ERROR show() noexcept { return Action(AC_Show, this, NULL); }
 
    // Customised field setting
 
-   inline ERROR setDrag(OBJECTID Value) {
+   inline ERROR setDrag(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setParent(OBJECTID Value) {
+   inline ERROR setParent(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPopOver(OBJECTID Value) {
+   inline ERROR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[40];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setTopMargin(const LONG Value) {
+   inline ERROR setTopMargin(const LONG Value) noexcept {
       this->TopMargin = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBottomMargin(const LONG Value) {
+   inline ERROR setBottomMargin(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLeftMargin(const LONG Value) {
+   inline ERROR setLeftMargin(const LONG Value) noexcept {
       this->LeftMargin = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setRightMargin(const LONG Value) {
+   inline ERROR setRightMargin(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setMinWidth(const LONG Value) {
+   inline ERROR setMinWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setMinHeight(const LONG Value) {
+   inline ERROR setMinHeight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setMaxWidth(const LONG Value) {
+   inline ERROR setMaxWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setMaxHeight(const LONG Value) {
+   inline ERROR setMaxHeight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLeftLimit(const LONG Value) {
+   inline ERROR setLeftLimit(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRightLimit(const LONG Value) {
+   inline ERROR setRightLimit(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setTopLimit(const LONG Value) {
+   inline ERROR setTopLimit(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[52];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setBottomLimit(const LONG Value) {
+   inline ERROR setBottomLimit(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[50];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const RNF Value) {
+   inline ERROR setFlags(const RNF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setX(const LONG Value) {
+   inline ERROR setX(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setY(const LONG Value) {
+   inline ERROR setY(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setWidth(const LONG Value) {
+   inline ERROR setWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setHeight(const LONG Value) {
+   inline ERROR setHeight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setAlign(const ALIGN Value) {
+   inline ERROR setAlign(const ALIGN Value) noexcept {
       this->Align = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setDimensions(const LONG Value) {
+   inline ERROR setDimensions(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setCursor(const PTC Value) {
+   inline ERROR setCursor(const PTC Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[53];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setColour(const struct RGB8 Value) {
+   inline ERROR setColour(const struct RGB8 Value) noexcept {
       this->Colour = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setType(const RT Value) {
+   inline ERROR setType(const RT Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Type = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setModal(const LONG Value) {
+   inline ERROR setModal(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRootLayer(OBJECTID Value) {
+   inline ERROR setRootLayer(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setAbsX(const LONG Value) {
+   inline ERROR setAbsX(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setAbsY(const LONG Value) {
+   inline ERROR setAbsY(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setBitsPerPixel(const LONG Value) {
+   inline ERROR setBitsPerPixel(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[41];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setInsideHeight(const LONG Value) {
+   inline ERROR setInsideHeight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[47];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setInsideWidth(const LONG Value) {
+   inline ERROR setInsideWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setMovement(const LONG Value) {
+   inline ERROR setMovement(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOpacity(const DOUBLE Value) {
+   inline ERROR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setRevertFocus(OBJECTID Value) {
+   inline ERROR setRevertFocus(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setVisible(const LONG Value) {
+   inline ERROR setVisible(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setWindowType(const LONG Value) {
+   inline ERROR setWindowType(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setWindowHandle(APTR Value) {
+   inline ERROR setWindowHandle(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
-   inline ERROR setXOffset(const LONG Value) {
+   inline ERROR setXOffset(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setYOffset(const LONG Value) {
+   inline ERROR setYOffset(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       Variable var(Value);

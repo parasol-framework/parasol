@@ -164,7 +164,7 @@ struct NetClient {
 struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct csWriteClientMsg { APTR Message; LONG Length;  };
 
-INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
+INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
    struct csReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
@@ -174,7 +174,7 @@ INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Prog
    return(error);
 }
 
-INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
+INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
    struct csWriteClientMsg args = { Message, Length };
    return(Action(MT_csWriteClientMsg, (OBJECTPTR)Ob, &args));
 }
@@ -199,8 +199,8 @@ class objClientSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return InitObject(this); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERROR init() noexcept { return InitObject(this); }
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
@@ -210,13 +210,13 @@ class objClientSocket : public BaseClass {
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERROR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -225,7 +225,7 @@ class objClientSocket : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -234,7 +234,7 @@ class objClientSocket : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
@@ -258,7 +258,7 @@ struct prxFind { LONG Port; LONG Enabled;  };
 
 #define prxDelete(obj) Action(MT_prxDelete,(obj),0)
 
-INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
+INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) noexcept {
    struct prxFind args = { Port, Enabled };
    return(Action(MT_prxFind, (OBJECTPTR)Ob, &args));
 }
@@ -287,68 +287,68 @@ class objProxy : public BaseClass {
 
    // Action stubs
 
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERROR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
 
    // Customised field setting
 
-   template <class T> inline ERROR setNetworkFilter(T && Value) {
+   template <class T> inline ERROR setNetworkFilter(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setGatewayFilter(T && Value) {
+   template <class T> inline ERROR setGatewayFilter(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setUsername(T && Value) {
+   template <class T> inline ERROR setUsername(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setPassword(T && Value) {
+   template <class T> inline ERROR setPassword(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setProxyName(T && Value) {
+   template <class T> inline ERROR setProxyName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setServer(T && Value) {
+   template <class T> inline ERROR setServer(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setPort(const LONG Value) {
+   inline ERROR setPort(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setServerPort(const LONG Value) {
+   inline ERROR setServerPort(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setEnabled(const LONG Value) {
+   inline ERROR setEnabled(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRecord(const LONG Value) {
+   inline ERROR setRecord(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -372,22 +372,22 @@ struct nlResolveAddress { CSTRING Address;  };
 struct nlBlockingResolveName { CSTRING HostName;  };
 struct nlBlockingResolveAddress { CSTRING Address;  };
 
-INLINE ERROR nlResolveName(APTR Ob, CSTRING HostName) {
+INLINE ERROR nlResolveName(APTR Ob, CSTRING HostName) noexcept {
    struct nlResolveName args = { HostName };
    return(Action(MT_nlResolveName, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nlResolveAddress(APTR Ob, CSTRING Address) {
+INLINE ERROR nlResolveAddress(APTR Ob, CSTRING Address) noexcept {
    struct nlResolveAddress args = { Address };
    return(Action(MT_nlResolveAddress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nlBlockingResolveName(APTR Ob, CSTRING HostName) {
+INLINE ERROR nlBlockingResolveName(APTR Ob, CSTRING HostName) noexcept {
    struct nlBlockingResolveName args = { HostName };
    return(Action(MT_nlBlockingResolveName, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
+INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
    struct nlBlockingResolveAddress args = { Address };
    return(Action(MT_nlBlockingResolveAddress, (OBJECTPTR)Ob, &args));
 }
@@ -405,21 +405,21 @@ class objNetLookup : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setUserData(const LARGE Value) {
+   inline ERROR setUserData(const LARGE Value) noexcept {
       this->UserData = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const NLF Value) {
+   inline ERROR setFlags(const NLF Value) noexcept {
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCallback(FUNCTION Value) {
+   inline ERROR setCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -447,27 +447,27 @@ struct nsDisconnectSocket { objClientSocket * Socket;  };
 struct nsReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct nsWriteMsg { APTR Message; LONG Length;  };
 
-INLINE ERROR nsConnect(APTR Ob, CSTRING Address, LONG Port) {
+INLINE ERROR nsConnect(APTR Ob, CSTRING Address, LONG Port) noexcept {
    struct nsConnect args = { Address, Port };
    return(Action(MT_nsConnect, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) {
+INLINE ERROR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) noexcept {
    struct nsGetLocalIPAddress args = { Address };
    return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nsDisconnectClient(APTR Ob, struct NetClient * Client) {
+INLINE ERROR nsDisconnectClient(APTR Ob, struct NetClient * Client) noexcept {
    struct nsDisconnectClient args = { Client };
    return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) {
+INLINE ERROR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) noexcept {
    struct nsDisconnectSocket args = { Socket };
    return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
+INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
    struct nsReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
@@ -477,7 +477,7 @@ INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, 
    return(error);
 }
 
-INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) {
+INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
    struct nsWriteMsg args = { Message, Length };
    return(Action(MT_nsWriteMsg, (OBJECTPTR)Ob, &args));
 }
@@ -504,13 +504,13 @@ class objNetSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERROR init() noexcept { return InitObject(this); }
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
@@ -520,13 +520,13 @@ class objNetSocket : public BaseClass {
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERROR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -535,7 +535,7 @@ class objNetSocket : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) noexcept {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
@@ -544,7 +544,7 @@ class objNetSocket : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
@@ -552,70 +552,70 @@ class objNetSocket : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setUserData(APTR Value) {
+   inline ERROR setUserData(APTR Value) noexcept {
       this->UserData = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setAddress(T && Value) {
+   template <class T> inline ERROR setAddress(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setState(const NTC Value) {
+   inline ERROR setState(const NTC Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPort(const LONG Value) {
+   inline ERROR setPort(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Port = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const NSF Value) {
+   inline ERROR setFlags(const NSF Value) noexcept {
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBacklog(const LONG Value) {
+   inline ERROR setBacklog(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Backlog = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setClientLimit(const LONG Value) {
+   inline ERROR setClientLimit(const LONG Value) noexcept {
       this->ClientLimit = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMsgLimit(const LONG Value) {
+   inline ERROR setMsgLimit(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->MsgLimit = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSocketHandle(APTR Value) {
+   inline ERROR setSocketHandle(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERROR setFeedback(FUNCTION Value) {
+   inline ERROR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setIncoming(FUNCTION Value) {
+   inline ERROR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setOutgoing(FUNCTION Value) {
+   inline ERROR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);

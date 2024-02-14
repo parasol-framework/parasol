@@ -100,207 +100,207 @@ class objFont : public BaseClass {
 
    // Action stubs
 
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR init() { return InitObject(this); }
+   inline ERROR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setAngle(const DOUBLE Value) {
+   inline ERROR setAngle(const DOUBLE Value) noexcept {
       this->Angle = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPoint(const DOUBLE Value) {
+   inline ERROR setPoint(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setStrokeSize(const DOUBLE Value) {
+   inline ERROR setStrokeSize(const DOUBLE Value) noexcept {
       this->StrokeSize = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBitmap(objBitmap * Value) {
+   inline ERROR setBitmap(objBitmap * Value) noexcept {
       this->Bitmap = Value;
       return ERR_Okay;
    }
 
-   template <class T> inline ERROR setString(T && Value) {
+   template <class T> inline ERROR setString(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setStyle(T && Value) {
+   template <class T> inline ERROR setStyle(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setFace(T && Value) {
+   template <class T> inline ERROR setFace(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setEscapeCallback(APTR Value) {
+   inline ERROR setEscapeCallback(APTR Value) noexcept {
       this->EscapeCallback = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setUserData(APTR Value) {
+   inline ERROR setUserData(APTR Value) noexcept {
       this->UserData = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setOutline(const struct RGB8 Value) {
+   inline ERROR setOutline(const struct RGB8 Value) noexcept {
       this->Outline = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setUnderline(const struct RGB8 Value) {
+   inline ERROR setUnderline(const struct RGB8 Value) noexcept {
       this->Underline = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setColour(const struct RGB8 Value) {
+   inline ERROR setColour(const struct RGB8 Value) noexcept {
       this->Colour = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const FTF Value) {
+   inline ERROR setFlags(const FTF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setGutter(const LONG Value) {
+   inline ERROR setGutter(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Gutter = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setGlyphSpacing(const LONG Value) {
+   inline ERROR setGlyphSpacing(const LONG Value) noexcept {
       this->GlyphSpacing = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setLineSpacing(const LONG Value) {
+   inline ERROR setLineSpacing(const LONG Value) noexcept {
       this->LineSpacing = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setX(const LONG Value) {
+   inline ERROR setX(const LONG Value) noexcept {
       this->X = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setY(const LONG Value) {
+   inline ERROR setY(const LONG Value) noexcept {
       this->Y = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setTabSize(const LONG Value) {
+   inline ERROR setTabSize(const LONG Value) noexcept {
       this->TabSize = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setWrapEdge(const LONG Value) {
+   inline ERROR setWrapEdge(const LONG Value) noexcept {
       this->WrapEdge = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFixedWidth(const LONG Value) {
+   inline ERROR setFixedWidth(const LONG Value) noexcept {
       this->FixedWidth = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setHeight(const LONG Value) {
+   inline ERROR setHeight(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Height = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMaxHeight(const LONG Value) {
+   inline ERROR setMaxHeight(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->MaxHeight = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAlign(const ALIGN Value) {
+   inline ERROR setAlign(const ALIGN Value) noexcept {
       this->Align = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAlignWidth(const LONG Value) {
+   inline ERROR setAlignWidth(const LONG Value) noexcept {
       this->AlignWidth = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAlignHeight(const LONG Value) {
+   inline ERROR setAlignHeight(const LONG Value) noexcept {
       this->AlignHeight = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setEndX(const LONG Value) {
+   inline ERROR setEndX(const LONG Value) noexcept {
       this->EndX = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setEndY(const LONG Value) {
+   inline ERROR setEndY(const LONG Value) noexcept {
       this->EndY = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setVDPI(const LONG Value) {
+   inline ERROR setVDPI(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->VDPI = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setHDPI(const LONG Value) {
+   inline ERROR setHDPI(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->HDPI = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setBold(const LONG Value) {
+   inline ERROR setBold(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setEscapeChar(T && Value) {
+   template <class T> inline ERROR setEscapeChar(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERROR setItalic(const LONG Value) {
+   inline ERROR setItalic(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOpacity(const DOUBLE Value) {
+   inline ERROR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setTabs(const WORD * Value, LONG Elements) {
+   inline ERROR setTabs(const WORD * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, 0x00401308, Value, Elements);
