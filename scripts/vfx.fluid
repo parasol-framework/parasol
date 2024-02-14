@@ -502,8 +502,10 @@ vfx.wipes.spiral.init = function(State, Options)
 end
 
 vfx.wipes.spiral.animate = function(State, Options, Progress)
+   local radius = (State.max_radius + (State.max_radius / State.segments)) * Progress
+   if (radius < 0.001) then radius = 0.001 end
+   State.spiral.radius = radius
    State.spiral.visibility = VIS_VISIBLE
-   State.spiral.radius = (State.max_radius + (State.max_radius / State.segments)) * Progress
 end
 
 ----------------------------------------------------------------------------------------------------------------------
