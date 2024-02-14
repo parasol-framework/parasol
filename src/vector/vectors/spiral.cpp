@@ -293,7 +293,8 @@ static ERROR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
 -FIELD-
 Radius: The radius of the spiral.  Expressed as a fixed or scaled coordinate.
 
-The radius of the spiral is defined here as either a fixed or scaled value.
+The radius of the spiral is defined here as either a fixed or scaled value.  If zero, preference is given to 
+#LoopLimit.
 
 *********************************************************************************************************************/
 
@@ -313,6 +314,8 @@ static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
+
+   if (val < 0) return log.warning(ERR_InvalidDimension);
 
    if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
@@ -373,6 +376,7 @@ static ERROR SPIRAL_SET_Width(extVectorSpiral *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
+
    Self->Radius = val * 0.5;
    reset_path(Self);
    return ERR_Okay;
