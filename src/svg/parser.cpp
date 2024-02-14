@@ -179,10 +179,7 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
    std::string id;
 
    if (!NewObject(ID_VECTORCLIP, &clip)) {
-      clip->setFields(
-         fl::Owner(Self->Scene->UID), // All clips belong to the root page to prevent hierarchy issues.
-         fl::Name("SVGClip")
-      );
+      clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
 
       for (unsigned a=1; a < Tag.Attribs.size(); a++) {
          auto &value = Tag.Attribs[a].Value;
@@ -1787,12 +1784,6 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
          height = FUNIT(FID_Height, value);
          if (!height.valid_size()) return log.warning(ERR_InvalidDimension);
       }
-      else if (!StrMatch("filter", name)) {
-         filter = value;
-      }
-      else if (!StrMatch("transform", name)) {
-         transform = value;
-      }
       else if (!StrMatch("crossorigin", name)); // Defines the value of the credentials flag for CORS requests.
       else if (!StrMatch("decoding", name)); // Hint as to whether image decoding is synchronous or asynchronous
    }
@@ -1825,14 +1816,13 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
                SetOwner(Vector, Parent);
                apply_state(State, Vector);
 
-               if (!transform.empty()) parse_transform(Vector, transform);
+               process_attrib(Self, Tag, Vector);
 
-               if (!filter.empty()) Vector->set(FID_Filter, filter);
+               x.set(Vector);
+               y.set(Vector);
+               width.set(Vector);
+               height.set(Vector);
 
-               Vector->set(x.field(), DOUBLE(x));
-               Vector->set(y.field(), DOUBLE(y));
-               Vector->set(width.field(), DOUBLE(width));
-               Vector->set(height.field(), DOUBLE(height));
                Vector->set(FID_Fill, fillname);
 
                if (!Vector->init()) {
@@ -2784,10 +2774,14 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
 
       case ID_VECTORWAVE: {
          FIELD field_id = 0;
-         switch (Hash) {
-            case SVF_CLOSE: Vector->set(FID_Close, StrValue); return ERR_Okay;
+         switch (Hash) {         
+            case SVF_X: { auto u = FUNIT(FID_X, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_Y: { auto u = FUNIT(FID_Y, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_WIDTH: { auto u = FUNIT(FID_Width, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_HEIGHT: { auto u = FUNIT(FID_Height, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_CLOSE:  Vector->set(FID_Close, StrValue); return ERR_Okay;
             case SVF_AMPLITUDE: field_id = FID_Amplitude; break;
-            case SVF_DECAY: field_id = FID_Decay; break;
+            case SVF_DECAY:     field_id = FID_Decay; break;
             case SVF_FREQUENCY: field_id = FID_Frequency; break;
             case SVF_THICKNESS: field_id = FID_Thickness; break;
          }
@@ -2815,21 +2809,17 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
             case SVF_XOFFSET: field_id = FID_XOffset; break; // Parasol only
             case SVF_YOFFSET: field_id = FID_YOffset; break; // Parasol only
 
-            case SVF_X2: {
-               DOUBLE x;
-               field_id = FID_Width;
-               Vector->get(FID_X, &x);
-               num = read_unit(StrValue, &field_id);
-               Vector->set(field_id, std::abs(num - x));
+            case SVF_X2: { 
+               // Note: For the time being, VectorRectangle doesn't support X2/Y2 as a concept.  This would
+               // cause problems if the client was to specify a scaled value here.
+               auto width = FUNIT(FID_Width, StrValue);
+               SetField(Vector, FID_Width|TDOUBLE, std::abs(DOUBLE(width) - Vector->get<DOUBLE>(FID_X)));
                return ERR_Okay;
             }
 
             case SVF_Y2: {
-               DOUBLE y;
-               field_id = FID_Height;
-               Vector->get(FID_Y, &y);
-               num = read_unit(StrValue, &field_id);
-               Vector->set(field_id, std::abs(num - y));
+               auto height = FUNIT(FID_Height, StrValue);
+               SetField(Vector, FID_Height|TDOUBLE, std::abs(DOUBLE(height) - Vector->get<DOUBLE>(FID_Y)));
                return ERR_Okay;
             }
          }
@@ -2847,12 +2837,19 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
       case ID_VECTORPOLYGON: {
          switch (Hash) {
             case SVF_POINTS: Vector->set(FID_Points, StrValue); return ERR_Okay;
+            case SVF_X1: { auto u = FUNIT(FID_X1, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_Y1: { auto u = FUNIT(FID_Y1, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_X2: { auto u = FUNIT(FID_X2, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_Y2: { auto u = FUNIT(FID_Y2, StrValue); u.set(Vector); return ERR_Okay; }
          }
          break;
       }
 
       case ID_VECTORTEXT: {
          switch (Hash) {
+            case SVF_X: { auto u = FUNIT(FID_X, StrValue); u.set(Vector); return ERR_Okay; }
+            case SVF_Y: { auto u = FUNIT(FID_Y, StrValue); u.set(Vector); return ERR_Okay; }
+               
             case SVF_DX: Vector->set(FID_DX, StrValue); return ERR_Okay;
             case SVF_DY: Vector->set(FID_DY, StrValue); return ERR_Okay;
 
@@ -3033,15 +3030,6 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
 
    FIELD field_id = 0;
    switch (Hash) {
-      case SVF_X:  field_id = FID_X; break;
-      case SVF_Y:  field_id = FID_Y; break;
-      case SVF_X1: field_id = FID_X1; break;
-      case SVF_Y1: field_id = FID_Y1; break;
-      case SVF_X2: field_id = FID_X2; break;
-      case SVF_Y2: field_id = FID_Y2; break;
-      case SVF_WIDTH:  field_id = FID_Width; break;
-      case SVF_HEIGHT: field_id = FID_Height; break;
-
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
          if (!scFindDef(Self->Scene, StrValue.c_str(), &trans)) Vector->set(FID_Transition, trans);
@@ -3141,7 +3129,6 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
          }
          else Vector->set(FID_Stroke, StrValue);
          break;
-
 
       case SVF_FILL:
          if (!StrMatch("currentColor", StrValue)) {

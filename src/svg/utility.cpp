@@ -306,47 +306,29 @@ static DOUBLE read_time(const std::string Value)
 
 static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 {
-   bool isnumber = true;
-
    if (FieldID) *FieldID |= TDOUBLE;
 
-   auto v = Value.c_str();
-   while ((*v) and (*v <= 0x20)) v++;
+   auto str = (char *)Value.c_str();
+   while ((*str) and (*str <= 0x20)) str++;
 
-   CSTRING str = v;
-   if ((*str IS '-') or (*str IS '+')) str++;
+   const DOUBLE dpi = 96.0;
+   const DOUBLE fv = strtod(str, &str);
 
-   if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
-      while ((*str >= '0') and (*str <= '9')) str++;
-
-      if (*str IS '.') {
-         str++;
-         if ((*str >= '0') and (*str <= '9')) {
-            while ((*str >= '0') and (*str <= '9')) str++;
-         }
-         else isnumber = false;
-      }
-
-      DOUBLE multiplier = 1.0;
-      DOUBLE dpi = 96.0;
-
+   if (*str) {
       if (*str IS '%') {
          if (FieldID) *FieldID |= TSCALE;
-         multiplier = 0.01;
-         str++;
+         return fv * 0.01;
       }
-      else if ((str[0] IS 'p') and (str[1] IS 'x')); // Pixel.  This is the default type
-      else if ((str[0] IS 'e') and (str[1] IS 'm')) multiplier = 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
-      else if ((str[0] IS 'e') and (str[1] IS 'x')) multiplier = 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((str[0] IS 'i') and (str[1] IS 'n')) multiplier = dpi; // Inches
-      else if ((str[0] IS 'c') and (str[1] IS 'm')) multiplier = (1.0 / 2.56) * dpi; // Centimetres
-      else if ((str[0] IS 'm') and (str[1] IS 'm')) multiplier = (1.0 / 20.56) * dpi; // Millimetres
-      else if ((str[0] IS 'p') and (str[1] IS 't')) multiplier = (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
-      else if ((str[0] IS 'p') and (str[1] IS 'c')) multiplier = (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
-
-      return StrToFloat(v) * multiplier;
+      else if ((str[0] IS 'e') and (str[1] IS 'm')) return fv * 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
+      else if ((str[0] IS 'e') and (str[1] IS 'x')) return fv * 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if ((str[0] IS 'i') and (str[1] IS 'n')) return fv * dpi; // Inches
+      else if ((str[0] IS 'c') and (str[1] IS 'm')) return fv * (1.0 / 2.56) * dpi; // Centimetres
+      else if ((str[0] IS 'm') and (str[1] IS 'm')) return fv * (1.0 / 20.56) * dpi; // Millimetres
+      else if ((str[0] IS 'p') and (str[1] IS 't')) return fv * (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
+      else if ((str[0] IS 'p') and (str[1] IS 'c')) return fv * (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
+      else return fv; // Default to 'px' / pixel
    }
-   else return 0;
+   else return fv;
 }
 
 //********************************************************************************************************************
