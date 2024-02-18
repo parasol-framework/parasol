@@ -309,42 +309,6 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
 }
 
 //********************************************************************************************************************
-// For debugging next/prev/child pointers in the scene graph
-//
-// LONG level = 0;
-// debug_branch("Debug", &Self->Head, &level);
-
-static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
-
-static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
-{
-   pf::Log log(Header);
-   auto spacing = std::make_unique<UBYTE[]>(*Level + 1);
-   LONG i;
-
-   *Level = *Level + 1;
-   for (i=0; i < *Level; i++) spacing[i] = ' '; // Indenting
-   spacing[i] = 0;
-
-   while (Vector) {
-      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
-         log.msg("Scene: %p", Vector);
-         if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
-         break;
-      }
-      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
-         auto shape = (objVector *)Vector;
-         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing.get(), get_name(shape));
-         if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
-         Vector = shape->Next;
-      }
-      else break;
-   }
-
-   *Level = *Level - 1;
-}
-
-//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
 DOUBLE read_unit(CSTRING &Value, bool &Percent)

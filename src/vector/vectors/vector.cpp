@@ -32,6 +32,7 @@ static std::mutex glResizeLock;
 static ERROR VECTOR_Push(extVector *, struct vecPush *);
 
 //********************************************************************************************************************
+// For the use of the VectorScene's Debug() method.
 
 void debug_tree(extVector *Vector, LONG &Level)
 {
@@ -53,10 +54,10 @@ void debug_tree(extVector *Vector, LONG &Level)
 
       if ((v->Class->BaseClassID IS ID_VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
-         blog.branch("#%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
+         blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
          debug_tree((extVector *)v->Child, Level);
       }
-      else log.msg("#%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
+      else log.msg(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
    }
 
    Level--;

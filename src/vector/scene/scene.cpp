@@ -218,13 +218,16 @@ static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
    pf::Log log("debug_tree");
 
    pf::vector<ChildEntry> list;
-   if (!ListChildren(Self->UID, &list)) {
+   if ((!ListChildren(Self->UID, &list)) and (list.size() > 1)) {
+      log.msg("Scene #%d has %d children:", Self->UID, LONG(std::ssize(list)-1));
       for (auto &rec : list) {
          auto obj = GetObjectPtr(rec.ObjectID);
          if (obj IS Self->Viewport) continue;
-         log.msg("#%d %s %s", rec.ObjectID, obj->Class->ClassName, obj->Name);
+         log.msg(" #%d %s %s", rec.ObjectID, obj->Class->ClassName, obj->Name);
       }
    }
+
+   log.msg("Scene #%d scene graph follows:", Self->UID);
 
    LONG level = 0;
    debug_tree((extVector *)Self->Viewport, level);
