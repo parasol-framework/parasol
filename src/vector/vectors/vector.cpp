@@ -280,6 +280,8 @@ static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 static ERROR VECTOR_Free(extVector *Self, APTR Void)
 {
    Self->~extVector();
+   
+   if (Self->ClipMask)   UnsubscribeAction(Self->ClipMask, AC_Free);
 
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }

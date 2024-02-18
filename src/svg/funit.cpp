@@ -13,7 +13,7 @@ struct FUNIT {
    DOUBLE value;
    DU type;
 
-   FUNIT() : value(0), type(DU::NIL) { }
+   FUNIT() : field_id(0), value(0), type(DU::NIL) { }
 
    // With field
 

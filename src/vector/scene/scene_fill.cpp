@@ -37,7 +37,7 @@ static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
 
 //********************************************************************************************************************
 // Gradient fills
-// The Raster must contains the shape's path.
+// The Raster must contain the shape's path.
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
 static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path, 

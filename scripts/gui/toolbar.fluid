@@ -172,7 +172,7 @@ gui.toolbar = function(HostVP, Options)
       if self.vg then self.vg.free() end
 
       if (self._groupCount > 0) then
-         self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='BoundingBox' })
+         self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='UserSpace' })
       end
 
       self.vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
@@ -239,7 +239,7 @@ gui.toolbar = function(HostVP, Options)
             })
 
             if self._groupClip then
-               item.clip = self._groupClip.new('VectorRectangle', {
+               item.clip = self._groupClip.viewport.new('VectorRectangle', {
                   name = 'groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
                })
             end

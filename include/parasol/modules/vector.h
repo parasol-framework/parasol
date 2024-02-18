@@ -55,6 +55,16 @@ enum class ARC : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(ARC)
 
+// Options for VectorClip.
+
+enum class VCLF : ULONG {
+   NIL = 0,
+   APPLY_FILLS = 0x00000001,
+   APPLY_STROKES = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VCLF)
+
 // Optional flags and indicators for the Vector class.
 
 enum class VF : ULONG {
@@ -2580,6 +2590,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_LIGHTING_COLOUR 0x4407e6dc
 #define SVF_LIMITINGCONEANGLE 0xbb90036e
 #define SVF_LOOP_LIMIT 0xfaf3e6cb
+#define SVF_MASKCONTENTUNITS 0x3fe629df
+#define SVF_MASKUNITS 0xa68eea04
 #define SVF_POINTSATX 0xf4c77f0f
 #define SVF_POINTSATY 0xf4c77f10
 #define SVF_POINTSATZ 0xf4c77f11
@@ -2623,6 +2635,8 @@ INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 
 namespace fl {
    using namespace pf;
+
+constexpr FieldValue ClipFlags(VCLF Value) { return FieldValue(FID_ClipFlags, LONG(Value)); }
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }

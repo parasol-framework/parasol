@@ -16,7 +16,7 @@
     <description>
 <p>The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by creating Vector shapes that are initialised to the VectorClip as child objects.</p>
 <p>Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.</p>
-<p>VectorClip objects must be owned by their relevant <class name="VectorScene">VectorScene</class> or <class name="VectorViewport">VectorViewport</class>.  It is valid for a VectorClip to be shared by multiple vector objects within the same scene.  We recommend that for optimum drawing efficiency, any given VectorClip is associated with one vector only.  This will reduce the chances of a redraw being required at any given time.</p></description>
+<p>VectorClip objects must be owned by a <class name="VectorScene">VectorScene</class>.  It is valid for a VectorClip to be shared by multiple vector objects within the same scene.  If optimum drawing efficiency is required, we recommend that each VectorClip is referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping path.</p></description>
     <source>
       <file path="vectors/">clip.cpp</file>
     </source>
@@ -24,16 +24,43 @@
 
   <fields>
     <field>
+      <name>ClipFlags</name>
+      <comment>Optional flags.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="VCLF">INT</type>
+      <description>
+<types lookup="VCLF"/>
+      </description>
+    </field>
+
+    <field>
       <name>Units</name>
       <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The default coordinate system for clip-paths is <code>BOUNDING_BOX</code>, which positions the clipping region against the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the path relative to the current viewport.</p>
+<p>The default coordinate system for clip-paths is <code>BOUNDING_BOX</code>, which positions the clipping region relative to the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the path relative to the vector's parent viewport.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Viewport</name>
+      <comment>This viewport hosts the Vector objects that will contribute to the clip path.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>To define the path(s) that will be used to build the clipping mask, add at least one <class name="Vector">Vector</class> object to the viewport declared here.</p>
       </description>
     </field>
 
   </fields>
+  <types>
+    <constants lookup="VCLF" comment="Options for VectorClip.">
+      <const name="APPLY_FILLS">Apply fill instructions when drawing the clipping path(s).</const>
+      <const name="APPLY_STROKES">Apply stroke instructions when drawing the clipping path(s).</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>

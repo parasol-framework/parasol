@@ -340,7 +340,7 @@ vfx.wipes.simple.animate = function(State, Options, Progress)
    -- Use the diagonal to determine the bar width because the client might use rotation.
    local max_width = vfx.dist(0, 0, State.v_width, State.v_height)
 
-   if not State.clip_path then State.clip_path = State.clip.new('VectorPath', { }) end
+   if not State.clip_path then State.clip_path = State.clip.viewport.new('VectorPath', { }) end
 
    State.clip_path.acClear()
 
@@ -369,7 +369,7 @@ end
 vfx.wipes.clock.animate = function(State, Options, Progress)
    local radius = vfx.dist(0, 0, State.v_width+2, State.v_height+2) * 0.5
 
-   if not State.clip_path then State.clip_path = State.clip.new('VectorPath', { }) end
+   if not State.clip_path then State.clip_path = State.clip.viewport.new('VectorPath', { }) end
 
    State.clip_path.acClear()
    local bar_pos = 0
@@ -449,13 +449,13 @@ vfx.wipes.radial.init = function(State, Options)
 
    State.ellipses = { }
 
-   State.center = State.clip.new('VectorEllipse', {
+   State.center = State.clip.viewport.new('VectorEllipse', {
       cx = State.cx, cy = State.cy, rx = 0.01, ry = 0.01, visibility = VIS_HIDDEN
    })
 
    for i=1,State.segments-1 do
       local radius = State.stroke_size + ((State.max_radius - State.stroke_size)) * (i / (State.segments-1)) - (State.stroke_size * 0.5)
-      table.insert(State.ellipses, State.clip.new('VectorEllipse', {
+      table.insert(State.ellipses, State.clip.viewport.new('VectorEllipse', {
          cx = State.cx, cy = State.cy, rx = radius, ry = radius, stroke = 'rgb(255,255,255)', visibility = VIS_HIDDEN
       }))
    end
@@ -493,7 +493,7 @@ vfx.wipes.spiral.init = function(State, Options)
    if (State.segments < 1) then State.segments = 1 end
    if (State.segments > State.max_radius * 0.33) then State.segments = math.floor(State.max_radius * 0.33) end
 
-   State.spiral = State.clip.new('VectorSpiral', {
+   State.spiral = State.clip.viewport.new('VectorSpiral', {
       cx = State.cx, cy = State.cy,
       radius = State.max_radius + (State.max_radius / State.segments),
       spacing = State.max_radius / State.segments,

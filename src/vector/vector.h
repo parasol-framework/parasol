@@ -467,7 +467,7 @@ class extVectorViewport : public extVector {
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
    DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
-   DOUBLE vpXScale, vpYScale;                              // Internal scaling for View -to-> Target.  Does not affect the view itself.
+   DOUBLE vpXScale, vpYScale;                              // Internal scaling for ViewN -to-> TargetN.  Does not affect the view itself.
    DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    TClipRectangle<DOUBLE> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
@@ -528,9 +528,10 @@ class extVectorClip : public extVector {
    using create = pf::Create<extVectorClip>;
 
    DOUBLE LargestStroke;
+   extVectorViewport *Viewport; // Vector paths are created within the viewport to define the mask.
    VUNIT ClipUnits;
+   VCLF ClipFlags;
    bool RefreshBounds;
-   bool Viewport; // Set by VectorViewport to inform that the BasePath represents a clipped container
 
    inline void set_transform(struct VectorMatrix *pMatrices) {
       Matrices = pMatrices;
@@ -590,6 +591,7 @@ extern ERROR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
+extern void generate_clip(extVectorClip *);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
@@ -853,11 +855,11 @@ inline static DOUBLE get_parent_width(const objVector *Vector)
 {
    auto eVector = (const extVector *)Vector;
    if (auto view = (extVectorViewport *)eVector->ParentView) {
-      if ((view->vpDimensions & DMF_WIDTH) or
+      if (view->vpViewWidth > 0) return view->vpViewWidth;
+      else if ((view->vpDimensions & DMF_WIDTH) or
           ((view->vpDimensions & DMF_X) and (view->vpDimensions & DMF_X_OFFSET))) {
          return view->vpFixedWidth;
       }
-      else if (view->vpViewWidth > 0) return view->vpViewWidth;
       else return eVector->Scene->PageWidth;
    }
    else if (eVector->Scene) return eVector->Scene->PageWidth;
@@ -868,21 +870,15 @@ inline static DOUBLE get_parent_height(const objVector *Vector)
 {
    auto eVector = (const extVector *)Vector;
    if (auto view = (extVectorViewport *)eVector->ParentView) {
-      if ((view->vpDimensions & DMF_HEIGHT) or
+      if (view->vpViewHeight > 0) return view->vpViewHeight;
+      else if ((view->vpDimensions & DMF_HEIGHT) or
           ((view->vpDimensions & DMF_Y) and (view->vpDimensions & DMF_Y_OFFSET))) {
          return view->vpFixedHeight;
       }
-      else if (view->vpViewHeight > 0) return view->vpViewHeight;
       else return eVector->Scene->PageHeight;
    }
    else if (eVector->Scene) return eVector->Scene->PageHeight;
    else return 0;
-}
-
-template <class T> inline static void get_parent_size(T *Vector, DOUBLE &Width, DOUBLE &Height)
-{
-   Width = get_parent_width(Vector);
-   Height = get_parent_height(Vector);
 }
 
 template <class T> inline static DOUBLE get_parent_diagonal(T *Vector)

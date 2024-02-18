@@ -101,7 +101,7 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       return error;
    }
    else {
-      log.warning("Could not find field %s in object class %s.", FieldName(FieldID), Object->className());
+      log.warning("Could not find field %s in class %s.", FieldName(FieldID), Object->className());
       return ERR_UnsupportedField;
    }
 }
@@ -120,11 +120,11 @@ SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
 
-Fields are referenced as hashed UID's calculated from the ~StrHash() function.  The majority of field ID's are 
+Fields are referenced as hashed UID's calculated from the ~StrHash() function.  The majority of field ID's are
 predefined in the `parasol/system/fields.h` include file.
 
 The type of the Value parameter must be OR'd into the Field parameter.  If the provided type does not match that of
-the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be 
+the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be
 converted to a numeric value automatically.  String and pointer types are interchangeable.
 
 Available field types are as follows:
@@ -140,7 +140,7 @@ Available field types are as follows:
 <type name="TVAR">A pointer to a Variable structure.</>
 </>
 
-There is no requirement for the client to have a working knowledge of the target object's field configuration in 
+There is no requirement for the client to have a working knowledge of the target object's field configuration in
 order to write information to it.
 
 To set a field with a fixed-size array, please use the ~SetArray() function.
@@ -209,7 +209,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       return error;
    }
    else {
-      log.warning("Could not find field %s in object class %s.", FieldName(FieldID), Object->className());
+      log.warning("Could not find field %s in class %s.", FieldName(FieldID), Object->className());
       return ERR_UnsupportedField;
    }
 }

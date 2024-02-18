@@ -113,23 +113,22 @@ void gen_vector_path(extVector *Vector)
          }
 
          parent_id = parent_view->UID;
-
-         // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
-
-         if (view->vpDimensions & DMF_SCALED_X) view->FinalX = (parent_width * view->vpTargetX);
-         else view->FinalX = view->vpTargetX;
-
-         if (view->vpDimensions & DMF_SCALED_Y) view->FinalY = (parent_height * view->vpTargetY);
-         else view->FinalY = view->vpTargetY;
       }
       else {
          parent_width  = Vector->Scene->PageWidth;
          parent_height = Vector->Scene->PageHeight;
          parent_id     = Vector->Scene->UID;
-         // SVG requirement: top level viewport always located at (0,0)
-         view->FinalX = 0;
-         view->FinalY = 0;
       }
+
+      // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
+      // NB: In SVG it is a requirement that the top level viewport is always located at (0,0), but we
+      // leave that as something for the SVG parser to enforce.
+
+      if (view->vpDimensions & DMF_SCALED_X) view->FinalX = (parent_width * view->vpTargetX);
+      else view->FinalX = view->vpTargetX;
+
+      if (view->vpDimensions & DMF_SCALED_Y) view->FinalY = (parent_height * view->vpTargetY);
+      else view->FinalY = view->vpTargetY;
 
       if (view->vpDimensions & DMF_SCALED_WIDTH) view->vpFixedWidth = parent_width * view->vpTargetWidth;
       else if (view->vpDimensions & DMF_FIXED_WIDTH) view->vpFixedWidth = view->vpTargetWidth;
@@ -172,7 +171,7 @@ void gen_vector_path(extVector *Vector)
 
       // The client can force the top-level viewport to be resized by using VPF::RESIZE and defining PageWidth/PageHeight
 
-      if ((!parent_view) and ((Vector->Scene->Flags & VPF::RESIZE) != VPF::NIL)) {
+      if ((Vector->Scene->Viewport IS (objVectorViewport *)Vector) and ((Vector->Scene->Flags & VPF::RESIZE) != VPF::NIL)) {
          log.trace("VPF::RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
          target_width  = parent_width;
          target_height = parent_height;

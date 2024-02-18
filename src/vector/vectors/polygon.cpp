@@ -22,8 +22,8 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 static void generate_polygon(extVectorPoly *Vector)
 {
-   DOUBLE view_width, view_height;
-   get_parent_size(Vector, view_width, view_height);
+   auto view_width = get_parent_width(Vector);
+   auto view_height = get_parent_height(Vector);
 
    if ((Vector->Points) and (Vector->TotalPoints >= 2)) {
       DOUBLE x = Vector->Points[0].X;

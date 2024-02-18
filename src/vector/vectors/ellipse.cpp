@@ -28,9 +28,9 @@ static void generate_ellipse(extVectorEllipse *Vector)
    DOUBLE cx = Vector->eCX, cy = Vector->eCY;
    DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
 
-   if (Vector->eDimensions & (DMF_SCALED_CENTER_X|DMF_SCALED_CENTER_Y|DMF_SCALED_RADIUS_X|DMF_SCALED_RADIUS_Y)) {
-      DOUBLE view_width, view_height;
-      get_parent_size(Vector, view_width, view_height);
+   if (Vector->eDimensions & (DMF_SCALED_CENTER_X|DMF_SCALED_CENTER_Y|DMF_SCALED_RADIUS_X|DMF_SCALED_RADIUS_Y)) {    
+      auto view_width = get_parent_width(Vector);
+      auto view_height = get_parent_height(Vector);
 
       if (Vector->eDimensions & DMF_SCALED_CENTER_X) cx *= view_width;
       if (Vector->eDimensions & DMF_SCALED_CENTER_Y) cy *= view_height;

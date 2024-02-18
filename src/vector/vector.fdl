@@ -11,6 +11,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "LARGE",
     "SWEEP")
 
+  flags("VCLF", { comment="Options for VectorClip." },
+    "APPLY_FILLS: Apply fill instructions when drawing the clipping path(s).",
+    "APPLY_STROKES: Apply stroke instructions when drawing the clipping path(s).")
+
   flags("VF", { comment="Optional flags and indicators for the Vector class." },
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.")
@@ -545,7 +549,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     { id=30, name="DeleteLine" }
   })
 
-  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp", references={ 'VTXF', 'VTS' }  })
+  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp", references={ 'VTXF', 'VTS' } })
 
   class('VectorGroup', { base='Vector', src='vectors/group.cpp' })
 
@@ -561,7 +565,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   class('VectorEllipse', { base='Vector', src='vectors/ellipse.cpp' })
 
-  class('VectorClip', { base='Vector', references={ 'VUNIT' }, src='vectors/clip.cpp', output='vectors/clip_def.cpp' })
+  class('VectorClip', { base='Vector', references={ 'VCLF', 'VUNIT' }, src='vectors/clip.cpp', output='vectors/clip_def.cpp' })
 
   class('VectorViewport', { base='Vector', references={ 'VOF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
 
@@ -1085,6 +1089,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "LIGHTING-COLOUR",
     "LIMITINGCONEANGLE",
     "LOOP-LIMIT",
+    "MASKCONTENTUNITS",
+    "MASKUNITS",
     "POINTSATX",
     "POINTSATY",
     "POINTSATZ",
@@ -1130,6 +1136,8 @@ INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 
 namespace fl {
    using namespace pf;
+
+constexpr FieldValue ClipFlags(VCLF Value) { return FieldValue(FID_ClipFlags, LONG(Value)); }
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }

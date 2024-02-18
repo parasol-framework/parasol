@@ -32,12 +32,12 @@ public:
 
       ClipBuffer() : m_shape(NULL), m_clip(NULL) { }
 
-      ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) : 
+      ClipBuffer(VectorState &pState, extVectorClip *pClip, extVector *pShape) :
          m_state(&pState), m_shape(pShape), m_clip(pClip) { }
 
-      void draw();
-      void draw_clips(extVector *, agg::rasterizer_scanline_aa<> &, agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &, 
-         agg::trans_affine &);
+      void draw(SceneRenderer &);
+      void draw_clips(SceneRenderer &, extVector *, agg::rasterizer_scanline_aa<> &,
+         agg::renderer_base<agg::pixfmt_gray8> &, agg::trans_affine &);
    };
 
 private:
@@ -102,68 +102,190 @@ public:
 };
 
 //********************************************************************************************************************
-// Basic function for recursively drawing all child vectors to a bitmap mask.
+// This function recursively draws all child vectors to a bitmap mask in an additive way.
+//
+// TODO: Currently the paths are transformed dynamically, but we could store a transformed 'MaskPath' permanently with
+// the vectors that use them.  When the vector path is dirty, we can clear the MaskPath to force recomputation when 
+// required.
 
-void SceneRenderer::ClipBuffer::draw_clips(extVector *Shape, agg::rasterizer_scanline_aa<> &Rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid, agg::trans_affine &Transform)
+void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Shape, agg::rasterizer_scanline_aa<> &Raster,
+   agg::renderer_base<agg::pixfmt_gray8> &Base, agg::trans_affine &Transform)
 {
    agg::scanline32_p8 sl;
-   for (auto scan=Shape; scan; scan=(extVector *)scan->Next) {
-      if (scan->Class->BaseClassID IS ID_VECTOR) {
-         if (scan->Visibility != VIS::VISIBLE);
-         else if (!scan->BasePath.empty()) {
-            auto t = scan->Transform * Transform;
+   for (auto node=Shape; node; node=(extVector *)node->Next) {
+      if (node->Class->BaseClassID IS ID_VECTOR) {
+         if (node->Visibility != VIS::VISIBLE);
+         else if (!node->BasePath.empty()) {
+            auto t = node->Transform * Transform;
+            
+            if (node->ClipRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+            else if (node->ClipRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
-            if (!scan->Stroked) { // Filled mask
-               agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, t);
-               Rasterizer.reset();
-               Rasterizer.add_path(final_path);
-               agg::render_scanlines(Rasterizer, sl, Solid);
+            agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(Base);
+             
+            if ((m_clip->ClipFlags & (VCLF::APPLY_STROKES|VCLF::APPLY_FILLS)) != VCLF::NIL) {
+               if ((m_clip->ClipFlags & VCLF::APPLY_FILLS) != VCLF::NIL) {
+                  // When the APPLY_FILLS option is enabled, regular fill painting rules will be applied.
+
+                  if ((node->Fill->Colour.Alpha > 0) and (!node->DisableFillColour)) {
+                     DOUBLE value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
+                     value *= node->FillOpacity;
+                     solid.color(agg::gray8(value * 0xff, 0xff));
+
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(node->BasePath, t);
+                     Raster.reset();
+                     Raster.add_path(final_path);
+                     agg::render_scanlines(Raster, sl, solid);
+                  }
+
+                  if ((node->Fill->Gradient) or (node->Fill->Image) or (node->Fill->Pattern)) {
+                     // The fill routines are written for 32-bit colour rendering, so we have to use active conversion 
+                     // of RGB colours to grey-scale.  This isn't that much of a problem if the masks remain static and
+                     // we cache the results.
+
+                     VectorState state;
+                     agg::pixfmt_psl pixf;
+                     agg::renderer_base<agg::pixfmt_psl> rb(pixf);
+                     ColourFormat cf; // Dummy, not required
+                     pixf.rawBitmap(m_bitmap.data(), m_width, m_height, m_width, 8, cf, true);
+                     rb.attach(pixf);
+                     
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(node->BasePath, t);
+                     Raster.reset();
+                     Raster.add_path(final_path);
+
+                     if (node->Fill->Gradient) {
+                        if (auto table = get_fill_gradient_table(node->Fill[0], state.mOpacity * node->FillOpacity)) {
+                           fill_gradient(state, node->Bounds, &node->BasePath, t, Render.view_width(), Render.view_height(), 
+                              *((extVectorGradient *)node->Fill->Gradient), table, rb, Raster);
+                        }
+                     }
+
+                     if (node->Fill->Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
+                        fill_image(state, node->Bounds, node->BasePath, node->Scene->SampleMethod, t,
+                           Render.view_width(), Render.view_height(), *node->Fill->Image, rb, Raster, 
+                           node->FillOpacity);
+                     }
+
+                     if (node->Fill->Pattern) {
+                        fill_pattern(state, node->Bounds, &node->BasePath, node->Scene->SampleMethod, t,
+                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill->Pattern), rb, Raster);
+                     }
+                  }
+               }
+
+               if ((m_clip->ClipFlags & VCLF::APPLY_STROKES) != VCLF::NIL) {
+                  if (node->StrokeRaster) {
+                     DOUBLE value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
+                     value *= node->StrokeOpacity;
+                     solid.color(agg::gray8(value * 0xff, 0xff));
+
+                     agg::conv_stroke<agg::path_storage> stroked_path(node->BasePath);
+                     configure_stroke(*node, stroked_path);
+                     agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, t);
+
+                     Raster.reset();
+                     Raster.add_path(final_path);
+                     agg::render_scanlines(Raster, sl, solid);
+                  }
+               }
             }
-            else { // Stroked mask
-               agg::conv_stroke<agg::path_storage> stroked_path(scan->BasePath);
-               configure_stroke(*scan, stroked_path);
-               agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, t);
+            else {
+               // Regular 'clipping path' rules enabled.  SVG states that all paths are filled and stroking is not 
+               // supported in this mode.
 
-               Rasterizer.add_path(final_path);
-               agg::render_scanlines(Rasterizer, sl, Solid);
+               solid.color(agg::gray8(0xff, 0xff));
+               agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(node->BasePath, t);
+               Raster.reset();
+               Raster.add_path(final_path);
+               agg::render_scanlines(Raster, sl, solid);
             }
          }
       }
 
-      if (scan->Child) draw_clips((extVector *)scan->Child, Rasterizer, Solid, Transform);
+      if (node->Child) draw_clips(Render, (extVector *)node->Child, Raster, Base, Transform);
    }
 }
 
 //********************************************************************************************************************
 // Called by the scene graph renderer to generate a bitmap mask.
-// 
-// TODO: Currently mask bitmaps are created and torn down on each drawing cycle.  We may be able to cache the bitmaps 
+//
+// TODO: Currently mask bitmaps are created and torn down on each drawing cycle.  We may be able to cache the bitmaps
 // with Vectors when they request a mask.  Bear in mind that caching has to be on a per-vector basis and not in the
 // VectorClip itself due to the fact that a given VectorClip can be referenced by many vectors.
+//
+// SVG stipulates that masks constructed from RGB colours use the luminance formula to convert them to a greyscale
+// value: ".2126R + .7152G + .0722B".  The best way to apply this is to convert solid colour values to their
+// luminesence value prior to drawing them.
 
-void SceneRenderer::ClipBuffer::draw()
+void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 {
    pf::Log log;
 
    if (m_clip) {
       // Ensure that the Bounds are up to date and refresh them if necessary.
 
-      if ((m_clip->Child) and (!m_clip->RefreshBounds)) {
-         if (check_branch_dirty((extVector *)m_clip->Child)) m_clip->RefreshBounds = true;
+      if (!m_clip->Viewport->Child) {
+         log.warning("Clipping viewport has no assigned children.");
+         return;
+      }
+
+      if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
+         // The viewport needs to mock the calling shape's dimensions and transform.  We can presume that
+         // the shape's path is already up-to-date for this.
+         // 
+         // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (1.0,1.0) and
+         // extrapolated to the bounding box of m_shape.
+
+         TClipRectangle<DOUBLE> *bounds;
+         if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
+            bounds = &((extVectorViewport *)m_shape)->vpBounds;
+         }
+         else bounds = &m_shape->Bounds;
+
+         acRedimension(m_clip->Viewport, bounds->left, bounds->top, 0, bounds->width(), bounds->height(), 0);
+
+         if (m_shape->Matrices) {
+            if (!m_clip->Viewport->Matrices) {
+               VectorMatrix *matrix;
+               vecNewMatrix(m_clip->Viewport, &matrix);
+            }
+
+            for (auto t=m_shape->Matrices; t; t=t->Next) {
+               *m_clip->Viewport->Matrices *= *t;
+            }
+         }
+      }
+      else { // USERSPACE
+         // The viewport needs to mock the shape's parent viewport and transforms.
+
+         acRedimension(m_clip->Viewport,
+            m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
+            get_parent_width(m_shape), 
+            get_parent_height(m_shape), 0);
+      }
+
+      if (!m_clip->RefreshBounds) {
+         if (check_branch_dirty((extVector *)m_clip->Viewport->Child)) m_clip->RefreshBounds = true;
       }
 
       if (m_clip->RefreshBounds) {
          m_clip->RefreshBounds = false;
-         m_clip->GeneratePath(m_clip);
+         generate_clip(m_clip);
       }
 
       if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
+      DOUBLE largest_stroke;
+      if (m_clip->LargestStroke) { // Scale the stroke to match the shape's transform
+         largest_stroke = m_clip->LargestStroke * m_shape->Transform.scale();
+      }
+      else largest_stroke = 0;
+
       auto t_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
-      auto t_bound = get_bounds(t_bound_path);
-      m_width  = F2T(t_bound.right + (m_clip->LargestStroke * 0.5)) + 2;
-      m_height = F2T(t_bound.bottom + (m_clip->LargestStroke * 0.5)) + 2;
+      auto t_bound      = get_bounds(t_bound_path);
+      m_width  = F2T(t_bound.right + (largest_stroke * 0.5)) + 2;
+      m_height = F2T(t_bound.bottom + (largest_stroke * 0.5)) + 2;
 
       if ((m_width <= 0) or (m_height <= 0)) {
          DEBUG_BREAK
@@ -185,7 +307,6 @@ void SceneRenderer::ClipBuffer::draw()
       m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
       agg::pixfmt_gray8 pixf(m_renderer);
       agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
-      agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
       agg::rasterizer_scanline_aa<> rasterizer;
 
       LONG x = F2T(t_bound.left);
@@ -196,28 +317,11 @@ void SceneRenderer::ClipBuffer::draw()
          ClearMemory(m_bitmap.data() + y + x, m_width - x);
       }
 
-      solid.color(agg::gray8(0xff, 0xff));
-
       // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
       auto transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
 
-      if (m_clip->Child) draw_clips((extVector *)m_clip->Child, rasterizer, solid, transform);
-      else if (!m_clip->BasePath.empty()) {
-         // A client can provide its own clipping path by setting the BasePath.  This is more optimal than
-         // using child vectors.
-         //
-         // NB: The client must opt to use either BasePath or Children and not both - this is because
-         // both will be additive when the intention may be for children to be additive and BasePath 
-         // subtractive.
-
-         agg::scanline32_p8 sl;
-         agg::path_storage final_path(m_clip->BasePath);
-
-         rasterizer.reset();
-         rasterizer.add_path(final_path);
-         agg::render_scanlines(rasterizer, sl, solid);
-      }
+      draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, transform);
    }
    else {
       // If m_clip is undefined then this clip was created by a viewport.  Its vpBounds path will serve as the
@@ -746,7 +850,7 @@ static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::r
 
 //********************************************************************************************************************
 
-void SceneRenderer::draw(objBitmap *Bitmap) 
+void SceneRenderer::draw(objBitmap *Bitmap)
 {
    pf::Log log;
 
@@ -775,7 +879,7 @@ void SceneRenderer::draw(objBitmap *Bitmap)
 
 //********************************************************************************************************************
 
-void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster, extPainter &Painter) 
+void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster, extPainter &Painter)
 {
    // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
    // an image/gradient fill are independent of the path.
@@ -832,7 +936,7 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
 
 //********************************************************************************************************************
 
-void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster) 
+void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster)
 {
    if (Vector.Scene->Gamma != 1.0) Raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
 
@@ -999,12 +1103,12 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             if ((state.mClip.right > state.mClip.left) and (state.mClip.bottom > state.mClip.top)) { // Continue only if the clipping region is visible
                if (view->vpClip) {
                   state.mClipStack->emplace(state, (extVectorClip *)NULL, view);
-                  state.mClipStack->top().draw();
+                  state.mClipStack->top().draw(*this);
                }
 
                if (view->ClipMask) {
                   state.mClipStack->emplace(state, view->ClipMask, view);
-                  state.mClipStack->top().draw();
+                  state.mClipStack->top().draw(*this);
                }
 
                auto save_rb_clip = mRenderBase.clip_box();
@@ -1090,7 +1194,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       else {
          if (shape->ClipMask) {
             state.mClipStack->emplace(state, shape->ClipMask, shape);
-            state.mClipStack->top().draw();
+            state.mClipStack->top().draw(*this);
          }
 
          if (shape->GeneratePath) { // A vector that generates a path is one that can be drawn
@@ -1199,7 +1303,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          if (!state.mClipStack->empty()) {
             agg::alpha_mask_gray8 alpha_mask(state.mClipStack->top().m_renderer);
             agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-            drawBitmap(masked_scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);            
+            drawBitmap(masked_scanline, shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);
          }
          else {
             agg::scanline_u8 scanline;
@@ -1254,7 +1358,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       else log.warning("The FillStyle is not supported.");
    }
 
-   if ((StrokeWidth > 0) and (StrokeStyle)){
+   if ((StrokeWidth > 0) and (StrokeStyle)) {
       if (StrokeStyle->Class->ClassID IS ID_VECTORGRADIENT) {
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
@@ -1359,5 +1463,15 @@ void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Strid
       // Deprecated.  16-bit client code should use 24-bit and downscale instead.
       pf::Log log;
       log.warning("Support for 16-bit bitmaps is deprecated.");
+   }
+   else if (BitsPerPixel IS 8) {
+      // For generating grey-scale alpha masks
+      fBlendHLine      = &blendHLine8;
+      fBlendSolidHSpan = &blendSolidHSpan8;
+      fBlendColorHSpan = &blendColorHSpan8;
+      fCopyColorHSpan  = &copyColorHSpan8;
+      fBlendPix        = &blend8;
+      fCopyPix         = &copy8;
+      fCoverPix        = &cover8;
    }
 }

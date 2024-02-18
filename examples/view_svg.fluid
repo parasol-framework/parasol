@@ -18,9 +18,7 @@ Example: parasol view_svg.fluid file=[Path]
    })
 
    glScene = glWindow.scene
-   glViewport = glScene.new('VectorViewport', {
-      aspectRatio = ARF_MEET, x=glWindow.client.left, y=glWindow.client.top, xOffset=glWindow.client.right, yOffset=glWindow.client.bottom
-   })
+   glViewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
 
    if not arg('file') then
       print('Usage: file=[Path]')

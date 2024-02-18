@@ -422,7 +422,7 @@ static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 static const ActionArray clPatternActions[] = {
    { AC_Draw,      PATTERN_Draw },
@@ -478,6 +478,8 @@ static const FieldArray clPatternFields[] = {
    { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, PATTERN_GET_Viewport, NULL, ID_VECTORVIEWPORT },
    END_FIELD
 };
+
+//********************************************************************************************************************
 
 ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
 {

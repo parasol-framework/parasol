@@ -118,8 +118,9 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
             if (value.empty()) continue;
 
             if (!StrMatch("offset", name)) {
-               stop.Offset = StrToFloat(value.c_str());
-               if (value.find('%') != std::string::npos) {
+               char *end;
+               stop.Offset = strtod(value.c_str(), &end);
+               if (*end IS '%') {
                   stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
                }
 
@@ -248,33 +249,18 @@ static DOUBLE read_time(const std::string Value)
 {
    DOUBLE units[3];
 
-   auto v = Value.c_str();
+   auto v = (char *)Value.c_str();
    while ((*v) and (*v <= 0x20)) v++;
    if ((*v >= '0') and (*v <= '9')) {
-      units[0] = StrToFloat(v);
-      while ((*v >= '0') and (*v <= '9')) v++;
-      if (*v IS '.') {
-         v++;
-         while ((*v >= '0') and (*v <= '9')) v++;
-      }
+      units[0] = strtod(v, &v);
 
       if (*v IS ':') {
          v++;
-         units[1] = StrToFloat(v);
-         while ((*v >= '0') and (*v <= '9')) v++;
-         if (*v IS '.') {
-            v++;
-            while ((*v >= '0') and (*v <= '9')) v++;
-         }
+         units[1] = strtod(v, &v);
 
          if (*v IS ':') {
             v++;
-            units[2] = StrToFloat(v);
-            while ((*v >= '0') and (*v <= '9')) v++;
-            if (*v IS '.') {
-               v++;
-               while ((*v >= '0') and (*v <= '9')) v++;
-            }
+            units[2] = strtod(v, &v);
 
             // hh:nn:ss
             return (units[0] * 60 * 60) + (units[1] * 60) + units[2];
@@ -332,16 +318,10 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 }
 
 //********************************************************************************************************************
-
-template <class T> static inline void set_double(T Object, FIELD FieldID, const std::string Value)
-{
-   LARGE field = FieldID;
-   DOUBLE num = read_unit(Value, &field);
-   SetField(Object, field, num);
-}
-
-//********************************************************************************************************************
-// This version forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
+// This function forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
+//
+// NOTE: It would be possible to deprecate this in future if the viewport host is given a viewbox area of (0 0 1 1)
+// as it should be.
 
 inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, VUNIT Units)
 {

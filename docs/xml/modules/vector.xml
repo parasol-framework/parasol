@@ -652,6 +652,11 @@ Z: Close Path
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
     </constants>
 
+    <constants lookup="VCLF" comment="Options for VectorClip.">
+      <const name="APPLY_FILLS">Apply fill instructions when drawing the clipping path(s).</const>
+      <const name="APPLY_STROKES">Apply stroke instructions when drawing the clipping path(s).</const>
+    </constants>
+
     <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
       <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>

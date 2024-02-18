@@ -88,7 +88,7 @@ gui.menu = function(Options)
 
       -- To use the clip, set the 'mask' field of any drawable vector.
       self.clip = self.scene.new('VectorClip', { units='BoundingBox' })
-      local clipRect = self.clip.new('VectorRectangle', {
+      local clipRect = self.clip.viewport.new('VectorRectangle', {
          x      = 1.5,
          y      = 1.5,
          roundX = 3,

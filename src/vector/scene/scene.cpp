@@ -45,12 +45,12 @@ static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_
    const agg::trans_affine &, DOUBLE, DOUBLE, objVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
    agg::rasterizer_scanline_aa<> &, DOUBLE Alpha = 1.0);
 
-static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *, 
+static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
    const agg::trans_affine &, DOUBLE, DOUBLE, const extVectorGradient &, GRADIENT_TABLE *,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
 static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
-   VSM, const agg::trans_affine &, DOUBLE ViewWidth, DOUBLE, extVectorPattern &, 
+   VSM, const agg::trans_affine &, DOUBLE ViewWidth, DOUBLE, extVectorPattern &,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
 //********************************************************************************************************************
@@ -268,7 +268,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
       Self->RefreshCursor = false;
       gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
       gfxGetCursorPos(&abs_x, &abs_y);
-   
+
       const InputEvent event = {
          .Next        = NULL,
          .Value       = 0,
@@ -692,7 +692,7 @@ Viewport: References the first object in the scene, which must be a VectorViewpo
 The first object in the vector scene is referenced here.  It must belong to the @VectorViewport class, which will
 be used to define the size and location of the area rendered by the scene.
 
-The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport 
+The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport
 owned by the VectorScene is initialised.
 -END-
 
