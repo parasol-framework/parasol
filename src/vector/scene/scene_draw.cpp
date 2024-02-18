@@ -42,14 +42,14 @@ public:
 
 private:
    constexpr DOUBLE view_width() {
-      if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) return mView->vpFixedWidth;
-      else if (mView->vpViewWidth > 0) return mView->vpViewWidth;
+      if (mView->vpViewWidth > 0) return mView->vpViewWidth;
+      else if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) return mView->vpFixedWidth;
       else return mView->Scene->PageWidth;
    }
 
    constexpr DOUBLE view_height() {
-      if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) return mView->vpFixedHeight;
-      else if (mView->vpViewHeight > 0) return mView->vpViewHeight;
+      if (mView->vpViewHeight > 0) return mView->vpViewHeight;
+      else if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) return mView->vpFixedHeight;
       else return mView->Scene->PageHeight;
    }
 

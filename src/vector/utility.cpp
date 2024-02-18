@@ -209,13 +209,13 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    // Prevent division by zero errors.  Note that the client can legitimately set these values to zero, so we cannot
    // treat such situations as an error on the client's part.
 
-   if (TargetWidth <= 0.000001) TargetWidth = 0.1;
-   if (TargetHeight <= 0.000001) TargetHeight = 0.1;
+   if (TargetWidth <= DBL_MIN) TargetWidth = 0.1;
+   if (TargetHeight <= DBL_MIN) TargetHeight = 0.1;
 
    // A Source size of 0 is acceptable and will be treated as equivalent to the target.
 
-   if (SourceWidth <= 0.000001) SourceWidth = TargetWidth;
-   if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
+   if (SourceWidth <= DBL_MIN) SourceWidth = TargetWidth;
+   if (SourceHeight <= DBL_MIN) SourceHeight = TargetHeight;
 
    if ((AspectRatio & (ARF::MEET|ARF::SLICE)) != ARF::NIL) {
       DOUBLE xScale = TargetWidth / SourceWidth;

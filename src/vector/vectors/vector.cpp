@@ -283,6 +283,8 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    Self->~extVector();
    
    if (Self->ClipMask)   UnsubscribeAction(Self->ClipMask, AC_Free);
+   if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
+   if (Self->Morph)      UnsubscribeAction(Self->Morph, AC_Free);
 
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
