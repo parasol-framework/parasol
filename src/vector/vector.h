@@ -467,7 +467,7 @@ class extVectorViewport : public extVector {
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
    DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
-   DOUBLE vpXScale, vpYScale;                              // Internal scaling for ViewN -to-> TargetN.  Does not affect the view itself.
+   DOUBLE vpXScale, vpYScale; // Internal scaling for ViewN -to-> TargetN; takes the AspectRatio into consideration.
    DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    TClipRectangle<DOUBLE> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;

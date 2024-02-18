@@ -1799,17 +1799,8 @@ extern void get_text_xy(extVectorText *Vector)
 {
    DOUBLE x = Vector->txX, y = Vector->txY;
 
-   if (Vector->txXScaled) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) x *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) x *= Vector->ParentView->vpViewWidth;
-      else x *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->txYScaled) {
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) y *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) y *= Vector->ParentView->vpViewHeight;
-      else y *= Vector->Scene->PageHeight;
-   }
+   if (Vector->txXScaled) x *= get_parent_width(Vector);
+   if (Vector->txYScaled) y *= get_parent_height(Vector);
 
    if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
    else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;

@@ -28,7 +28,7 @@ static void generate_ellipse(extVectorEllipse *Vector)
    DOUBLE cx = Vector->eCX, cy = Vector->eCY;
    DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
 
-   if (Vector->eDimensions & (DMF_SCALED_CENTER_X|DMF_SCALED_CENTER_Y|DMF_SCALED_RADIUS_X|DMF_SCALED_RADIUS_Y)) {    
+   if (Vector->eDimensions & (DMF_SCALED_CENTER_X|DMF_SCALED_CENTER_Y|DMF_SCALED_RADIUS_X|DMF_SCALED_RADIUS_Y)) {
       auto view_width = get_parent_width(Vector);
       auto view_height = get_parent_height(Vector);
 
@@ -38,25 +38,28 @@ static void generate_ellipse(extVectorEllipse *Vector)
       if (Vector->eDimensions & DMF_SCALED_RADIUS_Y) ry *= view_height;
    }
 
-   DOUBLE scale = Vector->Transform.scale();
-
-   ULONG steps;
-   if (Vector->eVertices >= 3) steps = Vector->eVertices;
+   ULONG vertices;
+   if (Vector->eVertices >= 3) vertices = Vector->eVertices;
    else {
-      DOUBLE ra = (fabs(rx) + fabs(ry)) * 0.5;
+      // Calculate the number of vertices needed for a smooth result, based on the final scale of the ellipse
+      // when parent views are taken into consideration.
+      auto scale = Vector->Transform.scale();
+      auto srx = rx * scale;
+      auto sry = ry * scale;
+      DOUBLE ra = (fabs(srx) + fabs(sry)) * 0.5;
       DOUBLE da = acos(ra / (ra + 0.125 / scale)) * 2.0;
-      steps = agg::uround(2.0 * agg::pi / da);
-      if (steps < 3) steps = 3; // Because you need at least 3 vertices to create a shape.
+      vertices = agg::uround(2.0 * agg::pi / da);
+      if (vertices < 3) vertices = 3; // Because you need at least 3 vertices to create a shape.
    }
 
-   // TODO: Using a cosine lookup table would speed up this loop.
+   // TODO: Using co/sine lookup tables would speed up this loop.
 
-   for (ULONG step=0; step < steps; step++) {
-      DOUBLE angle = DOUBLE(step) / DOUBLE(steps) * 2.0 * agg::pi;
+   for (ULONG v=0; v < vertices; v++) {
+      DOUBLE angle = DOUBLE(v) / DOUBLE(vertices) * 2.0 * agg::pi;
       //if (m_cw) angle = 2.0 * agg::pi - angle;
       DOUBLE x = cx + cos(angle) * rx;
       DOUBLE y = cy + sin(angle) * ry;
-      if (step == 0) Vector->BasePath.move_to(x, y);
+      if (v == 0) Vector->BasePath.move_to(x, y);
       else Vector->BasePath.line_to(x, y);
    }
    Vector->BasePath.close_polygon();

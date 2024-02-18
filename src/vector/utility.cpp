@@ -197,7 +197,8 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
 //********************************************************************************************************************
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
-// Source* defines size of the source area and Target* defines the size of the projection to the display.
+// Source* defines size of the source area (in SVG, the 'viewbox') 
+// Target* defines the size of the projection to the display.
 
 void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    DOUBLE TargetWidth, DOUBLE TargetHeight,

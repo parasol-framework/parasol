@@ -38,17 +38,8 @@ static void generate_supershape(extVectorShape *Vector)
 {
    DOUBLE cx = Vector->CX, cy = Vector->CY;
 
-   if (Vector->Dimensions & DMF_SCALED_CENTER_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
-      else cx *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->Dimensions & DMF_SCALED_CENTER_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
-      else cy *= Vector->Scene->PageHeight;
-   }
+   if (Vector->Dimensions & DMF_SCALED_CENTER_X) cx *= get_parent_width(Vector);
+   if (Vector->Dimensions & DMF_SCALED_CENTER_Y) cy *= get_parent_height(Vector);
 
    const DOUBLE scale = Vector->Radius;
    DOUBLE rescale = 0;

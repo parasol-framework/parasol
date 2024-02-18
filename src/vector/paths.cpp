@@ -394,10 +394,8 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 
          DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->UID, view->FinalX, view->FinalY);
 
-         if ((view->vpViewX) or (view->vpViewY)) {
-            AGGTransform.tx -= view->vpViewX;
-            AGGTransform.ty -= view->vpViewY;
-         }
+         AGGTransform.tx -= view->vpViewX;
+         AGGTransform.ty -= view->vpViewY;
 
          if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
             if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
