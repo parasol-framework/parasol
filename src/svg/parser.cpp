@@ -155,7 +155,7 @@ static void xtag_pathtransition(extSVG *Self, const XMLTag &Tag)
             SetArray(trans, FID_Stops, stops);
 
             if (!InitObject(trans)) {
-               scAddDef(Self->Scene, id.c_str(), trans);
+               if (!Self->Duplicated) scAddDef(Self->Scene, id.c_str(), trans);
                return;
             }
          }
@@ -196,24 +196,27 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      if (!id.empty()) {
-         if (!InitObject(clip)) {
-            svgState state;
+      if (!InitObject(clip)) {
+         svgState state;
 
-            // Valid child elements for clip-path are:
-            // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
-            // Commands: use, animate
+         // Valid child elements for clip-path are:
+         // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
+         // Commands: use, animate
 
-            auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-            process_children(Self, state, Tag, vp);
+         auto vp = clip->get<OBJECTPTR>(FID_Viewport);
+         process_children(Self, state, Tag, vp);
+
+         if (!Self->Duplicated) {
+            if (id.empty()) {
+               // Declaring a clipPath without an id is poor form, but it is valid SVG and likely that at least
+               // one child object will specify an id in this case.
+               id = "auto" + std::to_string(clip->UID);
+            }
+
             scAddDef(Self->Scene, id.c_str(), clip);
          }
-         else FreeResource(clip);
       }
-      else {
-         log.warning("No id attribute specified in <clipPath> at line %d.", Tag.LineNo);
-         FreeResource(clip);
-      }
+      else FreeResource(clip);
    }
 }
 
@@ -253,19 +256,17 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      if (!id.empty()) {
-         if (!InitObject(clip)) {
-            svgState state;
-            auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-            process_children(Self, state, Tag, vp);
+      if (!InitObject(clip)) {
+         svgState state;
+         auto vp = clip->get<OBJECTPTR>(FID_Viewport);
+         process_children(Self, state, Tag, vp);
+
+         if (!Self->Duplicated) {
+            if (id.empty()) id = "auto" + std::to_string(clip->UID);
             scAddDef(Self->Scene, id.c_str(), clip);
          }
-         else FreeResource(clip);
       }
-      else {
-         log.warning("No id attribute specified in <clipPath> at line %d.", Tag.LineNo);
-         FreeResource(clip);
-      }
+      else FreeResource(clip);
    }
 }
 
@@ -1383,7 +1384,7 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
 
          Self->Effects.clear();
 
-         scAddDef(Self->Scene, id.c_str(), filter);
+         if (!Self->Duplicated) scAddDef(Self->Scene, id.c_str(), filter);
       }
       else FreeResource(filter);
    }
@@ -1474,8 +1475,11 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state;
          process_children(Self, state, Tag, viewport);
-         add_id(Self, Tag, id);
-         scAddDef(Self->Scene, id.c_str(), pattern);
+
+         if (!Self->Duplicated) {
+            add_id(Self, Tag, id);
+            scAddDef(Self->Scene, id.c_str(), pattern);
+         }
       }
       else {
          FreeResource(pattern);
@@ -1742,8 +1746,10 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
          if (!load_pic(Self, src, &pic, width, height)) {
             image->set(FID_Picture, pic);
             if (!InitObject(image)) {
-               add_id(Self, Tag, id);
-               scAddDef(Self->Scene, id.c_str(), image);
+               if (!Self->Duplicated) {
+                  add_id(Self, Tag, id);
+                  scAddDef(Self->Scene, id.c_str(), image);
+               }
             }
             else {
                FreeResource(image);
@@ -1820,7 +1826,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             auto id = std::to_string(image->UID);
             id.insert(0, "img");
-            scAddDef(Self->Scene, id.c_str(), image);
+            if (!Self->Duplicated) scAddDef(Self->Scene, id.c_str(), image);
 
             if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
                SetOwner(Vector, Parent);
@@ -2067,7 +2073,7 @@ static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
       Parent->set(FID_MorphFlags, LONG(flags));
-      scAddDef(Self->Scene, uri.c_str(), shape);
+      if (!Self->Duplicated) scAddDef(Self->Scene, uri.c_str(), shape);
    }
 }
 
@@ -2083,7 +2089,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    pf::Log log(__FUNCTION__);
    std::string ref;
 
-   for (LONG a=1; (a < LONG(Tag.Attribs.size())) and (ref.empty()); a++) {
+   for (LONG a=1; (a < std::ssize(Tag.Attribs)) and (ref.empty()); a++) {
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_HREF: // SVG2
          case SVF_XLINK_HREF: ref = Tag.Attribs[a].Value; break;
@@ -2108,13 +2114,18 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    auto state = State;
    set_state(state, Tag); // Apply all attribute values to the current state.
 
+   Self->Duplicated++;
+   auto dc = deferred_call([&Self] {
+      Self->Duplicated--;
+   });
+
    if ((!StrMatch("symbol", tagref->name())) or (!StrMatch("svg", tagref->name()))) {
       // SVG spec requires that we create a VectorGroup and then create a Viewport underneath that.  However if there
       // are no attributes to apply to the group then there is no sense in creating an empty one.
 
       objVector *group;
       bool need_group = false;
-      for (LONG a=1; (a < LONG(Tag.Attribs.size())) and (!need_group); a++) {
+      for (LONG a=1; (a < std::ssize(Tag.Attribs)) and (!need_group); a++) {
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_X: case SVF_Y: case SVF_WIDTH: case SVF_HEIGHT: break;
             default: need_group = TRUE; break;
@@ -2187,11 +2198,13 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
       // Rather than creating a vanilla group with a child viewport, this optimal approach creates the viewport only.
       if (!NewObject(ID_VECTORVIEWPORT, &vector)) {
          SetOwner(vector, Parent);
+         SetName(vector, "UseElement");
          apply_state(state, vector);
          process_attrib(Self, Tag, vector); // Apply 'use' attributes to the group.
 
          if (vector->init() != ERR_Okay) { FreeResource(vector); return; }
 
+         log.branch("Duplicating tags at %s", ref.c_str());
          objVector *sibling = NULL;
          xtag_default(Self, state, *tagref, vector, sibling);
       }
@@ -3058,10 +3071,12 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
          break;
 
       case SVF_ID:
-         Vector->set(FID_ID, StrValue);
-         add_id(Self, Tag, StrValue);
-         scAddDef(Self->Scene, StrValue.c_str(), Vector);
-         SetName(Vector, StrValue.c_str());
+         if (!Self->Duplicated) {
+            Vector->set(FID_ID, StrValue);
+            add_id(Self, Tag, StrValue);
+            scAddDef(Self->Scene, StrValue.c_str(), Vector);
+            SetName(Vector, StrValue.c_str());
+         }
          break;
          
       case SVF_DISPLAY: 
