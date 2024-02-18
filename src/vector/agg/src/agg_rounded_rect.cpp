@@ -85,50 +85,50 @@ unsigned rounded_rect::vertex(double* x, double* y)
 {
    unsigned cmd = path_cmd_stop;
    switch(m_status) {
-   case 0:
-      m_arc.init(m_x1 + m_rx1, m_y1 + m_ry1, m_rx1, m_ry1, pi, pi+pi*0.5);
-      m_arc.rewind(0);
-      m_status++;
+      case 0:
+         m_arc.init(m_x1 + m_rx1, m_y1 + m_ry1, m_rx1, m_ry1, pi, pi+pi*0.5);
+         m_arc.rewind(0);
+         m_status++;
 
-   case 1:
-      cmd = m_arc.vertex(x, y);
-      if(is_stop(cmd)) m_status++;
-      else return cmd;
+      case 1:
+         cmd = m_arc.vertex(x, y);
+         if(is_stop(cmd)) m_status++;
+         else return cmd;
 
-   case 2:
-      m_arc.init(m_x2 - m_rx2, m_y1 + m_ry2, m_rx2, m_ry2, pi+pi*0.5, 0.0);
-      m_arc.rewind(0);
-      m_status++;
+      case 2:
+         m_arc.init(m_x2 - m_rx2, m_y1 + m_ry2, m_rx2, m_ry2, pi+pi*0.5, 0.0);
+         m_arc.rewind(0);
+         m_status++;
 
-   case 3:
-      cmd = m_arc.vertex(x, y);
-      if(is_stop(cmd)) m_status++;
-      else return path_cmd_line_to;
+      case 3:
+         cmd = m_arc.vertex(x, y);
+         if(is_stop(cmd)) m_status++;
+         else return path_cmd_line_to;
 
-   case 4:
-      m_arc.init(m_x2 - m_rx3, m_y2 - m_ry3, m_rx3, m_ry3, 0.0, pi*0.5);
-      m_arc.rewind(0);
-      m_status++;
+      case 4:
+         m_arc.init(m_x2 - m_rx3, m_y2 - m_ry3, m_rx3, m_ry3, 0.0, pi*0.5);
+         m_arc.rewind(0);
+         m_status++;
 
-   case 5:
-      cmd = m_arc.vertex(x, y);
-      if(is_stop(cmd)) m_status++;
-      else return path_cmd_line_to;
+      case 5:
+         cmd = m_arc.vertex(x, y);
+         if(is_stop(cmd)) m_status++;
+         else return path_cmd_line_to;
 
-   case 6:
-      m_arc.init(m_x1 + m_rx4, m_y2 - m_ry4, m_rx4, m_ry4, pi*0.5, pi);
-      m_arc.rewind(0);
-      m_status++;
+      case 6:
+         m_arc.init(m_x1 + m_rx4, m_y2 - m_ry4, m_rx4, m_ry4, pi*0.5, pi);
+         m_arc.rewind(0);
+         m_status++;
 
-   case 7:
-      cmd = m_arc.vertex(x, y);
-      if(is_stop(cmd)) m_status++;
-      else return path_cmd_line_to;
+      case 7:
+         cmd = m_arc.vertex(x, y);
+         if(is_stop(cmd)) m_status++;
+         else return path_cmd_line_to;
 
-   case 8:
-      cmd = path_cmd_end_poly | path_flags_close | path_flags_ccw;
-      m_status++;
-      break;
+      case 8:
+         cmd = path_cmd_end_poly | path_flags_close | path_flags_ccw;
+         m_status++;
+         break;
    }
    return cmd;
 }
