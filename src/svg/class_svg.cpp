@@ -3,12 +3,14 @@
 -CLASS-
 SVG: Provides support for parsing and rendering SVG files.
 
-The SVG class provides support for parsing SVG statements into native @Vector objects and related definitions.
-For low-level vector programming, consider using the @Vector class directly, or use the SVG class to parse an
-SVG script and then access the #Viewport field to perform transforms and manipulation of the vector group.
+The SVG class provides support for parsing SVG statements into a scene graph that consists of @Vector objects and 
+related constructs.  The generated scene graph is accessible via the #Scene and #Viewport fields.
+
+It is possible to parse SVG documents directly to the UI.  Set the #Target field with a vector to contain the SVG
+content and it will be structured in the existing scene graph.
 
 Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG
-elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.
+elements.
 
 *********************************************************************************************************************/
 
@@ -17,13 +19,23 @@ static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERRO
    ((extSVG *)CurrentContext())->FrameCallback.clear();
 }
 
+//********************************************************************************************************************
+
+static void notify_free_scene(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extSVG *)CurrentContext();
+   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = NULL; }
+}
+
 /*********************************************************************************************************************
 -ACTION-
 Activate: Initiates playback of SVG animations.
 
 SVG documents that use animation features will remain static until they are activated with this action.  The animation
-code will be processed in the background at the pre-defined #FrameRate.  The client may hook into the animation cycle
-by setting the #FrameCallback with a suitable function.
+code will be processed in the background at the pre-defined #FrameRate.  The #Scene will be redrawn automatically as
+each frame is processed.
+
+The client can hook into the animation cycle by setting the #FrameCallback with a suitable function.
 
 -END-
 *********************************************************************************************************************/
@@ -31,7 +43,10 @@ by setting the #FrameCallback with a suitable function.
 static ERROR SVG_Activate(extSVG *Self, APTR Void)
 {
    if (Self->Animated) {
-      if (!Self->AnimationTimer) SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, FUNCTION(animation_timer), &Self->AnimationTimer);
+      if (!Self->AnimationTimer) {
+         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, FUNCTION(animation_timer), &Self->AnimationTimer);
+         SubscribeAction(Self->Scene, AC_Free, FUNCTION(notify_free_scene));
+      }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }
 
@@ -272,22 +287,22 @@ SaveToObject: Saves the SVG document to a data object.
 static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
-   static char header[] =
+   static const char header[] =
 "<?xml version=\"1.0\" standalone=\"no\"?>\n\
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";
-   ERROR (**routine)(OBJECTPTR, APTR);
+   ERROR (**actions)(OBJECTPTR, APTR);
 
    if (!Self->Viewport) return log.warning(ERR_NoData);
 
    if ((Args->ClassID) and (Args->ClassID != ID_SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((!mc->getPtr(FID_ActionTable, &routine)) and (routine)) {
-         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
-            return routine[AC_SaveToObject](Self, Args);
+      if ((!mc->getPtr(FID_ActionTable, &actions)) and (actions)) {
+         if ((actions[AC_SaveToObject]) and (actions[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
+            return actions[AC_SaveToObject](Self, Args);
          }
-         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
+         else if ((actions[AC_SaveImage]) and (actions[AC_SaveImage] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return routine[AC_SaveImage](Self, &saveimage);
+            return actions[AC_SaveImage](Self, &saveimage);
          }
          else return log.warning(ERR_NoSupport);
       }
@@ -500,17 +515,17 @@ static ERROR SET_Statement(extSVG *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Target: The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
+Target: The container object for new SVG content can be declared here.
 
-During the initialisation of an SVG object, a VectorViewport will be created that hosts the SVG's vector objects.  The
-target of this VectorViewport can be specified here, conditional on that object residing within a @VectorScene, or is a
-VectorScene itself.
+During the normal initialisation process, a new @VectorViewport is created to host the SVG scene graph.  By default,
+the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene 
+graph elsewhere.
 
-An attempt will be made to find the new target's parent VectorScene.  If none is identified, an error will be returned
-and no further action is taken.
+The provided Target can be any object class, as long as it forms part of a scene graph owned by a @VectorScene
+object.  It is recommended that the chosen target is a @VectorViewport.
 
-If a SVG object is initialised with no Target being defined, a @VectorScene will be created automatically and
-referenced by the Target field.
+The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible
+to terminate the SVG object without impacting the generated resources.
 
 *********************************************************************************************************************/
 

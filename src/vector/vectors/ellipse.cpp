@@ -44,9 +44,7 @@ static void generate_ellipse(extVectorEllipse *Vector)
       // Calculate the number of vertices needed for a smooth result, based on the final scale of the ellipse
       // when parent views are taken into consideration.
       auto scale = Vector->Transform.scale();
-      auto srx = rx * scale;
-      auto sry = ry * scale;
-      DOUBLE ra = (fabs(srx) + fabs(sry)) * 0.5;
+      DOUBLE ra = (fabs(rx * scale) + fabs(ry * scale)) * 0.5;
       DOUBLE da = acos(ra / (ra + 0.125 / scale)) * 2.0;
       vertices = agg::uround(2.0 * agg::pi / da);
       if (vertices < 3) vertices = 3; // Because you need at least 3 vertices to create a shape.

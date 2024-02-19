@@ -86,6 +86,8 @@ restart:
       }
    }
 
+   SVG->Scene->Viewport->draw();
+
    if (SVG->FrameCallback.defined()) {
       if (SVG->FrameCallback.isC()) {
          pf::SwitchContext context(SVG->FrameCallback.StdC.Context);
@@ -93,9 +95,8 @@ restart:
          routine(SVG, SVG->FrameCallback.StdC.Meta);
       }
       else if (SVG->FrameCallback.isScript()) {
-         auto script = SVG->FrameCallback.Script.Script;
          const ScriptArg args[] = { { "SVG", SVG, FD_OBJECTPTR } };
-         scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(SVG->FrameCallback.Script.Script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 

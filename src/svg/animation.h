@@ -3,7 +3,7 @@ enum {
    AT_TRANSLATE=1, AT_SCALE, AT_ROTATE, AT_SKEW_X, AT_SKEW_Y
 };
 
-#define MAX_VALUES 8
+constexpr LONG MAX_VALUES = 8;
 
 struct svgAnimation {
    std::vector<std::string> Values;

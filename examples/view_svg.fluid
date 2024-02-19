@@ -40,10 +40,6 @@ Example: parasol view_svg.fluid file=[Path]
       scaled = false
    end
 
-   svg.frameCallback = function(SVG)
-      glWindow.surface.acDraw()
-   end
-
    if (svg.frameRate < 60) then svg.frameRate = 60 end
    svg.acActivate() -- Animation support
 

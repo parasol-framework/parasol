@@ -50,7 +50,7 @@ class objSVG : public BaseClass {
 
    using create = pf::Create<objSVG>;
 
-   OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
+   OBJECTPTR Target;    // The container object for new SVG content can be declared here.
    STRING    Path;      // A path referring to an SVG file.
    STRING    Title;     // The title of the SVG document.
    STRING    Statement; // A string containing SVG data.
