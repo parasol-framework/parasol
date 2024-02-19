@@ -578,7 +578,7 @@ extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &)
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
 extern void calc_full_boundary(extVector *, TClipRectangle<DOUBLE> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
-extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
+extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage *);
 extern void debug_tree(extVector *, LONG &);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);

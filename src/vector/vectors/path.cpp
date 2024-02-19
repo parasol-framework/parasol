@@ -15,23 +15,23 @@ static void generate_path(extVectorPath *Vector)
 {
    // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and
    // extend it if necessary).
-   convert_to_aggpath(Vector->Commands, &Vector->BasePath);
+   convert_to_aggpath(Vector, Vector->Commands, &Vector->BasePath);
    Vector->Bounds = get_bounds(Vector->BasePath);
 }
 
 //********************************************************************************************************************
 
-void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
+void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
 {
    PathCommand dummy = { PE::NIL, 0, 0, 0, 0, 0 };
    PathCommand &lp = dummy;
 
    bool lp_curved = false;
    auto bp = BasePath;
+   if (Vector) bp->approximation_scale(Vector->Transform.scale());
+
    for (size_t i=0; i < Paths.size(); i++) {
       auto path = Paths[i];
-      
-
       switch (path.Type) {
          case PE::Move:
             path.AbsX = path.X;
