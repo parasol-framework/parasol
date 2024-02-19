@@ -2377,7 +2377,6 @@ static ERROR xtag_animatetransform(extSVG *Self, const XMLTag &Tag, OBJECTPTR Pa
    Self->Animated = true;
 
    svgAnimation anim;
-   anim.Replace = false;
    anim.TargetVector = Parent->UID;
 
    for (unsigned a=1; a < Tag.Attribs.size(); a++) {
@@ -2455,10 +2454,10 @@ static ERROR xtag_animatetransform(extSVG *Self, const XMLTag &Tag, OBJECTPTR Pa
          case SVF_VALUES: {
             anim.Values.clear();
             LONG s, v = 0;
-            while ((v < LONG(value.size())) and (LONG(anim.Values.size()) < MAX_VALUES)) {
+            while ((v < std::ssize(value)) and (std::ssize(anim.Values) < MAX_VALUES)) {
                while ((value[v]) and (value[v] <= 0x20)) v++;
                for (s=v; (value[s]) and (value[s] != ';'); s++);
-               anim.Values.push_back(value.substr(s, v-s));
+               anim.Values.push_back(value.substr(v, s-v));
                v = s;
                if (value[v] IS ';') v++;
             }
