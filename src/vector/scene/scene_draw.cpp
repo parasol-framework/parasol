@@ -228,18 +228,6 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
          return;
       }
 
-      agg::trans_affine full_shape_transform;
-      agg::path_storage clip_bound_path;
-
-      if (m_clip->ClipUnits IS VUNIT::USERSPACE) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
-         apply_transforms(*m_shape, full_shape_transform);
-         apply_parent_transforms(get_parent(m_shape), full_shape_transform);
-      }
-      else if (m_state->mApplyTransform) { // BoundingBox with a real-time transform
-         full_shape_transform = m_shape->Transform * m_state->mTransform;
-      }
-      else full_shape_transform = m_shape->Transform; // Default BoundingBox: The vector's position, transforms, and parent transforms apply.
-
       if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
          // The viewport needs to mock the calling shape's dimensions and transform.  We can presume that
          // the shape's path is already up-to-date for this.
@@ -282,6 +270,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
             get_parent_width(m_shape), get_parent_height(m_shape), 0);
 
          // The source area (viewbox) matches the dimensions of m_shape's parent viewport
+
          m_clip->Viewport->setFields(fl::ViewWidth(get_parent_width(m_shape)), fl::ViewHeight(get_parent_height(m_shape)));
 
          // Apply transforms.  Client transforms for the shape are included, but not its (X,Y) position.
@@ -321,6 +310,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       }
       else largest_stroke = 0;
 
+      agg::path_storage clip_bound_path;
       if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
          clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
       }
@@ -364,7 +354,10 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
       if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
-         draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, full_shape_transform);
+         if (m_state->mApplyTransform) { // BoundingBox with a real-time transform
+            draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform * m_state->mTransform);        
+         }
+         else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform);        
       }
       else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, agg::trans_affine());
    }
