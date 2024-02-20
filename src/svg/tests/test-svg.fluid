@@ -95,7 +95,7 @@ function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0xa89
 function testClock()              hashTestSVG('images/clock.svg', 0xe5ad43cb) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0x8e6b884e) end
 
-function testClip()               hashTestSVG('masks/clip.svg', 0xc3db3581) end
+function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
 function testW3MasksFilter()      hashTestSVG('masks/masking-filter-01-f.svg', 0x8cb644c2) end
 function testW3MasksIntro()       hashTestSVG('masks/masking-intro-01-f.svg', 0x57359787) end
 function testW3Masks1()           hashTestSVG('masks/masking-mask-01-b.svg', 0xa38973ad) end
