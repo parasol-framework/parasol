@@ -7,6 +7,11 @@ Example: parasol view_svg.fluid file=[Path]
    require 'gui'
    require 'gui/window'
 
+   if not arg('file') then
+      print('Usage: file=[Path]')
+      return
+   end
+
    glWindow = gui.window({
       center = true,
       width  = arg('width', 800),
@@ -20,11 +25,6 @@ Example: parasol view_svg.fluid file=[Path]
    glScene = glWindow.scene
    glViewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
 
-   if not arg('file') then
-      print('Usage: file=[Path]')
-      return
-   end
-
    if mSys.AnalysePath(arg('file')) != ERR_Okay then
       error('Unable to load file ' .. arg('file'))
    end
@@ -33,11 +33,10 @@ Example: parasol view_svg.fluid file=[Path]
 
    -- Check if this is a fixed size SVG (default is scaled)
 
-   local scaled = true
    if (glViewport.width == glScene.viewport.width) and (glViewport.height == glScene.viewport.height) then
-      scaled = true
+      glScaled = true
    else
-      scaled = false
+      glScaled = false
    end
 
    if (svg.frameRate < 60) then svg.frameRate = 60 end
@@ -48,6 +47,6 @@ Example: parasol view_svg.fluid file=[Path]
    glWindow:setTitle(arg('file'))
    glWindow:show()
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    processing.sleep()

@@ -1,5 +1,4 @@
-<svg version="1.1" baseProfile="full" id="svg-root"
-  width="100%" height="100%" viewBox="0 0 480 360"
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
   xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 
 <!--
@@ -12,6 +11,7 @@ the mask will be shifted by an offset of 100,100 placing it on top of the red sq
     <filter id="f" x="0" y="0" width="200" height="200" filterUnits="userSpaceOnUse" filterPrimitiveUnits="userSpaceOnUse">
       <feOffset dx="100" dy="100"/>
     </filter>
+
     <mask id="m" x="0" y="0" width="200" height="200" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" filter="url(#f)">
       <rect width="100" height="100" fill="white"/>
     </mask>
