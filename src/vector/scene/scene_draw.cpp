@@ -263,13 +263,19 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
                vecNewMatrix(m_clip->Viewport, &matrix);
             }
 
+            m_clip->Viewport->Matrices->ScaleX = 1.0;
+            m_clip->Viewport->Matrices->ScaleY = 1.0;
+            m_clip->Viewport->Matrices->ShearX = 0;
+            m_clip->Viewport->Matrices->ShearY = 0;
+            m_clip->Viewport->Matrices->TranslateX = 0;
+            m_clip->Viewport->Matrices->TranslateY = 0;
             for (auto t=m_shape->Matrices; t; t=t->Next) {
                *m_clip->Viewport->Matrices *= *t;
             }
          }
       }
       else { // USERSPACE
-         // The clipping viewport needs to mock the shape's parent viewport and transforms.
+         // The target area is the viewport that owns m_shape
 
          acRedimension(m_clip->Viewport,
             m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
