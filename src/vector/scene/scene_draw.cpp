@@ -229,6 +229,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       }
 
       agg::trans_affine full_shape_transform;
+      agg::path_storage clip_bound_path;
 
       if (m_clip->ClipUnits IS VUNIT::USERSPACE) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
          apply_transforms(*m_shape, full_shape_transform);
@@ -269,10 +270,10 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       }
       else { // USERSPACE
          // The clipping viewport needs to mock the shape's parent viewport and transforms.
+
          acRedimension(m_clip->Viewport,
             m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
-            get_parent_width(m_shape), 
-            get_parent_height(m_shape), 0);
+            get_parent_width(m_shape), get_parent_height(m_shape), 0);
       }
 
       if (!m_clip->RefreshBounds) {
@@ -292,10 +293,10 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       }
       else largest_stroke = 0;
 
-      auto t_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
-      auto t_bound      = get_bounds(t_bound_path);
-      m_width  = F2T(t_bound.right + (largest_stroke * 0.5)) + 2;
-      m_height = F2T(t_bound.bottom + (largest_stroke * 0.5)) + 2;
+      clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
+      auto clip_bound_final = get_bounds(clip_bound_path);
+      m_width  = F2T(clip_bound_final.right + (largest_stroke * 0.5)) + 2;
+      m_height = F2T(clip_bound_final.bottom + (largest_stroke * 0.5)) + 2;
 
       if ((m_width <= 0) or (m_height <= 0)) {
          DEBUG_BREAK
@@ -307,7 +308,8 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       if (m_height > 8192) m_height = 8192;
 
       #ifdef DBG_DRAW
-         log.trace("%s #%d clipping mask with bounds %g %g %g %g (%dx%d)", m_shape->className(), m_shape->UID, t_bound.left, t_bound.top, t_bound.right, t_bound.bottom, m_width, m_height);
+         log.trace("%s #%d clipping mask with bounds %g %g %g %g (%dx%d)", m_shape->className(), m_shape->UID, 
+            clip_bound_final.left, clip_bound_final.top, clip_bound_final.right, clip_bound_final.bottom, m_width, m_height);
       #endif
 
       m_bitmap.resize(m_width * m_height);
@@ -319,8 +321,8 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
       agg::rasterizer_scanline_aa<> rasterizer;
 
-      LONG x = F2T(t_bound.left);
-      LONG y = F2T(t_bound.top) * m_width;
+      LONG x = F2T(clip_bound_final.left);
+      LONG y = F2T(clip_bound_final.top) * m_width;
       if (x < 0) x = 0;
       if (y < 0) y = 0;
       for (; y < m_height; y += m_width) {
