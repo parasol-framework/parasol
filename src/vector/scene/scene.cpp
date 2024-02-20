@@ -57,6 +57,7 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 
 #include "scene_draw.cpp"
 #include "scene_fill.cpp"
+#include "scene_clipping.cpp"
 
 //********************************************************************************************************************
 

@@ -1,5 +1,62 @@
 
 //********************************************************************************************************************
+
+void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster, extPainter &Painter)
+{
+   // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
+   // an image/gradient fill are independent of the path.
+
+   if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+   else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+
+   // Solid colour.  Bitmap fonts will set DisableFill.Colour to ensure texture maps are used instead
+
+   if ((Painter.Colour.Alpha > 0) and (!Vector.DisableFillColour)) {
+      auto colour = agg::rgba(Painter.Colour, Painter.Colour.Alpha * Vector.FillOpacity * State.mOpacity);
+
+      if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
+         agg::renderer_scanline_bin_solid renderer(mRenderBase);
+         renderer.color(colour);
+
+         if (!State.mClipStack->empty()) {
+            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+            agg::render_scanlines(Raster, mScanLineMasked, renderer);
+         }
+         else agg::render_scanlines(Raster, mScanLine, renderer);
+      }
+      else {
+         agg::renderer_scanline_aa_solid renderer(mRenderBase);
+         renderer.color(colour);
+
+         if (!State.mClipStack->empty()) {
+            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+            agg::render_scanlines(Raster, mScanLineMasked, renderer);
+         }
+         else agg::render_scanlines(Raster, mScanLine, renderer);
+      }
+   }
+
+   if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
+      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
+         view_width(), view_height(), *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
+   }
+
+   if (Painter.Gradient) {
+      if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
+         fill_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
+      }
+   }
+
+   if (Painter.Pattern) {
+      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
+         view_width(), view_height(), *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
+   }
+}
+
+//********************************************************************************************************************
 // Image extension
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.
