@@ -37,7 +37,7 @@ public:
 
       void draw(SceneRenderer &);
       void draw_clips(SceneRenderer &, extVector *, agg::rasterizer_scanline_aa<> &,
-         agg::renderer_base<agg::pixfmt_gray8> &, agg::trans_affine &);
+         agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &);
    };
 
 private:
@@ -109,7 +109,7 @@ public:
 // required.
 
 void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Shape, agg::rasterizer_scanline_aa<> &Raster,
-   agg::renderer_base<agg::pixfmt_gray8> &Base, agg::trans_affine &Transform)
+   agg::renderer_base<agg::pixfmt_gray8> &Base, const agg::trans_affine &Transform)
 {
    agg::scanline32_p8 sl;
    for (auto node=Shape; node; node=(extVector *)node->Next) {
@@ -223,12 +223,12 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
    pf::Log log;
 
    if (m_clip) {
-      // Ensure that the Bounds are up to date and refresh them if necessary.
-
       if (!m_clip->Viewport->Child) {
          log.warning("Clipping viewport has no assigned children.");
          return;
       }
+
+      agg::trans_affine full_shape_transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
 
       if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
          // The viewport needs to mock the calling shape's dimensions and transform.  We can presume that
@@ -319,9 +319,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 
       // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
-      auto transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
-
-      draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, transform);
+      draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, full_shape_transform);
    }
    else {
       // If m_clip is undefined then this clip was created by a viewport.  Its vpBounds path will serve as the
@@ -580,10 +578,14 @@ static bool check_dirty(extVector *Shape) {
 }
 
 //********************************************************************************************************************
-// Return the correct transformation matrix for a fill operation.
+// Return the correct transformation matrix for a fill operation.  Requires that the vector's path has been generated.
 
 const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, bool Userspace,  VectorState &State)
 {
+   if (Vector.dirty()) { // Sanity check: If the path is dirty then this function has been called out-of-sequence.
+      DEBUG_BREAK
+   }
+
    if (Userspace) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
       agg::trans_affine transform;
       apply_transforms(Vector, transform);

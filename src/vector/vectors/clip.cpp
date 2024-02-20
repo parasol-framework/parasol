@@ -17,8 +17,8 @@ path.
 
 *********************************************************************************************************************/
 
-// Path generation for the VectorClip.  Since the requisite paths already exist in the Viewport child objects,
-// the only job we need to do here is to compute the boundary.  Regular paths are additive to the overall clipping
+// Path generation and analysis for the VectorClip.  The requisite paths already exist in the Viewport, so our
+// real job here is to compute the overall boundary.  Regular paths are additive to the overall clipping
 // shape, whilst viewports confined by overflow settings are restrictive (with respect to their content).
 
 void generate_clip(extVectorClip *Clip)
