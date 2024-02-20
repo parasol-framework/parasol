@@ -280,6 +280,28 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
          acRedimension(m_clip->Viewport,
             m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
             get_parent_width(m_shape), get_parent_height(m_shape), 0);
+
+         // The source area (viewbox) matches the dimensions of m_shape's parent viewport
+         m_clip->Viewport->setFields(fl::ViewWidth(get_parent_width(m_shape)), fl::ViewHeight(get_parent_height(m_shape)));
+
+         // Apply transforms.  Client transforms for the shape are included, but not its (X,Y) position.
+         // All parent transforms are then applied.
+
+         if (!m_clip->Viewport->Matrices) {
+            VectorMatrix *matrix;
+            vecNewMatrix(m_clip->Viewport, &matrix);
+         }
+
+         agg::trans_affine transform;
+         apply_transforms(*m_shape, transform);
+         apply_parent_transforms(get_parent(m_shape), transform);
+
+         m_clip->Viewport->Matrices->ScaleX = transform.sx;
+         m_clip->Viewport->Matrices->ScaleY = transform.sy;
+         m_clip->Viewport->Matrices->ShearX = transform.shx;
+         m_clip->Viewport->Matrices->ShearY = transform.shy;
+         m_clip->Viewport->Matrices->TranslateX = transform.tx;
+         m_clip->Viewport->Matrices->TranslateY = transform.ty;
       }
 
       if (!m_clip->RefreshBounds) {
@@ -299,7 +321,11 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       }
       else largest_stroke = 0;
 
-      clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
+      if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
+         clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
+      }
+      else clip_bound_path = m_clip->Bounds.as_path();
+
       auto clip_bound_final = get_bounds(clip_bound_path);
       m_width  = F2T(clip_bound_final.right + (largest_stroke * 0.5)) + 2;
       m_height = F2T(clip_bound_final.bottom + (largest_stroke * 0.5)) + 2;
@@ -337,7 +363,10 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 
       // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
-      draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, full_shape_transform);
+      if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
+         draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, full_shape_transform);
+      }
+      else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, agg::trans_affine());
    }
    else {
       // If m_clip is undefined then this clip was created by a viewport.  Its vpBounds path will serve as the
