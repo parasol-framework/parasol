@@ -228,7 +228,16 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
          return;
       }
 
-      agg::trans_affine full_shape_transform = build_fill_transform(*m_shape, m_clip->ClipUnits IS VUNIT::USERSPACE, *m_state);
+      agg::trans_affine full_shape_transform;
+
+      if (m_clip->ClipUnits IS VUNIT::USERSPACE) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
+         apply_transforms(*m_shape, full_shape_transform);
+         apply_parent_transforms(get_parent(m_shape), full_shape_transform);
+      }
+      else if (m_state->mApplyTransform) { // BoundingBox with a real-time transform
+         full_shape_transform = m_shape->Transform * m_state->mTransform;
+      }
+      else full_shape_transform = m_shape->Transform; // Default BoundingBox: The vector's position, transforms, and parent transforms apply.
 
       if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
          // The viewport needs to mock the calling shape's dimensions and transform.  We can presume that
@@ -237,13 +246,15 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
          // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (1.0,1.0) and
          // extrapolated to the bounding box of m_shape.
 
-         TClipRectangle<DOUBLE> *bounds;
+         TClipRectangle<DOUBLE> *shape_bounds;
          if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
-            bounds = &((extVectorViewport *)m_shape)->vpBounds;
+            shape_bounds = &((extVectorViewport *)m_shape)->vpBounds;
          }
-         else bounds = &m_shape->Bounds;
+         else shape_bounds = &m_shape->Bounds;
 
-         acRedimension(m_clip->Viewport, bounds->left, bounds->top, 0, bounds->width(), bounds->height(), 0);
+         // Set the target area to match the shape.  The viewbox will remain at (0 0 1 1)
+         acRedimension(m_clip->Viewport, shape_bounds->left, shape_bounds->top, 0, 
+            shape_bounds->width(), shape_bounds->height(), 0);
 
          if (m_shape->Matrices) {
             if (!m_clip->Viewport->Matrices) {

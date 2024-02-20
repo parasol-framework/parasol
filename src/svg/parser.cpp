@@ -235,7 +235,9 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
 
    objVector *clip;
    if (!NewObject(ID_VECTORCLIP, &clip)) {
-      clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"), fl::ClipFlags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES));
+      clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"), 
+         fl::ClipFlags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
+         fl::Units(VUNIT::USERSPACE));
 
       std::string id;
       for (unsigned a=1; a < Tag.Attribs.size(); a++) {
