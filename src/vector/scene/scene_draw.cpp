@@ -257,8 +257,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
          }
       }
       else { // USERSPACE
-         // The viewport needs to mock the shape's parent viewport and transforms.
-
+         // The clipping viewport needs to mock the shape's parent viewport and transforms.
          acRedimension(m_clip->Viewport,
             m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
             get_parent_width(m_shape), 
