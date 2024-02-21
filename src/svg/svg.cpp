@@ -62,7 +62,6 @@ struct svgState {
    std::string m_stroke;
    std::string m_font_size;
    std::string m_font_family;
-   OBJECTPTR m_clip_path;
    DOUBLE  m_stroke_width;
    DOUBLE  m_fill_opacity;
    DOUBLE  m_opacity;
@@ -73,7 +72,7 @@ struct svgState {
    objVectorScene *Scene;
 
    public:
-   svgState(objVectorScene *pScene) : m_fill("rgb(0,0,0)"), m_font_family("Open Sans"), m_clip_path(NULL), m_stroke_width(0),
+   svgState(objVectorScene *pScene) : m_fill("rgb(0,0,0)"), m_font_family("Open Sans"), m_stroke_width(0),
       m_fill_opacity(-1), m_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pScene) { }
 
    void applyTag(const XMLTag &) noexcept;

@@ -108,12 +108,6 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
          case SVF_FILL_OPACITY: m_fill_opacity = StrToFloat(val); break;
          case SVF_OPACITY:      m_opacity = StrToFloat(val); break;
          case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
-         case SVF_CLIP_PATH:
-            // Clients can apply the clip path with Vector->set(FID_Mask, m_clip_path);
-            if (scFindDef(Scene, val.c_str(), &m_clip_path)) {
-               log.warning("Unable to find clip-path '%s'", val.c_str());
-            }
-            break;
       }
    }
 }
