@@ -47,33 +47,33 @@ static RQ shape_rendering_to_render_quality(const std::string Value)
 //********************************************************************************************************************
 // Apply the current state values to a vector.
 
-static void apply_state(svgState &State, OBJECTPTR Vector)
+void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s",
-      Vector->Class->ClassName, State.Fill.c_str(), State.Stroke.c_str(), State.Opacity, State.FontFamily.c_str(), State.FontSize.c_str());
+      Vector->Class->ClassName, m_fill.c_str(), m_stroke.c_str(), m_opacity, m_font_family.c_str(), m_font_size.c_str());
 
-   if (!State.Fill.empty())   Vector->set(FID_Fill, State.Fill);
-   if (!State.Stroke.empty()) Vector->set(FID_Stroke, State.Stroke);
-   if (State.StrokeWidth)     Vector->set(FID_StrokeWidth, State.StrokeWidth);
+   if (!m_fill.empty())   Vector->set(FID_Fill, m_fill);
+   if (!m_stroke.empty()) Vector->set(FID_Stroke, m_stroke);
+   if (m_stroke_width)    Vector->set(FID_StrokeWidth, m_stroke_width);
    if (Vector->Class->ClassID IS ID_VECTORTEXT) {
-      if (!State.FontFamily.empty()) Vector->set(FID_Face, State.FontFamily);
-      if (!State.FontSize.empty())   Vector->set(FID_FontSize, State.FontSize);
-      if (State.FontWeight) Vector->set(FID_Weight, State.FontWeight);
+      if (!m_font_family.empty()) Vector->set(FID_Face, m_font_family);
+      if (!m_font_size.empty())   Vector->set(FID_FontSize, m_font_size);
+      if (m_font_weight) Vector->set(FID_Weight, m_font_weight);
    }
-   if (State.FillOpacity >= 0.0) Vector->set(FID_FillOpacity, State.FillOpacity);
-   if (State.Opacity >= 0.0) Vector->set(FID_Opacity, State.Opacity);
+   if (m_fill_opacity >= 0.0) Vector->set(FID_FillOpacity, m_fill_opacity);
+   if (m_opacity >= 0.0) Vector->set(FID_Opacity, m_opacity);
 
    if (Vector->Class->ClassID != ID_VECTORTEXT) {
-      if (State.PathQuality != RQ::AUTO) Vector->set(FID_PathQuality, LONG(State.PathQuality));
+      if (m_path_quality != RQ::AUTO) Vector->set(FID_PathQuality, LONG(m_path_quality));
    }
 }
 
 //********************************************************************************************************************
 // Copy a tag's attributes to the current state.
 
-static void set_state(svgState &State, const XMLTag &Tag)
+void svgState::applyTag(const XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -84,30 +84,36 @@ static void set_state(svgState &State, const XMLTag &Tag)
       if (val.empty()) continue;
 
       switch (StrHash(Tag.Attribs[a].Name)) {
-         case SVF_FILL:         State.Fill = val; break;
-         case SVF_STROKE:       State.Stroke = val; break;
-         case SVF_STROKE_WIDTH: State.StrokeWidth = StrToFloat(val); break;
-         case SVF_FONT_FAMILY:  State.FontFamily = val; break;
-         case SVF_FONT_SIZE:    State.FontSize = val; break;
+         case SVF_FILL:         m_fill = val; break;
+         case SVF_STROKE:       m_stroke = val; break;
+         case SVF_STROKE_WIDTH: m_stroke_width = StrToFloat(val); break;
+         case SVF_FONT_FAMILY:  m_font_family = val; break;
+         case SVF_FONT_SIZE:    m_font_size = val; break;
          case SVF_FONT_WEIGHT: {
-            State.FontWeight = StrToFloat(val);
-            if (!State.FontWeight) {
+            m_font_weight = StrToFloat(val);
+            if (!m_font_weight) {
                switch(StrHash(val)) {
-                  case SVF_NORMAL:  State.FontWeight = 400; break;
-                  case SVF_LIGHTER: State.FontWeight = 300; break; // -100 off the inherited weight
-                  case SVF_BOLD:    State.FontWeight = 700; break;
-                  case SVF_BOLDER:  State.FontWeight = 900; break; // +100 on the inherited weight
-                  case SVF_INHERIT: State.FontWeight = 400; break; // Not supported correctly yet.
+                  case SVF_NORMAL:  m_font_weight = 400; break;
+                  case SVF_LIGHTER: m_font_weight = 300; break; // -100 off the inherited weight
+                  case SVF_BOLD:    m_font_weight = 700; break;
+                  case SVF_BOLDER:  m_font_weight = 900; break; // +100 on the inherited weight
+                  case SVF_INHERIT: m_font_weight = 400; break; // Not supported correctly yet.
                   default:
                      log.warning("No support for font-weight value '%s'", val.c_str()); // Non-fatal
-                     State.FontWeight = 400;
+                     m_font_weight = 400;
                }
             }
             break;
          }
-         case SVF_FILL_OPACITY: State.FillOpacity = StrToFloat(val); break;
-         case SVF_OPACITY:      State.Opacity = StrToFloat(val); break;
-         case SVF_SHAPE_RENDERING: State.PathQuality = shape_rendering_to_render_quality(val);
+         case SVF_FILL_OPACITY: m_fill_opacity = StrToFloat(val); break;
+         case SVF_OPACITY:      m_opacity = StrToFloat(val); break;
+         case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
+         case SVF_CLIP_PATH:
+            // Clients can apply the clip path with Vector->set(FID_Mask, m_clip_path);
+            if (scFindDef(Scene, val.c_str(), &m_clip_path)) {
+               log.warning("Unable to find clip-path '%s'", val.c_str());
+            }
+            break;
       }
    }
 }
@@ -197,7 +203,7 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
       }
 
       if (!InitObject(clip)) {
-         svgState state;
+         svgState state(Self->Scene);
 
          // Valid child elements for clip-path are:
          // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
@@ -259,7 +265,7 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
       }
 
       if (!InitObject(clip)) {
-         svgState state;
+         svgState state(Self->Scene);
          auto vp = clip->get<OBJECTPTR>(FID_Viewport);
          process_children(Self, state, Tag, vp);
 
@@ -1475,7 +1481,7 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
 
       if (!InitObject(pattern)) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
-         svgState state;
+         svgState state(Self->Scene);
          process_children(Self, state, Tag, viewport);
 
          if (!Self->Duplicated) {
@@ -1502,8 +1508,8 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, cons
    if (auto error = NewObject(VectorID, &vector); !error) {
       SetOwner(vector, Parent);
       svgState state = State;
-      apply_state(state, vector);
-      if (!Tag.Children.empty()) set_state(state, Tag); // Apply all attribute values to the current state.
+      state.applyAttribs(vector);
+      if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all attribute values to the current state.
 
       process_attrib(Self, Tag, vector);
 
@@ -1832,7 +1838,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
                SetOwner(Vector, Parent);
-               apply_state(State, Vector);
+               State.applyAttribs(Vector);
 
                process_attrib(Self, Tag, Vector);
 
@@ -2070,7 +2076,7 @@ static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
 
    if (class_id) {
       objVector *shape;
-      svgState state;
+      svgState state(Self->Scene);
       process_shape(Self, class_id, state, tagref, Self->Scene, shape);
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
@@ -2114,7 +2120,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    objVector *viewport = NULL;
 
    auto state = State;
-   set_state(state, Tag); // Apply all attribute values to the current state.
+   state.applyTag(Tag); // Apply all attribute values to the current state.
 
    Self->Duplicated++;
    auto dc = deferred_call([&Self] {
@@ -2208,7 +2214,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          SetOwner(group, Parent);
          SetName(group, "UseElement");
 
-         apply_state(state, group);
+         state.applyAttribs(group);
 
          // Apply 'use' attributes to the group.
 
@@ -2264,7 +2270,7 @@ static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
    objVector *group;
    if (NewObject(ID_VECTORGROUP, &group) != ERR_Okay) return;
    SetOwner(group, Parent);
-   if (!Tag.Children.empty()) set_state(state, Tag); // Apply all group attribute values to the current state.
+   if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all group attribute values to the current state.
    process_attrib(Self, Tag, group);
 
    // Process child tags
@@ -2305,7 +2311,7 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    // Process <svg> attributes
 
    auto state = State;
-   if (!Tag.Children.empty()) set_state(state, Tag); // Apply all attribute values to the current state.
+   if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all attribute values to the current state.
 
    for (a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;

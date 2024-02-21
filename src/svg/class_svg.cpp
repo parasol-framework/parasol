@@ -179,7 +179,7 @@ static ERROR SVG_ParseSymbol(extSVG *Self, struct svgParseSymbol *Args)
    if ((!Args) or (!Args->ID) or (!Args->Viewport)) return log.warning(ERR_NullArgs);
 
    if (auto tagref = find_href_tag(Self, Args->ID)) {
-      svgState state;
+      svgState state(Self->Scene);
       process_children(Self, state, *tagref, Args->Viewport);
       return ERR_Okay;
    }

@@ -58,18 +58,26 @@ struct svgID { // All elements using the 'id' attribute will be registered with 
 };
 
 struct svgState {
-   std::string Fill;
-   std::string Stroke;
-   std::string FontSize;
-   std::string FontFamily;
-   DOUBLE  StrokeWidth;
-   DOUBLE  FillOpacity;
-   DOUBLE  Opacity;
-   LONG    FontWeight;
-   RQ      PathQuality;
+   std::string m_fill;
+   std::string m_stroke;
+   std::string m_font_size;
+   std::string m_font_family;
+   OBJECTPTR m_clip_path;
+   DOUBLE  m_stroke_width;
+   DOUBLE  m_fill_opacity;
+   DOUBLE  m_opacity;
+   LONG    m_font_weight;
+   RQ      m_path_quality;
 
-   svgState() : Fill("rgb(0,0,0)"), FontFamily("Open Sans"), StrokeWidth(0), FillOpacity(-1), Opacity(-1),
-      FontWeight(0), PathQuality(RQ::AUTO) { }
+   private:
+   objVectorScene *Scene;
+
+   public:
+   svgState(objVectorScene *pScene) : m_fill("rgb(0,0,0)"), m_font_family("Open Sans"), m_clip_path(NULL), m_stroke_width(0),
+      m_fill_opacity(-1), m_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pScene) { }
+
+   void applyTag(const XMLTag &) noexcept;
+   void applyAttribs(OBJECTPTR) const noexcept;
 };
 
 #include <parasol/modules/svg.h>

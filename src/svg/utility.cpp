@@ -466,7 +466,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          objVector *sibling = NULL;
          for (auto &scan : xml->Tags) {
             if (!StrMatch("svg", scan.name())) {
-               svgState state;
+               svgState state(Self->Scene);
                if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
                else xtag_svg(Self, state, scan, Self->Scene, sibling);
             }
