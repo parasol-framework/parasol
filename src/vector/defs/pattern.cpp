@@ -56,9 +56,9 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
 {
    VectorMatrix *next;
-   for (auto scan=Self->Matrices; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
+   for (auto node=Self->Matrices; node; node=next) {
+      next = node->Next;
+      FreeResource(node);
    }
    Self->Matrices = NULL;
 
@@ -225,9 +225,9 @@ static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Va
    }
    else {
       VectorMatrix *next;
-      for (auto scan=Self->Matrices; scan; scan=next) {
-         next = scan->Next;
-         FreeResource(scan);
+      for (auto node=Self->Matrices; node; node=next) {
+         next = node->Next;
+         FreeResource(node);
       }
       Self->Matrices = NULL;
    }

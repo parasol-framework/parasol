@@ -7,13 +7,13 @@ extVectorViewport * get_parent_view(extVector *Vector)
 {
    if (Vector->ParentView) return Vector->ParentView;
    else {
-      auto scan = get_parent(Vector);
-      while (scan) {
-         if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
-            Vector->ParentView = (extVectorViewport *)scan;
+      auto node = get_parent(Vector);
+      while (node) {
+         if (node->Class->ClassID IS ID_VECTORVIEWPORT) {
+            Vector->ParentView = (extVectorViewport *)node;
             return Vector->ParentView;
          }
-         else if (scan->Parent->Class->BaseClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
+         else if (node->Parent->Class->BaseClassID IS ID_VECTOR) node = (extVector *)(node->Parent);
          else return NULL;
       }
    }
@@ -30,9 +30,9 @@ void gen_vector_tree(extVector *Vector)
 
    if (Vector->dirty()) {
       std::vector<objVector *> list;
-      for (auto scan=(objVector *)Vector->Parent; scan; scan=(objVector *)scan->Parent) {
-         if (scan->Class->BaseClassID != ID_VECTOR) break;
-         list.push_back(scan);
+      for (auto node=(objVector *)Vector->Parent; node; node=(objVector *)node->Parent) {
+         if (node->Class->BaseClassID != ID_VECTOR) break;
+         list.push_back(node);
       }
 
       std::for_each(list.rbegin(), list.rend(), [](auto v) {
@@ -383,16 +383,16 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 {
    pf::Log log(__FUNCTION__);
 
-   for (auto scan=Start; scan; scan=(extVector *)get_parent(scan)) {
-      if (scan->Class->BaseClassID != ID_VECTOR) continue;
+   for (auto node=Start; node; node=(extVector *)get_parent(node)) {
+      if (node->Class->BaseClassID != ID_VECTOR) continue;
 
-      if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
+      if (node->Class->ClassID IS ID_VECTORVIEWPORT) {
          // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both
          // position and scaling of all children.  Alignment is another factor that is taken care of here.
 
-         auto view = (extVectorViewport *)scan;
+         auto view = (extVectorViewport *)node;
 
-         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->UID, view->FinalX, view->FinalY);
+         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", node->UID, view->FinalX, view->FinalY);
 
          AGGTransform.tx -= view->vpViewX;
          AGGTransform.ty -= view->vpViewY;
@@ -407,7 +407,7 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
             }
          }
 
-         for (auto t=scan->Matrices; t; t=t->Next) {
+         for (auto t=node->Matrices; t; t=t->Next) {
             AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
          }
 
@@ -416,11 +416,11 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
          AGGTransform.ty += view->FinalY + view->vpAlignY;
       }
       else {
-         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->UID, scan->FinalX, scan->FinalY);
+         log.trace("Parent vector #%d x/y: %.2f %.2f", node->UID, node->FinalX, node->FinalY);
 
-         AGGTransform.tx += scan->FinalX;
-         AGGTransform.ty += scan->FinalY;
-         for (auto t=scan->Matrices; t; t=t->Next) {
+         AGGTransform.tx += node->FinalX;
+         AGGTransform.ty += node->FinalY;
+         for (auto t=node->Matrices; t; t=t->Next) {
             AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
          }
       }

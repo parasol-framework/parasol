@@ -110,7 +110,7 @@ template<class T = double> struct TClipRectangle {
    inline std::array<T, 4> as_array() const {
       return std::array<T, 4> { left, top, right, bottom };
    }
-   
+
    inline agg::path_storage as_path() const {
       agg::path_storage path;
       path.move_to(left, top);
@@ -613,9 +613,9 @@ TClipRectangle<T> get_bounds(VertexSource &vs, const unsigned path_id = 0)
 inline static void mark_dirty(objVector *Vector, const RC Flags)
 {
    ((extVector *)Vector)->Dirty |= Flags;
-   for (auto scan=(extVector *)Vector->Child; scan; scan=(extVector *)scan->Next) {
-      if ((scan->Dirty & Flags) == Flags) continue;
-      mark_dirty(scan, Flags);
+   for (auto node=(extVector *)Vector->Child; node; node=(extVector *)node->Next) {
+      if ((node->Dirty & Flags) == Flags) continue;
+      mark_dirty(node, Flags);
    }
 }
 
@@ -624,9 +624,9 @@ inline static void mark_dirty(objVector *Vector, const RC Flags)
 
 inline static bool check_branch_dirty(extVector *Vector)
 {
-   for (auto scan=(extVector *)Vector; scan; scan=(extVector *)scan->Next) {
-      if ((scan->Dirty & RC::ALL) != RC::NIL) return true;
-      if ((scan->Child) and (check_branch_dirty((extVector *)scan->Child))) return true;
+   for (auto node=(extVector *)Vector; node; node=(extVector *)node->Next) {
+      if ((node->Dirty & RC::ALL) != RC::NIL) return true;
+      if ((node->Child) and (check_branch_dirty((extVector *)node->Child))) return true;
    }
    return false;
 }

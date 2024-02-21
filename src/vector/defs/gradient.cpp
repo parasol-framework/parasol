@@ -145,9 +145,9 @@ static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
 
    VectorMatrix *next;
-   for (auto scan=Self->Matrices; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
+   for (auto node=Self->Matrices; node; node=next) {
+      next = node->Next;
+      FreeResource(node);
    }
    Self->Matrices = NULL;
 
@@ -428,9 +428,9 @@ static ERROR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *
    }
    else {
       VectorMatrix *next;
-      for (auto scan=Self->Matrices; scan; scan=next) {
-         next = scan->Next;
-         FreeResource(scan);
+      for (auto node=Self->Matrices; node; node=next) {
+         next = node->Next;
+         FreeResource(node);
       }
       Self->Matrices = NULL;
    }

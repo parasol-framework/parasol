@@ -717,9 +717,9 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 
    std::vector<extVector *> focus_gained; // The first reference is the most foreground object
 
-   for (auto scan=Vector; scan; scan=(extVector *)scan->Parent) {
-      if (scan->Class->BaseClassID IS ID_VECTOR) {
-         focus_gained.emplace_back(scan);
+   for (auto node=Vector; node; node=(extVector *)node->Parent) {
+      if (node->Class->BaseClassID IS ID_VECTOR) {
+         focus_gained.emplace_back(node);
       }
       else break;
    }

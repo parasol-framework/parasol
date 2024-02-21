@@ -5,20 +5,20 @@
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
+void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
 {
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
-   for (auto scan=Vector; scan; scan=(extVector *)scan->Next) {
-      if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
-         auto vp = (extVectorViewport *)scan;
+   for (auto node=Vector; node; node=(extVector *)node->Next) {
+      if (node->Class->ClassID IS ID_VECTORVIEWPORT) {
+         auto vp = (extVectorViewport *)node;
 
          if (vp->dirty()) gen_vector_path(vp);
 
          if (vp->vpBounds.hit_test(X, Y)) Collection[Branch].emplace_back(vp);
       }
 
-      if (scan->Child) get_viewport_at_xy_scan((extVector *)scan->Child, Collection, X, Y, Branch + 1);
+      if (node->Child) get_viewport_at_xy_node((extVector *)node->Child, Collection, X, Y, Branch + 1);
    }
 }
 
@@ -27,7 +27,7 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVecto
 extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y)
 {
    std::vector<std::vector<extVectorViewport *>> viewports;
-   get_viewport_at_xy_scan((extVector *)Scene->Viewport, viewports, X, Y, 0);
+   get_viewport_at_xy_node((extVector *)Scene->Viewport, viewports, X, Y, 0);
 
    // From front to back, determine the first path that the (X,Y) point resides in.
 
