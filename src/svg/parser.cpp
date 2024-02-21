@@ -2099,7 +2099,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    }
 
    if (ref.empty()) {
-      log.warning("<use> element @ line %d is missing a valid xlink:href attribute.", Tag.LineNo);
+      log.warning("<use> element @ line %d is missing a valid href attribute.", Tag.LineNo);
       return;
    }
 
@@ -2111,7 +2111,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
       return;
    }
 
-   objVector *vector = NULL;
+   objVector *viewport = NULL;
 
    auto state = State;
    set_state(state, Tag); // Apply all attribute values to the current state.
@@ -2142,9 +2142,9 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          }
       }
 
-      if (NewObject(ID_VECTORVIEWPORT, &vector)) return;
-      SetOwner(vector, Parent);
-      vector->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))); // SVG default
+      if (NewObject(ID_VECTORVIEWPORT, &viewport)) return;
+      SetOwner(viewport, Parent);
+      viewport->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))); // SVG default
 
       // Apply attributes from 'use' to the group and/or viewport
       for (unsigned a=1; a < Tag.Attribs.size(); a++) {
@@ -2154,15 +2154,15 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          auto hash = StrHash(Tag.Attribs[a].Name);
          switch(hash) {
             // X,Y,Width,Height are applied to the viewport
-            case SVF_X:      FUNIT(FID_X, val).set(vector); break;
-            case SVF_Y:      FUNIT(FID_Y, val).set(vector); break;
-            case SVF_WIDTH:  FUNIT(FID_Width, val).set(vector); break;
-            case SVF_HEIGHT: FUNIT(FID_Height, val).set(vector); break;
+            case SVF_X:      FUNIT(FID_X, val).set(viewport); break;
+            case SVF_Y:      FUNIT(FID_Y, val).set(viewport); break;
+            case SVF_WIDTH:  FUNIT(FID_Width, val).set(viewport); break;
+            case SVF_HEIGHT: FUNIT(FID_Height, val).set(viewport); break;
 
             // All other attributes are applied to the 'g' element
             default:
                if (group) set_property(Self, group, hash, Tag, val);
-               else set_property(Self, vector, hash, Tag, val);
+               else set_property(Self, viewport, hash, Tag, val);
                break;
          }
       }
@@ -2174,14 +2174,14 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          if (val.empty()) continue;
 
          switch(StrHash(tagref->Attribs[a].Name)) {
-            case SVF_X:      FUNIT(FID_X, val).set(vector); break;
-            case SVF_Y:      FUNIT(FID_Y, val).set(vector); break;
-            case SVF_WIDTH:  FUNIT(FID_Width, val).set(vector); break;
-            case SVF_HEIGHT: FUNIT(FID_Height, val).set(vector); break;
+            case SVF_X:      FUNIT(FID_X, val).set(viewport); break;
+            case SVF_Y:      FUNIT(FID_Y, val).set(viewport); break;
+            case SVF_WIDTH:  FUNIT(FID_Width, val).set(viewport); break;
+            case SVF_HEIGHT: FUNIT(FID_Height, val).set(viewport); break;
             case SVF_VIEWBOX:  {
                DOUBLE x=0, y=0, width=0, height=0;
                read_numseq(val, &x, &y, &width, &height, TAGEND);
-               vector->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
+               viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
             }
             case SVF_ID: break; // Ignore (already processed).
@@ -2189,26 +2189,64 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          }
       }
 
-      if (vector->init() != ERR_Okay) { FreeResource(vector); return; }
+      if (viewport->init() != ERR_Okay) { FreeResource(viewport); return; }
 
       // Add all child elements in <symbol> to the viewport.
 
       log.traceBranch("Processing all child elements within %s", ref.c_str());
-      process_children(Self, state, *tagref, vector);
+      process_children(Self, state, *tagref, viewport);
    }
    else {
-      // Rather than creating a vanilla group with a child viewport, this optimal approach creates the viewport only.
-      if (!NewObject(ID_VECTORVIEWPORT, &vector)) {
-         SetOwner(vector, Parent);
-         SetName(vector, "UseElement");
-         apply_state(state, vector);
-         process_attrib(Self, Tag, vector); // Apply 'use' attributes to the group.
+      // W3C: In the generated content, the ‘use’ will be replaced by ‘g’, where all attributes from the ‘use’ element 
+      // except for ‘x’, ‘y’, ‘width’, ‘height’ and ‘xlink:href’ are transferred to the generated ‘g’ element. An 
+      // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the ‘transform’ 
+      // attribute on the generated ‘g’, where x and y represent the values of the ‘x’ and ‘y’ attributes on the 
+      // ‘use’ element. The referenced object and its contents are deep-cloned into the generated tree.
 
-         if (vector->init() != ERR_Okay) { FreeResource(vector); return; }
+      objVector *group;
+      if (!NewObject(ID_VECTORGROUP, &group)) {
+         SetOwner(group, Parent);
+         SetName(group, "UseElement");
 
+         apply_state(state, group);
+
+         // Apply 'use' attributes to the group.
+
+         FUNIT tx, ty;
+         for (unsigned t=1; t < Tag.Attribs.size(); t++) {
+            if (Tag.Attribs[t].Value.empty()) continue;
+
+            // Ignore unrecognised namespaces, e.g. 'inkscape:dx'
+            if (Tag.Attribs[t].Name.find(':') != std::string::npos) continue;           
+
+            auto hash = StrHash(Tag.Attribs[t].Name);
+            switch (hash) {
+               case SVF_X: tx = FUNIT(FID_X, Tag.Attribs[t].Value); break;
+               case SVF_Y: ty = FUNIT(FID_Y, Tag.Attribs[t].Value); break;
+               // SVG states that the following are not to be applied to the group...
+               case SVF_WIDTH:
+               case SVF_HEIGHT:
+               case SVF_XLINK_HREF:
+               case SVF_HREF:
+                  break;
+
+               default:
+                  if (auto error = set_property(Self, group, hash, Tag, Tag.Attribs[t].Value)) {
+                     log.warning("Failed to apply %s=%s to <use> group: %s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), GetErrorMsg(error));
+                  }
+            }
+         }
+
+         if ((!tx.empty()) or (!ty.empty())) {
+            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")");
+         }
+
+         if (group->init() != ERR_Okay) { FreeResource(group); return; }
+
+         // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
          log.branch("Duplicating tags at %s", ref.c_str());
          objVector *sibling = NULL;
-         xtag_default(Self, state, *tagref, vector, sibling);
+         xtag_default(Self, state, *tagref, group, sibling);
       }
    }
 }

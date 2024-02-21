@@ -17,51 +17,6 @@ path.
 
 *********************************************************************************************************************/
 
-// Path generation and analysis for the VectorClip.  The requisite paths already exist in the Viewport, so our
-// real job here is to compute the overall boundary.  Regular paths are additive to the overall clipping
-// shape, whilst viewports confined by overflow settings are restrictive (with respect to their content).
-
-void generate_clip(extVectorClip *Clip)
-{
-   std::function<void(extVector *, bool)> scan_bounds;
-   TClipRectangle<DOUBLE> b = TCR_EXPANDING;
-   DOUBLE largest_stroke = 0;
-
-   scan_bounds = [&b, &scan_bounds, &largest_stroke](extVector *Branch, bool IncSiblings) -> void {
-      for (auto node=Branch; node; node=(extVector *)node->Next) {
-         if (node->dirty()) gen_vector_path(node);
-
-         if (node->Class->ClassID IS ID_VECTORVIEWPORT) {
-            // For the sake of keeping things simple, viewports are treated as containers but this is not optimal if
-            // the overflow settings restrict content.  Any optimisation would require tests to be constructed first.
-         }
-         else if (node->Class->BaseClassID IS ID_VECTOR) {
-            if (node->Transform.is_normal()) b.expanding(node);
-            else {
-               auto path = node->Bounds.as_path(node->Transform);
-               b.expanding(get_bounds(path));
-            }
-
-            if (node->Stroked) {
-               auto sw = node->fixed_stroke_width() * node->Transform.scale();
-               if (sw > largest_stroke) largest_stroke = sw;
-            }
-         }
-
-         if (node->Child) scan_bounds((extVector *)node->Child, true);
-      }
-   };
-
-   // The scan starts from our hosting viewport to ensure that its path information is generated.
-
-   if (Clip->Viewport) scan_bounds((extVector *)Clip->Viewport, true);
-
-   Clip->LargestStroke = largest_stroke;
-   Clip->Bounds = b;
-}
-
-//********************************************************************************************************************
-
 static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 {
    Self->~extVectorClip();
