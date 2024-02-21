@@ -1,0 +1,83 @@
+<svg version="1.1" baseProfile="basic" id="svg-root" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+This tests that 'clipPath' elements can be used together and how the clipping paths are intersected.
+
+There is a gray-white pattern as a background for the two subtest rectangles. This is to show that the holes that
+are cut out using clip-paths are transparent.  The first subtest verifies that when you use the 'clip-path'
+property on a child element inside a 'clipPath' element the child element is clipped correctly.  The second
+subtest verifies that when a 'clipPath' element has a 'clip-path' property the result is the intersection of the
+two clip paths.
+-->
+  <defs>
+    <clipPath id="clipCircle1">
+      <circle id="c1" cx="100" cy="100" r="50"/>
+    </clipPath>
+
+    <clipPath id="clipCircle2">
+      <circle id="c2" cx="150" cy="150" r="50"/>
+    </clipPath>
+
+    <clipPath>
+      <path id="p1" d="M10 10l100 0 0 100 -100 0ZM50 50l40 0 0 40 -40 0Z" clip-rule="evenodd"/>
+    </clipPath>
+
+    <!-- "If a valid 'clip-path' reference is placed on one of the children of a 'clipPath' element,
+		      then the given child element is clipped by the referenced clipping path before OR'ing the
+			  silhouette of the child element with the silhouettes of the other child elements." -->
+    <clipPath id="clipRects1">
+      <rect x="50" y="30" width="25" height="100"/>
+      <rect x="25" y="50" width="10" height="10" clip-path="url(#clipTwoCircles)"/>
+    </clipPath>
+
+    <!-- Test use in a clipPath -->
+    <clipPath id="clipTwoCircles">
+      <use xlink:href="#c1"/>
+      <use xlink:href="#c2"/>
+    </clipPath>
+
+    <clipPath id="clipInClip1">
+      <use xlink:href="#c2" clip-path="url(#clipCircle1)"/>
+      <use xlink:href="#p1"/>
+    </clipPath>
+
+    <clipPath id="clipOnClip1" clip-path="url(#clipCircle1)">
+      <use xlink:href="#c2"/>
+      <use xlink:href="#p1"/>
+    </clipPath>
+
+    <pattern patternUnits="userSpaceOnUse" id="pattern" x="0" y="0" width="20" height="20">
+      <rect x="0" y="0" width="10" height="10" fill="gray"/>
+      <rect x="10" y="10" width="10" height="10" fill="gray"/>
+    </pattern>
+  </defs>
+
+  <rect x="20" y="70" width="210" height="210" fill="url(#pattern)" stroke="black" stroke-width="4"/>
+  <rect x="250" y="70" width="210" height="210" fill="url(#pattern)" stroke="black" stroke-width="4"/>
+
+  <text x="240" y="2em" text-anchor="middle">Test clip unions and intersections</text>
+
+  <g transform="translate(20, 70)">
+    <g id="subtest1">
+      <use xlink:href="#p1" fill="red" fill-rule="evenodd"/>
+      <use xlink:href="#c2" fill="red" clip-path="url(#clipCircle1)"/>
+      <use xlink:href="#c1" fill="red" clip-path="url(#clipCircle2)"/>
+
+      <rect width="200" height="200" fill="blue" clip-path="url(#clipInClip1)"/>
+
+      <use xlink:href="#c2" fill="none" clip-path="url(#clipCircle1)" stroke="black"/>
+      <use xlink:href="#c1" fill="none" clip-path="url(#clipCircle2)" stroke="black"/>
+      <use xlink:href="#p1" fill="none" stroke="black"/>
+    </g>
+
+    <g id="subtest2" transform="translate(230,0)">
+      <g clip-path="url(#clipCircle1)">
+        <use xlink:href="#c2" fill="red"/>
+        <use xlink:href="#p1" fill="red" fill-rule="evenodd"/>
+      </g>
+
+      <rect width="300" height="300" fill="blue" clip-path="url(#clipOnClip1)"/>
+      <use xlink:href="#c1" fill="none" stroke="black"/>
+    </g>
+  </g>
+</svg>
