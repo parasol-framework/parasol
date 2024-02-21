@@ -178,7 +178,13 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
          // extrapolated to the bounding box of m_shape.
 
          TClipRectangle<DOUBLE> *shape_bounds;
-         if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
+         if (m_shape->Class->ClassID IS ID_VECTORGROUP) {
+            // The bounds of a Group are derived from its children.
+            m_shape->Bounds = TCR_EXPANDING;
+            calc_full_boundary((extVector *)m_shape->Child, m_shape->Bounds, true, false);
+            shape_bounds = &m_shape->Bounds;
+         }
+         else if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
             shape_bounds = &((extVectorViewport *)m_shape)->vpBounds;
          }
          else shape_bounds = &m_shape->Bounds;
