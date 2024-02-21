@@ -2214,7 +2214,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
          SetOwner(group, Parent);
          SetName(group, "UseElement");
 
-         state.applyAttribs(group);
+         state.applyTag(Tag); // Apply supported attribute values to the current state.
 
          // Apply 'use' attributes to the group.
 
