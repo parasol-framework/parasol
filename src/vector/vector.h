@@ -527,20 +527,16 @@ class extVectorClip : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorClip";
    using create = pf::Create<extVectorClip>;
 
-   DOUBLE LargestStroke;
    extVectorViewport *Viewport; // Vector paths are created within the viewport to define the mask.
    VUNIT ClipUnits;
    VCLF ClipFlags;
-   bool RefreshBounds;
 
    inline void set_transform(struct VectorMatrix *pMatrices) {
       Matrices = pMatrices;
-      RefreshBounds = true;
    }
 
    inline void set_clip_path(agg::path_storage &Path) {
       BasePath = Path;
-      RefreshBounds = true;
    }
 };
 

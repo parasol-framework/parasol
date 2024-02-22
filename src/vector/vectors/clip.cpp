@@ -73,9 +73,8 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
    new (Self) extVectorClip;
 
-   Self->ClipUnits     = VUNIT::USERSPACE; // SVG default is userSpaceOnUse
-   Self->Visibility    = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
-   Self->RefreshBounds = true;
+   Self->ClipUnits  = VUNIT::USERSPACE; // SVG default is userSpaceOnUse
+   Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    return ERR_Okay;
 }
 
@@ -117,7 +116,6 @@ static ERROR CLIP_GET_Units(extVectorClip *Self, VUNIT *Value)
 
 static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 {
-   Self->RefreshBounds = true;
    Self->ClipUnits = Value;
    return ERR_Okay;
 }
@@ -150,8 +148,8 @@ static const ActionArray clClipActions[] = {
 };
 
 static const FieldArray clClipFields[] = {
-   { "Units", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
-   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
+   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
+   { "Viewport",  FDF_VIRTUAL|FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
    { "ClipFlags", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, CLIP_GET_ClipFlags, CLIP_SET_ClipFlags, &clVectorClipVCLF },
    END_FIELD
 };

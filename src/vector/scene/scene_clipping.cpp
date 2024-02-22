@@ -169,9 +169,8 @@ void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
 
 void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 {
-   pf::Log log;
-
    if (!m_clip->Viewport->Child) {
+      pf::Log log;
       log.warning("Clipping viewport has no assigned children.");
       return;
    }
@@ -198,7 +197,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
 
    m_clip->Viewport->setFields(fl::ViewWidth(get_parent_width(m_shape)), fl::ViewHeight(get_parent_height(m_shape)));
 
-   // Apply transforms.  Client transforms for the shape are included, but not its (X,Y) position.
+   // Transforms: Client transforms for the shape are included, but not its (X,Y) position.
    // All parent transforms are then applied.
 
    agg::trans_affine transform;
@@ -212,11 +211,8 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
    m_clip->Viewport->Matrices->TranslateX = transform.tx;
    m_clip->Viewport->Matrices->TranslateY = transform.ty;
 
-   if ((m_clip->RefreshBounds) or (check_branch_dirty((extVector *)m_clip->Viewport->Child))) {
-      m_clip->RefreshBounds = false;
-      m_clip->Bounds = TCR_EXPANDING;
-      calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
-   }
+   m_clip->Bounds = TCR_EXPANDING;
+   calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
 
    if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
@@ -239,30 +235,14 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
 
 void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
 {
-   pf::Log log;
+   TClipRectangle<DOUBLE> shape_bounds = TCR_EXPANDING; // Bounds *without transforms*
+   calc_full_boundary(m_shape, shape_bounds, false, false, false);
 
-   // The clipping viewport needs to mock the calling shape's dimensions and transform.  We can presume that
-   // the shape's path is already up-to-date for this.
-   //
-   // The clip paths are sized within a source viewbox of (0 0 1 1) and extrapolated to the bounding box of m_shape.
+   // Set the target area to mock the shape.  The viewbox will remain at (0 0 1 1), or whatever the
+   // client has defined if the default is overridden.
 
-   TClipRectangle<DOUBLE> *shape_bounds; // shape_bounds *without transforms*
-   if (m_shape->Class->ClassID IS ID_VECTORGROUP) {
-      // The bounds of a Group are derived from its children.
-      m_shape->Bounds = TCR_EXPANDING;
-      calc_full_boundary((extVector *)m_shape->Child, m_shape->Bounds, true, false);
-      shape_bounds = &m_shape->Bounds;
-   }
-   else if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
-      shape_bounds = &((extVectorViewport *)m_shape)->vpBounds;
-   }
-   else shape_bounds = &m_shape->Bounds;
-
-   // Set the target area to match the shape.  The viewbox will remain at (0 0 1 1) or whatever the
-   // client has defined if the default is overridden
-
-   acRedimension(m_clip->Viewport, shape_bounds->left, shape_bounds->top, 0,
-      shape_bounds->width(), shape_bounds->height(), 0);
+   acRedimension(m_clip->Viewport, shape_bounds.left, shape_bounds.top, 0,
+      shape_bounds.width(), shape_bounds.height(), 0);
 
    if (m_shape->Matrices) {
       reset_matrix(*m_clip->Viewport->Matrices);
@@ -271,16 +251,12 @@ void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
       }
    }
 
-   if ((m_clip->RefreshBounds) or (check_branch_dirty((extVector *)m_clip->Viewport->Child))) {
-      m_clip->RefreshBounds = false;
-      m_clip->Bounds = TCR_EXPANDING;
-      calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
-   }
+   m_clip->Bounds = TCR_EXPANDING;
+   calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
 
    if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
-   agg::path_storage clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
-
+   auto clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
    auto clip_bound_final = get_bounds(clip_bound_path);
 
    resize_bitmap(F2T(clip_bound_final.left), F2T(clip_bound_final.top), F2T(clip_bound_final.right) + 2, F2T(clip_bound_final.bottom) + 2);
