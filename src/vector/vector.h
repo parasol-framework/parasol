@@ -993,6 +993,18 @@ inline int isPow2(ULONG x)
 
 //********************************************************************************************************************
 
+inline void reset_matrix(VectorMatrix &Matrix)
+{
+   Matrix.ScaleX = 1.0;
+   Matrix.ScaleY = 1.0;
+   Matrix.ShearX = 0;
+   Matrix.ShearY = 0;
+   Matrix.TranslateX = 0;
+   Matrix.TranslateY = 0;
+}
+
+//********************************************************************************************************************
+
 template <class T>
 void configure_stroke(extVector &Vector, T &Stroke)
 {

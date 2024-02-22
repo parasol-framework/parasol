@@ -39,6 +39,8 @@ public:
       void draw_viewport(SceneRenderer &);
       void draw_clips(SceneRenderer &, extVector *, agg::rasterizer_scanline_aa<> &,
          agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &);
+      void draw_bounding_box(SceneRenderer &);
+      void draw_userspace(SceneRenderer &);
       void resize_bitmap(LONG, LONG, LONG, LONG);
    };
 

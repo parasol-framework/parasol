@@ -135,13 +135,10 @@ void SceneRenderer::ClipBuffer::resize_bitmap(LONG X, LONG Y, LONG Width, LONG H
 }
 
 //********************************************************************************************************************
-// Called by the scene graph renderer to generate a bitmap mask.
+// Called by the scene graph renderer to generate a bitmap mask for a non-rectangular (transformed) viewport.
 
 void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
 {
-   // If m_clip is undefined then this clip was created by a viewport.  Its vpBounds path will serve as the
-   // clipping region.
-
    auto vp = (extVectorViewport *)m_shape;
    if (vp->dirty()) {
       gen_vector_path(vp);
@@ -149,8 +146,6 @@ void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
    }
 
    resize_bitmap(F2T(vp->vpBounds.left), F2T(vp->vpBounds.top), F2T(vp->vpBounds.right) + 2, F2T(vp->vpBounds.bottom) + 2);
-
-   // Configure an 8-bit monochrome bitmap for holding the mask
 
    m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
    agg::pixfmt_gray8 pixf(m_renderer);
@@ -170,6 +165,8 @@ void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
    }
 }
 
+//********************************************************************************************************************
+
 void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 {
    pf::Log log;
@@ -184,67 +181,94 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       vecNewMatrix(m_clip->Viewport, &matrix);
    }
 
-   if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
-      // The viewport needs to mock the calling shape's dimensions and transform.  We can presume that
-      // the shape's path is already up-to-date for this.
-      // 
-      // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (1.0,1.0) and
-      // extrapolated to the bounding box of m_shape.
+   if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) draw_bounding_box(Render);
+   else draw_userspace(Render);
+}
 
-      TClipRectangle<DOUBLE> *shape_bounds; // shape_bounds *without transforms*
-      if (m_shape->Class->ClassID IS ID_VECTORGROUP) {
-         // The bounds of a Group are derived from its children.
-         m_shape->Bounds = TCR_EXPANDING;
-         calc_full_boundary((extVector *)m_shape->Child, m_shape->Bounds, true, false);
-         shape_bounds = &m_shape->Bounds;
-      }
-      else if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
-         shape_bounds = &((extVectorViewport *)m_shape)->vpBounds;
-      }
-      else shape_bounds = &m_shape->Bounds;
+//********************************************************************************************************************
 
-      // Set the target area to match the shape.  The viewbox will remain at (0 0 1 1) or whatever the
-      // client has defined if the default is overridden
+void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
+{
+   // The target area is the viewport that owns m_shape
 
-      acRedimension(m_clip->Viewport, shape_bounds->left, shape_bounds->top, 0, 
-         shape_bounds->width(), shape_bounds->height(), 0);
+   acRedimension(m_clip->Viewport, m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
+      get_parent_width(m_shape), get_parent_height(m_shape), 0);
 
-      if (m_shape->Matrices) {
-         m_clip->Viewport->Matrices->ScaleX = 1.0;
-         m_clip->Viewport->Matrices->ScaleY = 1.0;
-         m_clip->Viewport->Matrices->ShearX = 0;
-         m_clip->Viewport->Matrices->ShearY = 0;
-         m_clip->Viewport->Matrices->TranslateX = 0;
-         m_clip->Viewport->Matrices->TranslateY = 0;
-         for (auto t=m_shape->Matrices; t; t=t->Next) {
-            *m_clip->Viewport->Matrices *= *t;
-         }
-      }
+   // The source area (viewbox) matches the dimensions of m_shape's parent viewport
+
+   m_clip->Viewport->setFields(fl::ViewWidth(get_parent_width(m_shape)), fl::ViewHeight(get_parent_height(m_shape)));
+
+   // Apply transforms.  Client transforms for the shape are included, but not its (X,Y) position.
+   // All parent transforms are then applied.
+
+   agg::trans_affine transform;
+   apply_transforms(*m_shape, transform);
+   apply_parent_transforms(get_parent(m_shape), transform);
+
+   m_clip->Viewport->Matrices->ScaleX = transform.sx;
+   m_clip->Viewport->Matrices->ScaleY = transform.sy;
+   m_clip->Viewport->Matrices->ShearX = transform.shx;
+   m_clip->Viewport->Matrices->ShearY = transform.shy;
+   m_clip->Viewport->Matrices->TranslateX = transform.tx;
+   m_clip->Viewport->Matrices->TranslateY = transform.ty;
+
+   if ((m_clip->RefreshBounds) or (check_branch_dirty((extVector *)m_clip->Viewport->Child))) {
+      m_clip->RefreshBounds = false;
+      m_clip->Bounds = TCR_EXPANDING;
+      calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
    }
-   else { // USERSPACE
-      // The target area is the viewport that owns m_shape
 
-      acRedimension(m_clip->Viewport,
-         m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
-         get_parent_width(m_shape), get_parent_height(m_shape), 0);
+   if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
-      // The source area (viewbox) matches the dimensions of m_shape's parent viewport
+   agg::path_storage clip_bound_path = m_clip->Bounds.as_path();
+   auto clip_bound_final = get_bounds(clip_bound_path);
+      
+   resize_bitmap(F2T(clip_bound_final.left), F2T(clip_bound_final.top), F2T(clip_bound_final.right) + 2, F2T(clip_bound_final.bottom) + 2);
 
-      m_clip->Viewport->setFields(fl::ViewWidth(get_parent_width(m_shape)), fl::ViewHeight(get_parent_height(m_shape)));
+   // Every child vector of the VectorClip that exports a path will be rendered to the mask.
+      
+   m_renderer.attach(m_bitmap.data(), m_width-1, m_height-1, m_width);
+   agg::pixfmt_gray8 pixf(m_renderer);
+   agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
+   agg::rasterizer_scanline_aa<> rasterizer;
 
-      // Apply transforms.  Client transforms for the shape are included, but not its (X,Y) position.
-      // All parent transforms are then applied.
+   draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, agg::trans_affine());
+}
 
-      agg::trans_affine transform;
-      apply_transforms(*m_shape, transform);
-      apply_parent_transforms(get_parent(m_shape), transform);
+//********************************************************************************************************************
 
-      m_clip->Viewport->Matrices->ScaleX = transform.sx;
-      m_clip->Viewport->Matrices->ScaleY = transform.sy;
-      m_clip->Viewport->Matrices->ShearX = transform.shx;
-      m_clip->Viewport->Matrices->ShearY = transform.shy;
-      m_clip->Viewport->Matrices->TranslateX = transform.tx;
-      m_clip->Viewport->Matrices->TranslateY = transform.ty;
+void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
+{
+   pf::Log log;
+
+   // The clipping viewport needs to mock the calling shape's dimensions and transform.  We can presume that
+   // the shape's path is already up-to-date for this.
+   // 
+   // The clip paths are sized within a source viewbox of (0 0 1 1) and extrapolated to the bounding box of m_shape.
+
+   TClipRectangle<DOUBLE> *shape_bounds; // shape_bounds *without transforms*
+   if (m_shape->Class->ClassID IS ID_VECTORGROUP) {
+      // The bounds of a Group are derived from its children.
+      m_shape->Bounds = TCR_EXPANDING;
+      calc_full_boundary((extVector *)m_shape->Child, m_shape->Bounds, true, false);
+      shape_bounds = &m_shape->Bounds;
+   }
+   else if (m_shape->Class->ClassID IS ID_VECTORVIEWPORT) {
+      shape_bounds = &((extVectorViewport *)m_shape)->vpBounds;
+   }
+   else shape_bounds = &m_shape->Bounds;
+
+   // Set the target area to match the shape.  The viewbox will remain at (0 0 1 1) or whatever the
+   // client has defined if the default is overridden
+
+   acRedimension(m_clip->Viewport, shape_bounds->left, shape_bounds->top, 0, 
+      shape_bounds->width(), shape_bounds->height(), 0);
+
+   if (m_shape->Matrices) {
+      reset_matrix(*m_clip->Viewport->Matrices);
+      for (auto t=m_shape->Matrices; t; t=t->Next) {
+         *m_clip->Viewport->Matrices *= *t;
+      }
    }
 
    if ((m_clip->RefreshBounds) or (check_branch_dirty((extVector *)m_clip->Viewport->Child))) {
@@ -255,11 +279,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 
    if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
-   agg::path_storage clip_bound_path;
-   if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
-      clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
-   }
-   else clip_bound_path = m_clip->Bounds.as_path();
+   agg::path_storage clip_bound_path = m_clip->Bounds.as_path(m_shape->Transform);
 
    auto clip_bound_final = get_bounds(clip_bound_path);
       
@@ -272,11 +292,8 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
    agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
    agg::rasterizer_scanline_aa<> rasterizer;
 
-   if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
-      if (m_state->mApplyTransform) { // BoundingBox with a real-time transform
-         draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform * m_state->mTransform);        
-      }
-      else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform);        
+   if (m_state->mApplyTransform) { // BoundingBox with a real-time transform
+      draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform * m_state->mTransform);        
    }
-   else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, agg::trans_affine());
+   else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform);
 }
