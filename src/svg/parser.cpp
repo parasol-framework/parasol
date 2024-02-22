@@ -2364,6 +2364,20 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 
          case SVF_XMLNS: break; // Ignored
          case SVF_BASEPROFILE: break; // The minimum required SVG standard that is required for rendering the document.
+            
+         case SVF_MASK: {
+            OBJECTPTR clip;
+            if (!scFindDef(Self->Scene, val.c_str(), &clip)) viewport->set(FID_Mask, clip);
+            else log.warning("Unable to find mask '%s'", val.c_str());
+            break;
+         }
+
+         case SVF_CLIP_PATH: {
+            OBJECTPTR clip;
+            if (!scFindDef(Self->Scene, val.c_str(), &clip)) viewport->set(FID_Mask, clip);
+            else log.warning("Unable to find clip-path '%s'", val.c_str());
+            break;
+         }
 
          // default - The browser will remove all newline characters. Then it will convert all tab characters into
          // space characters. Then, it will strip off all leading and trailing space characters. Then, all contiguous
