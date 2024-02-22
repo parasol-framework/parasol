@@ -36,8 +36,10 @@ public:
          m_state(&pState), m_shape(pShape), m_clip(pClip) { }
 
       void draw(SceneRenderer &);
+      void draw_viewport(SceneRenderer &);
       void draw_clips(SceneRenderer &, extVector *, agg::rasterizer_scanline_aa<> &,
          agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &);
+      void resize_bitmap(LONG, LONG, LONG, LONG);
    };
 
 private:
@@ -779,7 +781,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             if ((state.mClip.right > state.mClip.left) and (state.mClip.bottom > state.mClip.top)) { // Continue only if the clipping region is visible
                if (view->vpClip) {
                   state.mClipStack->emplace(state, (extVectorClip *)NULL, view);
-                  state.mClipStack->top().draw(*this);
+                  state.mClipStack->top().draw_viewport(*this);
                }
 
                if (view->ClipMask) {
