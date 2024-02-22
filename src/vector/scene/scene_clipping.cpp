@@ -1,48 +1,3 @@
-
-//********************************************************************************************************************
-// Path generation and analysis for the VectorClip.  The requisite paths already exist in the Viewport, so our
-// real job here is to compute the overall boundary.  Regular paths are additive to the overall clipping
-// shape, whilst viewports confined by overflow settings are restrictive (with respect to their content).
-
-void generate_clip(extVectorClip *Clip)
-{
-   std::function<void(extVector *, bool)> scan_bounds;
-   TClipRectangle<DOUBLE> b = TCR_EXPANDING;
-   DOUBLE largest_stroke = 0;
-
-   scan_bounds = [&b, &scan_bounds, &largest_stroke](extVector *Branch, bool IncSiblings) -> void {
-      for (auto node=Branch; node; node=(extVector *)node->Next) {
-         if (node->dirty()) gen_vector_path(node);
-
-         if (node->Class->ClassID IS ID_VECTORVIEWPORT) {
-            // For the sake of keeping things simple, viewports are treated as containers but this is not optimal if
-            // the overflow settings restrict content.  Any optimisation would require tests to be constructed first.
-         }
-         else if (node->Class->BaseClassID IS ID_VECTOR) {
-            if (node->Transform.is_normal()) b.expanding(node);
-            else {
-               auto path = node->Bounds.as_path(node->Transform);
-               b.expanding(get_bounds(path));
-            }
-
-            if (node->Stroked) {
-               auto sw = node->fixed_stroke_width() * node->Transform.scale();
-               if (sw > largest_stroke) largest_stroke = sw;
-            }
-         }
-
-         if (node->Child) scan_bounds((extVector *)node->Child, true);
-      }
-   };
-
-   // The scan starts from our hosting viewport to ensure that its path information is generated.
-
-   if (Clip->Viewport) scan_bounds((extVector *)Clip->Viewport, true);
-
-   Clip->LargestStroke = largest_stroke;
-   Clip->Bounds = b;
-}
-
 //********************************************************************************************************************
 // This function recursively draws all child vectors to a bitmap mask in an additive way.
 //
@@ -247,16 +202,11 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 
       if (m_clip->RefreshBounds) {
          m_clip->RefreshBounds = false;
-         generate_clip(m_clip);
+         m_clip->Bounds = TCR_EXPANDING;
+         calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
       }
 
       if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
-
-      DOUBLE largest_stroke;
-      if (m_clip->LargestStroke) { // Scale the stroke to match the shape's transform
-         largest_stroke = m_clip->LargestStroke * m_shape->Transform.scale();
-      }
-      else largest_stroke = 0;
 
       agg::path_storage clip_bound_path;
       if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) {
@@ -265,8 +215,8 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       else clip_bound_path = m_clip->Bounds.as_path();
 
       auto clip_bound_final = get_bounds(clip_bound_path);
-      m_width  = F2T(clip_bound_final.right + (largest_stroke * 0.5)) + 2;
-      m_height = F2T(clip_bound_final.bottom + (largest_stroke * 0.5)) + 2;
+      m_width  = F2T(clip_bound_final.right) + 2;
+      m_height = F2T(clip_bound_final.bottom) + 2;
 
       if ((m_width <= 0) or (m_height <= 0)) {
          DEBUG_BREAK

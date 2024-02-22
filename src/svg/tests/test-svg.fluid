@@ -105,7 +105,7 @@ function testW3MasksOpacity()     hashTestSVG('masks/masking-opacity-01-b.svg', 
 function testW3MasksPath1()       hashTestSVG('masks/masking-path-01-b.svg', 0x835b31d0) end
 function testW3MasksPath2()       hashTestSVG('masks/masking-path-02-b.svg', 0x843eeb43) end
 function testW3MasksPath3()       hashTestSVG('masks/masking-path-03-b.svg', 0x73df4fbe) end
-function testW3MasksPath4()       hashTestSVG('masks/masking-path-04-b.svg', 0x877be901) end
+function testW3MasksPath4()       hashTestSVG('masks/masking-path-04-b.svg', 0x88dbdf26) end
 function testW3MasksPath5()       hashTestSVG('masks/masking-path-05-f.svg', 0xa4675a9e) end
 function testW3MasksPath7()       hashTestSVG('masks/masking-path-07-b.svg', -1) end
 function testW3MasksPath8()       hashTestSVG('masks/masking-path-08-b.svg', 0x584a2645) end

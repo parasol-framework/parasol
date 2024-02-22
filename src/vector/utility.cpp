@@ -266,7 +266,7 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
 //
 // See also VECTOR_GetBoundary(), for which this function is intended, and set_clip_region() for filters.
 
-void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
+void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool IncludeSiblings, bool IncludeTransforms, bool IncludeStrokes)
 {
    if (!Vector) return;
 
@@ -286,24 +286,40 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
          }
          
          if (Vector->BasePath.total_vertices()) {
+            DOUBLE stroke = 0;
             if (IncludeTransforms) {
+               if ((IncludeStrokes) and (Vector->Stroked)) {
+                  stroke = Vector->fixed_stroke_width() * Vector->Transform.scale() * 0.5;
+               }
+
                if (Vector->Transform.is_complex()) {
                   auto simple_path = Vector->Bounds.as_path();
                   agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
-                  Bounds.expanding(get_bounds(path));
+                  auto pb = get_bounds(path);
+                  if (pb.left + stroke < Bounds.left)      Bounds.left   = pb.left + stroke;
+                  if (pb.top + stroke < Bounds.top)        Bounds.top    = pb.top + stroke;
+                  if (pb.right + stroke > Bounds.right)    Bounds.right  = pb.right + stroke;
+                  if (pb.bottom + stroke  > Bounds.bottom) Bounds.bottom = pb.bottom + stroke;
                }
                else {
-                  if (Vector->Bounds.left + Vector->Transform.tx   < Bounds.left)   Bounds.left   = Vector->Bounds.left + Vector->Transform.tx;
-                  if (Vector->Bounds.top + Vector->Transform.ty    < Bounds.top)    Bounds.top    = Vector->Bounds.top + Vector->Transform.ty;
-                  if (Vector->Bounds.right + Vector->Transform.tx  > Bounds.right)  Bounds.right  = Vector->Bounds.right + Vector->Transform.tx;
-                  if (Vector->Bounds.bottom + Vector->Transform.ty > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + Vector->Transform.ty;
+                  if (Vector->Bounds.left + stroke + Vector->Transform.tx   < Bounds.left)   Bounds.left   = Vector->Bounds.left + Vector->Transform.tx + stroke;
+                  if (Vector->Bounds.top + stroke + Vector->Transform.ty    < Bounds.top)    Bounds.top    = Vector->Bounds.top + Vector->Transform.ty + stroke;
+                  if (Vector->Bounds.right + stroke + Vector->Transform.tx  > Bounds.right)  Bounds.right  = Vector->Bounds.right + Vector->Transform.tx + stroke;
+                  if (Vector->Bounds.bottom + stroke + Vector->Transform.ty > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + Vector->Transform.ty + stroke;
                }
             }
-            else Bounds.expanding(Vector);
+            else {
+               if ((IncludeStrokes) and (Vector->Stroked)) stroke = Vector->fixed_stroke_width();
+               
+               if (Vector->Bounds.left + stroke   < Bounds.left)   Bounds.left   = Vector->Bounds.left + stroke;
+               if (Vector->Bounds.top + stroke    < Bounds.top)    Bounds.top    = Vector->Bounds.top + stroke;
+               if (Vector->Bounds.right + stroke  > Bounds.right)  Bounds.right  = Vector->Bounds.right + stroke;
+               if (Vector->Bounds.bottom + stroke > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + stroke;
+            }
          }
       }
 
-      if (Vector->Child) calc_full_boundary((extVector *)Vector->Child, Bounds, true, IncludeTransforms);
+      if (Vector->Child) calc_full_boundary((extVector *)Vector->Child, Bounds, true, IncludeTransforms, IncludeStrokes);
 
       if (!IncludeSiblings) break;
    }

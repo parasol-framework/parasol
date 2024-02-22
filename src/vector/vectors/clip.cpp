@@ -8,9 +8,9 @@ creating Vector shapes that are initialised to the VectorClip as child objects.
 
 Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
 
-VectorClip objects must be owned by a @VectorScene.  It is valid for a VectorClip to be shared by multiple vector 
-objects within the same scene.  If optimum drawing efficiency is required, we recommend that each VectorClip is 
-referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping 
+VectorClip objects must be owned by a @VectorScene.  It is valid for a VectorClip to be shared by multiple vector
+objects within the same scene.  If optimum drawing efficiency is required, we recommend that each VectorClip is
+referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping
 path.
 
 -END-
@@ -73,7 +73,6 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
    new (Self) extVectorClip;
 
-   Self->GeneratePath  = (void (*)(extVector *))&generate_clip;
    Self->ClipUnits     = VUNIT::USERSPACE; // SVG default is userSpaceOnUse
    Self->Visibility    = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    Self->RefreshBounds = true;
@@ -104,8 +103,8 @@ static ERROR CLIP_SET_ClipFlags(extVectorClip *Self, VCLF Value)
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region relative to the 
-vector that references it.  The alternative is `USERSPACE`, which positions the path relative to the vector's parent 
+The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region relative to the
+vector that references it.  The alternative is `USERSPACE`, which positions the path relative to the vector's parent
 viewport.
 -END-
 *********************************************************************************************************************/
@@ -127,7 +126,7 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 -FIELD-
 Viewport: This viewport hosts the Vector objects that will contribute to the clip path.
 
-To define the path(s) that will be used to build the clipping mask, add at least one @Vector object to the viewport 
+To define the path(s) that will be used to build the clipping mask, add at least one @Vector object to the viewport
 declared here.
 -END-
 *********************************************************************************************************************/
