@@ -97,8 +97,8 @@ static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
 // The Raster must contain the shape's path.
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
-static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path, 
-   const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient, 
+static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path,
+   const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient,
    GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
@@ -152,7 +152,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          agg::scanline_u8 scanline;
          agg::render_scanlines(Raster, scanline, solidgrad);
       }
-      else { // Masked gradient            
+      else { // Masked gradient
          agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
          agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
@@ -223,7 +223,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
             agg::scanline_u8 scanline;
             agg::render_scanlines(Raster, scanline, solidrender_gradient);
          }
-         else { // Masked gradient            
+         else { // Masked gradient
             agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
             agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
@@ -264,7 +264,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          }
 
          agg::gradient_radial_focus gradient_func(fix_radius, f.x - c.x, f.y - c.y);
-         
+
          typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
          typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
          span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
@@ -279,7 +279,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
             agg::scanline_u8 scanline;
             agg::render_scanlines(Raster, scanline, solidrender_gradient);
          }
-         else { // Masked gradient            
+         else { // Masked gradient
             agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
             agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
@@ -331,12 +331,12 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
-      
+
       if (State.mClipStack->empty()) {
          agg::scanline_u8 scanline;
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
-      else { // Masked gradient            
+      else { // Masked gradient
          agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
          agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
@@ -392,7 +392,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          agg::scanline_u8 scanline;
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
-      else { // Masked gradient            
+      else { // Masked gradient
          agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
          agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 
@@ -425,7 +425,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          agg::scanline_u8 scanline;
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
-      else { // Masked gradient            
+      else { // Masked gradient
          agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
          agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
 

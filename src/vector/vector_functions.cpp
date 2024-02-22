@@ -728,7 +728,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 -FUNCTION-
 ReadPainter: Parses a painter string to its colour, gradient, pattern or image value.
 
-This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for 
+This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for
 rendering a stroke or fill operation in the chosen style.
 
 Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
@@ -740,7 +740,7 @@ been registered with the provided Scene object.  If Scene is NULL then it will n
 Any failure to lookup a reference will be silently discarded.
 
 A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
-that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An 
+that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
 optional Result string can store a reference to the character up to which the IRI was parsed.
 
 -INPUT-

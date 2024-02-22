@@ -197,7 +197,7 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
 //********************************************************************************************************************
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
-// Source* defines size of the source area (in SVG, the 'viewbox') 
+// Source* defines size of the source area (in SVG, the 'viewbox')
 // Target* defines the size of the projection to the display.
 
 void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
@@ -299,7 +299,7 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
             }
             else {
                if ((IncludeStrokes) and (Vector->Stroked)) stroke = Vector->fixed_stroke_width() * 0.5;
-               
+
                if (Vector->Bounds.left - stroke   < Bounds.left)   Bounds.left   = Vector->Bounds.left - stroke;
                if (Vector->Bounds.top - stroke    < Bounds.top)    Bounds.top    = Vector->Bounds.top - stroke;
                if (Vector->Bounds.right + stroke  > Bounds.right)  Bounds.right  = Vector->Bounds.right + stroke;
@@ -354,7 +354,7 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
       else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
 
       auto result = StrToFloat(Value) * multiplier;
- 
+
       Value = str;
       return result;
    }
@@ -363,7 +363,7 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
 
 //********************************************************************************************************************
 // The parser will break once the string value terminates, or an invalid character is encountered.
-// 
+//
 // There are two variants - the first aborts if an unparseable value is encountered.  The second will set all
 // unparseable result values to zero.
 //
