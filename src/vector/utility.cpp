@@ -274,17 +274,6 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
       if (Vector->dirty()) gen_vector_path(Vector);
 
       if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
-         if ((Vector->ClipMask) and (!Vector->ClipMask->BasePath.empty())) {
-            // When a ClipMask is defined, we give priority to the mask and then fall-through to the vector path so that we
-            // get a completely accurate view of the visible boundary.
-
-            if (IncludeTransforms) {
-               agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->ClipMask->BasePath, Vector->Transform);
-               Bounds.expanding(get_bounds(path));
-            }
-            else Bounds.expanding(get_bounds(Vector->ClipMask->BasePath));
-         }
-         
          if (Vector->BasePath.total_vertices()) {
             DOUBLE stroke = 0;
             if (IncludeTransforms) {
@@ -296,23 +285,23 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
                   auto simple_path = Vector->Bounds.as_path();
                   agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
                   auto pb = get_bounds(path);
-                  if (pb.left + stroke < Bounds.left)      Bounds.left   = pb.left + stroke;
-                  if (pb.top + stroke < Bounds.top)        Bounds.top    = pb.top + stroke;
+                  if (pb.left - stroke < Bounds.left)      Bounds.left   = pb.left - stroke;
+                  if (pb.top - stroke < Bounds.top)        Bounds.top    = pb.top - stroke;
                   if (pb.right + stroke > Bounds.right)    Bounds.right  = pb.right + stroke;
                   if (pb.bottom + stroke  > Bounds.bottom) Bounds.bottom = pb.bottom + stroke;
                }
                else {
-                  if (Vector->Bounds.left + stroke + Vector->Transform.tx   < Bounds.left)   Bounds.left   = Vector->Bounds.left + Vector->Transform.tx + stroke;
-                  if (Vector->Bounds.top + stroke + Vector->Transform.ty    < Bounds.top)    Bounds.top    = Vector->Bounds.top + Vector->Transform.ty + stroke;
+                  if (Vector->Bounds.left - stroke + Vector->Transform.tx   < Bounds.left)   Bounds.left   = Vector->Bounds.left + Vector->Transform.tx - stroke;
+                  if (Vector->Bounds.top - stroke + Vector->Transform.ty    < Bounds.top)    Bounds.top    = Vector->Bounds.top + Vector->Transform.ty - stroke;
                   if (Vector->Bounds.right + stroke + Vector->Transform.tx  > Bounds.right)  Bounds.right  = Vector->Bounds.right + Vector->Transform.tx + stroke;
                   if (Vector->Bounds.bottom + stroke + Vector->Transform.ty > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + Vector->Transform.ty + stroke;
                }
             }
             else {
-               if ((IncludeStrokes) and (Vector->Stroked)) stroke = Vector->fixed_stroke_width();
+               if ((IncludeStrokes) and (Vector->Stroked)) stroke = Vector->fixed_stroke_width() * 0.5;
                
-               if (Vector->Bounds.left + stroke   < Bounds.left)   Bounds.left   = Vector->Bounds.left + stroke;
-               if (Vector->Bounds.top + stroke    < Bounds.top)    Bounds.top    = Vector->Bounds.top + stroke;
+               if (Vector->Bounds.left - stroke   < Bounds.left)   Bounds.left   = Vector->Bounds.left - stroke;
+               if (Vector->Bounds.top - stroke    < Bounds.top)    Bounds.top    = Vector->Bounds.top - stroke;
                if (Vector->Bounds.right + stroke  > Bounds.right)  Bounds.right  = Vector->Bounds.right + stroke;
                if (Vector->Bounds.bottom + stroke > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + stroke;
             }

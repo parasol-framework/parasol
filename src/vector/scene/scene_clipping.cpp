@@ -1,9 +1,17 @@
+// TODO: Currently mask bitmaps are created and torn down on each drawing cycle.  We may be able to cache the bitmaps
+// with Vectors when they request a mask.  Bear in mind that caching has to be on a per-vector basis and not in the
+// VectorClip itself due to the fact that a given VectorClip can be referenced by many vectors.
+
 //********************************************************************************************************************
 // This function recursively draws all child vectors to a bitmap mask in an additive way.
 //
 // TODO: Currently the paths are transformed dynamically, but we could store a transformed 'MaskPath' permanently with
 // the vectors that use them.  When the vector path is dirty, we can clear the MaskPath to force recomputation when 
 // required.
+//
+// SVG stipulates that masks constructed from RGB colours use the luminance formula to convert them to a greyscale
+// value: ".2126R + .7152G + .0722B".  The best way to apply this is to convert solid colour values to their
+// luminesence value prior to drawing them.
 
 void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Shape, agg::rasterizer_scanline_aa<> &Raster,
    agg::renderer_base<agg::pixfmt_gray8> &Base, const agg::trans_affine &Transform)
@@ -106,14 +114,6 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
 //********************************************************************************************************************
 // Called by the scene graph renderer to generate a bitmap mask.
-//
-// TODO: Currently mask bitmaps are created and torn down on each drawing cycle.  We may be able to cache the bitmaps
-// with Vectors when they request a mask.  Bear in mind that caching has to be on a per-vector basis and not in the
-// VectorClip itself due to the fact that a given VectorClip can be referenced by many vectors.
-//
-// SVG stipulates that masks constructed from RGB colours use the luminance formula to convert them to a greyscale
-// value: ".2126R + .7152G + .0722B".  The best way to apply this is to convert solid colour values to their
-// luminesence value prior to drawing them.
 
 void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
 {
