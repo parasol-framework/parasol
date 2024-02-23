@@ -8,7 +8,7 @@ creating Vector shapes that are initialised to the VectorClip's #Viewport as chi
 
 Vector shapes can utilise a VectorClip by referring to it via the Vector's @Vector.Mask field.
 
-VectorClip objects must be owned by a @VectorScene.  It is valid for a VectorClip to be shared by multiple vector
+VectorClip objects must be owned by a @VectorScene.  It is valid for a VectorClip to be shared amongst multiple vector
 objects within the same scene.  If optimum drawing efficiency is required, we recommend that each VectorClip is
 referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping
 path.
@@ -20,9 +20,9 @@ more complex masks, such as one with a filled gradient, use the `VCLF::APPLY_FIL
 operations are required, define `VCLF::APPLY_STROKES`.
 
 Finally, for the purposes of UI development it may often be beneficial to set #Units to `VUNIT::BOUNDING_BOX` so that
-the clipping path is resized to match the target vector.  This enables a default viewbox size of `0 0 1 1`, but if a
-1:1 match to the target vector is preferred then set the #Viewport @VectorViewport.ViewWidth and @VectorViewport.ViewHeight to 
-match the target vector's dimensions.
+the clipping path is sized to match the target vector.  A viewbox size of `0 0 1 1` is applied by default, but if a
+1:1 match to the target vector is preferred, set the #Viewport @VectorViewport.ViewWidth and 
+@VectorViewport.ViewHeight to match the target vector's dimensions.
 
 -END-
 
@@ -31,6 +31,7 @@ match the target vector's dimensions.
 static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 {
    Self->~extVectorClip();
+   if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = NULL; }
    return ERR_Okay;
 }
 
@@ -47,21 +48,26 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 
    // A viewport hosts the shapes for determining the clipping path.
 
-   if ((Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
-         fl::Owner(Self->ownerID()),
-         fl::Visibility(VIS::HIDDEN),
-         fl::AspectRatio(ARF::NONE),
-         fl::X(0), fl::Y(0), fl::Width(1), fl::Height(1) // Target dimensions are defined when drawing
-      ))) {
+   if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORSCENE)) {
+      if (Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
+            fl::Owner(Self->ownerID()),
+            fl::Visibility(VIS::HIDDEN),
+            fl::AspectRatio(ARF::NONE),
+            fl::X(0), fl::Y(0), fl::Width(1), fl::Height(1) // Target dimensions are defined when drawing
+         )) {
 
-      if (Self->Units IS VUNIT::BOUNDING_BOX) {
-         // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (0 0 1 1) as required by SVG
-         Self->Viewport->setFields(fl::ViewWidth(1.0), fl::ViewHeight(1.0));
+         Self->ViewportID = Self->Viewport->UID;
+
+         if (Self->Units IS VUNIT::BOUNDING_BOX) {
+            // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (0 0 1 1) as required by SVG
+            Self->Viewport->setFields(fl::ViewWidth(1.0), fl::ViewHeight(1.0));
+         }
+
+         return ERR_Okay;
       }
-
-      return ERR_Okay;
+      else return ERR_CreateObject;
    }
-   else return ERR_CreateObject;
+   else return ERR_UnsupportedOwner;
 }
 
 //********************************************************************************************************************

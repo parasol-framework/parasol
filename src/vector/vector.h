@@ -530,6 +530,7 @@ class extVectorClip : public objVectorClip {
    using create = pf::Create<extVectorClip>;
 
    TClipRectangle<DOUBLE> Bounds;
+   OBJECTID ViewportID;
 };
 
 //********************************************************************************************************************

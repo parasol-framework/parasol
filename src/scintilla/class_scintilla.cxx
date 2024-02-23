@@ -1044,11 +1044,11 @@ static ERROR SCINTILLA_NewObject(extScintilla *Self, APTR)
 static ERROR SCINTILLA_NewOwner(extScintilla *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwner->UID;
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
+      auto obj = Args->NewOwner;
+      while ((obj) and (obj->Class->ClassID != ID_SURFACE)) {
+         obj = obj->Owner;
       }
-      if (owner_id) Self->SurfaceID = owner_id;
+      if (obj) Self->SurfaceID = obj->UID;
    }
 
    return ERR_Okay;

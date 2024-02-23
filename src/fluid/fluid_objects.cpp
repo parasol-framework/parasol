@@ -665,7 +665,6 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 static int object_find(lua_State *Lua)
 {
    pf::Log log("object.find");
-   OBJECTPTR obj;
    CSTRING object_name;
    CLASSID class_id;
    OBJECTID object_id;
