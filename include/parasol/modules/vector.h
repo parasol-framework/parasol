@@ -31,6 +31,7 @@ class objMorphologyFX;
 class objOffsetFX;
 class objRemapFX;
 class objTurbulenceFX;
+class objVectorClip;
 class objVectorFilter;
 class objVector;
 class objVectorPath;
@@ -42,7 +43,6 @@ class objVectorPolygon;
 class objVectorShape;
 class objVectorSpiral;
 class objVectorEllipse;
-class objVectorClip;
 class objVectorViewport;
 
 // Options for drawing arcs.
@@ -1393,6 +1393,37 @@ class objTurbulenceFX : public objFilterEffect {
    using create = pf::Create<objTurbulenceFX>;
 };
 
+// VectorClip class definition
+
+#define VER_VECTORCLIP (1.000000)
+
+class objVectorClip : public BaseClass {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CSTRING CLASS_NAME = "VectorClip";
+
+   using create = pf::Create<objVectorClip>;
+
+   objVectorViewport * Viewport;    // This viewport hosts the Vector objects that will contribute to the clip path.
+   VUNIT Units;                     // Defines the coordinate system for fields X, Y, Width and Height.
+   VCLF  Flags;                     // Optional flags.
+
+   // Customised field setting
+
+   inline ERROR setUnits(const VUNIT Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const VCLF Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+};
+
 // VectorFilter class definition
 
 #define VER_VECTORFILTER (1.000000)
@@ -1980,18 +2011,6 @@ class objVectorEllipse : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
 
    using create = pf::Create<objVectorEllipse>;
-};
-
-// VectorClip class definition
-
-#define VER_VECTORCLIP (1.000000)
-
-class objVectorClip : public objVector {
-   public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
-   static constexpr CSTRING CLASS_NAME = "VectorClip";
-
-   using create = pf::Create<objVectorClip>;
 };
 
 // VectorViewport class definition
@@ -2636,7 +2655,7 @@ INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 namespace fl {
    using namespace pf;
 
-constexpr FieldValue ClipFlags(VCLF Value) { return FieldValue(FID_ClipFlags, LONG(Value)); }
+constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, LONG(Value)); }
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }

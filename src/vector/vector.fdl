@@ -483,6 +483,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   class("TurbulenceFX",   { base='FilterEffect', src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
 
+  class('VectorClip', { src='vectors/clip.cpp', output='vectors/clip_def.cpp' }, [[
+    obj(VectorViewport) Viewport # Hosts the Vector objects that will contribute to the clip path.
+    int(VUNIT) Units             # Defines the coordinate system for fields X, Y, Width and Height.
+    int(VCLF) Flags              # Optional flags.
+  ]])
+
   class("VectorFilter",   { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
     double X                  # Left-most position of filter area
     double Y                  # Top-most position of filter area
@@ -564,8 +570,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   class('VectorSpiral', { base='Vector', src='vectors/spiral.cpp' })
 
   class('VectorEllipse', { base='Vector', src='vectors/ellipse.cpp' })
-
-  class('VectorClip', { base='Vector', references={ 'VCLF', 'VUNIT' }, src='vectors/clip.cpp', output='vectors/clip_def.cpp' })
 
   class('VectorViewport', { base='Vector', references={ 'VOF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
 
@@ -1137,7 +1141,7 @@ INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
 namespace fl {
    using namespace pf;
 
-constexpr FieldValue ClipFlags(VCLF Value) { return FieldValue(FID_ClipFlags, LONG(Value)); }
+constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, LONG(Value)); }
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }

@@ -945,9 +945,10 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                   // Clipping masks can reduce the boundary further.
 
-                  if ((!state.mClipStack->empty()) and (!state.mClipStack->top().m_clip->BasePath.empty())) {
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(state.mClipStack->top().m_clip->BasePath, shape->Transform);
-                     b.shrinking(get_bounds(path));
+                  if ((!state.mClipStack->empty()) and (state.mClipStack->top().m_clip->Bounds.valid())) {
+                     // NB: This hasn't had much testing and doesn't consider nested clips.
+                     // The Clip bounds should be post-transform
+                     b.shrinking(state.mClipStack->top().m_clip->Bounds);
                   }
                }
                else b = { -1, -1, -1, -1 };

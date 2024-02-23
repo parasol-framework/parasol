@@ -28,8 +28,8 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
             agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(Base);
 
-            if ((m_clip->ClipFlags & (VCLF::APPLY_STROKES|VCLF::APPLY_FILLS)) != VCLF::NIL) {
-               if ((m_clip->ClipFlags & VCLF::APPLY_FILLS) != VCLF::NIL) {
+            if ((m_clip->Flags & (VCLF::APPLY_STROKES|VCLF::APPLY_FILLS)) != VCLF::NIL) {
+               if ((m_clip->Flags & VCLF::APPLY_FILLS) != VCLF::NIL) {
                   // When the APPLY_FILLS option is enabled, regular fill painting rules will be applied.
 
                   if ((node->Fill->Colour.Alpha > 0) and (!node->DisableFillColour)) {
@@ -79,7 +79,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                   }
                }
 
-               if ((m_clip->ClipFlags & VCLF::APPLY_STROKES) != VCLF::NIL) {
+               if ((m_clip->Flags & VCLF::APPLY_STROKES) != VCLF::NIL) {
                   if (node->StrokeRaster) {
                      DOUBLE value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
                      value *= node->StrokeOpacity;
@@ -180,7 +180,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       vecNewMatrix(m_clip->Viewport, &matrix);
    }
 
-   if (m_clip->ClipUnits IS VUNIT::BOUNDING_BOX) draw_bounding_box(Render);
+   if (m_clip->Units IS VUNIT::BOUNDING_BOX) draw_bounding_box(Render);
    else draw_userspace(Render);
 }
 
@@ -212,7 +212,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
    m_clip->Viewport->Matrices->TranslateY = transform.ty;
 
    m_clip->Bounds = TCR_EXPANDING;
-   calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
+   calc_full_boundary((extVector *)m_clip->Viewport, m_clip->Bounds, false, true, true);
 
    if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 
@@ -252,7 +252,7 @@ void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
    }
 
    m_clip->Bounds = TCR_EXPANDING;
-   calc_full_boundary(m_clip->Viewport, m_clip->Bounds, false, true, true);
+   calc_full_boundary((extVector *)m_clip->Viewport, m_clip->Bounds, false, true, true);
 
    if (m_clip->Bounds.left > m_clip->Bounds.right) return; // Return if no paths were defined.
 

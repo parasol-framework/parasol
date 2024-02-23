@@ -4,14 +4,25 @@
 VectorClip: Clips are used to define complex clipping regions for vectors.
 
 The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by
-creating Vector shapes that are initialised to the VectorClip as child objects.
+creating Vector shapes that are initialised to the VectorClip's #Viewport as child objects.
 
-Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
+Vector shapes can utilise a VectorClip by referring to it via the Vector's @Vector.Mask field.
 
 VectorClip objects must be owned by a @VectorScene.  It is valid for a VectorClip to be shared by multiple vector
 objects within the same scene.  If optimum drawing efficiency is required, we recommend that each VectorClip is
 referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping
 path.
+
+The SVG standard makes a distinction between clipping paths and masks.  Consequently, this distinction also exists 
+in the VectorClip design, and by default VectorClip objects will operate in path clipping mode.  This means that 
+the clipping path is constructed as a solid filled area, and stroke instructions are completely ignored.  To create 
+more complex masks, such as one with a filled gradient, use the `VCLF::APPLY_FILLS` option in #Flags.  If stroking 
+operations are required, define `VCLF::APPLY_STROKES`.
+
+Finally, for the purposes of UI development it may often be beneficial to set #Units to `VUNIT::BOUNDING_BOX` so that
+the clipping path is resized to match the target vector.  This enables a default viewbox size of `0 0 1 1`, but if a
+1:1 match to the target vector is preferred then set the #Viewport @VectorViewport.ViewWidth and @VectorViewport.ViewHeight to 
+match the target vector's dimensions.
 
 -END-
 
@@ -29,30 +40,28 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((LONG(Self->ClipUnits) <= 0) or (LONG(Self->ClipUnits) >= LONG(VUNIT::END))) {
-      log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+      log.traceWarning("Invalid Units value of %d", Self->Units);
       return ERR_OutOfRange;
    }
 
-   if (!Self->Parent) return ERR_FieldNotSet;
-   else if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) {
-      // A 'dummy' viewport hosts the shapes for determining the clipping path.  This allows us to
-      // control the boundary size according to the Units value.
+   // A viewport hosts the shapes for determining the clipping path.
 
-      Self->Viewport = (extVectorViewport *)objVectorViewport::create::global(
+   if ((Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
+         fl::Owner(Self->OwnerID),
          fl::Visibility(VIS::HIDDEN),
          fl::AspectRatio(ARF::NONE),
          fl::X(0), fl::Y(0), fl::Width(1), fl::Height(1) // Target dimensions are defined when drawing
-      );
+      ))) {
 
-      if (Self->ClipUnits IS VUNIT::BOUNDING_BOX) {
+      if (Self->Units IS VUNIT::BOUNDING_BOX) {
          // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (0 0 1 1) as required by SVG
          Self->Viewport->setFields(fl::ViewWidth(1.0), fl::ViewHeight(1.0));
       }
-   }
-   else return log.warning(ERR_UnsupportedOwner);
 
-   return ERR_Okay;
+      return ERR_Okay;
+   }
+   else return ERR_CreateObject;
 }
 
 //********************************************************************************************************************
@@ -73,28 +82,27 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
    new (Self) extVectorClip;
 
-   Self->ClipUnits  = VUNIT::USERSPACE; // SVG default is userSpaceOnUse
-   Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
+   Self->Units  = VUNIT::USERSPACE; // SVG default is userSpaceOnUse
    return ERR_Okay;
 }
 
 /*********************************************************************************************************************
 -FIELD-
-ClipFlags: Optional flags.
+Flags: Optional flags.
 Lookup: VCLF
 
 -END-
 *********************************************************************************************************************/
 
-static ERROR CLIP_GET_ClipFlags(extVectorClip *Self, VCLF *Value)
+static ERROR CLIP_GET_Flags(extVectorClip *Self, VCLF *Value)
 {
-   *Value = Self->ClipFlags;
+   *Value = Self->Flags;
    return ERR_Okay;
 }
 
-static ERROR CLIP_SET_ClipFlags(extVectorClip *Self, VCLF Value)
+static ERROR CLIP_SET_Flags(extVectorClip *Self, VCLF Value)
 {
-   Self->ClipFlags = Value;
+   Self->Flags = Value;
    return ERR_Okay;
 }
 
@@ -110,13 +118,13 @@ viewport.
 
 static ERROR CLIP_GET_Units(extVectorClip *Self, VUNIT *Value)
 {
-   *Value = Self->ClipUnits;
+   *Value = Self->Units;
    return ERR_Okay;
 }
 
 static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 {
-   Self->ClipUnits = Value;
+   Self->Units = Value;
    return ERR_Okay;
 }
 
@@ -129,7 +137,7 @@ declared here.
 -END-
 *********************************************************************************************************************/
 
-static ERROR CLIP_GET_Viewport(extVectorClip *Self, extVectorViewport **Value)
+static ERROR CLIP_GET_Viewport(extVectorClip *Self, objVectorViewport **Value)
 {
    *Value = Self->Viewport;
    return ERR_Okay;
@@ -148,17 +156,16 @@ static const ActionArray clClipActions[] = {
 };
 
 static const FieldArray clClipFields[] = {
-   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
-   { "Viewport",  FDF_VIRTUAL|FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
-   { "ClipFlags", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, CLIP_GET_ClipFlags, CLIP_SET_ClipFlags, &clVectorClipVCLF },
+   { "Viewport",  FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
+   { "Units",     FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
+   { "Flags", FDF_LONGFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
    END_FIELD
 };
 
 static ERROR init_clip(void)
 {
    clVectorClip = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORCLIP),
+      fl::BaseClassID(ID_VECTORCLIP),
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),

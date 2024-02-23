@@ -450,7 +450,7 @@ vfx.wipes.radial.init = function(State, Options)
    State.stroke_size = State.max_radius / State.segments
 
    State.ellipses = { }
-   State.clip.clipFlags = 'ApplyStrokes|ApplyFills'
+   State.clip.flags = 'ApplyStrokes|ApplyFills'
 
    State.center = State.clip.viewport.new('VectorEllipse', {
       cx = State.cx, cy = State.cy, rx = 0.01, ry = 0.01, visibility = VIS_HIDDEN, fill='rgb(255,255,255)'
