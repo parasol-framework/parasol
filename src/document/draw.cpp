@@ -479,6 +479,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      button.processed = true;
 
                      button.label_text.set(objVectorText::create::global({
+                        fl::Name("button_text"),
                         fl::Owner(button.viewport->UID),
                         fl::String(button.label),
                         fl::Font(font),
@@ -513,6 +514,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                         if (checkbox.label_text.empty()) {
                            checkbox.label_text.set(objVectorText::create::global({
+                              fl::Name("checkbox_label"),
                               fl::Owner(checkbox.viewport->UID),
                               fl::String(checkbox.label),
                               fl::Font(font),
@@ -535,6 +537,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                         if (checkbox.label_text.empty()) {
                            checkbox.label_text.set(objVectorText::create::global({
+                              fl::Name("checkbox_label"),
                               fl::Owner(Viewport->UID),
                               fl::String(checkbox.label),
                               fl::Font(font),
@@ -574,6 +577,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      if (combo.label_text.empty()) {
                         combo.label_text = objVectorText::create::global({
+                           fl::Name("combo_label"),
                            fl::Owner(Viewport->UID),
                            fl::String(combo.label),
                            fl::Font(font),
@@ -595,6 +599,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      if (combo.label_text.empty()) {
                         combo.label_text = objVectorText::create::global({
+                           fl::Name("combo_label"),
                            fl::Owner(Viewport->UID),
                            fl::String(combo.label),
                            fl::Font(font),
@@ -630,6 +635,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
                   combo.input = objVectorText::create::global({
+                     fl::Name("combo_input"),
                      fl::Owner(combo.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
                      fl::String(combo.value),
@@ -676,6 +682,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      if (input.label_text.empty()) {
                         input.label_text = objVectorText::create::global({
+                           fl::Name("input_label"),
                            fl::Owner(Viewport->UID),
                            fl::String(input.label),
                            fl::Font(font),
@@ -697,6 +704,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      if (input.label_text.empty()) {
                         input.label_text = objVectorText::create::global({
+                           fl::Name("input_label"),
                            fl::Owner(Viewport->UID),
                            fl::String(input.label),
                            fl::Font(font),
@@ -722,6 +730,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
                   objVectorText::create::global({
+                     fl::Name("input_text"),
                      fl::Owner(input.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
                      fl::String(input.value),

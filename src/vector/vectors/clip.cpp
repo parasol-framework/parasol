@@ -49,12 +49,12 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
    // A viewport hosts the shapes for determining the clipping path.
 
    if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORSCENE)) {
-      if (Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
+      if ((Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
             fl::Owner(Self->ownerID()),
             fl::Visibility(VIS::HIDDEN),
             fl::AspectRatio(ARF::NONE),
             fl::X(0), fl::Y(0), fl::Width(1), fl::Height(1) // Target dimensions are defined when drawing
-         )) {
+         ))) {
 
          Self->ViewportID = Self->Viewport->UID;
 
