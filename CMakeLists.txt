@@ -401,7 +401,7 @@ endif ()
 
 if (MSVC)
    # Turn off ugly warnings
-   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS" )
+   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS")
    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
    # These options override sub-projects linking to incorrect standard libraries.
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
@@ -412,6 +412,15 @@ if (MSVC)
       # "env": { "Path": "${env:Path};C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64" }
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+   endif ()
+
+   # We don't use exceptions, so get the compiler to disable this functionality.  This results in noticeably smaller binaries and more optimised code. 
+   if (CMAKE_BUILD_TYPE STREQUAL "Release")
+      add_compile_definitions ("_HAS_EXCEPTIONS=0")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
    endif ()
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
