@@ -230,14 +230,14 @@ void scroll_mgr::scroll_bar::init(scroll_mgr *Manager, char Direction, objVector
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Target: #%d", Viewport->OwnerID);
+   log.branch("Target: #%d", Viewport->ownerID());
 
    m_mgr = Manager;
 
    // Main scrollbar container
 
    m_bar_vp = objVectorViewport::create::global({
-      fl::Owner(Viewport->OwnerID),
+      fl::Owner(Viewport->ownerID()),
       fl::Y(5), fl::YOffset(5), fl::XOffset(5), fl::Width(m_breadth)
    });
 

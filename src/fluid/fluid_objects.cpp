@@ -687,7 +687,7 @@ static int object_find(lua_State *Lua)
          return object_find_ptr(Lua, Lua->Script);
       }
       else if (!StrMatch("owner", object_name)) {
-         if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
+         if (auto obj = Lua->Script->Owner) {
             return object_find_ptr(Lua, obj);
          }
          else return 0;
@@ -703,7 +703,7 @@ static int object_find(lua_State *Lua)
 
       if (CheckObjectExists(object_id) != ERR_Okay) return 0;
 
-      if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
+      if (auto obj = Lua->Script->Owner) {
          return object_find_ptr(Lua, obj);
       }
    }
@@ -1001,7 +1001,7 @@ static int object_destruct(lua_State *Lua)
          // owned by a Database object).
 
          if (auto obj = GetObjectPtr(def->UID)) {
-            if ((obj->Class->BaseClassID IS ID_RECORDSET) or (obj->ownerID() IS Lua->Script->UID) or (obj->ownerID() IS Lua->Script->TargetID)) {
+            if ((obj->Class->BaseClassID IS ID_RECORDSET) or (obj->Owner IS Lua->Script) or (obj->ownerID() IS Lua->Script->TargetID)) {
                pf::Log log("obj.destruct");
                log.trace("Freeing Fluid-owned object #%d.", def->UID);
                FreeResource(obj); // We can't presume that the object pointer would be valid

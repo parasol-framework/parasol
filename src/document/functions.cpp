@@ -802,7 +802,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, objScrip
          if (!FindObject(script_name.c_str(), ID_SCRIPT, FOF::NIL, &id)) {
             // Security checks
             *Script = (objScript *)GetObjectPtr(id);
-            if ((Script[0]->OwnerID != Self->UID) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
+            if ((Script[0]->Owner != Self) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
                log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name.c_str());
                return ERR_NoPermission;
             }

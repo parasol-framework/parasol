@@ -185,7 +185,7 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
    if (!def->hasOwner(Self->UID)) {
-      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->UID, def->OwnerID);
+      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->UID, def->ownerID());
       return ERR_UnsupportedOwner;
    }
 

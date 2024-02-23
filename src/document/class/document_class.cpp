@@ -652,9 +652,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    pf::Log log;
 
    if (!Self->Viewport) {
-      auto owner = GetObjectPtr(Self->ownerID());
-      if (owner->Class->ClassID IS ID_VECTORVIEWPORT) {
-         Self->Viewport = (objVectorViewport *)owner;
+      if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORVIEWPORT)) {
+         Self->Viewport = (objVectorViewport *)Self->Owner;
       }
       else return log.warning(ERR_UnsupportedOwner);
    }

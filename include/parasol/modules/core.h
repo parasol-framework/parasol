@@ -2745,9 +2745,9 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
+   struct BaseClass *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    OBJECTID UID;                 // Unique object identifier
-   OBJECTID OwnerID;             // The owner of this object
    NF       Flags;               // Object flags
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
@@ -2760,7 +2760,7 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass();
-   inline OBJECTID ownerID() { return OwnerID; }
+   inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
    inline NF flags() { return Flags; }
 
    CSTRING className();
@@ -2794,9 +2794,9 @@ struct BaseClass { // Must be 64-bit aligned
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
-      auto oid = this->OwnerID;
-      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
-      return oid ? true : false;
+      auto obj = this->Owner;
+      while ((obj) and (obj->UID != ID)) obj = obj->Owner;
+      return obj ? true : false;
    }
 
    inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }

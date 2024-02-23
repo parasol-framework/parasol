@@ -1846,7 +1846,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
-   if (GetClassID(Self->ownerID()) IS ID_DISPLAY) goto setfields;
+   if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_DISPLAY)) goto setfields;
 
 #ifdef __xwindows__
 

@@ -88,15 +88,13 @@ static void validate_tree(extVector *Vector)
 //********************************************************************************************************************
 // Determine the parent object, based on the owner.
 
-static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
+static ERROR set_parent(extVector *Self, OBJECTPTR Owner)
 {
-   auto parent = GetObjectPtr(OwnerID);
-
-   if ((parent->Class->ClassID != ID_VECTORSCENE) and (parent->Class->BaseClassID != ID_VECTOR)) {
+   if ((Owner->Class->ClassID != ID_VECTORSCENE) and (Owner->Class->BaseClassID != ID_VECTOR)) {
       return ERR_UnsupportedOwner;
    }
 
-   Self->Parent = parent;
+   Self->Parent = Owner;
 
    // Ensure that the sibling fields are valid, if not then clear them.
 
@@ -281,7 +279,7 @@ static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 static ERROR VECTOR_Free(extVector *Self, APTR Void)
 {
    Self->~extVector();
-   
+
    if (Self->ClipMask)   UnsubscribeAction(Self->ClipMask, AC_Free);
    if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
    if (Self->Morph)      UnsubscribeAction(Self->Morph, AC_Free);
@@ -508,7 +506,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
    }
 
    if (!Self->Parent) {
-      if (auto error = set_parent(Self, Self->ownerID())) return log.warning(error);
+      if (auto error = set_parent(Self, Self->Owner)) return log.warning(error);
    }
 
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent->UID,
@@ -598,7 +596,7 @@ static ERROR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 
    if (Self->initialised()) return log.warning(ERR_AlreadyDefined);
 
-   set_parent(Self, Args->NewOwner->UID);
+   set_parent(Self, Args->NewOwner);
 
    return ERR_Okay;
 }
@@ -1752,7 +1750,7 @@ static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
 
    if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if ((!Value) or (Value IS Self)) return log.warning(ERR_InvalidValue);
-   if (Self->OwnerID != Value->OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
+   if (Self->Owner != Value->Owner) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1855,7 +1853,7 @@ static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 
    if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if (!Value) return log.warning(ERR_InvalidValue);
-   if (Self->OwnerID != Value->OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
+   if (Self->Owner != Value->Owner) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.

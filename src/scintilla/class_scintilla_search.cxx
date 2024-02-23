@@ -175,11 +175,11 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
    pf::Log log;
 
    if (!Self->Scintilla) { // Find our parent surface
-      OBJECTID owner_id = Self->ownerID();
-      while ((owner_id) and (GetClassID(owner_id) != ID_SCINTILLA)) {
-         owner_id = GetOwnerID(owner_id);
+      auto obj = Self->Owner;
+      while ((obj) and (obj->Class->ClassID = ID_SCINTILLA)) {
+         obj = obj->Owner;
       }
-      if (owner_id) Self->Scintilla = (objScintilla *)GetObjectPtr(owner_id);
+      if (obj) Self->Scintilla = (objScintilla *)obj;
       else return log.warning(ERR_UnsupportedOwner);
    }
 

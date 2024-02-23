@@ -150,7 +150,7 @@ void CloseCore(void)
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
             if (auto obj = mem.Object) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->Owner ? obj->Owner->UID : 0, mem.AccessCount);
                for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }

@@ -3,7 +3,7 @@
 -CLASS-
 SVG: Provides support for parsing and rendering SVG files.
 
-The SVG class provides support for parsing SVG statements into a scene graph that consists of @Vector objects and 
+The SVG class provides support for parsing SVG statements into a scene graph that consists of @Vector objects and
 related constructs.  The generated scene graph is accessible via the #Scene and #Viewport fields.
 
 It is possible to parse SVG documents directly to the UI.  Set the #Target field with a vector to contain the SVG
@@ -98,7 +98,7 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
       Self->FrameCallback.clear();
    }
 
-   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
+   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Owner IS Self)) {
       FreeResource(Self->Target);
       Self->Target = NULL;
    }
@@ -518,7 +518,7 @@ static ERROR SET_Statement(extSVG *Self, CSTRING Value)
 Target: The container object for new SVG content can be declared here.
 
 During the normal initialisation process, a new @VectorViewport is created to host the SVG scene graph.  By default,
-the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene 
+the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene
 graph elsewhere.
 
 The provided Target can be any object class, as long as it forms part of a scene graph owned by a @VectorScene
@@ -537,16 +537,17 @@ static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
-      auto owner_id = Value->ownerID();
-      while ((owner_id) and (GetClassID(owner_id) != ID_VECTORSCENE)) {
-         owner_id = GetOwnerID(owner_id);
+      auto owner = Value->Owner;
+      while ((owner) and (owner->Class->ClassID != ID_VECTORSCENE)) {
+         owner = owner->Owner;
       }
 
-      if (!owner_id) return ERR_Failed;
-
-      Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
-      Self->Target = Value;
-      if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
+      if (owner) {
+         Self->Scene = (objVectorScene *)owner;
+         Self->Target = Value;
+         if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
+      }
+      else return ERR_Failed;
    }
 
    return ERR_Okay;

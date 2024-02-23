@@ -107,10 +107,10 @@ static ERROR object_free(BaseClass *Object)
       return ERR_InUse;
    }
 
-   if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
-   else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
-   else log.branch("Owner: %d", Object->OwnerID);
+   if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
+   else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->ownerID());
+   else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->ownerID());
+   else log.branch("Owner: %d", Object->ownerID());
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
    // FreeWarning action.  The process can be aborted by returning ERR_InUse.
@@ -285,8 +285,8 @@ static void free_children(OBJECTPTR Object)
 
             if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Object)) continue;
 
-            if (mem.Object->OwnerID != Object->UID) {
-               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->OwnerID, Object->UID);
+            if (mem.Object->Owner != Object) {
+               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
                continue;
             }
 
@@ -684,7 +684,8 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
    pf::Log log(__FUNCTION__);
 
    if (Object) {
-      if (Object->Class->ClassID IS ID_METACLASS) {
+      if (!Object->Class) return ERR_False;
+      else if (Object->Class->ClassID IS ID_METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
@@ -885,12 +886,9 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Resu
       }
 
       if (!StrMatch("owner", InitialName)) {
-         if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
-            if (!CheckObjectExists(tlContext->object()->OwnerID)) {
-               *Result = tlContext->object()->OwnerID;
-               return ERR_Okay;
-            }
-            else return ERR_DoesNotExist;
+         if ((tlContext != &glTopContext) and (tlContext->object()->Owner)) {
+            *Result = tlContext->object()->Owner->UID;
+            return ERR_Okay;
          }
          else return ERR_DoesNotExist;
       }
@@ -1021,7 +1019,7 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
-         if (mem->second.Object) return mem->second.Object->OwnerID;
+         if (mem->second.Object) return mem->second.Object->ownerID();
       }
    }
    return 0;
@@ -1067,8 +1065,8 @@ ERROR InitObject(OBJECTPTR Object)
       return ERR_Okay;
    }
 
-   if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->OwnerID);
-   else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->OwnerID);
+   if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->ownerID());
+   else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->ownerID());
 
    ObjectContext new_context(Object, AC_Init);
 
@@ -1330,7 +1328,14 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          }
       }
       else if (tlContext != &glTopContext) { // Track the object to the current context
-         SetOwner(head, tlContext->resource());
+         auto obj = tlContext->resource();
+         if (obj IS &glDummyObject) {
+            if (glCurrentTask) {
+               ScopedObjectAccess lock(glCurrentTask);
+               SetOwner(head, glCurrentTask);
+            }
+         }
+         else SetOwner(head, obj);
       }
       else if (glCurrentTask) {
          ScopedObjectAccess lock(glCurrentTask);
@@ -1631,7 +1636,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
 
-   if (Object->OwnerID IS Owner->UID) return ERR_Okay;
+   if (Object->Owner IS Owner) return ERR_Okay;
 
    if ((Object->ExtClass->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) {
       log.traceWarning("Cannot set the object owner as CLF::NO_OWNERSHIP is set in its class.");
@@ -1640,7 +1645,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if (Object IS Owner) return log.warning(ERR_Recursion);
 
-   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
+   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->ownerID());
 
    // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
 
@@ -1659,7 +1664,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    struct acNewOwner newowner = { .NewOwner = Owner };
    Action(AC_NewOwner, Object, &newowner);
 
-   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
+   //if (Object->Owner) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->ownerID(), Owner->UID);
 
    // Track the object's memory header to the new owner
 
@@ -1669,9 +1674,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       mem->second.OwnerID = Owner->UID;
 
       // Remove reference from the now previous owner
-      if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
+      if (Object->Owner) glObjectChildren[Object->Owner->UID].erase(Object->UID);
 
-      Object->OwnerID = Owner->UID;
+      Object->Owner = Owner;
 
       glObjectChildren[Owner->UID].insert(Object->UID);
       return ERR_Okay;

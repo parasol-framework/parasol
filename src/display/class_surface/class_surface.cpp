@@ -958,7 +958,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    // Give the focus to the parent if our object has the primary focus.  Do not apply this technique to surface objects
    // acting as windows, as the window class has its own focus management code.
 
-   if (Self->hasFocus() and (GetClassID(Self->ownerID()) != ID_WINDOW)) {
+   if (Self->hasFocus() and (Self->Owner) and (Self->Owner->Class->ClassID != ID_WINDOW)) {
       if (Self->ParentID) acFocus(Self->ParentID);
    }
 
