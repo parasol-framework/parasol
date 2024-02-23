@@ -2329,6 +2329,9 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 
          case SVF_X: FUNIT(FID_X, val).set(viewport); break;
          case SVF_Y: FUNIT(FID_Y, val).set(viewport); break;
+            
+         case SVF_XOFFSET: FUNIT(FID_XOffset, val).set(viewport); break;
+         case SVF_YOFFSET: FUNIT(FID_YOffset, val).set(viewport); break;
 
          case SVF_WIDTH:
             FUNIT(FID_Width, val).set(viewport);
