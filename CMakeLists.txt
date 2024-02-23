@@ -414,7 +414,7 @@ if (MSVC)
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
    endif ()
 
-   # We don't use exceptions, so get the compiler to disable this functionality.  This results in noticeably smaller binaries and more optimised code. 
+   # We don't use exceptions, so get the compiler to disable this functionality.  This results in noticeably smaller binaries and more optimised code.
    if (CMAKE_BUILD_TYPE STREQUAL "Release")
       add_compile_definitions ("_HAS_EXCEPTIONS=0")
       string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")

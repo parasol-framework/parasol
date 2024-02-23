@@ -2747,6 +2747,7 @@ struct BaseClass { // Must be 64-bit aligned
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
    struct BaseClass *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
+   LONG     Dummy;               // For 64-bit alignment
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    volatile LONG  ThreadID;      // Managed by locking functions

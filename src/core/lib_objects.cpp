@@ -88,6 +88,7 @@ static ERROR object_free(BaseClass *Object)
 
    if (Object->Locked) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
+      if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL; // The Owner pointer is no longer safe to use
       Object->Flags |= NF::FREE_ON_UNLOCK;
       return ERR_InUse;
    }
@@ -100,6 +101,7 @@ static ERROR object_free(BaseClass *Object)
    if (Object->ActionDepth > 0) {
       // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
       log.trace("Object in use; marking for collection.");
+      if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
@@ -123,7 +125,10 @@ static ERROR object_free(BaseClass *Object)
 
             log.msg("Object will be destroyed despite being in use.");
          }
-         else return ERR_InUse;
+         else {
+            if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
+            return ERR_InUse;
+         }
       }
    }
 
@@ -135,7 +140,10 @@ static ERROR object_free(BaseClass *Object)
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
             }
-            else return ERR_InUse;
+            else {
+               if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
+               return ERR_InUse;
+            }
          }
       }
    }
@@ -285,7 +293,7 @@ static void free_children(OBJECTPTR Object)
 
             if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Object)) continue;
 
-            if (mem.Object->Owner != Object) {
+            if ((mem.Object->Owner) and (mem.Object->Owner != Object)) {
                log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
                continue;
             }
