@@ -1583,7 +1583,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
    Self->Gutter       = Self->LineSpacing - Self->Ascent;
 
    if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
-   else if (!FT_Load_Glyph(fc->Face, FT_Get_Char_Index(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE)), FT_LOAD_DEFAULT)) {
+   else if (!FT_Load_Glyph(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE), FT_LOAD_DEFAULT)) {
       Self->prvSpaceWidth = (fc->Face->glyph->advance.x>>FT_DOWNSIZE);
       if (Self->prvSpaceWidth < 3) Self->prvSpaceWidth = Self->Height>>1;
    }
