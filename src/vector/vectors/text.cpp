@@ -229,18 +229,17 @@ inline LONG dbl_to_int26p6(DOUBLE p)
 }
 
 //********************************************************************************************************************
-// Only call this function if the font includes kerning support
 
-inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, DOUBLE *Y)
+inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, DOUBLE &Y)
 {
    FT_Vector delta;
    if (!EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta)) {
-      *X = int26p6_to_dbl(delta.x);
-      *Y = int26p6_to_dbl(delta.y);
+      X = int26p6_to_dbl(delta.x);
+      Y = int26p6_to_dbl(delta.y);
    }
    else {
-      *X = 0;
-      *Y = 0;
+      X = 0;
+      Y = 0;
    }
 }
 
@@ -1235,12 +1234,7 @@ static void generate_text(extVectorText *Vector)
       }
    }
 
-   // Upscaling is used to get the Freetype engine to generate accurate vertices and advance coordinates, which is
-   // important if the characters are being transformed.  There is a limit to the upscale value.  100 seems to be
-   // reasonable; anything 1000+ results in issues.
-
-   DOUBLE upscale = 1.0;
-   if ((Vector->Transition) or (morph)) upscale = 100;
+   const DOUBLE upscale = Vector->Transform.scale();
 
    // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.
    // The '3/4' conversion makes sense if you refer to read_unit() and understand that a point is 3/4 of a pixel.
@@ -1306,7 +1300,7 @@ static void generate_text(extVectorText *Vector)
                char_path.free_all();
                if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
                   DOUBLE kx, ky;
-                  get_kerning_xy(ftface, next_glyph, current_glyph, &kx, &ky);
+                  get_kerning_xy(ftface, next_glyph, current_glyph, kx, ky);
                   start_x += kx * downscale;
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
@@ -1379,6 +1373,7 @@ static void generate_text(extVectorText *Vector)
    }
    else {
       DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
+      
       for (auto &line : Vector->txLines) {
          LONG current_col = 0;
          line.chars.clear();
@@ -1431,7 +1426,7 @@ static void generate_text(extVectorText *Vector)
                char_path.free_all();
                if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
                   DOUBLE kx, ky;
-                  get_kerning_xy(ftface, glyph, prev_glyph, &kx, &ky);
+                  get_kerning_xy(ftface, glyph, prev_glyph, kx, ky);
                   if (kx) dx += kx * downscale;
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
