@@ -245,8 +245,8 @@ static void generate_text(extVectorText *Vector)
 
    const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 
-   if (!Vector->FreetypeSize) EFT_New_Size(ftface, &Vector->FreetypeSize);
-   if (Vector->FreetypeSize != ftface->size) EFT_Activate_Size(Vector->FreetypeSize);
+   if (!Vector->txFreetypeSize) EFT_New_Size(ftface, &Vector->txFreetypeSize);
+   if (Vector->txFreetypeSize != ftface->size) EFT_Activate_Size(Vector->txFreetypeSize);
 
    // Use a consistent point size, this is necessary for all cached glyphs to be of the same height.
 

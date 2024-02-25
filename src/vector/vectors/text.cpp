@@ -55,6 +55,7 @@ FT_UInt  (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
 FT_Error (*EFT_Load_Glyph)(FT_Face, FT_UInt glyph_index, FT_Int32  load_flags);
 FT_Error (*EFT_Activate_Size)(FT_Size);
 FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
+FT_Error (*EFT_Done_Size)(FT_Size);
 
 static FIELD FID_FreetypeFace;
 
@@ -218,7 +219,7 @@ class extVectorText : public extVector {
    objFont *txFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
    objVectorImage *txBitmapImage;
-   FT_Size FreetypeSize;
+   FT_Size txFreetypeSize;
    std::vector<TextLine> txLines;
    TextCursor txCursor;
    CSTRING txFamily;
@@ -334,6 +335,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
       }
    }
 
+   if (Self->txFreetypeSize) { EFT_Done_Size(Self->txFreetypeSize); Self->txFreetypeSize = NULL; }
    if (Self->txBitmapImage) { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
    if (Self->txAlphaBitmap) { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
    if (Self->txFamily)      { FreeResource(Self->txFamily); Self->txFamily = NULL; }
@@ -2057,6 +2059,7 @@ static ERROR init_text(void)
    EFT_Get_Char_Index  = &FT_Get_Char_Index;
    EFT_Load_Glyph      = &FT_Load_Glyph;
    EFT_New_Size        = &FT_New_Size;
+   EFT_Done_Size       = &FT_Done_Size;
    EFT_Activate_Size   = &FT_Activate_Size;
 #else
    if (modResolveSymbol(modFont, "FT_Set_Pixel_Sizes", (APTR *)&EFT_Set_Pixel_Sizes)) return ERR_ResolveSymbol;
@@ -2065,6 +2068,7 @@ static ERROR init_text(void)
    if (modResolveSymbol(modFont, "FT_Get_Char_Index", (APTR *)&EFT_Get_Char_Index)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_New_Size", (APTR *)&EFT_New_Size)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Done_Size", (APTR *)&EFT_Done_Size)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Activate_Size", (APTR *)&EFT_Activate_Size)) return ERR_ResolveSymbol;
 #endif
 
