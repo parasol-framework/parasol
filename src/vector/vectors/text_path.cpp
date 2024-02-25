@@ -460,7 +460,7 @@ static void generate_text(extVectorText *Vector)
    }
 
    if (Vector->txCursor.vector) {
-      Vector->txCursor.resetVector(Vector);
+      Vector->txCursor.reset_vector(Vector);
    }
 
    // Text paths are always oriented around (0,0) and are transformed later

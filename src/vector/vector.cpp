@@ -23,6 +23,7 @@ OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplaceme
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
+static OBJECTPTR glModule = NULL;
 
 std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
@@ -45,6 +46,8 @@ static ERROR init_wave(void);
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
+   
+   argModule->getPtr(FID_Root, &glModule);
 
    if (objModule::load("display", &modDisplay, &DisplayBase)) return ERR_InitModule;
    if (objModule::load("font", &modFont, &FontBase)) return ERR_InitModule;

@@ -2897,7 +2897,8 @@ class Create {
    public:
       ERROR error;
 
-      // Return an unscoped direct object pointer.  NB: Globals are still tracked to their owner
+      // Return an unscoped direct object pointer.  NB: Globals are still tracked to their owner; use untracked() if
+      // you don't want this.
 
       template <typename... Args> static T * global(Args&&... Fields) {
          pf::Create<T> object = { std::forward<Args>(Fields)... };
@@ -2919,7 +2920,8 @@ class Create {
          else return NULL;
       }
 
-      // Return an unscoped integral object (suitable for class allocations only).
+      // Return an unscoped integral object (suitable for class allocations only).  This marks the object as
+      // being 'hidden' from the client unless explicitly makes it available.
 
       template <typename... Args> static T * integral(Args&&... Fields) {
          pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
