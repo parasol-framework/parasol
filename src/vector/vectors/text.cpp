@@ -22,8 +22,7 @@ fast 1:1 rendering without transforms.  The user is otherwise better served thro
 
 -END-
 
-TODO: decompose_ft_outline() should cache the generated paths
-      ShapeInside and ShapeSubtract require implementation
+TODO: ShapeInside and ShapeSubtract require implementation
 
 *********************************************************************************************************************/
 
@@ -58,6 +57,46 @@ FT_Error (*EFT_Activate_Size)(FT_Size);
 FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
 
 static FIELD FID_FreetypeFace;
+
+//********************************************************************************************************************
+
+class glyph {
+public:
+   agg::path_storage path;
+   DOUBLE advance_x;
+   DOUBLE advance_y;
+};
+
+class glyph_map {
+   using GLYPH_TABLE = std::unordered_map<ULONG, glyph>;
+   FT_Face freetype_face;
+   // A single freetype_face can host a series of points.  We store a map of characters for each point size.
+   std::map<LONG, GLYPH_TABLE > glyphs; // Point = [ GlyphIndex, glyph ]
+   std::set<extVectorText *> users;
+
+public:
+   glyph_map() {}
+   glyph_map(FT_Face pFace) : freetype_face(pFace) { }  
+
+   glyph & get_glyph(GLYPH_TABLE &, LONG);
+   GLYPH_TABLE & glyph_table(LONG PointSize) { return glyphs[PointSize]; }
+
+   bool deregister_user(extVectorText *Vector) {
+      users.erase(Vector);
+      if (users.empty()) {
+         glyphs.clear();
+         return true;
+      }
+      else return false;
+   }
+
+   void register_user(extVectorText *Vector) {
+      users.insert(Vector);
+   }
+};
+
+static std::unordered_map<FT_Face, glyph_map> glGlyphMap;
+static std::mutex glGlyphMutex;
 
 //********************************************************************************************************************
 
@@ -202,7 +241,6 @@ class extVectorText : public extVector {
 
 static void add_line(extVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
 static ERROR cursor_timer(extVectorText *, LARGE, LARGE);
-static ERROR decompose_ft_outline(const FT_Outline &, bool, agg::path_storage &);
 static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *);
@@ -218,15 +256,8 @@ enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
 //********************************************************************************************************************
 
-inline DOUBLE int26p6_to_dbl(LONG p)
-{
-  return DOUBLE(p) * (1.0 / 64.0);
-}
-
-inline LONG dbl_to_int26p6(DOUBLE p)
-{
-   return LONG(p * 64.0);
-}
+constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
+constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 
 //********************************************************************************************************************
 
@@ -290,6 +321,18 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 {
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
+
+   if (Self->txFont) {
+      FT_Face ftface;
+      if (!Self->txFont->getPtr(FID_FreetypeFace, &ftface)) {
+         const std::lock_guard lock(glGlyphMutex);
+         if (glGlyphMap.contains(ftface)) {
+            if (glGlyphMap[ftface].deregister_user(Self)) {
+               glGlyphMap.erase(ftface);
+            }
+         }
+      }
+   }
 
    if (Self->txBitmapImage) { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
    if (Self->txAlphaBitmap) { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
@@ -1152,7 +1195,7 @@ static ERROR TEXT_SET_Weight(extVectorText *Self, LONG Value)
 // Calculate the cursor that would be displayed at this character position and save it to the
 // line's chars array.
 
-static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, DOUBLE PointSize, DOUBLE PathScale)
+static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, DOUBLE PointSize, DOUBLE PathScale = 1.0)
 {
    agg::path_storage cursor_path;
    DOUBLE cx1, cy1, cx2, cy2;
@@ -1166,317 +1209,16 @@ static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, D
    Line.chars.emplace_back(cx1, cy1, cx2, cy2);
 }
 
-//********************************************************************************************************************
-// This path generator creates text as a single path, by concatenating the paths of all individual characters in the
-// string.
-
-static void generate_text(extVectorText *Vector)
+static void calc_caret_position(TextLine &Line, DOUBLE PointSize, DOUBLE PathScale = 1.0)
 {
-   pf::Log log(__FUNCTION__);
-
-   if (!Vector->txFont) {
-      reset_font(Vector);
-      if (!Vector->txFont) return;
-   }
-
-   auto &lines = Vector->txLines;
-   if (lines.empty()) return;
-
-   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
-      raster_text_to_bitmap(Vector);
-      return;
-   }
-
-   FT_Face ftface;
-   if ((Vector->txFont->getPtr(FID_FreetypeFace, &ftface)) or (!ftface)) return;
-
-   auto morph = Vector->Morph;
-   DOUBLE start_x, start_y, end_vx, end_vy;
-   DOUBLE path_scale = 1.0;
-   if (morph) {
-      if ((Vector->MorphFlags & VMF::STRETCH) != VMF::NIL) {
-         // In stretch mode, the standard morphing algorithm is used (see gen_vector_path())
-         morph = NULL;
-      }
-      else {
-         if (morph->dirty()) { // Regenerate the target path if necessary
-            gen_vector_path(morph);
-            morph->Dirty = RC::NIL;
-         }
-
-         if (!morph->BasePath.total_vertices()) morph = NULL;
-         else {
-            morph->BasePath.rewind(0);
-            morph->BasePath.vertex(0, &start_x, &start_y);
-            end_vx = start_x;
-            end_vy = start_y;
-            if (morph->PathLength > 0) {
-               path_scale = morph->PathLength / agg::path_length(morph->BasePath);
-               morph->BasePath.rewind(0);
-            }
-         }
-      }
-   }
-
-   // Compute the string length in characters if a transition is being applied
-
-   LONG total_chars = 0;
-   if (Vector->Transition) {
-      for (auto const &line : Vector->txLines) {
-         for (auto lstr=line.c_str(); *lstr; ) {
-            LONG char_len;
-            LONG unicode = UTF8ReadValue(lstr, &char_len);
-            lstr += char_len;
-            if (unicode <= 0x20) continue;
-            else if (!unicode) break;
-            total_chars++;
-         }
-      }
-   }
-
-   const DOUBLE upscale = Vector->Transform.scale();
-
-   // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.
-   // The '3/4' conversion makes sense if you refer to read_unit() and understand that a point is 3/4 of a pixel.
-
-   agg::trans_affine scale_char;
-   const DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0) * upscale;
-
-   if (path_scale != 1.0) {
-      scale_char.translate(0, point_size);
-      scale_char.scale(path_scale);
-      scale_char.translate(0, -point_size * path_scale);
-   }
-   const auto downscale = (1.0 / upscale);
-   scale_char.scale(downscale);
-
-   if (!Vector->FreetypeSize) EFT_New_Size(ftface, &Vector->FreetypeSize);
-   if (Vector->FreetypeSize != ftface->size) EFT_Activate_Size(Vector->FreetypeSize);
-
-   if (ftface->size->metrics.height != dbl_to_int26p6(point_size)) {
-      EFT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI);
-   }
-
-   agg::path_storage char_path;
    agg::path_storage cursor_path;
-   LONG prev_glyph = 0;
-   LONG cmd = -1;
-   LONG char_index = 0;
-   LONG current_row = 0;
-   DOUBLE dist = 0; // Distance to next vertex
-   DOUBLE angle = 0;
-   DOUBLE longest_line_width = 0;
+   DOUBLE cx1, cy1, cx2, cy2;
 
-   if (morph) {
-      for (auto &line : Vector->txLines) {
-         LONG current_col = 0;
-         line.chars.clear();
-         auto wrap_state = WS_NO_WORD;
-
-         LONG char_len;
-         auto str = line.c_str();
-         LONG current_char = UTF8ReadValue(str, &char_len);
-         LONG current_glyph = EFT_Get_Char_Index(ftface, current_char);
-         str += char_len;
-         while (current_char) {
-            LONG next_char = UTF8ReadValue(str, &char_len);
-            str += char_len;
-
-            if (current_char <= 0x20) wrap_state = WS_NO_WORD;
-            else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
-            else wrap_state = WS_NEW_WORD;
-
-            char_index++; // Character index only increases if a glyph is being drawn
-
-            agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
-
-            if (Vector->Transition) { // Apply any special transitions early.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
-            }
-
-            LONG next_glyph = EFT_Get_Char_Index(ftface, next_char);
-
-            if (!EFT_Load_Glyph(ftface, current_glyph, FT_LOAD_LINEAR_DESIGN)) {
-               char_path.free_all();
-               if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
-                  DOUBLE kx, ky;
-                  get_kerning_xy(ftface, next_glyph, current_glyph, kx, ky);
-                  start_x += kx * downscale;
-
-                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
-
-                  char_width = char_width * std::abs(transform.sx);
-                  //char_width = char_width * transform.scale();
-
-                  // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
-                  if (char_width > dist) {
-                     while (cmd != agg::path_cmd_stop) {
-                        DOUBLE current_x, current_y;
-                        cmd = morph->BasePath.vertex(&current_x, &current_y);
-                        if (agg::is_vertex(cmd)) {
-                           const DOUBLE x = (current_x - end_vx), y = (current_y - end_vy);
-                           const DOUBLE vertex_dist = sqrt((x * x) + (y * y));
-                           dist += vertex_dist;
-
-                           //log.trace("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", current_char, char_width, start_x, start_y, end_vx, end_vy, dist);
-
-                           end_vx = current_x;
-                           end_vy = current_y;
-
-                           if (char_width <= dist) break; // Stop processing vertices if dist exceeds the character width.
-                        }
-                     }
-                  }
-
-                  // At this stage we can say that start_x,start_y is the bottom left corner of the character and end_vx,end_vy is
-                  // the bottom right corner.
-
-                  DOUBLE tx = start_x, ty = start_y;
-
-                  if (cmd != agg::path_cmd_stop) { // Advance (start_x,start_y) to the next point on the morph path.
-                     angle = atan2(end_vy - start_y, end_vx - start_x);
-
-                     DOUBLE x = end_vx - start_x, y = end_vy - start_y;
-                     DOUBLE d = sqrt(x * x + y * y);
-                     start_x += x / d * (char_width);
-                     start_y += y / d * (char_width);
-
-                     dist -= char_width; // The distance to the next vertex is reduced by the width of the char.
-                  }
-                  else { // No more path to use - advance start_x,start_y by the last known angle.
-                     start_x += (char_width) * cos(angle);
-                     start_y += (char_width) * sin(angle);
-                  }
-
-                  //log.trace("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", current_char, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
-
-                  if (current_char > 0x20) {
-                     transform.rotate(angle); // Rotate the character in accordance with its position on the path angle.
-                     transform.translate(tx, ty); // Move the character to its correct position on the path.
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
-                     Vector->BasePath.concat_path(trans_char);
-                  }
-
-                  //dx += char_width;
-                  //dy += int26p6_to_dbl(ftface->glyph->advance.y) + ky;
-               }
-               else log.trace("Failed to get outline of character.");
-            }
-            current_col++;
-            current_char = next_char;
-            current_glyph = next_glyph;
-         }
-
-         current_row++;
-      }
-      Vector->txWidth = start_x;
-   }
-   else {
-      DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
-      
-      for (auto &line : Vector->txLines) {
-         LONG current_col = 0;
-         line.chars.clear();
-         auto wrap_state = WS_NO_WORD;
-         if ((line.empty()) and (Vector->txCursor.vector)) {
-            agg::trans_affine transform(scale_char);
-            calc_cursor_position(line, transform, point_size, path_scale);
-         }
-         else for (auto str=line.c_str(); *str; ) {
-            LONG char_len;
-            LONG unicode = UTF8ReadValue(str, &char_len);
-
-            if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph = 0; }
-            else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
-            else if (wrap_state IS WS_NO_WORD)  wrap_state = WS_NEW_WORD;
-
-            if (!unicode) break;
-
-            char_index++; // Character index only increases if a glyph is being drawn
-
-            agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
-
-            if (Vector->Transition) { // Apply any special transitions early.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
-            }
-
-            // Determine if this is a new word that would wrap if drawn.
-            // TODO: Wrapping information should be cached for speeding up subsequent redraws.
-
-            if ((wrap_state IS WS_NEW_WORD) and (Vector->txInlineSize)) {
-               LONG word_length = 0;
-               for (LONG c=0; (str[c]) and (str[c] > 0x20); ) {
-                  for (++c; ((str[c] & 0xc0) IS 0x80); c++);
-                  word_length++;
-               }
-
-               LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
-
-               if ((dx + word_width) * std::abs(transform.sx) >= Vector->txInlineSize) {
-                  dx = 0;
-                  dy += Vector->txFont->LineSpacing;
-               }
-            }
-
-            str += char_len;
-
-            auto glyph = EFT_Get_Char_Index(ftface, unicode);
-
-            if (!EFT_Load_Glyph(ftface, glyph, FT_LOAD_LINEAR_DESIGN)) {
-               char_path.free_all();
-               if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
-                  DOUBLE kx, ky;
-                  get_kerning_xy(ftface, glyph, prev_glyph, kx, ky);
-                  if (kx) dx += kx * downscale;
-
-                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
-                  char_width = char_width * std::abs(transform.sx);
-                  //char_width = char_width * transform.scale();
-
-                  transform.translate(dx, dy);
-                  agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
-                  Vector->BasePath.concat_path(trans_char);
-
-                  if (Vector->txCursor.vector) {
-                     calc_cursor_position(line, transform, point_size, path_scale);
-
-                     if (!*str) { // Last character reached, add a final cursor entry past the character position.
-                        transform.translate(char_width, 0);
-                        calc_cursor_position(line, transform, point_size, path_scale);
-                     }
-                  }
-
-                  dx += char_width;
-                  dy += int26p6_to_dbl(ftface->glyph->advance.y) + (ky * downscale);
-               }
-               else log.trace("Failed to get outline of character.");
-            }
-
-            prev_glyph = glyph;
-            current_col++;
-         }
-
-         if (dx > longest_line_width) longest_line_width = dx;
-         dx = 0;
-         dy += Vector->txFont->LineSpacing;
-         current_row++;
-      }
-
-      Vector->txWidth = longest_line_width;
-   }
-
-   if (Vector->txCursor.vector) {
-      Vector->txCursor.resetVector(Vector);
-   }
-
-   // Text paths are always oriented around (0,0) and are transformed later
-
-   Vector->Bounds = { 0.0, DOUBLE(-Vector->txFont->Ascent), Vector->txWidth, 1.0 };
-   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * Vector->txFont->LineSpacing;
-
-   // If debugging the above boundary calculation, use this for verification of the true values (bear in
-   // mind it will provide tighter numbers, which is normal).
-   //bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
+   cursor_path.move_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
+   cursor_path.line_to(0, PointSize * 0.1);
+   cursor_path.vertex(&cx1, &cy1);
+   cursor_path.vertex(&cx2, &cy2);
+   Line.chars.emplace_back(cx1, cy1, cx2, cy2);
 }
 
 //********************************************************************************************************************
@@ -1626,166 +1368,6 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    // Text paths are always oriented around (0,0) and are transformed later
 
    Vector->Bounds = { 0, 0, Vector->txWidth, DOUBLE(dy) };
-}
-
-//********************************************************************************************************************
-// Converts a Freetype glyph outline to an AGG path.  The size of the font must be preset in the FT_Outline object,
-// with a call to FT_Set_Char_Size()
-
-static ERROR decompose_ft_outline(const FT_Outline &outline, bool flip_y, agg::path_storage &path)
-{
-   FT_Vector v_last, v_control, v_start;
-   DOUBLE x1, y1, x2, y2, x3, y3;
-   FT_Vector *point, *limit;
-   char *tags;
-   LONG n;         // index of contour in outline
-   char tag;       // current point's state
-
-   LONG first = 0; // index of first point in contour
-   for (n=0; n < outline.n_contours; n++) {
-      LONG last = outline.contours[n];  // index of last point in contour
-      limit = outline.points + last;
-
-      v_start = outline.points[first];
-      v_last  = outline.points[last];
-      v_control = v_start;
-      point = outline.points + first;
-      tags  = outline.tags  + first;
-      tag   = FT_CURVE_TAG(tags[0]);
-
-      if (tag == FT_CURVE_TAG_CUBIC) return ERR_Failed; // A contour cannot start with a cubic control point!
-
-      // check first point to determine origin
-      if (tag == FT_CURVE_TAG_CONIC) { // first point is conic control.  Yes, this happens.
-         if (FT_CURVE_TAG(outline.tags[last]) == FT_CURVE_TAG_ON) { // start at last point if it is on the curve
-            v_start = v_last;
-            limit--;
-         }
-         else { // if both first and last points are conic, start at their middle and record its position for closure
-            v_start.x = (v_start.x + v_last.x) / 2;
-            v_start.y = (v_start.y + v_last.y) / 2;
-            v_last = v_start;
-         }
-         point--;
-         tags--;
-      }
-
-      x1 = int26p6_to_dbl(v_start.x);
-      y1 = int26p6_to_dbl(v_start.y);
-      if (flip_y) y1 = -y1;
-      path.move_to(x1, y1);
-
-      while (point < limit) {
-         point++;
-         tags++;
-
-         tag = FT_CURVE_TAG(tags[0]);
-         switch(tag) {
-            case FT_CURVE_TAG_ON: {  // emit a single line_to
-               x1 = int26p6_to_dbl(point->x);
-               y1 = int26p6_to_dbl(point->y);
-               if (flip_y) y1 = -y1;
-               path.line_to(x1, y1);
-               continue;
-            }
-
-            case FT_CURVE_TAG_CONIC: { // consume conic arcs
-               v_control.x = point->x;
-               v_control.y = point->y;
-
-               Do_Conic:
-                  if (point < limit) {
-                      FT_Vector vec, v_middle;
-
-                      point++;
-                      tags++;
-                      tag = FT_CURVE_TAG(tags[0]);
-
-                      vec.x = point->x;
-                      vec.y = point->y;
-
-                      if (tag == FT_CURVE_TAG_ON) {
-                          x1 = int26p6_to_dbl(v_control.x);
-                          y1 = int26p6_to_dbl(v_control.y);
-                          x2 = int26p6_to_dbl(vec.x);
-                          y2 = int26p6_to_dbl(vec.y);
-                          if (flip_y) { y1 = -y1; y2 = -y2; }
-                          path.curve3(x1, y1, x2, y2);
-                          continue;
-                      }
-
-                      if (tag != FT_CURVE_TAG_CONIC) return ERR_Failed;
-
-                      v_middle.x = (v_control.x + vec.x) / 2;
-                      v_middle.y = (v_control.y + vec.y) / 2;
-
-                      x1 = int26p6_to_dbl(v_control.x);
-                      y1 = int26p6_to_dbl(v_control.y);
-                      x2 = int26p6_to_dbl(v_middle.x);
-                      y2 = int26p6_to_dbl(v_middle.y);
-                      if (flip_y) { y1 = -y1; y2 = -y2; }
-                      path.curve3(x1, y1, x2, y2);
-                      v_control = vec;
-                      goto Do_Conic;
-                  }
-
-                  x1 = int26p6_to_dbl(v_control.x);
-                  y1 = int26p6_to_dbl(v_control.y);
-                  x2 = int26p6_to_dbl(v_start.x);
-                  y2 = int26p6_to_dbl(v_start.y);
-                  if (flip_y) { y1 = -y1; y2 = -y2; }
-                  path.curve3(x1, y1, x2, y2);
-                  goto Close;
-            }
-
-            default: { // FT_CURVE_TAG_CUBIC
-               FT_Vector vec1, vec2;
-
-               if (point + 1 > limit || FT_CURVE_TAG(tags[1]) != FT_CURVE_TAG_CUBIC) return ERR_Failed;
-
-               vec1.x = point[0].x;
-               vec1.y = point[0].y;
-               vec2.x = point[1].x;
-               vec2.y = point[1].y;
-
-               point += 2;
-               tags  += 2;
-
-               if (point <= limit) {
-                  FT_Vector vec;
-                  vec.x = point->x;
-                  vec.y = point->y;
-                  x1 = int26p6_to_dbl(vec1.x);
-                  y1 = int26p6_to_dbl(vec1.y);
-                  x2 = int26p6_to_dbl(vec2.x);
-                  y2 = int26p6_to_dbl(vec2.y);
-                  x3 = int26p6_to_dbl(vec.x);
-                  y3 = int26p6_to_dbl(vec.y);
-                  if (flip_y) { y1 = -y1; y2 = -y2; y3 = -y3; }
-                  path.curve4(x1, y1, x2, y2, x3, y3);
-                  continue;
-               }
-
-               x1 = int26p6_to_dbl(vec1.x);
-               y1 = int26p6_to_dbl(vec1.y);
-               x2 = int26p6_to_dbl(vec2.x);
-               y2 = int26p6_to_dbl(vec2.y);
-               x3 = int26p6_to_dbl(v_start.x);
-               y3 = int26p6_to_dbl(v_start.y);
-               if (flip_y) { y1 = -y1; y2 = -y2; y3 = -y3; }
-               path.curve4(x1, y1, x2, y2, x3, y3);
-               goto Close;
-            }
-         } // switch
-      } // while
-
-      path.close_polygon();
-
-Close:
-      first = last + 1;
-   }
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -2415,6 +1997,7 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 
 //********************************************************************************************************************
 
+#include "text_path.cpp"
 #include "text_def.cpp"
 
 static const FieldDef clTextAlign[] = {
