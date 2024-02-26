@@ -547,7 +547,6 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
                if (Value[end] IS ';') {
                   char arg[100];
-                  std::string argval;
 
                   i = end + 1;
                   while (Value[i]) {
@@ -567,7 +566,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
                      // Extract arg value
 
-                     argval = "1";
+                     std::string argval("1");
                      if (Value[i] IS '=') {
                         i++;
                         while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
