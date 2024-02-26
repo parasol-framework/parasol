@@ -509,7 +509,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
       if (auto error = set_parent(Self, Self->Owner)) return log.warning(error);
    }
 
-   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent->UID,
+   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
       Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
 
    Self->ParentView = get_parent_view(Self); // Locate the nearest parent viewport.
@@ -1147,7 +1147,7 @@ static ERROR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Element
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
-      *Elements = Self->DashArray->values.size();
+      *Elements = std::ssize(Self->DashArray->values);
    }
    else {
       *Value    = NULL;
@@ -1176,7 +1176,7 @@ static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
          }
 
          DOUBLE total_length = 0;
-         for (LONG i=0; i < (LONG)Self->DashArray->values.size()-1; i+=2) {
+         for (LONG i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
             if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;

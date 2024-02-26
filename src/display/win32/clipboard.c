@@ -502,7 +502,8 @@ static int get_data(struct rkDropTarget *Self, char *Preference, struct WinDT **
                      size += DragQueryFile(raw, i, path, sizeof(path)) + 1;
                   }
 
-                  if ((Self->ItemData = malloc(size))) {
+                  if (!size);
+                  else if ((Self->ItemData = malloc(size))) {
                      if ((Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT) * total))) {
                         str = (char *)Self->ItemData;
                         for (item=0; item < total; item++) {

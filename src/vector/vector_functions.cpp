@@ -434,7 +434,7 @@ ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
 {
    if (!Path) return ERR_NullArgs;
 
-   ERROR error;
+   ERROR error = ERR_Okay;
 
    if (!Sequence) {
       auto vector = new_simplevector();

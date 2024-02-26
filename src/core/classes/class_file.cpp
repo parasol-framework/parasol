@@ -2490,9 +2490,8 @@ static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
    if (!Self->prvResolvedPath) {
       auto flags = ((Self->Flags & FL::APPROXIMATE) != FL::NIL) ? RSF::APPROXIMATE : RSF::NO_FILE_CHECK;
 
-      ERROR error;
       pf::SwitchContext ctx(Self);
-      if ((error = ResolvePath(Self->Path, flags, &Self->prvResolvedPath)) != ERR_Okay) {
+      if (ResolvePath(Self->Path, flags, &Self->prvResolvedPath)) {
          return ERR_ResolvePath;
       }
    }
@@ -2533,8 +2532,7 @@ static ERROR GET_Size(extFile *Self, LARGE *Size)
    }
 
    CSTRING path;
-   ERROR error;
-   if (!(error = GET_ResolvedPath(Self, &path))) {
+   if (!GET_ResolvedPath(Self, &path)) {
       struct stat64 stats;
       if (!stat64(path, &stats)) {
          *Size = stats.st_size;
@@ -2698,11 +2696,9 @@ static ERROR GET_TimeStamp(extFile *Self, LARGE *Value)
    }
    else {
       CSTRING path;
-      ERROR error;
-      if (!(error = GET_ResolvedPath(Self, &path))) {
+      if (!GET_ResolvedPath(Self, &path)) {
          struct stat64 stats;
          if (!stat64(path, &stats)) {
-
             struct tm *local;
             if ((local = localtime(&stats.st_mtime))) {
                DateTime datetime;

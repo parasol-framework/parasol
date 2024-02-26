@@ -528,7 +528,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
          Self->prvFace[0] = 0;
       }
       else {
-         for (i=0; (Value[i]) and (Value[i] != ':') and ((size_t)i < sizeof(Self->prvFace)-1); i++) Self->prvFace[i] = Value[i];
+         for (i=0; (Value[i]) and (Value[i] != ':') and (i < std::ssize(Self->prvFace)-1); i++) Self->prvFace[i] = Value[i];
          Self->prvFace[i] = 0;
       }
 
@@ -551,7 +551,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
       // Extract the style string
 
       i++;
-      for (j=0; (Value[i]) and (Value[i] != ':') and ((size_t)j < sizeof(Self->prvStyle)-1); j++) Self->prvStyle[j] = Value[i++];
+      for (j=0; (Value[i]) and (Value[i] != ':') and (j < std::ssize(Self->prvStyle)-1); j++) Self->prvStyle[j] = Value[i++];
       Self->prvStyle[j] = 0;
 
       if (Value[i] != ':') return ERR_Okay;

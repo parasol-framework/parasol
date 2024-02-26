@@ -147,21 +147,14 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 
 #ifdef _WIN32
    LONG bytes_read;
-   LONG result = winReadStdInput(FD, buffer, sizeof(buffer)-1, &bytes_read);
-   if (!result) {
-      error = ERR_Okay;
-   }
-   else if (result IS 1) {
-      return;
-   }
+   auto result = winReadStdInput(FD, buffer, sizeof(buffer)-1, &bytes_read);
+   if (!result) error = ERR_Okay;
+   else if (result IS 1) return;
    else if (result IS -2) {
       error = ERR_Finished;
       RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
    }
-   else {
-      error = ERR_Failed;
-      return;
-   }
+   else return;
 #else
    LONG bytes_read = read(fileno(stdin), buffer, sizeof(buffer)-1);
    if (bytes_read >= 0) error = ERR_Okay;
@@ -1687,9 +1680,8 @@ static ERROR TASK_Write(extTask *Task, struct acWrite *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
-   LONG winerror;
    if (Task->Platform) {
-      if (!(winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length))) {
+      if (auto winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length); !winerror) {
          return ERR_Okay;
       }
       else return log.warning(ERR_Write);

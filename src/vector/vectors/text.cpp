@@ -156,8 +156,8 @@ public:
    }
 
    void move(extVectorText *, LONG, LONG, bool ValidateWidth = false);
-   void reset_vector(extVectorText *);
-   void validate_position(extVectorText *);
+   void reset_vector(extVectorText *) const;
+   void validate_position(extVectorText *) const;
 };
 
 class CharPos {
@@ -304,7 +304,7 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
 
    mark_dirty(Self, RC::BASE_PATH);
 
-   if (Self->txCursor.row() IS Args->Line) {
+   if ((Args) and (Self->txCursor.row() IS Args->Line)) {
       Self->txCursor.move(Self, Self->txCursor.row(), 0);
    }
    else if ((size_t)Self->txCursor.row() >= Self->txLines.size()) {
@@ -1757,7 +1757,7 @@ void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool Validat
 
 //********************************************************************************************************************
 
-void TextCursor::reset_vector(extVectorText *Vector)
+void TextCursor::reset_vector(extVectorText *Vector) const
 {
    if (Vector->txCursor.vector) {
       auto &line = Vector->txLines[mRow];
@@ -1804,7 +1804,7 @@ void TextCursor::reset_vector(extVectorText *Vector)
 //********************************************************************************************************************
 // Move the cursor if it's outside the line boundary.
 
-void TextCursor::validate_position(extVectorText *Self)
+void TextCursor::validate_position(extVectorText *Self) const
 {
    auto row = mRow;
    auto col = mColumn;

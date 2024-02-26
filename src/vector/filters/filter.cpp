@@ -121,7 +121,7 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
    pf::Log log(__FUNCTION__);
 
    auto bi = Self->BankIndex;
-   if (bi >= 256) return log.warning(ERR_ArrayFull);
+   if (bi >= 255) return log.warning(ERR_ArrayFull);
 
    if (bi >= Self->Bank.size()) Self->Bank.emplace_back(std::make_unique<filter_bitmap>());
 

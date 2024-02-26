@@ -31,12 +31,12 @@ static ERROR SET_Procedure(objScript *, CSTRING);
 static ERROR SET_Results(objScript *, CSTRING *, LONG);
 static ERROR SET_String(objScript *, CSTRING);
 
-INLINE CSTRING check_bom(CSTRING Value)
+inline CSTRING check_bom(const unsigned char *Value)
 {
    if ((Value[0] IS 0xef) and (Value[1] IS 0xbb) and (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
    else if ((Value[0] IS 0xfe) and (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
    else if ((Value[0] IS 0xff) and (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
-   return Value;
+   return (CSTRING)Value;
 }
 
 /*********************************************************************************************************************
@@ -534,9 +534,9 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
             if (Value[i] IS ';') {
                i++;
-               while ((Value[i]) and (Value[i] <= 0x20)) i++;
+               while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                auto start = i, end = i;
-               while ((Value[end]) and (Value[end] > 0x20) and (Value[end] != ';')) end++;
+               while ((Value[end]) and (unsigned(Value[end]) > 0x20) and (Value[end] != ';')) end++;
                if (end > start) {
                   std::string buffer;
                   buffer.append(Value, start, end - start);
@@ -546,45 +546,44 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                // Process optional parameters
 
                if (Value[end] IS ';') {
-                  char arg[100], argval[400];
+                  char arg[100];
+                  std::string argval;
 
                   i = end + 1;
-
                   while (Value[i]) {
-                     while ((Value[i]) and (Value[i] <= 0x20)) i++;
+                     while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                      while (Value[i] IS ',') {
                         i++;
-                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                      }
 
                      // Extract arg name
 
                      LONG j;
-                     for (j=0; (Value[i] != ',') and (Value[i] != '=') and (Value[i] > 0x20); j++) arg[j] = Value[i++];
+                     for (j=0; (Value[i] != ',') and (Value[i] != '=') and (unsigned(Value[i]) > 0x20); j++) arg[j] = Value[i++];
                      arg[j] = 0;
 
                      while ((Value[i]) and (Value[i] <= 0x20)) i++;
 
                      // Extract arg value
 
-                     argval[0] = '1';
-                     argval[1] = 0;
+                     argval = "1";
                      if (Value[i] IS '=') {
                         i++;
-                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                         if (Value[i] IS '"') {
                            i++;
-                           for (j=0; (Value[i]) and (Value[i] != '"'); j++) argval[j] = Value[i++];
-                           argval[j] = 0;
+                           for (j=0; (Value[i+j]) and (Value[i+j] != '"'); j++);
+                           argval.assign(Value, i, j);
                         }
                         else {
-                           for (j=0; (Value[i]) and (Value[i] != ','); j++) argval[j] = Value[i++];
-                           argval[j] = 0;
+                           for (j=0; (Value[i+j]) and (Value[i+j] != ','); j++);
+                           argval.assign(Value, i, j);
                         }
                      }
 
                      if (!StrMatch("target", arg)) Self->setTarget(StrToInt(argval));
-                     else acSetVar(Self, arg, argval);
+                     else acSetVar(Self, arg, argval.c_str());
                   }
                }
             }
@@ -752,7 +751,7 @@ static ERROR SET_String(objScript *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; } // Path removed when a statement string is being set
    if (Self->String) { FreeResource(Self->String); Self->String = NULL; }
 
-   if (Value) Self->String = StrClone(check_bom(Value));
+   if (Value) Self->String = StrClone(check_bom((const unsigned char *)Value));
    return ERR_Okay;
 }
 

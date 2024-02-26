@@ -80,7 +80,7 @@ class extXML : public objXML {
    // Return the tag for a particular ID.
 
    XMLTag * getTag(LONG ID) {
-      auto map = getMap();
+      auto &map = getMap();
       auto it = map.find(ID);
       if (it IS map.end()) return NULL;
       else return it->second;
@@ -1120,30 +1120,28 @@ static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
       if (Self->findTag(Args->XPath)) return ERR_Okay; // Assume tag already removed if no match
 
       if (!Self->Attrib.empty()) { // Remove an attribute
-         for (LONG a=0; a < LONG(Self->Cursor->Attribs.size()); a++) {
+         for (LONG a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
             if (!StrMatch(Self->Attrib, Self->Cursor->Attribs[a].Name)) {
                Self->Cursor->Attribs.erase(Self->Cursor->Attribs.begin() + a);
                break;
             }
          }
       }
-      else {
-         if (Self->Cursor->ParentID) {
-            if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
-               for (auto it=parent->Children.begin(); it != parent->Children.end(); it++) {
-                  if (Self->Cursor->ID IS Self->Cursor->ID) {
-                     parent->Children.erase(it);
-                     break;
-                  }
+      else if (Self->Cursor->ParentID) {
+         if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
+            for (auto it=parent->Children.begin(); it != parent->Children.end(); it++) {
+               if (Self->Cursor->ID IS it->ID) {
+                  parent->Children.erase(it);
+                  break;
                }
             }
          }
-         else {
-            for (auto it=Self->Tags.begin(); it != Self->Tags.end(); it++) {
-               if (Self->Cursor->ID IS Self->Cursor->ID) {
-                  Self->Tags.erase(it);
-                  break;
-               }
+      }
+      else {
+         for (auto it=Self->Tags.begin(); it != Self->Tags.end(); it++) {
+            if (Self->Cursor->ID IS it->ID) {
+               Self->Tags.erase(it);
+               break;
             }
          }
       }

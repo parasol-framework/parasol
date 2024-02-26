@@ -111,7 +111,7 @@ static font_glyph * get_glyph(extFont *, ULONG, bool);
 static void unload_glyph_cache(extFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
+static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
 static ERROR  fntRefreshFonts(void);
 
 //********************************************************************************************************************
@@ -361,7 +361,7 @@ LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
    else {
       pf::Log log(__FUNCTION__);
       log.traceWarning("Character %u out of range.", Char);
-      return Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
+      return Font->prvChar ? Font->prvChar[(LONG)Font->prvDefaultChar].Advance : 0;
    }
 }
 
@@ -538,7 +538,7 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
 
       // Calculate the width of the discovered word
 
-      wordindex = (LONG)(String - start);
+      wordindex = LONG(String - start);
       wordwidth = 0;
       charwidth = 0;
 
@@ -598,7 +598,7 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
    if (x > longest) longest = x;
 
    if (Rows) {
-      if (line_abort) *Rows = (LONG)(String - start);
+      if (line_abort) *Rows = LONG(String - start);
       else *Rows = rowcount;
    }
 
@@ -657,11 +657,11 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
    if (Chars < 0) Chars = 0x7fffffff;
 
    LONG len     = 0;
-   LONG lastlen = 0;
-   LONG prevglyph = 0;
+   LONG last_len = 0;
+   LONG prev_glyph = 0;
    while ((*str) and (Chars > 0)) {
       if (*str IS '\n') {
-         if (lastlen < len) lastlen = len; // Compare lengths
+         if (last_len < len) last_len = len; // Compare lengths
          len  = 0; // Reset
          str++;
          Chars--;
@@ -687,8 +687,8 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
                len += cache->AdvanceX + Font->GlyphSpacing;
-               if ((Font->Flags & FTF::KERNING) != FTF::NIL) len += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
-               prevglyph = cache->GlyphIndex;
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) len += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
+               prev_glyph = cache->GlyphIndex;
             }
          }
          else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) {
@@ -698,7 +698,7 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
       }
    }
 
-   if (lastlen > len) return lastlen - Font->GlyphSpacing;
+   if (last_len > len) return last_len - Font->GlyphSpacing;
    else if (len > 0) return len - Font->GlyphSpacing;
    else return 0;
 }
@@ -739,10 +739,10 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
    font_glyph *cache;
    LONG i;
 
-   LONG row     = 0;
-   LONG column  = 0;
-   LONG bytecol = 0;
-   LONG bytepos = 0;
+   LONG row      = 0;
+   LONG column   = 0;
+   LONG byte_col = 0;
+   LONG byte_pos = 0;
 
    CSTRING str;
    if (!(str = String)) {
@@ -770,9 +770,9 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
 
    // Calculate the column
 
-   LONG xpos = 0;
+   LONG x_pos = 0;
    LONG width = 0;
-   ULONG prevglyph = 0;
+   ULONG prev_glyph = 0;
    while ((*str) and (*str != '\n')) {
       if (Font->FixedWidth > 0) {
          str += getutf8(str, NULL);
@@ -780,7 +780,7 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-         width = pf::roundup(xpos, tabwidth) - xpos;
+         width = pf::roundup(x_pos, tabwidth) - x_pos;
          str++;
       }
       else {
@@ -796,8 +796,8 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
                width = cache->AdvanceX + Font->GlyphSpacing;
-               if ((Font->Flags & FTF::KERNING) != FTF::NIL) xpos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
-               prevglyph = cache->GlyphIndex;
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) x_pos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
+               prev_glyph = cache->GlyphIndex;
             }
          }
          else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
@@ -807,21 +807,21 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
       // Subtract the width of the current character and keep processing.  Note that the purpose of dividing the width
       // by 2 is to allow for rounding up if the point is closer to the right hand side of the character.
 
-      if (xpos + (width>>1) >= X) break;
-      xpos += width;
+      if (x_pos + (width>>1) >= X) break;
+      x_pos += width;
 
-      column  += 1;
-      bytecol += 1;
-      bytepos += 1;
+      column   += 1;
+      byte_col += 1;
+      byte_pos += 1;
    }
 
-   //log.msg("fntConvertCoords:","Row: %d, Col: %d, BCol: %d, BPos: %d", row, column, bytecol, bytepos);
+   //log.msg("fntConvertCoords:","Row: %d, Col: %d, BCol: %d, BPos: %d", row, column, byte_col, byte_pos);
 
    if (Row)        *Row        = row;
    if (Column)     *Column     = column;
-   if (ByteColumn) *ByteColumn = bytecol;
-   if (BytePos)    *BytePos    = bytepos;
-   if (CharX)      *CharX      = xpos;
+   if (ByteColumn) *ByteColumn = byte_col;
+   if (BytePos)    *BytePos    = byte_pos;
+   if (CharX)      *CharX      = x_pos;
 
    return ERR_Okay;
 }
@@ -969,7 +969,7 @@ ERROR fntRemoveFont(CSTRING Name)
 
          ERROR error = ERR_Okay;
          if (keys.contains("Styles")) {
-            auto styles = keys["Styles"];
+            auto &styles = keys["Styles"];
             log.trace("Scanning styles: %s", styles.c_str());
 
             for (ULONG i=0; styles[i]; ) {
@@ -1210,7 +1210,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
 
    log.warning("Requested style '%s' not supported, choosing first style.", style_name.c_str());
 
-   std::string styles = (preferred_group) ? preferred_group[0]["Styles"] : alt_group[0]["Styles"];
+   std::string styles = preferred_group ? preferred_group[0]["Styles"] : alt_group ? alt_group[0]["Styles"] : "Regular";
    auto end = styles.find(",");
    if (end IS std::string::npos) end = styles.size();
    std::string first_style = styles.substr(0, end);
@@ -1404,21 +1404,17 @@ static void scan_fixed_folder(objConfig *Config)
    DirInfo *dir;
    if (!OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
-         bool bold = false;
-         bool bolditalic = false;
-         bool italic = false;
-
          std::string location("fonts:fixed/");
          location.append(dir->Info->Name);
          auto src = location.c_str();
 
          winfnt_header_fields header;
-         UBYTE points[20];
-         STRING facename;
-         if (!analyse_bmp_font(src, &header, &facename, points, ARRAYSIZE(points))) {
-            log.extmsg("Detected font file \"%s\", name: %s", src, facename);
+         std::vector<UWORD> points;
+         std::string facename;
+         if (!analyse_bmp_font(src, &header, facename, points)) {
+            log.extmsg("Detected font file \"%s\", name: %s", src, facename.c_str());
 
-            if (!facename) continue;
+            if (facename.empty()) continue;
             std::string group(facename);
 
             // Strip any style references out of the font name and keep them as style flags
@@ -1455,34 +1451,26 @@ static void scan_fixed_folder(objConfig *Config)
 
             // Add the style with a link to the font file location
 
-            if (style IS FTF::BOLD) {
-               Config->write(gs, "Fixed:Bold", src);
-               bold = true;
-            }
-            else if (style IS FTF::ITALIC) {
-               Config->write(gs, "Fixed:Italic", src);
-               italic = true;
-            }
-            else if (style IS (FTF::BOLD|FTF::ITALIC)) {
-               Config->write(gs, "Fixed:Bold Italic", src);
-               bolditalic = true;
-            }
+            if (style IS FTF::BOLD) Config->write(gs, "Fixed:Bold", src);
+            else if (style IS FTF::ITALIC) Config->write(gs, "Fixed:Italic", src);
+            else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(gs, "Fixed:Bold Italic", src);
             else {
+               // Font is regular, which also means we can convert it to bold/italic with some code
                Config->write(gs, "Fixed:Regular", src);
-               if (!bold)       Config->write(gs, "Fixed:Bold", src);
-               if (!bolditalic) Config->write(gs, "Fixed:Bold Italic", src);
-               if (!italic)     Config->write(gs, "Fixed:Italic", src);
+               Config->write(gs, "Fixed:Bold", src);
+               Config->write(gs, "Fixed:Bold Italic", src);
+               Config->write(gs, "Fixed:Italic", src);
             }
 
             std::ostringstream out;
-            for (LONG i=0; points[i]; i++) {
-               if (i > 0) out << ',';
-               out << points[i];
+            bool comma = false;
+            for (auto &point : points) {
+               if (comma) out << ',';
+               else comma = true;
+               out << point;
             }
 
             Config->write(gs, "Points", out.str());
-
-            FreeResource(facename);
          }
          else log.warning("Failed to analyse %s", src);
       }
@@ -1493,7 +1481,7 @@ static void scan_fixed_folder(objConfig *Config)
 
 //********************************************************************************************************************
 
-static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
+static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<UWORD> &Points)
 {
    pf::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
@@ -1502,9 +1490,8 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    UWORD size_shift, font_count, count;
    char face[50];
 
-   if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
+   if ((!Path) or (!Header)) return ERR_NullArgs;
 
-   *FaceName = NULL;
    objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
       file->read(&mz_header, sizeof(mz_header));
@@ -1558,13 +1545,12 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
                // Read font point sizes
 
-               for (i=0; (i < font_count) and (i < MaxPoints-1); i++) {
+               for (i=0; i < font_count; i++) {
                   file->seekStart(fonts[i].Offset);
                   if (!file->read(Header, sizeof(winfnt_header_fields))) {
-                     Points[i] = Header->nominal_point_size;
+                     Points.push_back(Header->nominal_point_size);
                   }
                }
-               Points[i] = 0;
 
                // Go to the first font in the file and read the font header
 
@@ -1594,7 +1580,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
                   if ((file->read(face+i, 1)) or (!face[i])) break;
                }
                face[i] = 0;
-               *FaceName = StrClone(face);
+               FaceName = face;
             }
 
             return ERR_Okay;
