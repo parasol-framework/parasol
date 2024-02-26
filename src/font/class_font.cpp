@@ -819,7 +819,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
       if (Self->Cache.get()) {
          unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = value;
-         cache_truetype_font(Self, NULL);
+         cache_truetype_font(Self, NULL); // Updates meta information like the Leading value
       }
    }
    else Self->Point = value;

@@ -123,12 +123,12 @@ public:
       if (timer) { UpdateTimer(timer, 0); timer = 0; }
    }
 
-   LONG column() { return mColumn; }
-   LONG row() { return mRow; }
+   inline LONG column() { return mColumn; }
+   inline LONG row() { return mRow; }
 
-   void resetFlash() { flash = 0; }
+   inline void resetFlash() { flash = 0; }
 
-   void selectedArea(extVectorText *Self, LONG *Row, LONG *Column, LONG *EndRow, LONG *EndColumn) {
+   void selectedArea(extVectorText *Self, LONG *Row, LONG *Column, LONG *EndRow, LONG *EndColumn) const {
       if (selectRow < mRow) {
          *Row       = selectRow;
          *EndRow    = mRow;
@@ -175,23 +175,23 @@ public:
 
    std::vector<CharPos> chars;
 
-   LONG charLength(ULONG Offset = 0) { // Total number of bytes used by the char at Offset
+   inline LONG charLength(ULONG Offset = 0) const { // Total number of bytes used by the char at Offset
       return UTF8CharLength(c_str() + Offset);
    }
 
-   LONG utf8CharOffset(ULONG Char) { // Convert a character index to its byte offset
+   inline LONG utf8CharOffset(ULONG Char) const { // Convert a character index to its byte offset
       return UTF8CharOffset(c_str(), Char);
    }
 
-   LONG utf8Length() { // Total number of unicode characters in the string
+   inline LONG utf8Length() const { // Total number of unicode characters in the string
       return UTF8Length(c_str());
    }
 
-   LONG lastChar() { // Return a direct offset to the start of the last character.
+   inline LONG lastChar() const { // Return a direct offset to the start of the last character.
       return length() - UTF8PrevLength(c_str(), length());
    }
 
-   LONG prevChar(ULONG Offset) { // Return the direct offset to a previous character.
+   inline LONG prevChar(ULONG Offset) const { // Return the direct offset to a previous character.
       return Offset - UTF8PrevLength(c_str(), Offset);
    }
 };
@@ -1264,7 +1264,7 @@ static void reset_font(extVectorText *Vector)
    std::string style;
    CSTRING location = NULL;
 
-   std::lock_guard lock(glFontsMutex);
+   const std::lock_guard lock{glFontsMutex};
    
    const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 

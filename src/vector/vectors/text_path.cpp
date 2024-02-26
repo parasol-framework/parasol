@@ -248,8 +248,6 @@ static void generate_text(extVectorText *Vector)
    if (!Vector->txFreetypeSize) EFT_New_Size(ftface, &Vector->txFreetypeSize);
    if (Vector->txFreetypeSize != ftface->size) EFT_Activate_Size(Vector->txFreetypeSize);
 
-   // Use a consistent point size, this is necessary for all cached glyphs to be of the same height.
-
    if (ftface->size->metrics.height != dbl_to_int26p6(point_size)) {
       EFT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI);
    }
