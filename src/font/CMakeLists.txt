@@ -25,21 +25,21 @@ if (NOT MSVC)
 endif ()
 
 set (FT_SOURCE
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/autofit/autofit.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/psnames/psnames.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/raster/raster.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/cff/cff.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftglyph.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/sfnt/sfnt.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftbase.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftsystem.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/smooth/smooth.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/truetype/truetype.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftinit.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftstroke.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftbitmap.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftdebug.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/pshinter/pshinter.c")
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/autofit/autofit.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/psnames/psnames.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/raster/raster.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/cff/cff.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftglyph.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/sfnt/sfnt.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftbase.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftsystem.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/smooth/smooth.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/truetype/truetype.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftinit.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftstroke.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftbitmap.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftdebug.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/pshinter/pshinter.c")
 
 add_library (${MOD})
 
@@ -48,10 +48,10 @@ set_module_defaults (${MOD})
 target_sources (${MOD} PRIVATE "font.cpp" ${FT_SOURCE})
 
 target_include_directories (${MOD} PRIVATE
-   "freetype-2.10.2/include"
-   "freetype-2.10.2/src/base"
-   "freetype-2.10.2/include/freetype/config"
-   "freetype-2.10.2/builds/unix")
+   "freetype-2.13.2/include"
+   "freetype-2.13.2/src/base"
+   "freetype-2.13.2/include/freetype/config"
+   "freetype-2.13.2/builds/unix")
 
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 

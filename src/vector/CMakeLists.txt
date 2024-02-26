@@ -54,7 +54,7 @@ target_sources (${MOD} PRIVATE
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/include"
-   "${CMAKE_CURRENT_SOURCE_DIR}/../font/freetype-2.10.2/include")
+   "${CMAKE_CURRENT_SOURCE_DIR}/../font/freetype-2.13.2/include")
 
 # Pre-compiling the main header speeds up compilation and eliminates the need to include it in source files.
 
