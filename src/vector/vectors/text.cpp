@@ -22,7 +22,10 @@ fast 1:1 rendering without transforms.  The user is otherwise better served thro
 
 -END-
 
-TODO: ShapeInside and ShapeSubtract require implementation
+TODO
+----
+* ShapeInside and ShapeSubtract require implementation
+* The use of globally shared Font objects currently isn't thread-safe.
 
 *********************************************************************************************************************/
 
@@ -60,6 +63,8 @@ FT_Error (*EFT_Done_Size)(FT_Size);
 static FIELD FID_FreetypeFace;
 
 //********************************************************************************************************************
+// The glGlyphMap cache maintains a record of glyph paths and meta information as it is by the generate_text() 
+// function.
 
 class glyph {
 public:
@@ -70,33 +75,27 @@ public:
 
 class glyph_map {
    using GLYPH_TABLE = std::unordered_map<ULONG, glyph>;
-   FT_Face freetype_face;
+   FT_Face freetype_face = NULL;
    // A single freetype_face can host a series of points.  We store a map of characters for each point size.
    std::map<LONG, GLYPH_TABLE > glyphs; // Point = [ GlyphIndex, glyph ]
-   std::set<extVectorText *> users;
+   LONG usage = 0;
 
 public:
-   glyph_map() {}
+   glyph_map() = default;
    glyph_map(FT_Face pFace) : freetype_face(pFace) { }  
 
    glyph & get_glyph(GLYPH_TABLE &, LONG);
    GLYPH_TABLE & glyph_table(LONG PointSize) { return glyphs[PointSize]; }
 
-   bool deregister_user(extVectorText *Vector) {
-      users.erase(Vector);
-      if (users.empty()) {
-         glyphs.clear();
-         return true;
-      }
-      else return false;
-   }
-
-   void register_user(extVectorText *Vector) {
-      users.insert(Vector);
-   }
+   bool deregister_use() { return (--usage) == 0; }
+   void register_use() { usage++; }
 };
 
-static std::unordered_map<FT_Face, glyph_map> glGlyphMap;
+inline const std::string face_key(FT_Face Face) {
+   return std::string(Face->family_name) + ":" + std::string(Face->style_name);
+}
+
+static std::unordered_map<std::string, glyph_map> glGlyphMap;
 static std::mutex glGlyphMutex;
 
 //********************************************************************************************************************
@@ -231,6 +230,7 @@ class extVectorText : public extVector {
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
+   ULONG txKey; // Font cache key
    ALIGN txAlignFlags;
    VTXF  txFlags;
    char  txFontStyle[20];
@@ -323,26 +323,31 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
 
+   if (Self->txKey) { 
+      const std::lock_guard lock(glFontsMutex);
+      glTextFonts[Self->txKey].deregister();
+      Self->txKey = 0;
+   }
+
    if (Self->txFont) {
       FT_Face ftface;
-      if (!Self->txFont->getPtr(FID_FreetypeFace, &ftface)) {
+
+      if ((!Self->txFont->getPtr(FID_FreetypeFace, &ftface)) and (ftface)) {
          const std::lock_guard lock(glGlyphMutex);
-         if (glGlyphMap.contains(ftface)) {
-            if (glGlyphMap[ftface].deregister_user(Self)) {
-               glGlyphMap.erase(ftface);
-            }
+         auto key = face_key(ftface);
+         if (glGlyphMap.contains(key)) {
+            glGlyphMap[key].deregister_use();
          }
       }
    }
 
    if (Self->txFreetypeSize) { EFT_Done_Size(Self->txFreetypeSize); Self->txFreetypeSize = NULL; }
-   if (Self->txBitmapImage) { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
-   if (Self->txAlphaBitmap) { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
-   if (Self->txFamily)      { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-   if (Self->txFont)        { FreeResource(Self->txFont); Self->txFont = NULL; }
-   if (Self->txDX)          { FreeResource(Self->txDX); Self->txDX = NULL; }
-   if (Self->txDY)          { FreeResource(Self->txDY); Self->txDY = NULL; }
-   if (Self->txKeyEvent)    { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+   if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
+   if (Self->txAlphaBitmap)  { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
+   if (Self->txFamily)       { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+   if (Self->txDX)           { FreeResource(Self->txDX); Self->txDX = NULL; }
+   if (Self->txDY)           { FreeResource(Self->txDY); Self->txDY = NULL; }
+   if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
       pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
@@ -1254,54 +1259,63 @@ static void reset_font(extVectorText *Vector)
 
    pf::Log log(__FUNCTION__);
    log.branch("Style: %s, Weight: %d", Vector->txFontStyle, Vector->txWeight);
-   pf::SwitchContext context(Vector);
+   
+   std::string family;
+   std::string style;
+   CSTRING location = NULL;
 
-   objFont *font;
-   if (!NewObject(ID_FONT, NF::INTEGRAL, &font)) {
-      // Note that we don't configure too much of the font, as AGG uses the Freetype functions directly.  The
-      // use of the Font object is really as a place-holder to take advantage of the Parasol font cache.
+   std::lock_guard lock(glFontsMutex);
+   
+   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 
-      if (Vector->txFamily) {
-         std::string family(Vector->txFamily);
-         family.append(",Open Sans");
+   if (Vector->txFamily) {
+      family = Vector->txFamily;
+      if (StrMatch("Open Sans", family)) family.append(",Open Sans");
 
-         std::string style(Vector->txFontStyle);
+      if (Vector->txWeight != DEFAULT_WEIGHT) {
+         style = "Regular";
+         if (Vector->txWeight >= 700) style = "Extra Bold";
+         else if (Vector->txWeight >= 500) style = "Bold";
+         else if (Vector->txWeight <= 200) style = "Extra Light";
+         else if (Vector->txWeight <= 300) style = "Light";
 
-         if (Vector->txWeight != DEFAULT_WEIGHT) {
-            style = "Regular";
-            if (Vector->txWeight >= 700) style = "Extra Bold";
-            else if (Vector->txWeight >= 500) style = "Bold";
-            else if (Vector->txWeight <= 200) style = "Extra Light";
-            else if (Vector->txWeight <= 300) style = "Light";
-
-            if (!StrMatch("Italic", Vector->txFontStyle)) {
-               if (style IS "Regular") style = "Italic";
-               else style.append(" Italic");
-            }
-            font->setStyle(style);
+         if (!StrMatch("Italic", Vector->txFontStyle)) {
+            if (style IS "Regular") style = "Italic";
+            else style.append(" Italic");
          }
-         else font->setStyle(Vector->txFontStyle);
-
-         CSTRING location;
-         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize * (3.0 / 4.0), FTF::PREFER_SCALED, &location)) {
-            font->setPath(location);
-            FreeResource(location);
-         }
-         else font->setFace("*");
       }
-      else font->setFace("*");
+      else style = Vector->txFontStyle;
 
-      // Set the correct point size, which is really for the benefit of the client e.g. if the Font object
-      // is used to determine the source font's attributes.
+      fntSelectFont(family.c_str(), style.c_str(), point_size, FTF::PREFER_SCALED, &location);
+   }
+   else fntSelectFont("*", "Regular", point_size, FTF::PREFER_SCALED, &location);
 
-      DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0);
-      font->setPoint(point_size);
+   auto key = StrHash(style + ":" + location + ":" + std::to_string(point_size));
+   if (glTextFonts.contains(key)) {
+      glTextFonts[key].use();
+      Vector->txFont = glTextFonts[key].font;
+   }
+   else {
+      // Note that for truetype fonts, the point size isn't that relevant during initialisation as our code will 
+      // change it directly via the FT_Face.
 
-      if (!InitObject(font)) {
-         if (Vector->txFont) FreeResource(Vector->txFont);
+      if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
+            fl::Owner(glModule->UID),
+            fl::Face(family), 
+            fl::Style(style),
+            fl::Point(point_size), 
+            fl::Path(location))) {
+
+         if (Vector->txKey) glTextFonts[Vector->txKey].deregister();
+         
+         glTextFonts.emplace(key, font);
+
+         Vector->txKey = key;
          Vector->txFont = font;
       }
    }
+
+   if (location) FreeResource(location);
 }
 
 //********************************************************************************************************************

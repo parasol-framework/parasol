@@ -423,3 +423,26 @@ CSTRING read_numseq_zero(CSTRING Value, ...)
    va_end(list);
    return Value;
 }
+
+//********************************************************************************************************************
+// Fonts are stored independently of VectorText objects so that they can be permanently cached.
+
+class font_usage {
+private:
+   LONG usage = 0;
+public:
+   objFont *font = NULL;
+
+   inline void deregister() { usage--; }
+   inline void use() { usage++; }
+
+   font_usage() = default;
+   font_usage(objFont *pFont) : usage(1), font(pFont) { }
+
+   ~font_usage() {
+      if (font) { FreeResource(font); font = NULL; }
+   }
+};
+
+static std::mutex glFontsMutex;
+static std::unordered_map<ULONG, font_usage> glTextFonts;

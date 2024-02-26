@@ -260,11 +260,11 @@ static void generate_text(extVectorText *Vector)
 
    const std::lock_guard lock(glGlyphMutex);
 
-   auto it = glGlyphMap.try_emplace(ftface, ftface);
+   auto it = glGlyphMap.try_emplace(face_key(ftface), ftface);
    auto &ft_cache = it.first->second;
    auto &glyph_map = ft_cache.glyph_table(point_size);
 
-   ft_cache.register_user(Vector);
+   ft_cache.register_use();
 
    if (morph) {
       // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.

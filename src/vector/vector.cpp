@@ -94,6 +94,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
+   glTextFonts.clear();
+
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modFont)    { FreeResource(modFont); modFont = NULL; }
 
