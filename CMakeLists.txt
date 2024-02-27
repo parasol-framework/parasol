@@ -34,7 +34,7 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
 
-project (Parasol VERSION 2023.6.12 LANGUAGES C CXX)
+project (Parasol VERSION 2024.2.27 LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
@@ -58,12 +58,12 @@ option (DISABLE_DOCUMENT  "Disable document API" OFF)
 option (DISABLE_FONT      "Disable font API" OFF)
 option (DISABLE_HTTP      "Disable HTTP API" OFF)
 option (DISABLE_MP3       "Disable MP3 support" OFF)
-option (DISABLE_NETWORK   "Disable Network API" OFF)
-option (DISABLE_PICTURE   "Disable Picture API" OFF)
+option (DISABLE_NETWORK   "Disable network API" OFF)
+option (DISABLE_PICTURE   "Disable picture API" OFF)
 option (DISABLE_JPEG      "Disable JPEG support" OFF)
 option (DISABLE_SCINTILLA "Disable Scintilla API" OFF)
 option (DISABLE_SVG       "Disable SVG support" OFF)
-option (DISABLE_VECTOR    "Disable Vector API" OFF)
+option (DISABLE_VECTOR    "Disable vector API" OFF)
 option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling a distribution" OFF)
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
 option (INSTALL_TESTS     "Install the test programs." OFF)
@@ -483,6 +483,8 @@ add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
+
+add_subdirectory (3rdparty/freetype-2.13.2)
 
 add_subdirectory (src/link)
 add_subdirectory (src/core)

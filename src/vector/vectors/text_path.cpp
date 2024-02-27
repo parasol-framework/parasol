@@ -25,7 +25,7 @@ glyph & glyph_map::get_glyph(GLYPH_TABLE &Table, LONG GlyphIndex)
 
    // WARNING: FT_Load_Glyph leaks memory if you call it repeatedly for the same glyph (hence the importance of caching).
 
-   if (EFT_Load_Glyph(freetype_face, GlyphIndex, FT_LOAD_LINEAR_DESIGN)) return path;
+   if (FT_Load_Glyph(freetype_face, GlyphIndex, FT_LOAD_LINEAR_DESIGN)) return path;
    path.advance_x = int26p6_to_dbl(freetype_face->glyph->advance.x);
    path.advance_y = int26p6_to_dbl(freetype_face->glyph->advance.y);
 
@@ -245,11 +245,11 @@ static void generate_text(extVectorText *Vector)
 
    const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 
-   if (!Vector->txFreetypeSize) EFT_New_Size(ftface, &Vector->txFreetypeSize);
-   if (Vector->txFreetypeSize != ftface->size) EFT_Activate_Size(Vector->txFreetypeSize);
+   if (!Vector->txFreetypeSize) FT_New_Size(ftface, &Vector->txFreetypeSize);
+   if (Vector->txFreetypeSize != ftface->size) FT_Activate_Size(Vector->txFreetypeSize);
 
    if (ftface->size->metrics.height != dbl_to_int26p6(point_size)) {
-      EFT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI);
+      FT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI);
    }
 
    LONG prev_glyph = 0;
@@ -286,7 +286,7 @@ static void generate_text(extVectorText *Vector)
          LONG char_len;
          auto str = line.c_str();
          ULONG current_char = UTF8ReadValue(str, &char_len);
-         LONG current_glyph = EFT_Get_Char_Index(ftface, current_char);
+         LONG current_glyph = FT_Get_Char_Index(ftface, current_char);
          str += char_len;
          while (current_char) {
             ULONG next_char = UTF8ReadValue(str, &char_len);
@@ -304,7 +304,7 @@ static void generate_text(extVectorText *Vector)
                apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
 
-            LONG next_glyph = EFT_Get_Char_Index(ftface, next_char);
+            LONG next_glyph = FT_Get_Char_Index(ftface, next_char);
             auto &glyph = ft_cache.get_glyph(glyph_map, current_glyph);
 
             DOUBLE kx, ky;
@@ -420,7 +420,7 @@ static void generate_text(extVectorText *Vector)
 
             str += char_len;
 
-            auto current_glyph = EFT_Get_Char_Index(ftface, unicode);
+            auto current_glyph = FT_Get_Char_Index(ftface, unicode);
             auto &glyph = ft_cache.get_glyph(glyph_map, current_glyph);
 
             DOUBLE kx, ky;

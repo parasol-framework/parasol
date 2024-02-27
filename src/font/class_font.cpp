@@ -1522,26 +1522,31 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
    ERROR error;
 
    if (Path) { // Check the cache.
-      std::string sp(Path);
-      if (glCache.contains(sp)) Self->Cache = glCache[sp];
-      else {
-         log.branch("Creating new cache for font '%s'", Path);
+      CSTRING location;
+      if (!ResolvePath(Path, RSF::NIL, (STRING *)&location)) {
+         GuardedResource res(location);
 
-         FT_Face face;
-         openargs.flags    = FT_OPEN_PATHNAME;
-         openargs.pathname = (STRING)Path;
-         if ((error = FT_Open_Face(glFTLibrary, &openargs, 0, &face))) {
-            if (error IS FT_Err_Unknown_File_Format) return ERR_NoSupport;
-            log.warning("Fatal error in attempting to load font \"%s\".", Path);
-            return ERR_Failed;
+         std::string sp(location);
+         if (glCache.contains(sp)) Self->Cache = glCache[sp];
+         else {
+            log.branch("Creating new cache for font '%s'", location);
+
+            FT_Face face;
+            openargs.flags    = FT_OPEN_PATHNAME;
+            openargs.pathname = (STRING)location;
+            if ((error = FT_Open_Face(glFTLibrary, &openargs, 0, &face))) {
+               if (error IS FT_Err_Unknown_File_Format) return ERR_NoSupport;
+               log.warning("Fatal error in attempting to load font \"%s\".", location);
+               return ERR_Failed;
+            }
+
+            if (!FT_IS_SCALABLE(face)) { // Only scalable fonts are supported by this routine
+               FT_Done_Face(face);
+               return log.warning(ERR_InvalidData);
+            }
+
+            Self->Cache = glCache[sp] = std::make_shared<font_cache>(sp, face);
          }
-
-         if (!FT_IS_SCALABLE(face)) { // Only scalable fonts are supported by this routine
-            FT_Done_Face(face);
-            return log.warning(ERR_InvalidData);
-         }
-
-         Self->Cache = glCache[sp] = std::make_shared<font_cache>(sp, face);
       }
    }
    else { // If no path is provided, the font is already cached and requires a new point size.

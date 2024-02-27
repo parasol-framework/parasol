@@ -1,12 +1,5 @@
 # Font module
 
-# When upgrading Freetype to a new version:
-# Freetype definitions in ftoption.h that are turned off: FT_CONFIG_OPTION_USE_LZW  FT_CONFIG_OPTION_MAC_FONTS FT_CONFIG_OPTION_INCREMENTAL TT_CONFIG_OPTION_BDF FT_CONFIG_OPTION_USE_ZLIB TT_CONFIG_OPTION_GX_VAR_SUPPORT
-# base/ftsystem.c is modified to support our file system.
-# Change config/ftmodule.h to match the existing changes.
-# ./configure --without-png --without-zlib --without-bzip2 --without-png
-# Do a standard compile and then look in objs/ to see what .o files were created.
-
 set (MOD "font")
 set (INC_MOD_FONT TRUE PARENT_SCOPE)
 
@@ -24,39 +17,13 @@ if (NOT MSVC)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
 endif ()
 
-set (FT_SOURCE
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/autofit/autofit.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/psnames/psnames.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/raster/raster.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/cff/cff.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftglyph.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/sfnt/sfnt.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftbase.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftsystem.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/smooth/smooth.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/truetype/truetype.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftinit.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftstroke.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftbitmap.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/base/ftdebug.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.13.2/src/pshinter/pshinter.c")
-
 add_library (${MOD})
 
 set_module_defaults (${MOD})
 
 target_sources (${MOD} PRIVATE "font.cpp" ${FT_SOURCE})
 
-target_include_directories (${MOD} PRIVATE
-   "freetype-2.13.2/include"
-   "freetype-2.13.2/src/base"
-   "freetype-2.13.2/include/freetype/config"
-   "freetype-2.13.2/builds/unix")
-
-target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
-
-#-DFT_DEBUG_LEVEL_ERROR -DFT_DEBUG_LEVEL_TRACE
-add_definitions ("-DFT_CONFIG_MODULES_H=<ftmodule.h>" "-DFT_CONFIG_CONFIG_H=<ftconfig.h>" "-DFT2_BUILD_LIBRARY" "-DDLL_EXPORT=1")
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)
 
 # TODO: Kerning tests aren't working with the latest version of Freetype
 flute_test(${MOD} "${CMAKE_CURRENT_SOURCE_DIR}/tests/font_tests.fluid")

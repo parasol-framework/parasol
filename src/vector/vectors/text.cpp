@@ -51,19 +51,10 @@ where large glyphs were oriented around sharp corners.  The process would look s
 
 #define DEFAULT_WEIGHT 400
 
-FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt pixel_width, FT_UInt pixel_height );
-FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );
-FT_Error (*EFT_Get_Kerning)(FT_Face, FT_UInt left_glyph, FT_UInt right_glyph, FT_UInt kern_mode, FT_Vector *akerning);
-FT_UInt  (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
-FT_Error (*EFT_Load_Glyph)(FT_Face, FT_UInt glyph_index, FT_Int32  load_flags);
-FT_Error (*EFT_Activate_Size)(FT_Size);
-FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
-FT_Error (*EFT_Done_Size)(FT_Size);
-
 static FIELD FID_FreetypeFace;
 
 //********************************************************************************************************************
-// The glGlyphMap cache maintains a record of glyph paths and meta information as it is by the generate_text() 
+// The glGlyphMap cache maintains a record of glyph paths and meta information as it is by the generate_text()
 // function.
 
 class glyph {
@@ -82,7 +73,7 @@ class glyph_map {
 
 public:
    glyph_map() = default;
-   glyph_map(FT_Face pFace) : freetype_face(pFace) { }  
+   glyph_map(FT_Face pFace) : freetype_face(pFace) { }
 
    glyph & get_glyph(GLYPH_TABLE &, LONG);
    GLYPH_TABLE & glyph_table(LONG PointSize) { return glyphs[PointSize]; }
@@ -265,7 +256,7 @@ constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, DOUBLE &Y)
 {
    FT_Vector delta;
-   if (!EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta)) {
+   if (!FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta)) {
       X = int26p6_to_dbl(delta.x);
       Y = int26p6_to_dbl(delta.y);
    }
@@ -323,7 +314,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
 
-   if (Self->txKey) { 
+   if (Self->txKey) {
       const std::lock_guard lock(glFontsMutex);
       glTextFonts[Self->txKey].deregister();
       Self->txKey = 0;
@@ -341,7 +332,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
       }
    }
 
-   if (Self->txFreetypeSize) { EFT_Done_Size(Self->txFreetypeSize); Self->txFreetypeSize = NULL; }
+   if (Self->txFreetypeSize) { FT_Done_Size(Self->txFreetypeSize); Self->txFreetypeSize = NULL; }
    if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
    if (Self->txAlphaBitmap)  { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
    if (Self->txFamily)       { FreeResource(Self->txFamily); Self->txFamily = NULL; }
@@ -1259,13 +1250,13 @@ static void reset_font(extVectorText *Vector)
 
    pf::Log log(__FUNCTION__);
    log.branch("Style: %s, Weight: %d", Vector->txFontStyle, Vector->txWeight);
-   
+
    std::string family;
    std::string style;
    CSTRING location = NULL;
 
    const std::lock_guard lock{glFontsMutex};
-   
+
    const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 
    if (Vector->txFamily) {
@@ -1296,18 +1287,18 @@ static void reset_font(extVectorText *Vector)
       Vector->txFont = glTextFonts[key].font;
    }
    else {
-      // Note that for truetype fonts, the point size isn't that relevant during initialisation as our code will 
+      // Note that for truetype fonts, the point size isn't that relevant during initialisation as our code will
       // change it directly via the FT_Face.
 
       if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
             fl::Owner(glModule->UID),
-            fl::Face(family), 
+            fl::Face(family),
             fl::Style(style),
-            fl::Point(point_size), 
+            fl::Point(point_size),
             fl::Path(location))) {
 
          if (Vector->txKey) glTextFonts[Vector->txKey].deregister();
-         
+
          glTextFonts.emplace(key, font);
 
          Vector->txKey = key;
@@ -1918,26 +1909,6 @@ static const FieldArray clTextFields[] = {
 
 static ERROR init_text(void)
 {
-#ifdef PARASOL_STATIC
-   EFT_Set_Pixel_Sizes = &FT_Set_Pixel_Sizes;
-   EFT_Set_Char_Size   = &FT_Set_Char_Size;
-   EFT_Get_Kerning     = &FT_Get_Kerning;
-   EFT_Get_Char_Index  = &FT_Get_Char_Index;
-   EFT_Load_Glyph      = &FT_Load_Glyph;
-   EFT_New_Size        = &FT_New_Size;
-   EFT_Done_Size       = &FT_Done_Size;
-   EFT_Activate_Size   = &FT_Activate_Size;
-#else
-   if (modResolveSymbol(modFont, "FT_Set_Pixel_Sizes", (APTR *)&EFT_Set_Pixel_Sizes)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_Set_Char_Size", (APTR *)&EFT_Set_Char_Size)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_Get_Kerning", (APTR *)&EFT_Get_Kerning)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_Get_Char_Index", (APTR *)&EFT_Get_Char_Index)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_New_Size", (APTR *)&EFT_New_Size)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_Done_Size", (APTR *)&EFT_Done_Size)) return ERR_ResolveSymbol;
-   if (modResolveSymbol(modFont, "FT_Activate_Size", (APTR *)&EFT_Activate_Size)) return ERR_ResolveSymbol;
-#endif
-
    FID_FreetypeFace = StrHash("FreetypeFace");
 
    clVectorText = objMetaClass::create::global(
