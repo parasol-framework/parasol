@@ -1,5 +1,3 @@
-# CMakeLists.txt
-#
 # Copyright (C) 2013-2023 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
@@ -60,7 +58,6 @@ else ()
   endif ()
 endif ()
 
-
 project(freetype C)
 
 set(VERSION_MAJOR "2")
@@ -69,25 +66,18 @@ set(VERSION_PATCH "2")
 
 # Generate LIBRARY_VERSION and LIBRARY_SOVERSION.
 set(LIBTOOL_REGEX "version_info='([0-9]+):([0-9]+):([0-9]+)'")
-file(STRINGS "${PROJECT_SOURCE_DIR}/builds/unix/configure.raw"
-  VERSION_INFO
-  REGEX ${LIBTOOL_REGEX})
-string(REGEX REPLACE
-  ${LIBTOOL_REGEX} "\\1"
-  LIBTOOL_CURRENT "${VERSION_INFO}")
-string(REGEX REPLACE
-  ${LIBTOOL_REGEX} "\\2"
-  LIBTOOL_REVISION "${VERSION_INFO}")
-string(REGEX REPLACE
-  ${LIBTOOL_REGEX} "\\3"
-  LIBTOOL_AGE "${VERSION_INFO}")
+
+file(STRINGS "${PROJECT_SOURCE_DIR}/builds/unix/configure.raw" VERSION_INFO REGEX ${LIBTOOL_REGEX})
+
+string(REGEX REPLACE ${LIBTOOL_REGEX} "\\1" LIBTOOL_CURRENT "${VERSION_INFO}")
+string(REGEX REPLACE ${LIBTOOL_REGEX} "\\2" LIBTOOL_REVISION "${VERSION_INFO}")
+string(REGEX REPLACE ${LIBTOOL_REGEX} "\\3" LIBTOOL_AGE "${VERSION_INFO}")
 
 # This is what libtool does internally on Unix platforms.
 math(EXPR LIBRARY_SOVERSION "${LIBTOOL_CURRENT} - ${LIBTOOL_AGE}")
 set(LIBRARY_VERSION "${LIBRARY_SOVERSION}.${LIBTOOL_AGE}.${LIBTOOL_REVISION}")
 
-option(FT_ENABLE_ERROR_STRINGS
-  "Enable support for meaningful error descriptions." OFF)
+option(FT_ENABLE_ERROR_STRINGS "Enable support for meaningful error descriptions." OFF)
 
 # Add local cmake modules
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/builds/cmake)
@@ -125,12 +115,10 @@ if (NOT (ORIGINAL_FTCONFIG_H STREQUAL FTCONFIG_H))
 endif ()
 
 # Create the options file
-file(READ "${PROJECT_SOURCE_DIR}/include/freetype/config/ftoption.h"
-  FTOPTION_H)
+file(READ "${PROJECT_SOURCE_DIR}/include/freetype/config/ftoption.h" FTOPTION_H)
 
 if (FT_ENABLE_ERROR_STRINGS)
-  string(REGEX REPLACE
-    "/\\* +(#define +FT_CONFIG_OPTION_ERROR_STRINGS) +\\*/" "\\1"
+  string(REGEX REPLACE "/\\* +(#define +FT_CONFIG_OPTION_ERROR_STRINGS) +\\*/" "\\1"
     FTOPTION_H "${FTOPTION_H}")
 endif ()
 

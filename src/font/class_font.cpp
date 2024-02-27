@@ -352,6 +352,7 @@ static ERROR FONT_NewObject(extFont *Self, APTR Void)
    Self->HDPI            = glDisplayHDPI;
    Self->VDPI            = glDisplayVDPI;
    Self->Colour.Alpha    = 255;
+   Self->GlyphSpacing    = 1.0;
    Self->StrokeSize      = 1.0; // Note that Outline.Alpha needs to be greater than 0 for outline to be enabled.
    StrCopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
    return ERR_Okay;
@@ -378,12 +379,6 @@ AlignWidth: The width to use when aligning the font string.
 If the `HORIZONTAL` or `RIGHT` alignment options are used in the #Align field, the AlignWidth should be set so
 that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target
 #Bitmap's width will be used when computing alignment.
-
--FIELD-
-Angle: A rotation angle to use when drawing scalable fonts.
-
-If the Angle field is set to any value other than zero, the font string will be rotated around (0,0) when it is
-drawn.
 
 -FIELD-
 Ascent: The total number of pixels above the baseline.
@@ -629,15 +624,12 @@ The point size of the font is expressed in this field as a pixel measurement.  I
 The height is calculated on initialisation and can be read at any time.
 
 -FIELD-
-GlyphSpacing: The amount of spacing between each character.
+GlyphSpacing: Adjusts the amount of spacing between each character.
 
-This field represents the horizontal spacing between each glyph, technically known as kerning between each font
-character.  Fonts that have a high GlyphSpacing value will typically print out like this:
+This field adjusts the horizontal spacing between each glyph, technically known as kerning between each font
+character.  The value is expressed as a multiplier of the width of each character, and defaults to `1.0`.
 
-<pre>H e l l o   W o r l d !</pre>
-
-On the other hand, using negative values in this field can cause text to be printed backwards.  The GlyphSpacing value
-is typically set to zero or one by default, depending on the font type that has been loaded.
+Using negative values is valid, and can lead to text being printed backwards.
 
 -FIELD-
 Italic: Set to TRUE to enable italic styling.
@@ -1077,7 +1069,6 @@ static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *sr
 
    if (((data = src->Outline)) and (Colour->Alpha > 0)) {
       sx = dxcoord + src->OutlineLeft;
-      //if (Self->Angle) sx += dxcoord;
       ex = sx + src->OutlineWidth;
 
       if (ex > Bitmap->Clip.Right) ex = Bitmap->Clip.Right;
@@ -1089,7 +1080,6 @@ static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *sr
 
       sy = dycoord - src->OutlineTop + Self->Height;
 
-      //if (Self->Angle) sy += dycoord;
       ey = sy + src->OutlineHeight;
 
       if (ey > Bitmap->Clip.Bottom) ey = Bitmap->Clip.Bottom;
@@ -1151,8 +1141,6 @@ static ERROR draw_vector_font(extFont *Self)
    pf::Log log(__FUNCTION__);
    ULONG unicode;
    LONG dx, dy, charlen;
-   FT_Matrix matrix;
-   FT_Vector vector;
 
    // Validate settings for scaled font type
 
@@ -1169,16 +1157,6 @@ static ERROR draw_vector_font(extFont *Self)
 
    if (!Self->AlignWidth)  Self->AlignWidth = Bitmap->Width;
 
-   if (Self->Angle) {
-      DOUBLE radian = (Self->Angle * PI) / 180.0;
-      matrix.xx = (FT_Fixed)(cos(radian) * 0x10000);
-      matrix.xy = (FT_Fixed)(-sin(radian) * 0x10000);
-      matrix.yx = (FT_Fixed)(sin(radian) * 0x10000);
-      matrix.yy = (FT_Fixed)(cos(radian) * 0x10000);
-      vector.x  = 0;
-      vector.y  = 0;
-   }
-
    LONG offset;
    GET_YOffset(Self, &offset); // vertical alignment offset
    dycoord += offset; // - Self->Leading;
@@ -1191,7 +1169,7 @@ static ERROR draw_vector_font(extFont *Self)
 
    // If horizontal centring is required, calculate the correct horizontal starting coordinate.
 
-   if ((!Self->Angle) and ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL)) {
+   if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
       if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
          dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
          if (((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) and (dxcoord < Self->X)) dxcoord = Self->X;
@@ -1231,14 +1209,9 @@ static ERROR draw_vector_font(extFont *Self)
          startx = dxcoord;
          dycoord += Self->LineSpacing;
          prevglyph = 0;
-
-         if (Self->Angle) {
-            vector.x = dxcoord<<FT_DOWNSIZE;
-            vector.y = dycoord<<FT_DOWNSIZE;
-         }
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Self->prvChar['o'].Advance + Self->GlyphSpacing) * Self->TabSize;
+         WORD tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
          dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
          prevglyph = 0;
@@ -1264,8 +1237,6 @@ static ERROR draw_vector_font(extFont *Self)
             }
          }
          else charlen = getutf8(str, &unicode);
-
-         if (Self->Angle) FT_Set_Transform(Self->Cache->Face, &matrix, &vector);
 
          // Customised escape code handling
 
@@ -1320,14 +1291,8 @@ static ERROR draw_vector_font(extFont *Self)
          LONG glyph = 0;
          if (unicode IS ' ') {
             glyph = prevglyph;
-            if (Self->Angle) {
-               vector.x += (Self->Cache->Face->glyph->advance.x + Self->GlyphSpacing)<<FT_DOWNSIZE;
-               vector.y += (Self->Cache->Face->glyph->advance.y + Self->GlyphSpacing)<<FT_DOWNSIZE;
-            }
-            else {
-               if (Self->FixedWidth > 0) dxcoord += Self->FixedWidth + Self->GlyphSpacing;
-               else dxcoord += Self->prvChar[' '].Advance + Self->GlyphSpacing;
-            }
+            if (Self->FixedWidth > 0) dxcoord += Self->FixedWidth * Self->GlyphSpacing;
+            else dxcoord += Self->prvChar[' '].Advance * Self->GlyphSpacing;
          }
          else {
             font_glyph *src;
@@ -1347,7 +1312,6 @@ static ERROR draw_vector_font(extFont *Self)
             draw_vector_outline(Self, Bitmap, src, dxcoord, dycoord, &Self->Outline);
 
             LONG sx = dxcoord + src->Left;
-            //if (Self->Angle) sx += dxcoord;
             LONG ex = sx + src->Width;
 
             if (ex > Bitmap->Clip.Right) ex = Bitmap->Clip.Right;
@@ -1360,7 +1324,6 @@ static ERROR draw_vector_font(extFont *Self)
 
             LONG sy = dycoord - src->Top + Self->Height;
 
-            //if (Self->Angle) sy += dycoord;
             LONG ey = sy + src->Height;
 
             if (ey > Bitmap->Clip.Bottom) ey = Bitmap->Clip.Bottom;
@@ -1483,16 +1446,8 @@ static ERROR draw_vector_font(extFont *Self)
                }
             }
 
-            if (Self->Angle) {
-               vector.x += (src->AdvanceX + Self->GlyphSpacing)<<FT_DOWNSIZE;
-               vector.y += (src->AdvanceY + Self->GlyphSpacing)<<FT_DOWNSIZE;
-               //dxcoord = vector.x>>FT_DOWNSIZE;
-               //dycoord = vector.y>>FT_DOWNSIZE;
-            }
-            else {
-               if (Self->FixedWidth > 0) dxcoord += Self->FixedWidth + Self->GlyphSpacing;
-               else dxcoord += src->AdvanceX + Self->GlyphSpacing;
-            }
+            if (Self->FixedWidth > 0) dxcoord += Self->FixedWidth * Self->GlyphSpacing;
+            else dxcoord += src->AdvanceX * Self->GlyphSpacing;
          }
 
          prevglyph = glyph;
@@ -1666,7 +1621,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
    if (((Self->Flags & (FTF::ANTIALIAS|FTF::QUICK_ALIAS)) != FTF::NIL) or (Self->Colour.Alpha < 255)) rendermode = FT_RENDER_MODE_NORMAL;
    else rendermode = FT_RENDER_MODE_MONO;
 
-   if ((!Self->Angle) and (cache.Glyphs.contains(Unicode))) {
+   if (cache.Glyphs.contains(Unicode)) {
       font_glyph *glyph = &cache.Glyphs[Unicode];
       if ((GetBitmap) and ((!glyph->Data) and (!glyph->Outline))) {
          // Render the font because the character bitmap has not been created yet.
@@ -1707,7 +1662,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
       return NULL;
    }
 
-   if ((!Self->Angle) and (cache.Glyphs.size() < MAX_GLYPHS)) { // Cache this glyph if possible
+   if (cache.Glyphs.size() < MAX_GLYPHS) { // Cache this glyph if possible
       log.traceBranch("Creating new cache entry for unicode value %d, advance %d, get-bitmap %d", Unicode, (LONG)face->glyph->advance.x>>FT_DOWNSIZE, GetBitmap);
 
       font_glyph glyph;
@@ -1874,7 +1829,7 @@ static ERROR draw_bitmap_font(extFont *Self)
          CHECK_LINE_CLIP(Self, dycoord, bitmap);
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Self->prvChar['o'].Advance + Self->GlyphSpacing) * Self->TabSize;
+         WORD tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
          dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
       }
@@ -2145,7 +2100,7 @@ static ERROR draw_bitmap_font(extFont *Self)
             }
          }
 
-         dxcoord += charwidth + Self->GlyphSpacing;
+         dxcoord += charwidth * Self->GlyphSpacing;
       }
    } // while (*str)
 
@@ -2195,9 +2150,9 @@ static const FieldDef AlignFlags[] = {
 };
 
 static const FieldArray clFontFields[] = {
-   { "Angle",           FDF_DOUBLE|FDF_RW },
    { "Point",           FDF_DOUBLE|FDF_VARIABLE|FDF_SCALED|FDF_RW, GET_Point, SET_Point },
    { "StrokeSize",      FDF_DOUBLE|FDF_RW },
+   { "GlyphSpacing",    FDF_DOUBLE|FDF_RW },
    { "Bitmap",          FDF_OBJECT|FDF_RW, NULL, NULL, ID_BITMAP },
    { "String",          FDF_STRING|FDF_RW, NULL, SET_String },
    { "Path",            FDF_STRING|FDF_RW, NULL, SET_Path },
@@ -2211,7 +2166,6 @@ static const FieldArray clFontFields[] = {
    { "Colour",          FDF_RGB|FDF_RW },
    { "Flags",           FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, clFontFlags },
    { "Gutter",          FDF_LONG|FDF_RI },
-   { "GlyphSpacing",    FDF_LONG|FDF_RW },
    { "LineSpacing",     FDF_LONG|FDF_RW },
    { "X",               FDF_LONG|FDF_RW },
    { "Y",               FDF_LONG|FDF_RW },

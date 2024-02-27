@@ -570,7 +570,7 @@ WRAP layout::lay_text()
          m_line.apply_word_height();
 
          if (str[i] IS '\t') {
-            auto tabwidth = (m_space_width + m_font->GlyphSpacing) * m_font->TabSize;
+            auto tabwidth = (m_space_width * m_font->GlyphSpacing) * m_font->TabSize;
             if (tabwidth) {
                m_cursor_x += (m_cursor_x + tabwidth) - std::fmod(m_cursor_x, tabwidth); // Round up to Alignment value, e.g. (14,8) = 16
             }

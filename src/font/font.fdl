@@ -41,9 +41,9 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
   })
 
   class("Font", { version=1, src="class_font.cpp", output="class_font_def.c" }, [[
-   double Angle           # Rotation angle to use when drawing the font.
    double Point           # The Point/Height of the font (arbitrary size, non-exact)
    double StrokeSize      # For scalable fonts only.  Indicates the strength of the stroked outline if Outline.Alpha > 0
+   double GlyphSpacing    # Amount of spacing between characters (additional to normal horizontal spacing)
    obj(Bitmap) Bitmap     # Pointer to destination Bitmap
    str   String           # String for drawing etc
    str   Path             # The location of the font file as derived from the name of the face.  Field may be set directly if the font source is unregistered
@@ -57,7 +57,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
    struct(RGB8) Colour    # Colour
    int(FTF) Flags         # Optional flags
    int   Gutter           # "External leading" in pixels (fixed fonts only)
-   int   GlyphSpacing     # Amount of spacing between characters (additional to normal horizontal spacing)
    int   LineSpacing      # Vertical spacing between lines
    int   X                # X Coordinate
    int   Y                # Y Coordinate

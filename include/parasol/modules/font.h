@@ -62,9 +62,9 @@ class objFont : public BaseClass {
 
    using create = pf::Create<objFont>;
 
-   DOUBLE Angle;                                         // A rotation angle to use when drawing scalable fonts.
    DOUBLE Point;                                         // The point size of a font.
    DOUBLE StrokeSize;                                    // The strength of stroked outlines is defined here.
+   DOUBLE GlyphSpacing;                                  // Adjusts the amount of spacing between each character.
    objBitmap * Bitmap;                                   // The destination Bitmap to use when drawing a font.
    STRING String;                                        // The string to use when drawing a Font.
    STRING Path;                                          // The path to a font file.
@@ -78,7 +78,6 @@ class objFont : public BaseClass {
    struct RGB8 Colour;                                   // The font colour in RGB format.
    FTF    Flags;                                         // Optional flags.
    LONG   Gutter;                                        // The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
-   LONG   GlyphSpacing;                                  // The amount of spacing between each character.
    LONG   LineSpacing;                                   // The amount of spacing between each line.
    LONG   X;                                             // The starting horizontal position when drawing the font string.
    LONG   Y;                                             // The starting vertical position when drawing the font string.
@@ -109,20 +108,20 @@ class objFont : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setAngle(const DOUBLE Value) noexcept {
-      this->Angle = Value;
-      return ERR_Okay;
-   }
-
    inline ERROR setPoint(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[11];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setStrokeSize(const DOUBLE Value) noexcept {
       this->StrokeSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setGlyphSpacing(const DOUBLE Value) noexcept {
+      this->GlyphSpacing = Value;
       return ERR_Okay;
    }
 
@@ -133,25 +132,25 @@ class objFont : public BaseClass {
 
    template <class T> inline ERROR setString(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setStyle(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setFace(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -182,18 +181,13 @@ class objFont : public BaseClass {
 
    inline ERROR setFlags(const FTF Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setGutter(const LONG Value) noexcept {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Gutter = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setGlyphSpacing(const LONG Value) noexcept {
-      this->GlyphSpacing = Value;
       return ERR_Okay;
    }
 
@@ -278,13 +272,13 @@ class objFont : public BaseClass {
 
    inline ERROR setBold(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    template <class T> inline ERROR setEscapeChar(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[38];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
@@ -296,13 +290,13 @@ class objFont : public BaseClass {
 
    inline ERROR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setTabs(const WORD * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x00401308, Value, Elements);
    }
 

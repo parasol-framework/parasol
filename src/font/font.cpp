@@ -100,6 +100,9 @@ class extFont : public objFont {
    UBYTE prvTotalTabs;
 };
 
+constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
+constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
+
 #include "font_def.c"
 
 #include "font_bitmap.cpp"
@@ -326,6 +329,8 @@ Char parameter. Kerning values can also be returned, which affect the position o
 The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If
 kerning information is not required, set the KChar and Kerning parameters to zero.
 
+The font's GlyphSpacing value is not used in calculating the character width.
+
 -INPUT-
 ext(Font) Font: The font to use for calculating the character width.
 uint Char: A unicode character.
@@ -348,7 +353,7 @@ LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
             LONG kglyph = FT_Get_Char_Index(Font->Cache->Face, KChar);
             *Kerning = get_kerning(Font->Cache->Face, cache->GlyphIndex, kglyph);
          }
-         return cache->AdvanceX + Font->GlyphSpacing;
+         return cache->AdvanceX;
       }
       else {
          pf::Log log(__FUNCTION__);
@@ -458,19 +463,19 @@ ERROR fntGetList(FontList **Result)
 -FUNCTION-
 StringSize: Calculates the exact dimensions of a font string, giving respect to word wrapping.
 
-This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account the
-font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The routine
-takes into account any line feeds that may already exist in the String.
+This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account 
+the font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The 
+routine takes into account any line feeds that may already exist in the String.
 
-A character limit can be specified in the Chars argument.  If this argument is set to FSS_ALL, all characters in String
-will be used in the calculation.  If set to FSS_LINE, the routine will terminate when the first line feed or word-wrap
-is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary was
-encountered.
+A character limit can be specified in the Chars argument.  If this argument is set to `FSS_ALL`, all characters in 
+String will be used in the calculation.  If set to `FSS_LINE`, the routine will terminate when the first line feed or 
+word-wrap is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary 
+was encountered.
 
 -INPUT-
 ext(Font) Font: An initialised font object.
-cstr String: The string to be analysed.
-int(FSS) Chars:  The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.
+cstr String:    The string to be analysed.
+int(FSS) Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.
 int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.
 &int Width: The width of the longest line will be returned in this parameter.
 &int Rows:  The number of calculated rows will be returned in this parameter.
@@ -503,20 +508,19 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
    CSTRING start  = String;
    LONG x         = 0;
    LONG prevglyph = 0;
-   if (line_abort) rowcount = 0;
-   else rowcount  = 1;
    LONG longest   = 0;
    LONG charcount = 0;
    LONG wordindex = 0;
+   rowcount = line_abort ? 0 : 1;
    while ((*String) and (charcount < Chars)) {
       lastword = x;
 
       // Skip whitespace
 
       while ((*String) and (*String <= 0x20)) {
-         if (*String IS ' ') x += Font->prvChar[' '].Advance + Font->GlyphSpacing;
+         if (*String IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
          else if (*String IS '\t') {
-            tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
+            tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
             if (tabwidth) x += pf::roundup(x, tabwidth);
          }
          else if (*String IS '\n') {
@@ -548,16 +552,16 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
          else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
             if (unicode IS ' ') {
-               charwidth += Font->prvChar[' '].Advance + Font->GlyphSpacing;
+               charwidth += Font->prvChar[' '].Advance * Font->GlyphSpacing;
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
-               charwidth = cache->AdvanceX + Font->GlyphSpacing;
+               charwidth = cache->AdvanceX * Font->GlyphSpacing;
                if ((Font->Flags & FTF::KERNING) != FTF::NIL) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
                prevglyph = cache->GlyphIndex;
             }
          }
-         else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
-         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
+         else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
+         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
 
          if ((!x) and ((Font->Flags & FTF::CHAR_CLIP) IS FTF::NIL) and (x+wordwidth+charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
@@ -656,51 +660,59 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
    CSTRING str = String;
    if (Chars < 0) Chars = 0x7fffffff;
 
-   LONG len     = 0;
-   LONG last_len = 0;
+   LONG len    = 0;
+   LONG widest = 0;
    LONG prev_glyph = 0;
+   LONG whitespace = 0;
    while ((*str) and (Chars > 0)) {
       if (*str IS '\n') {
-         if (last_len < len) last_len = len; // Compare lengths
+         if (widest < len) widest = len - whitespace;
          len  = 0; // Reset
          str++;
          Chars--;
+         whitespace = 0;
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
+         WORD tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
          if (tabwidth) len = pf::roundup(len, tabwidth);
          str++;
          Chars--;
+         whitespace = 0;
       }
       else {
          ULONG unicode;
          str += getutf8(str, &unicode);
          Chars--;
 
-         if (Font->FixedWidth > 0) len += Font->FixedWidth + Font->GlyphSpacing;
+         LONG advance;
+         if (Font->FixedWidth > 0) advance = Font->FixedWidth;
          else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
             if ((unicode < 256) and (Font->prvChar[unicode].Advance) and ((Font->Flags & FTF::KERNING) IS FTF::NIL)) {
-               len += Font->prvChar[unicode].Advance + Font->GlyphSpacing;
+               advance = Font->prvChar[unicode].Advance;
             }
             else if (unicode IS ' ') {
-               len += Font->prvChar[' '].Advance + Font->GlyphSpacing;
+               advance = Font->prvChar[' '].Advance;
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
-               len += cache->AdvanceX + Font->GlyphSpacing;
-               if ((Font->Flags & FTF::KERNING) != FTF::NIL) len += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
+               advance = cache->AdvanceX;
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) advance += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
                prev_glyph = cache->GlyphIndex;
             }
+            else advance = 0;
          }
          else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) {
-            len += Font->prvChar[unicode].Advance + Font->GlyphSpacing;
+            advance = Font->prvChar[unicode].Advance;
          }
-         else len += Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
+         else advance = Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
+
+         LONG final_advance = advance * Font->GlyphSpacing;
+         len += final_advance;
+         whitespace = final_advance - advance;
       }
    }
 
-   if (last_len > len) return last_len - Font->GlyphSpacing;
-   else if (len > 0) return len - Font->GlyphSpacing;
-   else return 0;
+   if (widest > len) return widest;
+   else return len - whitespace;
 }
 
 /*********************************************************************************************************************
@@ -776,10 +788,10 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
    while ((*str) and (*str != '\n')) {
       if (Font->FixedWidth > 0) {
          str += getutf8(str, NULL);
-         width = Font->FixedWidth + Font->GlyphSpacing;
+         width = Font->FixedWidth * Font->GlyphSpacing;
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
+         WORD tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
          width = pf::roundup(x_pos, tabwidth) - x_pos;
          str++;
       }
@@ -789,19 +801,19 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
 
          if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
             if (unicode IS ' ') {
-               width = Font->prvChar[' '].Advance + Font->GlyphSpacing;
+               width = Font->prvChar[' '].Advance * Font->GlyphSpacing;
             }
             else if (((Font->Flags & FTF::KERNING) IS FTF::NIL) and (unicode < 256) and (Font->prvChar[unicode].Advance)) {
-               width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
+               width = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
-               width = cache->AdvanceX + Font->GlyphSpacing;
+               width = cache->AdvanceX * Font->GlyphSpacing;
                if ((Font->Flags & FTF::KERNING) != FTF::NIL) x_pos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
                prev_glyph = cache->GlyphIndex;
             }
          }
-         else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
-         else width = Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
+         else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) width = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
+         else width = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
       }
 
       // Subtract the width of the current character and keep processing.  Note that the purpose of dividing the width

@@ -14,7 +14,7 @@
 #          [MSVC] cd visual-studio; ctest -V -C Release
 #
 # A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
-# This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds
+# This may be useful if you intend to use a limited feature-set, like the vector graphics API.  Static builds
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
 

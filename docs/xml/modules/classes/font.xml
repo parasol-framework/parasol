@@ -83,16 +83,6 @@
     </field>
 
     <field>
-      <name>Angle</name>
-      <comment>A rotation angle to use when drawing scalable fonts.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>DOUBLE</type>
-      <description>
-<p>If the Angle field is set to any value other than zero, the font string will be rotated around (0,0) when it is drawn.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Ascent</name>
       <comment>The total number of pixels above the baseline.</comment>
       <access read="R">Read</access>
@@ -219,13 +209,12 @@ Charter:120%::255,128,255
 
     <field>
       <name>GlyphSpacing</name>
-      <comment>The amount of spacing between each character.</comment>
+      <comment>Adjusts the amount of spacing between each character.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
+      <type>DOUBLE</type>
       <description>
-<p>This field represents the horizontal spacing between each glyph, technically known as kerning between each font character.  Fonts that have a high GlyphSpacing value will typically print out like this:</p>
-<pre>H e l l o   W o r l d !</pre>
-<p>On the other hand, using negative values in this field can cause text to be printed backwards.  The GlyphSpacing value is typically set to zero or one by default, depending on the font type that has been loaded.</p>
+<p>This field adjusts the horizontal spacing between each glyph, technically known as kerning between each font character.  The value is expressed as a multiplier of the width of each character, and defaults to <code>1.0</code>.</p>
+<p>Using negative values is valid, and can lead to text being printed backwards.</p>
       </description>
     </field>
 
