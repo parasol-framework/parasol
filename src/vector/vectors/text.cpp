@@ -744,10 +744,13 @@ static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 -FIELD-
 FontSize: Defines the vertical size of the font.
 
-The FontSize refers to the height of the font from baseline to baseline.  By default, the value corresponds to the
-current user coordinate system in pixels.  To define the point size, append 'pt' to the number.
+The FontSize is equivalent to the SVG `font-size` attribute and refers to the height of the font from baseline to 
+baseline.  By default, the value corresponds to the current user coordinate system in pixels.  To define the point 
+size, append 'pt' to the number.
 
 If retrieving the font size, the string must be freed by the client when no longer in use.
+
+The point size of the font is calculated directly from the FontSize, using the formula `round(FontSize * 0.75)`.
 
 *********************************************************************************************************************/
 
@@ -841,6 +844,20 @@ static ERROR TEXT_GET_LineLimit(extVectorText *Self, LONG *Value)
 static ERROR TEXT_SET_LineLimit(extVectorText *Self, LONG Value)
 {
    Self->txLineLimit = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+Point: Returns the point-size of the font.
+
+Reading the Point value will return the point-size of the font, calculated as `FontSize * 0.75`.
+
+*********************************************************************************************************************/
+
+static ERROR TEXT_GET_Point(extVectorText *Self, LONG *Value)
+{
+   *Value = std::round(Self->txFontSize * 0.75);
    return ERR_Okay;
 }
 
@@ -1884,6 +1901,7 @@ static const FieldArray clTextFields[] = {
    { "DY",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_DY, TEXT_SET_DY },
    { "InlineSize",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_InlineSize, TEXT_SET_InlineSize },
    { "LetterSpacing", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_LetterSpacing, TEXT_SET_LetterSpacing },
+   { "Point",         FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_Point },
    { "Rotate",        FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_Rotate, TEXT_SET_Rotate },
    { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeInside, TEXT_SET_ShapeInside, ID_VECTOR },
    { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeSubtract, TEXT_SET_ShapeSubtract, ID_VECTOR },
