@@ -1304,7 +1304,7 @@ static ERROR draw_vector_font(extFont *Self)
 
             if ((Self->Flags & FTF::KERNING) != FTF::NIL) {
                LONG kx, ky;
-               get_kerning_xy(Self->Cache->Face, glyph, prevglyph, &kx, &ky);
+               get_kerning_xy(Self->Cache->Face, glyph, prevglyph, kx, ky);
                dxcoord += kx;
                dycoord += ky;
             }

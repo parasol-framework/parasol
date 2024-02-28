@@ -602,8 +602,7 @@ inline static void mark_dirty(objVector *Vector, const RC Flags)
 {
    ((extVector *)Vector)->Dirty |= Flags;
    for (auto node=(extVector *)Vector->Child; node; node=(extVector *)node->Next) {
-      if ((node->Dirty & Flags) == Flags) continue;
-      mark_dirty(node, Flags);
+      if ((node->Dirty & Flags) != Flags) mark_dirty(node, Flags);
    }
 }
 
@@ -1030,7 +1029,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
-extern void get_text_xy(extVectorText *);
+extern void set_text_final_xy(extVectorText *);
 
 extern "C" void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
 extern "C" ERROR vecApplyPath(class SimpleVector *, extVectorPath *);

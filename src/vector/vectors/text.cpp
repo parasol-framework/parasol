@@ -1221,7 +1221,7 @@ static void calc_caret_position(TextLine &Line, DOUBLE PointSize, DOUBLE PathSca
 
 //********************************************************************************************************************
 
-extern void get_text_xy(extVectorText *Vector)
+extern void set_text_final_xy(extVectorText *Vector)
 {
    DOUBLE x = Vector->txX, y = Vector->txY;
 

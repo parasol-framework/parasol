@@ -448,7 +448,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
 
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-      TClipRectangle<DOUBLE> bounds = { DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX };
+      auto bounds = TCR_EXPANDING;
 
       if ((Args->Flags & VBF::NO_TRANSFORM) != VBF::NIL) {
          bounds.left   = Self->Bounds.left + Self->FinalX;

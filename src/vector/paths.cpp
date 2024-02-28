@@ -304,12 +304,10 @@ void gen_vector_path(extVector *Vector)
       // VectorText transform support is handled after base-path generation.  This is because vector text can be
       // aligned, for which the width and height of the base-path must be known.
 
-      if (((Vector->Dirty & RC::TRANSFORM) != RC::NIL) and (Vector->Class->ClassID IS ID_VECTORTEXT)) {
-         get_text_xy((extVectorText *)Vector); // Sets FinalX/Y
-
+      if (Vector->Class->ClassID IS ID_VECTORTEXT) {
+         set_text_final_xy((extVectorText *)Vector);
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
-
          Vector->Dirty = (Vector->Dirty & (~RC::TRANSFORM)) | RC::FINAL_PATH;
       }
 

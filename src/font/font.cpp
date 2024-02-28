@@ -226,12 +226,12 @@ static void update_dpi(void)
 //********************************************************************************************************************
 // Only call this function if the font includes kerning support (test via FTF::KERNING).
 
-INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LONG *Y)
+inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG &X, LONG &Y)
 {
    FT_Vector delta;
    FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
-   *X = delta.x>>FT_DOWNSIZE;
-   *Y = delta.y>>FT_DOWNSIZE;
+   X = delta.x>>FT_DOWNSIZE;
+   Y = delta.y>>FT_DOWNSIZE;
 }
 
 inline LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)

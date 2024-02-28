@@ -22,7 +22,7 @@ static ERROR run_script(objScript *);
 static ERROR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
 static ERROR save_binary(objScript *, OBJECTPTR);
 
-INLINE CSTRING check_bom(CSTRING Value)
+inline CSTRING check_bom(CSTRING Value)
 {
    if (((char)Value[0] IS 0xef) and ((char)Value[1] IS 0xbb) and ((char)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
    else if (((char)Value[0] IS 0xfe) and ((char)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
@@ -278,7 +278,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
-   log.msg(VLF::EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
