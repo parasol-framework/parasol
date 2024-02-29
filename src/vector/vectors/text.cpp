@@ -204,7 +204,7 @@ class extVectorText : public extVector {
    DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
    DOUBLE txTextLength;
-   DOUBLE txBitmapFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
+   DOUBLE txFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
    DOUBLE txKerning;
    DOUBLE txLetterSpacing; // SVG: Acts as a multiplier or fixed unit addition to the spacing of each glyph
    DOUBLE txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
@@ -223,7 +223,7 @@ class extVectorText : public extVector {
    OBJECTID txFocusID;
    OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
    OBJECTID txShapeSubtractID; // Subtract this shape from the path defined by shape-inside
-   LONG  txPoint;              // Conversion of txBitmapFontSize to point size (NB: txBitmapFontSize has priority)
+   LONG  txPoint;              // Conversion of txFontSize to point size (NB: txFontSize has priority)
    LONG  txTotalLines;
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
@@ -460,7 +460,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->GeneratePath = (void (*)(extVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
-   Self->txBitmapFontSize   = 10 * (4.0 / 3.0);
+   Self->txFontSize   = 10 * (4.0 / 3.0);
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
@@ -738,7 +738,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, objFont *Value)
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
       Self->txFamily = StrClone(Value->Face);
 
-      Self->txBitmapFontSize = Value->Point * (4.0 / 3.0);
+      Self->txFontSize = Value->Point * (4.0 / 3.0);
       Self->txRelativeFontSize = false;
 
       StrCopy(Value->Style, Self->txFontStyle);
@@ -820,7 +820,7 @@ The point size of the font is calculated directly from the FontSize, using the f
 static ERROR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
 {
    char buffer[32];
-   IntToStr(Self->txBitmapFontSize, buffer, sizeof(buffer));
+   IntToStr(Self->txFontSize, buffer, sizeof(buffer));
    *Value = StrClone(buffer);
    return ERR_Okay;
 }
@@ -831,7 +831,7 @@ static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
    auto size = read_unit(Value, pct);
 
    if (size > 0) {
-      Self->txBitmapFontSize = size;
+      Self->txFontSize = size;
       Self->txRelativeFontSize = pct;
       reset_font(Self);
       return ERR_Okay;
@@ -920,7 +920,7 @@ Reading the Point value will return the point-size of the font, calculated as `F
 
 static ERROR TEXT_GET_Point(extVectorText *Self, LONG *Value)
 {
-   *Value = std::round(Self->txBitmapFontSize * 0.75);
+   *Value = std::round(Self->txFontSize * 0.75);
    return ERR_Okay;
 }
 
@@ -1337,7 +1337,7 @@ static void reset_font(extVectorText *Vector)
 
    const std::lock_guard lock{glFontsMutex};
 
-   const DOUBLE point_size = std::round(Vector->txBitmapFontSize * (3.0 / 4.0));
+   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 
    if (Vector->txFamily) {
       family = Vector->txFamily;
@@ -1848,7 +1848,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
          if ((!Vector->Morph) and (Vector->ParentView)) {
             auto p_width = Vector->ParentView->vpFixedWidth;
             DOUBLE xo = 0;
-            const DOUBLE CURSOR_MARGIN = Vector->txBitmapFontSize * 0.5;
+            const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
             if (p_width > 8) {
                if (Vector->txX + line.chars[col].x1 <= 0) xo = Vector->txX + line.chars[col].x1;
                else if (Vector->txX + line.chars[col].x1 + CURSOR_MARGIN > p_width) xo = -(Vector->txX + line.chars[col].x1 + CURSOR_MARGIN - p_width);
@@ -1856,7 +1856,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
 
             auto p_height = Vector->ParentView->vpFixedHeight;
             DOUBLE yo = 0;
-            if ((mRow > 0) and (p_height > Vector->txBitmapFontSize)) {
+            if ((mRow > 0) and (p_height > Vector->txFontSize)) {
                if (Vector->txY + line.chars[col].y1 <= 0) yo = Vector->txY + line.chars[col].y1;
                else if (Vector->txY + line.chars[col].y2 > p_height) yo = -(Vector->txY + line.chars[col].y2 - p_height + CURSOR_MARGIN);
             }

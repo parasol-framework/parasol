@@ -243,7 +243,7 @@ static void generate_text(extVectorText *Vector)
 
    // The '3/4' conversion makes sense if you refer to read_unit() and understand that a point is 3/4 of a pixel.
 
-   const DOUBLE point_size = std::round(Vector->txBitmapFontSize * (3.0 / 4.0));
+   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
 
    if (!Vector->txFreetypeSize) FT_New_Size(ftface, &Vector->txFreetypeSize);
    if (Vector->txFreetypeSize != ftface->size) FT_Activate_Size(Vector->txFreetypeSize);

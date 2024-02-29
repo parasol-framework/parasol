@@ -56,7 +56,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    CoreBase = argCoreBase;
 
    argModule->getPtr(FID_Root, &glModule);
-   
+
    if (FT_Init_FreeType(&glFTLibrary)) {
       log.warning("Failed to initialise the FreeType font library.");
       return ERR_Failed;
