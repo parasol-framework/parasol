@@ -888,6 +888,15 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 
 //********************************************************************************************************************
 
+enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
+
+//********************************************************************************************************************
+
+static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
+static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
+
+//********************************************************************************************************************
+
 inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
    std::string path = "temp:bmp_" + Name + ".png";

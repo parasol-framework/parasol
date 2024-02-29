@@ -49,7 +49,7 @@ where large glyphs were oriented around sharp corners.  The process would look s
 #include <freetype/freetype.h>
 #include <freetype/ftsizes.h>
 
-#define DEFAULT_WEIGHT 400
+const LONG DEFAULT_WEIGHT = 400;
 
 static FIELD FID_FreetypeFace;
 
@@ -151,11 +151,15 @@ public:
    void validate_position(extVectorText *) const;
 };
 
+//********************************************************************************************************************
+
 class CharPos {
 public:
    DOUBLE x1, y1, x2, y2;
    CharPos(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2) : x1(X1), y1(Y1), x2(X2), y2(Y2) { }
 };
+
+//********************************************************************************************************************
 
 class TextLine : public std::string {
 public:
@@ -187,36 +191,39 @@ public:
    }
 };
 
+//********************************************************************************************************************
+
 class extVectorText : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORTEXT;
    static constexpr CSTRING CLASS_NAME = "VectorText";
    using create = pf::Create<extVectorText>;
 
+   std::vector<TextLine> txLines;
    FUNCTION txValidateInput;
    DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
    DOUBLE txTextLength;
-   DOUBLE txFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
+   DOUBLE txBitmapFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
    DOUBLE txKerning;
-   DOUBLE txLetterSpacing;
+   DOUBLE txLetterSpacing; // SVG: Acts as a multiplier or fixed unit addition to the spacing of each glyph
    DOUBLE txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
    DOUBLE txStartOffset;
    DOUBLE txSpacing;
    DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
    DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
-   objFont *txFont;
+   objFont *txBitmapFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
    objVectorImage *txBitmapImage;
    FT_Size txFreetypeSize;
-   std::vector<TextLine> txLines;
    TextCursor txCursor;
    CSTRING txFamily;
    APTR    txKeyEvent;
    OBJECTID txFocusID;
    OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
    OBJECTID txShapeSubtractID; // Subtract this shape from the path defined by shape-inside
+   LONG  txPoint;              // Conversion of txBitmapFontSize to point size (NB: txBitmapFontSize has priority)
    LONG  txTotalLines;
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
@@ -231,6 +238,8 @@ class extVectorText : public extVector {
 // bool txSpacingAndGlyphs:1;
 };
 
+//********************************************************************************************************************
+
 static void add_line(extVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
 static ERROR cursor_timer(extVectorText *, LARGE, LARGE);
 static void delete_selection(extVectorText *);
@@ -244,12 +253,6 @@ static ERROR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
 
 //********************************************************************************************************************
 
-enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
-
-//********************************************************************************************************************
-
-constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
-constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 
 //********************************************************************************************************************
 
@@ -263,6 +266,66 @@ inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, 
    else {
       X = 0;
       Y = 0;
+   }
+}
+
+inline DOUBLE get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
+{
+   if ((!Glyph) or (!PrevGlyph)) return 0;
+
+   FT_Vector delta;
+   FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
+   return int26p6_to_dbl(delta.x);
+}
+
+//********************************************************************************************************************
+
+static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t Index = 0)
+{
+   LONG len, code;
+
+   if ((Value[Index] & 0x80) != 0x80) {
+      Unicode = Value[Index];
+      return 1;
+   }
+   else if ((Value[Index] & 0xe0) IS 0xc0) {
+      len  = 2;
+      code = Value[Index] & 0x1f;
+   }
+   else if ((Value[Index] & 0xf0) IS 0xe0) {
+      len  = 3;
+      code = Value[Index] & 0x0f;
+   }
+   else if ((Value[Index] & 0xf8) IS 0xf0) {
+      len  = 4;
+      code = Value[Index] & 0x07;
+   }
+   else if ((Value[Index] & 0xfc) IS 0xf8) {
+      len  = 5;
+      code = Value[Index] & 0x03;
+   }
+   else if ((Value[Index] & 0xfc) IS 0xfc) {
+      len  = 6;
+      code = Value[Index] & 0x01;
+   }
+   else { // Unprintable character
+      Unicode = 0;
+      return 1;
+   }
+
+   for (LONG i=1; i < len; ++i) {
+      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      code <<= 6;
+      code |= Value[i] & 0x3f;
+   }
+
+   if (code IS -1) {
+      Unicode = 0;
+      return 1;
+   }
+   else {
+      Unicode = code;
+      return len;
    }
 }
 
@@ -320,10 +383,10 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
       Self->txKey = 0;
    }
 
-   if (Self->txFont) {
+   if (Self->txBitmapFont) {
       FT_Face ftface;
 
-      if ((!Self->txFont->getPtr(FID_FreetypeFace, &ftface)) and (ftface)) {
+      if ((!Self->txBitmapFont->getPtr(FID_FreetypeFace, &ftface)) and (ftface)) {
          const std::lock_guard lock(glGlyphMutex);
          auto key = face_key(ftface);
          if (glGlyphMap.contains(key)) {
@@ -397,7 +460,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->GeneratePath = (void (*)(extVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
-   Self->txFontSize   = 10 * (4.0 / 3.0);
+   Self->txBitmapFontSize   = 10 * (4.0 / 3.0);
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
@@ -657,10 +720,10 @@ Any modification that happens to work may fail in future releases.
 
 static ERROR TEXT_GET_Font(extVectorText *Self, OBJECTPTR *Value)
 {
-   if (!Self->txFont) reset_font(Self);
+   if (!Self->txBitmapFont) reset_font(Self);
 
-   if (Self->txFont) {
-      *Value = Self->txFont;
+   if (Self->txBitmapFont) {
+      *Value = Self->txBitmapFont;
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;
@@ -675,7 +738,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, objFont *Value)
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
       Self->txFamily = StrClone(Value->Face);
 
-      Self->txFontSize = Value->Point * (4.0 / 3.0);
+      Self->txBitmapFontSize = Value->Point * (4.0 / 3.0);
       Self->txRelativeFontSize = false;
 
       StrCopy(Value->Style, Self->txFontStyle);
@@ -731,7 +794,7 @@ static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
       else Self->FGFill = false;
 
       // Bitmap font reset
-      if ((Self->txFont) and ((Self->txFont->Flags & FTF::SCALABLE) IS FTF::NIL)) reset_path(Self);
+      if ((Self->txBitmapFont) and ((Self->txBitmapFont->Flags & FTF::SCALABLE) IS FTF::NIL)) reset_path(Self);
       else if ((Self->txFlags & VTXF::RASTER) != VTXF::NIL) reset_path(Self);
 
       return ERR_Okay;
@@ -757,7 +820,7 @@ The point size of the font is calculated directly from the FontSize, using the f
 static ERROR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
 {
    char buffer[32];
-   IntToStr(Self->txFontSize, buffer, sizeof(buffer));
+   IntToStr(Self->txBitmapFontSize, buffer, sizeof(buffer));
    *Value = StrClone(buffer);
    return ERR_Okay;
 }
@@ -768,7 +831,7 @@ static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
    auto size = read_unit(Value, pct);
 
    if (size > 0) {
-      Self->txFontSize = size;
+      Self->txBitmapFontSize = size;
       Self->txRelativeFontSize = pct;
       reset_font(Self);
       return ERR_Okay;
@@ -857,7 +920,7 @@ Reading the Point value will return the point-size of the font, calculated as `F
 
 static ERROR TEXT_GET_Point(extVectorText *Self, LONG *Value)
 {
-   *Value = std::round(Self->txFontSize * 0.75);
+   *Value = std::round(Self->txBitmapFontSize * 0.75);
    return ERR_Okay;
 }
 
@@ -1144,7 +1207,7 @@ static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
 
 /*********************************************************************************************************************
 -FIELD-
-TextWidth: The raw pixel width of the widest line in the #String field.
+TextWidth: The pixel width of the widest line in the #String field.
 
 This field will return the pixel width of the widest line in the #String field.  The result is not modified by
 transforms.
@@ -1155,11 +1218,11 @@ static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
 
-   if (!Self->txFont) reset_font(Self);
+   if (!Self->txBitmapFont) reset_font(Self);
 
    LONG width = 0;
    for (auto &line : Self->txLines) {
-      LONG w = fntStringWidth(Self->txFont, line.c_str(), -1);
+      LONG w = fntStringWidth(Self->txBitmapFont, line.c_str(), -1);
       if (w > width) width = w;
    }
    *Value = width;
@@ -1248,9 +1311,9 @@ extern void set_text_final_xy(extVectorText *Vector)
    if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
    else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;
 
-   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+   if (((Vector->txBitmapFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
       // Rastered fonts need an adjustment because the Y coordinate corresponds to the base-line.
-      y -= Vector->txFont->Height + Vector->txFont->Leading;
+      y -= Vector->txBitmapFont->Height + Vector->txBitmapFont->Leading;
    }
 
    Vector->FinalX = x + Vector->txXOffset;
@@ -1274,7 +1337,7 @@ static void reset_font(extVectorText *Vector)
 
    const std::lock_guard lock{glFontsMutex};
 
-   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
+   const DOUBLE point_size = std::round(Vector->txBitmapFontSize * (3.0 / 4.0));
 
    if (Vector->txFamily) {
       family = Vector->txFamily;
@@ -1301,7 +1364,7 @@ static void reset_font(extVectorText *Vector)
    auto key = StrHash(style + ":" + location + ":" + std::to_string(point_size));
    if (glTextFonts.contains(key)) {
       glTextFonts[key].use();
-      Vector->txFont = glTextFonts[key].font;
+      Vector->txBitmapFont = glTextFonts[key].font;
    }
    else {
       // Note that for truetype fonts, the point size isn't that relevant during initialisation as our code will
@@ -1319,7 +1382,7 @@ static void reset_font(extVectorText *Vector)
          glTextFonts.emplace(key, font);
 
          Vector->txKey = key;
-         Vector->txFont = font;
+         Vector->txBitmapFont = font;
       }
    }
 
@@ -1459,9 +1522,9 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
          else {
             for (row=0; row < std::ssize(Self->txLines); row++) {
                agg::path_storage path;
-               DOUBLE offset = Self->txFont->LineSpacing * row;
-               path.move_to(0, -Self->txFont->LineSpacing + offset);
-               path.line_to(Self->txWidth, -Self->txFont->LineSpacing + offset);
+               DOUBLE offset = Self->txBitmapFont->LineSpacing * row;
+               path.move_to(0, -Self->txBitmapFont->LineSpacing + offset);
+               path.line_to(Self->txWidth, -Self->txBitmapFont->LineSpacing + offset);
                path.line_to(Self->txWidth, offset);
                path.line_to(0, offset);
                path.close_polygon();
@@ -1785,7 +1848,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
          if ((!Vector->Morph) and (Vector->ParentView)) {
             auto p_width = Vector->ParentView->vpFixedWidth;
             DOUBLE xo = 0;
-            const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
+            const DOUBLE CURSOR_MARGIN = Vector->txBitmapFontSize * 0.5;
             if (p_width > 8) {
                if (Vector->txX + line.chars[col].x1 <= 0) xo = Vector->txX + line.chars[col].x1;
                else if (Vector->txX + line.chars[col].x1 + CURSOR_MARGIN > p_width) xo = -(Vector->txX + line.chars[col].x1 + CURSOR_MARGIN - p_width);
@@ -1793,7 +1856,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
 
             auto p_height = Vector->ParentView->vpFixedHeight;
             DOUBLE yo = 0;
-            if ((mRow > 0) and (p_height > Vector->txFontSize)) {
+            if ((mRow > 0) and (p_height > Vector->txBitmapFontSize)) {
                if (Vector->txY + line.chars[col].y1 <= 0) yo = Vector->txY + line.chars[col].y1;
                else if (Vector->txY + line.chars[col].y2 > p_height) yo = -(Vector->txY + line.chars[col].y2 - p_height + CURSOR_MARGIN);
             }

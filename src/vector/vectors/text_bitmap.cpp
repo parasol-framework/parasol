@@ -6,23 +6,23 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Vector->txFont) {
+   if (!Vector->txBitmapFont) {
       reset_font(Vector);
-      if (!Vector->txFont) return;
+      if (!Vector->txBitmapFont) return;
    }
 
    auto &lines = Vector->txLines;
    if (!lines.size()) return;
 
-   LONG dx = 0, dy = Vector->txFont->Leading;
+   LONG dx = 0, dy = Vector->txBitmapFont->Leading;
    LONG longest_line_width = 0;
 
    if ((!Vector->txInlineSize) and (!(Vector->txCursor.vector))) { // Fast calculation if no wrapping or active cursor
       for (auto &line : Vector->txLines) {
          line.chars.clear();
-         LONG line_width = fntStringWidth(Vector->txFont, line.c_str(), -1);
+         LONG line_width = fntStringWidth(Vector->txBitmapFont, line.c_str(), -1);
          if (line_width > longest_line_width) longest_line_width = line_width;
-         dy += Vector->txFont->LineSpacing;
+         dy += Vector->txBitmapFont->LineSpacing;
       }
    }
    else {
@@ -37,7 +37,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
             auto unicode = UTF8ReadValue(str, &char_len);
 
             LONG kerning;
-            auto char_width = fntCharWidth(Vector->txFont, unicode, prev_glyph, &kerning);
+            auto char_width = fntCharWidth(Vector->txBitmapFont, unicode, prev_glyph, &kerning);
 
             if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph = 0; }
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
@@ -55,21 +55,21 @@ static void raster_text_to_bitmap(extVectorText *Vector)
                   word_length++;
                }
 
-               LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
+               LONG word_width = fntStringWidth(Vector->txBitmapFont, str, word_length);
 
                if (dx + word_width >= Vector->txInlineSize) {
                   if (dx > longest_line_width) longest_line_width = dx;
                   dx = 0;
-                  dy += Vector->txFont->LineSpacing;
+                  dy += Vector->txBitmapFont->LineSpacing;
                }
             }
 
             str += char_len;
 
             if (Vector->txCursor.vector) {
-               line.chars.emplace_back(dx, dx, dy + 1, dy - ((DOUBLE)Vector->txFont->Height * 1.2));
+               line.chars.emplace_back(dx, dx, dy + 1, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
                if (!*str) { // Last character reached, add a final cursor entry past the character position.
-                  line.chars.emplace_back(dx + kerning + char_width, dy, dx + kerning + char_width, dy - ((DOUBLE)Vector->txFont->Height * 1.2));
+                  line.chars.emplace_back(dx + kerning + char_width, dy, dx + kerning + char_width, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
                }
             }
 
@@ -79,11 +79,11 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 
          if (dx > longest_line_width) longest_line_width = dx;
          dx = 0;
-         dy += Vector->txFont->LineSpacing;
+         dy += Vector->txBitmapFont->LineSpacing;
       }
    }
 
-   if (dy < Vector->txFont->LineSpacing) dy = Vector->txFont->LineSpacing; // Enforce min. height
+   if (dy < Vector->txBitmapFont->LineSpacing) dy = Vector->txBitmapFont->LineSpacing; // Enforce min. height
 
    // Standard rectangle to host the text image.
 
@@ -117,29 +117,29 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    Vector->Fill[0].Image = Vector->txBitmapImage;
    Vector->DisableFillColour = true;
 
-   Vector->txFont->Bitmap = Vector->txAlphaBitmap;
+   Vector->txBitmapFont->Bitmap = Vector->txAlphaBitmap;
 
    gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
 
-   if (Vector->txInlineSize) Vector->txFont->WrapEdge = Vector->txInlineSize;
+   if (Vector->txInlineSize) Vector->txBitmapFont->WrapEdge = Vector->txInlineSize;
 
-   Vector->txFont->Flags |= FTF::NO_BLEND;
-   LONG y = Vector->txFont->Leading;
+   Vector->txBitmapFont->Flags |= FTF::NO_BLEND;
+   LONG y = Vector->txBitmapFont->Leading;
    for (auto &line : Vector->txLines) {
       auto str = line.c_str();
-      if (!str[0]) y += Vector->txFont->LineSpacing;
+      if (!str[0]) y += Vector->txBitmapFont->LineSpacing;
       else {
-         Vector->txFont->setString(str);
-         Vector->txFont->X = 0;
-         Vector->txFont->Y = y;
-         Vector->txFont->Colour.Red   = F2T(Vector->Fill[0].Colour.Red * 255.0);
-         Vector->txFont->Colour.Green = F2T(Vector->Fill[0].Colour.Green * 255.0);
-         Vector->txFont->Colour.Blue  = F2T(Vector->Fill[0].Colour.Blue * 255.0);
-         Vector->txFont->Colour.Alpha = F2T(Vector->Fill[0].Colour.Alpha * 255.0);
-         acDraw(Vector->txFont);
+         Vector->txBitmapFont->setString(str);
+         Vector->txBitmapFont->X = 0;
+         Vector->txBitmapFont->Y = y;
+         Vector->txBitmapFont->Colour.Red   = F2T(Vector->Fill[0].Colour.Red * 255.0);
+         Vector->txBitmapFont->Colour.Green = F2T(Vector->Fill[0].Colour.Green * 255.0);
+         Vector->txBitmapFont->Colour.Blue  = F2T(Vector->Fill[0].Colour.Blue * 255.0);
+         Vector->txBitmapFont->Colour.Alpha = F2T(Vector->Fill[0].Colour.Alpha * 255.0);
+         acDraw(Vector->txBitmapFont);
 
-         if (Vector->txInlineSize) y = Vector->txFont->EndY + Vector->txFont->LineSpacing;
-         else y += Vector->txFont->LineSpacing;
+         if (Vector->txInlineSize) y = Vector->txBitmapFont->EndY + Vector->txBitmapFont->LineSpacing;
+         else y += Vector->txBitmapFont->LineSpacing;
       }
    }
 

@@ -179,21 +179,21 @@ static void generate_text(extVectorText *Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Vector->txFont) {
+   if (!Vector->txBitmapFont) {
       reset_font(Vector);
-      if (!Vector->txFont) return;
+      if (!Vector->txBitmapFont) return;
    }
 
    auto &lines = Vector->txLines;
    if (lines.empty()) return;
 
-   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+   if (((Vector->txBitmapFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
       raster_text_to_bitmap(Vector);
       return;
    }
 
    FT_Face ftface;
-   if ((Vector->txFont->getPtr(FID_FreetypeFace, &ftface)) or (!ftface)) return;
+   if ((Vector->txBitmapFont->getPtr(FID_FreetypeFace, &ftface)) or (!ftface)) return;
 
    auto morph = Vector->Morph;
    DOUBLE start_x, start_y, end_vx, end_vy;
@@ -243,7 +243,7 @@ static void generate_text(extVectorText *Vector)
 
    // The '3/4' conversion makes sense if you refer to read_unit() and understand that a point is 3/4 of a pixel.
 
-   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
+   const DOUBLE point_size = std::round(Vector->txBitmapFontSize * (3.0 / 4.0));
 
    if (!Vector->txFreetypeSize) FT_New_Size(ftface, &Vector->txFreetypeSize);
    if (Vector->txFreetypeSize != ftface->size) FT_Activate_Size(Vector->txFreetypeSize);
@@ -410,11 +410,11 @@ static void generate_text(extVectorText *Vector)
                   word_length++;
                }
 
-               LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
+               LONG word_width = fntStringWidth(Vector->txBitmapFont, str, word_length);
 
                if ((dx + word_width) * std::abs(transform.sx) >= Vector->txInlineSize) {
                   dx = 0;
-                  dy += Vector->txFont->LineSpacing;
+                  dy += Vector->txBitmapFont->LineSpacing;
                }
             }
 
@@ -451,7 +451,7 @@ static void generate_text(extVectorText *Vector)
 
          if (dx > longest_line_width) longest_line_width = dx;
          dx = 0;
-         dy += Vector->txFont->LineSpacing;
+         dy += Vector->txBitmapFont->LineSpacing;
       }
 
       Vector->txWidth = longest_line_width;
@@ -463,8 +463,8 @@ static void generate_text(extVectorText *Vector)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->Bounds = { 0.0, DOUBLE(-Vector->txFont->Ascent), Vector->txWidth, 1.0 };
-   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * Vector->txFont->LineSpacing;
+   Vector->Bounds = { 0.0, DOUBLE(-Vector->txBitmapFont->Ascent), Vector->txWidth, 1.0 };
+   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * Vector->txBitmapFont->LineSpacing;
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in
    // mind it will provide tighter numbers, which is normal).
