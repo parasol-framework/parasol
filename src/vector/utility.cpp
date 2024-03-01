@@ -427,7 +427,7 @@ CSTRING read_numseq_zero(CSTRING Value, ...)
 //********************************************************************************************************************
 // Fonts are stored independently of VectorText objects so that they can be permanently cached.
 
-class font_usage {
+class bmp_font_usage {
 private:
    LONG usage = 0;
 public:
@@ -436,13 +436,82 @@ public:
    inline void deregister() { usage--; }
    inline void use() { usage++; }
 
-   font_usage() = default;
-   font_usage(objFont *pFont) : usage(1), font(pFont) { }
+   bmp_font_usage() = default;
+   bmp_font_usage(objFont *pFont) : usage(1), font(pFont) { }
 
-   ~font_usage() {
+   ~bmp_font_usage() {
       if (font) { FreeResource(font); font = NULL; }
    }
 };
 
-static std::mutex glFontsMutex;
-static std::unordered_map<ULONG, font_usage> glTextFonts;
+//********************************************************************************************************************
+// Fonts are stored independently of VectorText objects so that they can be permanently cached.
+
+typedef struct FT_FaceRec_*  FT_Face;
+
+class freetype_cache {
+   public:
+      class glyph {
+         public:
+            agg::path_storage path;
+            DOUBLE advance_x;
+            DOUBLE advance_y;
+            LONG   glyph_index;
+      };
+
+      using GLYPH_TABLE = std::unordered_map<ULONG, glyph>;
+
+      class ft_point {
+         public:
+            GLYPH_TABLE glyphs;
+            FT_Size ft_size = NULL;
+
+            glyph & get_glyph(freetype_cache &, ULONG);
+
+            // These values are measured in 72 DPI.
+            // 
+            // It is widely acknowledged that the metrics declared by font creators or their tools may not be 
+            // the glyph metrics in reality...
+            // 
+            // Generally, descent() + ascent() == height()
+            // 
+            // The FT_Face max_advance_height is completely unreliable in practice
+
+            inline DOUBLE line_spacing() { 
+               if FT_HAS_VERTICAL(ft_size->face) {
+                  return std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / DISPLAY_DPI)); 
+               }
+               else return std::trunc(int26p6_to_dbl(ft_size->metrics.height));
+            }
+            inline DOUBLE height() { return int26p6_to_dbl(ft_size->metrics.height); }
+            inline DOUBLE ascent() { return int26p6_to_dbl(ft_size->metrics.ascender); } // Ascent from the baseline
+            inline DOUBLE descent() { return std::abs(int26p6_to_dbl(ft_size->metrics.descender)); }
+
+            ~ft_point() {
+               // FT_Done_Face() will remove all FT_New_Size() allocations, interfering with
+               // manual calls to FT_Done_Size()
+               // 
+               //if (ft_size) { FT_Done_Size(ft_size); ft_size = NULL; }
+            }
+      };
+
+   private:
+      LONG usage = 0;
+
+   public:
+      FT_Face face = NULL;
+      std::map<LONG, ft_point> points;
+   
+      inline void deregister() { usage--; }
+
+      inline void use() { usage++; }
+
+      freetype_cache() = default;
+      freetype_cache(FT_Face pFace) : usage(1), face(pFace) { }
+
+      ~freetype_cache();
+};
+
+static std::recursive_mutex glFontMutex;
+static std::unordered_map<ULONG, bmp_font_usage> glBitmapFonts;
+static std::unordered_map<ULONG, freetype_cache> glFreetypeFonts;

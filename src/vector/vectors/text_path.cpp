@@ -2,34 +2,41 @@
 // character in the source string to its freetype path.  The path is converted to its AGG equivalent, and will
 // be cached for future cycles.
 //
-// * This code isn't thread-safe yet because the Freetype face is commonly shared without a lock.
-//
 // * To produce the best quality output, Freetype can produce paths for the same font with hinted adjustments at
 //   different point sizes.  Although it is possible to generate a single set of glyphs for a common point size and
 //   scale that as necessary, this produces demonstrably worse results for the user.
 //
-// * The fastest possible drawing process is to have the glyphs as textures, not paths.  For the time being this can
-//   be achieved by forcibly rendering the text through the bitmap font pipeline.
+// * The fastest possible drawing process is to render the glyphs as cached textures.  This can be done in most
+//   situations if the VectorText transform is limited to scaling and we treat the glyphs as masks, which would allow
+//   gradient and pattern fills to work as expected.
 
 //********************************************************************************************************************
 // Converts a Freetype glyph outline to an AGG path.  The size of the font must be preset in the FT_Outline object,
 // with a call to FT_Set_Char_Size()
+//
+// REQUIREMENT: The caller must have acquired a lock on glFontMutex.
 
-glyph & glyph_map::get_glyph(GLYPH_TABLE &Table, LONG GlyphIndex)
+freetype_cache::glyph & freetype_cache::ft_point::get_glyph(freetype_cache &Font, ULONG Unicode)
 {
    DOUBLE x1, y1, x2, y2, x3, y3;
 
-   if (Table.contains(GlyphIndex)) return Table[GlyphIndex];
+   if (glyphs.contains(Unicode)) return glyphs[Unicode];
 
-   auto &path = Table[GlyphIndex];
+   auto &path = glyphs[Unicode];
+
+   path.glyph_index = FT_Get_Char_Index(Font.face, Unicode);
+   
+   if (Font.face->size->metrics.height != ft_size->metrics.height) {
+      FT_Set_Char_Size(Font.face, 0, ft_size->metrics.height, 72, 72);
+   }
 
    // WARNING: FT_Load_Glyph leaks memory if you call it repeatedly for the same glyph (hence the importance of caching).
+    
+   if (FT_Load_Glyph(Font.face, path.glyph_index, FT_LOAD_LINEAR_DESIGN)) return path;
+   path.advance_x = int26p6_to_dbl(Font.face->glyph->advance.x);
+   path.advance_y = int26p6_to_dbl(Font.face->glyph->advance.y);
 
-   if (FT_Load_Glyph(freetype_face, GlyphIndex, FT_LOAD_LINEAR_DESIGN)) return path;
-   path.advance_x = int26p6_to_dbl(freetype_face->glyph->advance.x);
-   path.advance_y = int26p6_to_dbl(freetype_face->glyph->advance.y);
-
-   const FT_Outline &outline = freetype_face->glyph->outline;
+   const FT_Outline &outline = Font.face->glyph->outline;
 
    LONG first = 0; // index of first point in contour
    for (LONG n=0; n < outline.n_contours; n++) {
@@ -179,21 +186,21 @@ static void generate_text(extVectorText *Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Vector->txBitmapFont) {
+   if (!Vector->txKey) {
       reset_font(Vector);
-      if (!Vector->txBitmapFont) return;
+      if (!Vector->txKey) {
+         log.warning("VectorText has no font key.");
+         return;
+      }
    }
 
    auto &lines = Vector->txLines;
    if (lines.empty()) return;
 
-   if (((Vector->txBitmapFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+   if (Vector->txBitmapFont) {
       raster_text_to_bitmap(Vector);
       return;
    }
-
-   FT_Face ftface;
-   if ((Vector->txBitmapFont->getPtr(FID_FreetypeFace, &ftface)) or (!ftface)) return;
 
    auto morph = Vector->Morph;
    DOUBLE start_x, start_y, end_vx, end_vy;
@@ -241,28 +248,25 @@ static void generate_text(extVectorText *Vector)
 
    Vector->BasePath.approximation_scale(Vector->Transform.scale());
 
-   if (!Vector->txFreetypeSize) FT_New_Size(ftface, &Vector->txFreetypeSize);
-   if (Vector->txFreetypeSize != ftface->size) FT_Activate_Size(Vector->txFreetypeSize);
+   const std::lock_guard lock(glFontMutex);
 
+   auto &font = glFreetypeFonts[Vector->txKey];
+
+   if (!font.points.contains(Vector->txFontSize)) {
+      log.warning("Font size %g not initialised.", Vector->txFontSize);
+      return;
+   }
+
+   auto &pt = font.points[Vector->txFontSize];
+    
    // Freetype seems to be happier when the DPI is maintained at its native 72, and we get font results
    // that match Chrome's output.  It also means that 1:1 metrics don't need to be converted to 96 DPI
    // point sizes.
 
-   if (ftface->size->metrics.height != dbl_to_int26p6(Vector->txFontSize)) {
-      FT_Set_Char_Size(ftface, 0, dbl_to_int26p6(Vector->txFontSize), 72, 72);
+   FT_Activate_Size(pt.ft_size);
+   if (font.face->size->metrics.height != dbl_to_int26p6(Vector->txFontSize)) {
+      FT_Set_Char_Size(font.face, 0, dbl_to_int26p6(Vector->txFontSize), 72, 72);
    }
-
-   LONG prev_glyph = 0;
-   LONG char_index = 0;
-   DOUBLE longest_line_width = 0;
-
-   const std::lock_guard lock(glGlyphMutex);
-
-   auto it = glGlyphMap.try_emplace(face_key(ftface), ftface);
-   auto &ft_cache = it.first->second;
-   auto &glyph_map = ft_cache.glyph_table(Vector->txFontSize);
-
-   ft_cache.register_use();
 
    if (morph) {
       // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.
@@ -275,28 +279,25 @@ static void generate_text(extVectorText *Vector)
          scale_char.translate(0, -Vector->txFontSize * path_scale);
       }
 
+      LONG char_index = 0;
       LONG cmd = -1;
+      LONG prev_glyph_index = 0;
       DOUBLE dist = 0; // Distance to next vertex
       DOUBLE angle = 0;
       for (auto &line : Vector->txLines) {
-         LONG current_col = 0;
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
 
          LONG char_len;
-         auto str = line.c_str();
-         ULONG current_char = UTF8ReadValue(str, &char_len);
-         LONG current_glyph = FT_Get_Char_Index(ftface, current_char);
-         str += char_len;
-         while (current_char) {
-            ULONG next_char = UTF8ReadValue(str, &char_len);
+         for (auto str=line.c_str(); *str; ) {
+            ULONG unicode = UTF8ReadValue(str, &char_len);
             str += char_len;
 
-            if (current_char <= 0x20) wrap_state = WS_NO_WORD;
+            if (unicode <= 0x20) wrap_state = WS_NO_WORD;
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
             else wrap_state = WS_NEW_WORD;
 
-            if (current_char > 0x20) char_index++; // Index for transitions only increases if a glyph is being drawn
+            if (unicode > 0x20) char_index++; // Index for transitions only increases if a glyph is being drawn
 
             agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
 
@@ -304,11 +305,10 @@ static void generate_text(extVectorText *Vector)
                apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
 
-            LONG next_glyph = FT_Get_Char_Index(ftface, next_char);
-            auto &glyph = ft_cache.get_glyph(glyph_map, current_glyph);
+            auto &glyph = pt.get_glyph(font, unicode);
 
             DOUBLE kx, ky;
-            get_kerning_xy(ftface, next_glyph, current_glyph, kx, ky);
+            get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
             start_x += kx;
 
             DOUBLE char_width = glyph.advance_x * std::abs(transform.sx); //transform.scale();
@@ -343,19 +343,19 @@ static void generate_text(extVectorText *Vector)
 
                DOUBLE x = end_vx - start_x, y = end_vy - start_y;
                DOUBLE d = std::sqrt(x * x + y * y);
-               start_x += x / d * (char_width);
-               start_y += y / d * (char_width);
+               start_x += x / d * char_width;
+               start_y += y / d * char_width;
 
                dist -= char_width; // The distance to the next vertex is reduced by the width of the char.
             }
             else { // No more path to use - advance start_x,start_y by the last known angle.
-               start_x += (char_width) * cos(angle);
-               start_y += (char_width) * sin(angle);
+               start_x += char_width * cos(angle);
+               start_y += char_width * sin(angle);
             }
 
-            //log.trace("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", current_char, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
+            //log.trace("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", unicode, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
 
-            if (current_char > 0x20) {
+            if (unicode > 0x20) {
                transform.rotate(angle); // Rotate the character in accordance with its position on the path angle.
                transform.translate(tx, ty); // Move the character to its correct position on the path.
                agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(glyph.path, transform);
@@ -365,18 +365,18 @@ static void generate_text(extVectorText *Vector)
             //dx += char_width;
             //dy += glyph.advance_y + ky;
 
-            current_col++;
-            current_char = next_char;
-            current_glyph = next_glyph;
+            prev_glyph_index = glyph.glyph_index;
          }
       }
       Vector->txWidth = start_x;
    }
    else {
       DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
+      DOUBLE longest_line_width = 0;
+      LONG prev_glyph_index = 0;
+      LONG char_index = 0;
 
       for (auto &line : Vector->txLines) {
-         LONG current_col = 0;
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
          if ((line.empty()) and (Vector->txCursor.vector)) {
@@ -386,13 +386,13 @@ static void generate_text(extVectorText *Vector)
             LONG char_len;
             LONG unicode = UTF8ReadValue(str, &char_len);
 
-            if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph = 0; }
+            if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph_index = 0; }
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
             else if (wrap_state IS WS_NO_WORD)  wrap_state = WS_NEW_WORD;
 
             if (!unicode) break;
 
-            char_index++; // Character index only increases if a glyph is being drawn
+            if (unicode > 0x20) char_index++; // Character index only increases if a glyph is being drawn
 
             agg::trans_affine transform;
 
@@ -410,21 +410,20 @@ static void generate_text(extVectorText *Vector)
                   word_length++;
                }
 
-               LONG word_width = fntStringWidth(Vector->txBitmapFont, str, word_length);
+               auto word_width = string_width(Vector, std::string_view(str, word_length));
 
                if ((dx + word_width) * std::abs(transform.sx) >= Vector->txInlineSize) {
                   dx = 0;
-                  dy += Vector->txBitmapFont->LineSpacing;
+                  dy += pt.line_spacing();
                }
             }
 
             str += char_len;
 
-            auto current_glyph = FT_Get_Char_Index(ftface, unicode);
-            auto &glyph = ft_cache.get_glyph(glyph_map, current_glyph);
+            auto &glyph = pt.get_glyph(font, unicode);
 
             DOUBLE kx, ky;
-            get_kerning_xy(ftface, current_glyph, prev_glyph, kx, ky);
+            get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
             dx += kx;
 
             DOUBLE char_width = glyph.advance_x * std::abs(transform.sx); // transform.scale();
@@ -445,26 +444,23 @@ static void generate_text(extVectorText *Vector)
             dx += char_width;
             dy += glyph.advance_y + ky;
 
-            prev_glyph = current_glyph;
-            current_col++;
+            prev_glyph_index = glyph.glyph_index;
          }
 
          if (dx > longest_line_width) longest_line_width = dx;
          dx = 0;
-         dy += Vector->txBitmapFont->LineSpacing;
+         dy += pt.line_spacing();
       }
 
       Vector->txWidth = longest_line_width;
    }
 
-   if (Vector->txCursor.vector) {
-      Vector->txCursor.reset_vector(Vector);
-   }
+   if (Vector->txCursor.vector) Vector->txCursor.reset_vector(Vector);
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->Bounds = { 0.0, DOUBLE(-Vector->txBitmapFont->Ascent), Vector->txWidth, 1.0 };
-   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * Vector->txBitmapFont->LineSpacing;
+   Vector->Bounds = { 0.0, DOUBLE(-pt.ascent()), Vector->txWidth, 1.0 };
+   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * pt.line_spacing();
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in
    // mind it will provide tighter numbers, which is normal).

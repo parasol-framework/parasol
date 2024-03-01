@@ -107,8 +107,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   glTextFonts.clear();
-   
+   glBitmapFonts.clear();
+   glFreetypeFonts.clear();
+
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
 
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
