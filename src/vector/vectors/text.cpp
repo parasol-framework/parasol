@@ -1407,7 +1407,7 @@ static void reset_font(extVectorText *Vector)
    else fntSelectFont("*", "Regular", point_size, FTF::PREFER_SCALED, &location);
 
    if (!StrCompare("*.fon", location, 0, STR::WILDCARD)) { // Bitmap font
-      auto key = StrHash(style + ":" + std::to_string(Vector->txFontSize) + ":" + location);
+      auto key = StrHash(style + ":" + std::to_string(F2T(Vector->txFontSize)) + ":" + location);
 
       if (glBitmapFonts.contains(key)) {
          glBitmapFonts[key].use();

@@ -5,13 +5,6 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
    //log.trace(Args)
 }
 
-#define DISPLAY_DPI 96.0 // Freetype measurements are based on this DPI.
-#define FT_DOWNSIZE 6
-#define FT_UPSIZE 6
-#define DEG2RAD 0.0174532925 // Multiple any angle by this value to convert to radians
-#define SQRT2 1.41421356237 // sqrt(2)
-#define INV_SQRT2 (1.0 / SQRT2)
-
 #include <array>
 #include <memory>
 #include <unordered_set>
@@ -60,6 +53,11 @@ using namespace pf;
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <float.h>
+
+static const DOUBLE DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
+static const DOUBLE DEG2RAD     = 0.0174532925;  // Multiple any angle by this value to convert to radians
+static const DOUBLE SQRT2       = 1.41421356237; // sqrt(2)
+static const DOUBLE INV_SQRT2   = 1.0 / SQRT2;
 
 extern OBJECTPTR clVectorScene, clVectorViewport, clVectorGroup, clVectorColour;
 extern OBJECTPTR clVectorEllipse, clVectorRectangle, clVectorPath, clVectorWave;

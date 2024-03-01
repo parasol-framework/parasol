@@ -111,6 +111,16 @@
     </field>
 
     <field>
+      <name>DisplaySize</name>
+      <comment>The FontSize measured in pixels, after DPI conversion.</comment>
+      <access read="G" write="I">Get/Init</access>
+      <type>INT</type>
+      <description>
+<p>Use DisplaySize to retrieve the <field>FontSize</field> in actual display pixels, after DPI conversion has been taken into account. For example, if <field>FontSize</field> is set to <code>16</code> in a 96 DPI environment, the resulting value is <code>12</code> after performing the calculation <code>16 * 72 / 96</code>.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Face</name>
       <comment>Defines the font face/family to use in rendering the text string.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -155,8 +165,10 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The FontSize refers to the height of the font from baseline to baseline.  By default, the value corresponds to the current user coordinate system in pixels.  To define the point size, append 'pt' to the number.</p>
-<p>If retrieving the font size, the string must be freed by the client when no longer in use.</p>
+<p>The FontSize is equivalent to the SVG <code>font-size</code> attribute and refers to the height of the font from the dominant baseline to the hanging baseline.  This would mean that a capitalised letter without accents should fill the entire vertical space defined by FontSize.</p>
+<p>The default unit value of FontSize is in pixels at a resolution of 72 DPI.  This means that if the display is configured to a more common 96 DPI for instance, the actual pixel size on the display will be <code>FontSize * 72 / 96</code>. Point sizes are also measured at a constant ratio of <code>1/72</code> irrespective of display settings, and this may need to factor into precise size calculations.</p>
+<p>Standard unit measurements such as <code>px</code>, <code>em</code> and <code>pt</code> are supported by appending them after the numeric value.</p>
+<p>When retrieving the font size, the resulting string must be freed by the client when no longer in use.</p>
       </description>
     </field>
 
@@ -188,6 +200,26 @@
       <type>INT</type>
       <description>
 <p>Set the LineLimit field to restrict the maximum number of lines permitted in a text object.  It is common to set this field to a value of 1 for input boxes that have a limited amount of space available.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LineSpacing</name>
+      <comment>The number of pixels from one line to the next.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>This field can be queried for the amount of space between each line, measured in pixels.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Point</name>
+      <comment>Returns the point-size of the font.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Reading the Point value will return the point-size of the font, calculated as <code>FontSize * 72 / DisplayDPI</code>.</p>
       </description>
     </field>
 
@@ -272,7 +304,7 @@
 
     <field>
       <name>TextWidth</name>
-      <comment>The raw pixel width of the widest line in the <field>String</field> field.</comment>
+      <comment>The pixel width of the widest line in the <field>String</field> field.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
