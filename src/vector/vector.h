@@ -1034,6 +1034,8 @@ void configure_stroke(extVector &Vector, T &Stroke)
    if (Vector.InnerMiterLimit > 0) Stroke.inner_miter_limit(Vector.InnerMiterLimit);
 }
 
+//********************************************************************************************************************
+
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
 extern void set_text_final_xy(extVectorText *);

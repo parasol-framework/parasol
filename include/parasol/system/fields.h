@@ -532,17 +532,14 @@
 #define FID_Tabs 0x7c9e552fLL
 #define FID_Outline 0x7d9ba745LL
 #define FID_WrapEdge 0x80248354LL
-#define FID_WrapCallback 0x878b8aecLL
 #define FID_StrWidth 0x913a3abeLL
 #define FID_FixedWidth 0xa86c5cd5LL
-#define FID_EscapeChar 0xb6a3bf14LL
 #define FID_Underline 0xb8ea5b4bLL
 #define FID_LineSpacing 0xbb0bc1d2LL
 #define FID_TotalChars 0xc8396dbaLL
 #define FID_GlyphSpacing 0xc896c32eLL
 #define FID_AlignWidth 0xcb1970d0LL
 #define FID_TabSize 0xce95c997LL
-#define FID_EscapeCallback 0xd07112a3LL
 #define FID_Ascent 0xf27c7183LL
 #define FID_InputFile 0x044358d5LL
 #define FID_Datatype 0x05eed661LL

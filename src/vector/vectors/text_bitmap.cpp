@@ -123,7 +123,6 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 
    if (Vector->txInlineSize) Vector->txBitmapFont->WrapEdge = Vector->txInlineSize;
 
-   Vector->txBitmapFont->Flags |= FTF::NO_BLEND;
    LONG y = Vector->txBitmapFont->Leading;
    for (auto &line : Vector->txLines) {
       auto str = line.c_str();

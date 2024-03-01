@@ -110,12 +110,12 @@ constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 static ERROR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
 static LONG get_kerning(FT_Face, LONG Glyph, LONG PrevGlyph);
-static font_glyph * get_glyph(extFont *, ULONG, bool);
+static font_glyph * get_glyph(extFont *, ULONG);
 static void unload_glyph_cache(extFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
-static ERROR  fntRefreshFonts(void);
+static ERROR fntRefreshFonts(void);
 
 //********************************************************************************************************************
 // Return the first unicode value from a given string address.
@@ -248,10 +248,7 @@ inline LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
-      if ((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) {
-         fntStringSize(Self, Self->String, -1, 0, NULL, &Self->prvLineCount);
-      }
-      else if (Self->WrapEdge > 0) {
+      if (Self->WrapEdge > 0) {
          fntStringSize(Self, Self->String, -1, Self->WrapEdge - Self->X, NULL, &Self->prvLineCount);
       }
       else Self->prvLineCount = Self->prvLineCountCR;
@@ -348,7 +345,7 @@ LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
-      if (auto cache = get_glyph(Font, Char, false)) {
+      if (auto cache = get_glyph(Font, Char)) {
          if (((Font->Flags & FTF::KERNING) != FTF::NIL) and (KChar) and (Kerning)) {
             LONG kglyph = FT_Get_Char_Index(Font->Cache->Face, KChar);
             *Kerning = get_kerning(Font->Cache->Face, cache->GlyphIndex, kglyph);
@@ -432,7 +429,7 @@ ERROR fntGetList(FontList **Result)
 
             list->Points = NULL;
             if (keys.contains("Points")) {
-               CSTRING fontpoints = keys["Points"].c_str();
+               auto fontpoints = keys["Points"].c_str();
                if (*fontpoints) {
                   list->Points = (LONG *)buffer;
                   for (WORD j=0; *fontpoints; j++) {
@@ -463,13 +460,13 @@ ERROR fntGetList(FontList **Result)
 -FUNCTION-
 StringSize: Calculates the exact dimensions of a font string, giving respect to word wrapping.
 
-This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account 
-the font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The 
+This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account
+the font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The
 routine takes into account any line feeds that may already exist in the String.
 
-A character limit can be specified in the Chars argument.  If this argument is set to `FSS_ALL`, all characters in 
-String will be used in the calculation.  If set to `FSS_LINE`, the routine will terminate when the first line feed or 
-word-wrap is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary 
+A character limit can be specified in the Chars argument.  If this argument is set to `FSS_ALL`, all characters in
+String will be used in the calculation.  If set to `FSS_LINE`, the routine will terminate when the first line feed or
+word-wrap is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary
 was encountered.
 
 -INPUT-
@@ -501,7 +498,7 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
       if (Chars < 0) Chars = 0x7fffffff;
    }
 
-   if ((Wrap <= 0) or ((Font->Flags & FTF::CHAR_CLIP) != FTF::NIL)) Wrap = 0x7fffffff;
+   if (Wrap <= 0) Wrap = 0x7fffffff;
 
    //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
 
@@ -554,7 +551,7 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
             if (unicode IS ' ') {
                charwidth += Font->prvChar[' '].Advance * Font->GlyphSpacing;
             }
-            else if ((cache = get_glyph(Font, unicode, false))) {
+            else if ((cache = get_glyph(Font, unicode))) {
                charwidth = cache->AdvanceX * Font->GlyphSpacing;
                if ((Font->Flags & FTF::KERNING) != FTF::NIL) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
                prevglyph = cache->GlyphIndex;
@@ -563,7 +560,7 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
          else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
 
-         if ((!x) and ((Font->Flags & FTF::CHAR_CLIP) IS FTF::NIL) and (x+wordwidth+charwidth >= Wrap)) {
+         if ((!x) and (x+wordwidth+charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
 
             lastword = wordwidth;
@@ -607,26 +604,6 @@ void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *W
    }
 
    if (Width) *Width = longest;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FreetypeHandle: Returns a handle to the FreeType library.
-
-This function returns a direct handle to the internal FreeType library.  It is intended that this handle should only be
-used by existing projects that are based on FreeType and need access to its functionality.  References to FreeType
-functions can be obtained by loading the Font module and then calling the ResolveSymbol method to retrieve function
-names, e.g. "FT_Open_Face".
-
--RESULT-
-ptr: A handle to the FreeType library will be returned.
-
-*********************************************************************************************************************/
-
-APTR fntFreetypeHandle(void)
-{
-   return glFTLibrary;
 }
 
 /*********************************************************************************************************************
@@ -693,7 +670,7 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
             else if (unicode IS ' ') {
                advance = Font->prvChar[' '].Advance;
             }
-            else if ((cache = get_glyph(Font, unicode, false))) {
+            else if ((cache = get_glyph(Font, unicode))) {
                advance = cache->AdvanceX;
                if ((Font->Flags & FTF::KERNING) != FTF::NIL) advance += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
                prev_glyph = cache->GlyphIndex;
@@ -806,7 +783,7 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
             else if (((Font->Flags & FTF::KERNING) IS FTF::NIL) and (unicode < 256) and (Font->prvChar[unicode].Advance)) {
                width = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
             }
-            else if ((cache = get_glyph(Font, unicode, false))) {
+            else if ((cache = get_glyph(Font, unicode))) {
                width = cache->AdvanceX * Font->GlyphSpacing;
                if ((Font->Flags & FTF::KERNING) != FTF::NIL) x_pos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
                prev_glyph = cache->GlyphIndex;

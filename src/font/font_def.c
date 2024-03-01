@@ -7,7 +7,6 @@ void fntStringSize(extFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG *
 ERROR fntConvertCoords(extFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX);
 LONG fntCharWidth(extFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
 DOUBLE fntSetDefaultSize(DOUBLE Size);
-APTR fntFreetypeHandle();
 ERROR fntInstallFont(CSTRING Files);
 ERROR fntRemoveFont(CSTRING Name);
 ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
@@ -19,7 +18,6 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
 
 FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG|FD_UNSIGNED }, { "KChar", FD_LONG|FD_UNSIGNED }, { "Kerning", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsConvertCoords[] = { { "Error", FD_LONG|FD_ERROR }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Column", FD_LONG|FD_RESULT }, { "Row", FD_LONG|FD_RESULT }, { "ByteColumn", FD_LONG|FD_RESULT }, { "BytePos", FD_LONG|FD_RESULT }, { "CharX", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsFreetypeHandle[] = { { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetList[] = { { "Error", FD_LONG|FD_ERROR }, { "FontList:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsInstallFont[] = { { "Error", FD_LONG|FD_ERROR }, { "Files", FD_STR }, { 0, 0 } };
 FDEF argsRemoveFont[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
@@ -35,7 +33,6 @@ const struct Function glFunctions[] = {
    { (APTR)fntConvertCoords, "ConvertCoords", argsConvertCoords },
    { (APTR)fntCharWidth, "CharWidth", argsCharWidth },
    { (APTR)fntSetDefaultSize, "SetDefaultSize", argsSetDefaultSize },
-   { (APTR)fntFreetypeHandle, "FreetypeHandle", argsFreetypeHandle },
    { (APTR)fntInstallFont, "InstallFont", argsInstallFont },
    { (APTR)fntRemoveFont, "RemoveFont", argsRemoveFont },
    { (APTR)fntSelectFont, "SelectFont", argsSelectFont },
@@ -43,4 +40,4 @@ const struct Function glFunctions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.FontList:pNext:FontList,sName,lPoints[0],sStyles,cScalable,cReserved1,wReserved2\nc.FSS:ALL=0xffffffff,LINE=0xfffffffe\nc.FTF:ALLOW_SCALE=0x200,ANTIALIAS=0x10,BASE_LINE=0x100,BOLD=0x20000000,CHAR_CLIP=0x80,HEAVY_LINE=0x20,ITALIC=0x40000000,KERNING=0x80000000,NO_BLEND=0x400,PREFER_FIXED=0x2,PREFER_SCALED=0x1,QUICK_ALIAS=0x40,REQUIRE_FIXED=0x8,REQUIRE_SCALED=0x4,SCALABLE=0x10000000,SMOOTH=0x10\n"
+#define MOD_IDL "s.FontList:pNext:FontList,sName,lPoints[0],sStyles,cScalable,cReserved1,wReserved2\nc.FSS:ALL=0xffffffff,LINE=0xfffffffe\nc.FTF:ALLOW_SCALE=0x40,BASE_LINE=0x20,BOLD=0x20000000,HEAVY_LINE=0x10,ITALIC=0x40000000,KERNING=0x80000000,PREFER_FIXED=0x2,PREFER_SCALED=0x1,REQUIRE_FIXED=0x8,REQUIRE_SCALED=0x4,SCALABLE=0x10000000\n"

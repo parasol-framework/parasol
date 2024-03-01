@@ -411,7 +411,7 @@ void layout::size_widget(widget_mgr &Widget)
       Widget.final_height = Widget.def_size.px(*this);
    }
    else Widget.final_height = Widget.height.px(*this);
-   
+
    if (Widget.final_height < 0.01) Widget.final_height = 0.01;
    if (Widget.final_width < 0.01) Widget.final_width = 0.01;
 
