@@ -88,13 +88,14 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
    local function refreshGuidelines()
       local seq = ''
-      local gap = exampleMargin()
-      local spacing = self.font.lineSpacing
+      local gap       = exampleMargin()
+      local spacing   = self.exampleText.lineSpacing
       local pageWidth = self.examplePage.width
+      local baseline  = self.exampleText.y
 
       local x1 = gap
       local x2 = pageWidth - gap
-      for y = gap + self.font.height, self.examplePage.height, spacing do
+      for y = baseline, self.examplePage.height, spacing do
          seq = seq .. string.format('M%f,%f L%f,%f ', x1, y, x2, y)
       end
       self.guidelines.sequence = seq
@@ -102,7 +103,6 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       if self.exampleText then
          self.exampleText.inlineSize = x2 - x1
          self.exampleText.x = gap
-         self.exampleText.y = gap + self.font.height
       end
    end
 
@@ -116,16 +116,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       if newStyle == self.currentStyle then return end
       self.currentStyle = newStyle
 
-      self.font = obj.new('font', {
-         face   = self.face,
-         point  = self.size,
-         style  = self.style,
-         string = nz(lOptions.example, lLongText)
-      })
-
       local gap = exampleMargin()
-
-      refreshGuidelines()
 
       if self.exampleText then
          self.exampleText.free()
@@ -133,15 +124,18 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       self.exampleText = self.examplePage.new('VectorText', {
          x          = gap,
-         y          = gap + self.font.height,
          fill       = 'rgb(0,0,0)',
          inlineSize = pageWidth - (gap * 2),
          face       = self.face,
          fontSize   = self.size .. 'pt',
-         fontStyle  = self.font.style,
+         fontStyle  = self.style,
          string     = lLongText,
          textFlags  = VTXF_RASTER
       })
+
+      self.exampleText.y = math.floor(gap + self.exampleText.displaySize)
+
+      refreshGuidelines()
 
       collectgarbage()
       self.viewport.acDraw()

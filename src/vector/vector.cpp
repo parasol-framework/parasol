@@ -8,6 +8,11 @@ that is distributed with this package.  Please refer to it for further informati
 //#include "vector.h"
 #include "idl.h"
 
+#include <ft2build.h>
+#include <freetype/ftsizes.h>
+#include FT_FREETYPE_H
+#include FT_STROKER_H
+
 JUMPTABLE_DISPLAY
 JUMPTABLE_CORE
 JUMPTABLE_FONT
@@ -24,6 +29,7 @@ OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplaceme
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
 static OBJECTPTR glModule = NULL;
+static FT_Library glFTLibrary = NULL;
 
 std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
@@ -45,9 +51,16 @@ static ERROR init_wave(void);
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   pf::Log log;
+
    CoreBase = argCoreBase;
-   
+
    argModule->getPtr(FID_Root, &glModule);
+
+   if (FT_Init_FreeType(&glFTLibrary)) {
+      log.warning("Failed to initialise the FreeType font library.");
+      return ERR_Failed;
+   }
 
    if (objModule::load("display", &modDisplay, &DisplayBase)) return ERR_InitModule;
    if (objModule::load("font", &modFont, &FontBase)) return ERR_InitModule;
@@ -94,7 +107,10 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   glTextFonts.clear();
+   glBitmapFonts.clear();
+   glFreetypeFonts.clear();
+
+   if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
 
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modFont)    { FreeResource(modFont); modFont = NULL; }

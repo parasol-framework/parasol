@@ -5,7 +5,7 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
    //log.trace(Args)
 }
 
-#define FIXED_DPI 96 // Freetype measurements are based on this DPI.
+#define DISPLAY_DPI 96.0 // Freetype measurements are based on this DPI.
 #define FT_DOWNSIZE 6
 #define FT_UPSIZE 6
 #define DEG2RAD 0.0174532925 // Multiple any angle by this value to convert to radians
@@ -885,6 +885,15 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
    return b + 0.428 * a * a / b; // Error level of ~1.04%
    //return std::sqrt((a * a) + (b * b)); // Full accuracy
 }
+
+//********************************************************************************************************************
+
+enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
+
+//********************************************************************************************************************
+
+static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
+static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 
 //********************************************************************************************************************
 

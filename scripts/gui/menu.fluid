@@ -158,13 +158,14 @@ gui.menu = function(Options)
                string   = item['item']
             })
 
+            local err, bx, by, bw, bh = vText.mtGetBoundary(0)
+
             mi.text = vText
-            mi.textY = y + vText.font.height + ((vText.font.maxHeight - vText.font.height)/2)
+            mi.textY = y + ((vText.lineSpacing + vText.displaySize) * 0.5)
 
-            itemWidth = mFont.StringWidth(vText.font, item['item'], -1)
-            if (itemWidth > widestItem) then widestItem = itemWidth end
+            if (bw > widestItem) then widestItem = bw end
 
-            local icon_size = vText.font.maxHeight
+            local icon_size = bh
 
             if showIcons and item['icon'] then
                catch(function()
@@ -191,15 +192,18 @@ gui.menu = function(Options)
                   align    = 'right',
                   string   = key
                })
-               vKey.y = y + vKey.font.height + ((vKey.font.maxHeight - vKey.font.height)/2)
 
-               keyWidth = mFont.StringWidth(vKey.font, key, -1)
+               local err, bx, by, bw, bh = vKey.mtGetBoundary(0)
+
+               vKey.y = y + ((vKey.lineSpacing + vKey.displaySize) * 0.5)
+
+               keyWidth = bw
                if (keyWidth > widestKey) then widestKey = keyWidth end
                mi.keyText = vKey
             end
 
             vText.y = mi.textY
-            mi.height = vText.font.maxHeight * 1.4
+            mi.height = vText.lineSpacing * 1.4
             y = y + mi.height
 
             table.insert(self.items, mi)
