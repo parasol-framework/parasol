@@ -268,8 +268,9 @@ gui.toolbar = function(HostVP, Options)
                   string   = item.displayName
                })
 
-               item.width = mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (self._cellMargin * 2)
-               item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.font.height * 0.5)
+               local err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
+               item.width = bw + (self._cellMargin * 2)
+               item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.displaySize * 0.5)
 
                if self._disabled or item.disabled then
                   item.vectorText.opacity = 0.5

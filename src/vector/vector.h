@@ -5,7 +5,7 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
    //log.trace(Args)
 }
 
-#define FIXED_DPI 96 // Freetype measurements are based on this DPI.
+#define DISPLAY_DPI 96.0 // Freetype measurements are based on this DPI.
 #define FT_DOWNSIZE 6
 #define FT_UPSIZE 6
 #define DEG2RAD 0.0174532925 // Multiple any angle by this value to convert to radians

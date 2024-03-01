@@ -204,7 +204,7 @@ class extVectorText : public extVector {
    DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
    DOUBLE txTextLength;
-   DOUBLE txFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
+   DOUBLE txFontSize;  // Font size measured in pixels @ 72 DPI.  Should always be a whole number.
    DOUBLE txKerning;
    DOUBLE txLetterSpacing; // SVG: Acts as a multiplier or fixed unit addition to the spacing of each glyph
    DOUBLE txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
@@ -223,7 +223,6 @@ class extVectorText : public extVector {
    OBJECTID txFocusID;
    OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
    OBJECTID txShapeSubtractID; // Subtract this shape from the path defined by shape-inside
-   LONG  txPoint;              // Conversion of txFontSize to point size (NB: txFontSize has priority)
    LONG  txTotalLines;
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
@@ -232,7 +231,7 @@ class extVectorText : public extVector {
    ALIGN txAlignFlags;
    VTXF  txFlags;
    char  txFontStyle[20];
-   UBYTE txRelativeFontSize;
+   bool txRelativeFontSize;
    bool txXScaled:1;
    bool txYScaled:1;
 // bool txSpacingAndGlyphs:1;
@@ -460,7 +459,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->GeneratePath = (void (*)(extVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
-   Self->txFontSize   = 10 * (4.0 / 3.0);
+   Self->txFontSize   = 16; // Pixel units @ 72 DPI
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
@@ -560,6 +559,24 @@ static ERROR TEXT_SET_CursorRow(extVectorText *Self, LONG Value)
       return ERR_Okay;
    }
    else return ERR_InvalidValue;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+DisplaySize: The FontSize measured in pixels, after DPI conversion.
+
+Use DisplaySize to retrieve the #FontSize in actual display pixels, after DPI conversion has been taken into account.
+For example, if #FontSize is set to `16` in a 96 DPI environment, the resulting value is `12` after performing the
+calculation `16 * 72 / 96`.
+
+*********************************************************************************************************************/
+
+static ERROR TEXT_GET_DisplaySize(extVectorText *Self, LONG *Value)
+{
+   if (!Self->txBitmapFont) reset_font(Self);
+
+   *Value = F2T(Self->txFontSize * 72.0 / DISPLAY_DPI);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -738,7 +755,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, objFont *Value)
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
       Self->txFamily = StrClone(Value->Face);
 
-      Self->txFontSize = Value->Point * (4.0 / 3.0);
+      Self->txFontSize = std::trunc(Value->Point * (96.0 / 72.0));
       Self->txRelativeFontSize = false;
 
       StrCopy(Value->Style, Self->txFontStyle);
@@ -807,13 +824,18 @@ static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 -FIELD-
 FontSize: Defines the vertical size of the font.
 
-The FontSize is equivalent to the SVG `font-size` attribute and refers to the height of the font from baseline to 
-baseline.  By default, the value corresponds to the current user coordinate system in pixels.  To define the point 
-size, append 'pt' to the number.
+The FontSize is equivalent to the SVG `font-size` attribute and refers to the height of the font from the dominant
+baseline to the hanging baseline.  This would mean that a capitalised letter without accents should fill the entire 
+vertical space defined by FontSize.  
 
-If retrieving the font size, the string must be freed by the client when no longer in use.
+The default unit value of FontSize is in pixels at a resolution of 72 DPI.  This means that if the display
+is configured to a more common 96 DPI for instance, the actual pixel size on the display will be `FontSize * 72 / 96`.
+Point sizes are also measured at a constant ratio of `1/72` irrespective of display settings, and this may need to 
+factor into precise size calculations.
 
-The point size of the font is calculated directly from the FontSize, using the formula `round(FontSize * 0.75)`.
+Standard unit measurements such as `px`, `em` and `pt` are supported by appending them after the numeric value.
+
+When retrieving the font size, the resulting string must be freed by the client when no longer in use.
 
 *********************************************************************************************************************/
 
@@ -912,15 +934,32 @@ static ERROR TEXT_SET_LineLimit(extVectorText *Self, LONG Value)
 
 /*********************************************************************************************************************
 -FIELD-
+LineSpacing: The number of pixels from one line to the next.
+
+This field can be queried for the amount of space between each line, measured in pixels.
+
+*********************************************************************************************************************/
+
+static ERROR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
+{
+   if (!Self->txBitmapFont) reset_font(Self);
+
+   if (Self->txBitmapFont) *Value = Self->txBitmapFont->LineSpacing;
+   else *Value = 1;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
 Point: Returns the point-size of the font.
 
-Reading the Point value will return the point-size of the font, calculated as `FontSize * 0.75`.
+Reading the Point value will return the point-size of the font, calculated as `FontSize * 72 / DisplayDPI`.
 
 *********************************************************************************************************************/
 
 static ERROR TEXT_GET_Point(extVectorText *Self, LONG *Value)
 {
-   *Value = std::round(Self->txFontSize * 0.75);
+   *Value = std::round(Self->txFontSize * (72.0 / DISPLAY_DPI));
    return ERR_Okay;
 }
 
@@ -1337,7 +1376,7 @@ static void reset_font(extVectorText *Vector)
 
    const std::lock_guard lock{glFontsMutex};
 
-   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
+   const DOUBLE point_size = std::round(Vector->txFontSize * (72.0 / DISPLAY_DPI));
 
    if (Vector->txFamily) {
       family = Vector->txFamily;
@@ -1383,6 +1422,10 @@ static void reset_font(extVectorText *Vector)
 
          Vector->txKey = key;
          Vector->txBitmapFont = font;
+
+         if ((font->Flags & FTF::SCALABLE) IS FTF::NIL) {
+            Vector->txFontSize = font->MaxHeight;
+         }
       }
    }
 
@@ -1960,11 +2003,13 @@ static const FieldArray clTextFields[] = {
    { "Fill",          FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_Fill, TEXT_SET_Fill },
    { "FontSize",      FDF_VIRTUAL|FDF_ALLOC|FDF_STRING|FDF_RW, TEXT_GET_FontSize, TEXT_SET_FontSize },
    { "FontStyle",     FDF_VIRTUAL|FDF_STRING|FDF_RI, TEXT_GET_FontStyle, TEXT_SET_FontStyle },
+   { "DisplaySize",   FDF_VIRTUAL|FDF_LONG|FDF_RI, TEXT_GET_DisplaySize },
    { "DX",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_DX, TEXT_SET_DX },
    { "DY",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_DY, TEXT_SET_DY },
    { "InlineSize",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_InlineSize, TEXT_SET_InlineSize },
    { "LetterSpacing", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_LetterSpacing, TEXT_SET_LetterSpacing },
    { "Point",         FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_Point },
+   { "LineSpacing",   FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_LineSpacing },
    { "Rotate",        FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_Rotate, TEXT_SET_Rotate },
    { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeInside, TEXT_SET_ShapeInside, ID_VECTOR },
    { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeSubtract, TEXT_SET_ShapeSubtract, ID_VECTOR },

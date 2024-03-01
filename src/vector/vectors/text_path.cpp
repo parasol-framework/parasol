@@ -5,7 +5,7 @@
 // * This code isn't thread-safe yet because the Freetype face is commonly shared without a lock.
 //
 // * To produce the best quality output, Freetype can produce paths for the same font with hinted adjustments at
-//   different point sizes.  Although it is possible to generate a single set of glyphs for a common point size and 
+//   different point sizes.  Although it is possible to generate a single set of glyphs for a common point size and
 //   scale that as necessary, this produces demonstrably worse results for the user.
 //
 // * The fastest possible drawing process is to have the glyphs as textures, not paths.  For the time being this can
@@ -18,7 +18,7 @@
 glyph & glyph_map::get_glyph(GLYPH_TABLE &Table, LONG GlyphIndex)
 {
    DOUBLE x1, y1, x2, y2, x3, y3;
- 
+
    if (Table.contains(GlyphIndex)) return Table[GlyphIndex];
 
    auto &path = Table[GlyphIndex];
@@ -172,7 +172,7 @@ _close:
 }
 
 //********************************************************************************************************************
-// For truetype fonts, this path generator creates text as a single path by concatenating the paths of all individual 
+// For truetype fonts, this path generator creates text as a single path by concatenating the paths of all individual
 // characters in the string.
 
 static void generate_text(extVectorText *Vector)
@@ -241,15 +241,15 @@ static void generate_text(extVectorText *Vector)
 
    Vector->BasePath.approximation_scale(Vector->Transform.scale());
 
-   // The '3/4' conversion makes sense if you refer to read_unit() and understand that a point is 3/4 of a pixel.
-
-   const DOUBLE point_size = std::round(Vector->txFontSize * (3.0 / 4.0));
-
    if (!Vector->txFreetypeSize) FT_New_Size(ftface, &Vector->txFreetypeSize);
    if (Vector->txFreetypeSize != ftface->size) FT_Activate_Size(Vector->txFreetypeSize);
 
-   if (ftface->size->metrics.height != dbl_to_int26p6(point_size)) {
-      FT_Set_Char_Size(ftface, 0, dbl_to_int26p6(point_size), FIXED_DPI, FIXED_DPI);
+   // Freetype seems to be happier when the DPI is maintained at its native 72, and we get font results
+   // that match Chrome's output.  It also means that 1:1 metrics don't need to be converted to 96 DPI
+   // point sizes.
+
+   if (ftface->size->metrics.height != dbl_to_int26p6(Vector->txFontSize)) {
+      FT_Set_Char_Size(ftface, 0, dbl_to_int26p6(Vector->txFontSize), 72, 72);
    }
 
    LONG prev_glyph = 0;
@@ -260,7 +260,7 @@ static void generate_text(extVectorText *Vector)
 
    auto it = glGlyphMap.try_emplace(face_key(ftface), ftface);
    auto &ft_cache = it.first->second;
-   auto &glyph_map = ft_cache.glyph_table(point_size);
+   auto &glyph_map = ft_cache.glyph_table(Vector->txFontSize);
 
    ft_cache.register_use();
 
@@ -270,9 +270,9 @@ static void generate_text(extVectorText *Vector)
       agg::trans_affine scale_char;
 
       if (path_scale != 1.0) {
-         scale_char.translate(0, point_size);
+         scale_char.translate(0, Vector->txFontSize);
          scale_char.scale(path_scale);
-         scale_char.translate(0, -point_size * path_scale);
+         scale_char.translate(0, -Vector->txFontSize * path_scale);
       }
 
       LONG cmd = -1;
@@ -374,13 +374,13 @@ static void generate_text(extVectorText *Vector)
    }
    else {
       DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
-      
+
       for (auto &line : Vector->txLines) {
          LONG current_col = 0;
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
          if ((line.empty()) and (Vector->txCursor.vector)) {
-            calc_caret_position(line, point_size);
+            calc_caret_position(line, Vector->txFontSize);
          }
          else for (auto str=line.c_str(); *str; ) {
             LONG char_len;
@@ -434,11 +434,11 @@ static void generate_text(extVectorText *Vector)
             Vector->BasePath.concat_path(trans_char);
 
             if (Vector->txCursor.vector) {
-               calc_caret_position(line, transform, point_size);
+               calc_caret_position(line, transform, Vector->txFontSize);
 
                if (!*str) { // Last character reached, add a final cursor entry past the character position.
                   transform.translate(char_width, 0);
-                  calc_caret_position(line, transform, point_size);
+                  calc_caret_position(line, transform, Vector->txFontSize);
                }
             }
 

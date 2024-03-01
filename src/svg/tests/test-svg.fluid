@@ -115,11 +115,78 @@ function testW3MasksPath11()      hashTestSVG('masks/masking-path-11-b.svg', 0xa
 function testW3MasksPath13()      hashTestSVG('masks/masking-path-13-f.svg', 0x1760390b) end
 function testW3MasksPath14()      hashTestSVG('masks/masking-path-14-f.svg', 0x2755d2bf) end
 
+function testW3Fonts1() hashTestSVG('fonts/fonts-desc-01-t.svg', -1) end
+function testW3Fonts2() hashTestSVG('fonts/fonts-desc-02-t.svg', -1) end
+function testW3Fonts3() hashTestSVG('fonts/fonts-desc-03-t.svg', -1) end
+function testW3Fonts4() hashTestSVG('fonts/fonts-desc-04-t.svg', -1) end
+function testW3Fonts5() hashTestSVG('fonts/fonts-desc-05-t.svg', -1) end
+function testW3Fonts6() hashTestSVG('fonts/fonts-elem-01-t.svg', -1) end
+function testW3Fonts7() hashTestSVG('fonts/fonts-elem-02-t.svg', -1) end
+function testW3Fonts8() hashTestSVG('fonts/fonts-elem-03-b.svg', -1) end
+function testW3Fonts9() hashTestSVG('fonts/fonts-elem-04-b.svg', -1) end
+function testW3Fonts10() hashTestSVG('fonts/fonts-elem-05-t.svg', -1) end
+function testW3Fonts11() hashTestSVG('fonts/fonts-elem-06-t.svg', -1) end
+function testW3Fonts12() hashTestSVG('fonts/fonts-elem-07-b.svg', -1) end
+function testW3Fonts13() hashTestSVG('fonts/fonts-glyph-02-t.svg', -1) end
+function testW3Fonts14() hashTestSVG('fonts/fonts-glyph-03-t.svg', -1) end
+function testW3Fonts15() hashTestSVG('fonts/fonts-glyph-04-t.svg', -1) end
+function testW3Fonts16() hashTestSVG('fonts/fonts-kern-01-t.svg', -1) end
+function testW3Fonts17() hashTestSVG('fonts/fonts-overview-201-t.svg', -1) end
+
+function testW3TextAlign1() hashTestSVG('text/text-align-01-b.svg', -1) end
+function testW3TextAlign2() hashTestSVG('text/text-align-02-b.svg', -1) end
+function testW3TextAlign3() hashTestSVG('text/text-align-03-b.svg', -1) end
+function testW3TextAlign4() hashTestSVG('text/text-align-04-b.svg', -1) end
+function testW3TextAlign5() hashTestSVG('text/text-align-05-b.svg', -1) end
+function testW3TextAlign6() hashTestSVG('text/text-align-06-b.svg', -1) end
+function testW3TextAlign7() hashTestSVG('text/text-align-07-t.svg', -1) end
+function testW3TextAlign8() hashTestSVG('text/text-align-08-b.svg', -1) end
+
+function testW3TextIntro1() hashTestSVG('text/text-intro-01-t.svg', -1) end
+function testW3TextIntro2() hashTestSVG('text/text-intro-02-b.svg', -1) end
+function testW3TextIntro3() hashTestSVG('text/text-intro-03-b.svg', -1) end
+function testW3TextIntro4() hashTestSVG('text/text-intro-04-t.svg', -1) end
+function testW3TextIntro5() hashTestSVG('text/text-intro-05-t.svg', -1) end
+function testW3TextIntro6() hashTestSVG('text/text-intro-06-t.svg', -1) end
+function testW3TextIntro7() hashTestSVG('text/text-intro-07-t.svg', -1) end
+function testW3TextIntro8() hashTestSVG('text/text-intro-09-b.svg', -1) end
+function testW3TextIntro9() hashTestSVG('text/text-intro-10-f.svg', -1) end
+function testW3TextIntro10() hashTestSVG('text/text-intro-11-t.svg', -1) end
+function testW3TextIntro11() hashTestSVG('text/text-intro-12-t.svg', -1) end
+
+function testW3TextB1()  hashTestSVG('text/text-path-01-b.svg', -1) end
+function testW3TextB2()  hashTestSVG('text/text-path-02-b.svg', -1) end
+function testW3TextB3()  hashTestSVG('text/text-spacing-01-b.svg', -1) end
+function testW3TextB4()  hashTestSVG('text/text-text-01-b.svg', -1) end
+function testW3TextB5()  hashTestSVG('text/text-text-03-b.svg', -1) end
+function testW3TextB6()  hashTestSVG('text/text-text-04-t.svg', -1) end
+function testW3TextB7()  hashTestSVG('text/text-text-05-t.svg', -1) end
+function testW3TextB8()  hashTestSVG('text/text-text-06-t.svg', -1) end
+function testW3TextB9()  hashTestSVG('text/text-text-07-t.svg', -1) end
+function testW3TextB10() hashTestSVG('text/text-text-08-b.svg', -1) end
+function testW3TextB11() hashTestSVG('text/text-text-09-t.svg', -1) end
+function testW3TextB12() hashTestSVG('text/text-text-10-t.svg', -1) end
+function testW3TextB13() hashTestSVG('text/text-text-11-t.svg', -1) end
+function testW3TextB14() hashTestSVG('text/text-text-12-t.svg', -1) end
+function testW3TextB15() hashTestSVG('text/text-tref-01-b.svg', -1) end
+function testW3TextB16() hashTestSVG('text/text-tref-02-b.svg', -1) end
+function testW3TextB17() hashTestSVG('text/text-tref-03-b.svg', -1) end
+function testW3TextB18() hashTestSVG('text/text-tselect-01-b.svg', -1) end
+function testW3TextB19() hashTestSVG('text/text-tselect-02-f.svg', -1) end
+function testW3TextB20() hashTestSVG('text/text-tselect-03-f.svg', -1) end
+function testW3TextB21() hashTestSVG('text/text-tspan-01-b.svg', -1) end
+function testW3TextB22() hashTestSVG('text/text-tspan-02-b.svg', -1) end
+function testW3TextB23() hashTestSVG('text/text-ws-01-t.svg', -1) end
+function testW3TextB24() hashTestSVG('text/text-ws-02-t.svg', -1) end
+function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
+
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-        -- Masks',
+        -- Text
+        'testW3TextAlign7',
+        -- Masks
         'testW3MasksPath1',
         'testW3MasksPath2',
         'testW3MasksPath3',

@@ -165,9 +165,10 @@ local function arrangeItems(self)
             string   = item.displayName
          })
 
-         item.gfxWidth = iconWidth + mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (VMARGIN * 2)
+         local err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
+         item.gfxWidth = iconWidth + bw + (VMARGIN * 2)
          item.width = item.gfxWidth + GAP
-         item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.font.height * 0.5)
+         item.vectorText.y = math.floor((self.viewport.height + item.vectorText.displaySize) * 0.5)
 
          if self._disabled or item.disabled then
             item.vectorText.opacity = 0.5
