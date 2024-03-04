@@ -50,33 +50,35 @@ class freetype_font {
             GLYPH_TABLE glyphs;
             FT_Size ft_size = NULL;
 
-            glyph & get_glyph(FT_Face, ULONG);
-
-            // These values are measured in 72 DPI.
+            // These values are measured as pixels in 72 DPI.
             // 
             // It is widely acknowledged that the metrics declared by font creators or their tools may not be 
-            // the glyph metrics in reality...
-            // 
-            // Generally, descent() + ascent() == height() + 1
-            // 
-            // The FT_Face max_advance_height is completely unreliable in practice
+            // the precise glyph metrics in reality...
 
-            inline DOUBLE line_spacing() { 
-               if FT_HAS_VERTICAL(ft_size->face) {
-                  return std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / DISPLAY_DPI)); 
-               }
-               else return std::trunc(int26p6_to_dbl(ft_size->metrics.height + std::abs(ft_size->metrics.descender)) * 72.0 / DISPLAY_DPI * 1.15);
-            }
+            DOUBLE height;  // Full height from the baseline - including accents
+            DOUBLE ascent;  // Ascent from the baseline - not including accents.  Typically matches the font-size in pixels
+            DOUBLE descent; // Number of pixels allocated below the baseline, not including vertical whitespace
+            DOUBLE line_spacing;
 
-            // Full height from the baseline - INCLUDES ACCENTS
-            inline DOUBLE height() { return int26p6_to_dbl(ft_size->metrics.height) * (72.0 / DISPLAY_DPI); }
-
-            // Ascent from the baseline - DOES NOT INCLUDE ACCENTS.  Should match the font-size in pixels
-            inline DOUBLE ascent() { return int26p6_to_dbl(ft_size->metrics.ascender) * 72.0 / DISPLAY_DPI; }
-
-            inline DOUBLE descent() { return std::abs(int26p6_to_dbl(ft_size->metrics.descender)) * 72.0 / DISPLAY_DPI; }
+            glyph & get_glyph(FT_Face, ULONG);
 
             ft_point() : common_font(CF_FREETYPE) { }
+
+            ft_point(FT_Face pFace, LONG Size) : common_font(CF_FREETYPE) {
+               if (!FT_New_Size(pFace, &ft_size)) {
+                  FT_Activate_Size(ft_size);
+                  FT_Set_Char_Size(pFace, 0, Size<<6, 72, 72);
+
+                  if FT_HAS_VERTICAL(ft_size->face) {
+                     line_spacing = std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / DISPLAY_DPI));
+                  }
+                  else line_spacing = std::trunc(int26p6_to_dbl(ft_size->metrics.height + std::abs(ft_size->metrics.descender)) * 72.0 / DISPLAY_DPI * 1.15);
+                  
+                  height  = int26p6_to_dbl(ft_size->metrics.height) * (72.0 / DISPLAY_DPI);
+                  ascent  = int26p6_to_dbl(ft_size->metrics.ascender) * (72.0 / DISPLAY_DPI);
+                  descent = std::abs(int26p6_to_dbl(ft_size->metrics.descender)) * (72.0 / DISPLAY_DPI);
+               }
+            }
 
             ~ft_point() {
                // FT_Done_Face() will remove all FT_New_Size() allocations, interfering with
@@ -95,6 +97,10 @@ class freetype_font {
 
       ~freetype_font();
 };
+
+// Caching note: Although it is policy for cached fonts to be permanently retained, it is not necessary for the
+// glyphs themselves to be permanently cached.  Future resource management should therefore actively remove 
+// glyphs that have gone stale.
 
 extern std::recursive_mutex glFontMutex;
 extern std::unordered_map<ULONG, bmp_font> glBitmapFonts;

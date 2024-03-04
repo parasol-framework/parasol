@@ -1311,10 +1311,10 @@ ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
    
    if (((common_font *)Handle)->type IS CF_FREETYPE) {
       auto pt = (freetype_font::ft_point *)Handle;
-      Metrics->Height      = pt->height();
-      Metrics->LineSpacing = pt->line_spacing();
-      Metrics->Ascent      = pt->ascent();
-      Metrics->Descent     = pt->descent();
+      Metrics->Height      = pt->height;
+      Metrics->LineSpacing = pt->line_spacing;
+      Metrics->Ascent      = pt->ascent;
+      Metrics->Descent     = pt->descent;
       return ERR_Okay;
    }
    else {

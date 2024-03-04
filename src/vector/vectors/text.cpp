@@ -516,7 +516,7 @@ static ERROR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
 
    if (Self->txBitmapFont) *Value = Self->txBitmapFont->Gutter;
    else if (glFreetypeFonts.contains(Self->txKey)) {
-      *Value = glFreetypeFonts[Self->txKey].points[Self->txFontSize].descent();
+      *Value = glFreetypeFonts[Self->txKey].points[Self->txFontSize].descent;
    }
    else *Value = 1;
    return ERR_Okay;
@@ -537,7 +537,7 @@ static ERROR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
 
    if (Self->txBitmapFont) *Value = Self->txBitmapFont->MaxHeight;
    else if (glFreetypeFonts.contains(Self->txKey)) {
-      *Value = glFreetypeFonts[Self->txKey].points[Self->txFontSize].height();
+      *Value = glFreetypeFonts[Self->txKey].points[Self->txFontSize].height;
    }
    else *Value = 1;
    return ERR_Okay;
@@ -918,7 +918,7 @@ static ERROR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
    else if (auto it = glFreetypeFonts.find(Self->txKey); it != glFreetypeFonts.end()) {
       auto &handle = it->second;
       if (auto pt = handle.points.find(Self->txFontSize); pt != handle.points.end()) {
-         *Value = pt->second.line_spacing();
+         *Value = pt->second.line_spacing;
          return ERR_Okay;
       }
    }
@@ -1370,6 +1370,7 @@ static void reset_font(extVectorText *Vector, bool Force)
 {
    if ((!Vector->initialised()) and (!Force)) return;
    if (Vector->txKey) Vector->txKey = 0;
+
    ULONG key;
    if (!get_font(Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, key)) {
       Vector->txKey = key;
@@ -1531,9 +1532,9 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
                else if (glFreetypeFonts.contains(Self->txKey)) {
                   auto &pt = glFreetypeFonts[Self->txKey].points[Self->txFontSize];
 
-                  DOUBLE offset = pt.line_spacing() * row;
-                  path.move_to(0, -pt.line_spacing() + offset);
-                  path.line_to(Self->txWidth, -pt.line_spacing() + offset);
+                  DOUBLE offset = pt.line_spacing * row;
+                  path.move_to(0, -pt.line_spacing + offset);
+                  path.line_to(Self->txWidth, -pt.line_spacing + offset);
                   path.line_to(Self->txWidth, offset);
                   path.line_to(0, offset);
                   path.close_polygon();

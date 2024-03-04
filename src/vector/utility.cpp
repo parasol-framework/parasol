@@ -388,13 +388,13 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
       }
    }
 
-   const DOUBLE point_size = std::round(Size * (72.0 / DISPLAY_DPI));
+   const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
    CSTRING location = NULL;
    if (auto error = fntSelectFont(family.c_str(), style.c_str(), point_size, FTF::PREFER_SCALED, &location); !error) {
       GuardedResource loc(location);
 
       if (!StrCompare("*.fon", location, 0, STR::WILDCARD)) { // Bitmap font
-         Key = StrHash(style + ":" + std::to_string(F2T(point_size)) + ":" + location);
+         Key = StrHash(style + ":" + std::to_string(point_size) + ":" + location);
 
          if (glBitmapFonts.contains(Key)) {
             return ERR_Okay;
@@ -430,16 +430,8 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
 
          auto &font = glFreetypeFonts[Key];
          if (!font.points.contains(Size)) {
-            auto &pt = font.points[Size];
-
-            if (!FT_New_Size(font.face, &pt.ft_size)) {
-               FT_Activate_Size(pt.ft_size);
-               FT_Set_Char_Size(font.face, 0, Size<<6, 72, 72);
-            }
-            else {
-               log.warning("Failed to define Freetype font size.");
-               return ERR_Failed;
-            }
+            auto it = font.points.try_emplace(Size, font.face, Size);
+            if (!it.first->second.ft_size) return ERR_Failed;
          }
       }
       return ERR_Okay;

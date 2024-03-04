@@ -414,7 +414,7 @@ static void generate_text(extVectorText *Vector)
 
                if ((dx + word_width) * std::abs(transform.sx) >= Vector->txInlineSize) {
                   dx = 0;
-                  dy += pt.line_spacing();
+                  dy += pt.line_spacing;
                }
             }
 
@@ -449,7 +449,7 @@ static void generate_text(extVectorText *Vector)
 
          if (dx > longest_line_width) longest_line_width = dx;
          dx = 0;
-         dy += pt.line_spacing();
+         dy += pt.line_spacing;
       }
 
       Vector->txWidth = longest_line_width;
@@ -459,8 +459,8 @@ static void generate_text(extVectorText *Vector)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->Bounds = { 0.0, DOUBLE(-pt.ascent()), Vector->txWidth, 1.0 };
-   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * pt.line_spacing();
+   Vector->Bounds = { 0.0, DOUBLE(-pt.ascent), Vector->txWidth, 1.0 };
+   if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * pt.line_spacing;
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in
    // mind it will provide tighter numbers, which is normal).
