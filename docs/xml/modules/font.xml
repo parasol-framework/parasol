@@ -30,32 +30,6 @@
   </function>
 
   <function>
-    <name>ConvertCoords</name>
-    <comment>Converts pixel coordinates into equivalent column and row positions in font strings.</comment>
-    <prototype>ERROR fntConvertCoords(objFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX)</prototype>
-    <input>
-      <param type="objFont *" name="Font">An initialised font object.</param>
-      <param type="CSTRING" name="String">Either point to a string for inspection or set to NULL to inspect the string currently in the font's String field.</param>
-      <param type="LONG" name="X">The horizontal coordinate to translate into a column position.</param>
-      <param type="LONG" name="Y">The vertical coordinate to translate into a row position.</param>
-      <param type="LONG *" name="Column">This result parameter will be updated to reflect the calculated character position, with consideration to the UTF-8 standard.  May be NULL if not required.</param>
-      <param type="LONG *" name="Row">This result parameter will be updated to reflect the calculated row position.  May be NULL if not required.</param>
-      <param type="LONG *" name="ByteColumn">This result parameter will be updated to reflect the absolute column byte position within the given row.  May be NULL if not required.</param>
-      <param type="LONG *" name="BytePos">This result parameter will be updated to reflect the absolute byte position with the font String.  May be NULL if not required.</param>
-      <param type="LONG *" name="CharX">This result parameter will be reflect the X coordinate of the character to which the (X, Y) coordinates are resolved.  May be NULL if not required.</param>
-    </input>
-    <description>
-<p>This function is used to convert pixel coordinates within a font String into the equivalent Row and Column character positions.  If the coordinate values that are supplied are in excess of the String dimensions, the Column and Row results will be automatically restricted to their maximum value.  For instance, if the Y argument is set to 280 and the String consists of 15 rows amounting to 150 pixels in height, the Row value will be returned as 15.</p>
-<p>Negative coordinate values are not permitted.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="FieldNotSet">A required field value is undefined.</error>
-    </result>
-  </function>
-
-  <function>
     <name>GetList</name>
     <comment>Returns a list of all available system fonts.</comment>
     <prototype>ERROR fntGetList(struct FontList ** Result)</prototype>

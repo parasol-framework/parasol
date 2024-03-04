@@ -39,10 +39,6 @@ function testStringWidth()
 
 end
 
-function testConvertCoords()
-
-end
-
 function testSelectFont()
    local err, path = mFont.selectFont("Open Sans", "Regular", 12, nil)
    assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
@@ -60,7 +56,7 @@ end
    return {
       tests = {
         --'testKerning'
-        'testGetList', 'testStringSize', 'testStringWidth', 'testConvertCoords', 'testSelectFont'
+        'testGetList', 'testStringSize', 'testStringWidth', 'testSelectFont'
       },
       init = nil,
       cleanup = function()
