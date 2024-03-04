@@ -111,9 +111,29 @@
     </field>
 
     <field>
+      <name>Descent</name>
+      <comment>The font descent measured in pixels, after DPI conversion.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Use Descent to retrieve the height of the font descent region in actual display pixels, after DPI conversion has been taken into account.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplayHeight</name>
+      <comment>The font height measured in pixels, after DPI conversion.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Use DisplayHeight to retrieve the font height in actual display pixels, after DPI conversion has been taken into account.  The height includes the top region reserved for accents, but excludes the descent value.</p>
+      </description>
+    </field>
+
+    <field>
       <name>DisplaySize</name>
       <comment>The FontSize measured in pixels, after DPI conversion.</comment>
-      <access read="G" write="I">Get/Init</access>
+      <access read="G">Get</access>
       <type>INT</type>
       <description>
 <p>Use DisplaySize to retrieve the <field>FontSize</field> in actual display pixels, after DPI conversion has been taken into account. For example, if <field>FontSize</field> is set to <code>16</code> in a 96 DPI environment, the resulting value is <code>12</code> after performing the calculation <code>16 * 72 / 96</code>.</p>
@@ -151,11 +171,11 @@
 
     <field>
       <name>Font</name>
-      <comment>The primary Font object that is used to source glyphs for the text string.</comment>
-      <access read="G" write="S">Get/Set</access>
+      <comment>Copies key meta information from a Font or other VectorText to create a matching text object.</comment>
+      <access write="S">Set</access>
       <type>OBJECTPTR</type>
       <description>
-<p>Returns the <class name="Font">Font</class> object that is used for drawing the text.  The object may be queried but not modified. Any modification that happens to work may fail in future releases.</p>
+<p>To create a VectorText object that uses a matching typeset from another <class name="Font">Font</class> or VectorText object, set this field with a reference to that object.  This can only be done prior to initialisation and the other object must have been initialised.</p>
       </description>
     </field>
 
@@ -209,7 +229,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field can be queried for the amount of space between each line, measured in pixels.</p>
+<p>This field can be queried for the amount of space between each line, measured in display pixels.</p>
       </description>
     </field>
 

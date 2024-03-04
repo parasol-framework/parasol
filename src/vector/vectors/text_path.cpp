@@ -16,7 +16,7 @@
 //
 // REQUIREMENT: The caller must have acquired a lock on glFontMutex.
 
-freetype_cache::glyph & freetype_cache::ft_point::get_glyph(freetype_cache &Font, ULONG Unicode)
+freetype_font::glyph & freetype_font::ft_point::get_glyph(FT_Face Face, ULONG Unicode)
 {
    DOUBLE x1, y1, x2, y2, x3, y3;
 
@@ -24,19 +24,19 @@ freetype_cache::glyph & freetype_cache::ft_point::get_glyph(freetype_cache &Font
 
    auto &path = glyphs[Unicode];
 
-   path.glyph_index = FT_Get_Char_Index(Font.face, Unicode);
+   path.glyph_index = FT_Get_Char_Index(Face, Unicode);
    
-   if (Font.face->size->metrics.height != ft_size->metrics.height) {
-      FT_Set_Char_Size(Font.face, 0, ft_size->metrics.height, 72, 72);
+   if (Face->size->metrics.height != ft_size->metrics.height) {
+      FT_Set_Char_Size(Face, 0, ft_size->metrics.height, 72, 72);
    }
 
    // WARNING: FT_Load_Glyph leaks memory if you call it repeatedly for the same glyph (hence the importance of caching).
     
-   if (FT_Load_Glyph(Font.face, path.glyph_index, FT_LOAD_LINEAR_DESIGN)) return path;
-   path.advance_x = int26p6_to_dbl(Font.face->glyph->advance.x);
-   path.advance_y = int26p6_to_dbl(Font.face->glyph->advance.y);
+   if (FT_Load_Glyph(Face, path.glyph_index, FT_LOAD_LINEAR_DESIGN)) return path;
+   path.advance_x = int26p6_to_dbl(Face->glyph->advance.x);
+   path.advance_y = int26p6_to_dbl(Face->glyph->advance.y);
 
-   const FT_Outline &outline = Font.face->glyph->outline;
+   const FT_Outline &outline = Face->glyph->outline;
 
    LONG first = 0; // index of first point in contour
    for (LONG n=0; n < outline.n_contours; n++) {
@@ -305,7 +305,7 @@ static void generate_text(extVectorText *Vector)
                apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
 
-            auto &glyph = pt.get_glyph(font, unicode);
+            auto &glyph = pt.get_glyph(font.face, unicode);
 
             DOUBLE kx, ky;
             get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
@@ -420,7 +420,7 @@ static void generate_text(extVectorText *Vector)
 
             str += char_len;
 
-            auto &glyph = pt.get_glyph(font, unicode);
+            auto &glyph = pt.get_glyph(font.face, unicode);
 
             DOUBLE kx, ky;
             get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);

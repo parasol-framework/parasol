@@ -58,7 +58,7 @@ target_include_directories (${MOD} PRIVATE
 # Pre-compiling the main header speeds up compilation and eliminates the need to include it in source files.
 
 target_precompile_headers(${MOD} PRIVATE
-   vector.h)
+   "vector.h" "font.h")
 
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)

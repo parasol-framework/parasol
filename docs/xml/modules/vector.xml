@@ -237,6 +237,45 @@ Z: Close Path
   </function>
 
   <function>
+    <name>GetFontHandle</name>
+    <comment>Returns a handle for a given font family.</comment>
+    <prototype>ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR * Handle)</prototype>
+    <input>
+      <param type="CSTRING" name="Family">The name of the font family to access.</param>
+      <param type="CSTRING" name="Style">The preferred style to choose from the family.  Use "Regular" or NULL for the default.</param>
+      <param type="LONG" name="Weight">Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.</param>
+      <param type="LONG" name="Size">The font-size, measured in pixels @ 72 DPI.</param>
+      <param type="APTR *" name="Handle">The resulting font handle is returned here.</param>
+    </input>
+    <description>
+<p>For a given font family and size, this function will return a handle that can be passed to font querying functions.</p>
+<p>The handle is permanent, remaining valid for the lifetime of the program.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetFontMetrics</name>
+    <comment>Returns a set of display metric values for a font.</comment>
+    <prototype>ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info)</prototype>
+    <input>
+      <param type="APTR" name="Handle">A font handle obtained from GetFontHandle().</param>
+      <param type="struct FontMetrics *" name="Info">The name of the font family to access.</param>
+    </input>
+    <description>
+<p>Call GetFontMetrics() to retrieve a basic set of display metrics (adjusted to the display's DPI) for a given font.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>GetVertex</name>
     <comment>Retrieve the coordinates of the current vertex.</comment>
     <prototype>LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</prototype>
@@ -478,6 +517,22 @@ Z: Close Path
 <p>This function will set a cubic bezier curve command at the current vertex.  It then increments the vertex position for the next path command.</p>
 <p>The control point from the previous curve will be used in addition to the CtrlX and CtrlY points, hence the name 'smoothed curve'.</p>
     </description>
+  </function>
+
+  <function>
+    <name>StringWidth</name>
+    <comment>Calculate the pixel width of a UTF-8 string, for a given font.</comment>
+    <prototype>DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars)</prototype>
+    <input>
+      <param type="APTR" name="FontHandle">A font handle obtained from GetFontHandle().</param>
+      <param type="CSTRING" name="String">Pointer to a null-terminated string.</param>
+      <param type="LONG" name="Chars">The maximum number of unicode characters to process in calculating the string width.  Set to -1 for all chars.</param>
+    </input>
+    <description>
+<p>This function calculates the pixel width of a string, in relation to a known font.  The function takes into account any line-feeds that are encountered, so if the String contains multiple lines, then the width of the longest line will be returned.</p>
+<p>The font's kerning specifications will be taken into account when computing the distance between glyphs.</p>
+    </description>
+    <result type="DOUBLE">The pixel width of the string is returned.</result>
   </function>
 
   <function>
@@ -837,6 +892,13 @@ Z: Close Path
 
   </types>
   <structs>
+    <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
+      <field name="Height" type="LONG">Capitalised font height</field>
+      <field name="LineSpacing" type="LONG">Vertical advance from one line to the next</field>
+      <field name="Ascent" type="LONG">Height from the baseline to the top of the font, including accents.</field>
+      <field name="Descent" type="LONG">Height from the baseline to the bottom of the font</field>
+    </struct>
+
     <struct name="GradientStop" comment="Describes a colour stop for the VectorGradient Stops field.">
       <field name="Offset" type="DOUBLE">An offset in the range of 0 - 1.0</field>
       <field name="RGB" type="struct FRGB">A floating point RGB value.</field>

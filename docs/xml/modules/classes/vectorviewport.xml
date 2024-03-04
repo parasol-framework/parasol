@@ -266,6 +266,13 @@
 
   </types>
   <structs>
+    <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
+      <field name="Height" type="LONG">Capitalised font height</field>
+      <field name="LineSpacing" type="LONG">Vertical advance from one line to the next</field>
+      <field name="Ascent" type="LONG">Height from the baseline to the top of the font, including accents.</field>
+      <field name="Descent" type="LONG">Height from the baseline to the bottom of the font</field>
+    </struct>
+
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
       <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
       <field name="Vector" type="objVector *">The vector associated with the transform.</field>

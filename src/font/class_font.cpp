@@ -8,10 +8,10 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Font: Draws bitmap fonts and manages font meta information.
 
-The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports 
-styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word 
+The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports
+styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word
 alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are
-supported as scaled fonts.  Drawing Truetype fonts is not supported (refer to the #VectorText class for this feature).
+supported as scaled fonts.  Drawing Truetype fonts is not supported (refer to the @VectorText class for this feature).
 
 Fonts must be stored in the `fonts:` directory in order to be recognised and either in the "fixed" or "truetype"
 sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied
@@ -25,7 +25,7 @@ this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.
 Initialisation of a new font object can be as simple as declaring its #Point size and #Face name.  Font objects can
 be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For
 example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles
-of the same font, create a font object for every style that requires support.  Basic settings such as colour, the 
+of the same font, create a font object for every style that requires support.  Basic settings such as colour, the
 font string and text positioning are not affected by these limitations.
 
 To draw a font string to a Bitmap object, start by setting the #Bitmap and #String fields.  The #X and #Y fields
@@ -117,14 +117,6 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
 
    if (Self->prvTempGlyph.Outline) { FreeResource(Self->prvTempGlyph.Outline); Self->prvTempGlyph.Outline = NULL; }
    if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
-
-   if ((Self->String) and ((APTR)Self->String != (APTR)Self->prvBuffer)) {
-      if (FreeResource(Self->String)) {
-         log.warning("The String field was set illegally (please use SetField)");
-      }
-      Self->String = NULL;
-   }
 
    Self->~extFont();
 
@@ -294,7 +286,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
       Self->MaxHeight   = cache->Header.pixel_height; // Supposedly the pixel_height includes internal and external leading values (?)
       Self->prvBitmapHeight = cache->Header.pixel_height;
       Self->prvDefaultChar  = cache->Header.first_char + cache->Header.default_char;
-      Self->TotalChars      = cache->Header.last_char - cache->Header.first_char + 1;
+      Self->TotalGlyphs     = cache->Header.last_char - cache->Header.first_char + 1;
 
       // If this is a monospaced font, set the FixedWidth field
 
@@ -326,7 +318,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   log.extmsg("Family: %s, Style: %s, Glyphs: %d, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->TotalChars, Self->Point, Self->Height);
+   log.extmsg("Family: %s, Style: %s, Glyphs: %d, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->TotalGlyphs, Self->Point, Self->Height);
    log.trace("LineSpacing: %d, Leading: %d, Gutter: %d", Self->LineSpacing, Self->Leading, Self->Gutter);
 
    return ERR_Okay;
@@ -690,7 +682,7 @@ directly into pixels.  When printing however, point size will translate to a cer
 exact number of dots will depend on the printer device and final DPI).
 
 The Point field also supports proportional sizing based on the default value set by the system or user.  For instance
-if a Point value of 150% is specified and the default font size is 10, the final point size for the font will be 15.
+if a Point value of 1.5 is specified and the default font size is 10, the final point size for the font will be 15.
 This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can
 change the global point size for your application by calling ~Font.SetDefaultSize() in the Font module.
 
@@ -760,46 +752,22 @@ static ERROR SET_String(extFont *Self, CSTRING Value)
 {
    if (!StrCompare(Value, Self->String, 0, STR::MATCH_CASE|STR::MATCH_LEN)) return ERR_Okay;
 
-   if ((Self->String) and ((APTR)Self->String != (APTR)Self->prvBuffer)) {
-      FreeResource(Self->String);
-   }
-
-   Self->String       = NULL;
    Self->prvLineCount = 0;
    Self->prvStrWidth  = 0; // Reset the string width for GET_Width
    Self->prvLineCountCR = 1; // Line count (carriage returns only)
 
    if ((Value) and (*Value)) {
-      // Get the string's byte length and line count.
       LONG i;
       for (i=0; Value[i]; i++) if (Value[i] IS '\n') Self->prvLineCountCR++;
 
-      if ((size_t)i < sizeof(Self->prvBuffer)-1) {
-         // Use the internal buffer rather than allocating a memory block
-         Self->String = Self->prvBuffer;
-         for (i=0; Value[i]; i++) Self->String[i] = Value[i];
-         Self->String[i] = 0;
-      }
-      else if (!(Self->String = StrClone(Value))) return ERR_AllocMemory;
+      Self->prvBuffer.assign(Value);
+      Self->String = (STRING)Self->prvBuffer.c_str();
    }
 
    return ERR_Okay;
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-StrokeSize: The strength of stroked outlines is defined here.
-
-Set the StrokeSize field to define the strength of the border surrounding an outlined font.  The default value is 1.0,
-which equates to about 1 or 2 pixels at 96 DPI.  The value acts as a multiplier, so 3.0 would be triple the default
-strength.
-
-This field affects scalable fonts only.  Bitmap fonts will always have a stroke size of 1 regardless of the value set
-here.
-
-This field does not activate font stroking on its own - the #Outline field needs to be set in order for
-stroking to be activated.
 
 -FIELD-
 Style: Determines font styling.
@@ -827,35 +795,6 @@ static ERROR SET_Style(extFont *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Tabs: Private. Not implemented.
-
-*********************************************************************************************************************/
-
-static ERROR GET_Tabs(extFont *Self, WORD **Tabs, LONG *Elements)
-{
-   *Tabs = Self->prvTabs;
-   *Elements = Self->prvTotalTabs;
-   return ERR_Okay;
-}
-
-static ERROR SET_Tabs(extFont *Self, WORD *Tabs, LONG Elements)
-{
-   if (!Tabs) return ERR_NullArgs;
-   if (Elements > 0xff) return ERR_BufferOverflow;
-
-   if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
-
-   if (!AllocMemory(sizeof(WORD) * Elements, MEM::NO_CLEAR, &Self->prvTabs)) {
-      CopyMemory(Tabs, Self->prvTabs, sizeof(WORD) * Elements);
-      Self->prvTotalTabs = Elements;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 TabSize: Defines the tab size to use when drawing and manipulating a font string.
 
 The TabSize value controls the interval between tabs, measured in characters.  If the font is scalable, the character
@@ -865,7 +804,7 @@ The default tab size is 8 and the TabSize only comes into effect when tab charac
 #String.
 
 -FIELD-
-TotalChars: Reflects the total number of character glyphs that are available by the font object.
+TotalGlyphs: Reflects the total number of character glyphs that are available by the font object.
 
 The total number of character glyphs that are available is reflected in this field.  The font must have been
 initialised before the count is known.
@@ -1008,7 +947,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
    fc->Glyphs.try_emplace(Self->Point, fc->Face, Self->Point, Self->prvDefaultChar);
 
    auto &glyph = fc->Glyphs.at(Self->Point);
-   Self->TotalChars = fc->Face->num_glyphs;
+   Self->TotalGlyphs = fc->Face->num_glyphs;
 
    // Determine the line distance of the font, which describes the amount of distance between each font line that is printed.
 
@@ -1485,7 +1424,7 @@ static const FieldArray clFontFields[] = {
    { "X",            FDF_LONG|FDF_RW },
    { "Y",            FDF_LONG|FDF_RW },
    { "TabSize",      FDF_LONG|FDF_RW },
-   { "TotalChars",   FDF_LONG|FDF_R },
+   { "TotalGlyphs",  FDF_LONG|FDF_R },
    { "WrapEdge",     FDF_LONG|FDF_RW },
    { "FixedWidth",   FDF_LONG|FDF_RW },
    { "Height",       FDF_LONG|FDF_RI },
@@ -1503,9 +1442,6 @@ static const FieldArray clFontFields[] = {
    { "LineCount",    FDF_VIRTUAL|FDF_LONG|FDF_R, GET_LineCount },
    { "Location",     FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RW, NULL, SET_Path },
    { "Opacity",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
-   { "StrWidth",     FDF_VIRTUAL|FDF_SYSTEM|FDF_LONG|FDF_R, GET_Width }, // OBSOLETE: Use Width
-   { "Tabs",         FDF_VIRTUAL|FDF_ARRAY|FDF_WORD|FDF_RW, GET_Tabs, SET_Tabs },
-   { "Translucency", FDF_VIRTUAL|FDF_SYNONYM|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
    { "Width",        FDF_VIRTUAL|FDF_LONG|FDF_R, GET_Width },
    { "YOffset",      FDF_VIRTUAL|FDF_LONG|FDF_R, GET_YOffset },
    END_FIELD

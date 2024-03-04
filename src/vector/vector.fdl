@@ -343,6 +343,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     double TranslateY           # Matrix value F
   ]])
 
+  struct("FontMetrics", { comment="Font metrics, measured in pixels relative to the display" }, [[
+    int Height       # Capitalised font height
+    int LineSpacing  # Vertical advance from one line to the next
+    int Ascent       # Height from the baseline to the top of the font, including accents.
+    int Descent      # Height from the baseline to the bottom of the font
+  ]])
+
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
   class("VectorColour", { src="defs/colour.cpp", comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values" }, [[
@@ -599,7 +606,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "MultiplyMatrix",
     "Scale",
     "ParseTransform",
-    "ResetMatrix")
+    "ResetMatrix",
+    "GetFontHandle",
+    "GetFontMetrics",
+    "StringWidth")
 
   c_insert([[
 

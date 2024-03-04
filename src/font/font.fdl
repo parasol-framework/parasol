@@ -53,9 +53,9 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
    int   X                # X Coordinate
    int   Y                # Y Coordinate
    int   TabSize          # Tab differential
-   int   TotalChars       # Total number of characters / glyphs supported by the font
+   int   TotalGlyphs      # Total number of glyphs supported by the font
    int   WrapEdge         # Point at which word-wrap is encountered
-   int   FixedWidth       # Force fixed width
+   int   FixedWidth       # Force a fixed pixel width
    int   Height           # The point size of the font (vertical bearing), expressed in pixels.  Does not include leading (see Ascent if you want leading included)
    int   Leading          # "Internal leading" in pixels (fixed fonts only)
    int   MaxHeight        # Maximum possible pixel height per character, covering the entire character set at the chosen point size

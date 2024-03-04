@@ -362,6 +362,92 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
 }
 
 //********************************************************************************************************************
+
+ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key)
+{
+   pf::Log log(__FUNCTION__);
+
+   log.branch("Family: %s, Style: %s, Size: %d", Family, Style, Size);
+   
+   const std::lock_guard lock{glFontMutex};
+   
+   std::string family(Family ? Family : "*");
+   std::string style(Style ? Style : "Regular");
+
+   if (StrMatch("Open Sans", family)) family.append(",Open Sans");
+
+   if ((Weight) and (Weight != 400)) {
+      if (Weight >= 700) style = "Extra Bold";
+      else if (Weight >= 500) style = "Bold";
+      else if (Weight <= 200) style = "Extra Light";
+      else if (Weight <= 300) style = "Light";
+
+      if (!StrMatch("Italic", Style)) {
+         if (style IS "Regular") style = "Italic";
+         else style.append(" Italic");
+      }
+   }
+
+   const DOUBLE point_size = std::round(Size * (72.0 / DISPLAY_DPI));
+   CSTRING location = NULL;
+   if (auto error = fntSelectFont(family.c_str(), style.c_str(), point_size, FTF::PREFER_SCALED, &location); !error) {
+      GuardedResource loc(location);
+
+      if (!StrCompare("*.fon", location, 0, STR::WILDCARD)) { // Bitmap font
+         Key = StrHash(style + ":" + std::to_string(F2T(point_size)) + ":" + location);
+
+         if (glBitmapFonts.contains(Key)) {
+            return ERR_Okay;
+         }
+         else if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
+               fl::Owner(glVectorModule->UID),
+               fl::Face(family),
+               fl::Style(style),
+               fl::Point(point_size),
+               fl::Path(location))) {
+            glBitmapFonts.emplace(Key, font);
+         }
+         else return ERR_CreateObject;
+      }
+      else {
+         Key = StrHash(std::string(style) + ":" + location);
+      
+         STRING resolved;
+         if (!glFreetypeFonts.contains(Key)) {
+            if (!ResolvePath(location, RSF::NIL, &resolved)) {
+               FT_Face ftface;
+               FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved };
+               if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
+                  log.warning("Fatal error in attempting to load font \"%s\".", resolved);
+                  FreeResource(resolved);
+                  return ERR_Failed;
+               }
+
+               glFreetypeFonts.emplace(Key, ftface);
+               FreeResource(resolved);
+            }
+         }
+
+         auto &font = glFreetypeFonts[Key];
+         if (!font.points.contains(Size)) {
+            auto &pt = font.points[Size];
+
+            if (!FT_New_Size(font.face, &pt.ft_size)) {
+               FT_Activate_Size(pt.ft_size);
+               FT_Set_Char_Size(font.face, 0, Size<<6, 72, 72);
+            }
+            else {
+               log.warning("Failed to define Freetype font size.");
+               return ERR_Failed;
+            }
+         }
+      }
+      return ERR_Okay;
+   }
+   else return error;
+}
+
+//********************************************************************************************************************
 // The parser will break once the string value terminates, or an invalid character is encountered.
 //
 // There are two variants - the first aborts if an unparseable value is encountered.  The second will set all
@@ -423,95 +509,3 @@ CSTRING read_numseq_zero(CSTRING Value, ...)
    va_end(list);
    return Value;
 }
-
-//********************************************************************************************************************
-// Fonts are stored independently of VectorText objects so that they can be permanently cached.
-
-class bmp_font_usage {
-private:
-   LONG usage = 0;
-public:
-   objFont *font = NULL;
-
-   inline void deregister() { usage--; }
-   inline void use() { usage++; }
-
-   bmp_font_usage() = default;
-   bmp_font_usage(objFont *pFont) : usage(1), font(pFont) { }
-
-   ~bmp_font_usage() {
-      if (font) { FreeResource(font); font = NULL; }
-   }
-};
-
-//********************************************************************************************************************
-// Fonts are stored independently of VectorText objects so that they can be permanently cached.
-
-typedef struct FT_FaceRec_*  FT_Face;
-
-class freetype_cache {
-   public:
-      class glyph {
-         public:
-            agg::path_storage path;
-            DOUBLE advance_x;
-            DOUBLE advance_y;
-            LONG   glyph_index;
-      };
-
-      using GLYPH_TABLE = std::unordered_map<ULONG, glyph>;
-
-      class ft_point {
-         public:
-            GLYPH_TABLE glyphs;
-            FT_Size ft_size = NULL;
-
-            glyph & get_glyph(freetype_cache &, ULONG);
-
-            // These values are measured in 72 DPI.
-            // 
-            // It is widely acknowledged that the metrics declared by font creators or their tools may not be 
-            // the glyph metrics in reality...
-            // 
-            // Generally, descent() + ascent() == height()
-            // 
-            // The FT_Face max_advance_height is completely unreliable in practice
-
-            inline DOUBLE line_spacing() { 
-               if FT_HAS_VERTICAL(ft_size->face) {
-                  return std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / DISPLAY_DPI)); 
-               }
-               else return std::trunc(int26p6_to_dbl(ft_size->metrics.height));
-            }
-            inline DOUBLE height() { return int26p6_to_dbl(ft_size->metrics.height); }
-            inline DOUBLE ascent() { return int26p6_to_dbl(ft_size->metrics.ascender); } // Ascent from the baseline
-            inline DOUBLE descent() { return std::abs(int26p6_to_dbl(ft_size->metrics.descender)); }
-
-            ~ft_point() {
-               // FT_Done_Face() will remove all FT_New_Size() allocations, interfering with
-               // manual calls to FT_Done_Size()
-               // 
-               //if (ft_size) { FT_Done_Size(ft_size); ft_size = NULL; }
-            }
-      };
-
-   private:
-      LONG usage = 0;
-
-   public:
-      FT_Face face = NULL;
-      std::map<LONG, ft_point> points;
-   
-      inline void deregister() { usage--; }
-
-      inline void use() { usage++; }
-
-      freetype_cache() = default;
-      freetype_cache(FT_Face pFace) : usage(1), face(pFace) { }
-
-      ~freetype_cache();
-};
-
-static std::recursive_mutex glFontMutex;
-static std::unordered_map<ULONG, bmp_font_usage> glBitmapFonts;
-static std::unordered_map<ULONG, freetype_cache> glFreetypeFonts;

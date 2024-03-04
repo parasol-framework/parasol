@@ -522,7 +522,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                            }));
                         }
 
-                        checkbox.label_text->setFields(fl::X(F2T(x)), fl::Y(F2T(y)));
+                        if (!checkbox.label_text.empty()) {
+                           checkbox.label_text->setFields(fl::X(F2T(x)), fl::Y(F2T(y)));
+                        }
                      }
                   }
                   else {
@@ -545,7 +547,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                            }));
                         }
 
-                        checkbox.label_text->setFields(fl::X(F2T(x_label)), fl::Y(F2T(y)));
+                        if (!checkbox.label_text.empty()) {
+                           checkbox.label_text->setFields(fl::X(F2T(x_label)), fl::Y(F2T(y)));
+                        }
                      }
                   }
                }
@@ -771,24 +775,25 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_advance + segment.align_width - segment.area.Width;
                   else x = x_advance;
 
-                  auto vt = objVectorText::create::global({
-                     fl::Name("doc_text"),
-                     fl::Owner(Viewport->UID),
-                     fl::X(x), fl::Y(F2T(y)),
-                     fl::String(str),
-                     fl::Cursor(PTC::TEXT),
-                     fl::Font(font),
-                     fl::Fill(stack_style.top()->fill),
-                     fl::TextFlags(((stack_style.top()->options & FSO::UNDERLINE) != FSO::NIL) ? VTXF::UNDERLINE : VTXF::NIL)
-                  });
+                  if (auto vt = objVectorText::create::global({
+                        fl::Name("doc_text"),
+                        fl::Owner(Viewport->UID),
+                        fl::X(x), fl::Y(F2T(y)),
+                        fl::String(str),
+                        fl::Cursor(PTC::TEXT),
+                        fl::Font(font),
+                        fl::Fill(stack_style.top()->fill),
+                        fl::TextFlags(((stack_style.top()->options & FSO::UNDERLINE) != FSO::NIL) ? VTXF::UNDERLINE : VTXF::NIL)
+                     })) {
 
-                  Self->UIObjects.push_back(vt->UID);
+                     Self->UIObjects.push_back(vt->UID);
 
-                  txt.vector_text.push_back(vt);
+                     txt.vector_text.push_back(vt);
 
-                  DOUBLE twidth;
-                  vt->get(FID_TextWidth, &twidth);
-                  x_advance += twidth;
+                     DOUBLE twidth;
+                     vt->get(FID_TextWidth, &twidth);
+                     x_advance += twidth;
+                  }
                }
                break;
             }

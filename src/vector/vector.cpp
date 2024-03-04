@@ -3,15 +3,14 @@
 The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
+This code utilises the work of the FreeType Project under the FreeType License.  For more information please refer to
+the FreeType home page at www.freetype.org.
+
 *********************************************************************************************************************/
 
 //#include "vector.h"
+//#include "font.h"
 #include "idl.h"
-
-#include <ft2build.h>
-#include <freetype/ftsizes.h>
-#include FT_FREETYPE_H
-#include FT_STROKER_H
 
 JUMPTABLE_DISPLAY
 JUMPTABLE_CORE
@@ -28,11 +27,15 @@ OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplaceme
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
-static OBJECTPTR glModule = NULL;
-static FT_Library glFTLibrary = NULL;
+OBJECTPTR glVectorModule = NULL;
+FT_Library glFTLibrary = NULL;
 
 std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
+
+std::recursive_mutex glFontMutex;
+std::unordered_map<ULONG, bmp_font> glBitmapFonts;
+std::unordered_map<ULONG, freetype_font> glFreetypeFonts;
 
 static ERROR init_clip(void);
 static ERROR init_ellipse(void);
@@ -55,7 +58,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Root, &glModule);
+   argModule->getPtr(FID_Root, &glVectorModule);
 
    if (FT_Init_FreeType(&glFTLibrary)) {
       log.warning("Failed to initialise the FreeType font library.");

@@ -52,7 +52,7 @@ function testSpirals()            hashTestSVG('paths/spirals.svg', 0x669dc06e) e
 function testStrokes()            hashTestSVG('paths/strokes.svg', 0x5210d0f3) end
 function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0xe1a1a714) end
 function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0xd981df67) end
-function testTransitions()        hashTestSVG('paths/transitions.svg', 0xe1754a22) end
+function testTransitions()        hashTestSVG('paths/transitions.svg', 0x6f8d79ee) end
 function testWave()               hashTestSVG('paths/wave.svg', 0x4e21371f) end
 
 function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
@@ -65,7 +65,7 @@ function testSnake()              hashTestSVG('patterns/snake.svg', 0xbb7d40f0) 
 function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
 
 function testComposite()          hashTestSVG('filters/composite.svg', 0xc6a417a0) end
-function testConvolve()           hashTestSVG('filters/convolve.svg', 0x8386a292) end
+function testConvolve()           hashTestSVG('filters/convolve.svg', 0xd1599bd6) end
 function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0xeaf2804b) end
 function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0x53139a3a) end
 function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf8be1e64) end
@@ -139,7 +139,7 @@ function testW3TextAlign3() hashTestSVG('text/text-align-03-b.svg', -1) end
 function testW3TextAlign4() hashTestSVG('text/text-align-04-b.svg', -1) end
 function testW3TextAlign5() hashTestSVG('text/text-align-05-b.svg', -1) end
 function testW3TextAlign6() hashTestSVG('text/text-align-06-b.svg', -1) end
-function testW3TextAlign7() hashTestSVG('text/text-align-07-t.svg', 0xadf39587) end
+function testW3TextAlign7() hashTestSVG('text/text-align-07-t.svg', 0x51cf3b63) end
 function testW3TextAlign8() hashTestSVG('text/text-align-08-b.svg', -1) end
 
 function testW3TextIntro1() hashTestSVG('text/text-intro-01-t.svg', -1) end

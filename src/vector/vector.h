@@ -66,6 +66,7 @@ extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
 extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect, clDisplacementFX;
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
+extern OBJECTPTR glVectorModule;
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
 class objVectorTransition;
@@ -578,6 +579,7 @@ extern ERROR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
+extern ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
@@ -1036,6 +1038,57 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
 //********************************************************************************************************************
 
+static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t Index = 0)
+{
+   LONG len, code;
+
+   if ((Value[Index] & 0x80) != 0x80) {
+      Unicode = Value[Index];
+      return 1;
+   }
+   else if ((Value[Index] & 0xe0) IS 0xc0) {
+      len  = 2;
+      code = Value[Index] & 0x1f;
+   }
+   else if ((Value[Index] & 0xf0) IS 0xe0) {
+      len  = 3;
+      code = Value[Index] & 0x0f;
+   }
+   else if ((Value[Index] & 0xf8) IS 0xf0) {
+      len  = 4;
+      code = Value[Index] & 0x07;
+   }
+   else if ((Value[Index] & 0xfc) IS 0xf8) {
+      len  = 5;
+      code = Value[Index] & 0x03;
+   }
+   else if ((Value[Index] & 0xfc) IS 0xfc) {
+      len  = 6;
+      code = Value[Index] & 0x01;
+   }
+   else { // Unprintable character
+      Unicode = 0;
+      return 1;
+   }
+
+   for (LONG i=1; i < len; ++i) {
+      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      code <<= 6;
+      code |= Value[i] & 0x3f;
+   }
+
+   if (code IS -1) {
+      Unicode = 0;
+      return 1;
+   }
+   else {
+      Unicode = code;
+      return len;
+   }
+}
+
+//********************************************************************************************************************
+
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
 extern void set_text_final_xy(extVectorText *);
@@ -1050,6 +1103,8 @@ extern "C" void  vecFreePath(APTR);
 extern "C" ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
 extern "C" ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
 extern "C" ERROR vecGeneratePath(CSTRING, APTR *);
+extern "C" ERROR vecGetFontHandle(CSTRING, CSTRING, LONG, LONG, APTR *);
+extern "C" ERROR vecGetFontMetrics(APTR, struct FontMetrics *);
 extern "C" LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
 extern "C" void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
@@ -1064,6 +1119,7 @@ extern "C" ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern "C" DOUBLE vecStringWidth(APTR, CSTRING, LONG);
 extern "C" ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 

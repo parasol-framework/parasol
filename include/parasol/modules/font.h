@@ -73,7 +73,7 @@ class objFont : public BaseClass {
    LONG   X;               // The starting horizontal position when drawing the font string.
    LONG   Y;               // The starting vertical position when drawing the font string.
    LONG   TabSize;         // Defines the tab size to use when drawing and manipulating a font string.
-   LONG   TotalChars;      // Reflects the total number of character glyphs that are available by the font object.
+   LONG   TotalGlyphs;     // Reflects the total number of character glyphs that are available by the font object.
    LONG   WrapEdge;        // Enables word wrapping at a given boundary.
    LONG   FixedWidth;      // Forces a fixed pixel width to use for all glyphs.
    LONG   Height;          // The point size of the font, expressed in pixels.
@@ -122,7 +122,7 @@ class objFont : public BaseClass {
 
    template <class T> inline ERROR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -134,7 +134,7 @@ class objFont : public BaseClass {
 
    template <class T> inline ERROR setFace(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -234,7 +234,7 @@ class objFont : public BaseClass {
 
    inline ERROR setBold(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -246,14 +246,8 @@ class objFont : public BaseClass {
 
    inline ERROR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
-   }
-
-   inline ERROR setTabs(const WORD * Value, LONG Elements) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[27];
-      return field->WriteValue(target, field, 0x00401308, Value, Elements);
    }
 
 };

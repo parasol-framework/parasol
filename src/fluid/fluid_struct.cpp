@@ -298,7 +298,7 @@ static void make_camel_case(std::string &String)
 //********************************************************************************************************************
 // The TypeName is optional and usually refers to the name of a struct.  The list is sorted by name for fast lookups.
 
-static ERROR generate_structdef(objScript *Self, const std::string StructName, const std::string Sequence,
+static ERROR generate_structdef(objScript *Self, const std::string_view StructName, const std::string Sequence,
    struct_record &Record, LONG *StructSize)
 {
    pf::Log log(__FUNCTION__);
@@ -411,7 +411,11 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
       // Alignment and offset management
 
       if ((field_size >= 8) and (type != FD_STRUCT)) {
-         if (offset & 7) log.msg("Warning: %s.%s (%d bytes) is mis-aligned.", StructName.c_str(), field.Name.c_str(), field_size);
+         if (offset & 7) {
+            std::ostringstream msg;
+            msg << "Warning: " << StructName << "." << field.Name << " (" << field_size << " bytes) is mis-aligned.";
+            log.msg(msg.str().c_str());
+         }
          offset = ALIGN64(offset); // 64-bit alignment
       }
       else if (field_size IS 4) offset = ALIGN32(offset);

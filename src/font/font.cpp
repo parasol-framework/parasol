@@ -22,7 +22,6 @@ Font: Provides font management functionality and hosts the Font class.
 #include <ft2build.h>
 #include <freetype/ftsizes.h>
 #include FT_FREETYPE_H
-#include FT_STROKER_H
 
 #include <parasol/main.h>
 
@@ -39,10 +38,9 @@ Font: Provides font management functionality and hosts the Font class.
 
 using namespace pf;
 
-/*********************************************************************************************************************
-** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
-** refer to an ASCII table to see what is going on here.
-*/
+//********************************************************************************************************************
+// This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
+// refer to an ASCII table to see what is going on here.
 
 static const UBYTE glWrapBreaks[256] = {
    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x0f
@@ -81,9 +79,9 @@ static LONG glDisplayHDPI = FIXED_DPI;
 
 class extFont : public objFont {
    public:
-   WORD *prvTabs;                // Array of tab stops
    UBYTE *prvData;
    std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
+   std::string prvBuffer;
    struct FontCharacter *prvChar;
    class BitmapCache   *BmpCache;
    font_glyph prvTempGlyph;
@@ -94,14 +92,13 @@ class extFont : public objFont {
    WORD prvLineCountCR;
    char prvEscape[2];
    char prvFace[32];
-   char prvBuffer[80];
    char prvStyle[20];
-   char prvDefaultChar;
+   UBYTE prvDefaultChar;
    UBYTE prvTotalTabs;
 };
 
-constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
-constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
+static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
+static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 
 #include "font_def.c"
 
@@ -820,17 +817,16 @@ ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Colu
 -FUNCTION-
 SetDefaultSize: Sets the default font size for the application.
 
-This function is used to set the default font size for the application.  This will affect fonts that you create with
+This function is used to set the default font size for the application.  This will affect fonts that are created with
 proportional sizes (e.g. a point size of 150% and a default point of 10 would result in a 15 point font).  Also, Font
 objects with no preset size will be set to the default size.
 
 Please note that the default size is defined by the global style value on the xpath `/interface/@fontsize`.  This can
-also be overridden by the user's style preference.  We recommend against an application calling SetDefaultSize() unless
-the interface design makes it a necessity (for instance if the user has poor eyesight, restricting the font size may
-have usability implications).
+also be overridden by the user's style preference.  We recommend against calling SetDefaultSize() unless absolutely
+necessary.
 
 -INPUT-
-double Size: The new default point size.
+double Size: The new default point size.  If zero, nothing is done and the current size is returned.
 
 -RESULT-
 double: The previous font size is returned.
@@ -1040,10 +1036,10 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
 
    log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, LONG(Flags));
 
-   if (!Name) return log.warning(ERR_NullArgs);
+   if (not Name) return log.warning(ERR_NullArgs);
 
    pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
-   if (!config.granted()) return log.warning(ERR_AccessObject);
+   if (not config.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
    if (glConfig->getPtr(FID_Data, &groups)) return ERR_Search;
@@ -1076,12 +1072,12 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
             // both fixed and scalable, fixed_group and scale_group will point to the same font.
 
             for (auto & [k, v] : keys) {
-               if ((!fixed_group) and (!k.compare(0, 6, "Fixed:"))) {
+               if ((not fixed_group) and (!k.compare(0, 6, "Fixed:"))) {
                   fixed_group_name = group;
                   fixed_group = &keys;
                   if (scale_group) break;
                }
-               else if ((!scale_group) and (!k.compare(0, 6, "Scale:"))) {
+               else if ((not scale_group) and (!k.compare(0, 6, "Scale:"))) {
                   scale_group_name = group;
                   scale_group = &keys;
                   if (fixed_group) break;
@@ -1097,7 +1093,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
       multi = true;
    }
 
-   if ((!scale_group) and (!fixed_group)) log.warning("The font \"%s\" is not installed on this system.", Name);
+   if ((not scale_group) and (not fixed_group)) log.warning("The font \"%s\" is not installed on this system.", Name);
    if ((Flags & FTF::REQUIRE_FIXED) != FTF::NIL) scale_group = NULL;
    if ((Flags & FTF::REQUIRE_SCALED) != FTF::NIL) fixed_group = NULL;
 
@@ -1127,7 +1123,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
          }
       }
 
-      if (!fixed_group) { // Sans Serif is a good default for a fixed font.
+      if (not fixed_group) { // Sans Serif is a good default for a fixed font.
          for (auto & [group, keys] : *groups) {
             if ((keys.contains("Name")) and (!keys["Name"].compare("Sans Serif"))) {
                fixed_group_name = group;
@@ -1138,7 +1134,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
       }
    }
 
-   if ((!fixed_group) and (!scale_group)) return ERR_Search;
+   if ((not fixed_group) and (not scale_group)) return ERR_Search;
 
    // Read the point sizes for the fixed group and determine if the requested point size is within 2 units of one
    // of those values.  If not, we'll have to use the scaled font option.
@@ -1263,7 +1259,7 @@ static ERROR fntRefreshFonts(void)
    log.trace("Generating style lists for each font.");
 
    ConfigGroups *groups;
-   if (!glConfig->getPtr(FID_Data, &groups)) {
+   if (not glConfig->getPtr(FID_Data, &groups)) {
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
@@ -1307,8 +1303,8 @@ static void scan_truetype_folder(objConfig *Config)
 
    log.branch("Scanning for truetype fonts.");
 
-   if (!OpenDir("fonts:truetype/", RDF::FILE, &dir)) {
-      while (!ScanDir(dir)) {
+   if (not OpenDir("fonts:truetype/", RDF::FILE, &dir)) {
+      while (not ScanDir(dir)) {
          snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
@@ -1316,7 +1312,7 @@ static void scan_truetype_folder(objConfig *Config)
 
          ResolvePath(location, RSF::NIL, (STRING *)&open.pathname);
          open.flags = FT_OPEN_PATHNAME;
-         if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
+         if (not FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
 
             log.msg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
@@ -1391,8 +1387,8 @@ static void scan_fixed_folder(objConfig *Config)
    log.branch("Scanning for fixed fonts.");
 
    DirInfo *dir;
-   if (!OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
-      while (!ScanDir(dir)) {
+   if (not OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
+      while (not ScanDir(dir)) {
          std::string location("fonts:fixed/");
          location.append(dir->Info->Name);
          auto src = location.c_str();

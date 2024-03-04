@@ -551,6 +551,13 @@ struct VectorMatrix {
    DOUBLE TranslateY;             // Matrix value F
 };
 
+struct FontMetrics {
+   LONG Height;         // Capitalised font height
+   LONG LineSpacing;    // Vertical advance from one line to the next
+   LONG Ascent;         // Height from the baseline to the top of the font, including accents.
+   LONG Descent;        // Height from the baseline to the bottom of the font
+};
+
 // VectorColour class definition
 
 #define VER_VECTORCOLOUR (1.000000)
@@ -2059,6 +2066,9 @@ struct VectorBase {
    ERROR (*_Scale)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
    ERROR (*_ParseTransform)(struct VectorMatrix * Matrix, CSTRING Transform);
    ERROR (*_ResetMatrix)(struct VectorMatrix * Matrix);
+   ERROR (*_GetFontHandle)(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle);
+   ERROR (*_GetFontMetrics)(APTR Handle, struct FontMetrics * Info);
+   DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
 #endif // PARASOL_STATIC
 };
 
@@ -2091,6 +2101,9 @@ inline ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix
 inline ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
 inline ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
 inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
+inline ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
+inline ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
+inline DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
 #else
 extern "C" {
 extern ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
@@ -2119,6 +2132,9 @@ extern ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix
 extern ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
 extern ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
 extern ERROR vecResetMatrix(struct VectorMatrix * Matrix);
+extern ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle);
+extern ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info);
+extern DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars);
 }
 #endif // PARASOL_STATIC
 #endif

@@ -14,6 +14,8 @@ FDEF argsFreePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { 0, 0 } };
 FDEF argsGenerateEllipse[] = { { "Error", FD_LONG|FD_ERROR }, { "CX", FD_DOUBLE }, { "CY", FD_DOUBLE }, { "RX", FD_DOUBLE }, { "RY", FD_DOUBLE }, { "Vertices", FD_LONG }, { "Path", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsGeneratePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Sequence", FD_STR }, { "Path", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsGenerateRectangle[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Path", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsGetFontHandle[] = { { "Error", FD_LONG|FD_ERROR }, { "Family", FD_STR }, { "Style", FD_STR }, { "Weight", FD_LONG }, { "Size", FD_LONG }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsGetFontMetrics[] = { { "Error", FD_LONG|FD_ERROR }, { "Handle", FD_PTR }, { "FontMetrics:Info", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsGetVertex[] = { { "Result", FD_LONG }, { "Path", FD_PTR }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF argsLineTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMoveTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
@@ -28,6 +30,7 @@ FDEF argsScale[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_
 FDEF argsSkew[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth3[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth4[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX", FD_DOUBLE }, { "CtrlY", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
+FDEF argsStringWidth[] = { { "Result", FD_DOUBLE }, { "FontHandle", FD_PTR }, { "String", FD_STR }, { "Chars", FD_LONG }, { 0, 0 } };
 FDEF argsTranslate[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsTranslatePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 
@@ -58,6 +61,9 @@ const struct Function glFunctions[] = {
    { (APTR)vecScale, "Scale", argsScale },
    { (APTR)vecParseTransform, "ParseTransform", argsParseTransform },
    { (APTR)vecResetMatrix, "ResetMatrix", argsResetMatrix },
+   { (APTR)vecGetFontHandle, "GetFontHandle", argsGetFontHandle },
+   { (APTR)vecGetFontMetrics, "GetFontMetrics", argsGetFontMetrics },
+   { (APTR)vecStringWidth, "StringWidth", argsStringWidth },
    { NULL, NULL, NULL }
 };
 

@@ -16,6 +16,7 @@ functions for creating paths and rendering them to bitmaps.
 *********************************************************************************************************************/
 
 //#include "vector.h"
+//#include "font.h"
 #include "colours.cpp"
 
 inline char read_nibble(CSTRING Str)
@@ -1177,6 +1178,153 @@ void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUB
 {
    if (!Vector) return;
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+StringWidth: Calculate the pixel width of a UTF-8 string, for a given font.
+
+This function calculates the pixel width of a string, in relation to a known font.  The function takes into account 
+any line-feeds that are encountered, so if the String contains multiple lines, then the width of the longest line will 
+be returned.
+
+The font's kerning specifications will be taken into account when computing the distance between glyphs.
+
+-INPUT-
+ptr FontHandle: A font handle obtained from GetFontHandle().
+cstr String: Pointer to a null-terminated string.
+int Chars: The maximum number of unicode characters to process in calculating the string width.  Set to -1 for all chars.
+
+-RESULT-
+double: The pixel width of the string is returned.
+-END-
+
+*********************************************************************************************************************/
+
+DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Handle) or (!String)) return log.warning(ERR_NullArgs);
+
+   const std::lock_guard lock(glFontMutex);
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {     
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      if (Chars IS -1) Chars = 0x7fffffff;
+
+      LONG len        = 0;
+      LONG widest     = 0;
+      LONG prev_glyph = 0;
+      LONG i = 0;
+      while ((i < Chars) and (String[i])) {
+         if (String[i] IS '\n') {
+            if (widest < len) widest = len;
+            len = 0;
+            i++;
+         }
+         else {
+            ULONG unicode;
+            auto charlen = get_utf8(String, unicode, i);
+            auto &glyph  = pt->get_glyph(pt->ft_size->face, unicode);
+            len += glyph.advance_x;
+            if (prev_glyph) {;
+               FT_Vector delta;
+               FT_Get_Kerning(pt->ft_size->face, prev_glyph, glyph.glyph_index, FT_KERNING_DEFAULT, &delta);
+               len += int26p6_to_dbl(delta.x);
+            }
+            prev_glyph = glyph.glyph_index;
+            i += charlen;
+         }
+      }
+
+      if (widest > len) return widest;
+      else return len;
+   }
+   else return fntStringWidth(((bmp_font *)Handle)->font, String, Chars);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontHandle: Returns a handle for a given font family.
+
+For a given font family and size, this function will return a handle that can be passed to font querying functions.
+
+The handle is permanent, remaining valid for the lifetime of the program.
+
+-INPUT-
+cstr Family: The name of the font family to access.
+cstr Style: The preferred style to choose from the family.  Use "Regular" or NULL for the default.
+int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
+int Size: The font-size, measured in pixels @ 72 DPI.
+&ptr Handle: The resulting font handle is returned here.
+
+-ERRORS-
+Okay:
+Args:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+{
+   pf::Log log(__FUNCTION__);
+   ULONG key;
+
+   if (Size < 1) return log.warning(ERR_Args);
+
+   if (auto error = get_font(Family, Style, Weight, Size, key); !error) {
+      if (glBitmapFonts.contains(key)) *Handle = &glBitmapFonts[key];
+      else *Handle = &glFreetypeFonts[key].points[Size];
+      return ERR_Okay;
+   }
+   else return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontMetrics: Returns a set of display metric values for a font.
+
+Call GetFontMetrics() to retrieve a basic set of display metrics (adjusted to the display's DPI) for a given 
+font.
+
+-INPUT-
+ptr Handle: A font handle obtained from GetFontHandle().
+struct(*FontMetrics) Info: The name of the font family to access.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
+{
+   if ((!Handle) or (!Metrics)) return ERR_NullArgs;
+   
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      Metrics->Height      = pt->height();
+      Metrics->LineSpacing = pt->line_spacing();
+      Metrics->Ascent      = pt->ascent();
+      Metrics->Descent     = pt->descent();
+      return ERR_Okay;
+   }
+   else {
+      auto font = ((bmp_font *)Handle)->font;
+      Metrics->Height      = font->Ascent;
+      Metrics->LineSpacing = font->LineSpacing;
+      Metrics->Ascent      = font->Height;
+      Metrics->Descent     = font->Gutter;
+      return ERR_Okay;
+   }
 }
 
 /*********************************************************************************************************************

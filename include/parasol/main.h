@@ -224,7 +224,8 @@ class GuardedObject {
       // Public methods
 
       inline void set(T *Object) { // set() requires caution as the object reference is modified without adjusting the counter
-         if (count[0] IS 1) {
+         if (!Object) return;
+         else if (count[0] IS 1) {
             object = Object;
             id     = Object->UID;
          }
