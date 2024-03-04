@@ -108,20 +108,6 @@
   </function>
 
   <function>
-    <name>SetDefaultSize</name>
-    <comment>Sets the default font size for the application.</comment>
-    <prototype>DOUBLE fntSetDefaultSize(DOUBLE Size)</prototype>
-    <input>
-      <param type="DOUBLE" name="Size">The new default point size.  If zero, nothing is done and the current size is returned.</param>
-    </input>
-    <description>
-<p>This function is used to set the default font size for the application.  This will affect fonts that are created with proportional sizes (e.g. a point size of 150% and a default point of 10 would result in a 15 point font).  Also, Font objects with no preset size will be set to the default size.</p>
-<p>Please note that the default size is defined by the global style value on the xpath <code>/interface/@fontsize</code>.  This can also be overridden by the user's style preference.  We recommend against calling SetDefaultSize() unless absolutely necessary.</p>
-    </description>
-    <result type="DOUBLE">The previous font size is returned.</result>
-  </function>
-
-  <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
     <prototype>LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>

@@ -263,7 +263,6 @@ struct FontBase {
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
    LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
-   DOUBLE (*_SetDefaultSize)(DOUBLE Size);
    ERROR (*_InstallFont)(CSTRING Files);
    ERROR (*_RemoveFont)(CSTRING Name);
    ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
@@ -276,7 +275,6 @@ extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
 inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
-inline DOUBLE fntSetDefaultSize(DOUBLE Size) { return FontBase->_SetDefaultSize(Size); }
 inline ERROR fntInstallFont(CSTRING Files) { return FontBase->_InstallFont(Files); }
 inline ERROR fntRemoveFont(CSTRING Name) { return FontBase->_RemoveFont(Name); }
 inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path); }
@@ -285,7 +283,6 @@ extern "C" {
 extern ERROR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
 extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
-extern DOUBLE fntSetDefaultSize(DOUBLE Size);
 extern ERROR fntInstallFont(CSTRING Files);
 extern ERROR fntRemoveFont(CSTRING Name);
 extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);

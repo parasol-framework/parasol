@@ -292,9 +292,7 @@ Charter:120%::255,128,255
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The point size of a font defines the size of a font, relative to other point sizes for a particular font face.  For example, Arial point 8 is half the size of Arial point 16.  The point size between font families cannot be compared accurately due to designer discretion when it comes to determining font size.  For accurate point size in terms of pixels, please refer to the Height field.</p>
-<p>The unit of measure for point size is dependent on the target display.  For video displays, the point size translates directly into pixels.  When printing however, point size will translate to a certain number of dots on the page (the exact number of dots will depend on the printer device and final DPI).</p>
-<p>The Point field also supports proportional sizing based on the default value set by the system or user.  For instance if a Point value of 1.5 is specified and the default font size is 10, the final point size for the font will be 15. This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can change the global point size for your application by calling <function module="Font">SetDefaultSize</function> in the Font module.</p>
+<p>The point size defines the size of a font in point units, at a ratio of 1:72 DPI.</p>
 <p>When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will drop the font to point 8.  This does not impact upon scalable fonts, which can be measured to any point size.</p>
       </description>
     </field>

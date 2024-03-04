@@ -51,8 +51,8 @@ class is not integrated with the display's vector scene graph.
 
 static BitmapCache * check_bitmap_cache(extFont *, FTF);
 static ERROR cache_truetype_font(extFont *, CSTRING);
-static ERROR SET_Point(extFont *, Variable *);
-static ERROR SET_Style(extFont *, CSTRING );
+static ERROR SET_Point(extFont *Self, DOUBLE);
+static ERROR SET_Style(extFont *, CSTRING);
 
 const char * get_ft_error(FT_Error err)
 {
@@ -451,52 +451,49 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
    LONG i, j;
 
    if ((Value) and (Value[0])) {
-      if (!StrCompare("SRC:", Value, 4)) {
+      STRING val = (STRING)Value;
+      if (!StrCompare("SRC:", val, 4)) {
          std::ostringstream path;
          LONG coloncount = 0;
-         for (i=4; Value[i]; i++) {
-            if (Value[i] IS ':') {
+         for (i=4; val[i]; i++) {
+            if (val[i] IS ':') {
                coloncount++;
                if (coloncount > 1) break;
             }
-            path << Value[i];
+            path << val[i];
          }
          Self->Path = StrClone(path.str().c_str());
          Self->prvFace[0] = 0;
       }
       else {
-         for (i=0; (Value[i]) and (Value[i] != ':') and (i < std::ssize(Self->prvFace)-1); i++) Self->prvFace[i] = Value[i];
+         for (i=0; (val[i]) and (val[i] != ':') and (i < std::ssize(Self->prvFace)-1); i++) Self->prvFace[i] = val[i];
          Self->prvFace[i] = 0;
       }
 
-      if (Value[i] != ':') return ERR_Okay;
+      if (val[i] != ':') return ERR_Okay;
 
       // Extract the point size
 
-      i++;
-      Variable var(StrToFloat(Value+i));
-      while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
-      if (Value[i] IS '.') {
-         Value++;
-         while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
-      }
-      if (Value[i] IS '%') { var.Type |= FD_SCALED; i++; }
-      SET_Point(Self, &var);
+      val += i;
+      DOUBLE pt = strtod(val, &val);
+      SET_Point(Self, pt);
 
-      if (Value[i] != ':') return ERR_Okay;
+      i = 0;
+      while ((*val) and (*val != ':')) val++;
+      if (!*val) return ERR_Okay;
 
       // Extract the style string
 
       i++;
-      for (j=0; (Value[i]) and (Value[i] != ':') and (j < std::ssize(Self->prvStyle)-1); j++) Self->prvStyle[j] = Value[i++];
+      for (j=0; (val[i]) and (val[i] != ':') and (j < std::ssize(Self->prvStyle)-1); j++) Self->prvStyle[j] = val[i++];
       Self->prvStyle[j] = 0;
 
-      if (Value[i] != ':') return ERR_Okay;
+      if (val[i] != ':') return ERR_Okay;
 
       // Extract the colour string
 
       i++;
-      Self->set(FID_Colour, Value + i);
+      Self->set(FID_Colour, val + i);
    }
    else Self->prvFace[0] = 0;
 
@@ -672,19 +669,7 @@ bitmap fonts only.
 -FIELD-
 Point: The point size of a font.
 
-The point size of a font defines the size of a font, relative to other point sizes for a particular font face.  For
-example, Arial point 8 is half the size of Arial point 16.  The point size between font families cannot be compared
-accurately due to designer discretion when it comes to determining font size.  For accurate point size in terms of
-pixels, please refer to the Height field.
-
-The unit of measure for point size is dependent on the target display.  For video displays, the point size translates
-directly into pixels.  When printing however, point size will translate to a certain number of dots on the page (the
-exact number of dots will depend on the printer device and final DPI).
-
-The Point field also supports proportional sizing based on the default value set by the system or user.  For instance
-if a Point value of 1.5 is specified and the default font size is 10, the final point size for the font will be 15.
-This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can
-change the global point size for your application by calling ~Font.SetDefaultSize() in the Font module.
+The point size defines the size of a font in point units, at a ratio of 1:72 DPI.
 
 When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested
 point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will
@@ -692,44 +677,24 @@ drop the font to point 8.  This does not impact upon scalable fonts, which can b
 
 *********************************************************************************************************************/
 
-static ERROR GET_Point(extFont *Self, Variable *Value)
+static ERROR GET_Point(extFont *Self, DOUBLE *Value)
 {
-   if (Value->Type & FD_SCALED) return ERR_NoSupport;
-
-   if (Value->Type & FD_DOUBLE) Value->Double = Self->Point;
-   else if (Value->Type & FD_LARGE) Value->Large = Self->Point;
-   else return ERR_FieldTypeMismatch;
+   *Value = Self->Point;
    return ERR_Okay;
 }
 
-static ERROR SET_Point(extFont *Self, Variable *Value)
+static ERROR SET_Point(extFont *Self, DOUBLE Value)
 {
-   pf::Log log;
-   DOUBLE value;
-
-   if (Value->Type & FD_DOUBLE) value = Value->Double;
-   else if (Value->Type & FD_LARGE) value = Value->Large;
-   else if (Value->Type & FD_STRING) value = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) {
-      // Default point size is scaled relative to display DPI, then re-scaled to the % value that was passed in.
-      DOUBLE global_point = global_point_size();
-      DOUBLE pct = value;
-      value = (global_point * (DOUBLE)glDisplayHDPI / 96.0) * pct;
-      log.msg("Calculated point size: %.2f, from global point %.2f * %.0f%%, DPI %d", value, global_point, pct, glDisplayHDPI);
-   }
-
-   if (value < 1) value = 1;
+   if (Value < 1) Value = 1;
 
    if (Self->initialised()) {
       if (Self->Cache.get()) {
          unload_glyph_cache(Self); // Remove any existing glyph reference
-         Self->Point = value;
+         Self->Point = Value;
          cache_truetype_font(Self, NULL); // Updates meta information like the Leading value
       }
    }
-   else Self->Point = value;
+   else Self->Point = Value;
 
    return ERR_Okay;
 }
@@ -1408,7 +1373,7 @@ static const FieldDef AlignFlags[] = {
 };
 
 static const FieldArray clFontFields[] = {
-   { "Point",        FDF_DOUBLE|FDF_VARIABLE|FDF_SCALED|FDF_RW, GET_Point, SET_Point },
+   { "Point",        FDF_DOUBLE|FDF_RW, GET_Point, SET_Point },
    { "GlyphSpacing", FDF_DOUBLE|FDF_RW },
    { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, NULL, ID_BITMAP },
    { "String",       FDF_STRING|FDF_RW, NULL, SET_String },

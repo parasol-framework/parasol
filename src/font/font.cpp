@@ -94,7 +94,6 @@ class extFont : public objFont {
    char prvFace[32];
    char prvStyle[20];
    UBYTE prvDefaultChar;
-   UBYTE prvTotalTabs;
 };
 
 static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
@@ -658,38 +657,6 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 
    if (widest > len) return widest;
    else return len - whitespace;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetDefaultSize: Sets the default font size for the application.
-
-This function is used to set the default font size for the application.  This will affect fonts that are created with
-proportional sizes (e.g. a point size of 150% and a default point of 10 would result in a 15 point font).  Also, Font
-objects with no preset size will be set to the default size.
-
-Please note that the default size is defined by the global style value on the xpath `/interface/@fontsize`.  This can
-also be overridden by the user's style preference.  We recommend against calling SetDefaultSize() unless absolutely
-necessary.
-
--INPUT-
-double Size: The new default point size.  If zero, nothing is done and the current size is returned.
-
--RESULT-
-double: The previous font size is returned.
-
-*********************************************************************************************************************/
-
-DOUBLE fntSetDefaultSize(DOUBLE Size)
-{
-   DOUBLE previous;
-   if ((Size < 6) or (Size > 100)) return glDefaultPoint;
-
-   previous = glDefaultPoint;
-   glDefaultPoint = Size;
-   glPointSet = true;
-   return previous;
 }
 
 /*********************************************************************************************************************
