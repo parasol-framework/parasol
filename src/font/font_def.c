@@ -3,7 +3,6 @@
 extern "C" {
 ERROR fntGetList(struct FontList ** Result);
 LONG fntStringWidth(extFont * Font, CSTRING String, LONG Chars);
-void fntStringSize(extFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
 LONG fntCharWidth(extFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
 DOUBLE fntSetDefaultSize(DOUBLE Size);
 ERROR fntInstallFont(CSTRING Files);
@@ -21,13 +20,11 @@ FDEF argsInstallFont[] = { { "Error", FD_LONG|FD_ERROR }, { "Files", FD_STR }, {
 FDEF argsRemoveFont[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsSelectFont[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Style", FD_STR }, { "Point", FD_LONG }, { "Flags", FD_LONG }, { "Path", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsSetDefaultSize[] = { { "Result", FD_DOUBLE }, { "Size", FD_DOUBLE }, { 0, 0 } };
-FDEF argsStringSize[] = { { "Void", FD_VOID }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "Chars", FD_LONG }, { "Wrap", FD_LONG }, { "Width", FD_LONG|FD_RESULT }, { "Rows", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsStringWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "Chars", FD_LONG }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)fntGetList, "GetList", argsGetList },
    { (APTR)fntStringWidth, "StringWidth", argsStringWidth },
-   { (APTR)fntStringSize, "StringSize", argsStringSize },
    { (APTR)fntCharWidth, "CharWidth", argsCharWidth },
    { (APTR)fntSetDefaultSize, "SetDefaultSize", argsSetDefaultSize },
    { (APTR)fntInstallFont, "InstallFont", argsInstallFont },

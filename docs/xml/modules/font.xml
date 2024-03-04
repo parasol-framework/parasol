@@ -122,24 +122,6 @@
   </function>
 
   <function>
-    <name>StringSize</name>
-    <comment>Calculates the exact dimensions of a font string, giving respect to word wrapping.</comment>
-    <prototype>void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows)</prototype>
-    <input>
-      <param type="objFont *" name="Font">An initialised font object.</param>
-      <param type="CSTRING" name="String">The string to be analysed.</param>
-      <param type="LONG" name="Chars" lookup="FSS">The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.</param>
-      <param type="LONG" name="Wrap">The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.</param>
-      <param type="LONG *" name="Width">The width of the longest line will be returned in this parameter.</param>
-      <param type="LONG *" name="Rows">The number of calculated rows will be returned in this parameter.</param>
-    </input>
-    <description>
-<p>This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account the font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The routine takes into account any line feeds that may already exist in the String.</p>
-<p>A character limit can be specified in the Chars argument.  If this argument is set to <code>FSS_ALL</code>, all characters in String will be used in the calculation.  If set to <code>FSS_LINE</code>, the routine will terminate when the first line feed or word-wrap is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary was encountered.</p>
-    </description>
-  </function>
-
-  <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
     <prototype>LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>

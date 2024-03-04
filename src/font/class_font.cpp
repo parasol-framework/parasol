@@ -832,9 +832,9 @@ static ERROR GET_Width(extFont *Self, LONG *Value)
 
    if ((!Self->prvStrWidth) or ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) or (Self->WrapEdge)){
       if (Self->WrapEdge > 0) {
-         fntStringSize(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, NULL);
+         string_size(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, NULL);
       }
-      else fntStringSize(Self, Self->String, FSS_ALL, 0, &Self->prvStrWidth, NULL);
+      else string_size(Self, Self->String, FSS_ALL, 0, &Self->prvStrWidth, NULL);
    }
 
    *Value = Self->prvStrWidth;
@@ -1086,7 +1086,7 @@ static ERROR draw_bitmap_font(extFont *Self)
       dycoord -= (Self->Ascent - Self->Leading); // - 1;
    }
 
-   fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
+   string_size(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
    CSTRING wrapstr = str + wrapindex;
 
    // If horizontal centering is required, calculate the correct horizontal starting coordinate.
@@ -1123,7 +1123,7 @@ static ERROR draw_bitmap_font(extFont *Self)
          str++;
 
          while ((*str) and (*str <= 0x20)) { if (*str IS '\n') dycoord += Self->LineSpacing; str++; }
-         fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
+         string_size(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
          wrapstr = str + wrapindex;
 
          if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
@@ -1156,7 +1156,7 @@ static ERROR draw_bitmap_font(extFont *Self)
             dycoord += Self->LineSpacing;
 
             while ((*str) and (*str <= 0x20)) { if (*str IS '\n') dycoord += Self->LineSpacing; str++; }
-            fntStringSize(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
+            string_size(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
             wrapstr = str + wrapindex;
 
             if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {

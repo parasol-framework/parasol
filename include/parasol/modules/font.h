@@ -262,7 +262,6 @@ struct FontBase {
 #ifndef PARASOL_STATIC
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
-   void (*_StringSize)(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
    LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
    DOUBLE (*_SetDefaultSize)(DOUBLE Size);
    ERROR (*_InstallFont)(CSTRING Files);
@@ -276,7 +275,6 @@ struct FontBase {
 extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
-inline void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows) { return FontBase->_StringSize(Font,String,Chars,Wrap,Width,Rows); }
 inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
 inline DOUBLE fntSetDefaultSize(DOUBLE Size) { return FontBase->_SetDefaultSize(Size); }
 inline ERROR fntInstallFont(CSTRING Files) { return FontBase->_InstallFont(Files); }
@@ -286,7 +284,6 @@ inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, C
 extern "C" {
 extern ERROR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
-extern void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
 extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
 extern DOUBLE fntSetDefaultSize(DOUBLE Size);
 extern ERROR fntInstallFont(CSTRING Files);

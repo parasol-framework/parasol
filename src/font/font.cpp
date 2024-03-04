@@ -113,6 +113,7 @@ static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
 static ERROR fntRefreshFonts(void);
+static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
 
 //********************************************************************************************************************
 // Return the first unicode value from a given string address.
@@ -238,7 +239,7 @@ inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if (Self->WrapEdge > 0) {
-         fntStringSize(Self, Self->String, -1, Self->WrapEdge - Self->X, NULL, &Self->prvLineCount);
+         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, NULL, &Self->prvLineCount);
       }
       else Self->prvLineCount = Self->prvLineCountCR;
    }
@@ -444,31 +445,9 @@ ERROR fntGetList(FontList **Result)
    else return ERR_NoData;
 }
 
-/*********************************************************************************************************************
+//********************************************************************************************************************
 
--FUNCTION-
-StringSize: Calculates the exact dimensions of a font string, giving respect to word wrapping.
-
-This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account
-the font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The
-routine takes into account any line feeds that may already exist in the String.
-
-A character limit can be specified in the Chars argument.  If this argument is set to `FSS_ALL`, all characters in
-String will be used in the calculation.  If set to `FSS_LINE`, the routine will terminate when the first line feed or
-word-wrap is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary
-was encountered.
-
--INPUT-
-ext(Font) Font: An initialised font object.
-cstr String:    The string to be analysed.
-int(FSS) Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.
-int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.
-&int Width: The width of the longest line will be returned in this parameter.
-&int Rows:  The number of calculated rows will be returned in this parameter.
-
-*********************************************************************************************************************/
-
-void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
    font_glyph *cache;
    ULONG unicode;

@@ -70,7 +70,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
   functionNames("fnt",
     "GetList",
     "StringWidth",
-    "StringSize",
     "CharWidth",
     "SetDefaultSize",
     "InstallFont",

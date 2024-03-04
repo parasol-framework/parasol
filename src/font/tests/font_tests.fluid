@@ -31,10 +31,6 @@ function testGetList()
 
 end
 
-function testStringSize()
-
-end
-
 function testStringWidth()
 
 end
@@ -56,7 +52,7 @@ end
    return {
       tests = {
         --'testKerning'
-        'testGetList', 'testStringSize', 'testStringWidth', 'testSelectFont'
+        'testGetList', 'testStringWidth', 'testSelectFont'
       },
       init = nil,
       cleanup = function()
