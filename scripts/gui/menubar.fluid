@@ -31,8 +31,6 @@ as follows:
    require 'translate'
    include 'vector'
 
-   if (not mFont) then mFont = mod.load('font') end
-
 local lColours = {
    textFill      = 'rgb(255,255,255)',
    textHighlight = 'rgb(160,160,220)',

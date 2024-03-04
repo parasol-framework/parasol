@@ -4,7 +4,6 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   if (not mFont) then mFont = mod.load('font') end
    if (not mGfx) then mGfx = mod.load('display') end
    if (not mVec) then mVec = mod.load('vector') end
 

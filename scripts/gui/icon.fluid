@@ -51,8 +51,6 @@ local function imageLocation(Path)
 end
 
 gui.icon = function(Options)
-   local mFont = mod.load('font')
-
    local self = { -- Public variables
       parentViewport = Options.target,
       events         = nz(Options.events, { }),
@@ -111,15 +109,16 @@ gui.icon = function(Options)
          lFontSize = 10
       end
 
-      local font = obj.new('font', { face = gui.fonts.icon.face, point = lFontSize })
-
-      lLineHeight = font.maxHeight
+      local err, font = mVec.getFontHandle(gui.fonts.icon.face, "Regular", 0, lFontSize)
+      local metrics = struct.new('FontMetrics')
+      local err = mVec.getFontMetrics(font, metrics)
+      lLineHeight = metrics.lineSpacing
 
       -- Extract each word's pixel width
 
       local widest_word = 0
       for _, word in ipairs(lText) do
-         local width = mFont.stringWidth(font, word, -1)
+         local width = mVec.stringWidth(font, word, -1)
          if (width > widest_word) then widest_word = width end
          table.insert(lWords, { word=word, width=width })
       end
@@ -137,7 +136,7 @@ gui.icon = function(Options)
             current_line = word.word
          else
             local new_line = current_line .. ' ' .. word.word
-            local width = mFont.stringWidth(font, new_line, -1)
+            local width = mVec.stringWidth(font, new_line, -1)
             if (width + (MARGIN * 2) < lIconWidth) then
                current_line = new_line
             else

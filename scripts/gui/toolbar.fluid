@@ -39,8 +39,6 @@ The resulting object consists of the following accessible fields:
    require 'translate'
    include 'vector'
 
-   if (not mFont) then mFont = mod.load('font') end
-
 local lColours = {
    hover       = 'rgb(0,0,0,32)',
    selected    = 'rgb(255,255,255,128)',

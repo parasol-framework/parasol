@@ -30,13 +30,13 @@ Valid options to use when creating the menu are as follows:
    require 'gui'
    include 'display'
 
-   if (not mFont) then mFont = mod.load('font') end
    if (not mGfx)  then mGfx = mod.load('display') end
 
 local FONT_FACE = 'Open Sans'
 local FONT_SIZE = 11
 local MARGIN    = 6
 local RIGHT_MARGIN = MARGIN
+local ITEM_SPACING = 1.2
 
 local function applyFill(Vector, Fill)
    while (Vector != nil) do
@@ -165,7 +165,7 @@ gui.menu = function(Options)
 
             if (bw > widestItem) then widestItem = bw end
 
-            local icon_size = bh
+            local icon_size = vText.displayHeight + vText.descent
 
             if showIcons and item['icon'] then
                catch(function()
@@ -203,7 +203,7 @@ gui.menu = function(Options)
             end
 
             vText.y = mi.textY
-            mi.height = vText.lineSpacing * 1.4
+            mi.height = vText.lineSpacing * ITEM_SPACING
             y = y + mi.height
 
             table.insert(self.items, mi)
@@ -518,16 +518,14 @@ gui.menu = function(Options)
             end
          elseif (ev.type == JET_ABS_XY) then
             local highlightFound = false
-            if (ev.overID == self.surface.id) then
-               for _, item in pairs(self.items) do
-                  if not item.lineBreak then
-                     if (ev.y >= item.y) and (ev.y < item.y + item.height) then
-                        if (self.hItem != item) then
-                           highlightItem(item)
-                        end
-                        highlightFound = true
-                        break
+            for _, item in pairs(self.items) do
+               if not item.lineBreak then
+                  if (ev.y >= item.y) and (ev.y < item.y + item.height) then
+                     if (self.hItem != item) then
+                        highlightItem(item)
                      end
+                     highlightFound = true
+                     break
                   end
                end
             end

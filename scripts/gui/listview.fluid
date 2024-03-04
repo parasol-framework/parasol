@@ -101,13 +101,6 @@ gui.listView = function(Options)
    end
 
    local function constructListView(View, Scene, Viewport, Page)
-      if not View.itemFont then
-         View.itemFont = obj.new('font', {
-            face = gui.fonts.widget.face,
-            point = string.format('%.2fpt', gui.fonts.widget.size)
-         })
-      end
-
       local width  = Viewport.width - EDGE - EDGE
       local height = Viewport.height
       local x      = EDGE
@@ -196,7 +189,9 @@ gui.listView = function(Options)
             item._vectors.text.string = item[lTextAttrib]
             --font.wrapEdge = x + item.Width
 
-            width = internalMargin + iconMargin + mFont.stringWidth(View.itemFont, item[lTextAttrib], -1) + internalMargin
+            local err, bx, by, bw, bh = item._vectors.text.mtGetBoundary(0)
+
+            width = internalMargin + iconMargin + bw + internalMargin
 
             if item._selected then
                item._vectors.text.fill = lColours.fillSelectFont
