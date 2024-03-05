@@ -61,7 +61,7 @@
   <use xlink:href="#smilie" transform="translate(150,250) scale(2.7)" filter="url(#f5)" />
   <use xlink:href="#smilie" transform="translate(250,250) scale(2.7)" filter="url(#f6)" />
 
-  <text x="145" y="130" font-family="Open Sans" font-size="14pt" font-weight="bold">feConvolveMatrix</text>
-  <text x="35" y="130" font-family="Open Sans" font-size="14pt" font-weight="bold">Original</text>
+  <text x="145" y="130" font-family="Noto Sans" font-size="14pt" font-weight="bold">feConvolveMatrix</text>
+  <text x="35" y="130" font-family="Noto Sans" font-size="14pt" font-weight="bold">Original</text>
   <line x1="137" y1="40" x2="137" y2="330" stroke="black" />
 </svg>

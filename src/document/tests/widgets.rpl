@@ -54,7 +54,7 @@
   <option value="Tesla">Tesla</option>
 </combobox> Not a label</p>
 
-<p font-face="Open Sans" font-size="20"><combobox width="300" value="Open Sans 20pt">
+<p font-face="Noto Sans" font-size="20"><combobox width="300" value="Noto Sans 20pt">
   <option icon="icons:items/add" value="Volvo">Volvo</option>
   <option value="Saab">Saab</option>
   <option icon="icons:items/cancel" value="Mercedes">Mercedes</option>

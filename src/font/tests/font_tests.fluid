@@ -36,14 +36,14 @@ function testStringWidth()
 end
 
 function testSelectFont()
-   local err, path = mFont.selectFont("Open Sans", "Regular", 12, nil)
+   local err, path = mFont.selectFont("Noto Sans", "Regular", 12, nil)
    assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
-   -- This will fail because a fixed Open Sans isn't available and no wildcard was specified
-   local err, path = mFont.selectFont("Open Sans", "Regular", 12, FTF_REQUIRE_FIXED)
+   -- This will fail because a fixed Noto Sans isn't available and no wildcard was specified
+   local err, path = mFont.selectFont("Noto Sans", "Regular", 12, FTF_REQUIRE_FIXED)
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
-   local err, path = mFont.selectFont("Open Sans,*", "Regular", 12, FTF_PREFER_FIXED)
+   local err, path = mFont.selectFont("Noto Sans,*", "Regular", 12, FTF_PREFER_FIXED)
    assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 end
 

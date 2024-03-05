@@ -32,7 +32,7 @@ Valid options to use when creating the menu are as follows:
 
    if (not mGfx)  then mGfx = mod.load('display') end
 
-local FONT_FACE = 'Open Sans'
+local FONT_FACE = 'Noto Sans'
 local FONT_SIZE = 11
 local MARGIN    = 6
 local RIGHT_MARGIN = MARGIN

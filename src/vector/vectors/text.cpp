@@ -400,7 +400,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 16; // Pixel units @ 72 DPI
    Self->txCharLimit  = 0x7fffffff;
-   Self->txFamily     = StrClone("Open Sans");
+   Self->txFamily     = StrClone("Noto Sans");
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
    Self->txLetterSpacing = 1.0;
    Self->DisableHitTesting = true;
@@ -643,7 +643,7 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 Face: Defines the font face/family to use in rendering the text string.
 
 The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts
-in CSV format in case the first-choice font is unavailable.  For instance, `Arial,Open Sans` would load the Open Sans
+in CSV format in case the first-choice font is unavailable.  For instance, `Arial,Noto Sans` would load the Noto Sans
 font if Arial was unavailable.
 
 If none of the listed fonts are available, the default system font will be used.

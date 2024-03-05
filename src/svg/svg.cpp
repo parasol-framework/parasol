@@ -72,7 +72,7 @@ struct svgState {
    objVectorScene *Scene;
 
    public:
-   svgState(objVectorScene *pScene) : m_fill("rgb(0,0,0)"), m_font_family("Open Sans"), m_stroke_width(0),
+   svgState(objVectorScene *pScene) : m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
       m_fill_opacity(-1), m_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pScene) { }
 
    void applyTag(const XMLTag &) noexcept;

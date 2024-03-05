@@ -31,8 +31,19 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(FT_Face Face, ULONG Un
    }
 
    // WARNING: FT_Load_Glyph leaks memory if you call it repeatedly for the same glyph (hence the importance of caching).
-    
-   if (FT_Load_Glyph(Face, path.glyph_index, FT_LOAD_LINEAR_DESIGN)) return path;
+
+   // NB: For variable truetype fonts, it appears that font-provided auto-hinters perform poorly, or perhaps the Freetype
+   // library is not using them effectively.  Forcing the use of the Freetype auto-hinter fixes this problem.  Be aware
+   // that this situation might change and need re-evaluation in future Freetype releases.
+
+   LONG flags;
+   
+   if (FT_HAS_MULTIPLE_MASTERS(Face)) {
+      flags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
+   }
+   else flags = FT_LOAD_TARGET_NORMAL;
+
+   if (FT_Load_Glyph(Face, path.glyph_index, flags)) return path;
    path.advance_x = int26p6_to_dbl(Face->glyph->advance.x);
    path.advance_y = int26p6_to_dbl(Face->glyph->advance.y);
 

@@ -247,6 +247,135 @@ inline void calc_lines(extFont *Self)
 
 //********************************************************************************************************************
 
+static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+{
+   font_glyph *cache;
+   ULONG unicode;
+   WORD rowcount, wordwidth, lastword, tabwidth, charwidth;
+   UBYTE line_abort, pchar;
+
+   if ((!Font) or (!String)) return;
+   if (!Font->initialised()) return;
+
+   if (Chars IS FSS_LINE) {
+      Chars = 0x7fffffff;
+      line_abort = 1;
+   }
+   else {
+      line_abort = 0;
+      if (Chars < 0) Chars = 0x7fffffff;
+   }
+
+   if (Wrap <= 0) Wrap = 0x7fffffff;
+
+   //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
+
+   CSTRING start  = String;
+   LONG x         = 0;
+   LONG prevglyph = 0;
+   LONG longest   = 0;
+   LONG charcount = 0;
+   LONG wordindex = 0;
+   rowcount = line_abort ? 0 : 1;
+   while ((*String) and (charcount < Chars)) {
+      lastword = x;
+
+      // Skip whitespace
+
+      while ((*String) and (*String <= 0x20)) {
+         if (*String IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
+         else if (*String IS '\t') {
+            tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
+            if (tabwidth) x += pf::roundup(x, tabwidth);
+         }
+         else if (*String IS '\n') {
+            if (lastword > longest) longest = lastword;
+            x = 0;
+            if (line_abort) {
+               line_abort = 2;
+               String++;
+               break;
+            }
+            rowcount++;
+         }
+         String++;
+         charcount++;
+         prevglyph = 0;
+      }
+
+      if ((!*String) or (line_abort IS 2)) break;
+
+      // Calculate the width of the discovered word
+
+      wordindex = LONG(String - start);
+      wordwidth = 0;
+      charwidth = 0;
+
+      while (charcount < Chars) {
+         LONG charlen = getutf8(String, &unicode);
+
+         if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
+         else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
+            if (unicode IS ' ') {
+               charwidth += Font->prvChar[' '].Advance * Font->GlyphSpacing;
+            }
+            else if ((cache = get_glyph(Font, unicode))) {
+               charwidth = cache->AdvanceX * Font->GlyphSpacing;
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
+               prevglyph = cache->GlyphIndex;
+            }
+         }
+         else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
+         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
+
+         if ((!x) and (x+wordwidth+charwidth >= Wrap)) {
+            // This is the first word of the line and it exceeds the boundary, so we have to split it.
+
+            lastword = wordwidth;
+            wordwidth += charwidth; // This is just to ensure that a break occurs
+            wordindex = (LONG)(String - start);
+            break;
+         }
+         else {
+            pchar = glWrapBreaks[(UBYTE)(*String)];
+            wordwidth += charwidth;
+            String += charlen;
+            charcount++;
+
+            // Break if the previous char was a wrap character or current char is whitespace.
+
+            if ((pchar) or (*String <= 0x20)) break;
+         }
+      }
+
+      // Check the width of the word against the wrap boundary
+
+      if (x + wordwidth >= Wrap) {
+         prevglyph = 0;
+         if (lastword > longest) longest = lastword;
+         rowcount++;
+         if (line_abort) {
+            x = 0;
+            String = start + wordindex;
+            break;
+         }
+         else x = wordwidth;
+      }
+      else x += wordwidth;
+   }
+
+   if (x > longest) longest = x;
+
+   if (Rows) {
+      if (line_abort) *Rows = LONG(String - start);
+      else *Rows = rowcount;
+   }
+
+   if (Width) *Width = longest;
+}
+
+//********************************************************************************************************************
+
 static objConfig *glConfig = NULL;
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
@@ -404,16 +533,21 @@ ERROR fntGetList(FontList **Result)
 
             if (keys.contains("Name")) {
                list->Name = buffer;
-               buffer += StrCopy(keys["Name"].c_str(), buffer) + 1;
+               buffer += StrCopy(keys["Name"], buffer) + 1;
             }
 
             if (keys.contains("Styles")) {
                list->Styles = buffer;
-               buffer += StrCopy(keys["Styles"].c_str(), buffer) + 1;
+               buffer += StrCopy(keys["Styles"], buffer) + 1;
             }
 
             if (keys.contains("Scalable")) {
-               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR::MATCH_LEN)) list->Scalable = TRUE;
+               if (!StrMatch("Yes", keys["Scalable"])) list->Scalable = TRUE;
+            }
+            
+            if (keys.contains("Variable")) {
+               if (!StrMatch("Yes", keys["Variable"])) list->Variable = TRUE;
+            }
             }
 
             list->Points = NULL;
@@ -442,135 +576,6 @@ ERROR fntGetList(FontList **Result)
       else return ERR_AllocMemory;
    }
    else return ERR_NoData;
-}
-
-//********************************************************************************************************************
-
-static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
-{
-   font_glyph *cache;
-   ULONG unicode;
-   WORD rowcount, wordwidth, lastword, tabwidth, charwidth;
-   UBYTE line_abort, pchar;
-
-   if ((!Font) or (!String)) return;
-   if (!Font->initialised()) return;
-
-   if (Chars IS FSS_LINE) {
-      Chars = 0x7fffffff;
-      line_abort = 1;
-   }
-   else {
-      line_abort = 0;
-      if (Chars < 0) Chars = 0x7fffffff;
-   }
-
-   if (Wrap <= 0) Wrap = 0x7fffffff;
-
-   //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
-
-   CSTRING start  = String;
-   LONG x         = 0;
-   LONG prevglyph = 0;
-   LONG longest   = 0;
-   LONG charcount = 0;
-   LONG wordindex = 0;
-   rowcount = line_abort ? 0 : 1;
-   while ((*String) and (charcount < Chars)) {
-      lastword = x;
-
-      // Skip whitespace
-
-      while ((*String) and (*String <= 0x20)) {
-         if (*String IS ' ') x += Font->prvChar[' '].Advance * Font->GlyphSpacing;
-         else if (*String IS '\t') {
-            tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
-            if (tabwidth) x += pf::roundup(x, tabwidth);
-         }
-         else if (*String IS '\n') {
-            if (lastword > longest) longest = lastword;
-            x = 0;
-            if (line_abort) {
-               line_abort = 2;
-               String++;
-               break;
-            }
-            rowcount++;
-         }
-         String++;
-         charcount++;
-         prevglyph = 0;
-      }
-
-      if ((!*String) or (line_abort IS 2)) break;
-
-      // Calculate the width of the discovered word
-
-      wordindex = LONG(String - start);
-      wordwidth = 0;
-      charwidth = 0;
-
-      while (charcount < Chars) {
-         LONG charlen = getutf8(String, &unicode);
-
-         if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
-         else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
-            if (unicode IS ' ') {
-               charwidth += Font->prvChar[' '].Advance * Font->GlyphSpacing;
-            }
-            else if ((cache = get_glyph(Font, unicode))) {
-               charwidth = cache->AdvanceX * Font->GlyphSpacing;
-               if ((Font->Flags & FTF::KERNING) != FTF::NIL) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
-               prevglyph = cache->GlyphIndex;
-            }
-         }
-         else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
-         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
-
-         if ((!x) and (x+wordwidth+charwidth >= Wrap)) {
-            // This is the first word of the line and it exceeds the boundary, so we have to split it.
-
-            lastword = wordwidth;
-            wordwidth += charwidth; // This is just to ensure that a break occurs
-            wordindex = (LONG)(String - start);
-            break;
-         }
-         else {
-            pchar = glWrapBreaks[(UBYTE)(*String)];
-            wordwidth += charwidth;
-            String += charlen;
-            charcount++;
-
-            // Break if the previous char was a wrap character or current char is whitespace.
-
-            if ((pchar) or (*String <= 0x20)) break;
-         }
-      }
-
-      // Check the width of the word against the wrap boundary
-
-      if (x + wordwidth >= Wrap) {
-         prevglyph = 0;
-         if (lastword > longest) longest = lastword;
-         rowcount++;
-         if (line_abort) {
-            x = 0;
-            String = start + wordindex;
-            break;
-         }
-         else x = wordwidth;
-      }
-      else x += wordwidth;
-   }
-
-   if (x > longest) longest = x;
-
-   if (Rows) {
-      if (line_abort) *Rows = LONG(String - start);
-      else *Rows = rowcount;
-   }
-
-   if (Width) *Width = longest;
 }
 
 /*********************************************************************************************************************
@@ -657,146 +662,6 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 
    if (widest > len) return widest;
    else return len - whitespace;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-InstallFont: Installs a new font.
-
-The InstallFont() function is used to install new fonts on a system running Parasol.  While it is possible
-for users to download new font files and install them by hand, this is a process that is too difficult for novices and
-is open to mistakes on the part of the user.  By using a program that uses the InstallFont() function, the installation
-process can take place automatically.
-
-To install a new font, you only need to know the location of the font file(s).  The rest of the information about the
-font will be derived after an analysis of the data.
-
-Once this function is called, the data files will be copied into the correct sub-directory and the font registration
-files will be updated to reflect the presence of the new font.  The font will be available immediately thereafter, so
-there is no need to reset the system to acknowledge the presence of the font.
-
--INPUT-
-cstr Files: A list of the font files that are to be installed must be specified here.  If there is more than one data file, separate each file name with a semi-colon.
-
--ERRORS-
-Okay: The font information was successfully installed.
-NullArgs:
-NoSupport: One of the font files is in an unsupported file format.
-
-*********************************************************************************************************************/
-
-ERROR fntInstallFont(CSTRING Files)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Files) return log.warning(ERR_NullArgs);
-
-   log.branch("Files: %s", Files);
-
-   // Copy all files to the destination directory
-
-   char buffer[512];
-   LONG i = 0;
-   while (Files[i]) {
-      LONG j;
-      for (j=0; (Files[i]) and (Files[i] != ';'); j++) buffer[j] = Files[i++];
-      buffer[j++] = 0;
-
-      // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
-
-      objFile::create file = { fl::Flags(FL::READ), fl::Path(buffer) };
-      if (file.ok()) {
-         if (!file->read(buffer, 256)) {
-            CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
-            snprintf(buffer, sizeof(buffer), "fonts:%s/", directory);
-            flCopy(*file, buffer, NULL);
-         }
-      }
-
-      if (Files[i]) {
-         i++;
-         while ((Files[i]) and (Files[i] <= 0x20)) i++;
-      }
-   }
-
-   // Refresh the font server so that the installed files will show up in the font list
-
-   fntRefreshFonts();
-   return ERR_Okay;
-}
-
-
-/*********************************************************************************************************************
-
--FUNCTION-
-RemoveFont: Removes an installed font from the system.
-
-RemoveFont() will remove any font that is installed in the system.  Once a font has been removed, the data is
-permanently destroyed and it cannot be recovered.  To remove a font, specify its family name only.
-All associated styles for that font will be deleted.
-
-This function may fail if attempting to remove a font that is currently in use.
-
--INPUT-
-cstr Name: The name of the font face (family name) that is to be removed.
-
--ERRORS-
-Okay: The font was successfully removed.
-Args: Invalid arguments were specified.
-DeleteFile: Removal aborted due to a file deletion failure.
-
-*********************************************************************************************************************/
-
-ERROR fntRemoveFont(CSTRING Name)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Name) return log.warning(ERR_NullArgs);
-   if (!Name[0]) return log.warning(ERR_EmptyString);
-
-   log.branch("%s", Name);
-
-   pf::ScopedObjectLock<objConfig> config(glConfig);
-   if (!config.granted()) return log.warning(ERR_AccessObject);
-
-   // Delete all files related to this font
-
-   ConfigGroups *groups;
-   if (!glConfig->getPtr(FID_Data, &groups)) {
-      for (auto & [group, keys] : *groups) {
-         if (StrMatch(Name, keys["Name"].c_str())) continue;
-
-         ERROR error = ERR_Okay;
-         if (keys.contains("Styles")) {
-            auto &styles = keys["Styles"];
-            log.trace("Scanning styles: %s", styles.c_str());
-
-            for (ULONG i=0; styles[i]; ) {
-               auto n = styles.find(",", i);
-               if (n IS std::string::npos) n = styles.size();
-
-               auto fixed_style = std::string("Fixed:") + styles.substr(i, n);
-               if (keys.contains(fixed_style)) {
-                  if (DeleteFile(keys[fixed_style].c_str(), NULL)) error = ERR_DeleteFile;
-               }
-
-               auto scale_style = std::string("Scale:") + styles.substr(i, n);
-               if (keys.contains(scale_style)) {
-                  if (DeleteFile(keys[scale_style].c_str(), NULL)) error = ERR_DeleteFile;
-               }
-
-               i += n + 1;
-            }
-         }
-         else log.warning("There is no Styles entry for the %s font.", Name);
-
-         cfgDeleteGroup(glConfig, group.c_str());
-         return error;
-      }
-   }
-
-   return log.warning(ERR_Search);
 }
 
 /*********************************************************************************************************************
@@ -1032,13 +897,10 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
 -INTERNAL-
 RefreshFonts: Refreshes the system font list with up-to-date font information.
 
-The Refresh() action scans for fonts that are installed in the system.  Ideally this action should not be necessary
-when the InstallFont() and RemoveFont() methods are used correctly, however it can be useful when font files have been
-manually deleted or added to the system.
+The Refresh() action scans for fonts that are installed on the system and refreshes the font database.
 
 Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for information.
-Once the analysis is complete, the `cfgSystemFonts` object will be updated and the `fonts:fonts.cfg` file will reflect current
-font settings.
+Once the analysis is complete, the `fonts:fonts.cfg` file will reflect current font settings.
 
 -ERRORS-
 Okay: Fonts were successfully refreshed.
@@ -1163,6 +1025,8 @@ static void scan_truetype_folder(objConfig *Config)
             Config->write(group, "Name", group);
 
             if (FT_IS_SCALABLE(ftface)) Config->write(group, "Scalable", "Yes");
+
+            if (FT_HAS_MULTIPLE_MASTERS(ftface)) Config->write(group, "Variable", "Yes");
 
             // Add the style with a link to the font file location
 

@@ -68,17 +68,21 @@ public:
       FT_New_Size(pFace, &Size);
       FT_Activate_Size(Size);
       FT_Set_Char_Size(pFace, 0, DBL_TO_FT(pPoint), FIXED_DPI, FIXED_DPI); // The Point is pre-scaled, so we use FIXED_DPI here.
+      
+      LONG flags;
+      if (FT_HAS_MULTIPLE_MASTERS(pFace)) flags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
+      else flags = FT_LOAD_TARGET_NORMAL;
 
       // Pre-calculate the width of each character in the range of 0x20 - 0xff
 
-      if (!FT_Load_Glyph(pFace, FT_Get_Char_Index(pFace, pDefaultChar), FT_LOAD_DEFAULT)) {
+      if (!FT_Load_Glyph(pFace, FT_Get_Char_Index(pFace, pDefaultChar), flags)) {
          Chars[(LONG)pDefaultChar].Width   = pFace->glyph->advance.x>>FT_DOWNSIZE;
          Chars[(LONG)pDefaultChar].Advance = pFace->glyph->advance.x>>FT_DOWNSIZE;
       }
 
       for (LONG i=' '; i < ARRAYSIZE(Chars); i++) {
          LONG j;
-         if ((j = FT_Get_Char_Index(pFace, i)) and (!FT_Load_Glyph(pFace, j, FT_LOAD_DEFAULT))) {
+         if ((j = FT_Get_Char_Index(pFace, i)) and (not FT_Load_Glyph(pFace, j, flags))) {
             Chars[i].Width   = pFace->glyph->advance.x>>FT_DOWNSIZE;
             Chars[i].Advance = pFace->glyph->advance.x>>FT_DOWNSIZE;
          }

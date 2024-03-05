@@ -42,7 +42,7 @@ struct FontList {
    LONG * Points;             // Pointer to an array of fixed point sizes supported by the font.
    STRING Styles;             // Supported styles are listed here in CSV format.
    BYTE   Scalable;           // TRUE if the font is scalable.
-   BYTE   Reserved1;          // Do not use.
+   BYTE   Variable;          // Do not use.
    WORD   Reserved2;          // Do not use.
 };
 
@@ -100,8 +100,7 @@ class objFont : public BaseClass {
    inline ERROR setPoint(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setGlyphSpacing(const DOUBLE Value) noexcept {
@@ -263,9 +262,7 @@ struct FontBase {
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
    LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
-   ERROR (*_InstallFont)(CSTRING Files);
-   ERROR (*_RemoveFont)(CSTRING Name);
-   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
+   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta);
 #endif // PARASOL_STATIC
 };
 
@@ -275,17 +272,13 @@ extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
 inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
-inline ERROR fntInstallFont(CSTRING Files) { return FontBase->_InstallFont(Files); }
-inline ERROR fntRemoveFont(CSTRING Name) { return FontBase->_RemoveFont(Name); }
-inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path); }
+inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path,Meta); }
 #else
 extern "C" {
 extern ERROR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
 extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
-extern ERROR fntInstallFont(CSTRING Files);
-extern ERROR fntRemoveFont(CSTRING Name);
-extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
+extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta);
 }
 #endif // PARASOL_STATIC
 #endif

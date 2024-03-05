@@ -27,7 +27,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
     array(int,0) Points     # Pointer to an array of fixed point sizes supported by the font.
     str   Styles            # Supported styles are listed here in CSV format.
     char  Scalable          # TRUE if the font is scalable.
-    char  Reserved1         # Do not use.
+    char  Variable          # TRUE if the font has variable metrics.
     short Reserved2         # Do not use.
   ]])
 
@@ -71,8 +71,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
     "GetList",
     "StringWidth",
     "CharWidth",
-    "InstallFont",
-    "RemoveFont",
     "SelectFont")
 
 end)

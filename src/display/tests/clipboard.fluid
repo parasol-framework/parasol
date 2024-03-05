@@ -10,7 +10,7 @@ Manual test for confirming that the clibpoard works.
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
    local text = viewport.new('VectorText', {
-      string='Push any key to test paste operations', face='Open Sans', fontSize=20, y=50, x=10, fill='rgb(0,0,0)'
+      string='Push any key to test paste operations', face='Noto Sans', fontSize=20, y=50, x=10, fill='rgb(0,0,0)'
    })
 
    local clipboard = obj.new('Clipboard', { })

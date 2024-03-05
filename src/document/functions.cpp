@@ -2,12 +2,12 @@
 static const LONG MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Open Sans\" font-size=\"18\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\" font-face=\"Open Sans\" font-size=\"16\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h3\"><p leading=\"1.25\" font-face=\"Open Sans\" font-size=\"14\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h4\"><p leading=\"1.25\" font-face=\"Open Sans\" font-size=\"14\"><inject/></p></template>\n\
-<template name=\"h5\"><p leading=\"1.0\" font-face=\"Open Sans\" font-size=\"12\"><inject/></p></template>\n\
-<template name=\"h6\"><p leading=\"1.0\" font-face=\"Open Sans\" font-size=\"10\"><inject/></p></template>\n";
+"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"18\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h2\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"16\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h3\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h4\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14\"><inject/></p></template>\n\
+<template name=\"h5\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"12\"><inject/></p></template>\n\
+<template name=\"h6\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"10\"><inject/></p></template>\n";
 
 static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -410,7 +410,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Links.clear();
 
-   Self->FontFace = "Open Sans";
+   Self->FontFace = "Noto Sans";
    Self->PageTag = NULL;
 
    Self->EditCells.clear();

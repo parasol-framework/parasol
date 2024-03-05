@@ -432,7 +432,7 @@ defined as `face:pointsize:style:colour`.
 Here are some examples:
 
 <pre>
-Open Sans:12:Bold Italic:#ff0000
+Noto Sans:12:Bold Italic:#ff0000
 Courier:10.6
 Charter:120%::255,128,255
 </pre>
@@ -440,7 +440,7 @@ Charter:120%::255,128,255
 To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the
 font location: `SRC:volumename:data/images/shine:14:Italic`
 
-Multiple font faces can be specified in CSV format, e.g. `Sans Serif,Open Sans`, which allows the closest matching font to
+Multiple font faces can be specified in CSV format, e.g. `Sans Serif,Noto Sans`, which allows the closest matching font to
 be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very
 useful for pairing bitmap fonts with a scalable equivalent.
 
@@ -970,7 +970,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
    }
 
    FT_Error fterr;
-   if ((fterr = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT))) {
+   if ((fterr = FT_Load_Glyph(face, glyph_index, FT_LOAD_TARGET_LIGHT|FT_LOAD_FORCE_AUTOHINT))) {
       log.warning("Failed to load glyph %d '%lc', FT error: %s", glyph_index, (wint_t)Unicode, get_ft_error(fterr));
       return NULL;
    }

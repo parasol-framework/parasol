@@ -16,7 +16,7 @@ is possible by calling the free method.
 
    if (gui == nil) then gui = { } end
 
-local FONT_FACE = 'Open Sans'
+local FONT_FACE = 'Noto Sans'
 local FONT_SIZE = 11
 
 gui.tooltip = function(Options)

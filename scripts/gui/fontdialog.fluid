@@ -27,7 +27,7 @@ Valid options to use when creating the dialog are as follows:
    feedback:   Refers to a Fluid function that will receive the user's response to the dialog.
    style:      Preset the font's style, e.g. 'Bold Italic'.  The default is 'Regular'.
    size:       Preset the font's point size, must be between 4 and 256.  The default is 12.
-   face:       Preset the font's face.  Defaults to 'Open Sans'.
+   face:       Preset the font's face.  Defaults to 'Noto Sans'.
    example:    Overrides the example text normally printed in the dialog.
    colour:     Change the default font colour to something other than black.
 
@@ -45,7 +45,7 @@ gui.dialog.font = function(Options)
 
    local self = { -- Public variables
       windowID    = nil,
-      face        = 'Open Sans',
+      face        = 'Noto Sans',
       size        = 12,
       style       = 'Regular',
       compactFace = nil,
@@ -409,7 +409,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Preselect list items based on the preferences supplied by the client.
 
    vwFace.selectItems(function(Item)
-      if Item.id == nz(lOptions.face, 'Open Sans') then return true end
+      if Item.id == nz(lOptions.face, 'Noto Sans') then return true end
    end)
 
    vwStyle.selectItems(function(Item)

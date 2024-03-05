@@ -47,43 +47,6 @@
   </function>
 
   <function>
-    <name>InstallFont</name>
-    <comment>Installs a new font.</comment>
-    <prototype>ERROR fntInstallFont(CSTRING Files)</prototype>
-    <input>
-      <param type="CSTRING" name="Files">A list of the font files that are to be installed must be specified here.  If there is more than one data file, separate each file name with a semi-colon.</param>
-    </input>
-    <description>
-<p>The InstallFont() function is used to install new fonts on a system running Parasol.  While it is possible for users to download new font files and install them by hand, this is a process that is too difficult for novices and is open to mistakes on the part of the user.  By using a program that uses the InstallFont() function, the installation process can take place automatically.</p>
-<p>To install a new font, you only need to know the location of the font file(s).  The rest of the information about the font will be derived after an analysis of the data.</p>
-<p>Once this function is called, the data files will be copied into the correct sub-directory and the font registration files will be updated to reflect the presence of the new font.  The font will be available immediately thereafter, so there is no need to reset the system to acknowledge the presence of the font.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoSupport">This request is not supported.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>RemoveFont</name>
-    <comment>Removes an installed font from the system.</comment>
-    <prototype>ERROR fntRemoveFont(CSTRING Name)</prototype>
-    <input>
-      <param type="CSTRING" name="Name">The name of the font face (family name) that is to be removed.</param>
-    </input>
-    <description>
-<p>RemoveFont() will remove any font that is installed in the system.  Once a font has been removed, the data is permanently destroyed and it cannot be recovered.  To remove a font, specify its family name only. All associated styles for that font will be deleted.</p>
-<p>This function may fail if attempting to remove a font that is currently in use.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="DeleteFile">Deletion of a folder or file failed (e.g. permissions, read-only media).</error>
-    </result>
-  </function>
-
-  <function>
     <name>SelectFont</name>
     <comment>Searches for a 'best fitting' font file based on select criteria.</comment>
     <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path)</prototype>
@@ -143,6 +106,11 @@
       <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
     </constants>
 
+    <constants lookup="HINT" comment="Force hinting options for a font.">
+      <const name="INTERNAL">The Freetype hinter will be forcibly imposed.</const>
+      <const name="NORMAL">The hinting information provided by the font will be given preference.</const>
+    </constants>
+
   </types>
   <structs>
     <struct name="FontList" comment="For GetList(), describes a system font.">
@@ -151,8 +119,9 @@
       <field name="Points" type="LONG *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
       <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
       <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
-      <field name="Reserved1" type="BYTE">Do not use.</field>
-      <field name="Reserved2" type="WORD">Do not use.</field>
+      <field name="Variable" type="BYTE">TRUE if the font has variable metrics.</field>
+      <field name="Hinting" type="HINT" lookup="HINT">Hinting options</field>
+      <field name="Reserved2" type="BYTE">Do not use.</field>
     </struct>
 
   </structs>

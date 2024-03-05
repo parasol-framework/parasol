@@ -374,7 +374,7 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
    std::string family(Family ? Family : "*");
    std::string style(Style ? Style : "Regular");
 
-   if (StrMatch("Open Sans", family)) family.append(",Open Sans");
+   if (StrMatch("Noto Sans", family)) family.append(",Noto Sans");
 
    if ((Weight) and (Weight != 400)) {
       if (Weight >= 700) style = "Extra Bold";
@@ -426,6 +426,7 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
                glFreetypeFonts.emplace(Key, ftface);
                FreeResource(resolved);
             }
+            else return log.warning(ERR_ResolvePath);
          }
 
          auto &font = glFreetypeFonts[Key];
