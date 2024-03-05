@@ -131,6 +131,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    LONG diff;
    FTF style;
    ERROR error;
+   FMETA meta = FMETA::NIL;
 
    if ((!Self->prvFace[0]) and (!Self->Path)) {
       log.warning("Face not defined.");
@@ -141,7 +142,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    if (!Self->Path) {
       CSTRING path = NULL;
-      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF::PREFER_SCALED|FTF::PREFER_FIXED|FTF::ALLOW_SCALE), &path)) {
+      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF::PREFER_SCALED|FTF::PREFER_FIXED|FTF::ALLOW_SCALE), &path, &meta)) {
          Self->set(FID_Path, path);
          FreeResource(path);
       }
@@ -309,6 +310,13 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    }
    else {
       if ((error = cache_truetype_font(Self, Self->Path))) return error;
+
+      if ((meta & FMETA::HINT_INTERNAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
+      else if ((meta & FMETA::HINT_LIGHT) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_LIGHT;
+      else if ((meta & FMETA::HINT_NORMAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL; // Use the font's hinting information
+      else Self->prvGlyphFlags = FT_LOAD_DEFAULT; // Default, typically matches FT_LOAD_TARGET_NORMAL
+
+      if (FT_HAS_MULTIPLE_MASTERS(Self->Cache->Face)) Self->Flags |= FTF::VARIABLE;
 
       if (FT_HAS_KERNING(Self->Cache->Face)) Self->Flags |= FTF::KERNING;
       Self->Flags |= FTF::SCALABLE;
@@ -970,7 +978,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
    }
 
    FT_Error fterr;
-   if ((fterr = FT_Load_Glyph(face, glyph_index, FT_LOAD_TARGET_LIGHT|FT_LOAD_FORCE_AUTOHINT))) {
+   if ((fterr = FT_Load_Glyph(face, glyph_index, Self->prvGlyphFlags))) {
       log.warning("Failed to load glyph %d '%lc', FT error: %s", glyph_index, (wint_t)Unicode, get_ft_error(fterr));
       return NULL;
    }

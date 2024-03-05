@@ -48,6 +48,7 @@ class freetype_font {
       class ft_point : public common_font {
          public:
             GLYPH_TABLE glyphs;
+            freetype_font *font = NULL;
             FT_Size ft_size = NULL;
 
             // These values are measured as pixels in 72 DPI.
@@ -60,14 +61,15 @@ class freetype_font {
             DOUBLE descent; // Number of pixels allocated below the baseline, not including vertical whitespace
             DOUBLE line_spacing;
 
-            glyph & get_glyph(FT_Face, ULONG);
+            glyph & get_glyph(ULONG);
 
             ft_point() : common_font(CF_FREETYPE) { }
 
-            ft_point(FT_Face pFace, LONG Size) : common_font(CF_FREETYPE) {
-               if (!FT_New_Size(pFace, &ft_size)) {
+            ft_point(freetype_font &pFont, LONG Size) : common_font(CF_FREETYPE) {
+               font = &pFont;
+               if (!FT_New_Size(pFont.face, &ft_size)) {
                   FT_Activate_Size(ft_size);
-                  FT_Set_Char_Size(pFace, 0, Size<<6, 72, 72);
+                  FT_Set_Char_Size(pFont.face, 0, Size<<6, 72, 72);
 
                   if FT_HAS_VERTICAL(ft_size->face) {
                      line_spacing = std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / DISPLAY_DPI));
@@ -91,9 +93,16 @@ class freetype_font {
    public:
       FT_Face face = NULL;
       std::map<LONG, ft_point> points;
+      FMETA meta = FMETA::NIL;
+      LONG glyph_flags = 0;
    
       freetype_font()  { }
-      freetype_font(FT_Face pFace) : face(pFace) { }
+      freetype_font(FT_Face pFace, FMETA pMeta = FMETA::NIL) : face(pFace), meta(pMeta) { 
+         if ((pMeta & FMETA::HINT_INTERNAL) != FMETA::NIL) glyph_flags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
+         else if ((pMeta & FMETA::HINT_LIGHT) != FMETA::NIL) glyph_flags = FT_LOAD_TARGET_LIGHT;
+         else if ((pMeta & FMETA::HINT_NORMAL) != FMETA::NIL) glyph_flags = FT_LOAD_TARGET_NORMAL; // Use the font's hinting information
+         else glyph_flags = FT_LOAD_DEFAULT; // Default, typically matches FT_LOAD_TARGET_NORMAL
+      }
 
       ~freetype_font();
 };

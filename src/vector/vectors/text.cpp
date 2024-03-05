@@ -266,7 +266,7 @@ static LONG string_width(extVectorText *Self, const std::string_view &String)
       else {
          ULONG unicode;
          auto charlen = get_utf8(String, unicode, i);
-         auto &glyph  = pt.get_glyph(font.face, unicode);
+         auto &glyph  = pt.get_glyph(unicode);
          len += glyph.advance_x * Self->txLetterSpacing;
          len += get_kerning(font.face, glyph.glyph_index, prev_glyph);
          prev_glyph = glyph.glyph_index;

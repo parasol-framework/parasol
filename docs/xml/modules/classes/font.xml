@@ -403,6 +403,14 @@ Charter:120%::255,128,255
 
   </fields>
   <types>
+    <constants lookup="FMETA" comment="Result flags for the SelectFont() function.">
+      <const name="HINT_INTERNAL">The Freetype hinter should be used.</const>
+      <const name="HINT_LIGHT">The light version of the Freetype hinter should be used.</const>
+      <const name="HINT_NORMAL">The hinting information provided by the font should be given preference.</const>
+      <const name="SCALED">The font is scalable (assume fixed otherwise).</const>
+      <const name="VARIABLE">This is a scalable font featuring variable metrics.</const>
+    </constants>
+
     <constants lookup="FTF" comment="Font flags">
       <const name="ALLOW_SCALE">Allows switching to a suitable scalable font if a fixed point size is unavailable.  Equivalent to ending a font face with the '*' wildcard.</const>
       <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
@@ -415,6 +423,7 @@ Charter:120%::255,128,255
       <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
       <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
       <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
+      <const name="VARIABLE">The font supports variable metrics.</const>
     </constants>
 
   </types>

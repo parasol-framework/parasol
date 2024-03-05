@@ -8,6 +8,7 @@ static const struct FieldDef clFontFlags[] = {
    { "HeavyLine", 0x00000010 },
    { "BaseLine", 0x00000020 },
    { "AllowScale", 0x00000040 },
+   { "Variable", 0x08000000 },
    { "Scalable", 0x10000000 },
    { "Bold", 0x20000000 },
    { "Italic", 0x40000000 },

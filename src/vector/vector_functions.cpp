@@ -1229,7 +1229,7 @@ DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
          else {
             ULONG unicode;
             auto charlen = get_utf8(String, unicode, i);
-            auto &glyph  = pt->get_glyph(pt->ft_size->face, unicode);
+            auto &glyph  = pt->get_glyph(unicode);
             len += glyph.advance_x;
             if (prev_glyph) {;
                FT_Vector delta;

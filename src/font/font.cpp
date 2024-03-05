@@ -87,6 +87,7 @@ class extFont : public objFont {
    font_glyph prvTempGlyph;
    LONG prvLineCount;
    LONG prvStrWidth;
+   LONG prvGlyphFlags;
    WORD prvSpaceWidth;          // Pixel width of word breaks
    WORD prvBitmapHeight;
    WORD prvLineCountCR;
@@ -548,6 +549,10 @@ ERROR fntGetList(FontList **Result)
             if (keys.contains("Variable")) {
                if (!StrMatch("Yes", keys["Variable"])) list->Variable = TRUE;
             }
+            
+            if (keys.contains("Hinting")) {
+               if (!StrMatch("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
+               else if (!StrMatch("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
             }
 
             list->Points = NULL;
@@ -686,6 +691,7 @@ cstr Style: The required style, e.g. Bold or Italic.  Using camel-case for each 
 int Point:  Preferred point size.
 int(FTF) Flags:  Optional flags.
 &!cstr Path: The location of the best-matching font file is returned in this parameter.
+&int(FMETA) Meta: Optional, returns additional meta information about the font file.
 
 -ERRORS-
 Okay
@@ -696,21 +702,7 @@ Search: Unable to find a suitable font.
 
 *********************************************************************************************************************/
 
-static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::string& Type, const std::string& Style)
-{
-   pf::Log log(__FUNCTION__);
-
-   std::string cfg_style(Type + ":" + Style);
-   log.trace("Looking for font style %s", cfg_style.c_str());
-   if (Keys.contains(cfg_style)) return make_optional(Keys[cfg_style]);
-   else if (StrMatch("Regular", Style.c_str()) != ERR_Okay) {
-      log.trace("Looking for regular version of the font...");
-      if (Keys.contains("Fixed:Regular")) return make_optional(Keys["Fixed:Regular"]);
-   }
-   return std::nullopt;
-}
-
-ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path)
+ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path, FMETA *Meta)
 {
    pf::Log log(__FUNCTION__);
 
@@ -854,20 +846,46 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
          alt_type = "Fixed";
       }
    }
+   
+   auto get_meta = [](ConfigKeys &Group, const std::string &Type) {
+      FMETA meta = FMETA::NIL;
+      if (Group.contains("Hinting")) {
+         if (!StrMatch("Normal", Group["Hinting"])) meta |= FMETA::HINT_NORMAL;
+         else if (!StrMatch("Internal", Group["Hinting"])) meta |= FMETA::HINT_INTERNAL;
+         else if (!StrMatch("Light", Group["Hinting"])) meta |= FMETA::HINT_LIGHT;
+      }
+
+      if (Group.contains("Variable")) {
+         meta |= FMETA::VARIABLE;
+      }
+
+      if (!StrMatch("Scale", Type)) meta |= FMETA::SCALED;
+
+      return meta;
+   };
+
+   auto get_font_path = [&log](ConfigKeys &Keys, const std::string &Type, const std::string &Style) {
+      std::string cfg_style(Type + ":" + Style);
+      log.trace("Looking for font style %s", cfg_style.c_str());
+      if (Keys.contains(cfg_style)) return StrClone(Keys[cfg_style].c_str());
+      else if (StrMatch("Regular", Style.c_str()) != ERR_Okay) {
+         log.trace("Looking for regular version of the font...");
+         if (Keys.contains("Fixed:Regular")) return StrClone(Keys["Fixed:Regular"].c_str());
+      }
+      return STRING(NULL);
+   };
 
    if (preferred_group) {
-      auto path = get_font_path(*preferred_group, preferred_type, style_name);
-      if (path.has_value()) {
-         if ((*Path = StrClone(path.value().c_str()))) return ERR_Okay;
-         else return ERR_AllocMemory;
+      if ((*Path = get_font_path(*preferred_group, preferred_type, style_name))) {
+         if (Meta) *Meta = get_meta(*preferred_group, preferred_type);
+         return ERR_Okay;
       }
    }
 
    if (alt_group) {
-      auto path = get_font_path(*alt_group, alt_type, style_name);
-      if (path.has_value()) {
-         if ((*Path = StrClone(path.value().c_str()))) return ERR_Okay;
-         else return ERR_AllocMemory;
+      if ((*Path = get_font_path(*alt_group, alt_type, style_name))) {
+         if (Meta) *Meta = get_meta(*alt_group, alt_type);
+         return ERR_Okay;
       }
    }
 
@@ -882,10 +900,12 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
 
    if ((preferred_group) and (preferred_group->contains(preferred_type + ":" + first_style))) {
       *Path = StrClone(preferred_group[0][preferred_type + ":" + first_style].c_str());
+      if (Meta) *Meta = get_meta(*preferred_group, preferred_type);
       return ERR_Okay;
    }
    else if ((alt_group) and (alt_group->contains(alt_type + ":" + first_style))) {
       *Path = StrClone(alt_group[0][alt_type + ":" + first_style].c_str());
+      if (Meta) *Meta = get_meta(*alt_group, alt_type);
       return ERR_Okay;
    }
 

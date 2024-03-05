@@ -390,10 +390,11 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
 
    const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
    CSTRING location = NULL;
-   if (auto error = fntSelectFont(family.c_str(), style.c_str(), point_size, FTF::PREFER_SCALED, &location); !error) {
+   FMETA meta = FMETA::NIL;
+   if (auto error = fntSelectFont(family.c_str(), style.c_str(), point_size, FTF::PREFER_SCALED, &location, &meta); !error) {
       GuardedResource loc(location);
 
-      if (!StrCompare("*.fon", location, 0, STR::WILDCARD)) { // Bitmap font
+      if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
          Key = StrHash(style + ":" + std::to_string(point_size) + ":" + location);
 
          if (glBitmapFonts.contains(Key)) {
@@ -412,8 +413,8 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
       else {
          Key = StrHash(std::string(style) + ":" + location);
       
-         STRING resolved;
          if (!glFreetypeFonts.contains(Key)) {
+            STRING resolved;
             if (!ResolvePath(location, RSF::NIL, &resolved)) {
                FT_Face ftface;
                FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved };
@@ -423,7 +424,7 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
                   return ERR_Failed;
                }
 
-               glFreetypeFonts.emplace(Key, ftface);
+               glFreetypeFonts.try_emplace(Key, ftface, meta);
                FreeResource(resolved);
             }
             else return log.warning(ERR_ResolvePath);
@@ -431,7 +432,7 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
 
          auto &font = glFreetypeFonts[Key];
          if (!font.points.contains(Size)) {
-            auto it = font.points.try_emplace(Size, font.face, Size);
+            auto it = font.points.try_emplace(Size, font, Size);
             if (!it.first->second.ft_size) return ERR_Failed;
          }
       }

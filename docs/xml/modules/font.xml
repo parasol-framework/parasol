@@ -49,13 +49,14 @@
   <function>
     <name>SelectFont</name>
     <comment>Searches for a 'best fitting' font file based on select criteria.</comment>
-    <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path)</prototype>
+    <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.</param>
       <param type="CSTRING" name="Style">The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.</param>
       <param type="LONG" name="Point">Preferred point size.</param>
       <param type="FTF" name="Flags" lookup="FTF">Optional flags.</param>
       <param type="CSTRING *" name="Path">The location of the best-matching font file is returned in this parameter.</param>
+      <param type="FMETA *" name="Meta" lookup="FMETA">Optional, returns additional meta information about the font file.</param>
     </input>
     <description>
 <p>This function searches for the closest matching font based on the details provided by the client.  The details that can be searched for include the name, point size and style of the desired font.</p>
@@ -87,6 +88,14 @@
   </function>
 
   <types>
+    <constants lookup="FMETA" comment="Result flags for the SelectFont() function.">
+      <const name="HINT_INTERNAL">The Freetype hinter should be used.</const>
+      <const name="HINT_LIGHT">The light version of the Freetype hinter should be used.</const>
+      <const name="HINT_NORMAL">The hinting information provided by the font should be given preference.</const>
+      <const name="SCALED">The font is scalable (assume fixed otherwise).</const>
+      <const name="VARIABLE">This is a scalable font featuring variable metrics.</const>
+    </constants>
+
     <constants lookup="FSS" comment="Options for the StringSize() function.">
       <const name="ALL">Process all characters.</const>
       <const name="LINE">Terminate operation at the first line feed or word-wrap.</const>
@@ -104,10 +113,12 @@
       <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
       <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
       <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
+      <const name="VARIABLE">The font supports variable metrics.</const>
     </constants>
 
     <constants lookup="HINT" comment="Force hinting options for a font.">
       <const name="INTERNAL">The Freetype hinter will be forcibly imposed.</const>
+      <const name="LIGHT">The light version of the Freetype hinter will be forcibly imposed.</const>
       <const name="NORMAL">The hinting information provided by the font will be given preference.</const>
     </constants>
 

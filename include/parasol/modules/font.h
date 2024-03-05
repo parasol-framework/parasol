@@ -23,6 +23,7 @@ enum class FTF : ULONG {
    HEAVY_LINE = 0x00000010,
    BASE_LINE = 0x00000020,
    ALLOW_SCALE = 0x00000040,
+   VARIABLE = 0x08000000,
    SCALABLE = 0x10000000,
    BOLD = 0x20000000,
    ITALIC = 0x40000000,
@@ -30,6 +31,28 @@ enum class FTF : ULONG {
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(FTF)
+
+// Result flags for the SelectFont() function.
+
+enum class FMETA : ULONG {
+   NIL = 0,
+   SCALED = 0x00000001,
+   VARIABLE = 0x00000002,
+   HINT_NORMAL = 0x00000004,
+   HINT_LIGHT = 0x00000008,
+   HINT_INTERNAL = 0x00000010,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FMETA)
+
+// Force hinting options for a font.
+
+enum class HINT : BYTE {
+   NIL = 0,
+   NORMAL = 1,
+   INTERNAL = 2,
+   LIGHT = 3,
+};
 
 // Options for the StringSize() function.
 
@@ -42,8 +65,9 @@ struct FontList {
    LONG * Points;             // Pointer to an array of fixed point sizes supported by the font.
    STRING Styles;             // Supported styles are listed here in CSV format.
    BYTE   Scalable;           // TRUE if the font is scalable.
-   BYTE   Variable;          // Do not use.
-   WORD   Reserved2;          // Do not use.
+   BYTE   Variable;           // TRUE if the font has variable metrics.
+   HINT   Hinting;            // Hinting options
+   BYTE   Reserved2;          // Do not use.
 };
 
 // Font class definition

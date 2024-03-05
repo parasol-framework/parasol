@@ -16,7 +16,7 @@
 //
 // REQUIREMENT: The caller must have acquired a lock on glFontMutex.
 
-freetype_font::glyph & freetype_font::ft_point::get_glyph(FT_Face Face, ULONG Unicode)
+freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
 {
    DOUBLE x1, y1, x2, y2, x3, y3;
 
@@ -24,10 +24,10 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(FT_Face Face, ULONG Un
 
    auto &path = glyphs[Unicode];
 
-   path.glyph_index = FT_Get_Char_Index(Face, Unicode);
+   path.glyph_index = FT_Get_Char_Index(font->face, Unicode);
    
-   if (Face->size->metrics.height != ft_size->metrics.height) {
-      FT_Set_Char_Size(Face, 0, ft_size->metrics.height, 72, 72);
+   if (font->face->size->metrics.height != ft_size->metrics.height) {
+      FT_Set_Char_Size(font->face, 0, ft_size->metrics.height, 72, 72);
    }
 
    // WARNING: FT_Load_Glyph leaks memory if you call it repeatedly for the same glyph (hence the importance of caching).
@@ -36,18 +36,11 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(FT_Face Face, ULONG Un
    // library is not using them effectively.  Forcing the use of the Freetype auto-hinter fixes this problem.  Be aware
    // that this situation might change and need re-evaluation in future Freetype releases.
 
-   LONG flags;
-   
-   if (FT_HAS_MULTIPLE_MASTERS(Face)) {
-      flags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
-   }
-   else flags = FT_LOAD_TARGET_NORMAL;
+   if (FT_Load_Glyph(font->face, path.glyph_index, font->glyph_flags)) return path;
+   path.advance_x = int26p6_to_dbl(font->face->glyph->advance.x);
+   path.advance_y = int26p6_to_dbl(font->face->glyph->advance.y);
 
-   if (FT_Load_Glyph(Face, path.glyph_index, flags)) return path;
-   path.advance_x = int26p6_to_dbl(Face->glyph->advance.x);
-   path.advance_y = int26p6_to_dbl(Face->glyph->advance.y);
-
-   const FT_Outline &outline = Face->glyph->outline;
+   const FT_Outline &outline = font->face->glyph->outline;
 
    LONG first = 0; // index of first point in contour
    for (LONG n=0; n < outline.n_contours; n++) {
@@ -316,7 +309,7 @@ static void generate_text(extVectorText *Vector)
                apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
 
-            auto &glyph = pt.get_glyph(font.face, unicode);
+            auto &glyph = pt.get_glyph(unicode);
 
             DOUBLE kx, ky;
             get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
@@ -431,7 +424,7 @@ static void generate_text(extVectorText *Vector)
 
             str += char_len;
 
-            auto &glyph = pt.get_glyph(font.face, unicode);
+            auto &glyph = pt.get_glyph(unicode);
 
             DOUBLE kx, ky;
             get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
