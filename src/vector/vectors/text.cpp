@@ -45,10 +45,6 @@ where large glyphs were oriented around sharp corners.  The process would look s
 #include "agg_gsv_text.h"
 #include "agg_path_length.h"
 
-#include <ft2build.h>
-#include <freetype/freetype.h>
-#include <freetype/ftsizes.h>
-
 const LONG DEFAULT_WEIGHT = 400;
 
 static FIELD FID_FreetypeFace;

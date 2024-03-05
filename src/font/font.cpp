@@ -22,6 +22,8 @@ Font: Provides font management functionality and hosts the Font class.
 #include <ft2build.h>
 #include <freetype/ftsizes.h>
 #include FT_FREETYPE_H
+#include <freetype/ftmm.h>
+#include FT_ADVANCES_H 
 
 #include <parasol/main.h>
 

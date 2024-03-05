@@ -17,10 +17,7 @@
 typedef const std::lock_guard<std::recursive_mutex> CACHE_LOCK;
 static std::recursive_mutex glCacheMutex; // Protects access to glCache for multi-threading support
 
-INLINE FT_F26Dot6 DBL_TO_FT(DOUBLE Value)
-{
-  return F2T(Value * 64.0);
-}
+inline FT_F26Dot6 DBL_TO_FT(DOUBLE Value) { return F2T(Value * 64.0); }
 
 struct FontCharacter {
    WORD Width;
@@ -34,21 +31,8 @@ struct FontCharacter {
 
 class font_glyph {
 public:
-   ULONG Count;          // Number of times that the glyph has been used
-   ULONG GlyphIndex;     // Freetype glyph index
-   UBYTE *Data;
-   UBYTE *Outline;
-   UWORD Width, Height;
-   WORD  Top, Left;
-   WORD  AdvanceX, AdvanceY;
-   UWORD OutlineWidth, OutlineHeight, OutlineTop, OutlineLeft;
-
-   font_glyph() {
-      Data       = NULL;
-      Outline    = NULL;
-      Count      = 0;
-      GlyphIndex = 0;
-   }
+   FT_UInt GlyphIndex = 0; // Freetype glyph index
+   DOUBLE AdvanceX = 0, AdvanceY = 0;
 };
 
 class glyph_cache { // Represents a set of glyphs at a set point-size for a font face.
@@ -59,7 +43,7 @@ public:
    struct FontCharacter Chars[256]; // Pre-calculated glyph widths and advances for most Latin characters.
    std::unordered_map<ULONG, font_glyph> Glyphs; // Size limited by MAX_GLYPHS
 
-   glyph_cache(FT_Face &pFace, DOUBLE pPoint, unsigned char pDefaultChar) {
+   glyph_cache(FT_Face &pFace, DOUBLE pPoint, LONG pGlyphFlags, unsigned char pDefaultChar) {
       Usage = 0;
       Point = pPoint;
 
@@ -69,20 +53,16 @@ public:
       FT_Activate_Size(Size);
       FT_Set_Char_Size(pFace, 0, DBL_TO_FT(pPoint), FIXED_DPI, FIXED_DPI); // The Point is pre-scaled, so we use FIXED_DPI here.
       
-      LONG flags;
-      if (FT_HAS_MULTIPLE_MASTERS(pFace)) flags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
-      else flags = FT_LOAD_TARGET_NORMAL;
-
       // Pre-calculate the width of each character in the range of 0x20 - 0xff
 
-      if (!FT_Load_Glyph(pFace, FT_Get_Char_Index(pFace, pDefaultChar), flags)) {
+      if (!FT_Load_Glyph(pFace, FT_Get_Char_Index(pFace, pDefaultChar), pGlyphFlags)) {
          Chars[(LONG)pDefaultChar].Width   = pFace->glyph->advance.x>>FT_DOWNSIZE;
          Chars[(LONG)pDefaultChar].Advance = pFace->glyph->advance.x>>FT_DOWNSIZE;
       }
 
       for (LONG i=' '; i < ARRAYSIZE(Chars); i++) {
          LONG j;
-         if ((j = FT_Get_Char_Index(pFace, i)) and (not FT_Load_Glyph(pFace, j, flags))) {
+         if ((j = FT_Get_Char_Index(pFace, i)) and (not FT_Load_Glyph(pFace, j, pGlyphFlags))) {
             Chars[i].Width   = pFace->glyph->advance.x>>FT_DOWNSIZE;
             Chars[i].Advance = pFace->glyph->advance.x>>FT_DOWNSIZE;
          }
@@ -94,10 +74,6 @@ public:
    }
 
    ~glyph_cache() {
-      for (const auto & [ unicode, fg ] : Glyphs) {
-         if (fg.Data) FreeResource(fg.Data);
-         if (fg.Outline) FreeResource(fg.Outline);
-      }
       FT_Done_Size(Size);
    }
 };

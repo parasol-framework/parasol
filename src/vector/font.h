@@ -4,6 +4,7 @@
 
 #include <ft2build.h>
 #include <freetype/ftsizes.h>
+#include <freetype/ftmm.h>
 #include FT_FREETYPE_H
 
 #define CF_BITMAP 0

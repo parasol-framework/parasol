@@ -50,7 +50,7 @@ class is not integrated with the display's vector scene graph.
 *********************************************************************************************************************/
 
 static BitmapCache * check_bitmap_cache(extFont *, FTF);
-static ERROR cache_truetype_font(extFont *, CSTRING);
+static ERROR cache_truetype_font(extFont *, CSTRING, FMETA);
 static ERROR SET_Point(extFont *Self, DOUBLE);
 static ERROR SET_Style(extFont *, CSTRING);
 
@@ -115,7 +115,6 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
       }
    }
 
-   if (Self->prvTempGlyph.Outline) { FreeResource(Self->prvTempGlyph.Outline); Self->prvTempGlyph.Outline = NULL; }
    if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
 
    Self->~extFont();
@@ -309,12 +308,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
       Self->BmpCache = cache;
    }
    else {
-      if ((error = cache_truetype_font(Self, Self->Path))) return error;
-
-      if ((meta & FMETA::HINT_INTERNAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
-      else if ((meta & FMETA::HINT_LIGHT) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_LIGHT;
-      else if ((meta & FMETA::HINT_NORMAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL; // Use the font's hinting information
-      else Self->prvGlyphFlags = FT_LOAD_DEFAULT; // Default, typically matches FT_LOAD_TARGET_NORMAL
+      if ((error = cache_truetype_font(Self, Self->Path, meta))) return error;
 
       if (FT_HAS_MULTIPLE_MASTERS(Self->Cache->Face)) Self->Flags |= FTF::VARIABLE;
 
@@ -699,7 +693,7 @@ static ERROR SET_Point(extFont *Self, DOUBLE Value)
       if (Self->Cache.get()) {
          unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = Value;
-         cache_truetype_font(Self, NULL); // Updates meta information like the Leading value
+         cache_truetype_font(Self, NULL, FMETA::NIL); // Updates meta information like the Leading value
       }
    }
    else Self->Point = Value;
@@ -865,13 +859,12 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
 // All resources that are allocated in this routine must be untracked.
 // Assumes a cache lock is held on being called.
 
-static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
+static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
 {
    pf::Log log(__FUNCTION__);
-   FT_Open_Args openargs;
    ERROR error;
 
-   if (Path) { // Check the cache.
+   if (Path) {
       CSTRING location;
       if (!ResolvePath(Path, RSF::NIL, (STRING *)&location)) {
          GuardedResource res(location);
@@ -882,13 +875,17 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
             log.branch("Creating new cache for font '%s'", location);
 
             FT_Face face;
-            openargs.flags    = FT_OPEN_PATHNAME;
-            openargs.pathname = (STRING)location;
+            FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = (STRING)location };
             if ((error = FT_Open_Face(glFTLibrary, &openargs, 0, &face))) {
                if (error IS FT_Err_Unknown_File_Format) return ERR_NoSupport;
                log.warning("Fatal error in attempting to load font \"%s\".", location);
                return ERR_Failed;
             }
+            
+            if ((Meta & FMETA::HINT_INTERNAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
+            else if ((Meta & FMETA::HINT_LIGHT) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_LIGHT;
+            else if ((Meta & FMETA::HINT_NORMAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL; // Use the font's hinting information
+            else Self->prvGlyphFlags = FT_LOAD_DEFAULT; // Default, typically matches FT_LOAD_TARGET_NORMAL
 
             if (!FT_IS_SCALABLE(face)) { // Only scalable fonts are supported by this routine
                FT_Done_Face(face);
@@ -917,7 +914,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
 
    Self->Height = F2T(Self->Point);
 
-   fc->Glyphs.try_emplace(Self->Point, fc->Face, Self->Point, Self->prvDefaultChar);
+   fc->Glyphs.try_emplace(Self->Point, fc->Face, Self->Point, Self->prvGlyphFlags, Self->prvDefaultChar);
 
    auto &glyph = fc->Glyphs.at(Self->Point);
    Self->TotalGlyphs = fc->Face->num_glyphs;
@@ -937,9 +934,10 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
    Self->prvChar      = glyph.Chars;
    Self->Gutter       = Self->LineSpacing - Self->Ascent;
 
+   FT_Fixed adv;
    if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
-   else if (!FT_Load_Glyph(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE), FT_LOAD_DEFAULT)) {
-      Self->prvSpaceWidth = (fc->Face->glyph->advance.x>>FT_DOWNSIZE);
+   else if (!FT_Get_Advance(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE), FT_LOAD_DEFAULT, &adv)) {
+      Self->prvSpaceWidth = adv>>FT_DOWNSIZE;
       if (Self->prvSpaceWidth < 3) Self->prvSpaceWidth = Self->Height>>1;
    }
    else Self->prvSpaceWidth = Self->Height>>1;
@@ -964,7 +962,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
 
    if (face->size != cache.Size) FT_Activate_Size(cache.Size);
 
-   LONG glyph_index;
+   FT_UInt glyph_index;
 
    if (cache.Glyphs.contains(Unicode)) {
       font_glyph *glyph = &cache.Glyphs[Unicode];
@@ -977,46 +975,29 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
       }
    }
 
-   FT_Error fterr;
-   if ((fterr = FT_Load_Glyph(face, glyph_index, Self->prvGlyphFlags))) {
+   FT_Fixed adv_x = 0, adv_y = 0;
+   if (auto fterr = FT_Get_Advance(face, glyph_index, Self->prvGlyphFlags, &adv_x)) {
       log.warning("Failed to load glyph %d '%lc', FT error: %s", glyph_index, (wint_t)Unicode, get_ft_error(fterr));
       return NULL;
    }
 
+   if (FT_HAS_VERTICAL(face)) {
+      FT_Get_Advance(face, glyph_index, Self->prvGlyphFlags|FT_LOAD_VERTICAL_LAYOUT, &adv_y);
+   }
+
    if (cache.Glyphs.size() < MAX_GLYPHS) { // Cache this glyph if possible
-      log.traceBranch("Creating new cache entry for unicode value %d, advance %d", Unicode, (LONG)face->glyph->advance.x>>FT_DOWNSIZE);
+      log.traceBranch("Creating new cache entry for unicode value %d, advance %d", Unicode, (LONG)adv_x>>FT_DOWNSIZE);
 
-      font_glyph glyph;
-      ClearMemory(&glyph, sizeof(glyph));
-
-      glyph.Top        = face->glyph->bitmap_top;
-      glyph.Left       = face->glyph->bitmap_left;
-      glyph.Width      = face->glyph->bitmap.width;
-      glyph.Height     = face->glyph->bitmap.rows;
-      glyph.AdvanceX   = face->glyph->advance.x>>FT_DOWNSIZE;
-      glyph.AdvanceY   = face->glyph->advance.y>>FT_DOWNSIZE;
-      glyph.GlyphIndex = glyph_index;
-
-      if ((Unicode >= 'a') and (Unicode <= 'z')) glyph.Count = bias[Unicode-'a'];
-      else if ((Unicode >= 'A') and (Unicode <= 'Z')) glyph.Count = bias[Unicode-'A'];
-      else glyph.Count = 1;
+      font_glyph glyph { glyph_index, int26p6_to_dbl(adv_x), int26p6_to_dbl(adv_y) };
 
       cache.Glyphs.emplace(Unicode, glyph);
-      font_glyph *key_glyph = &cache.Glyphs[Unicode];
-      return key_glyph;
+      return &cache.Glyphs[Unicode];
    }
    else {
       // Cache is full.  Return a temporary glyph with graphics data if requested.
 
-      if (Self->prvTempGlyph.Outline) {
-         FreeResource(Self->prvTempGlyph.Outline);
-         Self->prvTempGlyph.Outline = NULL;
-      }
-
-      Self->prvTempGlyph.Data      = NULL;
-      Self->prvTempGlyph.Outline   = NULL;
-      Self->prvTempGlyph.AdvanceX   = face->glyph->advance.x>>FT_DOWNSIZE;
-      Self->prvTempGlyph.AdvanceY   = face->glyph->advance.y>>FT_DOWNSIZE;
+      Self->prvTempGlyph.AdvanceX   = int26p6_to_dbl(adv_x);
+      Self->prvTempGlyph.AdvanceY   = int26p6_to_dbl(adv_y);
       Self->prvTempGlyph.GlyphIndex = glyph_index;
       return &Self->prvTempGlyph;
    }
