@@ -309,21 +309,28 @@ function cType(Field, Origin)
       end
    end
 
-   do -- Short flags
+   do -- Char flags / Strong typing
+      if (Field.type:match('^char%((%a+)%)') != nil) then
+         Field.type = 'c'
+         return Field
+      end
+   end
+
+   do -- Short flags / Strong typing
       if (Field.type:match('^short%((%a+)%)') != nil) then
          Field.type = 'w'
          return Field
       end
    end
 
-   do -- Integer flags
+   do -- Integer flags / Strong typing
       if (Field.type:match('^int%((%a+)%)') != nil) then
          Field.type = 'l'
          return Field
       end
    end
 
-   do -- Large flags
+   do -- Large flags / Strong typing
       if (Field.type:match('^large%((%a+)%)') != nil) then
          Field.type = 'x'
          return Field
