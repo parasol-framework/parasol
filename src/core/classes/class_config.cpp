@@ -386,7 +386,7 @@ The Merge method is used to merge configuration data from one config object prov
 Existing data in the target will be overwritten by the source in cases where there matching set of group keys.
 
 -INPUT-
-obj Source: The ID of the config object to be merged.
+obj Source: The config object to be merged.
 
 -ERRORS-
 Okay
@@ -409,7 +409,7 @@ static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-MergeFile: Merges a foreign configuration file into existing configuration data.
+MergeFile: Merges a configuration file into existing configuration data.
 
 The MergeFile method is used to pull configuration data from a file and merge it into the target config object.
 The path to the configuration file is all that is required.  Existing data in the target will be overwritten by the

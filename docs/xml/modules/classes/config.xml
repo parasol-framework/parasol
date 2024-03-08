@@ -140,7 +140,7 @@ print('The Action class is located at ' .. str)
       <comment>Merges two config objects together.</comment>
       <prototype>ERROR cfgMerge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
       <input>
-        <param type="OBJECTPTR" name="Source">The ID of the config object to be merged.</param>
+        <param type="OBJECTPTR" name="Source">The config object to be merged.</param>
       </input>
       <description>
 <p>The Merge method is used to merge configuration data from one config object provided as a source, into the target object. Existing data in the target will be overwritten by the source in cases where there matching set of group keys.</p>
@@ -154,7 +154,7 @@ print('The Action class is located at ' .. str)
 
     <method>
       <name>MergeFile</name>
-      <comment>Merges a foreign configuration file into existing configuration data.</comment>
+      <comment>Merges a configuration file into existing configuration data.</comment>
       <prototype>ERROR cfgMergeFile(OBJECTPTR Object, CSTRING Path)</prototype>
       <input>
         <param type="CSTRING" name="Path">The location of the configuration file that you want to merge.</param>

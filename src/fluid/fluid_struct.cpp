@@ -400,7 +400,7 @@ static ERROR generate_structdef(objScript *Self, const std::string_view StructNa
          if (type & FD_CPP) { // In the case of std::vector, fixed array sizes are meaningless
             field_size = sizeof(std::vector<int>);
          }
-         else {
+         else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
             array_size = StrToInt(Sequence.c_str() + pos);
          }
          pos = Sequence.find_first_of("],", pos);

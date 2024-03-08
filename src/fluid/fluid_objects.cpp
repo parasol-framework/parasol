@@ -283,12 +283,19 @@ static int object_index(lua_State *Lua)
       auto keyname = luaL_checkstring(Lua, 2);
       auto jt  = get_read_table(def);
 
+      if (!def->UID) { // Check if the object has been dereferenced by free() or similar
+         luaL_error(Lua, "Unable to read field %s", keyname);
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         prv->CaughtError = ERR_DoesNotExist;
+         return 0;
+      }
+
       if (auto func = jt->find(obj_read(simple_hash(keyname))); func != jt->end()) {
          return func->Call(Lua, *func, def);
       }
       else {
          pf::Log log(__FUNCTION__);
-         log.warning("Unable to read %s.%s", def->Class->ClassName, keyname);
+         log.warning("Unable to read %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = ERR_NoSupport;
          //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
