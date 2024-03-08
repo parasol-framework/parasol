@@ -60,7 +60,7 @@ public:
          Chars[(LONG)pDefaultChar].Advance = pFace->glyph->advance.x>>FT_DOWNSIZE;
       }
 
-      for (LONG i=' '; i < ARRAYSIZE(Chars); i++) {
+      for (LONG i=' '; i < std::ssize(Chars); i++) {
          LONG j;
          if ((j = FT_Get_Char_Index(pFace, i)) and (not FT_Load_Glyph(pFace, j, pGlyphFlags))) {
             Chars[i].Width   = pFace->glyph->advance.x>>FT_DOWNSIZE;

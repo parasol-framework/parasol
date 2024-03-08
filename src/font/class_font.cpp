@@ -937,7 +937,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
    FT_Fixed adv;
    if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
    else if (!FT_Get_Advance(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE), FT_LOAD_DEFAULT, &adv)) {
-      Self->prvSpaceWidth = adv>>FT_DOWNSIZE;
+      Self->prvSpaceWidth = std::round(int16p16_to_dbl(adv));
       if (Self->prvSpaceWidth < 3) Self->prvSpaceWidth = Self->Height>>1;
    }
    else Self->prvSpaceWidth = Self->Height>>1;
@@ -988,7 +988,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
    if (cache.Glyphs.size() < MAX_GLYPHS) { // Cache this glyph if possible
       log.traceBranch("Creating new cache entry for unicode value %d, advance %d", Unicode, (LONG)adv_x>>FT_DOWNSIZE);
 
-      font_glyph glyph { glyph_index, int26p6_to_dbl(adv_x), int26p6_to_dbl(adv_y) };
+      font_glyph glyph { glyph_index, int16p16_to_dbl(adv_x), int16p16_to_dbl(adv_y) };
 
       cache.Glyphs.emplace(Unicode, glyph);
       return &cache.Glyphs[Unicode];
@@ -996,8 +996,8 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
    else {
       // Cache is full.  Return a temporary glyph with graphics data if requested.
 
-      Self->prvTempGlyph.AdvanceX   = int26p6_to_dbl(adv_x);
-      Self->prvTempGlyph.AdvanceY   = int26p6_to_dbl(adv_y);
+      Self->prvTempGlyph.AdvanceX   = int16p16_to_dbl(adv_x);
+      Self->prvTempGlyph.AdvanceY   = int16p16_to_dbl(adv_y);
       Self->prvTempGlyph.GlyphIndex = glyph_index;
       return &Self->prvTempGlyph;
    }

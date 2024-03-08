@@ -125,7 +125,7 @@ end
    end)
 
    local text = viewport.new('vectortext', {
-      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
    text.y = y + text.fontSize
    y = y + text.fontSize + 14

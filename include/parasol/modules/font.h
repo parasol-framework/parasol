@@ -67,7 +67,7 @@ struct FontList {
    BYTE   Scalable;           // TRUE if the font is scalable.
    BYTE   Variable;           // TRUE if the font has variable metrics.
    HINT   Hinting;            // Hinting options
-   BYTE   Reserved2;          // Do not use.
+   BYTE   Hidden;             // TRUE if the font should be hidden from user font lists.
 };
 
 // Font class definition
@@ -286,6 +286,7 @@ struct FontBase {
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
    LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+   ERROR (*_RefreshFonts)(void);
    ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta);
 #endif // PARASOL_STATIC
 };
@@ -296,12 +297,14 @@ extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
 inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
+inline ERROR fntRefreshFonts(void) { return FontBase->_RefreshFonts(); }
 inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path,Meta); }
 #else
 extern "C" {
 extern ERROR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
 extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+extern ERROR fntRefreshFonts(void);
 extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta);
 }
 #endif // PARASOL_STATIC

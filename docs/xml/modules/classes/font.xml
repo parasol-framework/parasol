@@ -436,7 +436,7 @@ Charter:120%::255,128,255
       <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
       <field name="Variable" type="BYTE">TRUE if the font has variable metrics.</field>
       <field name="Hinting" type="HINT" lookup="HINT">Hinting options</field>
-      <field name="Reserved2" type="BYTE">Do not use.</field>
+      <field name="Hidden" type="BYTE">TRUE if the font should be hidden from user font lists.</field>
     </struct>
 
   </structs>

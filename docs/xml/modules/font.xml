@@ -47,6 +47,20 @@
   </function>
 
   <function>
+    <name>RefreshFonts</name>
+    <comment>Refreshes the system font list with up-to-date font information.</comment>
+    <prototype>ERROR fntRefreshFonts()</prototype>
+    <description>
+<p>This function scans the <code>fonts:</code> volume and refreshes the font database.</p>
+<p>Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for information.  The <code>fonts:fonts.cfg</code> file will be re-written on completion to reflect current font settings.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+    </result>
+  </function>
+
+  <function>
     <name>SelectFont</name>
     <comment>Searches for a 'best fitting' font file based on select criteria.</comment>
     <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta)</prototype>
@@ -132,7 +146,7 @@
       <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
       <field name="Variable" type="BYTE">TRUE if the font has variable metrics.</field>
       <field name="Hinting" type="HINT" lookup="HINT">Hinting options</field>
-      <field name="Reserved2" type="BYTE">Do not use.</field>
+      <field name="Hidden" type="BYTE">TRUE if the font should be hidden from user font lists.</field>
     </struct>
 
   </structs>

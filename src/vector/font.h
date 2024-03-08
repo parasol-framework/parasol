@@ -3,9 +3,10 @@
 #include <parasol/main.h>
 
 #include <ft2build.h>
-#include <freetype/ftsizes.h>
-#include <freetype/ftmm.h>
+#include FT_SIZES_H
+#include FT_MULTIPLE_MASTERS_H
 #include FT_FREETYPE_H
+#include FT_SFNT_NAMES_H
 
 #define CF_BITMAP 0
 #define CF_FREETYPE 1
@@ -14,6 +15,14 @@ class common_font {
 public:
    LONG type;
    common_font(LONG pType) : type(pType) { }
+};
+
+//********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
 };
 
 //********************************************************************************************************************

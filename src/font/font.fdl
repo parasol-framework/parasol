@@ -21,7 +21,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
     { BOLD     = "0x20000000: Font is described as having a bold weight (read only)." },
     { SCALABLE = "0x10000000: This is set if the font is scalable, otherwise assume fixed." }
   )
-  
+
   flags("FMETA", { comment="Result flags for the SelectFont() function." },
     "SCALED: The font is scalable (assume fixed otherwise).",
     "VARIABLE: This is a scalable font featuring variable metrics.",
@@ -43,7 +43,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
     char  Scalable          # TRUE if the font is scalable.
     char  Variable          # TRUE if the font has variable metrics.
     char(HINT) Hinting      # Hinting options
-    char  Reserved2         # Do not use.
+    char  Hidden            # TRUE if the font should be hidden from user font lists.
   ]])
 
   const("FSS", { comment="Options for the StringSize() function." }, {
@@ -86,6 +86,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
     "GetList",
     "StringWidth",
     "CharWidth",
+    "RefreshFonts",
     "SelectFont")
 
 end)

@@ -3,30 +3,6 @@
 
    local mFont = mod.load("font")
 
--- Suspect that this test could be failing because CharWidth() accounts for kerning in spaces and characters that
--- follow spaces, while StringWidth() does not.
-
-function testKerning()
-   local font = obj.new("font", { face="Utopia:18", bold=1 } )
-
-   if (font == nil) then error("Unable to load font.") end
-
-   local strtest = "Embedded Style Tests. The Quick Brown FoX jumpeD over ThE LazY DOG"
-
-   local width1 = mFont.StringWidth(font, strtest, -1)
-
-   local width2 = 0
-   local kchar = 0
-   for i=1,strtest:len() do
-      local charwidth, kerning = mFont.CharWidth(font, strtest:byte(i), kchar)
-      print(strtest:sub(i, i) .. ": " .. charwidth .. " " .. kerning)
-      kchar = strtest:byte(i)
-      width2 = width2 + charwidth + kerning
-   end
-
-   if (width1 != width2) then error('StringWidth() of ' .. width1 .. ' != CharWidth() of ' .. width2) end
-end
-
 function testGetList()
 
 end
@@ -51,7 +27,6 @@ end
 
    return {
       tests = {
-        --'testKerning'
         'testGetList', 'testStringWidth', 'testSelectFont'
       },
       init = nil,

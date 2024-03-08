@@ -776,6 +776,7 @@ Point sizes are also measured at a constant ratio of `1/72` irrespective of disp
 factor into precise size calculations.
 
 Standard unit measurements such as `px`, `em` and `pt` are supported by appending them after the numeric value.
+1em is equivalent to the 'default font size', which is typically 16px unless modified.
 
 When retrieving the font size, the resulting string must be freed by the client when no longer in use.
 

@@ -11,6 +11,9 @@ the FreeType home page at www.freetype.org.
 -MODULE-
 Font: Provides font management functionality and hosts the Font class.
 
+For a thorough introduction to typesetting history and terminology as it applies to computing, we recommend visiting
+Google Fonts Knowledge page: https://fonts.google.com/knowledge
+
 -END-
 
 *********************************************************************************************************************/
@@ -20,15 +23,14 @@ Font: Provides font management functionality and hosts the Font class.
 //#define DEBUG
 
 #include <ft2build.h>
-#include <freetype/ftsizes.h>
+#include FT_SIZES_H
 #include FT_FREETYPE_H
-#include <freetype/ftmm.h>
+#include FT_MULTIPLE_MASTERS_H
 #include FT_ADVANCES_H 
+#include FT_SFNT_NAMES_H 
 
 #include <parasol/main.h>
-
 #include <parasol/modules/xml.h>
-#include <parasol/modules/picture.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
 
@@ -99,6 +101,7 @@ class extFont : public objFont {
    UBYTE prvDefaultChar;
 };
 
+static constexpr DOUBLE int16p16_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / DOUBLE(0xffff)); }
 static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
 static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 
@@ -114,7 +117,6 @@ static void unload_glyph_cache(extFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
-static ERROR fntRefreshFonts(void);
 static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
 
 //********************************************************************************************************************
@@ -379,7 +381,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 
 //********************************************************************************************************************
 
-static objConfig *glConfig = NULL;
+static objConfig *glConfig = NULL; // Font database
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -403,10 +405,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (refresh) fntRefreshFonts();
 
       ConfigGroups *groups;
-      if (not ((!glConfig->getPtr(FID_Data, &groups)) and (groups->size() > 0))) {
-         log.error("No system fonts are available for use.");
+      if (not ((!glConfig->getPtr(FID_Data, &groups)) and (!groups->empty()))) {
+         log.error("Failed to build a database of valid fonts.");
          return ERR_Failed;
       }
+
+      // Merge tailored font options into the machine-generated database
+
+      cfgMergeFile(glConfig, "fonts:options.cfg");
    }
    else {
       log.error("Failed to load or prepare the font configuration file.");
@@ -552,9 +558,14 @@ ERROR fntGetList(FontList **Result)
                if (!StrMatch("Yes", keys["Variable"])) list->Variable = TRUE;
             }
             
+            if (keys.contains("Hidden")) {
+               if (!StrMatch("Yes", keys["Hidden"])) list->Hidden = TRUE;
+            }
+
             if (keys.contains("Hinting")) {
                if (!StrMatch("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
                else if (!StrMatch("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
+               else if (!StrMatch("Light", keys["Hinting"])) list->Hinting = HINT::LIGHT;
             }
 
             list->Points = NULL;
@@ -732,7 +743,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
    for (auto &name : names) {
       if (!name.compare("*")) {
          // Use of the '*' wildcard indicates that the default scalable font can be used.  This feature is usually
-         // combined with a fixed font, e.g. "Sans Serif,*"
+         // prefaced by another font, e.g. "Sans Serif,*"
          multi = true;
          break;
       }
@@ -740,22 +751,27 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
       pf::ltrim(name, "'\"");
       pf::rtrim(name, "'\"");
 
+restart:
       for (auto & [group, keys] : groups[0]) {
-         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR::WILDCARD)) {
-            // Determine if this is a fixed and/or scalable font.  Note that if the font supports
-            // both fixed and scalable, fixed_group and scale_group will point to the same font.
+         if (!StrCompare(name, keys["Name"], 0, STR::WILDCARD)) {
+            if (keys.contains("Alias")) {
+               name = keys["Alias"];
+               goto restart;
+            }
+
+            // Determine if this is a fixed or scalable font.
 
             for (auto & [k, v] : keys) {
-               if ((not fixed_group) and (!k.compare(0, 6, "Fixed:"))) {
-                  fixed_group_name = group;
-                  fixed_group = &keys;
-                  if (scale_group) break;
-               }
-               else if ((not scale_group) and (!k.compare(0, 6, "Scale:"))) {
+               if ((!k.compare(0, 8, "Scalable")) and (!v.compare(0, 3, "Yes"))) {
                   scale_group_name = group;
                   scale_group = &keys;
-                  if (fixed_group) break;
+                  break;
                }
+            }
+
+            if (scale_group_name.empty()) {
+               fixed_group_name = group;
+               fixed_group = &keys;
             }
 
             break;
@@ -782,7 +798,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
                pf::ScopedObjectLock<objXML> style(style_id, 3000);
                if (style.granted()) {
                   if (acGetVar(style.obj, "/fonts/font(@name='scalable')/@face", default_font, sizeof(default_font))) {
-                     StrCopy("Hera Sans", default_font, sizeof(default_font));
+                     StrCopy("Noto Sans", default_font, sizeof(default_font));
                   }
                }
             }
@@ -830,26 +846,17 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
    }
 
    ConfigKeys *preferred_group, *alt_group = NULL;
-   std::string preferred_type, alt_type;
 
    if (not ((Point < 12) or ((Flags & (FTF::PREFER_FIXED|FTF::REQUIRE_FIXED)) != FTF::NIL))) {
       preferred_group = fixed_group;
-      preferred_type = "Fixed";
-      if ((Flags & FTF::REQUIRE_FIXED) IS FTF::NIL) {
-         alt_group = scale_group;
-         alt_type = "Scale";
-      }
+      if ((Flags & FTF::REQUIRE_FIXED) IS FTF::NIL) alt_group = scale_group;
    }
    else {
       preferred_group = scale_group;
-      preferred_type = "Scale";
-      if ((Flags & FTF::REQUIRE_SCALED) IS FTF::NIL) {
-         alt_group = fixed_group;
-         alt_type = "Fixed";
-      }
+      if ((Flags & FTF::REQUIRE_SCALED) IS FTF::NIL) alt_group = fixed_group;
    }
    
-   auto get_meta = [](ConfigKeys &Group, const std::string &Type) {
+   auto get_meta = [](ConfigKeys &Group) {
       FMETA meta = FMETA::NIL;
       if (Group.contains("Hinting")) {
          if (!StrMatch("Normal", Group["Hinting"])) meta |= FMETA::HINT_NORMAL;
@@ -857,36 +864,32 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
          else if (!StrMatch("Light", Group["Hinting"])) meta |= FMETA::HINT_LIGHT;
       }
 
-      if (Group.contains("Variable")) {
-         meta |= FMETA::VARIABLE;
-      }
-
-      if (!StrMatch("Scale", Type)) meta |= FMETA::SCALED;
-
+      if (Group.contains("Variable")) meta |= FMETA::VARIABLE;
+      if (Group.contains("Scalable")) meta |= FMETA::SCALED;
       return meta;
    };
 
-   auto get_font_path = [&log](ConfigKeys &Keys, const std::string &Type, const std::string &Style) {
-      std::string cfg_style(Type + ":" + Style);
+   auto get_font_path = [&log](ConfigKeys &Keys, const std::string &Style) {
+      std::string cfg_style(Style);
       log.trace("Looking for font style %s", cfg_style.c_str());
       if (Keys.contains(cfg_style)) return StrClone(Keys[cfg_style].c_str());
       else if (StrMatch("Regular", Style.c_str()) != ERR_Okay) {
          log.trace("Looking for regular version of the font...");
-         if (Keys.contains("Fixed:Regular")) return StrClone(Keys["Fixed:Regular"].c_str());
+         if (Keys.contains("Regular")) return StrClone(Keys["Regular"].c_str());
       }
       return STRING(NULL);
    };
 
    if (preferred_group) {
-      if ((*Path = get_font_path(*preferred_group, preferred_type, style_name))) {
-         if (Meta) *Meta = get_meta(*preferred_group, preferred_type);
+      if ((*Path = get_font_path(*preferred_group, style_name))) {
+         if (Meta) *Meta = get_meta(*preferred_group);
          return ERR_Okay;
       }
    }
 
    if (alt_group) {
-      if ((*Path = get_font_path(*alt_group, alt_type, style_name))) {
-         if (Meta) *Meta = get_meta(*alt_group, alt_type);
+      if ((*Path = get_font_path(*alt_group, style_name))) {
+         if (Meta) *Meta = get_meta(*alt_group);
          return ERR_Okay;
       }
    }
@@ -900,14 +903,14 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
    if (end IS std::string::npos) end = styles.size();
    std::string first_style = styles.substr(0, end);
 
-   if ((preferred_group) and (preferred_group->contains(preferred_type + ":" + first_style))) {
-      *Path = StrClone(preferred_group[0][preferred_type + ":" + first_style].c_str());
-      if (Meta) *Meta = get_meta(*preferred_group, preferred_type);
+   if ((preferred_group) and (preferred_group->contains(first_style))) {
+      *Path = StrClone(preferred_group[0][first_style].c_str());
+      if (Meta) *Meta = get_meta(*preferred_group);
       return ERR_Okay;
    }
-   else if ((alt_group) and (alt_group->contains(alt_type + ":" + first_style))) {
-      *Path = StrClone(alt_group[0][alt_type + ":" + first_style].c_str());
-      if (Meta) *Meta = get_meta(*alt_group, alt_type);
+   else if ((alt_group) and (alt_group->contains(first_style))) {
+      *Path = StrClone(alt_group[0][first_style].c_str());
+      if (Meta) *Meta = get_meta(*alt_group);
       return ERR_Okay;
    }
 
@@ -916,13 +919,13 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
 
 /*********************************************************************************************************************
 
--INTERNAL-
+-FUNCTION-
 RefreshFonts: Refreshes the system font list with up-to-date font information.
 
-The Refresh() action scans for fonts that are installed on the system and refreshes the font database.
+This function scans the `fonts:` volume and refreshes the font database.
 
-Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for information.
-Once the analysis is complete, the `fonts:fonts.cfg` file will reflect current font settings.
+Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for 
+information.  The `fonts:fonts.cfg` file will be re-written on completion to reflect current font settings.
 
 -ERRORS-
 Okay: Fonts were successfully refreshed.
@@ -931,7 +934,7 @@ AccessObject: Access to the SytsemFonts object was denied, or the object does no
 
 *********************************************************************************************************************/
 
-static ERROR fntRefreshFonts(void)
+ERROR fntRefreshFonts(void)
 {
    pf::Log log(__FUNCTION__);
 
@@ -951,8 +954,8 @@ static ERROR fntRefreshFonts(void)
 
    // Create a style list for each font, e.g.
    //
-   //    Fixed:Bold Italic = fonts:fixed/courier.fon
-   //    Scale:Bold = fonts:truetype/Courier Prime Bold.ttf
+   //    Bold Italic = fonts:fixed/courier.fon
+   //    Bold = fonts:truetype/Courier Prime Bold.ttf
    //    Styles = Bold,Bold Italic,Italic,Regular
 
    log.trace("Generating style lists for each font.");
@@ -962,19 +965,18 @@ static ERROR fntRefreshFonts(void)
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
-            if (!k.compare(0, 6, "Fixed:")) styles.push_front(k.substr(6, std::string::npos));
-            else if (!k.compare(0, 6, "Scale:")) styles.push_front(k.substr(6, std::string::npos));
+            if (!v.compare(0, 6, "fonts:")) styles.push_front(k);
          }
 
          styles.sort();
-         std::string style_list;
+         std::ostringstream style_list;
          for (LONG i=0; not styles.empty(); i++) {
-            if (i) style_list.append(",");
-            style_list.append(styles.front());
+            if (i) style_list << ",";
+            style_list << styles.front();
             styles.pop_front();
          }
 
-         keys["Styles"] = style_list.c_str();
+         keys["Styles"] = style_list.str();
       }
    }
 
@@ -1014,6 +1016,11 @@ static void scan_truetype_folder(objConfig *Config)
          if (not FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
 
+            if (!FT_IS_SCALABLE(ftface)) { // Sanity check
+               FT_Done_Face(ftface);
+               continue;
+            }
+
             log.msg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
 
             LONG n;
@@ -1045,24 +1052,52 @@ static void scan_truetype_folder(objConfig *Config)
             group[n] = 0;
 
             Config->write(group, "Name", group);
+            Config->write(group, "Scalable", "Yes");
 
-            if (FT_IS_SCALABLE(ftface)) Config->write(group, "Scalable", "Yes");
+            if (FT_HAS_MULTIPLE_MASTERS(ftface)) {
+               // A single ttf file can contain multiple named styles
+               Config->write(group, "Variable", "Yes");
 
-            if (FT_HAS_MULTIPLE_MASTERS(ftface)) Config->write(group, "Variable", "Yes");
+               FT_MM_Var *mvar;
+               if (!FT_Get_MM_Var(ftface, &mvar)) {
+                  FT_UInt index;
+                  if (!FT_Get_Default_Named_Instance(ftface, &index)) {
+                     char buffer[100];
+                     auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
+                     for (FT_UInt s=0; (s < mvar->num_namedstyles); s++) {
+                        for (LONG n=LONG(name_table_size)-1; n >= 0; n--) {
+                              FT_SfntName sft_name;
+                              if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
+                                 if (sft_name.name_id IS mvar->namedstyle[s].strid) {
+                                    // Decode UTF16 Big Endian
+                                    LONG out = 0;
+                                    auto str = (UWORD *)sft_name.string;
+                                    for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
+                                       out += UTF8WriteValue((str[i]>>8) | (UBYTE(str[i])<<8), buffer+out, std::ssize(buffer)-out);
+                                    }
+                                    buffer[out] = 0;
 
-            // Add the style with a link to the font file location
+                                    Config->write(group, buffer, location);
+                                    break;
+                                 }
+                              }
+                        }
+                     }
+                  }
+                  FT_Done_MM_Var(glFTLibrary, mvar);
+               }
+            }
+            else {
+               // Add the style with a link to the font file location
 
-            if (FT_IS_SCALABLE(ftface)) {
                if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
-                  std::string buffer("Scale:");
-                  buffer.append(ftface->style_name);
-                  Config->write(group, buffer.c_str(), location);
+                  Config->write(group, ftface->style_name, location);
                }
                else {
-                  if (style IS FTF::BOLD) Config->write(group, "Scale:Bold", location);
-                  else if (style IS FTF::ITALIC) Config->write(group, "Scale:Italic", location);
-                  else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(group, "Scale:Bold Italic", location);
-                  else Config->write(group, "Scale:Regular", location);
+                  if (style IS FTF::BOLD) Config->write(group, "Bold", location);
+                  else if (style IS FTF::ITALIC) Config->write(group, "Italic", location);
+                  else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(group, "Bold Italic", location);
+                  else Config->write(group, "Regular", location);
                }
             }
 
@@ -1137,15 +1172,15 @@ static void scan_fixed_folder(objConfig *Config)
 
             // Add the style with a link to the font file location
 
-            if (style IS FTF::BOLD) Config->write(gs, "Fixed:Bold", src);
-            else if (style IS FTF::ITALIC) Config->write(gs, "Fixed:Italic", src);
-            else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(gs, "Fixed:Bold Italic", src);
+            if (style IS FTF::BOLD) Config->write(gs, "Bold", src);
+            else if (style IS FTF::ITALIC) Config->write(gs, "Italic", src);
+            else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(gs, "Bold Italic", src);
             else {
                // Font is regular, which also means we can convert it to bold/italic with some code
-               Config->write(gs, "Fixed:Regular", src);
-               Config->write(gs, "Fixed:Bold", src);
-               Config->write(gs, "Fixed:Bold Italic", src);
-               Config->write(gs, "Fixed:Italic", src);
+               Config->write(gs, "Regular", src);
+               Config->write(gs, "Bold", src);
+               Config->write(gs, "Bold Italic", src);
+               Config->write(gs, "Italic", src);
             }
 
             std::ostringstream out;
