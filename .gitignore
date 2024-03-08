@@ -65,3 +65,4 @@ src/fluid/luajit-2.0.5/src/host/minilua
 src/fluid/luajit-2.0.5/src/jit/vmdef.lua
 release-git/
 src/display/simd/
+data/fonts/truetype/NotoColorEmoji.ttf
