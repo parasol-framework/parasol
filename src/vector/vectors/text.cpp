@@ -22,6 +22,20 @@ fast 1:1 rendering without transforms.  The user is otherwise better served thro
 
 -END-
 
+Some notes about font rendering:
+
+* Font glyphs should always be positioned with a rounded vertical baseline when drawn.  That is to say a Y coordinate of
+  385 is fine, but a value of 385.76 is not.  The Freetype glyphs are hinted based on this assumption.  If a glyph's
+  baseline can adopt any position, the hinting may as well be turned off.
+
+* Whether or not a glyph's X coordinate should be rounded is a matter of preference.  An aligned glyph will be less 
+  blurry than its counterpart, but it will come at a cost of less accurate kerning.  If you're not rounding the X
+  coordinate, the HINT_LIGHT option should probably be used because hinting will only be performed vertically in 
+  that case, while character widths and spacing remain unchanged.
+
+* Some variable fonts may have hinting defined internally that does not harmonise with the Freetype settings.  It may 
+  be necessary to alter the 'Hinting' option for affected fonts in "fonts:options.cfg".
+ 
 TODO
 ----
 * ShapeInside and ShapeSubtract require implementation
@@ -175,6 +189,7 @@ class extVectorText : public extVector {
    objFont *txBitmapFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
    objVectorImage *txBitmapImage;
+   common_font *txHandle;
    TextCursor txCursor;
    CSTRING txFamily; // Family name(s) as requested by the client
    APTR    txKeyEvent;
@@ -185,7 +200,6 @@ class extVectorText : public extVector {
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
-   ULONG txKey; // Font cache key
    ALIGN txAlignFlags;
    VTXF  txFlags;
    char  txFontStyle[20];
@@ -204,7 +218,7 @@ static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *);
 static void raster_text_to_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
-static void reset_font(extVectorText *, bool = false);
+static ERROR reset_font(extVectorText *, bool = false);
 static ERROR text_input_events(extVector *, const InputEvent *);
 static ERROR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
 
@@ -244,10 +258,9 @@ static LONG string_width(extVectorText *Self, const std::string_view &String)
 {
    const std::lock_guard lock(glFontMutex);
 
-   auto &font = glFreetypeFonts[Self->txKey];
-   auto &pt = font.points[Self->txFontSize];
+   auto pt = (freetype_font::ft_point *)Self->txHandle;
 
-   FT_Activate_Size(pt.ft_size);
+   FT_Activate_Size(pt->ft_size);
 
    LONG len        = 0;
    LONG widest     = 0;
@@ -262,9 +275,9 @@ static LONG string_width(extVectorText *Self, const std::string_view &String)
       else {
          ULONG unicode;
          auto charlen = get_utf8(String, unicode, i);
-         auto &glyph  = pt.get_glyph(unicode);
-         len += glyph.advance_x * Self->txLetterSpacing;
-         len += get_kerning(font.face, glyph.glyph_index, prev_glyph);
+         auto &glyph  = pt->get_glyph(unicode);
+         len += glyph.adv_x * Self->txLetterSpacing;
+         len += get_kerning(pt->font->face, glyph.glyph_index, prev_glyph);
          prev_glyph = glyph.glyph_index;
          i += charlen;
       }
@@ -322,7 +335,9 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
 
-   if (Self->txKey) Self->txKey = 0;
+   if (Self->txHandle) {
+      // TODO: This would be a good opportunity to garbage-collect stale glyphs
+   }
    
    if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
       vecSubscribeInput(Self->ParentView, JTYPE::NIL, FUNCTION(text_input_events));
@@ -378,9 +393,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       }
    }
 
-   reset_font(Self, true);
-
-   return ERR_Okay;
+   return reset_font(Self, true);
 }
 
 //********************************************************************************************************************
@@ -508,11 +521,13 @@ taken into account.
 
 static ERROR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
 {  
-   if (!Self->txKey) reset_font(Self);
+   if (!Self->txHandle) {
+      if (auto error = reset_font(Self)) return error;
+   }
 
-   if (Self->txBitmapFont) *Value = Self->txBitmapFont->Gutter;
-   else if (glFreetypeFonts.contains(Self->txKey)) {
-      *Value = glFreetypeFonts[Self->txKey].points[Self->txFontSize].descent;
+   if (Self->txHandle->type IS CF_BITMAP) *Value = Self->txBitmapFont->Gutter;
+   else if (Self->txHandle->type IS CF_FREETYPE) {
+      *Value = ((freetype_font::ft_point *)Self->txHandle)->descent;
    }
    else *Value = 1;
    return ERR_Okay;
@@ -529,11 +544,13 @@ account.  The height includes the top region reserved for accents, but excludes 
 
 static ERROR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
 {  
-   if (!Self->txKey) reset_font(Self);
+   if (!Self->txHandle) {
+      if (auto error = reset_font(Self)) return error;
+   }
 
    if (Self->txBitmapFont) *Value = Self->txBitmapFont->MaxHeight;
-   else if (glFreetypeFonts.contains(Self->txKey)) {
-      *Value = glFreetypeFonts[Self->txKey].points[Self->txFontSize].height;
+   else if (Self->txHandle->type IS CF_FREETYPE) {
+      *Value = ((freetype_font::ft_point *)Self->txHandle)->height;
    }
    else *Value = 1;
    return ERR_Okay;
@@ -551,7 +568,9 @@ calculation `16 * 72 / 96`.
 
 static ERROR TEXT_GET_DisplaySize(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txKey) reset_font(Self);
+   if (!Self->txHandle) {
+      if (auto error = reset_font(Self)) return error;
+   }
 
    *Value = F2T(Self->txFontSize * 72.0 / DISPLAY_DPI);
    return ERR_Okay;
@@ -658,7 +677,7 @@ static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 {
    if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
    if (Value) Self->txFamily = StrClone(Value);
-   reset_font(Self);
+   if (Self->initialised()) return reset_font(Self);
    return ERR_Okay;
 }
 
@@ -710,8 +729,8 @@ static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       Self->txRelativeFontSize = false;
       StrCopy(other->Style, Self->txFontStyle);
 
-      if (Self->initialised()) reset_font(Self);
-      return ERR_Okay;
+      if (Self->initialised()) return reset_font(Self);
+      else return ERR_Okay;
    }
    else if (Value->Class->ClassID IS ID_VECTORTEXT) {
       auto other = (extVectorText *)Value;
@@ -723,8 +742,8 @@ static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       Self->txRelativeFontSize = false;
       StrCopy(other->txFontStyle, Self->txFontStyle);
 
-      if (Self->initialised()) reset_font(Self);
-      return ERR_Okay;
+      if (Self->initialised()) return reset_font(Self);
+      else return ERR_Okay;
    }
    else return ERR_NoSupport;
 }
@@ -798,8 +817,8 @@ static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
    if (size > 0) {
       Self->txFontSize = std::trunc(size);
       Self->txRelativeFontSize = pct;
-      reset_font(Self);
-      return ERR_Okay;
+      if (Self->initialised()) return reset_font(Self);
+      else return ERR_Okay;
    }
    else return ERR_OutOfRange;
 }
@@ -906,22 +925,22 @@ This field can be queried for the amount of space between each line, measured in
 
 static ERROR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txKey) reset_font(Self);
+   if (!Self->txHandle) {
+      if (auto error = reset_font(Self)) return error;
+   }
 
    if (Self->txBitmapFont) {
       *Value = Self->txBitmapFont->LineSpacing;
       return ERR_Okay;
    }
-   else if (auto it = glFreetypeFonts.find(Self->txKey); it != glFreetypeFonts.end()) {
-      auto &handle = it->second;
-      if (auto pt = handle.points.find(Self->txFontSize); pt != handle.points.end()) {
-         *Value = pt->second.line_spacing;
-         return ERR_Okay;
-      }
+   else if (Self->txHandle->type IS CF_FREETYPE) {
+      *Value = ((freetype_font::ft_point *)Self->txHandle)->line_spacing;
+      return ERR_Okay;
    }
-   
-   *Value = 1;
-   return ERR_Failed;
+   else {
+      *Value = 1;
+      return ERR_Failed;
+   }
 }
 
 /*********************************************************************************************************************
@@ -1250,8 +1269,10 @@ transforms.
 static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
-
-   if (!Self->txKey) reset_font(Self);
+   
+   if (!Self->txHandle) {
+      if (auto error = reset_font(Self)) return error;
+   }
 
    LONG width = 0;
    for (auto &line : Self->txLines) {
@@ -1363,19 +1384,19 @@ extern void set_text_final_xy(extVectorText *Vector)
 // (Re)loads the font for a text object.  This is a resource intensive exercise that should be avoided until the object
 // is ready to initialise.
 
-static void reset_font(extVectorText *Vector, bool Force)
+static ERROR reset_font(extVectorText *Vector, bool Force)
 {
-   if ((!Vector->initialised()) and (!Force)) return;
-   if (Vector->txKey) Vector->txKey = 0;
+   if ((!Vector->initialised()) and (!Force)) return ERR_NotInitialised;
 
-   ULONG key;
-   if (!get_font(Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, key)) {
-      Vector->txKey = key;
-      if (glBitmapFonts.contains(key)) {
-         Vector->txBitmapFont = glBitmapFonts[key].font;
+   pf::Log log;
+   if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); !error) {
+      if (Vector->txHandle->type IS CF_BITMAP) {
+         Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
          Vector->txFontSize = std::trunc(DOUBLE(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
       }
+      return ERR_Okay;
    }
+   else return error;
  }
 
 //********************************************************************************************************************
@@ -1526,12 +1547,12 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
                   path.line_to(0, offset);
                   path.close_polygon();
                }
-               else if (glFreetypeFonts.contains(Self->txKey)) {
-                  auto &pt = glFreetypeFonts[Self->txKey].points[Self->txFontSize];
+               else if (Self->txHandle->type IS CF_FREETYPE) {
+                  auto pt = (freetype_font::ft_point *)Self->txHandle;
 
-                  DOUBLE offset = pt.line_spacing * row;
-                  path.move_to(0, -pt.line_spacing + offset);
-                  path.line_to(Self->txWidth, -pt.line_spacing + offset);
+                  DOUBLE offset = pt->line_spacing * row;
+                  path.move_to(0, -pt->line_spacing + offset);
+                  path.line_to(Self->txWidth, -pt->line_spacing + offset);
                   path.line_to(Self->txWidth, offset);
                   path.line_to(0, offset);
                   path.close_polygon();

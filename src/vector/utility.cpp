@@ -363,29 +363,42 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
 
 //********************************************************************************************************************
 
-ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key)
+std::string weight_to_style(CSTRING Style, LONG Weight)
 {
-   pf::Log log(__FUNCTION__);
+   std::string weight_name;
 
-   log.branch("Family: %s, Style: %s, Size: %d", Family, Style, Size);
+   if (Weight >= 700) weight_name = "Extra Bold";
+   else if (Weight >= 500) weight_name = "Bold";
+   else if (Weight <= 200) weight_name = "Extra Light";
+   else if (Weight <= 300) weight_name = "Light";
+
+   if (!StrMatch("Italic", Style)) {
+      if (weight_name.empty()) return "Italic";
+      else return weight_name + " Italic";
+   }
+   else if (!weight_name.empty()) return weight_name;
+   else return "Regular";
+}
+
+//********************************************************************************************************************
+
+ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
+{
+   Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
    
+   if (!Style) return Log.warning(ERR_NullArgs);
+
    const std::lock_guard lock{glFontMutex};
    
    std::string family(Family ? Family : "*");
-   std::string style(Style ? Style : "Regular");
+   std::string style(Style);
 
    if (StrMatch("Noto Sans", family)) family.append(",Noto Sans");
 
    if ((Weight) and (Weight != 400)) {
-      if (Weight >= 700) style = "Extra Bold";
-      else if (Weight >= 500) style = "Bold";
-      else if (Weight <= 200) style = "Extra Light";
-      else if (Weight <= 300) style = "Light";
-
-      if (!StrMatch("Italic", Style)) {
-         if (style IS "Regular") style = "Italic";
-         else style.append(" Italic");
-      }
+      // If a weight value is specified and is anything other than "Normal"/400 then it will
+      // override the named Style completely.
+      style = weight_to_style(Style, Weight);
    }
 
    const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
@@ -395,9 +408,10 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
       GuardedResource loc(location);
 
       if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
-         Key = StrHash(style + ":" + std::to_string(point_size) + ":" + location);
+         auto key = StrHash(style + ":" + std::to_string(point_size) + ":" + location);
 
-         if (glBitmapFonts.contains(Key)) {
+         if (glBitmapFonts.contains(key)) {
+            *Handle = &glBitmapFonts[key];
             return ERR_Okay;
          }
          else if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
@@ -406,37 +420,102 @@ ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key
                fl::Style(style),
                fl::Point(point_size),
                fl::Path(location))) {
-            glBitmapFonts.emplace(Key, font);
+            glBitmapFonts.emplace(key, font);
+            *Handle = &glBitmapFonts[key];
+            return ERR_Okay;
          }
          else return ERR_CreateObject;
       }
       else {
-         Key = StrHash(std::string(style) + ":" + location);
+         // For scalable fonts the key is made from the location only, ensuring that the face file is loaded
+         // only once.  If the file is variable, it will contain multiple styles.  Otherwise, assume the file
+         // represents one type of style.
+
+         auto key = StrHash(location);
       
-         if (!glFreetypeFonts.contains(Key)) {
+         if (!glFreetypeFonts.contains(key)) {
             STRING resolved;
             if (!ResolvePath(location, RSF::NIL, &resolved)) {
                FT_Face ftface;
                FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved };
                if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
-                  log.warning("Fatal error in attempting to load font \"%s\".", resolved);
+                  Log.warning("Fatal error in attempting to load font \"%s\".", resolved);
                   FreeResource(resolved);
                   return ERR_Failed;
                }
+               
+               freetype_font::METRIC_TABLE metrics;
+               freetype_font::STYLE_CACHE styles;
 
-               glFreetypeFonts.try_emplace(Key, ftface, meta);
+               if (FT_HAS_MULTIPLE_MASTERS(ftface)) {
+                  FT_MM_Var *mvar;
+                  if (!FT_Get_MM_Var(ftface, &mvar)) {
+                     FT_UInt index;
+                     if (!FT_Get_Default_Named_Instance(ftface, &index)) {
+                        auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
+                        for (FT_UInt s=0; s < mvar->num_namedstyles; s++) {
+                           for (LONG n=name_table_size-1; n >= 0; n--) {
+                               FT_SfntName sft_name;
+                               if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
+                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
+                                     // Decode UTF16 Big Endian
+                                     char buffer[100];
+                                     LONG out = 0;
+                                     auto str = (UWORD *)sft_name.string;
+                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
+                                        out += UTF8WriteValue((str[i]>>8) | (UBYTE(str[i])<<8), buffer+out, sizeof(buffer)-out);
+                                     }
+                                     buffer[out] = 0;
+                                     freetype_font::METRIC_GROUP set;
+                                     for (unsigned m=0; m < mvar->num_axis; m++) {
+                                        set.push_back(mvar->namedstyle[s].coords[m]);
+                                     }
+                                     metrics.try_emplace(buffer, set);
+                                     styles.try_emplace(buffer);
+                                     break;
+                                  }
+                               }
+                           }
+                        }
+                     }
+                     FT_Done_MM_Var(glFTLibrary, mvar);
+                  }
+               }
+               else styles.try_emplace(style);
+
+               glFreetypeFonts.try_emplace(key, ftface, styles, metrics, meta);
                FreeResource(resolved);
             }
-            else return log.warning(ERR_ResolvePath);
+            else return Log.warning(ERR_ResolvePath);
          }
 
-         auto &font = glFreetypeFonts[Key];
-         if (!font.points.contains(Size)) {
-            auto it = font.points.try_emplace(Size, font, Size);
-            if (!it.first->second.ft_size) return ERR_Failed;
+         auto &font = glFreetypeFonts[key];
+         if (auto cache = font.style_cache.find(style); cache != font.style_cache.end()) {
+            freetype_font::SIZE_CACHE &sz = cache->second;
+            if (auto size = sz.find(Size); size IS sz.end()) {
+               // New font size entry required
+
+               if (font.metrics.contains(style)) {
+                  auto new_size = sz.try_emplace(Size, font, font.metrics[style], Size);
+                  if (!new_size.first->second.ft_size) return ERR_Failed; // Verify success
+                  *Handle = &new_size.first->second;
+                  return ERR_Okay;
+               }
+               else {
+                  if (!font.metrics.empty()) Log.warning("Font metrics do not support style '%s'", style.c_str());
+                  auto new_size = sz.try_emplace(Size, font, Size);
+                  if (!new_size.first->second.ft_size) return ERR_Failed; // Verify success
+                  *Handle = &new_size.first->second;
+                  return ERR_Okay;
+               }
+            }
+            else {
+               *Handle = &size->second;
+               return ERR_Okay;
+            }
          }
+         else return ERR_Search;
       }
-      return ERR_Okay;
    }
    else return error;
 }

@@ -1230,7 +1230,7 @@ DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
             ULONG unicode;
             auto charlen = get_utf8(String, unicode, i);
             auto &glyph  = pt->get_glyph(unicode);
-            len += glyph.advance_x;
+            len += glyph.adv_x;
             if (prev_glyph) {;
                FT_Vector delta;
                FT_Get_Kerning(pt->ft_size->face, prev_glyph, glyph.glyph_index, FT_KERNING_DEFAULT, &delta);
@@ -1274,13 +1274,13 @@ NullArgs:
 ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
-   ULONG key;
 
    if (Size < 1) return log.warning(ERR_Args);
 
-   if (auto error = get_font(Family, Style, Weight, Size, key); !error) {
-      if (glBitmapFonts.contains(key)) *Handle = &glBitmapFonts[key];
-      else *Handle = &glFreetypeFonts[key].points[Size];
+   if (!Style) Style = "Regular";
+   common_font *handle;
+   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); !error) {
+      *Handle = handle;
       return ERR_Okay;
    }
    else return error;
@@ -1291,12 +1291,12 @@ ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, AP
 -FUNCTION-
 GetFontMetrics: Returns a set of display metric values for a font.
 
-Call GetFontMetrics() to retrieve a basic set of display metrics (adjusted to the display's DPI) for a given 
-font.
+Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI) 
+for a given font.
 
 -INPUT-
 ptr Handle: A font handle obtained from GetFontHandle().
-struct(*FontMetrics) Info: The name of the font family to access.
+struct(*FontMetrics) Info: The font metrics for the Handle will be stored here.
 
 -ERRORS-
 Okay:

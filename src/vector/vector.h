@@ -579,7 +579,6 @@ extern ERROR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
-extern ERROR get_font(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, ULONG &Key);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;

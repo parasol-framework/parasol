@@ -30,11 +30,18 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
       FT_Set_Char_Size(font->face, 0, ft_size->metrics.height, 72, 72);
    }
 
+   // Change the variable font metrics if necessary
+
+   if ((font->active_size != this) and (!axis.empty())) {
+      FT_Set_Var_Design_Coordinates(font->face, axis.size(), axis.data());
+      font->active_size = this;
+   }
+
    // WARNING: FT_Load_Glyph leaks memory if you call it repeatedly for the same glyph (hence the importance of caching).
 
    if (FT_Load_Glyph(font->face, path.glyph_index, font->glyph_flags)) return path;
-   path.advance_x = int26p6_to_dbl(font->face->glyph->advance.x);
-   path.advance_y = int26p6_to_dbl(font->face->glyph->advance.y);
+   path.adv_x = int26p6_to_dbl(font->face->glyph->advance.x);
+   path.adv_y = int26p6_to_dbl(font->face->glyph->advance.y);
 
    const FT_Outline &outline = font->face->glyph->outline;
 
@@ -186,12 +193,8 @@ static void generate_text(extVectorText *Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Vector->txKey) {
-      reset_font(Vector);
-      if (!Vector->txKey) {
-         log.warning("VectorText has no font key.");
-         return;
-      }
+   if (!Vector->txHandle) {
+      if (reset_font(Vector)) return;
    }
 
    auto &lines = Vector->txLines;
@@ -250,22 +253,15 @@ static void generate_text(extVectorText *Vector)
 
    const std::lock_guard lock(glFontMutex);
 
-   auto &font = glFreetypeFonts[Vector->txKey];
+   auto &pt = *(freetype_font::ft_point *)Vector->txHandle;
 
-   if (!font.points.contains(Vector->txFontSize)) {
-      log.warning("Font size %g not initialised.", Vector->txFontSize);
-      return;
-   }
-
-   auto &pt = font.points[Vector->txFontSize];
-    
    // Freetype seems to be happier when the DPI is maintained at its native 72, and we get font results
    // that match Chrome's output.  It also means that 1:1 metrics don't need to be converted to 96 DPI
    // point sizes.
 
    FT_Activate_Size(pt.ft_size);
-   if (font.face->size->metrics.height != dbl_to_int26p6(Vector->txFontSize)) {
-      FT_Set_Char_Size(font.face, 0, dbl_to_int26p6(Vector->txFontSize), 72, 72);
+   if (pt.font->face->size->metrics.height != dbl_to_int26p6(Vector->txFontSize)) {
+      FT_Set_Char_Size(pt.font->face, 0, dbl_to_int26p6(Vector->txFontSize), 72, 72);
    }
 
    if (morph) {
@@ -308,10 +304,10 @@ static void generate_text(extVectorText *Vector)
             auto &glyph = pt.get_glyph(unicode);
 
             DOUBLE kx, ky;
-            get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
+            get_kerning_xy(pt.font->face, glyph.glyph_index, prev_glyph_index, kx, ky);
             start_x += kx;
 
-            DOUBLE char_width = glyph.advance_x * std::abs(transform.sx); //transform.scale();
+            DOUBLE char_width = glyph.adv_x * std::abs(transform.sx); //transform.scale();
 
             // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
             if (char_width > dist) {
@@ -363,7 +359,7 @@ static void generate_text(extVectorText *Vector)
             }
 
             //dx += char_width;
-            //dy += glyph.advance_y + ky;
+            //dy += glyph.adv_y + ky;
 
             prev_glyph_index = glyph.glyph_index;
          }
@@ -423,10 +419,10 @@ static void generate_text(extVectorText *Vector)
             auto &glyph = pt.get_glyph(unicode);
 
             DOUBLE kx, ky;
-            get_kerning_xy(font.face, glyph.glyph_index, prev_glyph_index, kx, ky);
+            get_kerning_xy(pt.font->face, glyph.glyph_index, prev_glyph_index, kx, ky);
             dx += kx;
 
-            DOUBLE char_width = glyph.advance_x * std::abs(transform.sx); // transform.scale();
+            DOUBLE char_width = glyph.adv_x * std::abs(transform.sx); // transform.scale();
 
             transform.translate(dx, dy);
             agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(glyph.path, transform);
@@ -442,7 +438,7 @@ static void generate_text(extVectorText *Vector)
             }
 
             dx += char_width;
-            dy += glyph.advance_y + ky;
+            dy += glyph.adv_y + ky;
 
             prev_glyph_index = glyph.glyph_index;
          }

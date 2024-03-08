@@ -211,7 +211,7 @@ end
                   if (not Accepted) then
                      print('Dialog was cancelled.')
                   else
-                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.pointSize .. ", style '" .. Dialog.style .. "'")
                      print("This can be compacted to '" .. Dialog.compactFace .. "'")
                   end
                end

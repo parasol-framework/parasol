@@ -50,6 +50,8 @@ function crcTest(Name, Path, ExpectedCRC)
    elseif (ExpectedCRC != crc) then
       saveBitmap(bmp, Name)
       error('The CRC for ' .. Name .. ' is ' .. string.format('0x%.8x', crc) .. ', expected ' .. string.format('0x%.8x', ExpectedCRC))
+   else
+      --saveBitmap(bmp, Name)
    end
 end
 
@@ -64,18 +66,18 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testAlignment()   crcTest('Alignment', 'alignment.rpl', 0xdbd405ab) end
-function testDialog()      crcTest('Dialog', 'dialog.rpl', 0x6986236a) end
-function testFonts()       crcTest('Fonts', 'fonts.rpl', 0x13a284e3) end
+function testAlignment()   crcTest('Alignment', 'alignment.rpl', 0xd7d0d5eb) end
+function testDialog()      crcTest('Dialog', 'dialog.rpl', 0x3ebdadf7) end
+function testFonts()       crcTest('Fonts', 'fonts.rpl', 0x8fbba479) end
 function testImages()      crcTest('Images', 'images.rpl', 0x8cb8d5d8) end
-function testLayout()      crcTest('Layout', 'layout.rpl', 0x7cc40df5) end
-function testLinks1()      crcTest('Links1', 'links.rpl', 0x13b537f7) end
-function testLinks2()      crcTest('Links2', 'links.rpl?font=Noto Sans&font-size=16', 0xceb2b589) end
-function testLists()       crcTest('Lists', 'lists.rpl', 0x5e38d2f9) end
-function testLogic()       crcTest('Logic', 'logic.rpl', 0x3a6e1433) end
+function testLayout()      crcTest('Layout', 'layout.rpl', 0xa9f93bd0) end
+function testLinks1()      crcTest('Links1', 'links.rpl', 0x2e59cb1e) end
+function testLinks2()      crcTest('Links2', 'links.rpl?font=Noto Sans&font-size=16', 0xcc69e85e) end
+function testLists()       crcTest('Lists', 'lists.rpl', 0xf9767479) end
+function testLogic()       crcTest('Logic', 'logic.rpl', 0x5c8af121) end
 function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0x6c93df3f) end
-function testTables()      crcTest('Tables', 'tables.rpl', 0xca6853f8) end
-function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xe4942e05) end
+function testTables()      crcTest('Tables', 'tables.rpl', 0x0c283da1) end
+function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xa24c78b2) end
 
 -----------------------------------------------------------------------------------------------------------------------
 
