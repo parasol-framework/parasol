@@ -609,6 +609,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "ResetMatrix",
     "GetFontHandle",
     "GetFontMetrics",
+    "CharWidth",
     "StringWidth")
 
   c_insert([[

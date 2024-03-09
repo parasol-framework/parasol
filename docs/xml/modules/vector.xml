@@ -81,6 +81,23 @@
   </function>
 
   <function>
+    <name>CharWidth</name>
+    <comment>Returns the width of a character.</comment>
+    <prototype>DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning)</prototype>
+    <input>
+      <param type="APTR" name="FontHandle">The font to use for calculating the character width.</param>
+      <param type="ULONG" name="Char">A 32-bit unicode character.</param>
+      <param type="ULONG" name="KChar">A unicode character to use for calculating the font kerning (optional).</param>
+      <param type="DOUBLE *" name="Kerning">The resulting kerning value (optional).</param>
+    </input>
+    <description>
+<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If kerning information is not required, set the KChar and Kerning parameters to zero.</p>
+<p>The font's GlyphSpacing value is not used in calculating the character width.</p>
+    </description>
+    <result type="DOUBLE">The pixel width of the character will be returned.</result>
+  </function>
+
+  <function>
     <name>ClosePath</name>
     <comment>Close the path by connecting the beginning and end points.</comment>
     <prototype>void vecClosePath(APTR Path)</prototype>
@@ -264,10 +281,10 @@ Z: Close Path
     <prototype>ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info)</prototype>
     <input>
       <param type="APTR" name="Handle">A font handle obtained from GetFontHandle().</param>
-      <param type="struct FontMetrics *" name="Info">The name of the font family to access.</param>
+      <param type="struct FontMetrics *" name="Info">The font metrics for the Handle will be stored here.</param>
     </input>
     <description>
-<p>Call GetFontMetrics() to retrieve a basic set of display metrics (adjusted to the display's DPI) for a given font.</p>
+<p>Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI) for a given font.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

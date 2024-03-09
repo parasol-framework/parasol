@@ -146,9 +146,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, <code>Arial,Open Sans</code> would load the Open Sans font if Arial was unavailable.</p>
-<p>If none of the listed fonts are available, the default system font will be used.</p>
-<p>Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.</p>
+<p>The family name of the principal font for rendering text is specified here.</p>
+<p>It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, <code>Arial,Noto Sans</code> would select the Noto Sans font if Arial was unavailable in the font database.  The name of the closest matching font will be stored as the Face value.</p>
       </description>
     </field>
 
@@ -187,7 +186,7 @@
       <description>
 <p>The FontSize is equivalent to the SVG <code>font-size</code> attribute and refers to the height of the font from the dominant baseline to the hanging baseline.  This would mean that a capitalised letter without accents should fill the entire vertical space defined by FontSize.</p>
 <p>The default unit value of FontSize is in pixels at a resolution of 72 DPI.  This means that if the display is configured to a more common 96 DPI for instance, the actual pixel size on the display will be <code>FontSize * 72 / 96</code>. Point sizes are also measured at a constant ratio of <code>1/72</code> irrespective of display settings, and this may need to factor into precise size calculations.</p>
-<p>Standard unit measurements such as <code>px</code>, <code>em</code> and <code>pt</code> are supported by appending them after the numeric value.</p>
+<p>Standard unit measurements such as <code>px</code>, <code>em</code> and <code>pt</code> are supported by appending them after the numeric value. 1em is equivalent to the 'default font size', which is typically 16px unless modified.</p>
 <p>When retrieving the font size, the resulting string must be freed by the client when no longer in use.</p>
       </description>
     </field>

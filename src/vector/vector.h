@@ -1094,6 +1094,7 @@ extern void set_text_final_xy(extVectorText *);
 
 extern "C" void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
 extern "C" ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
+extern "C" DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
 extern "C" void  vecClosePath(class SimpleVector *);
 extern "C" void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
 extern "C" void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);

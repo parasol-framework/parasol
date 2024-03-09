@@ -6,6 +6,7 @@
 
 FDEF argsApplyPath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_PTR }, { "VectorPath", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsArcTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "RX", FD_DOUBLE }, { "RY", FD_DOUBLE }, { "Angle", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
+FDEF argsCharWidth[] = { { "Result", FD_DOUBLE }, { "FontHandle", FD_PTR }, { "Char", FD_LONG|FD_UNSIGNED }, { "KChar", FD_LONG|FD_UNSIGNED }, { "Kerning", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF argsClosePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { 0, 0 } };
 FDEF argsCurve3[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX", FD_DOUBLE }, { "CtrlY", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsCurve4[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX1", FD_DOUBLE }, { "CtrlY1", FD_DOUBLE }, { "CtrlX2", FD_DOUBLE }, { "CtrlY2", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
@@ -63,6 +64,7 @@ const struct Function glFunctions[] = {
    { (APTR)vecResetMatrix, "ResetMatrix", argsResetMatrix },
    { (APTR)vecGetFontHandle, "GetFontHandle", argsGetFontHandle },
    { (APTR)vecGetFontMetrics, "GetFontMetrics", argsGetFontMetrics },
+   { (APTR)vecCharWidth, "CharWidth", argsCharWidth },
    { (APTR)vecStringWidth, "StringWidth", argsStringWidth },
    { NULL, NULL, NULL }
 };

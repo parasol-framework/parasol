@@ -2068,6 +2068,7 @@ struct VectorBase {
    ERROR (*_ResetMatrix)(struct VectorMatrix * Matrix);
    ERROR (*_GetFontHandle)(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle);
    ERROR (*_GetFontMetrics)(APTR Handle, struct FontMetrics * Info);
+   DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
    DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
 #endif // PARASOL_STATIC
 };
@@ -2103,6 +2104,7 @@ inline ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) 
 inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
 inline ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
 inline ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
+inline DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
 inline DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
 #else
 extern "C" {
@@ -2134,6 +2136,7 @@ extern ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
 extern ERROR vecResetMatrix(struct VectorMatrix * Matrix);
 extern ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle);
 extern ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info);
+extern DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
 extern DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars);
 }
 #endif // PARASOL_STATIC

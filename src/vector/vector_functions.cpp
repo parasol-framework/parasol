@@ -1183,6 +1183,53 @@ void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUB
 /*********************************************************************************************************************
 
 -FUNCTION-
+CharWidth: Returns the width of a character.
+
+This function will return the pixel width of a font character.  The character is specified as a unicode value in the
+Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
+The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  
+If kerning information is not required, set the KChar and Kerning parameters to zero.
+
+The font's GlyphSpacing value is not used in calculating the character width.
+
+-INPUT-
+ptr FontHandle: The font to use for calculating the character width.
+uint Char: A 32-bit unicode character.
+uint KChar: A unicode character to use for calculating the font kerning (optional).
+&double Kerning: The resulting kerning value (optional).
+
+-RESULT-
+double: The pixel width of the character will be returned.
+
+*********************************************************************************************************************/
+
+DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning)
+{
+   if (!Handle) return 0;
+   
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {     
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      auto &cache = pt->get_glyph(Char);
+      if ((KChar) and (Kerning)) {
+         FT_Vector delta;
+         FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
+         *Kerning = int26p6_to_dbl(delta.x);
+      }
+      return cache.adv_x;
+   }
+   else {
+      LONG int_kerning;
+      auto error = fntCharWidth(((bmp_font *)Handle)->font, Char, KChar, &int_kerning);
+      if (Kerning) *Kerning = int_kerning;
+      return error;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 StringWidth: Calculate the pixel width of a UTF-8 string, for a given font.
 
 This function calculates the pixel width of a string, in relation to a known font.  The function takes into account 
