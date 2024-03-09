@@ -456,26 +456,34 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
                         auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
                         for (FT_UInt s=0; s < mvar->num_namedstyles; s++) {
                            for (LONG n=name_table_size-1; n >= 0; n--) {
-                               FT_SfntName sft_name;
-                               if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
-                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
-                                     // Decode UTF16 Big Endian
-                                     char buffer[100];
-                                     LONG out = 0;
-                                     auto str = (UWORD *)sft_name.string;
-                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                        out += UTF8WriteValue((str[i]>>8) | (UBYTE(str[i])<<8), buffer+out, sizeof(buffer)-out);
-                                     }
-                                     buffer[out] = 0;
-                                     freetype_font::METRIC_GROUP set;
-                                     for (unsigned m=0; m < mvar->num_axis; m++) {
-                                        set.push_back(mvar->namedstyle[s].coords[m]);
-                                     }
-                                     metrics.try_emplace(buffer, set);
-                                     styles.try_emplace(buffer);
-                                     break;
-                                  }
-                               }
+                              FT_SfntName sft_name;
+                              if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
+                                 if (sft_name.name_id IS mvar->namedstyle[s].strid) {
+                                    // Decode UTF16 Big Endian
+                                    char buffer[100];
+                                    LONG out = 0;
+                                    auto str = (UWORD *)sft_name.string;
+                                    UWORD prev_unicode = 0;
+                                    for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
+                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       if ((unicode >= 'A') and (unicode <= 'Z')) {
+                                          if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
+                                             buffer[out++] = ' ';
+                                          }
+                                       }
+                                       out += UTF8WriteValue(unicode, buffer+out, std::ssize(buffer)-out);
+                                       prev_unicode = unicode;
+                                    }
+                                    buffer[out] = 0;
+                                    freetype_font::METRIC_GROUP set;
+                                    for (unsigned m=0; m < mvar->num_axis; m++) {
+                                       set.push_back(mvar->namedstyle[s].coords[m]);
+                                    }
+                                    metrics.try_emplace(buffer, set);
+                                    styles.try_emplace(buffer);
+                                    break;
+                                 }
+                              }
                            }
                         }
                      }

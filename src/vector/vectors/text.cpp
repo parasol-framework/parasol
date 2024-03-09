@@ -1404,7 +1404,7 @@ static ERROR reset_font(extVectorText *Vector, bool Force)
       }
       return ERR_Okay;
    }
-   else return error;
+   else return log.warning(error);
  }
 
 //********************************************************************************************************************
