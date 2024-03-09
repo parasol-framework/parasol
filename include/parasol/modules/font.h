@@ -16,13 +16,10 @@ class objFont;
 
 enum class FTF : ULONG {
    NIL = 0,
-   PREFER_SCALED = 0x00000001,
-   PREFER_FIXED = 0x00000002,
-   REQUIRE_SCALED = 0x00000004,
-   REQUIRE_FIXED = 0x00000008,
-   HEAVY_LINE = 0x00000010,
-   BASE_LINE = 0x00000020,
-   ALLOW_SCALE = 0x00000040,
+   REQUIRE_SCALED = 0x00000001,
+   REQUIRE_FIXED = 0x00000002,
+   HEAVY_LINE = 0x00000004,
+   BASE_LINE = 0x00000008,
    VARIABLE = 0x08000000,
    SCALABLE = 0x10000000,
    BOLD = 0x20000000,
@@ -41,6 +38,7 @@ enum class FMETA : ULONG {
    HINT_NORMAL = 0x00000004,
    HINT_LIGHT = 0x00000008,
    HINT_INTERNAL = 0x00000010,
+   HIDDEN = 0x00000020,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(FMETA)
@@ -62,6 +60,7 @@ enum class HINT : BYTE {
 struct FontList {
    struct FontList * Next;    // Pointer to the next entry in the list.
    STRING Name;               // The name of the font face.
+   STRING Alias;              // Reference to another font Name if this is an alias.
    LONG * Points;             // Pointer to an array of fixed point sizes supported by the font.
    STRING Styles;             // Supported styles are listed here in CSV format.
    BYTE   Scalable;           // TRUE if the font is scalable.
@@ -287,7 +286,8 @@ struct FontBase {
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
    LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
    ERROR (*_RefreshFonts)(void);
-   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta);
+   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
+   ERROR (*_ResolveFamilyName)(CSTRING String, CSTRING * Result);
 #endif // PARASOL_STATIC
 };
 
@@ -298,14 +298,16 @@ inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(R
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
 inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
 inline ERROR fntRefreshFonts(void) { return FontBase->_RefreshFonts(); }
-inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path,Meta); }
+inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
+inline ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
 #else
 extern "C" {
 extern ERROR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
 extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
 extern ERROR fntRefreshFonts(void);
-extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path, FMETA * Meta);
+extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
+extern ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result);
 }
 #endif // PARASOL_STATIC
 #endif

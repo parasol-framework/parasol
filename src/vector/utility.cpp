@@ -385,16 +385,17 @@ std::string weight_to_style(CSTRING Style, LONG Weight)
 ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
 {
    Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
-   
+
    if (!Style) return Log.warning(ERR_NullArgs);
 
    const std::lock_guard lock{glFontMutex};
-   
+
    std::string family(Family ? Family : "*");
+   if (!family.ends_with("*")) family.append(",*");
+   CSTRING final_name;
+   if (!fntResolveFamilyName(family.c_str(), &final_name)) family.assign(final_name);
+
    std::string style(Style);
-
-   if (StrMatch("Noto Sans", family)) family.append(",Noto Sans");
-
    if ((Weight) and (Weight != 400)) {
       // If a weight value is specified and is anything other than "Normal"/400 then it will
       // override the named Style completely.
@@ -404,7 +405,7 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
    const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
    CSTRING location = NULL;
    FMETA meta = FMETA::NIL;
-   if (auto error = fntSelectFont(family.c_str(), style.c_str(), point_size, FTF::PREFER_SCALED, &location, &meta); !error) {
+   if (auto error = fntSelectFont(family.c_str(), style.c_str(), &location, &meta); !error) {
       GuardedResource loc(location);
 
       if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
@@ -432,7 +433,7 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
          // represents one type of style.
 
          auto key = StrHash(location);
-      
+
          if (!glFreetypeFonts.contains(key)) {
             STRING resolved;
             if (!ResolvePath(location, RSF::NIL, &resolved)) {
@@ -443,7 +444,7 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
                   FreeResource(resolved);
                   return ERR_Failed;
                }
-               
+
                freetype_font::METRIC_TABLE metrics;
                freetype_font::STYLE_CACHE styles;
 

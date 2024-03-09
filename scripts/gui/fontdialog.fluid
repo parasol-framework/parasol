@@ -158,18 +158,20 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       local font   = list
       local index  = 0
       while (font) do
-         if font.hidden != 1 then
-            lFonts[font.name] = { }
-            lFonts[font.name].order  = index
-            lFonts[font.name].name   = font.name
-            lFonts[font.name].styles = string.split(font.styles, ',')
-            lFonts[font.name].sizes  = font.points
-            if nz(font.scalable) then
-               lFonts[font.name].scalable = true
-            end
-            table.insert(lFontsSorted, lFonts[font.name])
-            index = index + 1
+         lFonts[font.name] = { }
+         lFonts[font.name].order  = index
+         lFonts[font.name].name   = font.name
+         lFonts[font.name].alias  = font.alias
+         lFonts[font.name].styles = string.split(font.styles, ',')
+         lFonts[font.name].sizes  = font.points
+         lFonts[font.name].hidden = font.hidden
+         if nz(font.scalable) then
+            lFonts[font.name].scalable = true
          end
+         if not nz(font.hidden) then
+            table.insert(lFontsSorted, lFonts[font.name])
+         end
+         index = index + 1
          font = font.next
       end
    end
@@ -186,6 +188,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    local function showStyles(Face)
       local styles = { }
+      if nz(lFonts[Face].alias) then Face = lFonts[Face].alias end
       local font_styles = nz(lFonts[Face].styles, { 'Regular' })
       for _, v in ipairs(font_styles) do
          table.insert(styles, { id=v, name=v })

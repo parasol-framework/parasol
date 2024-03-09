@@ -657,13 +657,11 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 -FIELD-
 Face: Defines the font face/family to use in rendering the text string.
 
-The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts
-in CSV format in case the first-choice font is unavailable.  For instance, `Arial,Noto Sans` would load the Noto Sans
-font if Arial was unavailable.
+The family name of the principal font for rendering text is specified here.  
 
-If none of the listed fonts are available, the default system font will be used.
-
-Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.
+It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, 
+`Arial,Noto Sans` would select the Noto Sans font if Arial was unavailable in the font database.  The name of the 
+closest matching font will be stored as the Face value.
 
 *********************************************************************************************************************/
 
@@ -675,10 +673,20 @@ static ERROR TEXT_GET_Face(extVectorText *Self, CSTRING *Value)
 
 static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 {
-   if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-   if (Value) Self->txFamily = StrClone(Value);
-   if (Self->initialised()) return reset_font(Self);
-   return ERR_Okay;
+   if (Value) {
+      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+      
+      CSTRING name;
+      if (!fntResolveFamilyName(Value, &name)) {
+         Self->txFamily = StrClone(name);
+      }
+      else Self->txFamily = StrClone("Noto Sans"); // Better to resort to a default than fail completely
+
+      if (Self->initialised()) return reset_font(Self);
+
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
 }
 
 /*********************************************************************************************************************

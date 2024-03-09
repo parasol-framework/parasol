@@ -142,15 +142,14 @@
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>The name of an installed font face must be specified here for initialisation.  If this field is not set then the initialisation process will use the user's preferred face.  A list of available faces can be obtained from the Font module's <function module="Font">GetList</function> function.</p>
+<p>The name of an installed font face must be specified here for initialisation.  If this field is undefined then the initialisation process will use the user's preferred face.  A list of available faces can be obtained from the <function module="Font">GetList</function> function.</p>
 <p>For convenience, the face string can also be extended with extra parameters so that the point size and style are defined at the same time.  Extra parameters are delimited with the colon character and must follow a set order defined as <code>face:pointsize:style:colour</code>.</p>
 <p>Here are some examples:</p>
 <pre>Noto Sans:12:Bold Italic:#ff0000
 Courier:10.6
 Charter:120%::255,128,255
 </pre>
-<p>To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the font location: <code>SRC:volumename:data/images/shine:14:Italic</code></p>
-<p>Multiple font faces can be specified in CSV format, e.g. <code>Sans Serif,Noto Sans</code>, which allows the closest matching font to be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very useful for pairing bitmap fonts with a scalable equivalent.</p>
+<p>Multiple font faces can be specified in CSV format, e.g. <code>Sans Serif,Noto Sans</code>, which allows the closest matching font to be selected if the first face is unavailable or unable to match the requested point size.</p>
       </description>
     </field>
 
@@ -404,6 +403,7 @@ Charter:120%::255,128,255
   </fields>
   <types>
     <constants lookup="FMETA" comment="Result flags for the SelectFont() function.">
+      <const name="HIDDEN">The font should not appear in any named list shown to the user.</const>
       <const name="HINT_INTERNAL">The Freetype hinter should be used.</const>
       <const name="HINT_LIGHT">The light version of the Freetype hinter should be used.</const>
       <const name="HINT_NORMAL">The hinting information provided by the font should be given preference.</const>
@@ -412,14 +412,11 @@ Charter:120%::255,128,255
     </constants>
 
     <constants lookup="FTF" comment="Font flags">
-      <const name="ALLOW_SCALE">Allows switching to a suitable scalable font if a fixed point size is unavailable.  Equivalent to ending a font face with the '*' wildcard.</const>
       <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
       <const name="BOLD">Font is described as having a bold weight (read only).</const>
       <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
       <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
-      <const name="PREFER_FIXED">A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.</const>
-      <const name="PREFER_SCALED">A scaled font is preferred over the equivalent fixed size font.</const>
       <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
       <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
       <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
@@ -431,6 +428,7 @@ Charter:120%::255,128,255
     <struct name="FontList" comment="For GetList(), describes a system font.">
       <field name="Next" type="struct FontList *">Pointer to the next entry in the list.</field>
       <field name="Name" type="STRING">The name of the font face.</field>
+      <field name="Alias" type="STRING">Reference to another font Name if this is an alias.</field>
       <field name="Points" type="LONG *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
       <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
       <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>

@@ -141,7 +141,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    if (!Self->Path) {
       CSTRING path = NULL;
-      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF::PREFER_SCALED|FTF::PREFER_FIXED|FTF::ALLOW_SCALE), &path, &meta)) {
+      if (!fntSelectFont(Self->prvFace, Self->prvStyle, &path, &meta)) {
          Self->set(FID_Path, path);
          FreeResource(path);
       }
@@ -423,9 +423,9 @@ the #Draw() action.
 -FIELD-
 Face: The name of a font face that is to be loaded on initialisation.
 
-The name of an installed font face must be specified here for initialisation.  If this field is not set then the
-initialisation process will use the user's preferred face.  A list of available faces can be obtained from the Font
-module's ~Font.GetList() function.
+The name of an installed font face must be specified here for initialisation.  If this field is undefined then the
+initialisation process will use the user's preferred face.  A list of available faces can be obtained from the
+~Font.GetList() function.
 
 For convenience, the face string can also be extended with extra parameters so that the point size and style are
 defined at the same time.  Extra parameters are delimited with the colon character and must follow a set order
@@ -439,63 +439,45 @@ Courier:10.6
 Charter:120%::255,128,255
 </pre>
 
-To load a font file that is not installed by default, replace the face parameter with the SRC command, followed by the
-font location: `SRC:volumename:data/images/shine:14:Italic`
-
-Multiple font faces can be specified in CSV format, e.g. `Sans Serif,Noto Sans`, which allows the closest matching font to
-be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very
-useful for pairing bitmap fonts with a scalable equivalent.
+Multiple font faces can be specified in CSV format, e.g. `Sans Serif,Noto Sans`, which allows the closest matching
+font to be selected if the first face is unavailable or unable to match the requested point size.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Face(extFont *Self, CSTRING Value)
+static ERROR SET_Face(extFont *Self, STRING Value)
 {
-   LONG i, j;
-
    if ((Value) and (Value[0])) {
-      STRING val = (STRING)Value;
-      if (!StrCompare("SRC:", val, 4)) {
-         std::ostringstream path;
-         LONG coloncount = 0;
-         for (i=4; val[i]; i++) {
-            if (val[i] IS ':') {
-               coloncount++;
-               if (coloncount > 1) break;
-            }
-            path << val[i];
-         }
-         Self->Path = StrClone(path.str().c_str());
-         Self->prvFace[0] = 0;
-      }
-      else {
-         for (i=0; (val[i]) and (val[i] != ':') and (i < std::ssize(Self->prvFace)-1); i++) Self->prvFace[i] = val[i];
-         Self->prvFace[i] = 0;
+      CSTRING final_name;
+      if (!fntResolveFamilyName(Value, &final_name)) {
+         StrCopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
       }
 
-      if (val[i] != ':') return ERR_Okay;
+      LONG i, j;
+      for (i=0; Value[i] and Value[i] != ':'; i++);
+      if (!Value[i]) return ERR_Okay;
 
       // Extract the point size
 
-      val += i;
-      DOUBLE pt = strtod(val, &val);
+      Value += i;
+      DOUBLE pt = strtod(Value, &Value);
       SET_Point(Self, pt);
 
       i = 0;
-      while ((*val) and (*val != ':')) val++;
-      if (!*val) return ERR_Okay;
+      while ((*Value) and (*Value != ':')) Value++;
+      if (!*Value) return ERR_Okay;
 
       // Extract the style string
 
       i++;
-      for (j=0; (val[i]) and (val[i] != ':') and (j < std::ssize(Self->prvStyle)-1); j++) Self->prvStyle[j] = val[i++];
+      for (j=0; (Value[i]) and (Value[i] != ':') and (j < std::ssize(Self->prvStyle)-1); j++) Self->prvStyle[j] = Value[i++];
       Self->prvStyle[j] = 0;
 
-      if (val[i] != ':') return ERR_Okay;
+      if (Value[i] != ':') return ERR_Okay;
 
       // Extract the colour string
 
       i++;
-      Self->set(FID_Colour, val + i);
+      Self->set(FID_Colour, Value + i);
    }
    else Self->prvFace[0] = 0;
 
@@ -881,7 +863,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
                log.warning("Fatal error in attempting to load font \"%s\".", location);
                return ERR_Failed;
             }
-            
+
             if ((Meta & FMETA::HINT_INTERNAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
             else if ((Meta & FMETA::HINT_LIGHT) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_LIGHT;
             else if ((Meta & FMETA::HINT_NORMAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL; // Use the font's hinting information

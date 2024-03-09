@@ -157,7 +157,7 @@ local function arrangeItems(self)
       if nz(item.displayName) then
          item.vectorText = self._vg.new('VectorText', {
             x        = x + iconWidth + VMARGIN,
-            face     = 'Source Sans Pro',
+            face     = 'Source Sans Pro,*',
             fontSize = FONT_SIZE,
             fill     = lColours.textFill,
             string   = item.displayName

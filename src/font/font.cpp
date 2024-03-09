@@ -26,8 +26,8 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include FT_SIZES_H
 #include FT_FREETYPE_H
 #include FT_MULTIPLE_MASTERS_H
-#include FT_ADVANCES_H 
-#include FT_SFNT_NAMES_H 
+#include FT_ADVANCES_H
+#include FT_SFNT_NAMES_H
 
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
@@ -499,7 +499,8 @@ LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 -FUNCTION-
 GetList: Returns a list of all available system fonts.
 
-This function returns a linked list of all available system fonts.
+This function returns a linked list of all available system fonts.  The list must be terminated once it is no longer
+required.
 
 -INPUT-
 &!struct(FontList) Result: The font list is returned here.
@@ -507,7 +508,7 @@ This function returns a linked list of all available system fonts.
 -ERRORS-
 Okay
 NullArgs
-AccessObject: Font configuration information could not be accessed.
+AccessObject: Access to the font database was denied, or the object does not exist.
 
 *********************************************************************************************************************/
 
@@ -529,6 +530,7 @@ ERROR fntGetList(FontList **Result)
    if (!glConfig->getPtr(FID_Data, &groups)) {
       for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
+         if (keys.contains("Alias")) size += keys["Alias"].size() + 1;
       }
 
       FontList *list, *last_list = NULL;
@@ -545,42 +547,50 @@ ERROR fntGetList(FontList **Result)
                buffer += StrCopy(keys["Name"], buffer) + 1;
             }
 
-            if (keys.contains("Styles")) {
-               list->Styles = buffer;
-               buffer += StrCopy(keys["Styles"], buffer) + 1;
-            }
-
-            if (keys.contains("Scalable")) {
-               if (!StrMatch("Yes", keys["Scalable"])) list->Scalable = TRUE;
-            }
-            
-            if (keys.contains("Variable")) {
-               if (!StrMatch("Yes", keys["Variable"])) list->Variable = TRUE;
-            }
-            
             if (keys.contains("Hidden")) {
                if (!StrMatch("Yes", keys["Hidden"])) list->Hidden = TRUE;
             }
 
-            if (keys.contains("Hinting")) {
-               if (!StrMatch("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
-               else if (!StrMatch("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
-               else if (!StrMatch("Light", keys["Hinting"])) list->Hinting = HINT::LIGHT;
+            auto it = keys.find("Alias");
+            if ((it != keys.end()) and (!it->second.empty())) {
+               list->Alias = buffer;
+               buffer += StrCopy(keys["Alias"], buffer) + 1;
+               // An aliased font can define a Name and Hidden values only.
             }
+            else {
+               if (keys.contains("Styles")) {
+                  list->Styles = buffer;
+                  buffer += StrCopy(keys["Styles"], buffer) + 1;
+               }
 
-            list->Points = NULL;
-            if (keys.contains("Points")) {
-               auto fontpoints = keys["Points"].c_str();
-               if (*fontpoints) {
-                  list->Points = (LONG *)buffer;
-                  for (WORD j=0; *fontpoints; j++) {
-                     ((LONG *)buffer)[0] = StrToInt(fontpoints);
+               if (keys.contains("Scalable")) {
+                  if (!StrMatch("Yes", keys["Scalable"])) list->Scalable = TRUE;
+               }
+
+               if (keys.contains("Variable")) {
+                  if (!StrMatch("Yes", keys["Variable"])) list->Variable = TRUE;
+               }
+
+               if (keys.contains("Hinting")) {
+                  if (!StrMatch("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
+                  else if (!StrMatch("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
+                  else if (!StrMatch("Light", keys["Hinting"])) list->Hinting = HINT::LIGHT;
+               }
+
+               list->Points = NULL;
+               if (keys.contains("Points")) {
+                  auto fontpoints = keys["Points"].c_str();
+                  if (*fontpoints) {
+                     list->Points = (LONG *)buffer;
+                     for (WORD j=0; *fontpoints; j++) {
+                        ((LONG *)buffer)[0] = StrToInt(fontpoints);
+                        buffer += sizeof(LONG);
+                        while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
+                        if (*fontpoints IS ',') fontpoints++;
+                     }
+                     ((LONG *)buffer)[0] = 0;
                      buffer += sizeof(LONG);
-                     while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
-                     if (*fontpoints IS ',') fontpoints++;
                   }
-                  ((LONG *)buffer)[0] = 0;
-                  buffer += sizeof(LONG);
                }
             }
 
@@ -685,41 +695,33 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SelectFont: Searches for a 'best fitting' font file based on select criteria.
+SelectFont: Searches for a 'best fitting' font file, based on family name and style.
 
-This function searches for the closest matching font based on the details provided by the client.  The details that can
-be searched for include the name, point size and style of the desired font.
+This function resolves a font family Name and Style to a font file path.  It works on a best efforts basis; the Name
+must exist but the Style is a non-mandatory preference.
 
-It is possible to list multiple faces in order of their preference in the Name parameter.  For instance
-`Sans Serif,Source Sans,*` will give preference to `Sans Serif` and will look for `Source Sans` if the first choice
-font is unavailable.  The use of the `*` wildcard indicates that the default system font should be used in the event
-that neither of the other choices are available.  Note that omitting this wildcard will raise the likelihood of
-`ERR_Search` being returned in the event that neither of the preferred choices are available.
-
-Flags that alter the search behaviour are `FTF::PREFER_SCALED`, `FTF::PREFER_FIXED` and `FTF::ALLOW_SCALE`.
+The resulting Path must be freed once it is no longer required.
 
 -INPUT-
-cstr Name:  The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.
+cstr Name:  The name of a font face to search for (case insensitive).
 cstr Style: The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.
-int Point:  Preferred point size.
-int(FTF) Flags:  Optional flags.
 &!cstr Path: The location of the best-matching font file is returned in this parameter.
 &int(FMETA) Meta: Optional, returns additional meta information about the font file.
 
 -ERRORS-
 Okay
 NullArgs
-AccessObject: Unable to access the internal font configuration object.
+AccessObject: Access to the font database was denied, or the object does not exist.
 Search: Unable to find a suitable font.
 -END-
 
 *********************************************************************************************************************/
 
-ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path, FMETA *Meta)
+ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, LONG(Flags));
+   log.branch("%s:%s", Name, Style);
 
    if (not Name) return log.warning(ERR_NullArgs);
 
@@ -729,133 +731,6 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING 
    ConfigGroups *groups;
    if (glConfig->getPtr(FID_Data, &groups)) return ERR_Search;
 
-   bool multi = ((Flags & FTF::ALLOW_SCALE) != FTF::NIL) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
-
-   std::string style_name(Style);
-   pf::camelcase(style_name);
-
-   std::string fixed_group_name, scale_group_name;
-   ConfigKeys *fixed_group = NULL, *scale_group = NULL;
-
-   std::vector<std::string> names;
-   pf::split(std::string(Name), std::back_inserter(names));
-
-   for (auto &name : names) {
-      if (!name.compare("*")) {
-         // Use of the '*' wildcard indicates that the default scalable font can be used.  This feature is usually
-         // prefaced by another font, e.g. "Sans Serif,*"
-         multi = true;
-         break;
-      }
-
-      pf::ltrim(name, "'\"");
-      pf::rtrim(name, "'\"");
-
-restart:
-      for (auto & [group, keys] : groups[0]) {
-         if (!StrCompare(name, keys["Name"], 0, STR::WILDCARD)) {
-            if (keys.contains("Alias")) {
-               name = keys["Alias"];
-               goto restart;
-            }
-
-            // Determine if this is a fixed or scalable font.
-
-            for (auto & [k, v] : keys) {
-               if ((!k.compare(0, 8, "Scalable")) and (!v.compare(0, 3, "Yes"))) {
-                  scale_group_name = group;
-                  scale_group = &keys;
-                  break;
-               }
-            }
-
-            if (scale_group_name.empty()) {
-               fixed_group_name = group;
-               fixed_group = &keys;
-            }
-
-            break;
-         }
-      }
-
-      if ((fixed_group) or (scale_group)) break; // Break now if suitable fixed and/or scalable font settings have been discovered.
-
-      multi = true;
-   }
-
-   if ((not scale_group) and (not fixed_group)) log.warning("The font \"%s\" is not installed on this system.", Name);
-   if ((Flags & FTF::REQUIRE_FIXED) != FTF::NIL) scale_group = NULL;
-   if ((Flags & FTF::REQUIRE_SCALED) != FTF::NIL) fixed_group = NULL;
-
-   if ((!scale_group) and ((Flags & FTF::REQUIRE_FIXED) IS FTF::NIL)) {
-      // Select a default scalable font if multi-face font search was enabled.  Otherwise we presume that
-      // auto-upgrading of the fixed font is undesirable.
-      if ((fixed_group) and (multi)) {
-         static char default_font[60] = "";
-         if (!default_font[0]) { // Static value only needs to be calculated once
-            OBJECTID style_id;
-            if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
-               pf::ScopedObjectLock<objXML> style(style_id, 3000);
-               if (style.granted()) {
-                  if (acGetVar(style.obj, "/fonts/font(@name='scalable')/@face", default_font, sizeof(default_font))) {
-                     StrCopy("Noto Sans", default_font, sizeof(default_font));
-                  }
-               }
-            }
-         }
-
-         for (auto & [group, keys] : *groups) {
-            if ((keys.contains("Name")) and (!keys["Name"].compare(default_font))) {
-               scale_group_name = group;
-               scale_group = &keys;
-               break;
-            }
-         }
-      }
-
-      if (not fixed_group) { // Sans Serif is a good default for a fixed font.
-         for (auto & [group, keys] : *groups) {
-            if ((keys.contains("Name")) and (!keys["Name"].compare("Sans Serif"))) {
-               fixed_group_name = group;
-               fixed_group = &keys;
-               break;
-            }
-         }
-      }
-   }
-
-   if ((not fixed_group) and (not scale_group)) return ERR_Search;
-
-   // Read the point sizes for the fixed group and determine if the requested point size is within 2 units of one
-   // of those values.  If not, we'll have to use the scaled font option.
-
-   if ((fixed_group) and (scale_group) and (Point)) {
-      bool acceptable = false;
-      std::vector<std::string> points;
-      pf::split(fixed_group[0]["Points"], std::back_inserter(points));
-
-      for (auto &point : points) {
-         auto diff = StrToInt(point.c_str()) - Point;
-         if ((diff >= -1) and (diff <= 1)) { acceptable = true; break; }
-      }
-
-      if (!acceptable) {
-         log.extmsg("Fixed point font is not a good match, will use scalable font.");
-         fixed_group = NULL;
-      }
-   }
-
-   ConfigKeys *preferred_group, *alt_group = NULL;
-
-   if (not ((Point < 12) or ((Flags & (FTF::PREFER_FIXED|FTF::REQUIRE_FIXED)) != FTF::NIL))) {
-      preferred_group = fixed_group;
-      if ((Flags & FTF::REQUIRE_FIXED) IS FTF::NIL) alt_group = scale_group;
-   }
-   else {
-      preferred_group = scale_group;
-      if ((Flags & FTF::REQUIRE_SCALED) IS FTF::NIL) alt_group = fixed_group;
-   }
-   
    auto get_meta = [](ConfigKeys &Group) {
       FMETA meta = FMETA::NIL;
       if (Group.contains("Hinting")) {
@@ -866,54 +741,45 @@ restart:
 
       if (Group.contains("Variable")) meta |= FMETA::VARIABLE;
       if (Group.contains("Scalable")) meta |= FMETA::SCALED;
+      if (Group.contains("Hidden"))   meta |= FMETA::HIDDEN;
       return meta;
    };
 
-   auto get_font_path = [&log](ConfigKeys &Keys, const std::string &Style) {
-      std::string cfg_style(Style);
-      log.trace("Looking for font style %s", cfg_style.c_str());
-      if (Keys.contains(cfg_style)) return StrClone(Keys[cfg_style].c_str());
+   auto get_font_path = [](ConfigKeys &Keys, const std::string &Style) {
+      if (Keys.contains(Style)) return StrClone(Keys[Style].c_str());
       else if (StrMatch("Regular", Style.c_str()) != ERR_Okay) {
-         log.trace("Looking for regular version of the font...");
          if (Keys.contains("Regular")) return StrClone(Keys["Regular"].c_str());
       }
       return STRING(NULL);
    };
 
-   if (preferred_group) {
-      if ((*Path = get_font_path(*preferred_group, style_name))) {
-         if (Meta) *Meta = get_meta(*preferred_group);
+   std::string style_name(Style);
+   pf::camelcase(style_name);
+
+   for (auto & [group, keys] : groups[0]) {
+      if (StrMatch(Name, keys["Name"])) continue;
+
+      if ((*Path = get_font_path(keys, style_name))) {
+         if (Meta) *Meta = get_meta(keys);
          return ERR_Okay;
       }
-   }
 
-   if (alt_group) {
-      if ((*Path = get_font_path(*alt_group, style_name))) {
-         if (Meta) *Meta = get_meta(*alt_group);
+      log.traceWarning("Requested style '%s' not available, choosing first style.", style_name.c_str());
+
+      std::string styles = keys.contains("Styles") ? keys["Styles"] : "Regular";
+      auto end = styles.find(",");
+      if (end IS std::string::npos) end = styles.size();
+      std::string first_style = styles.substr(0, end);
+
+      if (keys.contains(first_style)) {
+         *Path = StrClone(keys[first_style].c_str());
+         if (Meta) *Meta = get_meta(keys);
          return ERR_Okay;
       }
+      else return ERR_Search;
    }
 
-   // A regular font style in either format does not exist, so choose the first style that is listed
-
-   log.warning("Requested style '%s' not supported, choosing first style.", style_name.c_str());
-
-   std::string styles = preferred_group ? preferred_group[0]["Styles"] : alt_group ? alt_group[0]["Styles"] : "Regular";
-   auto end = styles.find(",");
-   if (end IS std::string::npos) end = styles.size();
-   std::string first_style = styles.substr(0, end);
-
-   if ((preferred_group) and (preferred_group->contains(first_style))) {
-      *Path = StrClone(preferred_group[0][first_style].c_str());
-      if (Meta) *Meta = get_meta(*preferred_group);
-      return ERR_Okay;
-   }
-   else if ((alt_group) and (alt_group->contains(first_style))) {
-      *Path = StrClone(alt_group[0][first_style].c_str());
-      if (Meta) *Meta = get_meta(*alt_group);
-      return ERR_Okay;
-   }
-
+   log.warning("The \"%s\" font is not available.", Name);
    return ERR_Search;
 }
 
@@ -924,12 +790,12 @@ RefreshFonts: Refreshes the system font list with up-to-date font information.
 
 This function scans the `fonts:` volume and refreshes the font database.
 
-Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for 
+Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for
 information.  The `fonts:fonts.cfg` file will be re-written on completion to reflect current font settings.
 
 -ERRORS-
 Okay: Fonts were successfully refreshed.
-AccessObject: Access to the SytsemFonts object was denied, or the object does not exist.
+AccessObject: Access to the font database was denied, or the object does not exist.
 -END-
 
 *********************************************************************************************************************/
@@ -988,6 +854,85 @@ ERROR fntRefreshFonts(void)
    if (file.ok()) glConfig->saveToObject(*file);
 
    return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ResolveFamilyName: Convert a CSV family string to a single family name.
+
+Use ResolveFamilyName() to convert complex CSV family strings to a single family name.  The provided String will be
+parsed in sequence, with priority given from left to right.  If a single asterisk is used to terminate the list, it is
+guaranteed that the system default will be returned if no valid match is made.
+
+It is valid for individual names to utilise the common wildcards `?` and `*` to make a match.  E.g. `Times New *`
+would be able to match to `Times New Roman` if available.
+
+-INPUT-
+cstr String: A CSV family string to resolve.
+&cstr Result: The nominated family name is returned in this parameter.
+
+-ERRORS-
+Okay:
+NullArgs:
+AccessObject: Access to the font database was denied, or the object does not exist.
+GetField:
+Search: It was not possible to resolve the String to a known font family.
+-END-
+
+*********************************************************************************************************************/
+
+ERROR fntResolveFamilyName(CSTRING String, CSTRING *Result)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!String) or (!Result)) return ERR_NullArgs;
+
+   pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
+   if (not config.granted()) return log.warning(ERR_AccessObject);
+
+   ConfigGroups *groups;
+   if (glConfig->getPtr(FID_Data, &groups)) return log.warning(ERR_GetField);
+
+   std::vector<std::string> names;
+   pf::split(std::string(String), std::back_inserter(names));
+
+   for (auto &name : names) {
+      pf::ltrim(name, "'\"");
+      pf::rtrim(name, "'\"");
+
+restart:
+      if ((name[0] IS '*') and (!name[1])) {
+         // Default family requested - use the first font declaring a "Default" key
+         for (auto & [group, keys] : groups[0]) {
+            if (keys.contains("Default")) {
+               *Result = keys["Name"].c_str();
+               return ERR_Okay;
+            }
+         }
+
+         *Result = "Noto Sans";
+         return ERR_Okay;
+      }
+
+      for (auto & [group, keys] : groups[0]) {
+         if (!StrCompare(name, keys["Name"], 0, STR::WILDCARD)) {
+            if (auto it = keys.find("Alias"); it != keys.end()) {
+               const std::string &alias = it->second;
+               if (!alias.empty()) {
+                  name = alias;
+                  goto restart;
+               }
+            }
+
+            *Result = keys["Name"].c_str();
+            return ERR_Okay;
+         }
+      }
+   }
+
+   log.msg("Failed to resolve family \"%s\"", String);
+   return ERR_Search;
 }
 
 //********************************************************************************************************************

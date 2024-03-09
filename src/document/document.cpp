@@ -233,7 +233,7 @@ objFont * bc_font::get_font()
       #endif
 
       objFont *font = objFont::create::integral(
-         fl::Owner(modDocument->UID), fl::Face(face), fl::Style(style_name), fl::Point(point), fl::Flags(FTF::PREFER_SCALED));
+         fl::Owner(modDocument->UID), fl::Face(face), fl::Style(style_name), fl::Point(point));
 
       if (font) {
          // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
