@@ -42,8 +42,8 @@ function setFont(Face, Size)
       })
 
       -- METRICS ASCENT: BLUE
-      glAscent = glViewport.new('vectorrectangle', {
-         x = 0, width='100%', y=0, height=1, fill='rgb(0,0,255,128)'
+      glAscent = glViewport.new('vectorpolygon', {
+         x1 = 0, y1 = 0, x2 = '100%', y2 = 0, stroke='rgb(0,0,255,128)', dashArray="4,4"
       })
    end
 
@@ -53,7 +53,7 @@ function setFont(Face, Size)
       face     = Face,
       fontSize = Size,
       fill     = 'rgb(0,0,0)',
-      string   = Face .. '; ÄĆÃÊ; Size: ' .. Size .. '; ' ..
+      string   = Face .. '; ÄĆÃÊ; Size: ' .. Size .. '/' .. (Size * 72/96) .. '; ' ..
       'Height: ' .. metrics.height .. '; ' ..
       'Ascent: ' .. metrics.ascent .. '; ' ..
       'Descent: ' .. metrics.descent .. '; ' ..
@@ -76,7 +76,8 @@ function setFont(Face, Size)
    glDescent.y = glText.y
    glDescent.height = metrics.descent
 
-   glAscent.y = glText.y - metrics.ascent
+   glAscent.y1 = glText.y - metrics.ascent
+   glAscent.y2 = glText.y - metrics.ascent
 
    glInitialised = true
    collectgarbage()
