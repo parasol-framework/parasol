@@ -331,16 +331,6 @@ Charter:120%::255,128,255
     </field>
 
     <field>
-      <name>TotalGlyphs</name>
-      <comment>Reflects the total number of character glyphs that are available by the font object.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
-      <description>
-<p>The total number of character glyphs that are available is reflected in this field.  The font must have been initialised before the count is known.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Underline</name>
       <comment>Enables font underlining when set.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -417,8 +407,6 @@ Charter:120%::255,128,255
       <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
       <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
-      <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
-      <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
       <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
       <const name="VARIABLE">The font supports variable metrics.</const>
     </constants>

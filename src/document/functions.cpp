@@ -2,12 +2,12 @@
 static const LONG MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"18\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"16\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h3\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h4\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14\"><inject/></p></template>\n\
-<template name=\"h5\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"12\"><inject/></p></template>\n\
-<template name=\"h6\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"10\"><inject/></p></template>\n";
+"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"18pt\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h2\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"16pt\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h3\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h4\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\"><inject/></p></template>\n\
+<template name=\"h5\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"12pt\"><inject/></p></template>\n\
+<template name=\"h6\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"10pt\"><inject/></p></template>\n";
 
 static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -231,8 +231,8 @@ static ERROR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML:
       // Revert to the default style if none is available.
 
       if (auto font = style.get_font()) {
-         style.face  = font->Face;
-         style.point = font->Point;
+         style.face  = font->face;
+         style.font_size = font->font_size;
       }
 
       parser parse(Self, XML, Stream);

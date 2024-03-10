@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
-<body face="[@font:sans serif]" font-size="[@font-size:12]"/>
+<body face="[@font:sans serif]" font-size="[@font-size:12pt]"/>
 
 <page name="Index">
 

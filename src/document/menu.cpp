@@ -31,11 +31,11 @@ static void menu_lost_focus(OBJECTPTR, ACTIONID, ERROR, APTR, doc_menu *);
 
 //********************************************************************************************************************
 
-void doc_menu::define_font(objFont *Font)
+void doc_menu::define_font(font_entry *Font)
 {
-   m_font_face  = Font->Face;
-   m_font_size  = Font->Point;
-   m_font_style = Font->Style;
+   m_font_face  = Font->face;
+   m_font_size  = Font->font_size;
+   m_font_style = Font->style;
 }
 
 //********************************************************************************************************************

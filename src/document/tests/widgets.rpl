@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
-<body/>
+<body font-size="10pt"/>
 
 <page name="Index">
 
@@ -9,7 +9,7 @@
 
 <p>Prefix <input width="200" value="pre-defined content"/> Suffix</p>
 
-<p font-face="Courier" font-size="20"><input width="300" value="Courier 20pt" label="Default Label"/> Not a label</p>
+<p font-face="Courier" font-size="20pt"><input width="300" value="Courier 20pt" label="Default Label"/> Not a label</p>
 
 <p><input width="200" label-pos="left" label="Left Label: " value="pre-defined content"/> Suffix</p>
 
@@ -21,7 +21,7 @@
 
 <p><checkbox label="Left Label: " label-pos="left" value="false"/></p>
 
-<p v-align="center" font-size="20">Prefix <checkbox value="true"/> Suffix; v-align="center"</p>
+<p v-align="center" font-size="20pt">Prefix <checkbox value="true"/> Suffix; v-align="center"</p>
 
 <h1>Button Widgets</h1>
 
@@ -37,7 +37,7 @@
   <option icon="icons:items/start" value="audi">Audi</option>
 </combobox> Suffix</p>
 
-<p font-face="Courier" font-size="20"><combobox width="300" value="Courier 20pt" label="Default Label">
+<p font-face="Courier" font-size="20pt"><combobox width="300" value="Courier 20pt" label="Default Label">
   <option icon="icons:items/add" value="Volvo">Volvo</option>
   <option value="Saab">Saab</option>
   <option icon="icons:items/cancel" value="Mercedes">Mercedes</option>
@@ -54,7 +54,7 @@
   <option value="Tesla">Tesla</option>
 </combobox> Not a label</p>
 
-<p font-face="Noto Sans" font-size="20"><combobox width="300" value="Noto Sans 20pt">
+<p font-face="Noto Sans" font-size="20pt"><combobox width="300" value="Noto Sans 20pt">
   <option icon="icons:items/add" value="Volvo">Volvo</option>
   <option value="Saab">Saab</option>
   <option icon="icons:items/cancel" value="Mercedes">Mercedes</option>

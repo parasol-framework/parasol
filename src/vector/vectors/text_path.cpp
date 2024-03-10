@@ -429,11 +429,11 @@ static void generate_text(extVectorText *Vector)
             Vector->BasePath.concat_path(trans_char);
 
             if (Vector->txCursor.vector) {
-               calc_caret_position(line, transform, Vector->txFontSize);
+               calc_caret_position(line, transform, pt.ascent);
 
                if (!*str) { // Last character reached, add a final cursor entry past the character position.
                   transform.translate(char_width, 0);
-                  calc_caret_position(line, transform, Vector->txFontSize);
+                  calc_caret_position(line, transform, pt.ascent);
                }
             }
 

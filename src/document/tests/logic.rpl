@@ -8,6 +8,8 @@
  <description>Runs basic logic tests against the parser.</description>
 </info>
 
+<body font-size="10pt"/>
+
 <page name="Index">
 
 <h1>If Statement Tests</h1>
@@ -59,7 +61,7 @@
 <h2>Special Variable Tests</h2>
 
 <font face="courier">
-<p>Current font: <print value="[%font]; Face: [%font-face]; Size: [%font-size]; Colour: [%font-colour]"/></p>
+<p>Current font: <print value="[%font]; Face: [%font-face]; Size: [%font-size]; Fill: [%font-fill]"/></p>
 <!-- The following features can't appear in the test suite because they'll cause a hash mismatch between runs
 <p>Date: <print value="[%tm-day]-[%tm-month]-[%tm-year]"/></p>
 <p>Time: <print value="[%tm-hour]:[%tm-minute]:[%tm-second]"/></p>

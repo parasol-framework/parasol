@@ -15,15 +15,13 @@
   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
-    <prototype>LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning)</prototype>
+    <prototype>LONG fntCharWidth(objFont * Font, ULONG Char)</prototype>
     <input>
       <param type="objFont *" name="Font">The font to use for calculating the character width.</param>
       <param type="ULONG" name="Char">A unicode character.</param>
-      <param type="ULONG" name="KChar">A unicode character to use for calculating the font kerning (optional).</param>
-      <param type="LONG *" name="Kerning">The resulting kerning value (optional).</param>
     </input>
     <description>
-<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If kerning information is not required, set the KChar and Kerning parameters to zero.</p>
+<p>This function will return the pixel width of a bitmap font character.  The character is specified as a unicode value in the Char parameter.</p>
 <p>The font's GlyphSpacing value is not used in calculating the character width.</p>
     </description>
     <result type="LONG">The pixel width of the character will be returned.</result>
@@ -140,8 +138,6 @@
       <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
       <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
-      <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
-      <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
       <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
       <const name="VARIABLE">The font supports variable metrics.</const>
     </constants>

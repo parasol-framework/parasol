@@ -87,12 +87,9 @@ class extFont : public objFont {
    std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
    std::string prvBuffer;
    struct FontCharacter *prvChar;
-   class BitmapCache   *BmpCache;
-   font_glyph prvTempGlyph;
+   class BitmapCache *BmpCache;
    LONG prvLineCount;
    LONG prvStrWidth;
-   LONG prvGlyphFlags;
-   WORD prvSpaceWidth;          // Pixel width of word breaks
    WORD prvBitmapHeight;
    WORD prvLineCountCR;
    char prvEscape[2];
@@ -111,9 +108,7 @@ static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
 
 static ERROR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
-static LONG get_kerning(FT_Face, LONG Glyph, LONG PrevGlyph);
-static font_glyph * get_glyph(extFont *, ULONG);
-static void unload_glyph_cache(extFont *);
+static LONG get_kerning(FT_Face, LONG, LONG);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
@@ -254,7 +249,6 @@ inline void calc_lines(extFont *Self)
 
 static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
-   font_glyph *cache;
    ULONG unicode;
    WORD rowcount, wordwidth, lastword, tabwidth, charwidth;
    UBYTE line_abort, pchar;
@@ -320,16 +314,6 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
          LONG charlen = getutf8(String, &unicode);
 
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
-         else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
-            if (unicode IS ' ') {
-               charwidth += Font->prvChar[' '].Advance * Font->GlyphSpacing;
-            }
-            else if ((cache = get_glyph(Font, unicode))) {
-               charwidth = cache->AdvanceX * Font->GlyphSpacing;
-               if ((Font->Flags & FTF::KERNING) != FTF::NIL) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
-               prevglyph = cache->GlyphIndex;
-            }
-         }
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
          else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
 
@@ -448,44 +432,23 @@ static ERROR CMDExpunge(void)
 -FUNCTION-
 CharWidth: Returns the width of a character.
 
-This function will return the pixel width of a font character.  The character is specified as a unicode value in the
-Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
-The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If
-kerning information is not required, set the KChar and Kerning parameters to zero.
+This function will return the pixel width of a bitmap font character.  The character is specified as a unicode value 
+in the Char parameter.
 
 The font's GlyphSpacing value is not used in calculating the character width.
 
 -INPUT-
 ext(Font) Font: The font to use for calculating the character width.
 uint Char: A unicode character.
-uint KChar: A unicode character to use for calculating the font kerning (optional).
-&int Kerning: The resulting kerning value (optional).
 
 -RESULT-
 int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
+LONG fntCharWidth(extFont *Font, ULONG Char)
 {
-   if (Kerning) *Kerning = 0;
-
    if (Font->FixedWidth > 0) return Font->FixedWidth;
-   else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
-      if (auto cache = get_glyph(Font, Char)) {
-         if (((Font->Flags & FTF::KERNING) != FTF::NIL) and (KChar) and (Kerning)) {
-            LONG kglyph = FT_Get_Char_Index(Font->Cache->Face, KChar);
-            *Kerning = get_kerning(Font->Cache->Face, cache->GlyphIndex, kglyph);
-         }
-         return cache->AdvanceX;
-      }
-      else {
-         pf::Log log(__FUNCTION__);
-         log.trace("No glyph for character %u", Char);
-         if (Font->prvChar) return Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
-         else return 0;
-      }
-   }
    else if ((Char < 256) and (Font->prvChar)) return Font->prvChar[Char].Advance;
    else {
       pf::Log log(__FUNCTION__);
@@ -632,14 +595,11 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
    if ((!Font) or (!String)) return 0;
    if (!Font->initialised()) return 0;
 
-   font_glyph *cache;
-
    CSTRING str = String;
    if (Chars < 0) Chars = 0x7fffffff;
 
    LONG len    = 0;
    LONG widest = 0;
-   LONG prev_glyph = 0;
    LONG whitespace = 0;
    while ((*str) and (Chars > 0)) {
       if (*str IS '\n') {
@@ -663,20 +623,6 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 
          LONG advance;
          if (Font->FixedWidth > 0) advance = Font->FixedWidth;
-         else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
-            if ((unicode < 256) and (Font->prvChar[unicode].Advance) and ((Font->Flags & FTF::KERNING) IS FTF::NIL)) {
-               advance = Font->prvChar[unicode].Advance;
-            }
-            else if (unicode IS ' ') {
-               advance = Font->prvChar[' '].Advance;
-            }
-            else if ((cache = get_glyph(Font, unicode))) {
-               advance = cache->AdvanceX;
-               if ((Font->Flags & FTF::KERNING) != FTF::NIL) advance += get_kerning(Font->Cache->Face, cache->GlyphIndex, prev_glyph);
-               prev_glyph = cache->GlyphIndex;
-            }
-            else advance = 0;
-         }
          else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) {
             advance = Font->prvChar[unicode].Advance;
          }

@@ -1212,18 +1212,19 @@ DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning)
       FT_Activate_Size(pt->ft_size);
 
       auto &cache = pt->get_glyph(Char);
-      if ((KChar) and (Kerning)) {
-         FT_Vector delta;
-         FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
-         *Kerning = int26p6_to_dbl(delta.x);
+      if (Kerning) {
+         if (KChar) {
+            FT_Vector delta;
+            FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
+            *Kerning = int26p6_to_dbl(delta.x);
+         }
+         else *Kerning = 0;
       }
       return cache.adv_x;
    }
    else {
-      LONG int_kerning;
-      auto error = fntCharWidth(((bmp_font *)Handle)->font, Char, KChar, &int_kerning);
-      if (Kerning) *Kerning = int_kerning;
-      return error;
+      if (Kerning) *Kerning = 0;
+      return fntCharWidth(((bmp_font *)Handle)->font, Char);
    }
 }
 

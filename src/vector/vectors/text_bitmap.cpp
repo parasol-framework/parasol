@@ -27,7 +27,6 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    }
    else {
       agg::path_storage cursor_path;
-      LONG prev_glyph = 0;
 
       for (auto &line : Vector->txLines) {
          line.chars.clear();
@@ -36,10 +35,9 @@ static void raster_text_to_bitmap(extVectorText *Vector)
             LONG char_len;
             auto unicode = UTF8ReadValue(str, &char_len);
 
-            LONG kerning;
-            auto char_width = fntCharWidth(Vector->txBitmapFont, unicode, prev_glyph, &kerning);
+            auto char_width = fntCharWidth(Vector->txBitmapFont, unicode);
 
-            if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph = 0; }
+            if (unicode <= 0x20) wrap_state = WS_NO_WORD;
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
             else if (wrap_state IS WS_NO_WORD)  wrap_state = WS_NEW_WORD;
 
@@ -69,12 +67,11 @@ static void raster_text_to_bitmap(extVectorText *Vector)
             if (Vector->txCursor.vector) {
                line.chars.emplace_back(dx, dx, dy + 1, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
                if (!*str) { // Last character reached, add a final cursor entry past the character position.
-                  line.chars.emplace_back(dx + kerning + char_width, dy, dx + kerning + char_width, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
+                  line.chars.emplace_back(dx + char_width, dy, dx + char_width, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
                }
             }
 
-            dx += kerning + char_width;
-            prev_glyph = unicode;
+            dx += char_width;
          }
 
          if (dx > longest_line_width) longest_line_width = dx;

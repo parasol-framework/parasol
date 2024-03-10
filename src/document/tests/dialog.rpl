@@ -8,7 +8,7 @@
   </defs>
 </svg>
 
-<body margins="10 10 18 10"/>
+<body margins="10 10 18 10" font-size="10pt"/>
 
 <page name="Index">
   <table columns="48,0" width="100%">

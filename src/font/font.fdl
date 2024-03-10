@@ -8,8 +8,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
   c_include("<parasol/modules/display.h>")
 
   flags("FTF", { comment="Font flags" },
-    "REQUIRE_SCALED: A scaled font is required and not a fixed size font.",
-    "REQUIRE_FIXED: A fixed size font is required and not a scalable font.",
     "HEAVY_LINE: Underline the font with a double-sized line, using the colour defined in UnderlineRGB.",
     "BASE_LINE: The Font's Y coordinate is the base line.",
     { VARIABLE = "0x08000000: The font supports variable metrics." },
@@ -67,7 +65,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
    int   X                # X Coordinate
    int   Y                # Y Coordinate
    int   TabSize          # Tab differential
-   int   TotalGlyphs      # Total number of glyphs supported by the font
    int   WrapEdge         # Point at which word-wrap is encountered
    int   FixedWidth       # Force a fixed pixel width
    int   Height           # The point size of the font (vertical bearing), expressed in pixels.  Does not include leading (see Ascent if you want leading included)

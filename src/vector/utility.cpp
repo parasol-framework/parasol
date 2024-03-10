@@ -1,5 +1,6 @@
 
 agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
+DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 //********************************************************************************************************************
 
@@ -79,6 +80,26 @@ CSTRING get_name(OBJECTPTR Vector)
    }
 
    return "Unknown";
+}
+
+//********************************************************************************************************************
+
+static void update_dpi(void)
+{
+   static LARGE last_update = -0x7fffffff;
+   LARGE current_time = PreciseTime();
+
+   if (current_time - last_update > 3000000LL) {
+      DISPLAYINFO *display;
+      if (!gfxGetDisplayInfo(0, &display)) {
+         last_update = PreciseTime();
+         if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
+            glDisplayVDPI = display->VDensity;
+            glDisplayHDPI = display->HDensity;
+            glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) * 0.5;
+         }
+      }
+   }
 }
 
 //********************************************************************************************************************

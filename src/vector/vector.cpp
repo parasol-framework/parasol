@@ -105,6 +105,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((error = init_remapfx())) return error;
    if ((error = init_lightingfx())) return error;
    if ((error = init_displacementfx())) return error;
+
+   update_dpi();
    return error;
 }
 

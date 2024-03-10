@@ -1242,7 +1242,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE 
    log.branch("Index: %d", Char.index);
 
    bc_font *style = find_style(Self->Stream, Char);
-   auto font = style ? style->get_font() : glFonts[0].font;
+   auto font = style ? style->get_font() : &glFonts[0];
    if (!font) return log.warning(ERR_Search);
 
    // Find the segment linked to this character.  This is so that we can derive an x coordinate for the character
@@ -1252,7 +1252,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE 
       auto i = Self->Segments[segment].start;
       while ((i <= Self->Segments[segment].stop) and (i < Char)) {
          if (Self->Stream[i.index].code IS SCODE::TEXT) {
-            CharX = fntStringWidth(font, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
+            CharX = vecStringWidth(font->handle, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
             return ERR_Okay;
          }
          i.next_code();

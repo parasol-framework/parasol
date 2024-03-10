@@ -1341,13 +1341,13 @@ static ERROR TEXT_SET_Weight(extVectorText *Self, LONG Value)
 // Calculate the cursor that would be displayed at this character position and save it to the
 // line's chars array.
 
-static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, DOUBLE PointSize, DOUBLE PathScale = 1.0)
+static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, DOUBLE FontSize, DOUBLE PathScale = 1.0)
 {
    agg::path_storage cursor_path;
    DOUBLE cx1, cy1, cx2, cy2;
 
-   cursor_path.move_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
-   cursor_path.line_to(0, PointSize * 0.1);
+   cursor_path.move_to(0, -(FontSize * PathScale) - (FontSize * 0.2));
+   cursor_path.line_to(0, FontSize * 0.1);
    agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
 
    trans_cursor.vertex(&cx1, &cy1);
@@ -1355,13 +1355,13 @@ static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, DO
    Line.chars.emplace_back(cx1, cy1, cx2, cy2);
 }
 
-static void calc_caret_position(TextLine &Line, DOUBLE PointSize, DOUBLE PathScale = 1.0)
+static void calc_caret_position(TextLine &Line, DOUBLE FontSize, DOUBLE PathScale = 1.0)
 {
    agg::path_storage cursor_path;
    DOUBLE cx1, cy1, cx2, cy2;
 
-   cursor_path.move_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
-   cursor_path.line_to(0, PointSize * 0.1);
+   cursor_path.move_to(0, -(FontSize * PathScale) - (FontSize * 0.2));
+   cursor_path.line_to(0, FontSize * 0.1);
    cursor_path.vertex(&cx1, &cy1);
    cursor_path.vertex(&cx2, &cy2);
    Line.chars.emplace_back(cx1, cy1, cx2, cy2);

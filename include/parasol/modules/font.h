@@ -16,10 +16,8 @@ class objFont;
 
 enum class FTF : ULONG {
    NIL = 0,
-   REQUIRE_SCALED = 0x00000001,
-   REQUIRE_FIXED = 0x00000002,
-   HEAVY_LINE = 0x00000004,
-   BASE_LINE = 0x00000008,
+   HEAVY_LINE = 0x00000001,
+   BASE_LINE = 0x00000002,
    VARIABLE = 0x08000000,
    SCALABLE = 0x10000000,
    BOLD = 0x20000000,
@@ -96,7 +94,6 @@ class objFont : public BaseClass {
    LONG   X;               // The starting horizontal position when drawing the font string.
    LONG   Y;               // The starting vertical position when drawing the font string.
    LONG   TabSize;         // Defines the tab size to use when drawing and manipulating a font string.
-   LONG   TotalGlyphs;     // Reflects the total number of character glyphs that are available by the font object.
    LONG   WrapEdge;        // Enables word wrapping at a given boundary.
    LONG   FixedWidth;      // Forces a fixed pixel width to use for all glyphs.
    LONG   Height;          // The point size of the font, expressed in pixels.
@@ -284,7 +281,7 @@ struct FontBase {
 #ifndef PARASOL_STATIC
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
-   LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+   LONG (*_CharWidth)(objFont * Font, ULONG Char);
    ERROR (*_RefreshFonts)(void);
    ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
    ERROR (*_ResolveFamilyName)(CSTRING String, CSTRING * Result);
@@ -296,7 +293,7 @@ struct FontBase {
 extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
-inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
+inline LONG fntCharWidth(objFont * Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
 inline ERROR fntRefreshFonts(void) { return FontBase->_RefreshFonts(); }
 inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
 inline ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
@@ -304,7 +301,7 @@ inline ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result) { return Fon
 extern "C" {
 extern ERROR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
-extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+extern LONG fntCharWidth(objFont * Font, ULONG Char);
 extern ERROR fntRefreshFonts(void);
 extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
 extern ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result);

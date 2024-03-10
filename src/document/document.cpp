@@ -49,6 +49,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include <stack>
 #include <cmath>
 #include <mutex>
+#include <charconv>
 #include "defs/hashes.h"
 
 static const LONG MAX_PAGE_WIDTH    = 30000;
@@ -56,7 +57,7 @@ static const LONG MAX_PAGE_HEIGHT   = 100000;
 static const LONG MIN_PAGE_WIDTH    = 20;
 static const LONG MAX_DEPTH         = 40;    // Limits recursion from tables-within-tables
 static const LONG WIDTH_LIMIT       = 4000;
-static const LONG DEFAULT_FONTSIZE  = 10;
+static const LONG DEFAULT_FONTSIZE  = 16;    // 72DPI pixel size
 
 using BYTECODE = ULONG;
 using CELL_ID = ULONG;
@@ -188,80 +189,63 @@ static void print_stream(RSTREAM &);
 //********************************************************************************************************************
 // Fonts are shared in a global cache (multiple documents can have access to the cache)
 
-static std::vector<font_entry> glFonts;
+static std::deque<font_entry> glFonts; // font_entry pointers must be kept stable
 static std::mutex glFontsMutex;
 
-objFont * bc_font::get_font()
+font_entry * bc_font::get_font()
 {
    pf::Log log(__FUNCTION__);
 
    if (font_index IS -2) {
-      if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
+      if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than NULL
       return NULL;
    }
 
-   if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return glFonts[font_index].font;
+   if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
 
    // Sanity check the face and point values
 
    if (face.empty()) face = ((extDocument *)CurrentContext())->FontFace;
 
-   if (point < 3) {
-      point = ((extDocument *)CurrentContext())->FontSize;
-      if (point < 3) point = DEFAULT_FONTSIZE;
+   if (font_size < 3) {
+      font_size = ((extDocument *)CurrentContext())->FontSize;
+      if (font_size < 3) font_size = DEFAULT_FONTSIZE;
    }
 
    // Check the cache for this font
 
    auto style_name = get_font_style(options);
-   for (unsigned i=0; i < glFonts.size(); i++) {
-      if ((point IS glFonts[i].point) and (!StrMatch(face, glFonts[i].font->Face))) {
-         if (!StrMatch(style_name, glFonts[i].font->Style)) {
-            font_index = i;
-            break;
-         }
-      }
-   }
+   APTR new_handle;
+   CSTRING resolved_face;
+   if (!fntResolveFamilyName(face.c_str(), &resolved_face)) {
+      face.assign(resolved_face);
 
-   if (font_index IS -1) { // Font not in cache
-      std::lock_guard lk(glFontsMutex);
-
-      log.branch("Index: %d, %s, %s, %g", LONG(std::ssize(glFonts)), face.c_str(), style_name.c_str(), point);
-
-      #ifndef RETAIN_LOG_LEVEL
-         pf::LogLevel level(2);
-      #endif
-
-      objFont *font = objFont::create::integral(
-         fl::Owner(modDocument->UID), fl::Face(face), fl::Style(style_name), fl::Point(point));
-
-      if (font) {
-         // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
-         // is a little different to what we requested (e.g. scalable instead of fixed, or a different face).
-
-         for (LONG i=0; i < std::ssize(glFonts); i++) {
-            if ((font->Point IS glFonts[i].point) and
-                (!StrMatch(font->Face, glFonts[i].font->Face)) and
-                (!StrMatch(font->Style, glFonts[i].font->Style))) {
-               FreeResource(font);
+      if (!vecGetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle)) {
+         for (unsigned i=0; i < glFonts.size(); i++) {
+            if (new_handle IS glFonts[i].handle) {
                font_index = i;
                break;
             }
          }
+      }
+
+      if (font_index IS -1) { // Font not in cache
+         std::lock_guard lk(glFontsMutex);
+
+         log.branch("Index: %d, %s, %s, %g", LONG(std::ssize(glFonts)), face.c_str(), style_name.c_str(), font_size);
 
          if (font_index IS -1) { // Add the font to the cache
             font_index = std::ssize(glFonts);
-            glFonts.emplace_back(font, point);
+            glFonts.emplace_back(new_handle, face, style_name, font_size);
          }
       }
-      else font_index = -2;
+
+      if (font_index >= 0) return &glFonts[font_index];
    }
 
-   if (font_index >= 0) return glFonts[font_index].font;
+   log.warning("Failed to create font %s:%g", face.c_str(), font_size);
 
-   log.warning("Failed to create font %s:%g", face.c_str(), point);
-
-   if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
+   if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than NULL
    else return NULL;
 }
 

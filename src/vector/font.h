@@ -101,13 +101,13 @@ class freetype_font {
                   FT_Set_Char_Size(font->face, 0, Size<<6, 72, 72);
 
                   if FT_HAS_VERTICAL(ft_size->face) {
-                     line_spacing = std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / DISPLAY_DPI));
+                     line_spacing = std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / glDisplayVDPI));
                   }
-                  else line_spacing = std::trunc(int26p6_to_dbl(ft_size->metrics.height + std::abs(ft_size->metrics.descender)) * 72.0 / DISPLAY_DPI * 1.15);
+                  else line_spacing = std::trunc(int26p6_to_dbl(ft_size->metrics.height + std::abs(ft_size->metrics.descender)) * 72.0 / glDisplayVDPI * 1.15);
 
-                  height  = int26p6_to_dbl(ft_size->metrics.height) * (72.0 / DISPLAY_DPI);
-                  ascent  = int26p6_to_dbl(ft_size->metrics.ascender) * (72.0 / DISPLAY_DPI);
-                  descent = std::abs(int26p6_to_dbl(ft_size->metrics.descender)) * (72.0 / DISPLAY_DPI);
+                  height  = int26p6_to_dbl(ft_size->metrics.height) * (72.0 / glDisplayVDPI);
+                  ascent  = int26p6_to_dbl(ft_size->metrics.ascender) * (72.0 / glDisplayVDPI);
+                  descent = std::abs(int26p6_to_dbl(ft_size->metrics.descender)) * (72.0 / glDisplayVDPI);
                }
             }
 

@@ -26,10 +26,7 @@ struct DUNIT {
 
    DUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
 
-   DUNIT(const std::string &pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min()) : 
-      DUNIT(pValue.c_str(), pDefaultType, pMin) { }
-
-   DUNIT(CSTRING pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min());
+   DUNIT(const std::string_view pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min());
 
    DOUBLE px(class layout &Layout);
    

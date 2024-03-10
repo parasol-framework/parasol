@@ -59,7 +59,7 @@ private:
    std::vector<doc_clip> m_clips;
 
    bc_row *m_row = NULL;                 // Active table row (a persistent state is required in case of loop back)
-   objFont *m_font = NULL;
+   font_entry *m_font = NULL;
    RSTREAM *m_stream = NULL;
    objVectorViewport *m_viewport = NULL; // Target viewport (the page)
    padding m_margins;
@@ -82,15 +82,15 @@ private:
 
    struct {
       stream_char index;   // Stream position for the line's content.
-      DOUBLE gutter;       // Amount of vertical spacing appropriated for text.  Inclusive within the height value, not additive
-      DOUBLE height;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text gutter is aligned to the base line
+      DOUBLE descent;      // Vertical spacing accommodated for glyph tails.  Inclusive within the height value, not additive
+      DOUBLE height;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text descent is aligned to the base line
       DOUBLE x;            // Starting horizontal position
       DOUBLE word_height;  // Height of the current word (including inline graphics), utilised for word wrapping
 
       void reset(DOUBLE LeftMargin) {
-         x      = LeftMargin;
-         gutter = 0;
-         height = 0;
+         x       = LeftMargin;
+         descent = 0;
+         height  = 0;
       }
 
       void full_reset(DOUBLE LeftMargin) {
@@ -149,19 +149,19 @@ private:
    }
 
    // When lines are segmented, the last segment will store the final height of the line whilst the earlier segments
-   // will have the wrong height.  This function ensures that all segments for a line have the same height and gutter
+   // will have the wrong height.  This function ensures that all segments for a line have the same height and descent
    // values.
 
    inline void sanitise_line_height() {
       auto end = SEGINDEX(m_segments.size());
       if (end > m_line_seg_start) {
          auto final_height = m_segments[end-1].area.Height;
-         auto final_gutter = m_segments[end-1].gutter;
+         auto final_descent = m_segments[end-1].descent;
 
          if (final_height) {
             for (auto i=m_line_seg_start; i < end; i++) {
                m_segments[i].area.Height = final_height;
-               m_segments[i].gutter      = final_gutter;
+               m_segments[i].descent     = final_descent;
             }
          }
       }
@@ -174,9 +174,9 @@ private:
    // line that matches the font's line spacing.
 
    inline void check_line_height() {
-      if (m_font->LineSpacing >= m_line.height) {
-         m_line.height = m_font->LineSpacing;
-         m_line.gutter = m_font->Gutter;
+      if (m_font->metrics.LineSpacing >= m_line.height) {
+         m_line.height  = m_font->metrics.LineSpacing;
+         m_line.descent = m_font->metrics.Descent;
       }
    }
 
@@ -212,7 +212,7 @@ public:
    layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, padding &pMargins) :
       Self(pSelf), m_stream(pStream), m_viewport(pViewport), m_margins(pMargins) { }
 
-   ERROR do_layout(objFont **, DOUBLE &, DOUBLE &, bool &);
+   ERROR do_layout(font_entry **, DOUBLE &, DOUBLE &, bool &);
    void gen_scene_graph(objVectorViewport *, std::vector<doc_segment> &);
    ERROR gen_scene_init(objVectorViewport *);
 };
@@ -316,7 +316,7 @@ CELL layout::lay_cell(bc_table *Table)
          }
 
          if (cell.width < 16) cell.width = 16;
-         if (cell.height < m_font->LineSpacing) cell.height = m_font->LineSpacing;
+         if (cell.height < m_font->metrics.LineSpacing) cell.height = m_font->metrics.LineSpacing;
       }
    }
 
@@ -405,7 +405,7 @@ void layout::size_widget(widget_mgr &Widget)
 
    if (Widget.height.type IS DU::SCALED) {
       if (Widget.floating_x()) Widget.final_height = Widget.height.value * (m_page_width - m_left_margin - m_margins.right);
-      else Widget.final_height = Widget.height.px(*this) * m_font->Ascent;
+      else Widget.final_height = Widget.height.px(*this) * m_font->metrics.Ascent;
    }
    else if (Widget.height.empty()) {
       Widget.final_height = Widget.def_size.px(*this);
@@ -424,7 +424,7 @@ void layout::size_widget(widget_mgr &Widget)
    }
 
    if (!Widget.label.empty()) {
-      Widget.label_width = fntStringWidth(m_font, Widget.label.c_str(), -1);
+      Widget.label_width = vecStringWidth(m_font->handle, Widget.label.c_str(), -1);
    }
    else Widget.label_width = 0;
 }
@@ -494,12 +494,12 @@ WRAP layout::place_widget(widget_mgr &Widget)
 // Any style change must be followed with a call to this function to ensure that its config is applied.
 
 void layout::apply_style(bc_font &Style) {
-   if ((Style.options & FSO::ALIGN_RIGHT) != FSO::NIL) m_font->Align = ALIGN::RIGHT;
-   else if ((Style.options & FSO::ALIGN_CENTER) != FSO::NIL) m_font->Align = ALIGN::HORIZONTAL;
-   else m_font->Align = ALIGN::NIL;
+   if ((Style.options & FSO::ALIGN_RIGHT) != FSO::NIL) m_font->align = ALIGN::RIGHT;
+   else if ((Style.options & FSO::ALIGN_CENTER) != FSO::NIL) m_font->align = ALIGN::HORIZONTAL;
+   else m_font->align = ALIGN::NIL;
 
    m_no_wrap = ((Style.options & FSO::NO_WRAP) != FSO::NIL);
-   m_space_width = fntCharWidth(m_font, ' ', 0, 0);
+   m_space_width = vecCharWidth(m_font->handle, ' ', 0, 0);
 }
 
 //********************************************************************************************************************
@@ -521,10 +521,10 @@ void layout::lay_font()
 
 void layout::lay_font_end()
 {
-   if ((m_word_width > 0) and (m_line.height < m_font->LineSpacing)) {
+   if ((m_word_width > 0) and (m_line.height < m_font->metrics.LineSpacing)) {
       // We need to record the line-height for the active word now, in case we revert to a smaller font.
-      m_line.height = m_font->LineSpacing;
-      m_line.gutter = m_font->Gutter;
+      m_line.height  = m_font->metrics.LineSpacing;
+      m_line.descent = m_font->metrics.Descent;
    }
 
    m_stack_font.pop();
@@ -544,7 +544,7 @@ WRAP layout::lay_text()
 
    m_align_width = wrap_edge(); // TODO: Not sure about this following the switch to embedded TEXT structures
 
-   auto ascent = m_font->Ascent;
+   auto ascent = m_font->metrics.Ascent;
    auto &text = m_stream->lookup<bc_text>(idx);
    auto &str = text.text;
    text.vector_text.clear();
@@ -569,13 +569,7 @@ WRAP layout::lay_text()
 
          m_line.apply_word_height();
 
-         if (str[i] IS '\t') {
-            auto tabwidth = (m_space_width * m_font->GlyphSpacing) * m_font->TabSize;
-            if (tabwidth) {
-               m_cursor_x += (m_cursor_x + tabwidth) - std::fmod(m_cursor_x, tabwidth); // Round up to Alignment value, e.g. (14,8) = 16
-            }
-         }
-         else m_cursor_x += m_word_width + m_space_width;
+         m_cursor_x += m_word_width + m_space_width;
 
          // Current word state must be reset.
          m_kernchar   = 0;
@@ -588,9 +582,10 @@ WRAP layout::lay_text()
             check_line_height();
          }
 
-         LONG unicode, kerning;
+         LONG unicode;
+         DOUBLE kerning;
          i += getutf8(str.c_str()+i, &unicode);
-         m_word_width += fntCharWidth(m_font, unicode, m_kernchar, &kerning);
+         m_word_width += vecCharWidth(m_font->handle, unicode, m_kernchar, &kerning);
          m_word_width += kerning;
          m_kernchar    = unicode;
 
@@ -720,7 +715,7 @@ void layout::lay_paragraph()
          para.item_indent = list->item_indent;
 
          if (!para.value.empty()) {
-            auto strwidth = fntStringWidth(m_font, para.value.c_str(), -1) + 10;
+            auto strwidth = vecStringWidth(m_font->handle, para.value.c_str(), -1) + 10;
             if (strwidth > list->item_indent.px(*this)) {
                list->item_indent = DUNIT(strwidth, DU::PIXEL);
                para.item_indent  = DUNIT(strwidth, DU::PIXEL);
@@ -733,7 +728,9 @@ void layout::lay_paragraph()
                   fl::Owner(m_viewport->UID),
                   fl::Fill(list->fill),
                   fl::String(para.value),
-                  fl::Font(m_font),
+                  fl::Face(m_font->face),
+                  fl::FontSize(m_font->font_size),
+                  fl::FontStyle(m_font->style),
                   fl::Fill(list->fill)
                }));
             }
@@ -1045,16 +1042,16 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
 
    auto line_height = m_line.height;
-   auto gutter      = m_line.gutter;
+   auto descent     = m_line.descent;
    if (Width) {
       if (line_height <= 0) {
          // Use the most recent font to determine the line height
-         line_height = m_font->LineSpacing;
-         gutter      = m_font->Gutter;
+         line_height = m_font->metrics.LineSpacing;
+         descent     = m_font->metrics.Descent;
       }
 
-      if (!gutter) { // If gutter is missing for some reason, define it
-         gutter = m_font->LineSpacing - m_font->Ascent;
+      if (!descent) { // Sanity check: In case descent is missing for some reason
+         descent = m_font->metrics.Descent;
       }
    }
 
@@ -1092,7 +1089,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
       if (line_height > segment.area.Height) {
          segment.area.Height = line_height;
-         segment.gutter = gutter;
+         segment.descent = descent;
       }
 
       segment.area.Width  += Width;
@@ -1106,7 +1103,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
          .stop        = Stop,
          .trim_stop   = trim_stop,
          .area        = { m_line.x, Y, Width, line_height },
-         .gutter      = gutter,
+         .descent      = descent,
          .align_width = AlignWidth,
          .stream      = m_stream,
          .edit        = m_edit_mode,
@@ -1138,7 +1135,7 @@ void layout::new_code_segment()
          .stop        = stop,
          .trim_stop   = stop,
          .area        = { 0, 0, 0, 0 },
-         .gutter      = 0,
+         .descent      = 0,
          .align_width = 0,
          .stream      = m_stream,
          .edit        = m_edit_mode,
@@ -1192,7 +1189,7 @@ static void layout_doc(extDocument *Self)
       Self->Error = ERR_Okay;
 
       if (glFonts.empty()) return;
-      auto font = glFonts[0].font;
+      auto font = &glFonts[0];
 
       DOUBLE page_height = 1;
       l = layout(Self, &Self->Stream, Self->Page, margins);
@@ -1272,7 +1269,7 @@ static void layout_doc(extDocument *Self)
 // Margins:    Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell,
 //             margins reflect cell padding values.
 
-ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, bool &VerticalRepass)
+ERROR layout::do_layout(font_entry **Font, DOUBLE &Width, DOUBLE &Height, bool &VerticalRepass)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1330,7 +1327,7 @@ extend_page:
    m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
    m_font           = *Font;
-   m_space_width    = fntCharWidth(m_font, ' ', 0, NULL);
+   m_space_width    = vecCharWidth(m_font->handle, ' ', 0, NULL);
    m_line_count     = 0;
 
    m_word_index.reset();
@@ -1749,8 +1746,8 @@ void layout::end_line(NL NewLine, stream_char Next)
 
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
-      m_line.height = m_font->LineSpacing;
-      m_line.gutter = m_font->Gutter;
+      m_line.height = m_font->metrics.LineSpacing;
+      m_line.descent = m_font->metrics.Descent;
    }
 
    m_line.apply_word_height();
@@ -1861,7 +1858,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 
       if (!m_line.height) {
          m_line.height = 1;
-         m_line.gutter = 0;
+         m_line.descent = 0;
       }
 
       // Set the line segment up to the cursor.  The line.index is updated so that this process only occurs

@@ -348,43 +348,59 @@ struct case_insensitive_map {
 // Basic font caching on an index basis.
 
 struct font_entry {
-   objFont *font;
-   DOUBLE point;
+   APTR handle;
+   std::string face;
+   std::string style;
+   FontMetrics metrics;
+   DOUBLE font_size; // 72 DPI pixel size
+   ALIGN align;
 
-   font_entry(objFont *pFont, DOUBLE pPoint) : font(pFont), point(pPoint) { }
-
-   ~font_entry() {
-      if (font) {
-         pf::Log log(__FUNCTION__);
-         log.msg("Removing cached font %s:%.2f.", font->Face, font->Point);
-         FreeResource(font);
-         font = NULL;
-      }
+   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) : 
+      handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) { 
+      vecGetFontMetrics(pHandle, &metrics);
    }
 
+   ~font_entry() { }
+
    font_entry(font_entry &&other) noexcept { // Move constructor
-      font  = other.font;
-      point = other.point;
-      other.font = NULL;
+      handle    = other.handle;
+      metrics   = other.metrics;
+      font_size = other.font_size;
+      face      = other.face;
+      style     = other.style;
+      align     = other.align;
+      other.handle = NULL;
    }
 
    font_entry(const font_entry &other) { // Copy constructor
-      font  = other.font;
-      point = other.point;
+      handle    = other.handle;
+      font_size = other.font_size;
+      metrics   = other.metrics;
+      face      = other.face;
+      style     = other.style;
+      align     = other.align;
    }
 
    font_entry& operator=(font_entry &&other) noexcept { // Move assignment
       if (this == &other) return *this;
-      font  = other.font;
-      point = other.point;
-      other.font = NULL;
+      handle   = other.handle;
+      font_size = other.font_size;
+      metrics   = other.metrics;
+      face      = other.face;
+      style     = other.style;
+      align     = other.align;
+      other.handle = NULL;
       return *this;
    }
 
    font_entry& operator=(const font_entry& other) { // Copy assignment
       if (this == &other) return *this;
-      font  = other.font;
-      point = other.point;
+      handle    = other.handle;
+      font_size = other.font_size;
+      metrics   = other.metrics;
+      face      = other.face;
+      style     = other.style;
+      align     = other.align;
       return *this;
    }
 };
@@ -399,11 +415,11 @@ struct bc_font : public entity {
    ALIGN valign;        // Vertical alignment of text within the available line height
    std::string fill;    // Font fill instruction
    std::string face;    // The font face as requested by the client.  Might not match the font we actually use.
-   DOUBLE point;        // The point size as requested by the client.  Might not match the font we actually use.
+   DOUBLE font_size;    // The 72 DPI pixel size as requested by the client.  Might not match the font we actually use.
 
-   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill("rgb(0,0,0)"), point(0) { code = SCODE::FONT; }
+   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill("rgb(0,0,0)"), font_size(0) { code = SCODE::FONT; }
 
-   objFont * get_font();
+   font_entry * get_font();
 
    bc_font(const bc_font &Other) {
       // Copy another style and reset the index to -1 so that changes can refreshed
@@ -504,7 +520,7 @@ struct doc_segment {
    stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
    FloatRect area;          // Dimensions of the segment.
-   DOUBLE  gutter;          // The largest gutter value after taking into account all fonts used on the line.
+   DOUBLE  descent;          // The largest descent value after taking into account all fonts used on the line.
    DOUBLE  align_width;     // Full width of this segment if it were non-breaking
    RSTREAM *stream;         // The stream that this segment refers to
    bool    edit;            // true if this segment represents content that can be edited
@@ -859,7 +875,7 @@ struct doc_menu {
    
    objSurface * create(DOUBLE);
    objSurface * get();
-   void define_font(objFont *);
+   void define_font(font_entry *);
    void toggle(objVectorViewport *);
    void reposition(objVectorViewport *);
    void refresh();
@@ -1041,7 +1057,7 @@ class extDocument : public objDocument {
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport
-   DOUBLE FontSize;
+   DOUBLE FontSize;          // The default font-size, measured in 72 DPI pixels
    DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    DOUBLE PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
    DOUBLE LeftMargin, TopMargin, RightMargin, BottomMargin;

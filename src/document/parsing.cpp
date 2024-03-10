@@ -328,8 +328,8 @@ void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
 //    %title        Document title.
 //    %font         Face, point size and style of the current font.
 //    %font-face    Face of the current font.
-//    %font-colour  Colour of the current font.
-//    %font-size    Point size of the current font.
+//    %font-fill    Paint-fill instruction for the current font.
+//    %font-size    Pixel size of the current font, scaled to 72 DPI.
 //    %line-no      The current 'line' (technically segmented line) in the document.
 //    %content      Inject content (same as <inject/> but usable inside tag attributes)
 //    %tm-day       The current day (0 - 31)
@@ -613,33 +613,29 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
    else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
       if (auto font = m_style.get_font()) {
          char buffer[60];
-         snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->Face, font->Point, font->Style);
+         snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->face.c_str(), font->font_size, font->style.c_str());
          Output.replace(pos, sizeof("[%font]")-1, buffer);
       }
    }
    else if (!Output.compare(pos, sizeof("[%font-face]")-1, "[%font-face]")) {
       if (auto font = m_style.get_font()) {
-         Output.replace(pos, sizeof("[%font-face]")-1, font->Face);
+         Output.replace(pos, sizeof("[%font-face]")-1, font->face);
       }
    }
-   else if (!Output.compare(pos, sizeof("[%font-colour]")-1, "[%font-colour]")) {
-      if (auto font = m_style.get_font()) {
-         char colour[28];
-         snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
-         Output.replace(pos, sizeof("[%font-colour]")-1, colour);
-      }
+   else if (!Output.compare(pos, sizeof("[%font-fill]")-1, "[%font-fill]")) {
+      Output.replace(pos, sizeof("[%font-fill]")-1, m_style.fill);
    }
    else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
       if (auto font = m_style.get_font()) {
          char buffer[28];
-         snprintf(buffer, sizeof(buffer), "%g", font->Point);
+         snprintf(buffer, sizeof(buffer), "%g", font->font_size);
          Output.replace(pos, sizeof("[%font-size]")-1, buffer);
       }
    }
    else if (!Output.compare(pos, sizeof("[%line-height]")-1, "[%line-height]")) {
       if (auto font = m_style.get_font()) {
          char buffer[28];
-         snprintf(buffer, sizeof(buffer), "%d", font->Ascent);
+         snprintf(buffer, sizeof(buffer), "%d", font->metrics.Ascent);
          Output.replace(pos, sizeof("[%line-height]")-1, buffer);
       }
    }
@@ -1226,7 +1222,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
    else if ((Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (m_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
       font_change = true;
    }
-   else if ((Style.face != m_style.face) or (Style.point != m_style.point)) {
+   else if ((Style.face != m_style.face) or (Style.font_size != m_style.font_size)) {
       font_change = true;
    }
    else if ((Style.fill != m_style.fill)) {
@@ -1350,10 +1346,10 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
          [[fallthrough]];
       case HASH_face: {
          auto j = Attrib.Value.find(':');
-         if (j != std::string::npos) { // Point size follows
+         if (j != std::string::npos) { // Font size follows
             auto str = Attrib.Value.c_str();
             j++;
-            Style.point = StrToInt(str+j);
+            Style.font_size = DUNIT(str+j).value;
             j = Attrib.Value.find(':', j);
             if (j != std::string::npos) { // Style follows
                j++;
@@ -1370,7 +1366,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       case HASH_font_size:
          [[fallthrough]];
       case HASH_size:
-         Style.point = StrToFloat(Attrib.Value);
+         Style.font_size = DUNIT(Attrib.Value).value;
          return true;
 
       case HASH_font_style:
@@ -1513,7 +1509,7 @@ void parser::tag_body(XMLTag &Tag)
             break;
 
          case HASH_font_size: // Default font point size
-            Self->FontSize = StrToFloat(Tag.Attribs[i].Value);
+            Self->FontSize = DUNIT(Tag.Attribs[i].Value).value;
             break;
 
          case HASH_font_colour: // DEPRECATED, use font fill
@@ -1534,7 +1530,7 @@ void parser::tag_body(XMLTag &Tag)
    m_style.options   = FSO::NIL;
    m_style.fill      = Self->FontFill;
    m_style.face      = Self->FontFace;
-   m_style.point     = Self->FontSize;
+   m_style.font_size = Self->FontSize;
 
    if (!Tag.Children.empty()) m_body_tag = &Tag.Children;
 }
@@ -1690,7 +1686,7 @@ void parser::tag_button(XMLTag &Tag)
    if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
-   widget.label_pad = m_style.get_font()->Ascent;
+   widget.label_pad = m_style.get_font()->metrics.Ascent;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -1783,7 +1779,7 @@ void parser::tag_checkbox(XMLTag &Tag)
 
    widget.def_size = DUNIT(1.4, DU::FONT_SIZE);
 
-   if (!widget.label.empty()) widget.label_pad = m_style.get_font()->Ascent * 0.5;
+   if (!widget.label.empty()) widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -1900,7 +1896,7 @@ void parser::tag_combobox(XMLTag &Tag)
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
-   widget.label_pad = m_style.get_font()->Ascent * 0.5;
+   widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -1940,7 +1936,7 @@ void parser::tag_input(XMLTag &Tag)
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
-   widget.label_pad = m_style.get_font()->Ascent * 0.5;
+   widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -2323,7 +2319,7 @@ void parser::tag_index(XMLTag &Tag)
 // Script objects can be specifically referenced when calling a function, e.g. "myscript.function".  If no script
 // object is referenced, then it is assumed that the default script contains the function.
 //
-// <a href="http://" onclick="function" colour="rgb" @arg1="" @arg2="" _global=""/>
+// <a href="http://" onclick="function" fill="rgb" @arg1="" @arg2="" _global=""/>
 //
 // Dummy links that specify neither an href or onclick value can be useful in embedded documents if the
 // EventCallback feature is used.

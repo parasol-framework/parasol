@@ -12,22 +12,27 @@ function testStringWidth()
 end
 
 function testSelectFont()
-   local err, path = mFont.selectFont("Noto Sans", "Regular", 12, nil)
+   local err, path, meta = mFont.selectFont("Noto Sans", "Regular")
    assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
-   -- This will fail because a fixed Noto Sans isn't available and no wildcard was specified
-   local err, path = mFont.selectFont("Noto Sans", "Regular", 12, FTF_REQUIRE_FIXED)
+   local err, path, meta = mFont.selectFont("Does Not Exist,*", "Regular")
    assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
 
-   local err, path = mFont.selectFont("Noto Sans,*", "Regular", 12, FTF_PREFER_FIXED)
-   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+   local err, path, meta = mFont.selectFont("Does Not Exist", "Regular")
+   assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+end
+
+function testResolveFamily()
+   local err, name = mFont.resolveFamilyName("Does Not Exist,*")
+   assert(err == ERR_Okay, "ResolveFamilyName() returned error " .. mSys.GetErrorMsg(err))
+   assert(name == "Noto Sans", "Expected ResolveFamilyName() to return 'Noto Sans' as the default font")
 end
 
 //=====================================================================================================================
 
    return {
       tests = {
-        'testGetList', 'testStringWidth', 'testSelectFont'
+        'testGetList', 'testStringWidth', 'testSelectFont', 'testResolveFamily'
       },
       init = nil,
       cleanup = function()

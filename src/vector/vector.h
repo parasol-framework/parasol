@@ -1089,6 +1089,7 @@ static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t 
 //********************************************************************************************************************
 
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
+extern DOUBLE glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 
 extern void set_text_final_xy(extVectorText *);
 

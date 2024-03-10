@@ -54,16 +54,6 @@ static ERROR cache_truetype_font(extFont *, CSTRING, FMETA);
 static ERROR SET_Point(extFont *Self, DOUBLE);
 static ERROR SET_Style(extFont *, CSTRING);
 
-const char * get_ft_error(FT_Error err)
-{
-    #undef __FTERRORS_H__
-    #define FT_ERRORDEF( e, v, s )  case e: return s;
-    #define FT_ERROR_START_LIST     switch (err) {
-    #define FT_ERROR_END_LIST       }
-    #include FT_ERRORS_H
-    return "(Unknown error)";
-}
-
 /*********************************************************************************************************************
 
 -ACTION-
@@ -107,8 +97,6 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
    // Manage the vector font cache
 
    if (Self->Cache.get()) {
-      unload_glyph_cache(Self);
-
       if (!(--Self->Cache->Usage)) {
          log.trace("Font face usage reduced to %d.", Self->Cache->Usage);
          glCache.erase(Self->Cache->Path); // This will trigger the item's destructor
@@ -286,17 +274,12 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
       Self->MaxHeight   = cache->Header.pixel_height; // Supposedly the pixel_height includes internal and external leading values (?)
       Self->prvBitmapHeight = cache->Header.pixel_height;
       Self->prvDefaultChar  = cache->Header.first_char + cache->Header.default_char;
-      Self->TotalGlyphs     = cache->Header.last_char - cache->Header.first_char + 1;
 
       // If this is a monospaced font, set the FixedWidth field
 
       if (cache->Header.avg_width IS cache->Header.max_width) {
          Self->FixedWidth = cache->Header.avg_width;
       }
-
-      if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
-      else if (cache->Chars[' '].Advance) Self->prvSpaceWidth = cache->Chars[' '].Advance;
-      else Self->prvSpaceWidth = cache->Chars[cache->Header.first_char + cache->Header.break_char].Advance;
 
       log.trace("Cache Count: %d, Style: %s", cache->OpenCount, Self->prvStyle);
 
@@ -320,7 +303,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   log.extmsg("Family: %s, Style: %s, Glyphs: %d, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->TotalGlyphs, Self->Point, Self->Height);
+   log.extmsg("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->Point, Self->Height);
    log.trace("LineSpacing: %d, Leading: %d, Gutter: %d", Self->LineSpacing, Self->Leading, Self->Gutter);
 
    return ERR_Okay;
@@ -673,7 +656,6 @@ static ERROR SET_Point(extFont *Self, DOUBLE Value)
 
    if (Self->initialised()) {
       if (Self->Cache.get()) {
-         unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = Value;
          cache_truetype_font(Self, NULL, FMETA::NIL); // Updates meta information like the Leading value
       }
@@ -751,12 +733,6 @@ width of 'o' is used for character measurement.
 
 The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font
 #String.
-
--FIELD-
-TotalGlyphs: Reflects the total number of character glyphs that are available by the font object.
-
-The total number of character glyphs that are available is reflected in this field.  The font must have been
-initialised before the count is known.
 
 -FIELD-
 Underline: Enables font underlining when set.
@@ -864,11 +840,6 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
                return ERR_Failed;
             }
 
-            if ((Meta & FMETA::HINT_INTERNAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL|FT_LOAD_FORCE_AUTOHINT;
-            else if ((Meta & FMETA::HINT_LIGHT) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_LIGHT;
-            else if ((Meta & FMETA::HINT_NORMAL) != FMETA::NIL) Self->prvGlyphFlags = FT_LOAD_TARGET_NORMAL; // Use the font's hinting information
-            else Self->prvGlyphFlags = FT_LOAD_DEFAULT; // Default, typically matches FT_LOAD_TARGET_NORMAL
-
             if (!FT_IS_SCALABLE(face)) { // Only scalable fonts are supported by this routine
                FT_Done_Face(face);
                return log.warning(ERR_InvalidData);
@@ -896,11 +867,6 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
 
    Self->Height = F2T(Self->Point);
 
-   fc->Glyphs.try_emplace(Self->Point, fc->Face, Self->Point, Self->prvGlyphFlags, Self->prvDefaultChar);
-
-   auto &glyph = fc->Glyphs.at(Self->Point);
-   Self->TotalGlyphs = fc->Face->num_glyphs;
-
    // Determine the line distance of the font, which describes the amount of distance between each font line that is printed.
 
    if (!Path) Self->LineSpacing = Self->Height * 1.33;
@@ -913,76 +879,10 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
    Self->MaxHeight   += Self->Leading; // Increase the max-height by the leading amount
    Self->LineSpacing += Self->Leading; // Increase the line-spacing by the leading amount
    Self->Ascent       = Self->Height + Self->Leading;
-   Self->prvChar      = glyph.Chars;
    Self->Gutter       = Self->LineSpacing - Self->Ascent;
 
-   FT_Fixed adv;
-   if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
-   else if (!FT_Get_Advance(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE), FT_LOAD_DEFAULT, &adv)) {
-      Self->prvSpaceWidth = std::round(int16p16_to_dbl(adv));
-      if (Self->prvSpaceWidth < 3) Self->prvSpaceWidth = Self->Height>>1;
-   }
-   else Self->prvSpaceWidth = Self->Height>>1;
-
    fc->Usage++;
-   glyph.Usage++;
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// The bias table is based on the most frequently used letters in the alphabet in the following order:
-// e t a o i n s r h l d c u m f p g w y b v k x j q z
-
-static const UBYTE bias[26] = { 9,3,6,6,9,6,3,6,9,1,1,6,6,9,9,3,1,9,9,9,6,3,3,1,3,1 };
-
-static font_glyph * get_glyph(extFont *Self, ULONG Unicode)
-{
-   pf::Log log(__FUNCTION__);
-
-   glyph_cache &cache = Self->Cache->Glyphs.at(Self->Point);
-   auto &face = Self->Cache->Face;
-
-   if (face->size != cache.Size) FT_Activate_Size(cache.Size);
-
-   FT_UInt glyph_index;
-
-   if (cache.Glyphs.contains(Unicode)) {
-      font_glyph *glyph = &cache.Glyphs[Unicode];
-      return glyph;
-   }
-
-   if (!(glyph_index = FT_Get_Char_Index(face, Unicode))) {
-      if (!(glyph_index = FT_Get_Char_Index(face, Self->prvDefaultChar))) {
-         glyph_index = 1; // Take the first glyph as the default
-      }
-   }
-
-   FT_Fixed adv_x = 0, adv_y = 0;
-   if (auto fterr = FT_Get_Advance(face, glyph_index, Self->prvGlyphFlags, &adv_x)) {
-      log.warning("Failed to load glyph %d '%lc', FT error: %s", glyph_index, (wint_t)Unicode, get_ft_error(fterr));
-      return NULL;
-   }
-
-   if (FT_HAS_VERTICAL(face)) {
-      FT_Get_Advance(face, glyph_index, Self->prvGlyphFlags|FT_LOAD_VERTICAL_LAYOUT, &adv_y);
-   }
-
-   if (cache.Glyphs.size() < MAX_GLYPHS) { // Cache this glyph if possible
-      log.traceBranch("Creating new cache entry for unicode value %d, advance %d", Unicode, (LONG)adv_x>>FT_DOWNSIZE);
-
-      font_glyph glyph { glyph_index, int16p16_to_dbl(adv_x), int16p16_to_dbl(adv_y) };
-
-      cache.Glyphs.emplace(Unicode, glyph);
-      return &cache.Glyphs[Unicode];
-   }
-   else {
-      // Cache is full.  Return a temporary glyph with graphics data if requested.
-
-      Self->prvTempGlyph.AdvanceX   = int16p16_to_dbl(adv_x);
-      Self->prvTempGlyph.AdvanceY   = int16p16_to_dbl(adv_y);
-      Self->prvTempGlyph.GlyphIndex = glyph_index;
-      return &Self->prvTempGlyph;
-   }
 }
 
 //********************************************************************************************************************
@@ -1316,23 +1216,6 @@ static ERROR draw_bitmap_font(extFont *Self)
 
 //********************************************************************************************************************
 
-static void unload_glyph_cache(extFont *Font)
-{
-   pf::Log log(__FUNCTION__);
-
-   CACHE_LOCK lock(glCacheMutex);
-
-   if ((Font->Cache.get()) and (Font->Cache->Glyphs.contains(Font->Point))) {
-      auto &glyphs = Font->Cache->Glyphs.at(Font->Point);
-      glyphs.Usage--;
-      if (!glyphs.Usage) {
-         Font->Cache->Glyphs.erase(Font->Point);
-      }
-   }
-}
-
-//********************************************************************************************************************
-
 #include "class_font_def.c"
 
 static const FieldDef AlignFlags[] = {
@@ -1360,7 +1243,6 @@ static const FieldArray clFontFields[] = {
    { "X",            FDF_LONG|FDF_RW },
    { "Y",            FDF_LONG|FDF_RW },
    { "TabSize",      FDF_LONG|FDF_RW },
-   { "TotalGlyphs",  FDF_LONG|FDF_R },
    { "WrapEdge",     FDF_LONG|FDF_RW },
    { "FixedWidth",   FDF_LONG|FDF_RW },
    { "Height",       FDF_LONG|FDF_RI },

@@ -3,7 +3,7 @@
 extern "C" {
 ERROR fntGetList(struct FontList ** Result);
 LONG fntStringWidth(extFont * Font, CSTRING String, LONG Chars);
-LONG fntCharWidth(extFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+LONG fntCharWidth(extFont * Font, ULONG Char);
 ERROR fntRefreshFonts();
 ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
 ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result);
@@ -13,7 +13,7 @@ ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result);
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG|FD_UNSIGNED }, { "KChar", FD_LONG|FD_UNSIGNED }, { "Kerning", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsGetList[] = { { "Error", FD_LONG|FD_ERROR }, { "FontList:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsRefreshFonts[] = { { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsResolveFamilyName[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
@@ -31,4 +31,4 @@ const struct Function glFunctions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.FontList:pNext:FontList,sName,sAlias,lPoints[0],sStyles,cScalable,cVariable,cHinting,cHidden\nc.FMETA:HIDDEN=0x20,HINT_INTERNAL=0x10,HINT_LIGHT=0x8,HINT_NORMAL=0x4,SCALED=0x1,VARIABLE=0x2\nc.FSS:ALL=0xffffffff,LINE=0xfffffffe\nc.FTF:BASE_LINE=0x8,BOLD=0x20000000,HEAVY_LINE=0x4,ITALIC=0x40000000,KERNING=0x80000000,REQUIRE_FIXED=0x2,REQUIRE_SCALED=0x1,SCALABLE=0x10000000,VARIABLE=0x8000000\nc.HINT:INTERNAL=0x2,LIGHT=0x3,NORMAL=0x1\n"
+#define MOD_IDL "s.FontList:pNext:FontList,sName,sAlias,lPoints[0],sStyles,cScalable,cVariable,cHinting,cHidden\nc.FMETA:HIDDEN=0x20,HINT_INTERNAL=0x10,HINT_LIGHT=0x8,HINT_NORMAL=0x4,SCALED=0x1,VARIABLE=0x2\nc.FSS:ALL=0xffffffff,LINE=0xfffffffe\nc.FTF:BASE_LINE=0x2,BOLD=0x20000000,HEAVY_LINE=0x1,ITALIC=0x40000000,KERNING=0x80000000,SCALABLE=0x10000000,VARIABLE=0x8000000\nc.HINT:INTERNAL=0x2,LIGHT=0x3,NORMAL=0x1\n"
