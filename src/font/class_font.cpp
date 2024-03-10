@@ -10,12 +10,11 @@ Font: Draws bitmap fonts and manages font meta information.
 
 The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports
 styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word
-alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are
-supported as scaled fonts.  Drawing Truetype fonts is not supported (refer to the @VectorText class for this feature).
+alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format.  Truetype fonts are
+not supported (refer to the @VectorText class for this feature).
 
-Fonts must be stored in the `fonts:` directory in order to be recognised and either in the "fixed" or "truetype"
-sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied
-in the Font module.
+Bitmap fonts must be stored in the `fonts:fixed/` directory in order to be recognised.  The process of font
+installation and file management is managed by functions supplied in the Font module.
 
 The Font class includes full support for the unicode character set through its support for UTF-8.  This gives you the
 added benefit of being able to support international character sets with ease, but you must be careful not to use
@@ -50,7 +49,6 @@ class is not integrated with the display's vector scene graph.
 *********************************************************************************************************************/
 
 static BitmapCache * check_bitmap_cache(extFont *, FTF);
-static ERROR cache_truetype_font(extFont *, CSTRING, FMETA);
 static ERROR SET_Point(extFont *Self, DOUBLE);
 static ERROR SET_Style(extFont *, CSTRING);
 
@@ -94,19 +92,8 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
       }
    }
 
-   // Manage the vector font cache
-
-   if (Self->Cache.get()) {
-      if (!(--Self->Cache->Usage)) {
-         log.trace("Font face usage reduced to %d.", Self->Cache->Usage);
-         glCache.erase(Self->Cache->Path); // This will trigger the item's destructor
-      }
-   }
-
-   if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
-
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    Self->~extFont();
-
    return ERR_Okay;
 }
 
@@ -151,7 +138,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
    if (cache); // The font exists in the cache
-   else if (!StrCompare("*.ttf", Self->Path, 0, STR::WILDCARD)); // The font is truetype
+   else if (!StrCompare("*.ttf", Self->Path, 0, STR::WILDCARD)) return ERR_NoSupport;
    else {
       objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
       if (file.ok()) {
@@ -256,8 +243,8 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                      return error;
                   }
                }
-            } // File is not a windows fixed font (but could be truetype)
-         } // File is not a windows fixed font (but could be truetype)
+            } // File is not a windows fixed font
+         } // File is not a windows fixed font
       }
       else return log.warning(ERR_OpenFile);
    }
@@ -290,14 +277,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
       Self->BmpCache = cache;
    }
-   else {
-      if ((error = cache_truetype_font(Self, Self->Path, meta))) return error;
-
-      if (FT_HAS_MULTIPLE_MASTERS(Self->Cache->Face)) Self->Flags |= FTF::VARIABLE;
-
-      if (FT_HAS_KERNING(Self->Cache->Face)) Self->Flags |= FTF::KERNING;
-      Self->Flags |= FTF::SCALABLE;
-   }
+   else return ERR_NoSupport;
 
    // Remove the location string to reduce resource usage
 
@@ -314,8 +294,6 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 static ERROR FONT_NewObject(extFont *Self, APTR Void)
 {
    new (Self) extFont;
-
-   update_dpi(); // A good time to check the DPI is whenever a new font is created.
 
    Self->TabSize         = 8;
    Self->prvDefaultChar  = '.';
@@ -491,8 +469,7 @@ static ERROR SET_Flags(extFont *Self, FTF Value)
 -FIELD-
 Gutter: The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
 
-This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It is typically
-defined by fixed bitmap fonts.  For truetype fonts the gutter is derived from the calculation `LineSpacing - Ascent`.
+This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.
 
 -FIELD-
 Height: The point size of the font, expressed in pixels.
@@ -640,7 +617,7 @@ The point size defines the size of a font in point units, at a ratio of 1:72 DPI
 
 When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested
 point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will
-drop the font to point 8.  This does not impact upon scalable fonts, which can be measured to any point size.
+drop the font to point 8.
 
 *********************************************************************************************************************/
 
@@ -653,15 +630,7 @@ static ERROR GET_Point(extFont *Self, DOUBLE *Value)
 static ERROR SET_Point(extFont *Self, DOUBLE Value)
 {
    if (Value < 1) Value = 1;
-
-   if (Self->initialised()) {
-      if (Self->Cache.get()) {
-         Self->Point = Value;
-         cache_truetype_font(Self, NULL, FMETA::NIL); // Updates meta information like the Leading value
-      }
-   }
-   else Self->Point = Value;
-
+   Self->Point = Value;
    return ERR_Okay;
 }
 
@@ -710,9 +679,7 @@ face will be used on initialisation.
 Bitmap fonts are a special case if a bold or italic style is selected.  In this situation the system can automatically
 convert the font to that style even if the correct graphics set does not exist.
 
-Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the default).  TrueType fonts can consist
-of any style that the designer chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() to retrieve available style
-names.
+Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the default).
 
 *********************************************************************************************************************/
 
@@ -728,11 +695,9 @@ static ERROR SET_Style(extFont *Self, CSTRING Value)
 -FIELD-
 TabSize: Defines the tab size to use when drawing and manipulating a font string.
 
-The TabSize value controls the interval between tabs, measured in characters.  If the font is scalable, the character
-width of 'o' is used for character measurement.
+The TabSize value controls the interval between tabs, measured in characters.
 
-The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font
-#String.
+The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font #String.
 
 -FIELD-
 Underline: Enables font underlining when set.
@@ -810,78 +775,6 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
    }
    else *Value = 0;
 
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// All resources that are allocated in this routine must be untracked.
-// Assumes a cache lock is held on being called.
-
-static ERROR cache_truetype_font(extFont *Self, CSTRING Path, FMETA Meta)
-{
-   pf::Log log(__FUNCTION__);
-   ERROR error;
-
-   if (Path) {
-      CSTRING location;
-      if (!ResolvePath(Path, RSF::NIL, (STRING *)&location)) {
-         GuardedResource res(location);
-
-         std::string sp(location);
-         if (glCache.contains(sp)) Self->Cache = glCache[sp];
-         else {
-            log.branch("Creating new cache for font '%s'", location);
-
-            FT_Face face;
-            FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = (STRING)location };
-            if ((error = FT_Open_Face(glFTLibrary, &openargs, 0, &face))) {
-               if (error IS FT_Err_Unknown_File_Format) return ERR_NoSupport;
-               log.warning("Fatal error in attempting to load font \"%s\".", location);
-               return ERR_Failed;
-            }
-
-            if (!FT_IS_SCALABLE(face)) { // Only scalable fonts are supported by this routine
-               FT_Done_Face(face);
-               return log.warning(ERR_InvalidData);
-            }
-
-            Self->Cache = glCache[sp] = std::make_shared<font_cache>(sp, face);
-         }
-      }
-   }
-   else { // If no path is provided, the font is already cached and requires a new point size.
-      log.trace("Recalculating size of currently loaded font.");
-   }
-
-   font_cache *fc = Self->Cache.get();
-
-   if ((Self->Height) and (!Self->Point)) {
-      // If the user has defined the font size in pixels, we need to convert it to a point size.
-      // This conversion does not have to be 100% accurate - within 5% is good enough.
-      Self->Point = (((DOUBLE)Self->Height * glDisplayHDPI) + (glDisplayHDPI * 0.5)) / glDisplayHDPI;
-   }
-
-   // Note that the point size is relative to the DPI of the target display
-
-   if (Self->Point <= 0) Self->Point = global_point_size();
-
-   Self->Height = F2T(Self->Point);
-
-   // Determine the line distance of the font, which describes the amount of distance between each font line that is printed.
-
-   if (!Path) Self->LineSpacing = Self->Height * 1.33;
-   else Self->LineSpacing += Self->Height * 1.33;
-   Self->MaxHeight = Self->Height * 1.33;
-
-   // Leading adjustments for the top part of the font
-
-   Self->Leading      = Self->MaxHeight - Self->Height; // Make the leading the same size as the gutter
-   Self->MaxHeight   += Self->Leading; // Increase the max-height by the leading amount
-   Self->LineSpacing += Self->Leading; // Increase the line-spacing by the leading amount
-   Self->Ascent       = Self->Height + Self->Leading;
-   Self->Gutter       = Self->LineSpacing - Self->Ascent;
-
-   fc->Usage++;
    return ERR_Okay;
 }
 

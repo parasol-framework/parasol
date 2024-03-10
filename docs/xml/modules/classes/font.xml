@@ -16,8 +16,8 @@
     <include>modules/font.h</include>
     <copyright>Paul Manias © 1998-2024</copyright>
     <description>
-<p>The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are supported as scaled fonts.  Drawing Truetype fonts is not supported (refer to the <class name="VectorText">VectorText</class> class for this feature).</p>
-<p>Fonts must be stored in the <code>fonts:</code> directory in order to be recognised and either in the "fixed" or "truetype" sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied in the Font module.</p>
+<p>The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format.  Truetype fonts are not supported (refer to the <class name="VectorText">VectorText</class> class for this feature).</p>
+<p>Bitmap fonts must be stored in the <code>fonts:fixed/</code> directory in order to be recognised.  The process of font installation and file management is managed by functions supplied in the Font module.</p>
 <p>The Font class includes full support for the unicode character set through its support for UTF-8.  This gives you the added benefit of being able to support international character sets with ease, but you must be careful not to use character codes above #127 without being sure that they follow UTF-8 guidelines.  Find out more about UTF-8 at this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.</p>
 <p>Initialisation of a new font object can be as simple as declaring its <field>Point</field> size and <field>Face</field> name.  Font objects can be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles of the same font, create a font object for every style that requires support.  Basic settings such as colour, the font string and text positioning are not affected by these limitations.</p>
 <p>To draw a font string to a Bitmap object, start by setting the <field>Bitmap</field> and <field>String</field> fields.  The <field>X</field> and <field>Y</field> fields determine string positioning and you can also use the <field>Align</field> field to position a string to the right or center of the surface area.</p>
@@ -190,7 +190,7 @@ Charter:120%::255,128,255
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It is typically defined by fixed bitmap fonts.  For truetype fonts the gutter is derived from the calculation <code>LineSpacing - Ascent</code>.</p>
+<p>This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.</p>
       </description>
     </field>
 
@@ -292,7 +292,7 @@ Charter:120%::255,128,255
       <type>DOUBLE</type>
       <description>
 <p>The point size defines the size of a font in point units, at a ratio of 1:72 DPI.</p>
-<p>When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will drop the font to point 8.  This does not impact upon scalable fonts, which can be measured to any point size.</p>
+<p>When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will drop the font to point 8.</p>
       </description>
     </field>
 
@@ -315,7 +315,7 @@ Charter:120%::255,128,255
       <description>
 <p>The style of a font can be selected by setting the Style field.  This comes into effect only if the font actually supports the specified style as part of its graphics set.  If the style is unsupported, the regular styling of the face will be used on initialisation.</p>
 <p>Bitmap fonts are a special case if a bold or italic style is selected.  In this situation the system can automatically convert the font to that style even if the correct graphics set does not exist.</p>
-<p>Conventional font styles are <code>Bold</code>, <code>Bold Italic</code>, <code>Italic</code> and <code>Regular</code> (the default).  TrueType fonts can consist of any style that the designer chooses, such as <code>Narrow</code> or <code>Wide</code>, so use <function module="Font">GetList</function> to retrieve available style names.</p>
+<p>Conventional font styles are <code>Bold</code>, <code>Bold Italic</code>, <code>Italic</code> and <code>Regular</code> (the default).</p>
       </description>
     </field>
 
@@ -325,7 +325,7 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The TabSize value controls the interval between tabs, measured in characters.  If the font is scalable, the character width of 'o' is used for character measurement.</p>
+<p>The TabSize value controls the interval between tabs, measured in characters.</p>
 <p>The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font <field>String</field>.</p>
       </description>
     </field>
@@ -406,9 +406,6 @@ Charter:120%::255,128,255
       <const name="BOLD">Font is described as having a bold weight (read only).</const>
       <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
-      <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
-      <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
-      <const name="VARIABLE">The font supports variable metrics.</const>
     </constants>
 
   </types>

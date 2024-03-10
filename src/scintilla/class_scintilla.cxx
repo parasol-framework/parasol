@@ -1287,7 +1287,6 @@ static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
    log.branch("%s", Args->Face);
 
    if ((Self->Font = objFont::create::integral(fl::Face(Args->Face)))) {
-      Self->Font->Flags = Self->Font->Flags & (~FTF::KERNING);
       create_styled_fonts(Self);
       Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
       calc_longest_line(Self);
@@ -2100,7 +2099,6 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold")))) {
-      if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 
    if ((Self->ItalicFont = objFont::create::integral(
@@ -2108,7 +2106,6 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("italics")))) {
-      if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 
    if ((Self->BIFont = objFont::create::integral(
@@ -2116,7 +2113,6 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold italics")))) {
-       if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 }
 

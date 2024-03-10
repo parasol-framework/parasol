@@ -11,6 +11,12 @@ the FreeType home page at www.freetype.org.
 -MODULE-
 Font: Provides font management functionality and hosts the Font class.
 
+The Font module is responsible for managing the font database and provides support for client queries.  Fixed size
+bitmap fonts are supported via the Windows .fon file format, while Truetype fonts are support for scalable fonts.
+
+Bitmap fonts can be opened and drawn by the @Font class.  Drawing Truetype fonts is not supported by the Font module,
+but is instead provided by the #Vector module and @VectorText class.
+
 For a thorough introduction to typesetting history and terminology as it applies to computing, we recommend visiting
 Google Fonts Knowledge page: https://fonts.google.com/knowledge
 
@@ -78,13 +84,9 @@ static FT_Library glFTLibrary = NULL;
 
 #include "font_structs.h"
 
-static LONG glDisplayVDPI = FIXED_DPI; // Initially matches the fixed DPI value, can change if display has a high DPI setting.
-static LONG glDisplayHDPI = FIXED_DPI;
-
 class extFont : public objFont {
    public:
    UBYTE *prvData;
-   std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
    std::string prvBuffer;
    struct FontCharacter *prvChar;
    class BitmapCache *BmpCache;
@@ -98,17 +100,12 @@ class extFont : public objFont {
    UBYTE prvDefaultChar;
 };
 
-static constexpr DOUBLE int16p16_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / DOUBLE(0xffff)); }
-static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
-static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
-
 #include "font_def.c"
 
 #include "font_bitmap.cpp"
 
 static ERROR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
-static LONG get_kerning(FT_Face, LONG, LONG);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
@@ -182,10 +179,10 @@ static DOUBLE global_point_size(void)
       if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
          pf::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
-            char fontsize[20];
+            char pointsize[20];
             glPointSet = true;
-            if (!acGetVar(style.obj, "/interface/@fontsize", fontsize, sizeof(fontsize))) {
-               glDefaultPoint = StrToFloat(fontsize);
+            if (!acGetVar(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize))) {
+               glDefaultPoint = StrToFloat(pointsize);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
                log.msg("Global font size is %.1f.", glDefaultPoint);
@@ -196,40 +193,6 @@ static DOUBLE global_point_size(void)
    }
 
    return glDefaultPoint;
-}
-
-//********************************************************************************************************************
-// Attempts to update globally held DPI values with the main display's real DPI.
-//
-
-static void update_dpi(void)
-{
-   static LARGE last_update = 0;
-   LARGE current_time = PreciseTime();
-
-   if (current_time - last_update > 3000000LL) {
-      DISPLAYINFO *display;
-      if (!gfxGetDisplayInfo(0, &display)) {
-         last_update = PreciseTime();
-         if ((display->VDensity >= 96) and (display->HDensity >= 96)) {
-            glDisplayVDPI = display->VDensity;
-            glDisplayHDPI = display->HDensity;
-            //glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) / 2; // Get the average DPI in case the pixels aren't square.  Note: Average DPI beats diagonal DPI every time.
-         }
-      }
-   }
-}
-
-//********************************************************************************************************************
-// Only call this function if the font includes kerning support (test via FTF::KERNING).
-
-inline LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
-{
-   if ((!Glyph) or (!PrevGlyph)) return 0;
-
-   FT_Vector delta;
-   FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
-   return delta.x>>FT_DOWNSIZE;
 }
 
 //********************************************************************************************************************
@@ -414,16 +377,12 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0); glCacheTimer = NULL; }
-
-   if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
-   if (glConfig)    { FreeResource(glConfig); glConfig = NULL; }
-
-   if (clFont)     { FreeResource(clFont);     clFont = NULL; }
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-
+   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0);  glCacheTimer = NULL; }
+   if (glFTLibrary)  { FT_Done_FreeType(glFTLibrary); glFTLibrary  = NULL; }
+   if (glConfig)     { FreeResource(glConfig);        glConfig     = NULL; }
+   if (clFont)       { FreeResource(clFont);          clFont       = NULL; }
+   if (modDisplay)   { FreeResource(modDisplay);      modDisplay   = NULL; }
    glBitmapCache.clear();
-
    return ERR_Okay;
 }
 
@@ -432,7 +391,7 @@ static ERROR CMDExpunge(void)
 -FUNCTION-
 CharWidth: Returns the width of a character.
 
-This function will return the pixel width of a bitmap font character.  The character is specified as a unicode value 
+This function will return the pixel width of a bitmap font character.  The character is specified as a unicode value
 in the Char parameter.
 
 The font's GlyphSpacing value is not used in calculating the character width.

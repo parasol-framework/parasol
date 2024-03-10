@@ -29,5 +29,3 @@ public:
 
 typedef const std::lock_guard<std::recursive_mutex> CACHE_LOCK;
 static std::recursive_mutex glCacheMutex; // Protects access to glCache for multi-threading support
-
-static std::unordered_map<std::string, std::shared_ptr<font_cache> > glCache;

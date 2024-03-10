@@ -137,9 +137,6 @@
       <const name="BOLD">Font is described as having a bold weight (read only).</const>
       <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
-      <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
-      <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
-      <const name="VARIABLE">The font supports variable metrics.</const>
     </constants>
 
     <constants lookup="HINT" comment="Force hinting options for a font.">
