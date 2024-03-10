@@ -91,7 +91,7 @@
       <param type="DOUBLE *" name="Kerning">The resulting kerning value (optional).</param>
     </input>
     <description>
-<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If kerning information is not required, set the KChar and Kerning parameters to zero.</p>
+<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter. If kerning information is not required, set the KChar and Kerning parameters to zero.</p>
 <p>The font's GlyphSpacing value is not used in calculating the character width.</p>
     </description>
     <result type="DOUBLE">The pixel width of the character will be returned.</result>
@@ -266,7 +266,7 @@ Z: Close Path
     </input>
     <description>
 <p>For a given font family and size, this function will return a handle that can be passed to font querying functions.</p>
-<p>The handle is permanent, remaining valid for the lifetime of the program.</p>
+<p>The handle is deterministic and permanent, remaining valid for the lifetime of the program.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

@@ -1301,7 +1301,7 @@ GetFontHandle: Returns a handle for a given font family.
 
 For a given font family and size, this function will return a handle that can be passed to font querying functions.
 
-The handle is permanent, remaining valid for the lifetime of the program.
+The handle is deterministic and permanent, remaining valid for the lifetime of the program.
 
 -INPUT-
 cstr Family: The name of the font family to access.

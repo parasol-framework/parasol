@@ -216,7 +216,7 @@
 #define FID_ActionScript 0xab19ce38LL
 #define FID_LabelWidth 0xe1c93545LL
 #define FID_Template 0xeeaba201LL
-#define FID_FocusFrame 0xf362fb10LL
+#define FID_FontStyle 0xf6bc116dLL
 #define FID_Bottom 0xf492ca7aLL
 #define FID_IgnoreFocus 0xf730cb69LL
 #define FID_Header 0x01d218aeLL
