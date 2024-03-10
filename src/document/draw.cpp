@@ -788,7 +788,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   if ((stack_style.top()->valign & ALIGN::TOP) != ALIGN::NIL) y += font->metrics.Ascent;
                   else if ((stack_style.top()->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
                      DOUBLE avail_space = segment.area.Height - segment.descent;
-                     y += avail_space - ((avail_space - font->metrics.Ascent) * 0.5);
+                     y += avail_space - ((avail_space - font->metrics.Height) * 0.5);
                   }
                   else y += segment.area.Height - segment.descent;
 
