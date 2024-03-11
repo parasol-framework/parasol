@@ -8,11 +8,7 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Time: Simplifies the management of date/time information.
 
-The Time class is available for programs that require time and date recording.  In future, support will also be
-provided for the addition and subtraction of date values.
-
-Please note that the Time class uses strict metric interpretations of "millisecond" and "microsecond" terminology. That
-is, a millisecond is 1/1000th (one thousandth) of a second, a microsecond is 1/1000000th (one millionth) of a second.
+The Time class is available for programs that require time and date management in a multi-platform manner.
 
 To get the current system time, use the #Query() action.
 -END-
@@ -175,10 +171,10 @@ DayOfWeek: Day of week (0 - 6) starting from Sunday.
 Hour: Hour (0 - 23)
 
 -FIELD-
-MicroSecond: Microsecond (0 - 999999)
+MicroSecond: A microsecond is one millionth of a second (0 - 999999)
 
 -FIELD-
-MilliSecond: Millisecond (0 - 999)
+MilliSecond: A millisecond is one thousandth of a second (0 - 999)
 
 -FIELD-
 Minute: Minute (0 - 59)

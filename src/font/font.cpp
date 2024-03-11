@@ -494,7 +494,7 @@ ERROR fntGetList(FontList **Result)
                }
 
                if (keys.contains("Axes")) {
-                  list->Styles = buffer;
+                  list->Axes = buffer;
                   buffer += StrCopy(keys["Axes"], buffer) + 1;
                }
 

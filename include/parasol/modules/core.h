@@ -4350,8 +4350,8 @@ class objTime : public BaseClass {
    LONG  Second;        // Second (0 - 59)
    LONG  TimeZone;      // No information.
    LONG  DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
-   LONG  MilliSecond;   // Millisecond (0 - 999)
-   LONG  MicroSecond;   // Microsecond (0 - 999999)
+   LONG  MilliSecond;   // A millisecond is one thousandth of a second (0 - 999)
+   LONG  MicroSecond;   // A microsecond is one millionth of a second (0 - 999999)
 
    // Action stubs
 
