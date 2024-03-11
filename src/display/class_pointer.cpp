@@ -227,14 +227,12 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // surface, or if no modal surface is defined.
 
    auto modal_id = gfxGetModalSurface();
-
    if (modal_id) {
       if (modal_id IS Self->OverObjectID) {
+         // If the pointer is interacting with the modal surface, modality is irrelevant.
          modal_id = 0;
       }
-      else {
-         // Check if the OverObject is one of the children of modal_id.
-
+      else { // Check if the OverObject is one of the children of modal_id.
          ERROR error = gfxCheckIfChild(modal_id, Self->OverObjectID);
          if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
       }
@@ -277,10 +275,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
          // If a modal surface is active for the current process, the button press is reported to the modal surface only.
 
-         if ((modal_id) and (modal_id != Self->OverObjectID)) {
-            target = modal_id;
-         }
-         else target = Self->OverObjectID;
+         target = modal_id ? modal_id : Self->OverObjectID;
 
          QueueAction(AC_Focus, target);
 
@@ -300,7 +295,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       }
 
       if (!modal_id) {
-         pf::ScopedObjectLock<> src(Self->DragSourceID);
+         pf::ScopedObjectLock src(Self->DragSourceID);
          if (src.granted()) {
             acDragDrop(Self->OverObjectID, *src, Self->DragItem, Self->DragData);
          }
@@ -383,12 +378,12 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    DOUBLE current_x = Self->X;
    DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
-      case JET::ABS_XY: 
-         current_x = userinput.X; 
+      case JET::ABS_XY:
+         current_x = userinput.X;
          if (current_x != Self->X) moved = true;
 
-         current_y = userinput.Y; 
-         if (current_y != Self->Y) moved = true; 
+         current_y = userinput.Y;
+         if (current_y != Self->Y) moved = true;
          break;
 
       default: break;

@@ -28,14 +28,14 @@ Some notes about font rendering:
   385 is fine, but a value of 385.76 is not.  The Freetype glyphs are hinted based on this assumption.  If a glyph's
   baseline can adopt any position, the hinting may as well be turned off.
 
-* Whether or not a glyph's X coordinate should be rounded is a matter of preference.  An aligned glyph will be less 
+* Whether or not a glyph's X coordinate should be rounded is a matter of preference.  An aligned glyph will be less
   blurry than its counterpart, but it will come at a cost of less accurate kerning.  If you're not rounding the X
-  coordinate, the HINT_LIGHT option should probably be used because hinting will only be performed vertically in 
+  coordinate, the HINT_LIGHT option should probably be used because hinting will only be performed vertically in
   that case, while character widths and spacing remain unchanged.
 
-* Some variable fonts may have hinting defined internally that does not harmonise with the Freetype settings.  It may 
+* Some variable fonts may have hinting defined internally that does not harmonise with the Freetype settings.  It may
   be necessary to alter the 'Hinting' option for affected fonts in "fonts:options.cfg".
- 
+
 TODO
 ----
 * ShapeInside and ShapeSubtract require implementation
@@ -338,7 +338,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    if (Self->txHandle) {
       // TODO: This would be a good opportunity to garbage-collect stale glyphs
    }
-   
+
    if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
       vecSubscribeInput(Self->ParentView, JTYPE::NIL, FUNCTION(text_input_events));
    }
@@ -351,7 +351,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
-      pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
+      pf::ScopedObjectLock focus(Self->txFocusID, 5000);
       if (focus.granted()) vecSubscribeFeedback(*focus, FM::NIL, FUNCTION(text_focus_event));
    }
 
@@ -368,7 +368,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       }
 
       {
-         pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
+         pf::ScopedObjectLock focus(Self->txFocusID, 5000);
          if (focus.granted()) {
             vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, FUNCTION(text_focus_event));
          }
@@ -514,13 +514,13 @@ static ERROR TEXT_SET_CursorRow(extVectorText *Self, LONG Value)
 -FIELD-
 Descent: The font descent measured in pixels, after DPI conversion.
 
-Use Descent to retrieve the height of the font descent region in actual display pixels, after DPI conversion has been 
+Use Descent to retrieve the height of the font descent region in actual display pixels, after DPI conversion has been
 taken into account.
 
 *********************************************************************************************************************/
 
 static ERROR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
-{  
+{
    if (!Self->txHandle) {
       if (auto error = reset_font(Self)) return error;
    }
@@ -537,13 +537,13 @@ static ERROR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
 -FIELD-
 DisplayHeight: The font height measured in pixels, after DPI conversion.
 
-Use DisplayHeight to retrieve the font height in actual display pixels, after DPI conversion has been taken into 
+Use DisplayHeight to retrieve the font height in actual display pixels, after DPI conversion has been taken into
 account.  The height includes the top region reserved for accents, but excludes the descent value.
 
 *********************************************************************************************************************/
 
 static ERROR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
-{  
+{
    if (!Self->txHandle) {
       if (auto error = reset_font(Self)) return error;
    }
@@ -657,10 +657,10 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 -FIELD-
 Face: Defines the font face/family to use in rendering the text string.
 
-The family name of the principal font for rendering text is specified here.  
+The family name of the principal font for rendering text is specified here.
 
-It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, 
-`Arial,Noto Sans` would select the Noto Sans font if Arial was unavailable in the font database.  The name of the 
+It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance,
+`Arial,Noto Sans` would select the Noto Sans font if Arial was unavailable in the font database.  The name of the
 closest matching font will be stored as the Face value.
 
 *********************************************************************************************************************/
@@ -675,7 +675,7 @@ static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 {
    if (Value) {
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-      
+
       CSTRING name;
       if (!fntResolveFamilyName(Value, &name)) {
          Self->txFamily = StrClone(name);
@@ -716,7 +716,7 @@ static ERROR TEXT_SET_Focus(extVectorText *Self, OBJECTID Value)
 -FIELD-
 Font: Copies key meta information from a Font or other VectorText to create a matching text object.
 
-To create a VectorText object that uses a matching typeset from another @Font or VectorText object, set this field 
+To create a VectorText object that uses a matching typeset from another @Font or VectorText object, set this field
 with a reference to that object.  This can only be done prior to initialisation and the other object must have been
 initialised.
 
@@ -1277,7 +1277,7 @@ transforms.
 static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
-   
+
    if (!Self->txHandle) {
       if (auto error = reset_font(Self)) return error;
    }
@@ -1499,11 +1499,11 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
    auto Self = (extVectorText *)CurrentContext();
 
    pf::Log log(__FUNCTION__);
-   
+
    for (; Events; Events = Events->Next) {
       if ((Events->Type IS JET::LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
          // Determine the nearest caret position to the clicked point.
-         
+
          if (Self->txLines.empty()) {
             Self->txCursor.move(Self, 0, 0);
             Self->txCursor.resetFlash();

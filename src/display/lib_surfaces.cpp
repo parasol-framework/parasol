@@ -32,7 +32,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
       if (!modal_id) {
          SURFACEINFO *info;
          if (!gfxGetSurfaceInfo(pointer->OverObjectID, &info)) {
-            pf::ScopedObjectLock<> display(info->DisplayID);
+            pf::ScopedObjectLock display(info->DisplayID);
             if (display.granted()) {
                acDragDrop(pointer->OverObjectID, *display, -1, Datatypes);
             }

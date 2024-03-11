@@ -163,7 +163,8 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
 }
 
 //********************************************************************************************************************
-// Incoming input events from the Surface hosting the scene are distributed within the scene graph.
+// Receiver for input events from the Surface that hosts the scene graph.  Events are distributed to input 
+// subscribers.
 
 ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -185,6 +186,11 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          while ((input->Next) and ((input->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) { // Consolidate movement
             input = input->Next;
          }
+      }
+
+      if (input->OverID != Self->SurfaceID) {
+         // Activity occurring on another surface may be reported to us in circumstances where our surface is modal.
+         continue;
       }
 
       // Focus management - clicking with the LMB can result in a change of focus.
