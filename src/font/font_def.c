@@ -31,4 +31,4 @@ const struct Function glFunctions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.FontList:pNext:FontList,sName,sAlias,lPoints[0],sStyles,cScalable,cVariable,cHinting,cHidden\nc.FMETA:HIDDEN=0x20,HINT_INTERNAL=0x10,HINT_LIGHT=0x8,HINT_NORMAL=0x4,SCALED=0x1,VARIABLE=0x2\nc.FSS:ALL=0xffffffff,LINE=0xfffffffe\nc.FTF:BASE_LINE=0x2,BOLD=0x20000000,HEAVY_LINE=0x1,ITALIC=0x40000000\nc.HINT:INTERNAL=0x2,LIGHT=0x3,NORMAL=0x1\n"
+#define MOD_IDL "s.FontList:pNext:FontList,sName,sAlias,lPoints[0],sStyles,sAxes,cScalable,cVariable,cHinting,cHidden\nc.FMETA:HIDDEN=0x20,HINT_INTERNAL=0x10,HINT_LIGHT=0x8,HINT_NORMAL=0x4,SCALED=0x1,VARIABLE=0x2\nc.FSS:ALL=0xffffffff,LINE=0xfffffffe\nc.FTF:BASE_LINE=0x2,BOLD=0x20000000,HEAVY_LINE=0x1,ITALIC=0x40000000\nc.HINT:INTERNAL=0x2,LIGHT=0x3,NORMAL=0x1\n"

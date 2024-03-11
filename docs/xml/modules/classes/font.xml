@@ -416,6 +416,7 @@ Charter:120%::255,128,255
       <field name="Alias" type="STRING">Reference to another font Name if this is an alias.</field>
       <field name="Points" type="LONG *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
       <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
+      <field name="Axes" type="STRING">For variable fonts, lists all supported axis codes in CSV format</field>
       <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
       <field name="Variable" type="BYTE">TRUE if the font has variable metrics.</field>
       <field name="Hinting" type="HINT" lookup="HINT">Hinting options</field>

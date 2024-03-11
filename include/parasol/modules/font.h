@@ -58,6 +58,7 @@ struct FontList {
    STRING Alias;              // Reference to another font Name if this is an alias.
    LONG * Points;             // Pointer to an array of fixed point sizes supported by the font.
    STRING Styles;             // Supported styles are listed here in CSV format.
+   STRING Axes;               // For variable fonts, lists all supported axis codes in CSV format
    BYTE   Scalable;           // TRUE if the font is scalable.
    BYTE   Variable;           // TRUE if the font has variable metrics.
    HINT   Hinting;            // Hinting options

@@ -34,6 +34,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2024", version=1.0 }, funct
     str   Alias             # Reference to another font Name if this is an alias.
     array(int,0) Points     # Pointer to an array of fixed point sizes supported by the font.
     str   Styles            # Supported styles are listed here in CSV format.
+    str   Axes              # For variable fonts, lists all supported axis codes in CSV format
     char  Scalable          # TRUE if the font is scalable.
     char  Variable          # TRUE if the font has variable metrics.
     char(HINT) Hinting      # Hinting options

@@ -453,6 +453,7 @@ ERROR fntGetList(FontList **Result)
       for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
          if (keys.contains("Alias")) size += keys["Alias"].size() + 1;
+         if (keys.contains("Axes")) size += keys["Axes"].size() + 1;
       }
 
       FontList *list, *last_list = NULL;
@@ -497,6 +498,11 @@ ERROR fntGetList(FontList **Result)
                   if (!StrMatch("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
                   else if (!StrMatch("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
                   else if (!StrMatch("Light", keys["Hinting"])) list->Hinting = HINT::LIGHT;
+               }
+
+               if (keys.contains("Axes")) {
+                  list->Styles = buffer;
+                  buffer += StrCopy(keys["Axes"], buffer) + 1;
                }
 
                list->Points = NULL;
