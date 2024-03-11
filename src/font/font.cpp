@@ -338,12 +338,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &modFont);
 
-   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_LoadModule;
 
-   if (FT_Init_FreeType(&glFTLibrary)) {
-      log.warning("Failed to initialise the FreeType font library.");
-      return ERR_Failed;
-   }
+   if (FT_Init_FreeType(&glFTLibrary)) return log.warning(ERR_LoadModule);
 
    LOC type;
    bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC::FILE);
@@ -409,11 +406,7 @@ LONG fntCharWidth(extFont *Font, ULONG Char)
 {
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if ((Char < 256) and (Font->prvChar)) return Font->prvChar[Char].Advance;
-   else {
-      pf::Log log(__FUNCTION__);
-      log.traceWarning("Character %u out of range.", Char);
-      return Font->prvChar ? Font->prvChar[(LONG)Font->prvDefaultChar].Advance : 0;
-   }
+   else return Font->prvChar ? Font->prvChar[(LONG)Font->prvDefaultChar].Advance : 0;
 }
 
 /*********************************************************************************************************************
@@ -715,7 +708,7 @@ ERROR fntRefreshFonts(void)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Refreshing the fonts: directory.");
+   log.branch();
 
    pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
@@ -725,8 +718,6 @@ ERROR fntRefreshFonts(void)
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   log.trace("Sorting the font names.");
-
    cfgSortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
 
    // Create a style list for each font, e.g.
@@ -734,8 +725,6 @@ ERROR fntRefreshFonts(void)
    //    Bold Italic = fonts:fixed/courier.fon
    //    Bold = fonts:truetype/Courier Prime Bold.ttf
    //    Styles = Bold,Bold Italic,Italic,Regular
-
-   log.trace("Generating style lists for each font.");
 
    ConfigGroups *groups;
    if (not glConfig->getPtr(FID_Data, &groups)) {
@@ -758,8 +747,6 @@ ERROR fntRefreshFonts(void)
    }
 
    // Save the font configuration file
-
-   log.trace("Saving the font configuration file.");
 
    objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
    if (file.ok()) glConfig->saveToObject(*file);

@@ -77,8 +77,6 @@ static ERROR FONT_Draw(extFont *Self, APTR Void)
 
 static ERROR FONT_Free(extFont *Self, APTR Void)
 {
-   pf::Log log;
-
    CACHE_LOCK lock(glCacheMutex);
 
    if (Self->BmpCache) {
@@ -107,10 +105,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    ERROR error;
    FMETA meta = FMETA::NIL;
 
-   if ((!Self->prvFace[0]) and (!Self->Path)) {
-      log.warning("Face not defined.");
-      return ERR_FieldNotSet;
-   }
+   if ((!Self->prvFace[0]) and (!Self->Path)) return log.warning(ERR_FieldNotSet);
 
    if (!Self->Point) Self->Point = global_point_size();
 
@@ -177,9 +172,8 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                   file->seek(4 + (count * 12), SEEK::CURRENT);
                }
 
-               if ((!font_count) or (!font_offset)) {
-                  log.warning("There are no fonts in the file \"%s\"", Self->Path);
-                  return ERR_Failed;
+               if ((!font_count) or (!font_offset)) { // There are no fonts in the file
+                  return log.warning(ERR_NoData);
                }
 
                file->seek(font_offset, SEEK::START);
@@ -206,13 +200,12 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                   winfnt_header_fields header;
                   if (!file->read(&header, sizeof(header))) {
                      if ((header.version != 0x200) and (header.version != 0x300)) {
-                        log.warning("Font \"%s\" is written in unsupported version %d.", Self->prvFace, header.version);
-                        return ERR_Failed;
+                        // Font is written in an unsupported version
+                        return log.warning(ERR_NoSupport);
                      }
 
-                     if (header.file_type & 1) {
-                        log.warning("Font \"%s\" is in the non-supported vector font format.", Self->prvFace);
-                        return ERR_Failed;
+                     if (header.file_type & 1) { // Font is in the non-supported vector font format."
+                        return log.warning(ERR_NoSupport);
                      }
 
                      if (header.pixel_width <= 0) header.pixel_width = header.pixel_height;
@@ -268,8 +261,6 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
          Self->FixedWidth = cache->Header.avg_width;
       }
 
-      log.trace("Cache Count: %d, Style: %s", cache->OpenCount, Self->prvStyle);
-
       Self->prvChar = cache->Chars;
       Self->Flags |= cache->StyleFlags;
 
@@ -284,8 +275,6 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    log.extmsg("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->Point, Self->Height);
-   log.trace("LineSpacing: %d, Leading: %d, Gutter: %d", Self->LineSpacing, Self->Leading, Self->Gutter);
-
    return ERR_Okay;
 }
 
