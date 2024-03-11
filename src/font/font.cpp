@@ -845,131 +845,134 @@ restart:
 static void scan_truetype_folder(objConfig *Config)
 {
    pf::Log log(__FUNCTION__);
-   DirInfo *dir;
-   LONG j;
-   char location[100];
-   char group[200];
-   FT_Face ftface;
-   FT_Open_Args open;
 
    log.branch("Scanning for truetype fonts.");
 
-   if (not OpenDir("fonts:truetype/", RDF::FILE, &dir)) {
-      while (not ScanDir(dir)) {
-         snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
+   STRING path;
+   if (!ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, (STRING *)&path)) {
+      GuardedResource free_path(path);
 
-         for (j=0; location[j]; j++);
-         while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
+      DirInfo *dir;
+      if (not OpenDir(path, RDF::FILE, &dir)) {
+         GuardedResource free_dir(dir);
 
-         ResolvePath(location, RSF::NIL, (STRING *)&open.pathname);
-         open.flags = FT_OPEN_PATHNAME;
-         if (not FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
-            FreeResource(open.pathname);
+         while (not ScanDir(dir)) {
+            std::string ttpath(path);
+            ttpath.append(dir->Info->Name);
 
-            if (!FT_IS_SCALABLE(ftface)) { // Sanity check
-               FT_Done_Face(ftface);
-               continue;
-            }
-
-            log.msg("Detected font file \"%s\", name: %s, style: %s", location, ftface->family_name, ftface->style_name);
-
-            LONG n;
-            if (ftface->family_name) n = StrCopy(ftface->family_name, group, sizeof(group));
-            else {
-               n = 0;
-               while ((j > 0) and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
-               while ((location[j]) and (location[j] != '.')) group[n++] = location[j++];
-            }
-            group[n] = 0;
-
-            // Strip any style references out of the font name and keep them as style flags
-
-            FTF style = FTF::NIL;
-            if (ftface->style_name) {
-               if ((n = StrSearchCase(" Bold", group)) != -1) {
-                  for (j=0; " Bold"[j]; j++) group[n++] = ' ';
-                  style |= FTF::BOLD;
+            FT_Face ftface;
+            FT_Open_Args open = { .flags = FT_OPEN_PATHNAME, .pathname = (FT_String *)ttpath.c_str() };
+            if (not FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
+               if (!FT_IS_SCALABLE(ftface)) { // Sanity check
+                  FT_Done_Face(ftface);
+                  continue;
                }
 
-               if ((n = StrSearchCase(" Italic", group)) != -1) {
-                  for (j=0; " Italic"[j]; j++) group[n++] = ' ';
-                  style |= FTF::ITALIC;
+               log.msg("Detected font file \"%s\", name: %s, style: %s", ttpath.c_str(), ftface->family_name, ftface->style_name);
+            
+               std::string group;
+               if (ftface->family_name) group.assign(ftface->family_name);
+               else {
+                  unsigned i;
+                  for (i=0; dir->Info->Name[i] and (dir->Info->Name[i] != '.'); i++);
+                  group.assign(dir->Info->Name, i);
                }
-            }
 
-            for (n=0; group[n]; n++);
-            while ((n > 0) and (group[n-1] <= 0x20)) n--;
-            group[n] = 0;
+               // Strip any style references out of the font name and keep them as style flags
 
-            Config->write(group, "Name", group);
-            Config->write(group, "Scalable", "Yes");
+               FTF style = FTF::NIL;
+               if (ftface->style_name) {
+                  if (auto pos = group.find(" Bold"); pos != std::string::npos) {
+                     group.replace(pos, 5, "");
+                     style |= FTF::BOLD;
+                  }
 
-            if (FT_HAS_MULTIPLE_MASTERS(ftface)) {
-               // A single ttf file can contain multiple named styles
-               Config->write(group, "Variable", "Yes");
+                  if (auto pos = group.find(" Italic"); pos != std::string::npos) {
+                     group.replace(pos, 7, "");
+                     style |= FTF::ITALIC;
+                  }
+               }
 
-               FT_MM_Var *mvar;
-               if (!FT_Get_MM_Var(ftface, &mvar)) {
-                  FT_UInt index;
-                  if (!FT_Get_Default_Named_Instance(ftface, &index)) {
-                     char buffer[100];
-                     auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
-                     for (FT_UInt s=0; (s < mvar->num_namedstyles); s++) {
-                        for (LONG n=LONG(name_table_size)-1; n >= 0; n--) {
-                           FT_SfntName sft_name;
-                           if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
-                              if (sft_name.name_id IS mvar->namedstyle[s].strid) {
-                                 // Decode UTF16 Big Endian
-                                 LONG out = 0;
-                                 auto str = (UWORD *)sft_name.string;
-                                 UWORD prev_unicode = 0;
-                                 for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                    UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
-                                    if ((unicode >= 'A') and (unicode <= 'Z')) {
-                                       if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
-                                          buffer[out++] = ' ';
+               pf::rtrim(group);
+
+               Config->write(group.c_str(), "Name", group);
+               Config->write(group.c_str(), "Scalable", "Yes");
+
+               if (FT_HAS_MULTIPLE_MASTERS(ftface)) {
+                  // A single ttf file can contain multiple named styles
+                  Config->write(group.c_str(), "Variable", "Yes");
+
+                  FT_MM_Var *mvar;
+                  if (!FT_Get_MM_Var(ftface, &mvar)) {
+                     FT_UInt index;
+                     if (!FT_Get_Default_Named_Instance(ftface, &index)) {
+                        char buffer[100];
+                        auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
+                        for (FT_UInt s=0; (s < mvar->num_namedstyles); s++) {
+                           for (LONG n=LONG(name_table_size)-1; n >= 0; n--) {
+                              FT_SfntName sft_name;
+                              if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
+                                 if (sft_name.name_id IS mvar->namedstyle[s].strid) {
+                                    // Decode UTF16 Big Endian
+                                    LONG out = 0;
+                                    auto str = (UWORD *)sft_name.string;
+                                    UWORD prev_unicode = 0;
+                                    for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
+                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       if ((unicode >= 'A') and (unicode <= 'Z')) {
+                                          if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
+                                             buffer[out++] = ' ';
+                                          }
                                        }
+                                       out += UTF8WriteValue(unicode, buffer+out, std::ssize(buffer)-out);
+                                       prev_unicode = unicode;
                                     }
-                                    out += UTF8WriteValue(unicode, buffer+out, std::ssize(buffer)-out);
-                                    prev_unicode = unicode;
+                                    buffer[out] = 0;
+                                    
+                                    std::string path("fonts:truetype/");
+                                    path.append(dir->Info->Name);
+                                    Config->write(group.c_str(), buffer, path);
+                                    break;
                                  }
-                                 buffer[out] = 0;
-
-                                 Config->write(group, buffer, location);
-                                 break;
                               }
                            }
                         }
-                     }
-                  }
-                  FT_Done_MM_Var(glFTLibrary, mvar);
-               }
-            }
-            else {
-               // Add the style with a link to the font file location
 
-               if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
-                  Config->write(group, ftface->style_name, location);
+                        std::ostringstream axes;
+                        for (unsigned a=0; a < mvar->num_axis; a++) {
+                           if (a > 0) axes << ',';
+                           auto tag = (unsigned char *)&mvar->axis[a].tag;
+                           axes << tag[3] << tag[2] << tag[1] << tag[0];
+                        }
+                        Config->write(group.c_str(), "Axes", axes.str());
+                     }
+
+                     FT_Done_MM_Var(glFTLibrary, mvar);
+                  }
                }
                else {
-                  if (style IS FTF::BOLD) Config->write(group, "Bold", location);
-                  else if (style IS FTF::ITALIC) Config->write(group, "Italic", location);
-                  else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(group, "Bold Italic", location);
-                  else Config->write(group, "Regular", location);
-               }
-            }
+                  // Add the style with a link to the font file location
 
-            FT_Done_Face(ftface);
-         }
-         else {
-            FreeResource(open.pathname);
-            log.warning("Failed to analyse scalable font file \"%s\".", location);
+                  std::string path("fonts:truetype/");
+                  path.append(dir->Info->Name);
+
+                  if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
+                     Config->write(group.c_str(), ftface->style_name, path);
+                  }
+                  else {
+                     if (style IS FTF::BOLD) Config->write(group.c_str(), "Bold", path);
+                     else if (style IS FTF::ITALIC) Config->write(group.c_str(), "Italic", path);
+                     else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(group.c_str(), "Bold Italic", path);
+                     else Config->write(group.c_str(), "Regular", path);
+                  }
+               }
+
+               FT_Done_Face(ftface);
+            }
          }
       }
-
-      FreeResource(dir);
+      else log.warning("Failed to open the fonts:truetype/ directory.");
    }
-   else log.warning("Failed to open the fonts:truetype/ directory.");
 }
 
 //********************************************************************************************************************
