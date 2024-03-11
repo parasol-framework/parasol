@@ -638,6 +638,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
       if (stroke_width < 1) stroke_width = 1;
 
       auto transform = Vector.Transform * State.mTransform;
+      Vector.BasePath.approximation_scale(transform.scale());
       agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
       stroke_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
@@ -894,6 +895,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // every time.  It's necessary if the client wants to re-use vectors though (saving resources and gaining
                   // some conveniences).
                   auto transform = shape->Transform * state.mTransform;
+                  shape->BasePath.approximation_scale(transform.scale());
                   agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(shape->BasePath, transform);
                   agg::rasterizer_scanline_aa raster;
                   raster.add_path(final_path);
@@ -911,6 +913,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   auto transform = shape->Transform * state.mTransform;
 
                   if (shape->DashArray) {
+                     shape->DashArray->stroke.approximation_scale(transform.scale());
+
                      configure_stroke(*shape, shape->DashArray->stroke);
                      agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> final_path(shape->DashArray->stroke, transform);
 
@@ -919,6 +923,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      render_stroke(state, *shape, raster);
                   }
                   else {
+                     shape->BasePath.approximation_scale(transform.scale());
                      agg::conv_stroke<agg::path_storage> stroked_path(shape->BasePath);
                      configure_stroke(*shape, stroked_path);
                      agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, transform);
@@ -996,7 +1001,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 }
 
 //********************************************************************************************************************
-// For direct vector drawing
+// For direct vector drawing via the API, no transforms.
 
 void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {

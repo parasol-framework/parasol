@@ -287,6 +287,7 @@ void gen_vector_path(extVector *Vector)
                   }
 
                   agg::trans_single_path trans_path;
+                  morph->BasePath.approximation_scale(Vector->Transform.scale());
                   trans_path.add_path(morph->BasePath);
                   trans_path.preserve_x_scale(true); // The default is true.  Switching to false produces a lot of scrunching and extending
                   if (morph->Class->ClassID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
@@ -313,7 +314,6 @@ void gen_vector_path(extVector *Vector)
 
       if (Vector->Matrices) {
          DOUBLE scale = Vector->Transform.scale();
-         Vector->BasePath.approximation_scale(scale);
          if (scale > 1.0) Vector->BasePath.angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
          else Vector->BasePath.angle_tolerance(0);
       }
@@ -327,6 +327,7 @@ void gen_vector_path(extVector *Vector)
          }
          else Vector->FillRaster->reset();
 
+         Vector->BasePath.approximation_scale(Vector->Transform.scale());
          agg::conv_transform<agg::path_storage, agg::trans_affine> fill_path(Vector->BasePath, Vector->Transform);
          Vector->FillRaster->add_path(fill_path);
       }
@@ -346,12 +347,14 @@ void gen_vector_path(extVector *Vector)
          else Vector->StrokeRaster->reset();
 
          if (Vector->DashArray) {
+            Vector->BasePath.approximation_scale(Vector->Transform.scale());
             Vector->DashArray->path.attach(Vector->BasePath);
             configure_stroke(*Vector, Vector->DashArray->stroke);
             agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(Vector->DashArray->stroke, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {
+            Vector->BasePath.approximation_scale(Vector->Transform.scale());
             agg::conv_stroke<agg::path_storage> stroked_path(Vector->BasePath);
             configure_stroke(*Vector, stroked_path);
             agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, Vector->Transform);

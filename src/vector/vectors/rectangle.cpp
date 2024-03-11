@@ -84,7 +84,6 @@ static void generate_rectangle(extVectorRectangle *Vector)
       }
 
       agg::rounded_rect aggrect(x, y, x + width, y + height, 0, 0);
-      aggrect.approximation_scale(Vector->Transform.scale());
       aggrect.radius(rx[0], ry[0], rx[1], ry[1], rx[2], ry[2], rx[3], ry[3]);
       aggrect.normalize_radius(); // Required because???
 
@@ -112,7 +111,6 @@ static void generate_rectangle(extVectorRectangle *Vector)
       else ry = rx;
 
       agg::rounded_rect aggrect(x, y, x + width, y + height, rx, ry);
-      aggrect.approximation_scale(Vector->Transform.scale());
       aggrect.normalize_radius(); // Required because???
 
       Vector->BasePath.concat_path(aggrect);

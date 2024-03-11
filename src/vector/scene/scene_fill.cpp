@@ -71,6 +71,8 @@ static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
    const DOUBLE dx = Bounds.left + ((Image.Dimensions & DMF_SCALED_X) ? (c_width * Image.X) : Image.X);
    const DOUBLE dy = Bounds.top + ((Image.Dimensions & DMF_SCALED_Y) ? (c_height * Image.Y) : Image.Y);
 
+   Path.approximation_scale(Transform.scale());
+
    agg::trans_affine transform;
    if (Image.SpreadMethod IS VSPREAD::PAD) { // In pad mode, stretch the image to fit the boundary
       transform.scale(Bounds.width() / Image.Bitmap->Width, Bounds.height() / Image.Bitmap->Height);
@@ -115,6 +117,8 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
    const DOUBLE c_height = Gradient.Units IS VUNIT::USERSPACE ? ViewHeight : Bounds.height();
    const DOUBLE x_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.left;
    const DOUBLE y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.top;
+
+   Path->approximation_scale(Transform.scale());
 
    if (Gradient.Type IS VGT::LINEAR) {
       TClipRectangle<DOUBLE> area;
@@ -452,6 +456,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
    const DOUBLE c_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const DOUBLE x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const DOUBLE y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
+   
+   Path->approximation_scale(Transform.scale());
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.
       DOUBLE dwidth, dheight;

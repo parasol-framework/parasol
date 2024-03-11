@@ -28,7 +28,6 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
 
    bool lp_curved = false;
    auto bp = BasePath;
-   if (Vector) bp->approximation_scale(Vector->Transform.scale());
 
    for (size_t i=0; i < Paths.size(); i++) {
       auto path = Paths[i];

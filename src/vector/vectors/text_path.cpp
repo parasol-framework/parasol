@@ -25,7 +25,7 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
    auto &path = glyphs[Unicode];
 
    path.glyph_index = FT_Get_Char_Index(font->face, Unicode);
-   
+
    if (font->face->size->metrics.height != ft_size->metrics.height) {
       FT_Set_Char_Size(font->face, 0, ft_size->metrics.height, 72, 72);
    }
@@ -248,8 +248,6 @@ static void generate_text(extVectorText *Vector)
          }
       }
    }
-
-   Vector->BasePath.approximation_scale(Vector->Transform.scale());
 
    const std::lock_guard lock(glFontMutex);
 
