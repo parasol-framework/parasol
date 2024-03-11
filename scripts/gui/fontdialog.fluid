@@ -418,6 +418,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    local faces = { }
    for _, font in ipairs(lFontsSorted) do
       local new_font = { id=font.name, name=font.name }
+
+      if nz(font.alias) then font = lFonts[font.alias] end
+
       if (font.scalable) then
          new_font.icon = 'items/font'
       else
