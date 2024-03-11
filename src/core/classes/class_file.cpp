@@ -1735,14 +1735,15 @@ static ERROR GET_Created(extFile *Self, DateTime **Value)
       if (!fstat64(Self->Handle, &stats)) {
          // Timestamp has to match that produced by fs_getinfo()
 
-         struct tm *local;
-         if ((local = localtime(&stats.st_mtime))) {
-            Self->prvCreated.Year   = 1900 + local->tm_year;
-            Self->prvCreated.Month  = local->tm_mon + 1;
-            Self->prvCreated.Day    = local->tm_mday;
-            Self->prvCreated.Hour   = local->tm_hour;
-            Self->prvCreated.Minute = local->tm_min;
-            Self->prvCreated.Second = local->tm_sec;
+         if (auto local = localtime(&stats.st_mtime)) {
+            Self->prvCreated = DateTime {
+               .Year   = WORD(1900 + local->tm_year),
+               .Month  = BYTE(local->tm_mon + 1),
+               .Day    = BYTE(local->tm_mday),
+               .Hour   = BYTE(local->tm_hour),
+               .Minute = BYTE(local->tm_min),
+               .Second = BYTE(local->tm_sec)
+            };
 
             *Value = &Self->prvCreated;
             return ERR_Okay;
@@ -1763,14 +1764,15 @@ static ERROR GET_Created(extFile *Self, DateTime **Value)
          if (!stat64(buffer, &stats)) {
             // Timestamp has to match that produced by fs_getinfo()
 
-            struct tm *local;
-            if ((local = localtime(&stats.st_mtime))) {
-               Self->prvCreated.Year   = 1900 + local->tm_year;
-               Self->prvCreated.Month  = local->tm_mon + 1;
-               Self->prvCreated.Day    = local->tm_mday;
-               Self->prvCreated.Hour   = local->tm_hour;
-               Self->prvCreated.Minute = local->tm_min;
-               Self->prvCreated.Second = local->tm_sec;
+            if (auto local = localtime(&stats.st_mtime)) {
+               Self->prvCreated = {
+                  .Year   = WORD(1900 + local->tm_year),
+                  .Month  = BYTE(local->tm_mon + 1),
+                  .Day    = BYTE(local->tm_mday),
+                  .Hour   = BYTE(local->tm_hour),
+                  .Minute = BYTE(local->tm_min),
+                  .Second = BYTE(local->tm_sec)
+               };
 
                *Value = &Self->prvCreated;
                error = ERR_Okay;
@@ -1809,14 +1811,15 @@ static ERROR GET_Date(extFile *Self, DateTime **Value)
       if (!fstat64(Self->Handle, &stats)) {
          // Timestamp has to match that produced by fs_getinfo()
 
-         struct tm *local;
-         if ((local = localtime(&stats.st_mtime))) {
-            Self->prvModified.Year   = 1900 + local->tm_year;
-            Self->prvModified.Month  = local->tm_mon + 1;
-            Self->prvModified.Day    = local->tm_mday;
-            Self->prvModified.Hour   = local->tm_hour;
-            Self->prvModified.Minute = local->tm_min;
-            Self->prvModified.Second = local->tm_sec;
+         if (auto local = localtime(&stats.st_mtime)) {
+            Self->prvModified = DateTime {
+               .Year   = WORD(1900 + local->tm_year),
+               .Month  = BYTE(local->tm_mon + 1),
+               .Day    = BYTE(local->tm_mday),
+               .Hour   = BYTE(local->tm_hour),
+               .Minute = BYTE(local->tm_min),
+               .Second = BYTE(local->tm_sec)
+            };
 
             *Value = &Self->prvModified;
             error = ERR_Okay;
@@ -1839,14 +1842,15 @@ static ERROR GET_Date(extFile *Self, DateTime **Value)
          if (!stat64(buffer, &stats)) {
             // Timestamp has to match that produced by fs_getinfo()
 
-            struct tm *local;
-            if ((local = localtime(&stats.st_mtime))) {
-               Self->prvModified.Year   = 1900 + local->tm_year;
-               Self->prvModified.Month  = local->tm_mon + 1;
-               Self->prvModified.Day    = local->tm_mday;
-               Self->prvModified.Hour   = local->tm_hour;
-               Self->prvModified.Minute = local->tm_min;
-               Self->prvModified.Second = local->tm_sec;
+            if (auto local = localtime(&stats.st_mtime)) {
+               Self->prvModified = DateTime {
+                  .Year   = WORD(1900 + local->tm_year),
+                  .Month  = BYTE(local->tm_mon + 1),
+                  .Day    = BYTE(local->tm_mday),
+                  .Hour   = BYTE(local->tm_hour),
+                  .Minute = BYTE(local->tm_min),
+                  .Second = BYTE(local->tm_sec)
+               };
 
                *Value = &Self->prvModified;
                error = ERR_Okay;
@@ -2677,15 +2681,15 @@ static ERROR GET_TimeStamp(extFile *Self, LARGE *Value)
       if (!fstat64(Self->Handle, &stats)) {
          // Timestamp has to match that produced by fs_getinfo()
 
-         struct tm *local;
-         if ((local = localtime(&stats.st_mtime))) {
-            DateTime datetime;
-            datetime.Year   = 1900 + local->tm_year;
-            datetime.Month  = local->tm_mon + 1;
-            datetime.Day    = local->tm_mday;
-            datetime.Hour   = local->tm_hour;
-            datetime.Minute = local->tm_min;
-            datetime.Second = local->tm_sec;
+         if (auto local = localtime(&stats.st_mtime)) {
+            DateTime datetime = {
+               .Year   = WORD(1900 + local->tm_year),
+               .Month  = BYTE(local->tm_mon + 1),
+               .Day    = BYTE(local->tm_mday),
+               .Hour   = BYTE(local->tm_hour),
+               .Minute = BYTE(local->tm_min),
+               .Second = BYTE(local->tm_sec)
+            };
 
             *Value = calc_timestamp(&datetime);
             return ERR_Okay;
@@ -2699,15 +2703,15 @@ static ERROR GET_TimeStamp(extFile *Self, LARGE *Value)
       if (!GET_ResolvedPath(Self, &path)) {
          struct stat64 stats;
          if (!stat64(path, &stats)) {
-            struct tm *local;
-            if ((local = localtime(&stats.st_mtime))) {
-               DateTime datetime;
-               datetime.Year   = 1900 + local->tm_year;
-               datetime.Month  = local->tm_mon + 1;
-               datetime.Day    = local->tm_mday;
-               datetime.Hour   = local->tm_hour;
-               datetime.Minute = local->tm_min;
-               datetime.Second = local->tm_sec;
+            if (auto local = localtime(&stats.st_mtime)) {
+               DateTime datetime = {
+                  .Year   = WORD(1900 + local->tm_year),
+                  .Month  = BYTE(local->tm_mon + 1),
+                  .Day    = BYTE(local->tm_mday),
+                  .Hour   = BYTE(local->tm_hour),
+                  .Minute = BYTE(local->tm_min),
+                  .Second = BYTE(local->tm_sec)
+               };
 
                *Value = calc_timestamp(&datetime);
                return ERR_Okay;

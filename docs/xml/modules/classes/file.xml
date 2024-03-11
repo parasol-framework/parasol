@@ -607,13 +607,13 @@
   </types>
   <structs>
     <struct name="DateTime" comment="Generic structure for date-time management.">
-      <field name="Year" type="LONG">Year</field>
-      <field name="Month" type="LONG">Month 1 to 12</field>
-      <field name="Day" type="LONG">Day 1 to 31</field>
-      <field name="Hour" type="LONG">Hour 0 to 23</field>
-      <field name="Minute" type="LONG">Minute 0 to 59</field>
-      <field name="Second" type="LONG">Second 0 to 59</field>
-      <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
+      <field name="Year" type="WORD">Year</field>
+      <field name="Month" type="BYTE">Month 1 to 12</field>
+      <field name="Day" type="BYTE">Day 1 to 31</field>
+      <field name="Hour" type="BYTE">Hour 0 to 23</field>
+      <field name="Minute" type="BYTE">Minute 0 to 59</field>
+      <field name="Second" type="BYTE">Second 0 to 59</field>
+      <field name="TimeZone" type="BYTE">TimeZone -13 to +13</field>
     </struct>
 
   </structs>

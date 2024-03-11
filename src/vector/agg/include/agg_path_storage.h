@@ -379,10 +379,16 @@ namespace agg
             double x, y;
             unsigned cmd;
             vs.rewind(path_id);
-            while(!is_stop(cmd = vs.vertex(&x, &y)))
-            {
+            while(!is_stop(cmd = vs.vertex(&x, &y))) {
                 m_vertices.add_vertex(x, y, cmd);
             }
+        }
+
+        // Copy a path as-is, bypassing add_vertex()
+
+        template<class VertexSource>
+        void copy_path(VertexSource& vs) {
+           m_vertices = vs.vertices();
         }
 
         //--------------------------------------------------------------------

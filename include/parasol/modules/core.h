@@ -1338,13 +1338,13 @@ struct dcDeviceInput {
 };
 
 struct DateTime {
-   LONG Year;        // Year
-   LONG Month;       // Month 1 to 12
-   LONG Day;         // Day 1 to 31
-   LONG Hour;        // Hour 0 to 23
-   LONG Minute;      // Minute 0 to 59
-   LONG Second;      // Second 0 to 59
-   LONG TimeZone;    // TimeZone -13 to +13
+   WORD Year;        // Year
+   BYTE Month;       // Month 1 to 12
+   BYTE Day;         // Day 1 to 31
+   BYTE Hour;        // Hour 0 to 23
+   BYTE Minute;      // Minute 0 to 59
+   BYTE Second;      // Second 0 to 59
+   BYTE TimeZone;    // TimeZone -13 to +13
 };
 
 struct HSV {

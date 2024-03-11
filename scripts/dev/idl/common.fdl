@@ -337,11 +337,11 @@ flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   ]])
 
   struct("DateTime", { comment="Generic structure for date-time management.", module="Core" }, [[
-    int Year      # Year
-    int Month     # Month 1 to 12
-    int Day       # Day 1 to 31
-    int Hour      # Hour 0 to 23
-    int Minute    # Minute 0 to 59
-    int Second    # Second 0 to 59
-    int TimeZone  # TimeZone -13 to +13
+    short Year      # Year
+    char  Month     # Month 1 to 12
+    char  Day       # Day 1 to 31
+    char  Hour      # Hour 0 to 23
+    char  Minute    # Minute 0 to 59
+    char  Second    # Second 0 to 59
+    char  TimeZone  # TimeZone -13 to +13
   ]])

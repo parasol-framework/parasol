@@ -145,13 +145,13 @@ typedef unsigned char UBYTE;
 
 
 typedef struct DateTime {
-   LONG Year;
-   LONG Month;
-   LONG Day;
-   LONG Hour;
-   LONG Minute;
-   LONG Second;
-   LONG TimeZone;
+   WORD Year;
+   BYTE Month;
+   BYTE Day;
+   BYTE Hour;
+   BYTE Minute;
+   BYTE Second;
+   BYTE TimeZone;
 } DateTime;
 
 #define IS ==
