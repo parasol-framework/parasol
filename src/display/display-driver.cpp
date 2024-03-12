@@ -899,7 +899,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          glpDisplayDepth  = info.BitsPerPixel;
       }
 #else
-   objConfig::create config = { fl::Path("user:config/display.cfg") };
+   auto config = objConfig::create { fl::Path("user:config/display.cfg") };
 
    if (config.ok()) {
       cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);

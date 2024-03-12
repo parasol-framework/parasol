@@ -68,7 +68,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Build the screen.xml file if this is the first task to initialise the RandR extension.
 
-   objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL::NEW|FL::WRITE) };
+   auto file = objFile::create { fl::Path("user:config/screen.xml"), fl::Flags(FL::NEW|FL::WRITE) };
 
    if (file.ok()) {
       write_string(*file, "<?xml version=\"1.0\"?>\n\n");

@@ -319,7 +319,7 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
       auto task = CurrentTask();
       task->setPath(Path);
 
-      objXML::create xml = {
+      auto xml = objXML::create {
          fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
          fl::Path(Path),
          fl::ReadOnly(true)

@@ -1294,7 +1294,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             }
             else permissions = Self->Permissions;
 
-            objFile::create file = {
+            auto file = objFile::create {
                fl::Path(destpath), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(permissions)
             };
 

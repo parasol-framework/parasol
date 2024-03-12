@@ -51,7 +51,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
 
    log.branch("Compressing folder \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
-   objFile::create file = { fl::Path(Location) };
+   auto file = objFile::create { fl::Path(Location) };
    if (!file.ok()) return log.warning(ERR_File);
 
    if (((file->Flags & FL::LINK) != FL::NIL) and ((Self->Flags & CMF::NO_LINKS) IS CMF::NIL)) {
@@ -197,7 +197,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    // Open the source file for reading only
 
-   objFile::create file = { fl::Path(Location), fl::Flags(Link ? FL::NIL : FL::READ) };
+   auto file = objFile::create { fl::Path(Location), fl::Flags(Link ? FL::NIL : FL::READ) };
 
    if (!file.ok()) {
       if (Self->OutputID) {

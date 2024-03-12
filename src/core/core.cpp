@@ -514,7 +514,7 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
-      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
+      auto file = objFile::create { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          LONG filesize;

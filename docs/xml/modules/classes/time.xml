@@ -115,7 +115,7 @@
       <type>BIGINT</type>
       <description>
 <p>The TimeStamp field is a 64-bit integer that represents the time object as an approximation of the number of milliseconds represented in the time object (approximately the total amount of time passed since Zero-AD).  This is convenient for summarising a time value for comparison with other time stamps, or for storing time in a 64-bit space.</p>
-<p>The TimeStamp is dynamically calculated when you read this field.</p>
+<p>The TimeStamp value is dynamically calculated when reading this field.</p>
       </description>
     </field>
 

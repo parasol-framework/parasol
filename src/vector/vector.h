@@ -900,7 +900,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
    std::string path = "temp:bmp_" + Name + ".png";
 
-   objPicture::create pic = {
+   auto pic = objPicture::create {
       fl::Width(Bitmap->Clip.Right - Bitmap->Clip.Left),
       fl::Height(Bitmap->Clip.Bottom - Bitmap->Clip.Top),
       fl::BitsPerPixel(32),
@@ -920,7 +920,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
 {
    std::string path = "temp:raw_" + Name + ".png";
 
-   objPicture::create pic = {
+   auto pic = objPicture::create {
       fl::Width(Width),
       fl::Height(Height),
       fl::BitsPerPixel(BPP),

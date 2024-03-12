@@ -736,7 +736,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
-   objConfig::create config = { };
+   auto config = objConfig::create { };
    if (config.ok()) {
       config->write("POINTER", "Speed", Self->Speed);
       config->write("POINTER", "Acceleration", Self->Acceleration);
@@ -1054,7 +1054,7 @@ static void set_pointer_defaults(extPointer *Self)
    DOUBLE doubleclick  = 0.36;
    CSTRING buttonorder = "123456789ABCDEF";
 
-   objConfig::create config = { fl::Path("user:config/pointer.cfg") };
+   auto config = objConfig::create { fl::Path("user:config/pointer.cfg") };
 
    if (config.ok()) {
       DOUBLE dbl;

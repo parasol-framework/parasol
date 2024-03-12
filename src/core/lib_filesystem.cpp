@@ -910,7 +910,7 @@ ERROR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
    log.branch("%.80s, Flags: $%.8x", path, LONG(Flags));
 
-   objFile::create file = { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
+   auto file = objFile::create { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
    if (file.ok()) {
       auto file_size = file->get<LARGE>(FID_Size);

@@ -490,7 +490,7 @@ LARGE GetResource(RES Resource)
 
          if (cpu_mhz) return cpu_mhz;
 
-         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
+         auto file = objFile::create { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
