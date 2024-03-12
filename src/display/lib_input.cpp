@@ -17,7 +17,7 @@ EventBuffer glInputEvents;
 -FUNCTION-
 GetInputTypeName: Returns the string name for an input type.
 
-This function converts JET integer constants to their string equivalent.
+This function converts `JET` integer constants to their string equivalent.
 
 -INPUT-
 int(JET) Type: JET type integer.
@@ -65,7 +65,7 @@ ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
 All processable events are referenced in the InputEvent structure in the Events parameter.
 
-JET constants are as follows and take note of `CROSSED_IN` and `CROSSED_OUT` which are software generated and not
+`JET` constants are as follows and take note of `CROSSED_IN` and `CROSSED_OUT` which are software generated and not
 a device event:
 
 <types lookup="JET"/>

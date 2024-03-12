@@ -352,7 +352,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="JET" name="Type" lookup="JET">JET type integer.</param>
     </input>
     <description>
-<p>This function converts JET integer constants to their string equivalent.</p>
+<p>This function converts <code>JET</code> integer constants to their string equivalent.</p>
     </description>
     <result type="CSTRING">A string describing the input type is returned or NULL if the Type is invalid.</result>
   </function>
@@ -813,7 +813,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 }
 </pre>
 <p>All processable events are referenced in the InputEvent structure in the Events parameter.</p>
-<p>JET constants are as follows and take note of <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> which are software generated and not a device event:</p>
+<p>
+<code>JET</code> constants are as follows and take note of <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> which are software generated and not a device event:</p>
 <types lookup="JET"/>
 <p>The <code>JTYPE</code> values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate <code>JTYPE</code> flag must have been set in the original subscription call.</p>
 <types lookup="JTYPE"/>

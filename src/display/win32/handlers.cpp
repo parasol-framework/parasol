@@ -107,6 +107,8 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 }
 
 //********************************************************************************************************************
+// If a button press is incoming from the non-client area (e.g. titlebar, resize edge) then the SECONDARY flag is
+// applied.
 
 void MsgButtonPress(LONG button, LONG State)
 {
@@ -118,7 +120,7 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (button & 0x0001) {
          joy[i].Type  = JET::BUTTON_1;
-         joy[i].Flags = JTYPE::NIL;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
          joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
@@ -126,7 +128,7 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (button & 0x0002) {
          joy[i].Type  = JET::BUTTON_2;
-         joy[i].Flags = JTYPE::NIL;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
          joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
@@ -134,7 +136,7 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (button & 0x0004) {
          joy[i].Type  = JET::BUTTON_3;
-         joy[i].Flags = JTYPE::NIL;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
          joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;

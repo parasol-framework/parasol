@@ -132,14 +132,14 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
    if (Args->Datatype IS DATA::DEVICE_INPUT) {
       if (auto input = (struct dcDeviceInput *)Args->Buffer) {
-         for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+         for (LONG i=0; i < std::ssize(Self->Buttons); i++) {
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
          }
 
          for (LONG i=sizeof(struct dcDeviceInput); i <= Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
             if ((LONG(input->Type) < 1) or (LONG(input->Type) >= LONG(JET::END))) continue;
 
-            input->Flags = glInputType[LONG(input->Type)].Flags;
+            input->Flags |= glInputType[LONG(input->Type)].Flags;
 
             //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET::END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
@@ -172,7 +172,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
    if (!userinput.Timestamp) userinput.Timestamp = PreciseTime();
 
-   auto uiflags = JTYPE::NIL;
+   auto uiflags = userinput.Flags;
 
    if ((userinput.Type >= JET::BUTTON_1) and (userinput.Type <= JET::BUTTON_10)) {
       bi = LONG(userinput.Type) - LONG(JET::BUTTON_1);
@@ -181,8 +181,11 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    else {
       // This subroutine is used when the button is not one of the regular 1-10 available button types
 
-      add_input("IrregularButton", userinput, uiflags, Self->OverObjectID, Self->OverObjectID,
-         Self->X, Self->Y, Self->OverX, Self->OverY);
+      if ((userinput.Flags & JTYPE::SECONDARY) != JTYPE::NIL);
+      else {
+         add_input("IrregularButton", userinput, uiflags, Self->OverObjectID, Self->OverObjectID,
+            Self->X, Self->Y, Self->OverX, Self->OverY);
+      }
       return;
    }
 
@@ -279,8 +282,11 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
          QueueAction(AC_Focus, target);
 
-         add_input("ButtonPress", userinput, uiflags, target, Self->OverObjectID,
-            Self->X, Self->Y, Self->OverX, Self->OverY);
+         if ((userinput.Flags & JTYPE::SECONDARY) != JTYPE::NIL);
+         else {
+            add_input("ButtonPress", userinput, uiflags, target, Self->OverObjectID,
+               Self->X, Self->Y, Self->OverX, Self->OverY);
+         }
       //}
 
       SubscribeTimer(0.02, FUNCTION(repeat_timer), &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
@@ -888,7 +894,7 @@ static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
 {
    LONG i;
    LONG state = 0;
-   for (i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+   for (i=0; i < std::ssize(Self->Buttons); i++) {
       if (Self->Buttons[i].LastClicked) state |= 1<<i;
    }
 
@@ -1049,7 +1055,7 @@ static void set_pointer_defaults(extPointer *Self)
 {
    DOUBLE speed        = glDefaultSpeed;
    DOUBLE acceleration = glDefaultAcceleration;
-   LONG maxspeed     = 100;
+   LONG maxspeed       = 100;
    DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
    DOUBLE doubleclick  = 0.36;
    CSTRING buttonorder = "123456789ABCDEF";
@@ -1188,7 +1194,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
    // The subscription is automatically removed if no buttons are held down
 
    bool unsub = true;
-   for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+   for (LONG i=0; i < std::ssize(Self->Buttons); i++) {
       if (Self->Buttons[i].LastClicked) {
          LARGE time = PreciseTime();
          if (Self->Buttons[i].LastClickTime + 300000LL <= time) {

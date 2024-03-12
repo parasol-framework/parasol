@@ -3,7 +3,6 @@
 
 //#define DEBUG
 //#define DBGMSG
-//#define DBGMOUSE
 
 #define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
 #define WINVER 0x0600
@@ -20,6 +19,7 @@
 #include <winuser.h>
 #include <shlobj.h>
 #include <objidl.h>
+#include <map>
 
 #include <parasol/system/errors.h>
 
@@ -59,6 +59,7 @@ typedef long long LARGE;
 #define WIN_RMB 0x0002
 #define WIN_MMB 0x0004
 #define WIN_DBL 0x8000
+#define WIN_NONCLIENT 0x4000
 
 #define BORDERSIZE 6
 #define WM_ICONNOTIFY (WM_USER + 101)
@@ -83,11 +84,7 @@ HCURSOR glCurrentCursor = 0;
 static BYTE glScreenClassInit = 0;
 
 #ifdef DBGMSG
-static struct {
-   int code;
-   char *name;
-} wincmd[] = {
-#ifdef DBGMOUSE
+static std::map<int, const char *> glCmd = { {
  { WM_SETCURSOR, "WM_SETCURSOR" },
  { WM_NCMOUSEHOVER, "WM_NCMOUSEHOVER" },
  { WM_NCMOUSELEAVE, "WM_NCMOUSELEAVE" }, { WM_NCMOUSEMOVE, "WM_NCMOUSEMOVE" },
@@ -96,7 +93,6 @@ static struct {
  { WM_MBUTTONDBLCLK, "WM_MBUTTONDBLCLK" }, { WM_MOUSEWHEEL, "WM_MOUSEWHEEL" }, { WM_MOUSEFIRST, "WM_MOUSEFIRST" }, { WM_XBUTTONDOWN, "WM_XBUTTONDOWN" },
  { WM_XBUTTONUP, "WM_XBUTTONUP" }, { WM_XBUTTONDBLCLK, "WM_XBUTTONDBLCLK" }, { WM_MOUSELAST, "WM_MOUSELAST" }, { WM_MOUSEHOVER, "WM_MOUSEHOVER" }, { WM_MOUSELEAVE, "WM_MOUSELEAVE" },
  { WM_NCHITTEST, "WM_NCHITTEST" }, { WM_NCLBUTTONDBLCLK, "WM_NCLBUTTONDBLCLK" }, { WM_NCLBUTTONDOWN, "WM_NCLBUTTONDOWN" },
-#endif
  { WM_APP, "WM_APP" }, { WM_ACTIVATE, "WM_ACTIVATE" }, { WM_ACTIVATEAPP, "WM_ACTIVATEAPP" }, { WM_AFXFIRST, "WM_AFXFIRST" }, { WM_MOVE, "WM_MOVE" },
  { WM_AFXLAST, "WM_AFXLAST" }, { WM_ASKCBFORMATNAME, "WM_ASKCBFORMATNAME" }, { WM_CANCELJOURNAL, "WM_CANCELJOURNAL" }, { WM_CANCELMODE, "WM_CANCELMODE" },
  { WM_CAPTURECHANGED, "WM_CAPTURECHANGED" }, { WM_CHANGECBCHAIN, "WM_CHANGECBCHAIN" }, { WM_CHAR, "WM_CHAR" }, { WM_CHARTOITEM, "WM_CHARTOITEM" },
@@ -136,9 +132,8 @@ static struct {
  { WM_SYSCOMMAND, "WM_SYSCOMMAND" }, { WM_SYSDEADCHAR, "WM_SYSDEADCHAR" }, { WM_SYSKEYDOWN, "WM_SYSKEYDOWN" }, { WM_SYSKEYUP, "WM_SYSKEYUP" }, { WM_TCARD, "WM_TCARD" },
  { WM_TIMECHANGE, "WM_TIMECHANGE" }, { WM_TIMER, "WM_TIMER" }, { WM_UNDO, "WM_UNDO" }, { WM_USER, "WM_USER" }, { WM_USERCHANGED, "WM_USERCHANGED" }, { WM_VKEYTOITEM, "WM_VKEYTOITEM" },
  { WM_VSCROLL, "WM_VSCROLL" }, { WM_VSCROLLCLIPBOARD, "WM_VSCROLLCLIPBOARD" }, { WM_WINDOWPOSCHANGED, "WM_WINDOWPOSCHANGED" }, { WM_WINDOWPOSCHANGING, "WM_WINDOWPOSCHANGING" },
- { WM_WININICHANGE, "WM_WININICHANGE" }, { WM_KEYFIRST, "WM_KEYFIRST" }, { WM_KEYLAST, "WM_KEYLAST" }, { WM_SYNCPAINT, "WM_SYNCPAINT" },
- { 0, 0 }
-};
+ { WM_WININICHANGE, "WM_WININICHANGE" }, { WM_KEYFIRST, "WM_KEYFIRST" }, { WM_KEYLAST, "WM_KEYLAST" }, { WM_SYNCPAINT, "WM_SYNCPAINT" }
+} };
 #endif
 
 int winLookupSurfaceID(HWND Window)
@@ -709,16 +704,11 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
    RECT winrect, client;
 
 #ifdef DBGMSG
-   int i;
-   for (i=0; wincmd[i].code; i++) {
-      if (msgcode == wincmd[i].code) {
-         fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", wincmd[i].name, (int)wParam, (int)lParam, window);
-         break;
-      }
+   if (glCmd.contains(msgcode)) {
+      fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", glCmd[msgcode], (int)wParam, (int)lParam, window);
    }
-
-   if (!wincmd[i].code) {
-      fprintf(stderr, "WinProc: %d, $%.8x, $%.8x, Window: %p\n", msgcode, (int)wParam, (int)lParam, window);
+   else {
+      fprintf(stderr, "WinProc: 0x%x, $%.8x, $%.8x, Window: %p\n", msgcode, (int)wParam, (int)lParam, window);
    }
 #endif
 
@@ -935,13 +925,13 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_NCLBUTTONDOWN: 
          // Click detected on the titlebar or resize area.  Quirks in the way that Windows manages
          // mouse input mean that we need to signal a button press and release consecutively.
-         MsgButtonPress(WIN_LMB, 1);
-         MsgButtonPress(WIN_LMB, 0);
+         MsgButtonPress(WIN_LMB|WIN_NONCLIENT, 1);
+         MsgButtonPress(WIN_LMB|WIN_NONCLIENT, 0);
          return DefWindowProc(window, msgcode, wParam, lParam);
 
       case WM_NCLBUTTONDBLCLK: // Double-click detected on the titlebar
-         MsgButtonPress(WIN_DBL|WIN_LMB, 1);
-         MsgButtonPress(WIN_DBL|WIN_LMB, 0);
+         MsgButtonPress(WIN_DBL|WIN_LMB|WIN_NONCLIENT, 1);
+         MsgButtonPress(WIN_DBL|WIN_LMB|WIN_NONCLIENT, 0);
          return DefWindowProc(window, msgcode, wParam, lParam); 
 
       case WM_ICONNOTIFY:
