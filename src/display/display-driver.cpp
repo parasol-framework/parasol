@@ -980,6 +980,8 @@ static ERROR CMDExpunge(void)
 {
    pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
+   
+   clean_clipboard();
 
    glClips.clear();
    if (glDither)              { FreeResource(glDither); glDither = NULL; }

@@ -420,6 +420,7 @@ class extDisplay : public objDisplay {
    #endif
 };
 
+extern void clean_clipboard(void);
 extern ERROR create_bitmap_class(void);
 extern ERROR create_clipboard_class(void);
 extern ERROR create_display_class(void);

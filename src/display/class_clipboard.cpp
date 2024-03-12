@@ -29,6 +29,7 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 *********************************************************************************************************************/
 
 #include "defs.h"
+#include <regex>
 
 #ifdef _WIN32
 using namespace display;
@@ -60,6 +61,35 @@ static std::string get_datatype(CLIPTYPE);
 static ERROR add_clip(CLIPTYPE, const std::vector<ClipItem> &, CEF = CEF::NIL);
 static ERROR add_clip(CSTRING);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
+
+//********************************************************************************************************************
+// Remove stale clipboard files that are over 24hrs old
+
+void clean_clipboard(void)
+{
+   auto time = objTime::create { };
+   if (!time.ok()) return;
+
+   time->query();
+   LARGE now = time->get<LARGE>(FID_TimeStamp) / 1000000LL;
+   LARGE yesterday = now - (24 * 60LL * 60LL);
+
+   DirInfo *dir;
+   if (not OpenDir("clipboard:", RDF::FILE|RDF::DATE, &dir)) {
+      GuardedResource free_dir(dir);
+
+      while (not ScanDir(dir)) {
+         const std::regex txt_regex("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$");
+         if (std::regex_match(dir->Info->Name, txt_regex)) {
+            if (dir->Info->TimeStamp < yesterday) {
+               std::string path("clipboard:");
+               path.append(dir->Info->Name);
+               DeleteFile(path.c_str(), NULL);
+            }
+         }
+      }
+   }
+}
 
 //********************************************************************************************************************
 
