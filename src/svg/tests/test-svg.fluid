@@ -89,8 +89,8 @@ function testW3SkewText()         hashTestSVG('transforms/w3-skew-text.svg', 0xd
 function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xb29ce372) end
 
 function testCSS()                hashTestSVG('misc/css.svg', 0xefdc1bcf) end
-function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0xd0323a21) end
-function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x0094f19c) end
+function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x125baa67) end
+function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x4b865f18) end
 
 function testClock()              hashTestSVG('images/clock.svg', 0xe5ad43cb) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0x8e6b884e) end

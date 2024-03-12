@@ -9,8 +9,6 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 
 *********************************************************************************************************************/
 
-#include "agg_rounded_rect.h"
-
 static void generate_rectangle(extVectorRectangle *Vector)
 {
    DOUBLE x, y, width, height;
@@ -83,11 +81,24 @@ static void generate_rectangle(extVectorRectangle *Vector)
          if (ry[i] > height * 0.5) ry[i] = height * 0.5;
       }
 
-      agg::rounded_rect aggrect(x, y, x + width, y + height, 0, 0);
-      aggrect.radius(rx[0], ry[0], rx[1], ry[1], rx[2], ry[2], rx[3], ry[3]);
-      aggrect.normalize_radius(); // Required because???
+      // Top left -> Top right
+      Vector->BasePath.move_to(x+rx[0], y);
+      Vector->BasePath.line_to(x+width-rx[1], y);
+      Vector->BasePath.arc_to(rx[1], ry[1], 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry[1]);
+      
+      // Top right -> Bottom right
+      Vector->BasePath.line_to(x+width, y+height-ry[1]);
+      Vector->BasePath.arc_to(rx[2], ry[2], 0, 0, 1, x+width-rx[2], y+height);
 
-      Vector->BasePath.concat_path(aggrect);
+      // Bottom right -> Bottom left
+      Vector->BasePath.line_to(x+rx[2], y+height);
+      Vector->BasePath.arc_to(rx[3], ry[3], 0, 0, 1, x, y+height-ry[3]);
+
+      // Bottom left -> Top left
+      Vector->BasePath.line_to(x, y+ry[3]);
+      Vector->BasePath.arc_to(rx[0], ry[0], 0, 0, 1, x+rx[0], y);
+
+      Vector->BasePath.close_polygon();
    }
    else if (Vector->rRound[0].x > 0) {
       // SVG rules that RX will also apply to RY unless RY != 0.
@@ -110,10 +121,24 @@ static void generate_rectangle(extVectorRectangle *Vector)
       }
       else ry = rx;
 
-      agg::rounded_rect aggrect(x, y, x + width, y + height, rx, ry);
-      aggrect.normalize_radius(); // Required because???
+      // Top left -> Top right
+      Vector->BasePath.move_to(x+rx, y);
+      Vector->BasePath.line_to(x+width-rx, y);
+      Vector->BasePath.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry);
+      
+      // Top right -> Bottom right
+      Vector->BasePath.line_to(x+width, y+height-ry);
+      Vector->BasePath.arc_to(rx, ry, 0, 0, 1, x+width-rx, y+height);
 
-      Vector->BasePath.concat_path(aggrect);
+      // Bottom right -> Bottom left
+      Vector->BasePath.line_to(x+rx, y+height);
+      Vector->BasePath.arc_to(rx, ry, 0, 0, 1, x, y+height-ry);
+
+      // Bottom left -> Top left
+      Vector->BasePath.line_to(x, y+ry);
+      Vector->BasePath.arc_to(rx, ry, 0, 0, 1, x+rx, y);
+
+      Vector->BasePath.close_polygon();
    }
    else {
       Vector->BasePath.move_to(x, y);
