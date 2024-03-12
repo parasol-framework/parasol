@@ -506,7 +506,8 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
    // If a release object has been specified and the cursor is not positioned over it, call the RestoreCursor method.
 
-   if ((Self->CursorReleaseID) and (Self->CursorReleaseID != Self->OverObjectID)) {
+   if ((userinput.Flags & JTYPE::SECONDARY) != JTYPE::NIL); // No cursor manipulation when it's in a Win32 area
+   else if ((Self->CursorReleaseID) and (Self->CursorReleaseID != Self->OverObjectID)) {
       gfxRestoreCursor(PTC::DEFAULT, 0);
    }
 }

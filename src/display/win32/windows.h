@@ -78,7 +78,7 @@ extern void win32RedrawWindow(HWND, HDC, int X, int Y, int Width,
 
 extern void MsgKeyPress(int, int, int);
 extern void MsgKeyRelease(int, int);
-extern void MsgMovement(int, double, double, int, int);
+extern void MsgMovement(int, double, double, int, int, bool);
 extern void MsgWheelMovement(int, float);
 extern void MsgButtonPress(int, int);
 extern void MsgFocusState(int SurfaceID, int State);

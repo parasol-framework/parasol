@@ -533,9 +533,11 @@ int winGetWindowInfo(HWND Window, int *X, int *Y, int *Width, int *Height, int *
 
 //********************************************************************************************************************
 
-static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
+static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam, bool NonClient)
 {
-   if (glCursorEntry == FALSE) {
+   // Note that if the movement is in the non-client portion of the window, we can't mess with the cursor image.
+
+   if ((glCursorEntry == FALSE) and (!NonClient)) {
       winSetCursor(glDefaultCursor);
       glCursorEntry = TRUE;
 
@@ -556,7 +558,7 @@ static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
    if (auto surface_id = winLookupSurfaceID(window)) {
       POINT point;
       GetCursorPos(&point);
-      MsgMovement(surface_id, point.x, point.y, (int)(lparam & 0xffff), (lparam>>16) & 0xffff);
+      MsgMovement(surface_id, point.x, point.y, (int)(lparam & 0xffff), (lparam>>16) & 0xffff, NonClient);
    }
 }
 
@@ -905,7 +907,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
                              else HandleKeyRelease(wParam);
                              return 0;
 
-      case WM_MOUSEMOVE:     HandleMovement(window, wParam, lParam); return 0;
+      case WM_MOUSEMOVE:     HandleMovement(window, wParam, lParam, false); return 0;
 
       case WM_MOUSELEAVE:    glCursorEntry = FALSE;
                              return 0;
@@ -922,6 +924,10 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_RBUTTONUP:     HandleButtonRelease(window, WIN_RMB); return 0;
       case WM_MBUTTONUP:     HandleButtonRelease(window, WIN_MMB); return 0;
 
+      case WM_NCMOUSEMOVE: 
+         HandleMovement(window, wParam, lParam, true); 
+         return DefWindowProc(window, msgcode, wParam, lParam);
+ 
       case WM_NCLBUTTONDOWN: 
          // Click detected on the titlebar or resize area.  Quirks in the way that Windows manages
          // mouse input mean that we need to signal a button press and release consecutively.

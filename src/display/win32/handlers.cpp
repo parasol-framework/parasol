@@ -48,7 +48,7 @@ void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value));
 
 //********************************************************************************************************************
 
-void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
+void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY, bool NonClient)
 {
    if (auto pointer = gfxAccessPointer(); pointer) {
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
@@ -56,7 +56,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
 
       struct dcDeviceInput joy[1];
       joy[0].Type  = JET::ABS_XY;
-      joy[0].Flags = JTYPE::NIL;
+      joy[0].Flags = NonClient ? JTYPE::SECONDARY : JTYPE::NIL;
       joy[0].Values[0] = AbsX;
       joy[0].Values[1] = AbsY;
       joy[0].Timestamp = PreciseTime();

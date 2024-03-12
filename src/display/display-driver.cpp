@@ -201,7 +201,6 @@ OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
 bool glSixBitDisplay = false;
-static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
 static auto glDisplayType = DT::NATIVE;
@@ -984,7 +983,6 @@ static ERROR CMDExpunge(void)
 
    glClips.clear();
    if (glDither)              { FreeResource(glDither); glDither = NULL; }
-   if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
    if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
    if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }
