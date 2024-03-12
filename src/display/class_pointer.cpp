@@ -181,11 +181,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    else {
       // This subroutine is used when the button is not one of the regular 1-10 available button types
 
-      if ((userinput.Flags & JTYPE::SECONDARY) != JTYPE::NIL);
-      else {
-         add_input("IrregularButton", userinput, uiflags, Self->OverObjectID, Self->OverObjectID,
-            Self->X, Self->Y, Self->OverX, Self->OverY);
-      }
+      add_input("IrregularButton", userinput, uiflags, Self->OverObjectID, Self->OverObjectID,
+         Self->X, Self->Y, Self->OverX, Self->OverY);
       return;
    }
 
@@ -282,11 +279,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
          QueueAction(AC_Focus, target);
 
-         if ((userinput.Flags & JTYPE::SECONDARY) != JTYPE::NIL);
-         else {
-            add_input("ButtonPress", userinput, uiflags, target, Self->OverObjectID,
-               Self->X, Self->Y, Self->OverX, Self->OverY);
-         }
+         add_input("ButtonPress", userinput, uiflags, target, Self->OverObjectID,
+            Self->X, Self->Y, Self->OverX, Self->OverY);
       //}
 
       SubscribeTimer(0.02, FUNCTION(repeat_timer), &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
