@@ -202,18 +202,18 @@ The TimeStamp field is a 64-bit integer that represents the time object as an ap
 milliseconds represented in the time object (approximately the total amount of time passed since Zero-AD).  This is
 convenient for summarising a time value for comparison with other time stamps, or for storing time in a 64-bit space.
 
-The TimeStamp is dynamically calculated when you read this field.
+The TimeStamp value is dynamically calculated when reading this field.
 
 *********************************************************************************************************************/
 
 static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
 {
    *Value = Self->Second +
-            ((LARGE)Self->Minute * 60) +
-            ((LARGE)Self->Hour * 60 * 60) +
-            ((LARGE)Self->Day * 60 * 60 * 24) +
-            ((LARGE)Self->Month * 60 * 60 * 24 * 31) +
-            ((LARGE)Self->Year * 60 * 60 * 24 * 12);
+            (LARGE(Self->Minute) * 60) +
+            (LARGE(Self->Hour) * 60 * 60) +
+            (LARGE(Self->Day) * 60 * 60 * 24) +
+            (LARGE(Self->Month) * 60 * 60 * 24 * 31) +
+            (LARGE(Self->Year) * 60 * 60 * 24 * 31 * 12);
 
    *Value = *Value * 1000000LL;
 
