@@ -1546,20 +1546,6 @@ void winGetError(int Error, char *Buffer, int BufferSize)
 
 //********************************************************************************************************************
 
-void winDrawLine(HDC hdc, int x1, int y1, int x2, int y2, UBYTE *rgb)
-{
-   if (auto pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2]))) {
-      if (auto oldpen = SelectObject(hdc, pen)) {
-         MoveToEx(hdc, x1, y1, NULL);
-         LineTo(hdc, x2, y2);
-         SelectObject(hdc, oldpen);
-      }
-      DeleteObject(pen);
-   }
-}
-
-//********************************************************************************************************************
-
 void winDrawRectangle(HDC hdc, int x, int y, int width, int height, UBYTE red, UBYTE green, UBYTE blue)
 {
    RECT rect;
@@ -1571,25 +1557,6 @@ void winDrawRectangle(HDC hdc, int x, int y, int width, int height, UBYTE red, U
    auto brush = CreateSolidBrush(RGB(red,green,blue));
    FillRect(hdc, &rect, brush);
    DeleteObject(brush);
-}
-
-/*********************************************************************************************************************
-** Sets a new clipping region for a DC.
-*/
-
-int winSetClipping(HDC hdc, int left, int top, int right, int bottom)
-{
-   if ((!right) or (!bottom)) {
-      SelectClipRgn(hdc, NULL);
-      return 1;
-   }
-
-   if (auto region = CreateRectRgn(left, top, right, bottom)) {
-      SelectClipRgn(hdc, region);
-      DeleteObject(region);
-      return 1;
-   }
-   return 0;
 }
 
 //********************************************************************************************************************
@@ -1607,13 +1574,6 @@ int winBlit(HDC dest, int xdest, int ydest, int width, int height, HDC src, int 
 void * winCreateCompatibleDC(void)
 {
    return CreateCompatibleDC(NULL);
-}
-
-//********************************************************************************************************************
-
-void winDeleteObject(void *Object)
-{
-   DeleteObject(Object);
 }
 
 //********************************************************************************************************************
@@ -1663,34 +1623,9 @@ void winDeleteDC(HDC hdc)
 
 //********************************************************************************************************************
 
-void winGetPixel(HDC hdc, int x, int y, UBYTE *rgb)
-{
-   COLORREF col;
-   col = GetPixel(hdc, x, y);
-   rgb[0] = GetRValue(col);
-   rgb[1] = GetGValue(col);
-   rgb[2] = GetBValue(col);
-}
-
-//********************************************************************************************************************
-
 HBITMAP winCreateBitmap(int width, int height, int bpp)
 {
    return CreateBitmap(width, height, 1, bpp, NULL);
-}
-
-//********************************************************************************************************************
-// This masking technique works so long as the source graphic uses a clear background after determining its original
-// mask shape.
-
-void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
-        int x, int y, int xsrc, int ysrc, int width, int height,
-        int maskx, int masky, HDC hdcMask)
-{
-   if ((!hdcMask) or (!hdcDest) or (!hdcSrc)) return;
-
-   BitBlt(hdcDest, x, y, width, height, hdcMask, maskx, masky, SRCAND);   // Mask out the places where the bitmap will be placed.
-   BitBlt(hdcDest, x, y, width, height, hdcSrc, xsrc, ysrc, SRCPAINT);    // XOR the bitmap with the background on the destination DC.
 }
 
 //********************************************************************************************************************
