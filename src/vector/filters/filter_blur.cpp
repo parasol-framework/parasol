@@ -85,40 +85,51 @@ class extBlurFX : public extFilterEffect {
 //********************************************************************************************************************
 // This is the stack blur algorithm originally implemented in AGG.  It is intended to produce a near identical output
 // to that of a standard gaussian blur algorithm.
+//
+// Note that blurring is always performed with premultiplied colour values; otherwise the function will output pixels
+// that are darkly tinted.
 
 static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 {
-   auto bmp = Self->Target;
-   if (bmp->BytesPerPixel != 4) return ERR_Failed;
+   auto outBmp = Self->Target;
+   if (outBmp->BytesPerPixel != 4) return ERR_Failed;
+   
+   DOUBLE scale = 1.0;
+   if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
 
-   LONG rx = F2T(Self->SX * 2);
-   LONG ry = F2T(Self->SY * 2);
+   LONG rx = F2T(Self->SX * 2 * scale);
+   LONG ry = F2T(Self->SY * 2 * scale);
+   
+   objBitmap *inBmp;
+   
+   if ((rx < 1) and (ry < 1)) {
+      if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+      BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
+      gfxCopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
+      return ERR_Okay;
+   }
+   
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToLinear(inBmp);
 
-   if ((rx < 1) and (ry < 1)) return ERR_Okay;
+   bmpPremultiply(inBmp);
+   
+   UBYTE *dst_pix_ptr;
+   agg::rgba8 *stack_pix_ptr;
 
-   const UBYTE * src_pix_ptr;
-   UBYTE * dst_pix_ptr;
-   agg::rgba8 *  stack_pix_ptr;
+   const LONG w = (outBmp->Clip.Right - outBmp->Clip.Left);
+   const LONG h = (outBmp->Clip.Bottom - outBmp->Clip.Top);
+   const LONG wm = w - 1;
+   const LONG hm = h - 1;
 
-   const LONG w = (bmp->Clip.Right - bmp->Clip.Left);
-   const LONG h = (bmp->Clip.Bottom - bmp->Clip.Top);
-   const LONG wm  = w - 1;
-   const LONG hm  = h - 1;
+   UBYTE A = inBmp->ColourFormat->AlphaPos>>3;
+   UBYTE R = inBmp->ColourFormat->RedPos>>3;
+   UBYTE G = inBmp->ColourFormat->GreenPos>>3;
+   UBYTE B = inBmp->ColourFormat->BluePos>>3;
 
-   std::vector<agg::rgba8> stack;
-
-   UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   UBYTE R = bmp->ColourFormat->RedPos>>3;
-   UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-   UBYTE *data = bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth);
-
-   // Premultiply all the pixels.  This process is required to prevent the blur from picking up colour values in pixels
-   // where the alpha = 0.  If there's no alpha channel present then a pre-multiply isn't required.  NB: Demultiply
-   // takes place at the end of the routine.
-
-   bmpPremultiply(bmp);
+   UBYTE *in_data  = inBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
+   UBYTE *out_data = outBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
 
    ULONG sum_r, sum_g, sum_b, sum_a;
    ULONG sum_in_r, sum_in_g, sum_in_b, sum_in_a;
@@ -129,6 +140,8 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    ULONG div;
    ULONG mul_sum;
    ULONG shr_sum;
+   
+   std::vector<agg::rgba8> stack;
 
    if (rx > 0) {
       if (rx > 254) rx = 254;
@@ -139,18 +152,18 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 
       for (y=0; y < h; y++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
-
-         src_pix_ptr = data + (bmp->LineWidth * y);
+         
+         const UBYTE * src_pix_ptr = in_data + (outBmp->LineWidth * y);
          for (LONG i=0; i <= rx; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
              stack_pix_ptr->g = src_pix_ptr[G];
              stack_pix_ptr->b = src_pix_ptr[B];
              stack_pix_ptr->a = src_pix_ptr[A];
-             sum_r += src_pix_ptr[R] * (i + 1);
-             sum_g += src_pix_ptr[G] * (i + 1);
-             sum_b += src_pix_ptr[B] * (i + 1);
-             sum_a += src_pix_ptr[A] * (i + 1);
+             sum_r     += src_pix_ptr[R] * (i + 1);
+             sum_g     += src_pix_ptr[G] * (i + 1);
+             sum_b     += src_pix_ptr[B] * (i + 1);
+             sum_a     += src_pix_ptr[A] * (i + 1);
              sum_out_r += src_pix_ptr[R];
              sum_out_g += src_pix_ptr[G];
              sum_out_b += src_pix_ptr[B];
@@ -177,8 +190,8 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          stack_ptr = rx;
          xp = rx;
          if (xp > wm) xp = wm;
-         src_pix_ptr = data + (bmp->LineWidth * y) + (xp<<2);
-         dst_pix_ptr = data + (bmp->LineWidth * y);
+         src_pix_ptr = in_data + (outBmp->LineWidth * y) + (xp<<2);
+         dst_pix_ptr = out_data + (outBmp->LineWidth * y);
          for (LONG x=0; x < w; x++) {
             dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
             dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
@@ -236,17 +249,21 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    }
 
    if (ry > 0) {
+      if (rx > 0) {
+         in_data = out_data; // If rx was already processed, the dest becomes the source
+      }
+
       if (ry > 254) ry = 254;
       div = ry * 2 + 1;
       mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[ry];
       shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[ry];
       stack.resize(div);
 
-      int stride = bmp->LineWidth;
+      int stride = outBmp->LineWidth;
       for (x = 0; x < w; x++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
 
-         src_pix_ptr = data + (x<<2);
+         const UBYTE * src_pix_ptr = in_data + (x<<2);
          for (LONG i = 0; i <= ry; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
@@ -283,8 +300,8 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          stack_ptr = ry;
          yp = ry;
          if (yp > hm) yp = hm;
-         src_pix_ptr = data + (x<<2) + (bmp->LineWidth * yp);
-         dst_pix_ptr = data + (x<<2);
+         src_pix_ptr = in_data + (x<<2) + (outBmp->LineWidth * yp);
+         dst_pix_ptr = out_data + (x<<2);
          for (LONG y = 0; y < h; y++) {
             dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
             dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
@@ -340,8 +357,17 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          }
       }
    }
+   
+   //bmpDemultiply(inBmp);
 
-   bmpDemultiply(bmp);
+   outBmp->Flags |= BMF::PREMUL; // Need to tell the bitmap it has premultiplied output before Demultiply()
+   bmpDemultiply(outBmp);
+   
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
+      outBmp->ColourSpace = CS::LINEAR_RGB;
+      bmpConvertToRGB(outBmp);
+   }
+
    return ERR_Okay;
 }
 

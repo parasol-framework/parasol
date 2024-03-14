@@ -33,7 +33,7 @@ class extImageFX : public extFilterEffect {
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
    ARF  AspectRatio;     // Aspect ratio flags.
-   VSM ResampleMethod;  // Resample method.
+   VSM ResampleMethod;   // Resample method.
 };
 
 /*********************************************************************************************************************

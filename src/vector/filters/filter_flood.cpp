@@ -42,8 +42,6 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
 {
-   pf::Log log;
-
    auto &filter = Self->Filter;
 
    // Draw to destination.  No anti-aliasing is applied and the alpha channel remains constant.

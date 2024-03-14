@@ -1,0 +1,48 @@
+<svg version="1.1" baseProfile="basic" preserveAspectRatio="xMidYMid meet" zoomAndPan="magnify" id="svg-root"
+  width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+In the upper left corner of the output are blue and yellow rectangles that overlap, they appear normally, no
+gaussianBlur has been applied.
+
+In the upper right the same rectangles are displayed with a blur filter applied, the standard deviation is the
+same for both the x and y axis.
+
+In the lower right corner the rectangles appear again, this time the standard deviation is different along the
+x (20) and y (1) axis.
+
+On top of the rectangles in the upper right and lower right, thin (half-pixel-wide) blue lines are drawn to show the
+outline of the object bounding box (the inside lines) and the outline of the filter region (the outside lines).  The
+blur effect should be clipped to the bounds of the filter region.
+-->
+  <defs>
+    <g id="rects">
+      <rect x="0" y="0" width="90" height="90" fill="blue"/>
+      <rect x="45" y="45" width="90" height="90" fill="yellow"/>
+    </g>
+
+    <g id="rect_outlines">
+      <rect x="0" y="0" width="135" height="135" fill="none" stroke="blue" stroke-width=".5"/>
+      <rect x="-13.5" y="-13.5" width="162" height="162" fill="none" stroke="blue" stroke-width=".5"/>
+    </g>
+
+    <filter id="blur" filterUnits="objectBoundingBox" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+
+    <filter id="blurxy" filterUnits="objectBoundingBox" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="20 1"/>
+    </filter>
+  </defs>
+
+  <use xlink:href="#rects"/>
+
+  <g transform="translate(310,15)">
+    <use xlink:href="#rects" filter="url(#blur)"/>
+    <use xlink:href="#rect_outlines"/>
+  </g>
+
+  <g transform="translate(310,200)">
+    <use xlink:href="#rects" filter="url(#blurxy)"/>
+    <use xlink:href="#rect_outlines"/>
+  </g>
+</svg>

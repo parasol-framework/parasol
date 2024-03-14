@@ -27,7 +27,11 @@ function hashTestSVG(Path, ExpectedHash)
    local hash = mSys.GenCRC32(0, bmp.data, bmp.size)
    if (ExpectedHash != hash) then
       saveBitmap(bmp, Path)
-      error('Computed hash for "' .. Path .. '" is ' .. string.format('0x%.8x', hash) .. ', expected ' .. string.format('0x%.8x', ExpectedHash))
+      if ExpectedHash != nil then
+         error('Computed hash for "' .. Path .. '" is ' .. string.format('0x%.8x', hash) .. ', expected ' .. string.format('0x%.8x', ExpectedHash))
+      else
+         error('Hash for "' .. Path .. '" is '  .. string.format('0x%.8x', hash))
+      end
    end
 end
 
@@ -73,6 +77,9 @@ function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.
 function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0xd9e10af8) end
 function testW3Filters()          hashTestSVG('filters/w3-filters.svg', 0x456a4b9f) end
 function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x67c52b0e) end
+function testW3Gauss1()           hashTestSVG('filters/w3-filters-gauss-01-b.svg', 0x33114ff5) end
+function testW3Gauss2()           hashTestSVG('filters/w3-filters-gauss-02-f.svg', 0x12bbbe5b) end
+function testW3Gauss3()           hashTestSVG('filters/w3-filters-gauss-03-f.svg', 0xd4cc8f68) end
 function testW3Image()            hashTestSVG('filters/w3-image.svg', 0xd822620c) end
 function testW3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0x452414d3) end
 function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0x3590ac32) end
@@ -223,6 +230,9 @@ function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
         'testW3Displacement1',
         'testW3Filters',
         'testW3Filters2',
+        'testW3Gauss1',
+        'testW3Gauss2',
+        'testW3Gauss3',
         'testW3Transfer',
         'testW3Transfer2',
         'testW3LightingSpecular',

@@ -291,6 +291,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &
          case SVF_STDDEVIATION: { // Y is optional, if not set then it is equivalent to X.
             DOUBLE x = -1, y = -1;
             read_numseq(val, &x, &y, TAGEND);
+            if ((x) and (y IS -1)) y = x;
             if (x > 0) fx->set(FID_SX, x);
             if (y > 0) fx->set(FID_SY, y);
             break;

@@ -840,7 +840,8 @@ static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 Demultiply: Reverses the conversion process performed by Premultiply().
 
 Use Demultiply to normalise RGB values that have previously been converted by #Premultiply().  This method will
-return immediately if the bitmap values are already normalised.
+return immediately if the bitmap values are already normalised, as determined by the presence of the `PREMUL` value
+in #Flags.
 
 -ERRORS-
 Okay
