@@ -1016,16 +1016,21 @@ static ERROR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE
 void padding::parse(const std::string &Value)
 {
    auto str = Value.c_str();
-   str = read_unit(str, left, left_pct);
+   str = read_unit(str, left, left_scl);
 
-   if (*str) str = read_unit(str, top, top_pct);
-   else { top = left; top_pct = left_pct; }
+   if (*str) str = read_unit(str, top, top_scl);
+   else { top = left; top_scl = left_scl; }
 
-   if (*str) str = read_unit(str, right, right_pct);
-   else { right = top; right_pct = top_pct; }
+   if (*str) str = read_unit(str, right, right_scl);
+   else { right = top; right_scl = top_scl; }
 
-   if (*str) str = read_unit(str, bottom, bottom_pct);
-   else { bottom = right; bottom_pct = right_pct; }
+   if (*str) str = read_unit(str, bottom, bottom_scl);
+   else { bottom = right; bottom_scl = right_scl; }
+
+   if (left < 0)   left   = 0;
+   if (top < 0)    top    = 0;
+   if (right < 0)  right  = 0;
+   if (bottom < 0) bottom = 0;
 
    configured = true;
 }

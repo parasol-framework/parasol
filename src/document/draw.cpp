@@ -470,35 +470,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             }
 
             case SCODE::BUTTON: {
-               DOUBLE wx, wy;
                auto &button = segment.stream->lookup<bc_button>(cursor);
-               auto font = stack_style.top()->get_font();
 
+               gen_scene_graph(*button.viewport, button.segments);
+               
+               DOUBLE wx, wy;
                if (!build_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
-                  const DOUBLE avail_space = button.final_height - font->metrics.Descent;
-                  const DOUBLE x = (button.final_width - button.label_width) * 0.5;
-                  const DOUBLE y = avail_space - ((avail_space - font->metrics.Height) * 0.5);
-
-                  if (!button.processed) {
-                     button.processed = true;
-
-                     button.label_text.set(objVectorText::create::global({
-                        fl::Name("button_text"),
-                        fl::Owner(button.viewport->UID),
-                        fl::String(button.label),
-                        fl::Face(font->face),
-                        fl::FontSize(font->font_size),
-                        fl::FontStyle(font->style),
-                        fl::Fill(button.font_fill)
-                     }));
-
-                     if (button.viewport->Scene->SurfaceID) {
-                        vecSubscribeInput(*button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_button));
-                     }
-                  }
-
                   Self->VPToEntity.emplace(button.viewport.id, vp_to_entity { &button });
-                  button.label_text->setFields(fl::X(x), fl::Y(F2T(y)));
                }
                break;
             }

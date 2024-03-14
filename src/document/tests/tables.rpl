@@ -51,7 +51,7 @@
     </row>
   </table>
 
-  <table stroke="rgb(200,200,200)" padding="8">
+  <table stroke="rgb(200,200,200)" cell-padding="8">
   <row><cell><p align="center" no-wrap><b>Header 1</b></p></cell><cell><p align="center" no-wrap><b>Header 2</b></p></cell></row>
   <row><cell><p align="center">1</p></cell><cell><p align="center">a</p></cell></row>
   <row><cell><p align="center">2</p></cell><cell><p align="center">b</p></cell></row>

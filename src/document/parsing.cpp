@@ -1633,15 +1633,16 @@ void parser::tag_button(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label)       widget.label  = value;
-      else if (hash IS HASH_fill)   widget.fill   = value;
-      else if (hash IS HASH_name)   widget.name   = value;
-      else if (hash IS HASH_width)  widget.width  = DUNIT(value);
-      else if (hash IS HASH_height) widget.height = DUNIT(value);
+      if (hash IS HASH_fill)         widget.fill   = value;
+      else if (hash IS HASH_name)    widget.name   = value;
+      else if (hash IS HASH_width)   widget.width  = DUNIT(value);
+      else if (hash IS HASH_height)  widget.height = DUNIT(value);
+      else if (hash IS HASH_padding) widget.pad.parse(value); // Outer padding
+      else if (hash IS HASH_cell_padding) widget.inner_padding.parse(value); // Inner padding
       else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   widget.internal_label = true;
+   widget.internal_page = true;
 
    if (!m_button_patterns) {
       m_button_patterns = true;
@@ -1685,8 +1686,21 @@ void parser::tag_button(XMLTag &Tag)
    if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/button/on)";
    if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
 
-   widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
-   widget.label_pad = m_style.get_font()->metrics.Ascent;
+   widget.def_size = DUNIT(1.7, DU::FONT_SIZE);
+
+   if (!Tag.Children.empty()) {
+      Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
+
+      parser parse(Self, widget.stream);    
+
+      auto new_style = m_style;
+      new_style.options = FSO::ALIGN_CENTER;
+      new_style.valign = ALIGN::CENTER;
+
+      parse.m_paragraph_depth++;
+      parse.parse_tags_with_style(Tag.Children, new_style);
+      parse.m_paragraph_depth--;
+   }
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
@@ -3544,7 +3558,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_margins:
-         case HASH_padding:
+         case HASH_cell_padding: // Equivalent to CSS cell-padding
             table.cell_padding.parse(value);
             break;
 
@@ -3724,8 +3738,6 @@ void parser::tag_cell(XMLTag &Tag)
       }
    }
 
-   m_paragraph_depth++;
-
    if (!cell.edit_def.empty()) edit_recurse++;
 
    // Edit sections enforce preformatting, which means that all whitespace entered by the user will be taken
@@ -3761,8 +3773,6 @@ void parser::tag_cell(XMLTag &Tag)
    }
 
    if (!stream_cell.edit_def.empty()) edit_recurse--;
-
-   m_paragraph_depth--;
 }
 
 //********************************************************************************************************************

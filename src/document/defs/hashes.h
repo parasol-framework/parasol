@@ -23,6 +23,7 @@
 #define HASH_call 0x7c950401UL
 #define HASH_caps 0x7c95048cUL
 #define HASH_cell 0x7c951505UL
+#define HASH_cell_padding 0xdbe3e489UL
 #define HASH_center 0xf62fb286UL
 #define HASH_checkbox 0x11a6290cUL
 #define HASH_clip_path 0x455423a7UL

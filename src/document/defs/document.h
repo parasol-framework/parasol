@@ -176,7 +176,7 @@ struct ui_hooks {
 
 struct padding {
    DOUBLE left = 0, top = 0, right = 0, bottom = 0;
-   bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
+   bool left_scl = false, right_scl = false, top_scl = false, bottom_scl = false;
    bool configured = false;
 
    padding() = default;
@@ -185,6 +185,8 @@ struct padding {
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), configured(true) { }
 
    void parse(const std::string &Value);
+
+   void scale_all() { left_scl = right_scl = top_scl = bottom_scl = true; }
 }; 
 
 //********************************************************************************************************************
@@ -648,7 +650,7 @@ struct bc_table : public entity {
    std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
-   padding cell_padding; // Spacing inside each cell (margins)
+   padding cell_padding;                 // Spacing inside each cell (margins)
    DUNIT  cell_v_spacing, cell_h_spacing; // Spacing between each cell
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
@@ -820,14 +822,14 @@ struct widget_mgr {
    std::string font_fill;              // Default fill instruction for user input text
    GuardedObject<objVectorViewport> viewport;
    GuardedObject<objVectorRectangle> rect;    // A vector will host the widget and define a clipping mask for it
-   padding pad, final_pad;             // Padding defines whitespace around the widget
+   padding pad, final_pad;             // Padding defines external whitespace around the widget
    DUNIT width, height;                // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DUNIT def_size = DUNIT(1.0, DU::FONT_SIZE); // Default height or width if not otherwise specified.
    DOUBLE final_width, final_height;   // Final dimensions computed during layout
    DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
-   bool alt_state = false, internal_label = false;
+   bool alt_state = false, internal_page = false;
    UBYTE label_pos = 1;                // 0 = left, 1 = right
 
    inline bool floating_y() {
@@ -839,7 +841,7 @@ struct widget_mgr {
    }
 
    constexpr DOUBLE full_width() const {
-      if (internal_label) return final_width + final_pad.left + final_pad.right;
+      if (internal_page) return final_width + final_pad.left + final_pad.right;
       else return final_width + label_width + label_pad + final_pad.left + final_pad.right;
    }
 
@@ -897,9 +899,12 @@ struct doc_menu {
 //********************************************************************************************************************
 
 struct bc_button : public entity, widget_mgr {
-   bc_button() { code = SCODE::BUTTON; }
-   GuardedObject<objVectorText> label_text;
-   bool processed = false;
+   padding inner_padding;  // Defines padding around the button's content.  Not to be confused with the widget_mgr outer padding
+   RSTREAM *stream;
+   std::vector<doc_segment> segments;
+
+   bc_button();
+   ~bc_button();
 };
 
 struct bc_checkbox : public entity, widget_mgr {
@@ -1086,6 +1091,15 @@ class extDocument : public objDocument {
 
    std::vector<sorted_segment> & get_sorted_segments();
 };
+
+bc_button::bc_button() { 
+   code = SCODE::BUTTON; 
+   stream = new RSTREAM(); 
+}
+
+bc_button::~bc_button() {
+   delete stream;
+}
 
 bc_cell::~bc_cell() {
    delete stream;

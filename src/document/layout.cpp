@@ -184,8 +184,9 @@ private:
       return m_page_width - m_margins.right;
    }
 
-   void size_widget(widget_mgr &);
+   void size_widget(widget_mgr &, bool);
    WRAP place_widget(widget_mgr &);
+   WRAP lay_button(bc_button &);
    CELL lay_cell(bc_table *);
    void lay_font();
    void lay_font_end();
@@ -298,7 +299,7 @@ CELL layout::lay_cell(bc_table *Table)
       sl.m_depth = m_depth + 1;
       sl.do_layout(&m_font, cell.width, cell.height, vertical_repass);
 
-      // The main product of do_layout() are the produced segments, so append them here.
+      // The main product of do_layout() are the produced segments
 
       cell.segments = sl.m_segments;
 
@@ -384,7 +385,7 @@ CELL layout::lay_cell(bc_table *Table)
 // Calculate widget dimensions (refer to place_widget() for the x,y values).  The host rectangle is modified in
 // gen_scene_graph() as this is the most optimal approach (i.e. if the page width expands during layout).
 
-void layout::size_widget(widget_mgr &Widget)
+void layout::size_widget(widget_mgr &Widget, bool ScaleToFont)
 {
    if (!Widget.floating_x()) check_line_height(); // Necessary for inline widgets in case they are the first 'character' on the line.
 
@@ -416,11 +417,13 @@ void layout::size_widget(widget_mgr &Widget)
    if (Widget.final_width < 0.01) Widget.final_width = 0.01;
 
    if (Widget.pad.configured) {
-      auto hypot = fast_hypot(Widget.final_width, Widget.final_height);
-      Widget.final_pad.left   = Widget.pad.left_pct ? (Widget.pad.left * hypot) : Widget.pad.left;
-      Widget.final_pad.top    = Widget.pad.top_pct ? (Widget.pad.top * hypot) : Widget.pad.top;
-      Widget.final_pad.right  = Widget.pad.right_pct ? (Widget.pad.right * hypot) : Widget.pad.right;
-      Widget.final_pad.bottom = Widget.pad.bottom_pct ? (Widget.pad.bottom * hypot) : Widget.pad.bottom;
+      DOUBLE scale;
+      if (ScaleToFont) scale = m_font->metrics.Height;
+      else scale = fast_hypot(Widget.final_width, Widget.final_height);
+      Widget.final_pad.left   = Widget.pad.left_scl ? (Widget.pad.left * scale) : Widget.pad.left;
+      Widget.final_pad.top    = Widget.pad.top_scl ? (Widget.pad.top * scale) : Widget.pad.top;
+      Widget.final_pad.right  = Widget.pad.right_scl ? (Widget.pad.right * scale) : Widget.pad.right;
+      Widget.final_pad.bottom = Widget.pad.bottom_scl ? (Widget.pad.bottom * scale) : Widget.pad.bottom;
    }
 
    if (!Widget.label.empty()) {
@@ -488,6 +491,62 @@ WRAP layout::place_widget(widget_mgr &Widget)
    }
 
    return wrap_result;
+}
+
+//********************************************************************************************************************
+// The button follows the same principles as other widgets, but the internal label is processed like a table cell, and
+// this affects size and positioning.
+
+WRAP layout::lay_button(bc_button &Button)
+{
+   pf::Log log(__FUNCTION__);
+   
+   if (!Button.inner_padding.configured) {
+      // A default for padding is required if the client hasn't defined any.
+      Button.inner_padding.configured = true;
+      Button.inner_padding = padding { 1, 0.333, 1, 0.333 };
+      Button.inner_padding.scale_all();
+   }
+
+   // The size of the button will be determined by its content.  Dimensions specified by the client are interpreted 
+   // as minimum values.
+   
+   size_widget(Button, true); // Defines final_pad, final_width, final_height
+   
+   if (Button.viewport.empty()) {
+      Button.viewport.set(objVectorViewport::create::global({
+         fl::Name("btn_viewport"),
+         fl::Owner(m_viewport->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(1), fl::Height(1)
+      }));
+
+      if (Button.viewport->Scene->SurfaceID) {
+         vecSubscribeInput(*Button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_button));
+      }
+
+      Button.viewport->setFill(Button.fill);
+   }
+
+   if (!Button.stream->data.empty()) {
+      auto scale = m_font->metrics.Height;
+      padding inner_pad = {
+         Button.inner_padding.left_scl ? (Button.inner_padding.left * scale) : Button.inner_padding.left,
+         Button.inner_padding.top_scl ? (Button.inner_padding.top * scale) : Button.inner_padding.top,
+         Button.inner_padding.right_scl ? (Button.inner_padding.right * scale) : Button.inner_padding.right,
+         Button.inner_padding.bottom_scl ? (Button.inner_padding.bottom * scale) : Button.inner_padding.bottom
+      };
+
+      layout sl(Self, Button.stream, *Button.viewport, inner_pad);
+      sl.m_depth = m_depth + 1;
+      
+      bool vertical_repass = false;
+      sl.do_layout(&m_font, Button.final_width, Button.final_height, vertical_repass);
+      Button.segments = sl.m_segments;  // The main product of do_layout() are the produced segments.
+   }
+
+   auto wrap = place_widget(Button);
+   return wrap;
 }
 
 //********************************************************************************************************************
@@ -1479,19 +1538,14 @@ extend_page:
 
          case SCODE::BUTTON: {
             auto &button = m_stream->lookup<bc_button>(idx);
-
-            size_widget(button);
-            const DOUBLE min_width = button.label_width + (button.label_pad * 2);
-            if (button.final_width < min_width) button.final_width = min_width;
-
-            auto ww = place_widget(button);
+            auto ww = lay_button(button);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
 
          case SCODE::CHECKBOX: {
             auto &checkbox = m_stream->lookup<bc_checkbox>(idx);
-            size_widget(checkbox);
+            size_widget(checkbox, false);
             auto ww = place_widget(checkbox);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1499,7 +1553,7 @@ extend_page:
 
          case SCODE::COMBOBOX: {
             auto &combobox = m_stream->lookup<bc_combobox>(idx);
-            size_widget(combobox);
+            size_widget(combobox, true);
             auto ww = place_widget(combobox);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1507,7 +1561,7 @@ extend_page:
 
          case SCODE::IMAGE: {
             auto &image = m_stream->lookup<bc_image>(idx);
-            size_widget(image);
+            size_widget(image, false);
             auto ww = place_widget(image);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1515,7 +1569,7 @@ extend_page:
 
          case SCODE::INPUT: {
             auto &input = m_stream->lookup<bc_input>(idx);
-            size_widget(input);
+            size_widget(input, true);
             auto ww = place_widget(input);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;

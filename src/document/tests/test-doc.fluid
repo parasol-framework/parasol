@@ -77,7 +77,7 @@ function testLists()       crcTest('Lists', 'lists.rpl', 0xa466f7e9) end
 function testLogic()       crcTest('Logic', 'logic.rpl', 0x766bfadb) end
 function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0xa3b93738) end
 function testTables()      crcTest('Tables', 'tables.rpl', 0x4969f18c) end
-function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xc7efd934) end
+function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0x208eaadc) end
 
 -----------------------------------------------------------------------------------------------------------------------
 

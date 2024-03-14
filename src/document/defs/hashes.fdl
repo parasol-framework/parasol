@@ -22,6 +22,7 @@ header({ copyright="Paul Manias © 2023" }, function()
     "call",
     "caps",
     "cell",
+    "cell-padding",
     "center",
     "checkbox",
     "clip-path",
