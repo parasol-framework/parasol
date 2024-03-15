@@ -1369,6 +1369,7 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
                case SVF_FECOLORMATRIX:       // American spelling
                case SVF_FECOLOURMATRIX:      parse_fe_colour_matrix(Self, filter, child); break;
                case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(Self, filter, child); break;
+               case SVF_FEDROPSHADOW:        log.warning("Support for feDropShadow not yet implemented."); break;
                case SVF_FEBLEND:             // Blend and composite share the same code.
                case SVF_FECOMPOSITE:         parse_fe_composite(Self, filter, child); break;
                case SVF_FEFLOOD:             parse_fe_flood(Self, State, filter, child); break;
