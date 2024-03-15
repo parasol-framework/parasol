@@ -666,7 +666,7 @@ static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *F
       if (!StrCompare("feDistantLight", child.name(), 0, STR::WILDCARD)) {
          DOUBLE azimuth = 0, elevation = 0;
 
-         for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
+         for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(StrHash(child.Attribs[a].Name)) {
                case SVF_AZIMUTH:   azimuth   = StrToFloat(child.Attribs[a].Value); break;
                case SVF_ELEVATION: elevation = StrToFloat(child.Attribs[a].Value); break;
@@ -678,7 +678,7 @@ static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *F
       else if (!StrCompare("fePointLight", child.name(), 0, STR::WILDCARD)) {
          DOUBLE x = 0, y = 0, z = 0;
 
-         for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
+         for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(StrHash(child.Attribs[a].Name)) {
                case SVF_X: x = StrToFloat(child.Attribs[a].Value); break;
                case SVF_Y: y = StrToFloat(child.Attribs[a].Value); break;
@@ -692,7 +692,7 @@ static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *F
          DOUBLE x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
          DOUBLE exponent = 1, cone_angle = 0;
 
-         for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
+         for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             auto &val = child.Attribs[a].Value;
             switch(StrHash(child.Attribs[a].Name)) {
                case SVF_X:                 x = StrToFloat(val); break;

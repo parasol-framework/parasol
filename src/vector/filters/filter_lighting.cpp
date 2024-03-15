@@ -267,7 +267,8 @@ static void specular_light(extLightingFX *Self, const point3 &Normal, const poin
    Output[G] = glLinearRGB.invert(g);
    Output[B] = glLinearRGB.invert(b);
    if (Self->LightSource IS LS::DISTANT) {
-      Output[A] = Output[R] > Output[G] ? (Output[R] > Output[B] ? Output[R] : Output[B]) : (Output[G] > Output[B] ? Output[G] : Output[B]); // Correct for w3-filters-specular-01 (specular distant light)
+      // Alpha is chosen from the max of the linear R,G,B light value
+      Output[A] = Output[R] > Output[G] ? (Output[R] > Output[B] ? Output[R] : Output[B]) : (Output[G] > Output[B] ? Output[G] : Output[B]);
    }
    else Output[A] = r > g ? (r > b ? r : b) : (g > b ? g : b);
 }
@@ -335,8 +336,12 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 
    objBitmap *bmp;
    if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
-   // Note: Linear conversion of the source bitmap is unnecessary because only the alpha channel is used.
+   
+   // Note! Linear conversion of the source bitmap is unnecessary because only the alpha channel is used.
 
+   // The alpha channel of the source bitmap will function as the Z value for the bump map.  The RGB components
+   // are ignored for input purposes.
+   
    const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
    const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
    const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
@@ -351,9 +356,6 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    UBYTE *in = (UBYTE *)(bmp->Data + (bmp->Clip.Left * bpp) + (bmp->Clip.Top * bmp->LineWidth));
    UBYTE *dest = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left * bpp) + (Self->Target->Clip.Top * Self->Target->LineWidth));
    UBYTE *dptr;
-
-   // The alpha channel of the source bitmap will function as the Z value for the bump map.  The RGB components
-   // are ignored for input purposes.
 
    UBYTE m[9];
    const DOUBLE scale = Self->Scale * (1.0 / 255.0); // Adjust to match the scale of alpha values.
@@ -482,7 +484,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
             stl = read_light_delta(Self, lt.x - DOUBLE(width-1), lt.y - DOUBLE(y), lt.z, m[4]);
             specular_light(Self, rightNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
          }
-         else { // Specular point light
+         else { // LS::POINT Specular point light
             point3 stl = read_light_delta(Self, lt.x, lt.y - DOUBLE(y), lt.z, m[4]);
             specular_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
