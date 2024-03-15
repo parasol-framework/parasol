@@ -2137,7 +2137,7 @@ static ERROR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
 StrokeWidth: The width to use when stroking the path.
 
 The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is
-zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox
+zero.  A percentage can be used to define the stroke width if it should be scaled to the size of the viewbox
 (along its diagonal).  Note that this incurs a slight computational penalty when drawing.
 
 The size of the stroke is also affected by scaling factors imposed by transforms and viewports.
@@ -2149,7 +2149,7 @@ static ERROR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
    DOUBLE val;
 
    if (Value->Type & FD_SCALED) {
-      if (Self->RelativeStrokeWidth) val = Self->StrokeWidth * 100.0;
+      if (Self->ScaledStrokeWidth) val = Self->StrokeWidth * 100.0;
       else val = 0;
    }
    else val = Self->fixed_stroke_width();
@@ -2168,7 +2168,7 @@ static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
 
    if ((val >= 0.0) and (val <= 2000.0)) {
       Self->StrokeWidth = val;
-      Self->RelativeStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
+      Self->ScaledStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
       Self->Stroked = Self->is_stroked();
       mark_dirty(Self, RC::FINAL_PATH); // Not really a path change, but needed for some dependent code like clip-masks.
       return ERR_Okay;
@@ -2294,7 +2294,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
 
 DOUBLE extVector::fixed_stroke_width()
 {
-   if (this->RelativeStrokeWidth) {
+   if (this->ScaledStrokeWidth) {
       return get_parent_diagonal(this) * INV_SQRT2 * this->StrokeWidth;
    }
    else return this->StrokeWidth;

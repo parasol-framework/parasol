@@ -403,7 +403,7 @@ class extVector : public objVector {
    UBYTE  EnableBkgd:1;
    UBYTE  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
    UBYTE  ButtonLock:1;
-   UBYTE  RelativeStrokeWidth:1;
+   UBYTE  ScaledStrokeWidth:1;
    UBYTE  DisableHitTesting:1;
    UBYTE  ResizeSubscription:1;
    UBYTE  FGFill:1;
@@ -831,7 +831,7 @@ public:
 };
 
 //********************************************************************************************************************
-// Retrieve the width/height of a vector's nearest viewport or scene object, taking account of relative dimensions
+// Retrieve the width/height of a vector's nearest viewport or scene object, taking account of scaled dimensions
 // and offsets.
 //
 // These functions expect to be called during path generation via gen_vector_path().  If this is not the case, ensure
