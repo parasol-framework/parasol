@@ -79,7 +79,7 @@ static ERROR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or scaled values.
 
 Of the Dimension flags that are available, only FIXED_X, FIXED_Y, SCALED_X and SCALED_Y are applicable.
 

@@ -2303,9 +2303,16 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
       return;
    }
 
+   // If initialising to a VectorScene, prefer to use its existing viewport if there is one.
+
    objVectorViewport *viewport;
-   if (NewObject(ID_VECTORVIEWPORT, &viewport)) return;
-   SetOwner(viewport, Parent);
+   if ((Parent->Class->ClassID IS ID_VECTORSCENE) and (((objVectorScene *)Parent)->Viewport)) {
+      viewport = ((objVectorScene *)Parent)->Viewport;
+   }
+   else {
+      if (NewObject(ID_VECTORVIEWPORT, &viewport)) return;
+      SetOwner(viewport, Parent);
+   }
 
    // The first viewport to be instantiated is stored as a local reference.  This is important if the developer has
    // specified a custom target, in which case there needs to be a way to discover the root of the SVG.
@@ -2428,7 +2435,8 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
       }
    }
 
-   if (!viewport->init()) Vector = viewport;
+   if (viewport->initialised()) Vector = viewport;
+   else if (!viewport->init()) Vector = viewport;
    else FreeResource(viewport);
 }
 

@@ -189,7 +189,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
                length = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
          }
-         else { // Coordinates are relative to the bounding box
+         else { // Coordinates are scaled to the bounding box
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
@@ -456,7 +456,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
    const DOUBLE c_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const DOUBLE x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const DOUBLE y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
-   
+
    Path->approximation_scale(Transform.scale());
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.

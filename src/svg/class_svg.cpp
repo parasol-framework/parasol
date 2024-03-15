@@ -551,7 +551,7 @@ The provided Target can be any object class, as long as it forms part of a scene
 object.  It is recommended that the chosen target is a @VectorViewport.
 
 The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible
-to terminate the SVG object without impacting the generated resources.
+to terminate the SVG object without impacting the resources it created.
 
 *********************************************************************************************************************/
 

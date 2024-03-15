@@ -203,7 +203,7 @@ class extVectorText : public extVector {
    ALIGN txAlignFlags;
    VTXF  txFlags;
    char  txFontStyle[20];
-   bool txRelativeFontSize;
+   bool txScaledFontSize;
    bool txXScaled:1;
    bool txYScaled:1;
 // bool txSpacingAndGlyphs:1;
@@ -734,7 +734,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 
       Self->txFamily = StrClone(other->Face);
       Self->txFontSize = std::trunc(other->Point * (96.0 / 72.0));
-      Self->txRelativeFontSize = false;
+      Self->txScaledFontSize = false;
       StrCopy(other->Style, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
@@ -747,7 +747,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 
       Self->txFamily = StrClone(other->txFamily);
       Self->txFontSize = other->txFontSize;
-      Self->txRelativeFontSize = false;
+      Self->txScaledFontSize = false;
       StrCopy(other->txFontStyle, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
@@ -824,7 +824,7 @@ static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
 
    if (size > 0) {
       Self->txFontSize = std::trunc(size);
-      Self->txRelativeFontSize = pct;
+      Self->txScaledFontSize = pct;
       if (Self->initialised()) return reset_font(Self);
       else return ERR_Okay;
    }

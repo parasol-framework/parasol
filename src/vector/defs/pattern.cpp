@@ -132,7 +132,7 @@ Dimensions: Dimension flags are stored here.
 -FIELD-
 Height: Height of the pattern tile.
 
-The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
+The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled,
 then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
 #Units setting.
 
@@ -331,8 +331,8 @@ static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Va
 -FIELD-
 Width: Width of the pattern tile.
 
-The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
-then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
+The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled,
+the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
 #Units setting.
 
 *********************************************************************************************************************/

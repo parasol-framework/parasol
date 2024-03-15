@@ -72,7 +72,7 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
    Self->Bitmap = Bitmap;
 
    if ((!Self->PageWidth) or (!Self->PageHeight)) {
-      if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+      if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
    }
 
    acDraw(Self);
@@ -99,7 +99,7 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
       Self->PageHeight = Args->Height;
 
       if (Self->Viewport) {
-         mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+         mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
       }
 
       ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
@@ -618,7 +618,7 @@ static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
    if (Value < 1) Self->PageHeight = 1;
    else Self->PageHeight = Value;
 
-   if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+   if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
    return ERR_Okay;
 }
 
