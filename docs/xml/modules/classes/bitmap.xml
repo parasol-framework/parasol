@@ -224,7 +224,7 @@
       <comment>Reverses the conversion process performed by Premultiply().</comment>
       <prototype>ERROR bmpDemultiply(OBJECTPTR Object)</prototype>
       <description>
-<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised.</p>
+<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <field>Flags</field>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

@@ -446,7 +446,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJ
          // If the BUFFER option is used, then we can buffer the change so that it
          // will be activated as soon as the current holder releases the cursor.
 
-         log.extmsg("Request buffered, pointer owned by #%d.", pointer->CursorOwnerID);
+         log.detail("Request buffered, pointer owned by #%d.", pointer->CursorOwnerID);
 
          pointer->BufferCursor = CursorID;
          pointer->BufferOwner  = OwnerID;

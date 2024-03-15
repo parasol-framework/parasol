@@ -702,7 +702,7 @@ static int object_find(lua_State *Lua)
       if (!FindObject(object_name, class_id, FOF::SMART_NAMES, &object_id)) {
          return object_find_ptr(Lua, GetObjectPtr(object_id));
       }
-      else log.debug("Unable to find object '%s'", object_name);
+      else log.detail("Unable to find object '%s'", object_name);
    }
    else if ((type IS LUA_TNUMBER) and ((object_id = lua_tointeger(Lua, 1)))) {
       log.trace("obj.find(#%d)", object_id);

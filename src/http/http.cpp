@@ -112,7 +112,7 @@ typedef char HASHHEX[HASHHEXLEN+1];
 #define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 #define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-#define SET_ERROR(http, code) { (http)->Error = (code); log.debug("Set error code %d: %s", code, GetErrorMsg(code)); }
+#define SET_ERROR(http, code) { (http)->Error = (code); log.detail("Set error code %d: %s", code, GetErrorMsg(code)); }
 
 static ERROR create_http_class(void);
 

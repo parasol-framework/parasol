@@ -9,7 +9,9 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
          else if (!StrMatch("inherit", Value)) Gradient->setColourSpace(VCS::INHERIT);
          return ERR_Okay;
 
-      case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); break;
+      case SVF_HREF:
+      case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); 
+         return ERR_Okay;
    }
 
    return ERR_Failed;
@@ -147,8 +149,12 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR_Okay;
       }
       else return ERR_Init;
    }
@@ -213,8 +219,12 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR_Okay;
       }
       else return ERR_Init;
    }
@@ -278,8 +288,12 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR_Okay;
       }
       else return ERR_Init;
    }
@@ -341,8 +355,12 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR_Okay;
       }
       else return ERR_Init;
    }
@@ -410,8 +428,12 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR_Okay;
       }
       else return ERR_Init;
    }

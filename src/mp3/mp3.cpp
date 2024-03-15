@@ -154,7 +154,7 @@ static bool parse_id3v1(objSound *Self)
       if (!StrCompare("TAG", (STRING)&id3, 3, STR::CASE)) {
          char buffer[sizeof(id3)];
 
-         log.extmsg("ID3v1 tag found.");
+         log.detail("ID3v1 tag found.");
 
          std::string title(id3.title);
          pf::ltrim(title, " ");
@@ -374,7 +374,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
          if (check_xing(Self, prv->Input.data())) {
             prv->SeekOffset += prv->info.frame_bytes;
          }
-         else log.extmsg("No VBR header found.");
+         else log.detail("No VBR header found.");
       }
    }
    else {
@@ -447,7 +447,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
             break;
          }
          else if (!result) {
-            log.extmsg("Reached end of input file.");
+            log.detail("Reached end of input file.");
             no_more_input = true; // Don't change the EOF - let the output code do that.
          }
 
@@ -534,10 +534,10 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
       // at the correct position.
 
       if (Self->Length != prv->WriteOffset) {
-         log.extmsg("Decode complete, changing sample length from %d to %" PF64 " bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
+         log.detail("Decode complete, changing sample length from %d to %" PF64 " bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
          Self->setLength(prv->WriteOffset);
       }
-      else log.extmsg("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, prv->WriteOffset);
+      else log.detail("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, prv->WriteOffset);
    }
 
    Self->Position = prv->WriteOffset;
@@ -598,7 +598,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
             LONG frame = prv->TOC[idx] * prv->TotalFrames / 256;
             prv->File->seekStart(offset);
 
-            log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
+            log.detail("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
             prv->WriteOffset     = LARGE(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
             prv->ReadOffset      = prv->WriteOffset;
@@ -623,7 +623,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
             if (offset < 0) offset = 0;
             prv->File->seekStart(prv->SeekOffset + offset);
 
-            log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
+            log.detail("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
             prv->WriteOffset     = LARGE(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
             prv->ReadOffset      = prv->WriteOffset;
@@ -780,7 +780,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    for (LONG i=first; i < last; i++) avg_frame_len += fsizes[i];
    avg_frame_len /= (last - first);
 
-   log.extmsg("File Size: %d, %d frames, Average frame length: %.2f bytes, VBR: %c", filesize, (LONG)fsizes.size(), avg_frame_len, prv->VBR ? 'Y' : 'N');
+   log.detail("File Size: %d, %d frames, Average frame length: %.2f bytes, VBR: %c", filesize, (LONG)fsizes.size(), avg_frame_len, prv->VBR ? 'Y' : 'N');
 
    if (filesize > buffer_size) {
       if (prv->VBR) {
@@ -847,7 +847,7 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
                prv->info.frame_bytes = frame_size;
                prv->info.samples     = hdr_frame_samples(Buffer);
 
-               log.extmsg("Frame found at %d, size %d, channels %d, %d samples, %dhz.", pos, prv->info.frame_bytes, prv->info.channels, prv->info.samples, prv->info.hz);
+               log.detail("Frame found at %d, size %d, channels %d, %d samples, %dhz.", pos, prv->info.frame_bytes, prv->info.channels, prv->info.samples, prv->info.hz);
 
                return pos;
             }
@@ -855,7 +855,7 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
       }
    }
 
-   log.extmsg("Failed to find a valid frame.");
+   log.detail("Failed to find a valid frame.");
 
    return -1;
 }

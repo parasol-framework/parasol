@@ -578,7 +578,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
       }
    }
 
-   log.extmsg("Failed to find index '%s'", Args->Name);
+   log.detail("Failed to find index '%s'", Args->Name);
    return ERR_Search;
 }
 

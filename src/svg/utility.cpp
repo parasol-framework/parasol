@@ -1,17 +1,14 @@
 
 #if defined(DEBUG)
 static void debug_tree(CSTRING Header, OBJECTPTR) __attribute__ ((unused));
-static void debug_branch(CSTRING Header, OBJECTPTR, LONG *Level) __attribute__ ((unused));
+static void debug_branch(CSTRING Header, OBJECTPTR, LONG &Level) __attribute__ ((unused));
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
+static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
 {
    pf::Log log(Header);
-   UBYTE spacing[*Level + 1];
-   LONG i;
 
-   *Level = *Level + 1;
-   for (i=0; i < *Level; i++) spacing[i] = ' '; // Indenting
-   spacing[i] = 0;
+   auto spacing = std::string(Level + 1, ' ');
+   Level = Level + 1;
 
    while (Vector) {
       if (Vector->Class->ClassID IS ID_VECTORSCENE) {
@@ -20,21 +17,21 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
       }
       else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
-         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->className());
+         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing.c_str(), shape->className());
          if (shape->Child) debug_branch(Header, shape->Child, Level);
          Vector = shape->Next;
       }
       else break;
    }
 
-   *Level = *Level - 1;
+   Level = Level - 1;
 }
 
 static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 {
    LONG level = 0;
    while (Vector) {
-      debug_branch(Header, Vector, &level);
+      debug_branch(Header, Vector, level);
       if (Vector->Class->BaseClassID IS ID_VECTOR) {
          Vector = (((objVector *)Vector)->Next);
       }
@@ -149,7 +146,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 }
 
 //********************************************************************************************************************
-// Save an id reference for an SVG element.  The element can be then be found at any time with find_href().  We store
+// Save an id reference for an SVG element.  The element can be then be found at any time with find_href_tag().  We store
 // a copy of the tag data as pointer references are too high a risk.
 
 INLINE bool add_id(extSVG *Self, const XMLTag &Tag, CSTRING Name)

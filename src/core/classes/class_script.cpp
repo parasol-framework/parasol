@@ -330,7 +330,7 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
    pf::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
-      log.debug("Target not set, defaulting to owner #%d.", Self->ownerID());
+      log.detail("Target not set, defaulting to owner #%d.", Self->ownerID());
       Self->TargetID = Self->ownerID();
    }
 

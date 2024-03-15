@@ -274,7 +274,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   log.extmsg("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->Point, Self->Height);
+   log.detail("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->Point, Self->Height);
    return ERR_Okay;
 }
 

@@ -1839,7 +1839,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       else if ((!exists) and ((Self->Flags & CMF::CREATE_FILE) != CMF::NIL)) {
          // Create a new file if the requested location does not exist
 
-         log.extmsg("Creating a new file because the location does not exist.");
+         log.detail("Creating a new file because the location does not exist.");
 
          if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
             return ERR_Okay;

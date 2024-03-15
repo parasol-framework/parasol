@@ -17,8 +17,7 @@ Log levels are:
 3  Application log message, level 1
 4  INFO Application log message, level 2
 5  API Top-level API messages, e.g. function entry points (default)
-6  EXTAPI Extended API messages.  For messages within functions, and entry-points for minor functions.
-7  DEBUG More detailed API messages.
+6  DETAIL Detailed API messages.  For messages within functions, and entry-points for minor functions.
 8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
@@ -134,10 +133,10 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
       VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
       VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
+      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
    };
 
    if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level

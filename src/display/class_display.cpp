@@ -1447,7 +1447,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 #ifdef _WIN32
    // NOTE: Dimensions are measured relative to the client area, not the window including its borders.
 
-   log.msg(VLF::BRANCH|VLF::EXTAPI, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
+   log.msg(VLF::BRANCH|VLF::DETAIL, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
 
    if (!winResizeWindow(Self->WindowHandle, Args->X, Args->Y, Args->Width, Args->Height)) {
       return log.warning(ERR_Failed);

@@ -987,7 +987,7 @@ static void scan_fixed_folder(objConfig *Config)
          std::vector<UWORD> points;
          std::string facename;
          if (!analyse_bmp_font(src, &header, facename, points)) {
-            log.extmsg("Detected font file \"%s\", name: %s", src, facename.c_str());
+            log.detail("Detected font file \"%s\", name: %s", src, facename.c_str());
 
             if (facename.empty()) continue;
             std::string group(facename);

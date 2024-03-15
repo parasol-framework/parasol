@@ -500,7 +500,7 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEn
 
    pf::Log log(__FUNCTION__);
 
-   log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
+   log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
    *Cache = NULL;
    if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR_Args;
@@ -544,7 +544,7 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSE
    }
 
    pf::Log log(__FUNCTION__);
-   log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
+   log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
 
    DNSEntry cache;
    if (!Host->ai_canonname) cache.HostName = Key;

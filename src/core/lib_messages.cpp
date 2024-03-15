@@ -705,7 +705,7 @@ ERROR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
          else {
             // NB: An object being freed is treated as equivalent to it receiving a signal.
             // Refer to notify_signal_wfo() for notification handling and clearing of signals.
-            log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
+            log.detail("Monitoring object #%d", ObjectSignals[i].Object->UID);
             if ((!SubscribeAction(ObjectSignals[i].Object, AC_Free, FUNCTION(notify_signal_wfo))) and
                 (!SubscribeAction(ObjectSignals[i].Object, AC_Signal, FUNCTION(notify_signal_wfo)))) {
                glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
@@ -728,7 +728,7 @@ ERROR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
          auto current_time = PreciseTime();
          auto end_time = current_time + (TimeOut * 1000LL);
          while ((not glWFOList.empty()) and (current_time < end_time) and (!error)) {
-            log.debug("Waiting on %d objects.", (LONG)glWFOList.size());
+            log.detail("Waiting on %d objects.", (LONG)glWFOList.size());
             error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
             current_time = PreciseTime();
          }

@@ -95,7 +95,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
-  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
+  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "DETAIL", "TRACE", "FUNCTION")
 
   flags("MOF", { comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
@@ -1468,10 +1468,10 @@ class Log { // C++ wrapper for Parasol's log functionality
          if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
-      void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
+      void detail(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Detailed API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF::EXTAPI, header, Message, arg);
+         VLogF(VLF::DETAIL, header, Message, arg);
          va_end(arg);
       }
 
@@ -1493,13 +1493,6 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF::ERROR, header, Message, arg);
-         va_end(arg);
-      }
-
-      void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::DEBUG, header, Message, arg);
          va_end(arg);
       }
 

@@ -670,7 +670,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
          Self->CallbackCount++;
       }
       else if (Self->CallbackCount < 255) {
-         log.extmsg("Expanding draw subscription array.");
+         log.detail("Expanding draw subscription array.");
 
          LONG new_size = Self->CallbackSize + 10;
          if (new_size > 255) new_size = 255;

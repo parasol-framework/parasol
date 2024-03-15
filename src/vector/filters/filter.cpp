@@ -448,7 +448,7 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
    objBitmap *out = NULL;
    for (auto e = Self->Effects; e; e = (extFilterEffect *)e->Next) {
-      log.extmsg("Effect: %s #%u, Pipelined: %c; Use Count: %d", e->Class->ClassName, e->UID, e->UsageCount > 0 ? 'Y' : 'N', e->UsageCount);
+      log.detail("Effect: %s #%u, Pipelined: %c; Use Count: %d", e->Class->ClassName, e->UID, e->UsageCount > 0 ? 'Y' : 'N', e->UsageCount);
 
       Self->ActiveEffect = e;
 

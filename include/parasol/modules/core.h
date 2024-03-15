@@ -729,10 +729,9 @@ enum class VLF : ULONG {
    CRITICAL = 0x00000008,
    INFO = 0x00000010,
    API = 0x00000020,
-   EXTAPI = 0x00000040,
-   DEBUG = 0x00000080,
-   TRACE = 0x00000100,
-   FUNCTION = 0x00000200,
+   DETAIL = 0x00000040,
+   TRACE = 0x00000080,
+   FUNCTION = 0x00000100,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VLF)
@@ -2628,10 +2627,10 @@ class Log { // C++ wrapper for Parasol's log functionality
          if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
-      void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
+      void detail(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Detailed API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF::EXTAPI, header, Message, arg);
+         VLogF(VLF::DETAIL, header, Message, arg);
          va_end(arg);
       }
 
@@ -2653,13 +2652,6 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF::ERROR, header, Message, arg);
-         va_end(arg);
-      }
-
-      void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::DEBUG, header, Message, arg);
          va_end(arg);
       }
 

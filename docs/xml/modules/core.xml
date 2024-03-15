@@ -3276,9 +3276,8 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="API"/>
       <const name="BRANCH"/>
       <const name="CRITICAL"/>
-      <const name="DEBUG"/>
+      <const name="DETAIL"/>
       <const name="ERROR"/>
-      <const name="EXTAPI"/>
       <const name="FUNCTION"/>
       <const name="INFO"/>
       <const name="TRACE"/>

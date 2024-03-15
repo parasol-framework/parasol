@@ -191,10 +191,10 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
-   log.extmsg("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
+   log.detail("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
 
    if (Self->Defs.contains(Args->Name)) { // Check that the definition name is unique.
-      log.extmsg("The vector definition name '%s' is already in use.", Args->Name);
+      log.detail("The vector definition name '%s' is already in use.", Args->Name);
       return ERR_ResourceExists;
    }
 

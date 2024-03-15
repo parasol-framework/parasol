@@ -139,7 +139,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    auto flags = VLF::WARNING;
    if (prv->CaughtError) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) flags = VLF::EXTAPI; // Non-critical errors are muted to prevent log noise.
+      if (Self->Error <= ERR_Terminate) flags = VLF::DETAIL; // Non-critical errors are muted to prevent log noise.
    }
 
    pf::Log log;
@@ -242,7 +242,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
          {
             pf::Log log;
 
-            log.msg(VLF::BRANCH|VLF::EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID

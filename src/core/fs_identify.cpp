@@ -240,9 +240,9 @@ class_identified:
    if (res_path) FreeResource(res_path);
 
    if (!error) {
-      if (*ClassID) log.debug("File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
+      if (*ClassID) log.detail("File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
       else {
-         log.debug("Failed to identify file \"%s\"", Path);
+         log.detail("Failed to identify file \"%s\"", Path);
          error = ERR_Search;
       }
    }

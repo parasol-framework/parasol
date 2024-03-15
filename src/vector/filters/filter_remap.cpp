@@ -259,7 +259,7 @@ static ERROR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rfSelectDiscrete *A
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_discrete(Args->Values, Args->Size);
-      log.extmsg("%s Values: %d", cmp->Name.c_str(), Args->Size);
+      log.detail("%s Values: %d", cmp->Name.c_str(), Args->Size);
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);
@@ -290,7 +290,7 @@ static ERROR REMAPFX_SelectIdentity(extRemapFX *Self, struct rfSelectIdentity *A
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_identity();
-      log.extmsg("%s", cmp->Name.c_str());
+      log.detail("%s", cmp->Name.c_str());
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);
@@ -324,7 +324,7 @@ static ERROR REMAPFX_SelectGamma(extRemapFX *Self, struct rfSelectGamma *Args)
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_gamma(Args->Amplitude, Args->Exponent, Args->Offset);
-      log.extmsg("%s Amplitude: %.2f, Exponent: %.2f, Offset: %.2f", cmp->Name.c_str(), cmp->Amplitude, cmp->Exponent, cmp->Offset);
+      log.detail("%s Amplitude: %.2f, Exponent: %.2f, Offset: %.2f", cmp->Name.c_str(), cmp->Amplitude, cmp->Exponent, cmp->Offset);
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);
@@ -358,7 +358,7 @@ static ERROR REMAPFX_SelectInvert(extRemapFX *Self, struct rfSelectInvert *Args)
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_invert();
-      log.extmsg("%s", cmp->Name.c_str());
+      log.detail("%s", cmp->Name.c_str());
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);
@@ -393,7 +393,7 @@ static ERROR REMAPFX_SelectLinear(extRemapFX *Self, struct rfSelectLinear *Args)
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_linear(Args->Slope, Args->Intercept);
-      log.extmsg("%s Slope: %.2f, Intercept: %.2f", cmp->Name.c_str(), cmp->Slope, Args->Intercept);
+      log.detail("%s Slope: %.2f, Intercept: %.2f", cmp->Name.c_str(), cmp->Slope, Args->Intercept);
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);
@@ -429,7 +429,7 @@ static ERROR REMAPFX_SelectMask(extRemapFX *Self, struct rfSelectMask *Args)
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_mask(Args->Mask);
-      log.extmsg("%s, Mask: $%.2x", cmp->Name.c_str(), Args->Mask);
+      log.detail("%s, Mask: $%.2x", cmp->Name.c_str(), Args->Mask);
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);
@@ -466,7 +466,7 @@ static ERROR REMAPFX_SelectTable(extRemapFX *Self, struct rfSelectTable *Args)
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_table(Args->Values, Args->Size);
-      log.extmsg("%s Values: %d", cmp->Name.c_str(), Args->Size);
+      log.detail("%s Values: %d", cmp->Name.c_str(), Args->Size);
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);

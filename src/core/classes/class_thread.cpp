@@ -426,7 +426,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
    if (!Self->Active) return ERR_Okay;
    else {
       pf::Log log;
-      log.debug("Thread is still running, marking for auto termination.");
+      log.detail("Thread is still running, marking for auto termination.");
       Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }

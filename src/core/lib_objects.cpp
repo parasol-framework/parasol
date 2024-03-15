@@ -87,7 +87,7 @@ static ERROR object_free(BaseClass *Object)
    // Collection is achieved via the message queue for maximum safety.
 
    if (Object->Locked) {
-      log.debug("Object #%d locked; marking for deletion.", Object->UID);
+      log.detail("Object #%d locked; marking for deletion.", Object->UID);
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL; // The Owner pointer is no longer safe to use
       Object->Flags |= NF::FREE_ON_UNLOCK;
       return ERR_InUse;

@@ -895,8 +895,8 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    auto subscriber = tlContext->object();
    if (subscriber->collecting()) return log.warning(ERR_InvalidState);
 
-   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
-   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
+   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto usInterval = LARGE(Interval * 1000000.0); // Scale the interval to microseconds
@@ -954,7 +954,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 
-   log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto timer = (CoreTimer *)Subscription;
