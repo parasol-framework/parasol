@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="19 24 38 33" preserveAspectRatio="xMidyMid meet">
-	<path fill="#000000" fill-opacity="1" d="M 19,24L 57,24L 57,48L 47,48L 38,57L 29,48L 19,48L 19,24 Z "/>
+	<path d="M 19,24L 57,24L 57,48L 47,48L 38,57L 29,48L 19,48L 19,24 Z "/>
 </svg>
