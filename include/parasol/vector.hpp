@@ -136,12 +136,11 @@ public:
          }
       }
       else {
-         size_t count = 0;
          for (auto it=Stop, start=Start; it != end(); it++, start++) {
             *start = std::move(*it);
-            count++;
          }
-         length -= count;
+         auto total_removed = Stop - Start;
+         length -= total_removed;
       }
    }
 
