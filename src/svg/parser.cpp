@@ -84,8 +84,12 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch (StrHash(Tag.Attribs[a].Name)) {
-         case SVF_FILL:         m_fill = val; break;
-         case SVF_STROKE:       m_stroke = val; break;
+         case SVF_COLOR:  m_color = val; break; // Affects 'currentColor'
+         case SVF_FILL:   m_fill = val; break;
+         case SVF_STROKE:       
+            m_stroke = val; 
+            if (!m_stroke_width) m_stroke_width = 1; 
+            break;
          case SVF_STROKE_WIDTH: m_stroke_width = StrToFloat(val); break;
          case SVF_FONT_FAMILY:  m_font_family = val; break;
          case SVF_FONT_SIZE:    m_font_size = val; break;
@@ -197,7 +201,7 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
       }
 
       if (!InitObject(clip)) {
-         svgState state(Self->Scene);
+         svgState state(Self);
 
          // Valid child elements for clip-path are:
          // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
@@ -259,7 +263,7 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
       }
 
       if (!InitObject(clip)) {
-         svgState state(Self->Scene);
+         svgState state(Self);
          auto vp = clip->get<OBJECTPTR>(FID_Viewport);
          process_children(Self, state, Tag, vp);
 
@@ -602,7 +606,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag, LT Type)
+static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Filter, const XMLTag &Tag, LT Type)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -623,7 +627,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
             VectorPainter painter;
             if (!StrMatch("currentColor", val)) {
                FRGB rgb;
-               if (!current_colour(Self, Self->Scene->Viewport, rgb)) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+               if (!current_colour(Self, Self->Scene->Viewport, State, rgb)) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             }
             else if (!vecReadPainter(NULL, val.c_str(), &painter, NULL)) SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
@@ -972,7 +976,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -991,7 +995,7 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
          case SVF_FLOOD_COLOUR: {
             VectorPainter painter;
             if (!StrMatch("currentColor", val)) {
-               if (!current_colour(Self, Self->Scene->Viewport, painter.Colour)) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+               if (!current_colour(Self, Self->Scene->Viewport, State, painter.Colour)) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             }
             else if (!vecReadPainter(NULL, val.c_str(), &painter, NULL)) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
@@ -1367,13 +1371,13 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
                case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(Self, filter, child); break;
                case SVF_FEBLEND:             // Blend and composite share the same code.
                case SVF_FECOMPOSITE:         parse_fe_composite(Self, filter, child); break;
-               case SVF_FEFLOOD:             parse_fe_flood(Self, filter, child); break;
+               case SVF_FEFLOOD:             parse_fe_flood(Self, State, filter, child); break;
                case SVF_FETURBULENCE:        parse_fe_turbulence(Self, filter, child); break;
                case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, child); break;
                case SVF_FEIMAGE:             parse_fe_image(Self, State, filter, child); break;
                case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(Self, filter, child); break;
-               case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(Self, filter, child, LT::DIFFUSE); break;
-               case SVF_FESPECULARLIGHTING:  parse_fe_lighting(Self, filter, child, LT::SPECULAR); break;
+               case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(Self, State, filter, child, LT::DIFFUSE); break;
+               case SVF_FESPECULARLIGHTING:  parse_fe_lighting(Self, State, filter, child, LT::SPECULAR); break;
                case SVF_FEDISPLACEMENTMAP:   parse_fe_displacement_map(Self, filter, child); break;
                case SVF_FETILE:
                   log.warning("Filter element '%s' is not currently supported.", child.name());
@@ -1476,7 +1480,7 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
 
       if (!InitObject(pattern)) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
-         svgState state(Self->Scene);
+         svgState state(Self);
          process_children(Self, state, Tag, viewport);
 
          if (!Self->Duplicated) {
@@ -1506,7 +1510,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, cons
       state.applyAttribs(vector);
       if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all attribute values to the current state.
 
-      process_attrib(Self, Tag, vector);
+      process_attrib(Self, Tag, State, vector);
 
       if (!vector->init()) {
          // Process child tags, if any
@@ -1835,7 +1839,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
                SetOwner(Vector, Parent);
                State.applyAttribs(Vector);
 
-               process_attrib(Self, Tag, Vector);
+               process_attrib(Self, Tag, State, Vector);
 
                if (!x.empty()) x.set(Vector);
                if (!y.empty()) y.set(Vector);
@@ -1870,6 +1874,9 @@ static ERROR xtag_defs(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
 
    log.traceBranch("Tag: %d", Tag.ID);
 
+   auto state = State;
+   state.applyTag(Tag); // Apply all attribute values to the current state.
+
    for (auto &child : Tag.Children) {
       switch (StrHash(child.name())) {
          case SVF_CONTOURGRADIENT: xtag_contourgradient(Self, child); break;
@@ -1879,7 +1886,7 @@ static ERROR xtag_defs(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
          case SVF_LINEARGRADIENT:  xtag_lineargradient(Self, child); break;
          case SVF_PATTERN:         process_pattern(Self, child); break;
          case SVF_IMAGE:           def_image(Self, child); break;
-         case SVF_FILTER:          xtag_filter(Self, State, child); break;
+         case SVF_FILTER:          xtag_filter(Self, state, child); break;
          case SVF_CLIPPATH:        xtag_clippath(Self, child); break;
          case SVF_MASK:            xtag_mask(Self, child); break;
          case SVF_PARASOL_TRANSITION: xtag_pathtransition(Self, child); break;
@@ -2071,7 +2078,7 @@ static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
 
    if (class_id) {
       objVector *shape;
-      svgState state(Self->Scene);
+      svgState state(Self);
       process_shape(Self, class_id, state, tagref, Self->Scene, shape);
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
@@ -2162,8 +2169,8 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 
             // All other attributes are applied to the 'g' element
             default:
-               if (group) set_property(Self, group, hash, Tag, val);
-               else set_property(Self, viewport, hash, Tag, val);
+               if (group) set_property(Self, group, hash, Tag, State, val);
+               else set_property(Self, viewport, hash, Tag, State, val);
                break;
          }
       }
@@ -2232,7 +2239,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
                   break;
 
                default:
-                  if (auto error = set_property(Self, group, hash, Tag, Tag.Attribs[t].Value)) {
+                  if (auto error = set_property(Self, group, hash, Tag, State, Tag.Attribs[t].Value)) {
                      log.warning("Failed to apply %s=%s to <use> group: %s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), GetErrorMsg(error));
                   }
             }
@@ -2266,7 +2273,7 @@ static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
    if (NewObject(ID_VECTORGROUP, &group) != ERR_Okay) return;
    SetOwner(group, Parent);
    if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all group attribute values to the current state.
-   process_attrib(Self, Tag, group);
+   process_attrib(Self, Tag, State, group);
 
    // Process child tags
 
@@ -2596,7 +2603,7 @@ static ERROR xtag_animatemotion(extSVG *Self, const XMLTag &Tag, OBJECTPTR Paren
 
 //********************************************************************************************************************
 
-static void process_attrib(extSVG *Self, const XMLTag &Tag, objVector *Vector)
+static void process_attrib(extSVG *Self, const XMLTag &Tag, svgState &State, objVector *Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2613,7 +2620,7 @@ static void process_attrib(extSVG *Self, const XMLTag &Tag, objVector *Vector)
 
       log.trace("%s = %.40s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str());
 
-      if (auto error = set_property(Self, Vector, StrHash(Tag.Attribs[t].Name), Tag, Tag.Attribs[t].Value)) {
+      if (auto error = set_property(Self, Vector, StrHash(Tag.Attribs[t].Name), Tag, State, Tag.Attribs[t].Value)) {
          if (Vector->Class->ClassID != ID_VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
                Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
@@ -2802,7 +2809,7 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
 
 //********************************************************************************************************************
 
-static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XMLTag &Tag, const std::string StrValue)
+static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XMLTag &Tag, svgState &State, const std::string StrValue)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3163,7 +3170,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
       case SVF_STROKE:
          if (!StrMatch("currentColor", StrValue)) {
             FRGB rgb;
-            if (!current_colour(Self, Vector, rgb)) SetArray(Vector, FID_Stroke|TFLOAT, &rgb, 4);
+            if (!current_colour(Self, Vector, State, rgb)) SetArray(Vector, FID_Stroke|TFLOAT, &rgb, 4);
          }
          else Vector->set(FID_Stroke, StrValue);
          break;
@@ -3171,7 +3178,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
       case SVF_FILL:
          if (!StrMatch("currentColor", StrValue)) {
             FRGB rgb;
-            if (!current_colour(Self, Vector, rgb)) SetArray(Vector, FID_Fill|TFLOAT, &rgb, 4);
+            if (!current_colour(Self, Vector, State, rgb)) SetArray(Vector, FID_Fill|TFLOAT, &rgb, 4);
          }
          else Vector->set(FID_Fill, StrValue);
          break;

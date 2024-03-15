@@ -8,16 +8,16 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 BlurFX: Applies a Gaussian blur effect to an input source.
 
-The BlurFX class performs a Gaussian blur on the input source.  The Gaussian blur kernel is an approximation of the
-normalized convolution `G(x,y) = H(x)I(y)` where `H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)` and
-`I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)` with 's' being the standard deviation in the x direction and 't' being the
-standard deviation in the y direction, as specified by #SX and #SY.
+The BlurFX class performs a Gaussian blur, or approximation thereof, on the input source.  The Gaussian blur kernel 
+is an approximation of the normalized convolution `G(x,y) = H(x)I(y)` where `H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)` 
+and `I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)` with 's' being the standard deviation in the x direction and 't' being 
+the standard deviation in the y direction, as specified by #SX and #SY.
 
 At least one of #SX or #SY should be greater than 0, otherwise no rendering is performed.
 
 -END-
 
-Frequently this operation will take place on alpha-only images, such as that produced by the built-in input,
+W3C: Frequently this operation will take place on alpha-only images, such as that produced by the built-in input,
 SourceAlpha.  The implementation may notice this and optimize the single channel case. If the input has infinite
 extent and is constant (e.g  FillPaint where the fill is a solid color), this operation has no effect. If the input
 has infinite extent and the filter result is the input to an feTile, the filter is evaluated with periodic boundary

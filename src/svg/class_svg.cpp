@@ -179,7 +179,7 @@ static ERROR SVG_ParseSymbol(extSVG *Self, struct svgParseSymbol *Args)
    if ((!Args) or (!Args->ID) or (!Args->Viewport)) return log.warning(ERR_NullArgs);
 
    if (auto tagref = find_href_tag(Self, Args->ID)) {
-      svgState state(Self->Scene);
+      svgState state(Self);
       process_children(Self, state, *tagref, Args->Viewport);
       return ERR_Okay;
    }
@@ -377,6 +377,32 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       }
       else return ERR_CreateObject;
    }
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Colour: Defines the default fill to use for 'currentColor' references.
+
+Set the Colour value to alter the default fill that is used for `currentColor` references.  Typically a standard RGB
+painter fill reference should be used for this purpose, e.g. `rgb(255,255,255)`.  It is however, also acceptable to use 
+URL references to named definitions such as gradients and images.  This will work as long as the named definition is
+registered in the top-level @VectorScene object.
+
+*********************************************************************************************************************/
+
+static ERROR GET_Colour(extSVG *Self, CSTRING *Value)
+{
+   *Value = Self->Colour.c_str();
+   return ERR_Okay;
+}
+
+static ERROR SET_Colour(extSVG *Self, CSTRING Value)
+{
+   if ((Value) and (*Value)) {
+      Self->Colour.assign(Value);
+   }
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -609,7 +635,7 @@ static const FieldArray clSVGFields[] = {
    { "FrameRate", FDF_LONG|FDF_RW, NULL, SET_FrameRate },
    // Virtual Fields
    { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
-   { "Src",           FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Src",           FDF_VIRTUAL|FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
    { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
    { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
    END_FIELD

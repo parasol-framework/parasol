@@ -72,7 +72,7 @@ function testComposite()          hashTestSVG('filters/composite.svg', 0x66a96a5
 function testConvolve()           hashTestSVG('filters/convolve.svg', 0x29d31e69) end
 function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0xb0ac4263) end
 function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0xe1acd9c9) end
-function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf8be1e64) end
+function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf2d1a46c) end
 function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x6f8b62dd) end
 function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0xd9e10af8) end
 function testW3Filters()          hashTestSVG('filters/w3-filters.svg', 0x456a4b9f) end
@@ -86,6 +86,8 @@ function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0x3590ac3
 function testW3Turbulence()       hashTestSVG('filters/w3-turbulence.svg', 0x1ba38f2c) end
 function testW3Lighting1()        hashTestSVG('filters/w3-filters-light-01-f.svg', 0xb4a06bf6) end
 function testW3Lighting3()        hashTestSVG('filters/w3-filters-light-03-f.svg', 0x152bae83) end
+function testW3Lighting4()        hashTestSVG('filters/w3-filters-light-04-f.svg', 0xf0e7d894) end
+function testW3Lighting5()        hashTestSVG('filters/w3-filters-light-05-f.svg', 0xef3e00c5) end
 function testW3LightingSpecular() hashTestSVG('filters/w3-filters-specular-01-f.svg', 0x56664237) end
 function testW3LightingDiffuse()  hashTestSVG('filters/w3-filters-diffuse-01-f.svg', 0x36fb1cac) end
 function testMoonSurface()        hashTestSVG('filters/moon-surface.svg', 0x8fafd05c) end
@@ -239,6 +241,8 @@ function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
         'testW3LightingDiffuse',
         'testW3Lighting1',
         'testW3Lighting3',
+        'testW3Lighting4',
+        'testW3Lighting5',
         'testW3Image',
         'testW3Morphology',
         'testW3Offset',

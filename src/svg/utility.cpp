@@ -47,8 +47,16 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 //********************************************************************************************************************
 // Support for the 'currentColor' colour value.  Finds the first parent with a defined fill colour and returns it.
 
-static ERROR current_colour(extSVG *Self, objVector *Vector, FRGB &RGB)
+static ERROR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB &RGB)
 {
+   if (!State.m_color.empty()) {
+      VectorPainter painter;
+      if (!vecReadPainter(NULL, State.m_color.c_str(), &painter, NULL)) {
+         RGB = painter.Colour;
+         return ERR_Okay;
+      }
+   }
+
    if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
 
    Vector = (objVector *)Vector->Parent;
@@ -466,7 +474,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          objVector *sibling = NULL;
          for (auto &scan : xml->Tags) {
             if (!StrMatch("svg", scan.name())) {
-               svgState state(Self->Scene);
+               svgState state(Self);
                if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
                else xtag_svg(Self, state, scan, Self->Scene, sibling);
             }
