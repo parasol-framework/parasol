@@ -400,8 +400,9 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
    if (Self->VectorClip.right  > Viewport->vpBounds.right)  Self->VectorClip.right  = Viewport->vpBounds.right;
    if (Self->VectorClip.bottom > Viewport->vpBounds.bottom) Self->VectorClip.bottom = Viewport->vpBounds.bottom;
 
-   if (Self->VectorClip.bottom <= Self->VectorClip.top) return log.warning(ERR_InvalidDimension);
-   if (Self->VectorClip.right <= Self->VectorClip.left) return log.warning(ERR_InvalidDimension);
+   if ((Self->VectorClip.bottom <= Self->VectorClip.top) or (Self->VectorClip.right <= Self->VectorClip.left)) {
+      return log.warning(ERR_InvalidDimension);
+   }
 
    return ERR_Okay;
 }
@@ -431,7 +432,7 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
    Self->Rendered       = false; // Set to true when SourceGraphic is rendered
    Self->BankIndex      = 0;
 
-   if (set_clip_region(Self, Viewport, Vector)) return ERR_Okay;
+   if (auto error = set_clip_region(Self, Viewport, Vector)) return error;
 
    // Calculate Self->Target* and Self->Bound* values
 

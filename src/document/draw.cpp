@@ -58,6 +58,7 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
    const DOUBLE width = Widget.final_width + ExtWidth;
 
    if (CreateViewport) {
+      // Using a viewport means that the vector paths will be recomputed on each draw cycle.
       if (Widget.viewport.empty()) {
          auto vp = objVectorViewport::create::global({
             fl::Name("vp_widget"),
@@ -72,6 +73,7 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
       Widget.viewport->setFields(fl::X(F2T(X)), fl::Y(F2T(Y)), fl::Width(width), fl::Height(Widget.final_height));
    }
    else {
+      // Using a rectangle with a pattern reference will keep the pattern bitmap cached.
       if (Widget.rect.empty()) {
          auto rect = objVectorRectangle::create::global({
             fl::Name("rect_widget"),
