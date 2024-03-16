@@ -112,6 +112,7 @@ static void generate_rectangle(extVectorRectangle *Vector)
       }
 
       if (rx > width * 0.5) rx = width * 0.5; // SVG rule
+      if (rx > height * 0.5) rx = height * 0.5;
 
       if ((rx != ry) and (ry)) {
          if (Vector->rDimensions & DMF_SCALED_RADIUS_Y) {

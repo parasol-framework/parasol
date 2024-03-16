@@ -99,7 +99,7 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    
    LONG rx, ry;
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
-      if ((((extVectorViewport *)Self->Filter->ClientVector->ParentView)->vpAspectRatio & ARF::MEET|ARF::SLICE) != ARF::NIL) {
+      if ((((extVectorViewport *)Self->Filter->ClientVector->ParentView)->vpAspectRatio & (ARF::MEET|ARF::SLICE)) != ARF::NIL) {
          // Scaling is applied evenly on both axis.  Uses the same formula as a scaled stroke-width.
          DOUBLE diag = dist(0, 0, Self->Filter->BoundWidth, Self->Filter->BoundHeight) * INV_SQRT2;
          rx = F2T(Self->SX * diag * 2 * scale);

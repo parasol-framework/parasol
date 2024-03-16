@@ -22,9 +22,20 @@ static void redraw(extDocument *Self, bool Focus)
 }
 
 //********************************************************************************************************************
+// Determine the position of the widget and return the coordinates in (X, Y)
+//
+// Use AsViewport if the Widget.viewport represents the widget in the UI.  A viewport will be created automatically
+// if the client has not already done so, and it will be assumed that patterns defined in alt_state/alt_fill are to be
+// used as fills.
+//
+// Alternatively, a VectorRectangle will be created automatically and reference the patterns defined in 
+// alt_state/alt_fill.  This is the fastest means of rendering widget graphics at the cost of additional bitmap 
+// caching.
+//
+// Irrespective of the drawing method, the X/Y/W/H dimensions of the widget are updated before returning.
 
-ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *Viewport, bc_font *Style,
-   DOUBLE &XAdvance, DOUBLE ExtWidth, bool CreateViewport, DOUBLE &X, DOUBLE &Y)
+ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *ParentVP, bc_font *Style,
+   DOUBLE &XAdvance, DOUBLE LabelWidth, bool AsViewport, DOUBLE &X, DOUBLE &Y)
 {
    if (Widget.floating_x()) {
       // If the widget is floating then the X coordinate will be pre-calculated during layout
@@ -37,7 +48,7 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
       else X = XAdvance;
    }
 
-   if (Widget.floating_x()) Y = Segment.area.Y + Widget.final_pad.top;
+   if (Widget.floating_y()) Y = Segment.area.Y + Widget.final_pad.top;
    else {
       if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) {
          Y = Widget.final_pad.top;
@@ -55,14 +66,14 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
       Y += Segment.area.Y;
    }
 
-   const DOUBLE width = Widget.final_width + ExtWidth;
+   const DOUBLE width = Widget.final_width + LabelWidth;
 
-   if (CreateViewport) {
+   if (AsViewport) {
       // Using a viewport means that the vector paths will be recomputed on each draw cycle.
       if (Widget.viewport.empty()) {
          auto vp = objVectorViewport::create::global({
             fl::Name("vp_widget"),
-            fl::Owner(Viewport->UID),
+            fl::Owner(ParentVP->UID),
             fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
          });
 
@@ -77,7 +88,7 @@ ERROR layout::build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorVi
       if (Widget.rect.empty()) {
          auto rect = objVectorRectangle::create::global({
             fl::Name("rect_widget"),
-            fl::Owner(Viewport->UID),
+            fl::Owner(ParentVP->UID),
             fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
          });
 
@@ -477,7 +488,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                gen_scene_graph(*button.viewport, button.segments);
                
                DOUBLE wx, wy;
-               if (!build_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
+               if (!position_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
                   Self->VPToEntity.emplace(button.viewport.id, vp_to_entity { &button });
                }
                break;
@@ -490,7 +501,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.label.empty()) {
                   if (checkbox.label_pos) {
                      // Right-sided labels can be integrated with the widget so that clicking affects state.
-                     if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy)) {
+                     if (!position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy)) {
                         DOUBLE x, y;
                         auto font = stack_style.top()->get_font();
                         const DOUBLE avail_space = checkbox.final_height - font->metrics.Descent;
@@ -521,7 +532,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      auto font = stack_style.top()->get_font();
                      auto x_label = x_advance;
                      x_advance += checkbox.label_width + checkbox.label_pos;
-                     if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
+                     if (!position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
                         const DOUBLE avail_space = checkbox.final_height - font->metrics.Descent;
                         DOUBLE y = wy + avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
@@ -543,7 +554,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      }
                   }
                }
-               else build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+               else position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                if (!checkbox.processed) {
                   checkbox.processed = true;
@@ -565,7 +576,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                if (!combo.label.empty()) {
                   if (combo.label_pos) {
-                     build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+                     position_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                      DOUBLE y = wy + avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
@@ -589,7 +600,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      auto x_label = x_advance;
                      x_advance += combo.label_pad + combo.label_width;
 
-                     build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+                     position_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                      DOUBLE y = wy + avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
@@ -608,7 +619,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      combo.label_text->setFields(fl::X(F2T(x_label)), fl::Y(F2T(y)));
                   }
                }
-               else build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+               else position_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                if (combo.clip_vp.empty()) {
                   // Create the button that will control the drop-down list
@@ -663,7 +674,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             case SCODE::IMAGE: {
                auto &img = segment.stream->lookup<bc_image>(cursor);
                DOUBLE wx, wy;
-               build_widget(img, segment, Viewport, stack_style.top(), x_advance, 0, false, wx, wy);
+               position_widget(img, segment, Viewport, stack_style.top(), x_advance, 0, false, wx, wy);
                break;
             }
 
@@ -676,7 +687,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                if (!input.label.empty()) {
                   if (input.label_pos) {
-                     build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+                     position_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                      DOUBLE y = wy + avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
@@ -700,7 +711,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      auto x_label = x_advance;
                      x_advance += input.label_pad + input.label_width;
 
-                     build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+                     position_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                      DOUBLE y = wy + avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
@@ -719,7 +730,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      input.label_text->setFields(fl::X(F2T(x_label)), fl::Y(F2T(y)));
                   }
                }
-               else build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+               else position_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                if (input.clip_vp.empty()) {
                   input.clip_vp = objVectorViewport::create::global({

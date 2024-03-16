@@ -186,6 +186,9 @@ private:
 
    void size_widget(widget_mgr &, bool);
    WRAP place_widget(widget_mgr &);
+   ERROR position_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, DOUBLE &, DOUBLE, bool,
+      DOUBLE &, DOUBLE &);
+
    WRAP lay_button(bc_button &);
    CELL lay_cell(bc_table *);
    void lay_font();
@@ -205,9 +208,6 @@ private:
    void new_code_segment();
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE);
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
-
-   ERROR build_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, DOUBLE &, DOUBLE, bool,
-      DOUBLE &, DOUBLE &);
 
 public:
    layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, padding &pMargins) :
@@ -469,7 +469,7 @@ WRAP layout::place_widget(widget_mgr &Widget)
       // TODO: Add support for masked clipping through SVG paths.
 
       m_clips.emplace_back(Widget.x, m_cursor_y, Widget.x + Widget.full_width(), m_cursor_y + Widget.full_height(),
-         idx, false, "Image");
+         idx, false, "Widget");
    }
    else { // Widget is inline and must be treated like a text character.
       if (!m_word_width) m_word_index.set(idx); // Save the index of the new word
