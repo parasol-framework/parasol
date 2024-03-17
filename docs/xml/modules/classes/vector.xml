@@ -646,7 +646,7 @@ Z: Close Path
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox (along its diagonal).  Note that this incurs a slight computational penalty when drawing.</p>
+<p>The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is zero.  A percentage can be used to define the stroke width if it should be scaled to the size of the viewbox (along its diagonal).  Note that this incurs a slight computational penalty when drawing.</p>
 <p>The size of the stroke is also affected by scaling factors imposed by transforms and viewports.</p>
       </description>
     </field>

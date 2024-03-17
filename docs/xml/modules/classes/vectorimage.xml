@@ -47,7 +47,7 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="DMF">INT</type>
       <description>

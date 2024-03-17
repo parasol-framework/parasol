@@ -75,6 +75,14 @@ enum class VF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(VF)
 
+// Define the aspect ratio for VectorFilter unit scaling.
+
+enum class VFA : LONG {
+   NIL = 0,
+   MEET = 0,
+   NONE = 1,
+};
+
 // Light source identifiers.
 
 enum class LS : LONG {
@@ -740,7 +748,7 @@ class objVectorImage : public BaseClass {
    objPicture * Picture;    // Refers to a @Picture from which the source #Bitmap is acquired.
    objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
    VUNIT   Units;           // Declares the coordinate system to use for the #X and #Y values.
-   LONG    Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or relative values.
+   LONG    Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VSPREAD SpreadMethod;    // Defines the drawing mode.
    ARF     AspectRatio;     // Flags that affect the aspect ratio of the image within its target vector.
 
@@ -1454,6 +1462,7 @@ class objVectorFilter : public BaseClass {
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
+   VFA    AspectRatio;           // Aspect ratio to use when scaling X/Y values
 
    // Action stubs
 
@@ -1492,13 +1501,13 @@ class objVectorFilter : public BaseClass {
 
    inline ERROR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setInherit(objVectorFilter * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -1526,6 +1535,11 @@ class objVectorFilter : public BaseClass {
 
    inline ERROR setColourSpace(const VCS Value) noexcept {
       this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAspectRatio(const VFA Value) noexcept {
+      this->AspectRatio = Value;
       return ERR_Okay;
    }
 

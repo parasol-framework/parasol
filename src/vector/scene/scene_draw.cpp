@@ -819,7 +819,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                if (view->Fill[0].Pattern) {
                   // Viewports can use FillPattern objects to render a different scene graph internally.
                   // This is useful for creating common graphics that can be re-used multiple times without
-                  // them being pre-rasterised as they normally would be for primitive vectors.
+                  // them being pre-rendered to a cache as they would be for filled vector paths.
                   //
                   // The client can expect a result that is equivalent to the pattern's viewport being a child of
                   // the current viewport.  NB: There is a performance penalty in that transforms will be

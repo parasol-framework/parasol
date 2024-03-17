@@ -198,8 +198,8 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
       if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
          LONG dy = bmp->Clip.Top;
          for (LONG sy=Self->BkgdBitmap->Clip.Top; sy < Self->BkgdBitmap->Clip.Bottom; sy++) {
-            ULONG *src = (ULONG *)(Self->BkgdBitmap->Data + (sy * Self->BkgdBitmap->LineWidth));
-            ULONG *dest = (ULONG *)(bmp->Data + (dy * bmp->LineWidth));
+            auto src = (ULONG *)(Self->BkgdBitmap->Data + (sy * Self->BkgdBitmap->LineWidth));
+            auto dest = (ULONG *)(bmp->Data + (dy * bmp->LineWidth));
             LONG dx = bmp->Clip.Left;
             for (LONG sx=Self->BkgdBitmap->Clip.Left; sx < Self->BkgdBitmap->Clip.Right; sx++) {
                dest[dx++] = src[sx] & 0xff000000;
@@ -567,6 +567,7 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
    Self->Y              = -0.1;
    Self->Width          = 1.2;  // +120% default as per SVG requirements
    Self->Height         = 1.2;
+   Self->AspectRatio    = VFA::MEET; // Scale X/Y values independently
    Self->ColourSpace    = VCS::SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
    Self->Dimensions     = DMF_SCALED_X|DMF_SCALED_Y|DMF_SCALED_WIDTH|DMF_SCALED_HEIGHT;
    return ERR_Okay;
@@ -874,6 +875,7 @@ static const FieldArray clFilterFields[] = {
    { "PrimitiveUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorFilterPrimitiveUnits },
    { "Dimensions",     FDF_LONGFLAGS|FDF_R, NULL, NULL,        &clFilterDimensions },
    { "ColourSpace",    FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorFilterColourSpace },
+   { "AspectRatio",    FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorFilterAspectRatio },
    // Virtual fields
    { "EffectXML",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTORFILTER_GET_EffectXML },
    END_FIELD

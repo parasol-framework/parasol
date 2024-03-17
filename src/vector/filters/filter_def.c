@@ -21,6 +21,12 @@ static const struct FieldDef clVectorFilterColourSpace[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorFilterAspectRatio[] = {
+   { "Meet", 0x00000000 },
+   { "None", 0x00000001 },
+   { NULL, 0 }
+};
+
 static const struct ActionArray clVectorFilterActions[] = {
    { AC_Clear, VECTORFILTER_Clear },
    { AC_Free, VECTORFILTER_Free },

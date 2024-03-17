@@ -19,6 +19,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.")
 
+  enum("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
+     "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
+     "NONE: Scale X/Y values on a 1:1 basis, in relation to the diagonal of the parent viewport.")
+
   enum("LS", { type="int", comment="Light source identifiers." },
     "DISTANT: Distant light source.",
     "SPOT: Spot light source.",
@@ -509,6 +513,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     int(VUNIT) PrimitiveUnits # VUNIT constant
     int Dimensions            # Flags for detailing area values
     int(VCS) ColourSpace      # Operating colour space for RGB values
+    int(VFA) AspectRatio      # Aspect ratio to use when scaling X/Y values
   ]])
 
   methods("vector", "Vec", {

@@ -40,7 +40,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled, then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
       </description>
     </field>
 
@@ -133,7 +133,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled, the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
       </description>
     </field>
 

@@ -740,6 +740,11 @@ Z: Close Path
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
     </constants>
 
+    <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">
+      <const name="MEET">Scale X/Y values independently and in relation to the width/height of the parent viewport.</const>
+      <const name="NONE">Scale X/Y values on a 1:1 basis, in relation to the diagonal of the parent viewport.</const>
+    </constants>
+
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
       <const name="EVEN_ODD">This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.</const>
       <const name="INHERIT">The rule is inherited from the parent vector(s).</const>

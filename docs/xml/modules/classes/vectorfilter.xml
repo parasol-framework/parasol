@@ -35,6 +35,16 @@
 
   <fields>
     <field>
+      <name>AspectRatio</name>
+      <comment>Aspect ratio to use when scaling X/Y values</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VFA">VFA</type>
+      <description>
+<types lookup="VFA"/>
+      </description>
+    </field>
+
+    <field>
       <name>ColourSpace</name>
       <comment>The colour space of the filter graphics (SRGB or linear RGB).</comment>
       <access read="R" write="W">Read/Write</access>
@@ -190,6 +200,11 @@
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
       <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
       <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+    </constants>
+
+    <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">
+      <const name="MEET">Scale X/Y values independently and in relation to the width/height of the parent viewport.</const>
+      <const name="NONE">Scale X/Y values on a 1:1 basis, in relation to the diagonal of the parent viewport.</const>
     </constants>
 
     <constants lookup="VUNIT">
