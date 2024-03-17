@@ -160,7 +160,9 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
    if (SourceType IS VSF::GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
-         gfxCopyArea(sg, bmp, BAF::NIL, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
+         gfxCopyArea(sg, bmp, BAF::NIL, sg->Clip.Left, sg->Clip.Top, 
+            sg->Clip.Right - sg->Clip.Left, sg->Clip.Bottom - sg->Clip.Top, 
+            bmp->Clip.Left, bmp->Clip.Top);
       }
    }
    else if (SourceType IS VSF::ALPHA) { // SourceAlpha
