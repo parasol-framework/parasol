@@ -268,8 +268,5 @@ void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
    agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
    agg::rasterizer_scanline_aa<> rasterizer;
 
-   if (m_state->mApplyTransform) {
-      draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform * m_state->mTransform);
-   }
-   else draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform);
+   draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, m_shape->Transform);
 }

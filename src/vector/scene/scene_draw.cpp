@@ -84,14 +84,12 @@ public:
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
    std::shared_ptr<std::stack<SceneRenderer::ClipBuffer>> mClipStack;
-   agg::trans_affine mTransform;
    double mOpacity;
    VIS    mVisible;
    VOF    mOverflowX, mOverflowY;
    bool   mLinearRGB;
    bool   mBackgroundActive;
    bool   mDirty;
-   bool   mApplyTransform;
 
    VectorState() :
       mClip(0, 0, DBL_MAX, DBL_MAX),
@@ -104,8 +102,7 @@ public:
       mOverflowX(VOF::VISIBLE), mOverflowY(VOF::VISIBLE),
       mLinearRGB(false),
       mBackgroundActive(false),
-      mDirty(false),
-      mApplyTransform(false)
+      mDirty(false)
       { }
 };
 
@@ -325,10 +322,6 @@ const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, b
       agg::trans_affine transform;
       apply_transforms(Vector, transform);
       apply_parent_transforms(get_parent(&Vector), transform);
-      return transform;
-   }
-   else if (State.mApplyTransform) { // BoundingBox with a real-time transform
-      agg::trans_affine transform = Vector.Transform * State.mTransform;
       return transform;
    }
    else return Vector.Transform; // Default BoundingBox: The vector's position, transforms, and parent transforms apply.
@@ -637,7 +630,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
       DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
       if (stroke_width < 1) stroke_width = 1;
 
-      auto transform = Vector.Transform * State.mTransform;
+      auto transform = Vector.Transform;
       Vector.BasePath.approximation_scale(transform.scale());
       agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
@@ -828,14 +821,27 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // This is useful for creating common graphics that can be re-used multiple times without
                   // them being pre-rasterised as they normally would be for primitive vectors.
                   //
-                  // The client can expect a result that would match that of the pattern's viewport being placed
-                  // as a child of this one.  NB: There is a performance penalty in that transforms will be
+                  // The client can expect a result that is equivalent to the pattern's viewport being a child of
+                  // the current viewport.  NB: There is a performance penalty in that transforms will be
                   // applied in realtime.
 
-                  auto s_transform = state.mTransform;
-                  auto s_apply     = state.mApplyTransform;
-                  state.mTransform      = view->Transform;
-                  state.mApplyTransform = true;
+                  if (!view->Fill[0].Pattern->Scene->Viewport->Matrices) {
+                     vecNewMatrix(view->Fill[0].Pattern->Scene->Viewport, NULL);
+                  }
+
+                  // Use transforms for the purpose of placing the pattern correctly
+
+                  auto &matrix = view->Fill[0].Pattern->Scene->Viewport->Matrices;
+                  auto &t = view->Transform;
+
+                  matrix->ScaleX = t.sx;
+                  matrix->ScaleY = t.sy;
+                  matrix->ShearX = t.shx;
+                  matrix->ShearY = t.shy;
+                  matrix->TranslateX = t.tx;
+                  matrix->TranslateY = t.ty;
+
+                  mark_dirty(view->Fill[0].Pattern->Scene->Viewport, RC::TRANSFORM);
 
                   if (view->Fill[0].Pattern->Units IS VUNIT::BOUNDING_BOX) {
                      view->Fill[0].Pattern->Scene->setPageWidth(view->vpFixedWidth);
@@ -845,16 +851,43 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   draw_vectors(((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
 
                   if ((view->FGFill) and (view->Fill[1].Pattern)) {
+                     if (!view->Fill[1].Pattern->Scene->Viewport->Matrices) {
+                        vecNewMatrix(view->Fill[1].Pattern->Scene->Viewport, NULL);
+                     }
+
+                     auto &matrix = view->Fill[1].Pattern->Scene->Viewport->Matrices;
+                     matrix->ScaleX = t.sx;
+                     matrix->ScaleY = t.sy;
+                     matrix->ShearX = t.shx;
+                     matrix->ShearY = t.shy;
+                     matrix->TranslateX = t.tx;
+                     matrix->TranslateY = t.ty;
+
+                     mark_dirty(view->Fill[1].Pattern->Scene->Viewport, RC::TRANSFORM);
+
                      if (view->Fill[1].Pattern->Units IS VUNIT::BOUNDING_BOX) {
                         view->Fill[1].Pattern->Scene->setPageWidth(view->vpFixedWidth);
                         view->Fill[1].Pattern->Scene->setPageHeight(view->vpFixedHeight);
                      }
 
                      draw_vectors(((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
+
+                     matrix->ScaleX = 1.0;
+                     matrix->ScaleY = 1.0;
+                     matrix->ShearX = 0;
+                     matrix->ShearY = 0;
+                     matrix->TranslateX = 0;
+                     matrix->TranslateY = 0;
+                     mark_dirty(view->Fill[1].Pattern->Scene->Viewport, RC::TRANSFORM);
                   }
 
-                  state.mTransform      = s_transform;
-                  state.mApplyTransform = s_apply;
+                  matrix->ScaleX = 1.0;
+                  matrix->ScaleY = 1.0;
+                  matrix->ShearX = 0;
+                  matrix->ShearY = 0;
+                  matrix->TranslateX = 0;
+                  matrix->TranslateY = 0;
+                  mark_dirty(view->Fill[0].Pattern->Scene->Viewport, RC::TRANSFORM);
                }
 
                if (view->Child) draw_vectors((extVector *)view->Child, state);
@@ -890,50 +923,12 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             }
 
             if (shape->FillRaster) {
-               if (state.mApplyTransform) {
-                  // Run-time transforms in the draw process aren't ideal as they require the path to be processed
-                  // every time.  It's necessary if the client wants to re-use vectors though (saving resources and gaining
-                  // some conveniences).
-                  auto transform = shape->Transform * state.mTransform;
-                  shape->BasePath.approximation_scale(transform.scale());
-                  agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(shape->BasePath, transform);
-                  agg::rasterizer_scanline_aa raster;
-                  raster.add_path(final_path);
-                  render_fill(state, *shape, raster, shape->Fill[0]);
-                  if (shape->FGFill) render_fill(state, *shape, raster, shape->Fill[1]);
-               }
-               else {
-                  render_fill(state, *shape, *shape->FillRaster, shape->Fill[0]);
-                  if (shape->FGFill) render_fill(state, *shape, *shape->FillRaster, shape->Fill[1]);
-               }
+               render_fill(state, *shape, *shape->FillRaster, shape->Fill[0]);
+               if (shape->FGFill) render_fill(state, *shape, *shape->FillRaster, shape->Fill[1]);
             }
 
             if (shape->StrokeRaster) {
-               if (state.mApplyTransform) {
-                  auto transform = shape->Transform * state.mTransform;
-
-                  if (shape->DashArray) {
-                     shape->DashArray->stroke.approximation_scale(transform.scale());
-
-                     configure_stroke(*shape, shape->DashArray->stroke);
-                     agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> final_path(shape->DashArray->stroke, transform);
-
-                     agg::rasterizer_scanline_aa raster;
-                     raster.add_path(final_path);
-                     render_stroke(state, *shape, raster);
-                  }
-                  else {
-                     shape->BasePath.approximation_scale(transform.scale());
-                     agg::conv_stroke<agg::path_storage> stroked_path(shape->BasePath);
-                     configure_stroke(*shape, stroked_path);
-                     agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, transform);
-
-                     agg::rasterizer_scanline_aa raster;
-                     raster.add_path(final_path);
-                     render_stroke(state, *shape, raster);
-                  }
-               }
-               else render_stroke(state, *shape, *shape->StrokeRaster);
+               render_stroke(state, *shape, *shape->StrokeRaster);
             }
 
             if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
