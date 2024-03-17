@@ -48,7 +48,8 @@ ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVecto
       else X = XAdvance;
    }
 
-   if (Widget.floating_y()) Y = Segment.area.Y + Widget.final_pad.top;
+   // TODO: Is the use of floating_x() correct?
+   if (Widget.floating_x()) Y = Segment.area.Y + Widget.final_pad.top;
    else {
       if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) {
          Y = Widget.final_pad.top;
