@@ -844,13 +844,23 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   mark_dirty(view->Fill[0].Pattern->Scene->Viewport, RC::TRANSFORM);
 
                   if (view->Fill[0].Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                     view->Fill[0].Pattern->Scene->setPageWidth(view->vpFixedWidth);
-                     view->Fill[0].Pattern->Scene->setPageHeight(view->vpFixedHeight);
+                     view->Fill[0].Pattern->Scene->setPageWidth(view->Scene->PageWidth);
+                     view->Fill[0].Pattern->Scene->setPageHeight(view->Scene->PageHeight);
+                     view->Fill[0].Pattern->Scene->Viewport->setFields(fl::Width(view->vpFixedWidth), fl::Height(view->vpFixedHeight));
                   }
 
                   draw_vectors(((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
 
+                  matrix->ScaleX = 1.0;
+                  matrix->ScaleY = 1.0;
+                  matrix->ShearX = 0;
+                  matrix->ShearY = 0;
+                  matrix->TranslateX = 0;
+                  matrix->TranslateY = 0;
+                  mark_dirty(view->Fill[0].Pattern->Scene->Viewport, RC::TRANSFORM);
+
                   if ((view->FGFill) and (view->Fill[1].Pattern)) {
+                     // Support for foreground fill patterns
                      if (!view->Fill[1].Pattern->Scene->Viewport->Matrices) {
                         vecNewMatrix(view->Fill[1].Pattern->Scene->Viewport, NULL);
                      }
@@ -866,8 +876,9 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      mark_dirty(view->Fill[1].Pattern->Scene->Viewport, RC::TRANSFORM);
 
                      if (view->Fill[1].Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                        view->Fill[1].Pattern->Scene->setPageWidth(view->vpFixedWidth);
-                        view->Fill[1].Pattern->Scene->setPageHeight(view->vpFixedHeight);
+                        view->Fill[1].Pattern->Scene->setPageWidth(view->Scene->PageWidth);
+                        view->Fill[1].Pattern->Scene->setPageHeight(view->Scene->PageHeight);
+                        view->Fill[1].Pattern->Scene->Viewport->setFields(fl::Width(view->vpFixedWidth), fl::Height(view->vpFixedHeight));
                      }
 
                      draw_vectors(((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
@@ -880,14 +891,6 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      matrix->TranslateY = 0;
                      mark_dirty(view->Fill[1].Pattern->Scene->Viewport, RC::TRANSFORM);
                   }
-
-                  matrix->ScaleX = 1.0;
-                  matrix->ScaleY = 1.0;
-                  matrix->ShearX = 0;
-                  matrix->ShearY = 0;
-                  matrix->TranslateX = 0;
-                  matrix->TranslateY = 0;
-                  mark_dirty(view->Fill[0].Pattern->Scene->Viewport, RC::TRANSFORM);
                }
 
                if (view->Child) draw_vectors((extVector *)view->Child, state);
