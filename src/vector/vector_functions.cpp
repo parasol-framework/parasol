@@ -633,37 +633,46 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
       if ((*str >= 'a') and (*str <= 'z')) {
          if (!StrCompare(str, "matrix", 6)) {
             cmd m(M_MUL);
-            str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
+            str += 6;
+            read_numseq(str, { &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
          else if (!StrCompare(str, "translate", 9)) {
             cmd m(M_TRANSLATE);
-            str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
+            str += 9;
+            bool scaled_x, scaled_y;
+            m.tx = read_unit(str, scaled_x);
+            m.ty = read_unit(str, scaled_y);
+            read_numseq(str, { &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
          else if (!StrCompare(str, "rotate", 6)) {
             cmd m(M_ROTATE);
-            str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
+            str += 6;
+            read_numseq(str, { &m.angle, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
          else if (!StrCompare(str, "scale", 5)) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
-            str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.tx, &m.ty });
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
          else if (!StrCompare(str, "skewX", 5)) {
             cmd m(M_SKEW);
             m.ty = 0;
-            str = read_numseq(str+5, &m.tx, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.tx });
             list.push_back(std::move(m));
          }
          else if (!StrCompare(str, "skewY", 5)) {
             cmd m(M_SKEW);
             m.tx = 0;
-            str = read_numseq(str+5, &m.ty, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.ty });
             list.push_back(std::move(m));
          }
          else str++;
@@ -1187,7 +1196,7 @@ CharWidth: Returns the width of a character.
 
 This function will return the pixel width of a font character.  The character is specified as a unicode value in the
 Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
-The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  
+The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.
 If kerning information is not required, set the KChar and Kerning parameters to zero.
 
 The font's GlyphSpacing value is not used in calculating the character width.
@@ -1206,8 +1215,8 @@ double: The pixel width of the character will be returned.
 DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning)
 {
    if (!Handle) return 0;
-   
-   if (((common_font *)Handle)->type IS CF_FREETYPE) {     
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
       auto pt = (freetype_font::ft_point *)Handle;
       FT_Activate_Size(pt->ft_size);
 
@@ -1233,8 +1242,8 @@ DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning)
 -FUNCTION-
 StringWidth: Calculate the pixel width of a UTF-8 string, for a given font.
 
-This function calculates the pixel width of a string, in relation to a known font.  The function takes into account 
-any line-feeds that are encountered, so if the String contains multiple lines, then the width of the longest line will 
+This function calculates the pixel width of a string, in relation to a known font.  The function takes into account
+any line-feeds that are encountered, so if the String contains multiple lines, then the width of the longest line will
 be returned.
 
 The font's kerning specifications will be taken into account when computing the distance between glyphs.
@@ -1258,7 +1267,7 @@ DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
 
    const std::lock_guard lock(glFontMutex);
 
-   if (((common_font *)Handle)->type IS CF_FREETYPE) {     
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
       auto pt = (freetype_font::ft_point *)Handle;
       FT_Activate_Size(pt->ft_size);
 
@@ -1339,7 +1348,7 @@ ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, AP
 -FUNCTION-
 GetFontMetrics: Returns a set of display metric values for a font.
 
-Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI) 
+Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI)
 for a given font.
 
 -INPUT-
@@ -1356,7 +1365,7 @@ NullArgs:
 ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
 {
    if ((!Handle) or (!Metrics)) return ERR_NullArgs;
-   
+
    if (((common_font *)Handle)->type IS CF_FREETYPE) {
       auto pt = (freetype_font::ft_point *)Handle;
       Metrics->Height      = pt->height;

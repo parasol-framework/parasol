@@ -294,7 +294,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_STDDEVIATION: { // Y is optional, if not set then it is equivalent to X.
             DOUBLE x = -1, y = -1;
-            read_numseq(val, &x, &y, TAGEND);
+            read_numseq(val, { &x, &y });
             if ((x) and (y IS -1)) y = x;
             if (x > 0) fx->set(FID_SX, x);
             if (y > 0) fx->set(FID_SY, y);
@@ -532,7 +532,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_ORDER: {
             DOUBLE ox = 0, oy = 0;
-            read_numseq(val, &ox, &oy, TAGEND);
+            read_numseq(val, { &ox, &oy });
             if (ox < 1) ox = 3;
             if (oy < 1) oy = ox;
             fx->setFields(fl::MatrixColumns(F2T(ox)), fl::MatrixRows(F2T(oy)));
@@ -548,14 +548,14 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
          case SVF_DIVISOR: {
             DOUBLE divisor = 0;
-            read_numseq(val, &divisor, TAGEND);
+            read_numseq(val, { &divisor });
             fx->set(FID_Divisor, divisor);
             break;
          }
 
          case SVF_BIAS: {
             DOUBLE bias = 0;
-            read_numseq(val, &bias, TAGEND);
+            read_numseq(val, { &bias });
             fx->set(FID_Bias, bias);
             break;
          }
@@ -572,7 +572,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
          case SVF_KERNELUNITLENGTH: {
             DOUBLE kx = 1, ky = 1;
-            read_numseq(val, &kx, &ky, TAGEND);
+            read_numseq(val, { &kx, &ky });
             if (kx < 1) kx = 1;
             if (ky < 1) ky = kx;
             fx->set(FID_UnitX, kx);
@@ -635,7 +635,7 @@ static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *F
 
          case SVF_KERNELUNITLENGTH: {
             DOUBLE kx = 1, ky = 1;
-            read_numseq(val, &kx, &ky, TAGEND);
+            read_numseq(val, { &kx, &ky });
             if (kx < 1) kx = 1;
             if (ky < 1) ky = kx;
             fx->set(FID_UnitX, kx);
@@ -832,11 +832,11 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
          for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
             switch(StrHash(child.Attribs[a].Name)) {
                case SVF_TYPE:        type = StrHash(child.Attribs[a].Value); break;
-               case SVF_AMPLITUDE:   read_numseq(child.Attribs[a].Value, &amp, TAGEND); break;
-               case SVF_INTERCEPT:   read_numseq(child.Attribs[a].Value, &intercept, TAGEND); break;
-               case SVF_SLOPE:       read_numseq(child.Attribs[a].Value, &slope, TAGEND); break;
-               case SVF_EXPONENT:    read_numseq(child.Attribs[a].Value, &exp, TAGEND); break;
-               case SVF_OFFSET:      read_numseq(child.Attribs[a].Value, &offset, TAGEND); break;
+               case SVF_AMPLITUDE:   read_numseq(child.Attribs[a].Value, { &amp }); break;
+               case SVF_INTERCEPT:   read_numseq(child.Attribs[a].Value, { &intercept }); break;
+               case SVF_SLOPE:       read_numseq(child.Attribs[a].Value, { &slope }); break;
+               case SVF_EXPONENT:    read_numseq(child.Attribs[a].Value, { &exp }); break;
+               case SVF_OFFSET:      read_numseq(child.Attribs[a].Value, { &offset }); break;
                case SVF_MASK:        mask = StrToInt(child.Attribs[a].Value); break;
                case SVF_TABLEVALUES: {
                   values = read_array<DOUBLE>(child.Attribs[a].Value, 64);
@@ -928,28 +928,28 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
 
          case SVF_K1: {
             DOUBLE k1;
-            read_numseq(val, &k1, TAGEND);
+            read_numseq(val, { &k1 });
             fx->set(FID_K1, k1);
             break;
          }
 
          case SVF_K2: {
             DOUBLE k2;
-            read_numseq(val, &k2, TAGEND);
+            read_numseq(val, { &k2 });
             fx->set(FID_K2, k2);
             break;
          }
 
          case SVF_K3: {
             DOUBLE k3;
-            read_numseq(val, &k3, TAGEND);
+            read_numseq(val, { &k3 });
             fx->set(FID_K3, k3);
             break;
          }
 
          case SVF_K4: {
             DOUBLE k4;
-            read_numseq(val, &k4, TAGEND);
+            read_numseq(val, { &k4 });
             fx->set(FID_K4, k4);
             break;
          }
@@ -1003,7 +1003,7 @@ static ERROR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filt
 
          case SVF_FLOOD_OPACITY: {
             DOUBLE opacity;
-            read_numseq(val, &opacity, TAGEND);
+            read_numseq(val, { &opacity });
             error = fx->set(FID_Opacity, opacity);
             break;
          }
@@ -1045,7 +1045,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_BASEFREQUENCY: {
             DOUBLE bfx = -1, bfy = -1;
-            read_numseq(val, &bfx, &bfy, TAGEND);
+            read_numseq(val, { &bfx, &bfy });
             if (bfx < 0) bfx = 0;
             if (bfy < 0) bfy = bfx;
             fx->setFields(fl::FX(bfx), fl::FY(bfy));
@@ -1103,7 +1103,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_RADIUS: {
             DOUBLE x = -1, y = -1;
-            read_numseq(val, &x, &y, TAGEND);
+            read_numseq(val, { &x, &y });
             if (x > 0) fx->set(FID_RadiusX, F2T(x));
             if (y > 0) fx->set(FID_RadiusY, F2T(y));
             break;
@@ -1324,7 +1324,7 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
 
             case SVF_FILTERRES: {
                DOUBLE x = 0, y = 0;
-               read_numseq(val, &x, &y, TAGEND);
+               read_numseq(val, { &x, &y });
                filter->setFields(fl::ResX(F2T(x)), fl::ResY(F2T(y)));
                break;
             }
@@ -1344,7 +1344,7 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
 /*
             case SVF_VIEWBOX: {
                DOUBLE x=0, y=0, width=0, height=0;
-               read_numseq(val, &x, &y, &width, &height, TAGEND);
+               read_numseq(val, { &x, &y, &width, &height });
                filter->Viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
             }
@@ -1459,7 +1459,7 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
                DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
                client_set_viewbox = true;
                pattern->ContentUnits = VUNIT::USERSPACE;
-               read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
+               read_numseq(val, { &vx, &vy, &vwidth, &vheight });
                viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
                break;
             }
@@ -2189,7 +2189,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
             case SVF_HEIGHT: FUNIT(FID_Height, val).set(viewport); break;
             case SVF_VIEWBOX:  {
                DOUBLE x=0, y=0, width=0, height=0;
-               read_numseq(val, &x, &y, &width, &height, TAGEND);
+               read_numseq(val, { &x, &y, &width, &height });
                viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
             }

@@ -56,8 +56,8 @@ restart:
                   case AT_SCALE: break;
                   case AT_ROTATE: {
                      DOUBLE from_angle = 0, from_cx = 0, from_cy = 0, to_angle = 0, to_cx = 0, to_cy = 0;
-                     read_numseq(anim.Values[vi], &from_angle, &from_cx, &from_cy, TAGEND);
-                     read_numseq(anim.Values[vi+1], &to_angle, &to_cx, &to_cy, TAGEND);
+                     read_numseq(anim.Values[vi], { &from_angle, &from_cx, &from_cy });
+                     read_numseq(anim.Values[vi+1], { &to_angle, &to_cx, &to_cy } );
 
                      DOUBLE mod = 1.0 / (DOUBLE)(anim.Values.size() - 1);
                      DOUBLE ratio;

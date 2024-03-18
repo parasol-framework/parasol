@@ -18,6 +18,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <unordered_map>
 #include <string>
 #include <sstream>
+#include <charconv>
 #include <algorithm>
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>

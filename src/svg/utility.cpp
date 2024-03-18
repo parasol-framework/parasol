@@ -191,7 +191,7 @@ static CSTRING folder(extSVG *Self)
 
 //********************************************************************************************************************
 
-static void parse_transform(objVector *Vector, const std::string Value) 
+static void parse_transform(objVector *Vector, const std::string Value)
 {
    if ((Vector->Class->BaseClassID IS ID_VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
@@ -250,22 +250,26 @@ static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
 **  12.467  = 12
 */
 
-static DOUBLE read_time(const std::string Value)
+static DOUBLE read_time(const std::string_view Value)
 {
-   DOUBLE units[3];
+   std::array<DOUBLE, 3> units;
 
-   auto v = (char *)Value.c_str();
-   while ((*v) and (*v <= 0x20)) v++;
-   if ((*v >= '0') and (*v <= '9')) {
-      units[0] = strtod(v, &v);
+   std::size_t i = 0;
+   while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
 
-      if (*v IS ':') {
+   LONG num;
+   auto [ v, error ] = std::from_chars(Value.data() + i, Value.data() + Value.size(), num);
+
+   if (error IS std::errc()) {
+      units[0] = num;
+
+      if (v[0] IS ':') {
          v++;
-         units[1] = strtod(v, &v);
+         units[1] = strtod(v, (char **)&v);
 
-         if (*v IS ':') {
+         if (v[0] IS ':') {
             v++;
-            units[2] = strtod(v, &v);
+            units[2] = strtod(v, (char **)&v);
 
             // hh:nn:ss
             return (units[0] * 60 * 60) + (units[1] * 60) + units[2];
@@ -274,19 +278,11 @@ static DOUBLE read_time(const std::string Value)
             return (units[0] * 60 * 60) + (units[1] * 60);
          }
       }
-      else if ((v[0] IS 'h') and (v[1] <= 0x20)) {
-         return units[0] * 60 * 60;
-      }
-      else if ((v[0] IS 's') and (v[1] <= 0x20)) {
-         return units[0];
-      }
-      else if ((v[0] IS 'm') and (v[1] IS 'i') and (v[2] IS 'n') and (v[3] IS 0)) {
-         return units[0] * 60;
-      }
-      else if ((v[0] IS 'm') and (v[1] IS 's') and (v[2] <= 0x20)) {
-         return units[0] / 1000.0;
-      }
-      else if (v[0] <= 0x20) return units[0];
+      else if ((v[0] IS 'h') and (unsigned(v[1]) <= 0x20)) return units[0] * 60 * 60;
+      else if ((v[0] IS 's') and (unsigned(v[1]) <= 0x20)) return units[0];
+      else if ((v[0] IS 'm') and (v[1] IS 'i') and (v[2] IS 'n') and (unsigned(v[3]) <= 0x20)) return units[0] * 60;
+      else if ((v[0] IS 'm') and (v[1] IS 's') and (unsigned(v[2]) <= 0x20)) return DOUBLE(units[0]) / 1000.0;
+      else if (unsigned(v[0]) <= 0x20) return units[0];
       else return 0;
    }
    else return 0;
@@ -295,31 +291,33 @@ static DOUBLE read_time(const std::string Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
+static DOUBLE read_unit(const std::string_view Value, LARGE *FieldID)
 {
    if (FieldID) *FieldID |= TDOUBLE;
 
-   auto str = (char *)Value.c_str();
-   while ((*str) and (*str <= 0x20)) str++;
+   const DOUBLE dpi = 96.0; // TODO: Needs to be derived from the display
 
-   const DOUBLE dpi = 96.0;
-   const DOUBLE fv = strtod(str, &str);
+   std::size_t i = 0;
+   while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
 
-   if (*str) {
-      if (*str IS '%') {
+   DOUBLE fv;
+   auto [ ptr, error ] = std::from_chars(Value.data() + i, Value.data() + Value.size(), fv);
+
+   if (error IS std::errc()) {
+      if (ptr[0] IS '%') {
          if (FieldID) *FieldID |= TSCALE;
          return fv * 0.01;
       }
-      else if ((str[0] IS 'e') and (str[1] IS 'm')) return fv * 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
-      else if ((str[0] IS 'e') and (str[1] IS 'x')) return fv * 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((str[0] IS 'i') and (str[1] IS 'n')) return fv * dpi; // Inches
-      else if ((str[0] IS 'c') and (str[1] IS 'm')) return fv * (1.0 / 2.56) * dpi; // Centimetres
-      else if ((str[0] IS 'm') and (str[1] IS 'm')) return fv * (1.0 / 20.56) * dpi; // Millimetres
-      else if ((str[0] IS 'p') and (str[1] IS 't')) return fv * (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
-      else if ((str[0] IS 'p') and (str[1] IS 'c')) return fv * (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
+      else if ((ptr[0] IS 'e') and (ptr[1] IS 'm')) return fv * 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
+      else if ((ptr[0] IS 'e') and (ptr[1] IS 'x')) return fv * 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if ((ptr[0] IS 'i') and (ptr[1] IS 'n')) return fv * dpi; // Inches
+      else if ((ptr[0] IS 'c') and (ptr[1] IS 'm')) return fv * (1.0 / 2.56) * dpi; // Centimetres
+      else if ((ptr[0] IS 'm') and (ptr[1] IS 'm')) return fv * (1.0 / 20.56) * dpi; // Millimetres
+      else if ((ptr[0] IS 'p') and (ptr[1] IS 't')) return fv * (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
+      else if ((ptr[0] IS 'p') and (ptr[1] IS 'c')) return fv * (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
       else return fv; // Default to 'px' / pixel
    }
-   else return fv;
+   else return 0;
 }
 
 //********************************************************************************************************************
@@ -328,44 +326,41 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 // NOTE: It would be possible to deprecate this in future if the viewport host is given a viewbox area of (0 0 1 1)
 // as it should be.
 
-inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, VUNIT Units)
+inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string_view Value, VUNIT Units)
 {
-   LARGE field = FieldID;
+   auto field = FieldID;
    DOUBLE num = read_unit(Value, &field);
    if (Units IS VUNIT::BOUNDING_BOX) field |= TSCALE;
    SetField(Object, field, num);
 }
 
 //********************************************************************************************************************
+
+inline std::string_view next_value(const std::string_view Value)
+{
+   std::size_t i = 0;
+   while ((i < Value.size()) and ((Value[i] <= 0x20) or (Value[i] IS ',') or (Value[i] IS '(') or (Value[i] IS ')'))) i++;
+   return std::string_view(Value.data() + i, Value.size() - i);
+}
+
+//********************************************************************************************************************
 // The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
 // include: 0 - 9 , ( ) - + SPACE
 
-static void read_numseq(const std::string Value, ...)
+static void read_numseq(std::string_view String, std::initializer_list<DOUBLE *> Value)
 {
-   va_list list;
-   DOUBLE *result;
+   for (DOUBLE *v : Value) {
+      String = next_value(String);
 
-   if (Value.empty()) return;
+      DOUBLE num;
+      auto [ next, error ] = std::from_chars(String.data(), String.data() + String.size(), num);
 
-   va_start(list, Value);
-
-   auto v = Value.c_str();
-   while ((result = va_arg(list, DOUBLE *))) {
-      while ((*v) and ((*v <= 0x20) or (*v IS ',') or (*v IS '(') or (*v IS ')'))) v++;
-      if (!v[0]) break;
-
-      STRING next = NULL;
-      DOUBLE num = strtod(v, &next);
-      if ((!num) and ((!next) or (v IS next))) {  // Invalid character or end-of-stream check.
-         v = next;
-         break;
+      if ((!num) and ((!next) or (String IS next))) {  // Invalid character or end-of-stream check.
+         return;
       }
-
-      *result = num;
-      v = next;
+      String = std::string_view(next, String.data() + String.size() - next);
+      *v = num;
    }
-
-   va_end(list);
 }
 
 //********************************************************************************************************************

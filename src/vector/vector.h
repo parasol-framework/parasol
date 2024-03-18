@@ -535,9 +535,9 @@ class extVectorClip : public objVectorClip {
 //********************************************************************************************************************
 
 extern CSTRING get_name(OBJECTPTR);
-extern CSTRING read_numseq(CSTRING, ...);
-extern CSTRING read_numseq_zero(CSTRING, ...);
-extern DOUBLE read_unit(CSTRING &, UBYTE *);
+extern void read_numseq(CSTRING &, std::initializer_list<DOUBLE *>);
+extern void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
+extern DOUBLE read_unit(CSTRING &, bool &);
 extern ERROR init_blurfx(void);
 extern ERROR init_colour(void);
 extern ERROR init_colourfx(void);
