@@ -830,6 +830,7 @@ struct widget_mgr {
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
    bool alt_state = false, internal_page = false;
+   bool align_to_text = false;         // Widgets with internal text (buttons, input, combobox) can look best if their internal text aligns with the baseline.
    UBYTE label_pos = 1;                // 0 = left, 1 = right
 
    inline bool floating_y() {
@@ -924,7 +925,7 @@ struct bc_combobox : public entity, widget_mgr {
   
    static void callback(struct doc_menu &, struct dropdown_item &);
 
-   bc_combobox() : menu(&callback) { code = SCODE::COMBOBOX; }
+   bc_combobox() : menu(&callback) { code = SCODE::COMBOBOX; align_to_text = true; }
 };
 
 struct bc_input : public entity, widget_mgr {
@@ -933,7 +934,7 @@ struct bc_input : public entity, widget_mgr {
    GuardedObject<objVectorViewport> clip_vp;
    bool secret = false;
 
-   bc_input() { code = SCODE::INPUT; }
+   bc_input() { code = SCODE::INPUT; align_to_text = true; }
 };
 
 struct bc_image : public entity, widget_mgr {
@@ -1094,7 +1095,8 @@ class extDocument : public objDocument {
 
 bc_button::bc_button() { 
    code = SCODE::BUTTON; 
-   stream = new RSTREAM(); 
+   stream = new RSTREAM();
+   align_to_text = true;
 }
 
 bc_button::~bc_button() {

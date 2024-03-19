@@ -1648,7 +1648,7 @@ const char glButtonSVG[] = R"-(
 
   <rect opacity="0.6" fill="rgb(0,0,0)" filter="url(#dropShadow)" width="95%" height="93%" 
     x="2.5%" y="4%" ry="20" rx="20"/>
-  <rect fill="#6d5d55" width="95%" height="93%" x="2.5%" y="2.5%" ry="20" rx="20"/>
+  <rect fill="#555d6d" width="95%" height="93%" x="2.5%" y="2.5%" ry="20" rx="20"/>
   <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="none" stroke="url(#darkEdge)" 
     stroke-width="0.5%" stroke-linecap="round" stroke-opacity="0.7" stroke-linejoin="round" stroke-miterlimit="4"/>
   <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="url(#shading)"/>

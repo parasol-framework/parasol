@@ -60,7 +60,10 @@ ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVecto
       else {
          // Bottom alignment.  Aligning to the base-line is preferable, but if the widget is tall then we take up the descent space too.
          auto h = Widget.final_height - Widget.final_pad.bottom;
-         if (h > Segment.area.Height - Segment.descent) Y = Segment.area.Height - h;
+         if (h > Segment.area.Height - Segment.descent) {
+            if (Widget.align_to_text) Y = Segment.area.Height - h + Segment.descent;
+            else Y = Segment.area.Height - h;
+         }
          else Y = Segment.area.Height - Segment.descent - h;
       }
 

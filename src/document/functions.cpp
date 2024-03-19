@@ -740,7 +740,7 @@ static void process_parameters(extDocument *Self, const std::string_view String)
 
                int num;
                auto [ v, error ] = std::from_chars(String.data() + pos + 1, String.data() + pos + 3, num, 16);
-               Output += num;
+               if (error IS std::errc()) Output += num;
                pos += 3;
             }
             else Output += String[pos++];
