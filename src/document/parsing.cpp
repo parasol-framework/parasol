@@ -1727,7 +1727,7 @@ void parser::tag_button(XMLTag &Tag)
    }
 
    if (widget.fill.empty())      widget.fill      = "url(#/widget/button/inactive)";
-   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
+   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255,220)";
 
    widget.def_size = DUNIT(1.7, DU::FONT_SIZE);
 
