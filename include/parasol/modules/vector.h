@@ -2084,6 +2084,7 @@ struct VectorBase {
    ERROR (*_GetFontMetrics)(APTR Handle, struct FontMetrics * Info);
    DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
    DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
+   ERROR (*_FlushMatrix)(struct VectorMatrix * Matrix);
 #endif // PARASOL_STATIC
 };
 
@@ -2120,6 +2121,7 @@ inline ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG S
 inline ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
 inline DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
 inline DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
+inline ERROR vecFlushMatrix(struct VectorMatrix * Matrix) { return VectorBase->_FlushMatrix(Matrix); }
 #else
 extern "C" {
 extern ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
@@ -2152,6 +2154,7 @@ extern ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG S
 extern ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info);
 extern DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
 extern DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars);
+extern ERROR vecFlushMatrix(struct VectorMatrix * Matrix);
 }
 #endif // PARASOL_STATIC
 #endif
@@ -2185,6 +2188,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_ACHROMATOMALY 0xc3f37036
 #define SVF_ACHROMATOPSIA 0xc3f56170
 #define SVF_ALIGN 0x0f174e50
+#define SVF_ALT_FILL 0x8c3507fa
 #define SVF_AMPLITUDE 0x5e60600a
 #define SVF_ANIMATEMOTION 0x8a27c6ba
 #define SVF_ANIMATETRANSFORM 0x6349c940

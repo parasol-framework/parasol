@@ -615,7 +615,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "GetFontHandle",
     "GetFontMetrics",
     "CharWidth",
-    "StringWidth")
+    "StringWidth",
+    "FlushMatrix")
 
   c_insert([[
 
@@ -650,6 +651,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "ACHROMATOMALY",
     "ACHROMATOPSIA",
     "ALIGN",
+    "ALT-FILL",
     "AMPLITUDE",
     "ANIMATEMOTION",
     "ANIMATETRANSFORM",

@@ -8,6 +8,7 @@
 #define HASH_advance 0x2062deb7UL
 #define HASH_AfterLayout 0x58983635UL
 #define HASH_align 0x0f174e50UL
+#define HASH_alt_fill 0x8c3507faUL
 #define HASH_anchor 0xf22203e0UL
 #define HASH_b 0x0002b607UL
 #define HASH_background 0x677e1785UL

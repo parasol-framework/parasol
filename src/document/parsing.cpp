@@ -1623,6 +1623,36 @@ void parser::tag_call(XMLTag &Tag)
 }
 
 //********************************************************************************************************************
+// A button can have both an on and off pattern, but for our purposes we'll have one pattern and rely on the click
+// action to provide feedback that the button has been pressed.
+
+const char glButtonSVG[] = R"-(
+<svg width="100%" height="100%">
+  <defs>
+    <linearGradient id="darkEdge" x1="0" y1="1" x2="0" y2="0" gradientUnits="objectBoundingBox">
+      <stop stop-color="#000000" stop-opacity="1" offset="0"/>
+      <stop stop-color="#050505" stop-opacity="1" offset="0.84"/>
+      <stop stop-color="#afafaf" stop-opacity="1" offset="1"/>
+    </linearGradient>
+
+    <filter id="dropShadow" color-interpolation-filters="sRGB" primitiveUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="0.013"/>
+    </filter>
+
+    <linearGradient id="shading" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0" y2="1.04">
+      <stop stop-color="#ffffff" stop-opacity="0.50" offset="0"/>
+      <stop stop-color="#7f7f7f" stop-opacity="0" offset="0.5"/>
+      <stop stop-color="#000000" stop-opacity="0.54" offset="1"/>
+    </linearGradient>
+  </defs>
+
+  <rect opacity="0.6" fill="rgb(0,0,0)" filter="url(#dropShadow)" width="95%" height="93%" 
+    x="2.5%" y="4%" ry="20" rx="20"/>
+  <rect fill="#6d5d55" width="95%" height="93%" x="2.5%" y="2.5%" ry="20" rx="20"/>
+  <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="none" stroke="url(#darkEdge)" 
+    stroke-width="0.5%" stroke-linecap="round" stroke-opacity="0.7" stroke-linejoin="round" stroke-miterlimit="4"/>
+  <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="url(#shading)"/>
+</svg>)-";
 
 void parser::tag_button(XMLTag &Tag)
 {
@@ -1633,11 +1663,12 @@ void parser::tag_button(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_fill)         widget.fill   = value;
-      else if (hash IS HASH_name)    widget.name   = value;
-      else if (hash IS HASH_width)   widget.width  = DUNIT(value);
-      else if (hash IS HASH_height)  widget.height = DUNIT(value);
-      else if (hash IS HASH_padding) widget.pad.parse(value); // Outer padding
+      if (hash IS HASH_fill)          widget.fill   = value;
+      else if (hash IS HASH_alt_fill) widget.alt_fill = value;
+      else if (hash IS HASH_name)     widget.name   = value;
+      else if (hash IS HASH_width)    widget.width  = DUNIT(value);
+      else if (hash IS HASH_height)   widget.height = DUNIT(value);
+      else if (hash IS HASH_padding)  widget.pad.parse(value); // Outer padding
       else if (hash IS HASH_cell_padding) widget.inner_padding.parse(value); // Inner padding
       else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
@@ -1645,46 +1676,58 @@ void parser::tag_button(XMLTag &Tag)
    widget.internal_page = true;
 
    if (!m_button_patterns) {
+      // Load up the default pattern values for buttons (irrespective of this button utilising them or not)
       m_button_patterns = true;
 
-      if (auto pattern_on = objVectorPattern::create::global({
-            fl::Name("button_on"),
+      if (auto pattern_active = objVectorPattern::create::global({
+            fl::Name("button_active"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
 
-         auto vp = pattern_on->Scene->Viewport;
-         objVectorRectangle::create::global({
-            fl::Owner(vp->UID),
-            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
-            fl::RoundX(SCALE(0.1)),
-            fl::Fill("rgb(0,0,0,32)")
-         });
+         auto svg = objSVG::create { fl::Target(pattern_active->Scene), fl::Statement(glButtonSVG) };
 
-         scAddDef(Self->Viewport->Scene, "/widget/button/on", pattern_on);
+         if (svg.ok()) { 
+            FreeResource(*svg);
+         }
+         else { // Revert to a basic rectangle if the SVG didn't process
+            objVectorRectangle::create::global({
+               fl::Owner(pattern_active->Scene->Viewport->UID),
+               fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
+               fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
+               fl::RoundX(SCALE(0.1)),
+               fl::Fill("rgb(0,0,0,32)")
+            });
+         }
+
+         scAddDef(Self->Viewport->Scene, "/widget/button/active", pattern_active);
       }
 
-      if (auto pattern_off = objVectorPattern::create::global({
-            fl::Name("button_off"),
+      if (auto pattern_inactive = objVectorPattern::create::global({
+            fl::Name("button_inactive"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
 
-         auto vp = pattern_off->Scene->Viewport;
-         objVectorRectangle::create::global({
-            fl::Owner(vp->UID),
-            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-            fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
-            fl::RoundX(SCALE(0.1)),
-            fl::Fill("rgb(255,255,255,96)")
-         });
+         auto svg = objSVG::create { fl::Target(pattern_inactive->Scene), fl::Statement(glButtonSVG) };
 
-         scAddDef(Self->Viewport->Scene, "/widget/button/off", pattern_off);
+         if (svg.ok()) {
+            FreeResource(*svg);
+         }
+         else {
+            objVectorRectangle::create::global({
+               fl::Owner(pattern_inactive->Scene->Viewport->UID),
+               fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
+               fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
+               fl::RoundX(SCALE(0.1)),
+               fl::Fill("rgb(255,255,255,96)")
+            });
+         }
+
+         scAddDef(Self->Viewport->Scene, "/widget/button/inactive", pattern_inactive);
       }
    }
 
-   if (widget.fill.empty()) widget.fill = "url(#/widget/button/off)";
-   if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/button/on)";
-   if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
+   if (widget.fill.empty())      widget.fill      = "url(#/widget/button/inactive)";
+   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
    widget.def_size = DUNIT(1.7, DU::FONT_SIZE);
 
@@ -1695,7 +1738,8 @@ void parser::tag_button(XMLTag &Tag)
 
       auto new_style = m_style;
       new_style.options = FSO::ALIGN_CENTER;
-      new_style.valign = ALIGN::CENTER;
+      new_style.valign  = ALIGN::CENTER;
+      new_style.fill    = widget.font_fill;
 
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);

@@ -1165,8 +1165,36 @@ static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Ev
             else button->alt_state = false;
          }
 
-         if (button->alt_state) button->viewport->setFill(button->alt_fill);
-         else button->viewport->setFill(button->fill);
+         if (button->alt_state) { // Button is active
+            if (!button->alt_fill.empty()) button->viewport->setFill(button->alt_fill);
+
+            // Scale the button viewport down a little bit to indicate that it's been clicked.
+
+            if (!button->viewport->Matrices) {
+               VectorMatrix *matrix;
+               vecNewMatrix(*button->viewport, &matrix);
+            }
+
+            const auto width  = button->viewport->get<DOUBLE>(FID_Width);
+            const auto height = button->viewport->get<DOUBLE>(FID_Height);
+
+            if (auto m = button->viewport->Matrices) {
+               const auto SCALE = 0.95;
+               m->TranslateX -= width * 0.5;
+               m->TranslateY -= height * 0.5;
+               vecScale(m, SCALE, SCALE);
+               m->TranslateX += width * 0.5;
+               m->TranslateY += height * 0.5;
+               vecFlushMatrix(button->viewport->Matrices);
+            }
+         }
+         else {
+            if (!button->alt_fill.empty()) button->viewport->setFill(button->fill);
+
+            if (button->viewport->Matrices) {
+               vecResetMatrix(button->viewport->Matrices);
+            }
+         }
 
          Self->Viewport->draw();
       }
