@@ -551,13 +551,6 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
 }
 
 //********************************************************************************************************************
-
-inline void next_value(CSTRING &Value)
-{
-   while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
-}
-
-//********************************************************************************************************************
 // The parser will break once the string value terminates, or an invalid character is encountered.
 //
 // There are two variants - the first aborts if an unparseable value is encountered.  The second will set all

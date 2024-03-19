@@ -641,7 +641,9 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             cmd m(M_TRANSLATE);
             str += 9;
             bool scaled_x, scaled_y;
+            next_value(str);
             m.tx = read_unit(str, scaled_x);
+            next_value(str);
             m.ty = read_unit(str, scaled_y);
             read_numseq(str, { &m.tx, &m.ty });
             list.push_back(std::move(m));

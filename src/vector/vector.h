@@ -534,6 +534,13 @@ class extVectorClip : public objVectorClip {
 
 //********************************************************************************************************************
 
+template <class T> void next_value(T &Value)
+{
+   while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
+}
+
+//********************************************************************************************************************
+
 extern CSTRING get_name(OBJECTPTR);
 extern void read_numseq(CSTRING &, std::initializer_list<DOUBLE *>);
 extern void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
