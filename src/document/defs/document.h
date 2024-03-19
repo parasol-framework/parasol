@@ -793,8 +793,8 @@ struct bc_text : public entity {
    SEGINDEX segment = -1; // Reference to the first segment that manages this text string.
 
    bc_text() { code = SCODE::TEXT; }
-   bc_text(std::string pText) : text(pText) { code = SCODE::TEXT; }
-   bc_text(std::string pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; }
+   bc_text(std::string_view pText) : text(pText) { code = SCODE::TEXT; }
+   bc_text(std::string_view pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; }
 };
 
 struct bc_use : public entity {

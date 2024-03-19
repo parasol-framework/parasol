@@ -916,30 +916,22 @@ next:
       }
       else return ERR_Syntax;
    }
-   else if ((!StrMatch("currentColor", IRI)) or (!StrMatch("currentColour", IRI))) {
-      // This SVG feature derives the colour from first parent that defines a fill value.  Since this
-      // function doesn't support a vector reference, we have to throw an error.
-
-      log.warning("Parser needs to add support for %s.", IRI);
-      return ERR_Failed;
-   }
    else {
-      auto &rgb = Painter->Colour;
-      auto hash = StrHash(IRI);
-      for (unsigned i=0; i < ARRAYSIZE(glNamedColours); i++) {
-         if (glNamedColours[i].Hash IS hash) {
-            rgb.Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
-            rgb.Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
-            rgb.Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
-            rgb.Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
-            if (Result) {
-               while ((*IRI) and (*IRI != ';')) IRI++;
-               *Result = IRI[0] ? IRI : NULL;
-            }
-            return ERR_Okay;
+      if (auto it = glNamedColours.find(StrHash(IRI)); it != glNamedColours.end()) {
+         auto &src = it->second;
+         auto &rgb = Painter->Colour;
+         rgb.Red   = (FLOAT)src.Red   * (1.0 / 255.0);
+         rgb.Green = (FLOAT)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (FLOAT)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (FLOAT)src.Alpha * (1.0 / 255.0);
+         if (Result) {
+            while ((*IRI) and (*IRI != ';')) IRI++;
+            *Result = IRI[0] ? IRI : NULL;
          }
+         return ERR_Okay;
       }
 
+      // Note: Resolving 'currentColour' is handled in the SVG parser and not the Vector API.
       log.warning("Failed to interpret colour \"%s\"", IRI);
       return ERR_Syntax;
    }

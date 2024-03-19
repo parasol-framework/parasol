@@ -262,7 +262,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML:
 //
 // Preformat must be set to true if all consecutive whitespace characters in Text are to be inserted.
 
-static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, const std::string &Text, bool Preformat)
+static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, const std::string_view Text, bool Preformat)
 {
    // Check if there is content to be processed
 
@@ -684,11 +684,11 @@ static SEGINDEX find_segment(std::vector<doc_segment> &Segments, stream_char Cha
 //********************************************************************************************************************
 // scheme://domain.com/path?param1=value&param2=value#fragment:bookmark
 
-static void process_parameters(extDocument *Self, const std::string &String)
+static void process_parameters(extDocument *Self, const std::string_view String)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("%s", String.c_str());
+   log.branch();
 
    Self->Params.clear();
    Self->PageName.clear();
@@ -737,7 +737,10 @@ static void process_parameters(extDocument *Self, const std::string &String)
                 (((String[pos+2] >= '0') and (String[pos+2] <= '9')) or
                  ((String[pos+2] >= 'A') and (String[pos+2] <= 'F')) or
                  ((String[pos+2] >= 'a') and (String[pos+2] <= 'f')))) {
-               Output += std::stoi(String.substr(pos+1, 2), nullptr, 16);
+
+               int num;
+               auto [ v, error ] = std::from_chars(String.data() + pos + 1, String.data() + pos + 3, num, 16);
+               Output += num;
                pos += 3;
             }
             else Output += String[pos++];
