@@ -25,7 +25,7 @@
 
 <h1>Button Widgets</h1>
 
-<p>Suffix <button>Hello</button> Prefix</p>
+<p>Suffix <button>Hello<button>Extra_Button</button>World</button> Prefix</p>
 <p><button width="400" height="60"><font size="30">Preset <i>400w<br/>60h</i></font> Size</button></p>
 <p><font size="30"><button>No <i>size<br/>is</i> preset</button></font></p>
 

@@ -102,8 +102,10 @@ function testCSS()                hashTestSVG('misc/css.svg', 0xefdc1bcf) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x125baa67) end
 function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x4b865f18) end
 
+function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
 function testClock()              hashTestSVG('images/clock.svg', 0xe5ad43cb) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0x8e6b884e) end
+function testPod()                hashTestSVG('images/pod.svg', 0x9a0fbeda) end
 
 function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
 function testSplitCircles()       hashTestSVG('masks/split-circles.svg', 0xfc119919) end
@@ -259,8 +261,10 @@ function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
         'testBrushStrokes',
         'testContourGradient',
         -- Stock Images
+        'testButton',
         'testClock',
         'testTiger',
+        'testPod',
         -- Paths
         'testCircles',
         'testClip',

@@ -2100,7 +2100,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    pf::Log log(__FUNCTION__);
    std::string ref;
 
-   for (LONG a=1; (a < std::ssize(Tag.Attribs)) and (ref.empty()); a++) {
+   for (LONG a=1; (a < std::ssize(Tag.Attribs)) and ref.empty(); a++) {
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_HREF: // SVG2
          case SVF_XLINK_HREF: ref = Tag.Attribs[a].Value; break;
@@ -2139,7 +2139,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
       for (LONG a=1; (a < std::ssize(Tag.Attribs)) and (!need_group); a++) {
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_X: case SVF_Y: case SVF_WIDTH: case SVF_HEIGHT: break;
-            default: need_group = TRUE; break;
+            default: need_group = true; break;
          }
       }
 
@@ -2200,7 +2200,10 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 
       if (viewport->init() != ERR_Okay) { FreeResource(viewport); return; }
 
-      // Add all child elements in <symbol> to the viewport.
+      // Add all child elements in <symbol> to the viewport.  Some state values have to be reset here because
+      // they have already been applied to the viewport and will be inherited via that route.
+
+      state.m_opacity = 1.0;
 
       log.traceBranch("Processing all child elements within %s", ref.c_str());
       process_children(Self, state, *tagref, viewport);
