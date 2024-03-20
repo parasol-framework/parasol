@@ -414,7 +414,7 @@ static ERROR generate_structdef(objScript *Self, const std::string_view StructNa
          if (offset & 7) {
             std::ostringstream msg;
             msg << "Warning: " << StructName << "." << field.Name << " (" << field_size << " bytes) is mis-aligned.";
-            log.msg(msg.str().c_str());
+            log.msg("%s", msg.str().c_str());
          }
          offset = ALIGN64(offset); // 64-bit alignment
       }

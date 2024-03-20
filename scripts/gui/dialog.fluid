@@ -191,8 +191,8 @@ gui.dialog.message = function(Options)
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="48" height="48"/>
-]] .. option_icons .. [[
+    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="48" height="48"/>]]
+    .. option_icons .. [[
   </defs>
 </svg>
 
@@ -222,9 +222,7 @@ gui.dialog.message = function(Options)
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
-      <cell>
-        <image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/>
-      </cell>
+      <cell><image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/></cell>
       <cell>
         <p>]] .. msg .. [[</p>
 ]]
@@ -255,8 +253,7 @@ gui.dialog.message = function(Options)
          doc = doc .. Options.inject
       end
 
-      doc = doc .. '<p><rect height="1" fill="rgb(0,0,0,0.2)"/></p>\n<p no-wrap>'
-
+      doc = doc .. '<p no-wrap>'
       for i, option in ipairs(self.options) do
          if option['icon'] then
             doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
@@ -268,7 +265,6 @@ gui.dialog.message = function(Options)
             doc = doc .. '<advance x="30"/>'
          end
       end
-
       doc = doc .. '</p>'
 
       doc = doc .. [[

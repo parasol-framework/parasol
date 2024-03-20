@@ -1455,7 +1455,7 @@ void parser::tag_body(XMLTag &Tag)
             Self->CursorStroke = Tag.Attribs[i].Value;
             break;
 
-         // This subroutine support "N" for setting all margins to "N" and "L T R B" for setting individual
+         // This subroutine supports "N" for setting all margins to "N" and "L T R B" for setting individual
          // margins clockwise
 
          case HASH_margins: {
@@ -2292,8 +2292,9 @@ void parser::tag_image(XMLTag &Tag)
                   break;
             }
             break;
-
+            
          case HASH_padding: img.pad.parse(value); break;
+         case HASH_fill:    img.fill = value; break;
          case HASH_src:     img.fill = value; break;
          case HASH_width:   img.width  = DUNIT(value); break;
          case HASH_height:  img.height = DUNIT(value); break;

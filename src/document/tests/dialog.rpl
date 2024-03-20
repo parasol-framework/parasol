@@ -13,16 +13,11 @@
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
-      <cell>
-        <image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/>
-      </cell>
+      <cell><image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/></cell>
       <cell>
         <p>To be or not to be?</p>
 <p><input name="inDialog" ignore-focus width="200" value="That is the question"/></p>
 <p><checkbox name="dlgCheckbox" label="'Tis nobler to suffer" value="false"/></p>
-<!--
-<p><rect height="1" colour="rgb(0,0,0,0.2)"/></p>
--->
 <p no-wrap><image src="url(#checkmark)" width="16" height="16" padding="0 0 4 0"/><a @response="1">To be</a><advance x="30"/><image src="url(#cancel)" width="16" height="16" padding="0 0 4 0"/><a @response="2">Not to be</a></p>
       </cell>
     </row>
