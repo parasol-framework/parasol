@@ -76,7 +76,7 @@ class extSVG : public objSVG {
    std::vector<svgAnimation> Animations;
    std::vector<svgInherit> Inherit;
    TIMER  AnimationTimer;
-   WORD  Duplicated;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
+   WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  Animated;
    bool  PreserveWS; // Preserve white-space
 };

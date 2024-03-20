@@ -149,14 +149,14 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 // Save an id reference for an SVG element.  The element can be then be found at any time with find_href_tag().  We store
 // a copy of the tag data as pointer references are too high a risk.
 
-INLINE bool add_id(extSVG *Self, const XMLTag &Tag, CSTRING Name)
+inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string_view Name)
 {
    if (Self->IDs.contains(std::string(Name))) return false;
-   Self->IDs.emplace(std::string(Name), Tag);
+   Self->IDs.emplace(Name, Tag);
    return true;
 }
 
-INLINE bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
+inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
 {
    if (Self->IDs.contains(Name)) return false;
    Self->IDs.emplace(Name, Tag);

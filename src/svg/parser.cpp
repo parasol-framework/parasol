@@ -159,7 +159,7 @@ static void xtag_pathtransition(extSVG *Self, const XMLTag &Tag)
             SetArray(trans, FID_Stops, stops);
 
             if (!InitObject(trans)) {
-               if (!Self->Duplicated) scAddDef(Self->Scene, id.c_str(), trans);
+               if (!Self->Cloning) scAddDef(Self->Scene, id.c_str(), trans);
                return;
             }
          }
@@ -179,48 +179,54 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
 
    log.traceBranch("Tag: %d", Tag.ID);
 
-   objVector *clip;
-   std::string id;
+   std::string id, transform, units;
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
 
-   if (!NewObject(ID_VECTORCLIP, &clip)) {
-      clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
-
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
-         auto &value = Tag.Attribs[a].Value;
-         if (value.empty()) continue;
-
-         switch(StrHash(Tag.Attribs[a].Name)) {
-            case SVF_ID: id = value; break;
-            case SVF_TRANSFORM: parse_transform(clip, value); break;
-            case SVF_CLIPPATHUNITS:
-               if (!StrMatch("userSpaceOnUse", value)) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
-               else if (!StrMatch("objectBoundingBox", value)) clip->set(FID_Units, LONG(VUNIT::BOUNDING_BOX));
-               break;
-            //case SVF_EXTERNALRESOURCESREQUIRED: break; // Deprecated SVG attribute
-         }
+      switch(StrHash(Tag.Attribs[a].Name)) {
+         case SVF_ID:            id        = value; break;
+         case SVF_TRANSFORM:     transform = value; break;
+         case SVF_CLIPPATHUNITS: units     = value; break;
+         //case SVF_EXTERNALRESOURCESREQUIRED: break; // Deprecated SVG attribute
       }
+   }
+   
+   if (id.empty()) {
+      // Declaring a clipPath without an id is poor form, but it is valid SVG and likely that at least
+      // one child object will specify an id in this case.
+      static LONG clip_id = 1;
+      id = "auto" + std::to_string(clip_id++);
+   }
 
-      if (!InitObject(clip)) {
-         svgState state(Self);
+   // A clip-path with an ID can only be added once (important when a clip-path is repeatedly referenced)
 
-         // Valid child elements for clip-path are:
-         // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
-         // Commands: use, animate
+   if (add_id(Self, Tag, id)) {
+      objVector *clip;
+      if (!NewObject(ID_VECTORCLIP, &clip)) {
+         clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
 
-         auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-         process_children(Self, state, Tag, vp);
+         if (!transform.empty()) parse_transform(clip, transform);
 
-         if (!Self->Duplicated) {
-            if (id.empty()) {
-               // Declaring a clipPath without an id is poor form, but it is valid SVG and likely that at least
-               // one child object will specify an id in this case.
-               id = "auto" + std::to_string(clip->UID);
-            }
+         if (!units.empty()) {
+            if (!StrMatch("userSpaceOnUse", units)) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
+            else if (!StrMatch("objectBoundingBox", units)) clip->set(FID_Units, LONG(VUNIT::BOUNDING_BOX));
+         }
+
+         if (!InitObject(clip)) {
+            svgState state(Self);
+
+            // Valid child elements for clip-path are:
+            // Shapes:   circle, ellipse, line, path, polygon, polyline, rect, text, ...
+            // Commands: use, animate
+
+            auto vp = clip->get<OBJECTPTR>(FID_Viewport);
+            process_children(Self, state, Tag, vp);
 
             scAddDef(Self->Scene, id.c_str(), clip);
          }
+         else FreeResource(clip);
       }
-      else FreeResource(clip);
    }
 }
 
@@ -267,7 +273,7 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
          auto vp = clip->get<OBJECTPTR>(FID_Viewport);
          process_children(Self, state, Tag, vp);
 
-         if (!Self->Duplicated) {
+         if (!Self->Cloning) {
             if (id.empty()) id = "auto" + std::to_string(clip->UID);
             scAddDef(Self->Scene, id.c_str(), clip);
          }
@@ -1392,7 +1398,7 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
 
          Self->Effects.clear();
 
-         if (!Self->Duplicated) scAddDef(Self->Scene, id.c_str(), filter);
+         if (!Self->Cloning) scAddDef(Self->Scene, id.c_str(), filter);
       }
       else FreeResource(filter);
    }
@@ -1484,7 +1490,7 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
          svgState state(Self);
          process_children(Self, state, Tag, viewport);
 
-         if (!Self->Duplicated) {
+         if (!Self->Cloning) {
             add_id(Self, Tag, id);
             scAddDef(Self->Scene, id.c_str(), pattern);
          }
@@ -1754,7 +1760,7 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
          if (!load_pic(Self, src, &pic, width, height)) {
             image->set(FID_Picture, pic);
             if (!InitObject(image)) {
-               if (!Self->Duplicated) {
+               if (!Self->Cloning) {
                   add_id(Self, Tag, id);
                   scAddDef(Self->Scene, id.c_str(), image);
                }
@@ -1834,7 +1840,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             auto id = std::to_string(image->UID);
             id.insert(0, "img");
-            if (!Self->Duplicated) scAddDef(Self->Scene, id.c_str(), image);
+            if (!Self->Cloning) scAddDef(Self->Scene, id.c_str(), image);
 
             if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
                SetOwner(Vector, Parent);
@@ -2084,7 +2090,7 @@ static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
       Parent->set(FID_MorphFlags, LONG(flags));
-      if (!Self->Duplicated) scAddDef(Self->Scene, uri.c_str(), shape);
+      if (!Self->Cloning) scAddDef(Self->Scene, uri.c_str(), shape);
    }
 }
 
@@ -2125,9 +2131,13 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
    auto state = State;
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
-   Self->Duplicated++;
+   // Increment the Cloning variable to indicate that we are in a region that is being cloned.
+   // This is important for some elements like clip-path, whereby the path only needs to be created
+   // once and can then be referenced multiple times.
+
+   Self->Cloning++;
    auto dc = deferred_call([&Self] {
-      Self->Duplicated--;
+      Self->Cloning--;
    });
 
    if ((!StrMatch("symbol", tagref->name())) or (!StrMatch("svg", tagref->name()))) {
@@ -2621,21 +2631,17 @@ static void process_attrib(extSVG *Self, const XMLTag &Tag, svgState &State, obj
 
    for (unsigned t=1; t < Tag.Attribs.size(); t++) {
       if (Tag.Attribs[t].Value.empty()) continue;
+      auto &name = Tag.Attribs[t].Name;
+      auto &value = Tag.Attribs[t].Value;
 
-      // Do not interpret non-SVG attributes, e.g. 'inkscape:dx'
+      if (name.find(':') != std::string::npos) continue; // Do not interpret non-SVG attributes, e.g. 'inkscape:dx'
 
-      {
-         LONG j;
-         for (j=0; Tag.Attribs[t].Name[j] and (Tag.Attribs[t].Name[j] != ':'); j++);
-         if (Tag.Attribs[t].Name[j] IS ':') continue;
-      }
+      log.trace("%s = %.40s", name.c_str(), value.c_str());
 
-      log.trace("%s = %.40s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str());
-
-      if (auto error = set_property(Self, Vector, StrHash(Tag.Attribs[t].Name), Tag, State, Tag.Attribs[t].Value)) {
+      if (auto error = set_property(Self, Vector, StrHash(name), Tag, State, value)) {
          if (Vector->Class->ClassID != ID_VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
-               Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
+               name.c_str(), value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
          }
       }
    }
@@ -3147,7 +3153,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
          break;
 
       case SVF_ID:
-         if (!Self->Duplicated) {
+         if (!Self->Cloning) {
             Vector->set(FID_ID, StrValue);
             add_id(Self, Tag, StrValue);
             scAddDef(Self->Scene, StrValue.c_str(), Vector);
