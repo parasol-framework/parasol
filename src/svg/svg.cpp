@@ -64,18 +64,18 @@ struct svgID { // All elements using the 'id' attribute will be registered with 
 
 class extSVG : public objSVG {
    public:
-   FUNCTION  FrameCallback;
+   FUNCTION FrameCallback;
    std::unordered_map<std::string, XMLTag> IDs;
    std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
    objXML *XML;
    objVectorScene *Scene;
-   STRING    Folder;
+   STRING Folder;
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::vector<svgAnimation> Animations;
    std::vector<svgInherit> Inherit;
-   TIMER  AnimationTimer;
+   TIMER AnimationTimer;
    WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  Animated;
    bool  PreserveWS; // Preserve white-space

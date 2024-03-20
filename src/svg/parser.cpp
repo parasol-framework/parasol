@@ -188,7 +188,10 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
          case SVF_ID:            id        = value; break;
          case SVF_TRANSFORM:     transform = value; break;
          case SVF_CLIPPATHUNITS: units     = value; break;
-         //case SVF_EXTERNALRESOURCESREQUIRED: break; // Deprecated SVG attribute
+         case SVF_EXTERNALRESOURCESREQUIRED: break; // Deprecated SVG attribute
+         default:
+            log.warning("<clipPath> attribute '%s' unrecognised @ line %d", Tag.Attribs[a].Name.c_str(), Tag.LineNo);
+            break;
       }
    }
    
@@ -196,7 +199,7 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
       // Declaring a clipPath without an id is poor form, but it is valid SVG and likely that at least
       // one child object will specify an id in this case.
       static LONG clip_id = 1;
-      id = "auto" + std::to_string(clip_id++);
+      id = "auto_clippath_" + std::to_string(clip_id++);
    }
 
    // A clip-path with an ID can only be added once (important when a clip-path is repeatedly referenced)
@@ -242,43 +245,64 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
+   
+   std::string id, transform;
+   auto units = VUNIT::USERSPACE;
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
 
-   objVector *clip;
-   if (!NewObject(ID_VECTORCLIP, &clip)) {
-      clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"), 
-         fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
-         fl::Units(VUNIT::USERSPACE));
-
-      std::string id;
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
-         auto &value = Tag.Attribs[a].Value;
-         if (value.empty()) continue;
-
-         switch(StrHash(Tag.Attribs[a].Name)) {
-            case SVF_ID: id = value; break;
-            case SVF_TRANSFORM: parse_transform(clip, value); break;
-            case SVF_MASKUNITS:
-               if (!StrMatch("userSpaceOnUse", value)) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
-               else if (!StrMatch("objectBoundingBox", value)) clip->set(FID_Units, LONG(VUNIT::BOUNDING_BOX));
-               break;
-            case SVF_MASKCONTENTUNITS:
-               // TODO
-               break;
-            //case SVF_EXTERNALRESOURCESREQUIRED: break; // Deprecated SVG attribute
-         }
+      switch(StrHash(Tag.Attribs[a].Name)) {
+         case SVF_ID:        id = value; break;
+         case SVF_TRANSFORM: transform = value; break;
+         case SVF_MASKUNITS:
+            if (!StrMatch("userSpaceOnUse", value)) units = VUNIT::USERSPACE;
+            else if (!StrMatch("objectBoundingBox", value)) units = VUNIT::BOUNDING_BOX;
+            break;
+         case SVF_MASKCONTENTUNITS: // TODO
+            break;
+         case SVF_EXTERNALRESOURCESREQUIRED: // Deprecated SVG attribute
+            break;
+         case SVF_COLOR_INTERPOLATION:
+            break;
+         case SVF_FILTER:
+            break;
+         case SVF_X:
+         case SVF_Y:
+         case SVF_WIDTH:
+         case SVF_HEIGHT:
+            break;
+         default:
+            log.warning("<mask> attribute '%s' unrecognised @ line %d", Tag.Attribs[a].Name.c_str(), Tag.LineNo);
+            break;
       }
+   }
+   
+   if (id.empty()) {
+      static LONG clip_id = 1;
+      id = "auto_mask_" + std::to_string(clip_id++);
+   }
+   
+   // A clip-path with an ID can only be added once (important when a clip-path is repeatedly referenced)
 
-      if (!InitObject(clip)) {
-         svgState state(Self);
-         auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-         process_children(Self, state, Tag, vp);
+   if (add_id(Self, Tag, id)) {
+      objVector *clip;
+      if (!NewObject(ID_VECTORCLIP, &clip)) {
+         clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"), 
+            fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
+            fl::Units(units));
 
-         if (!Self->Cloning) {
-            if (id.empty()) id = "auto" + std::to_string(clip->UID);
+         if (!transform.empty()) parse_transform(clip, transform); 
+
+         if (!InitObject(clip)) {
+            svgState state(Self);
+            auto vp = clip->get<OBJECTPTR>(FID_Viewport);
+            process_children(Self, state, Tag, vp);
+
             scAddDef(Self->Scene, id.c_str(), clip);
          }
+         else FreeResource(clip);
       }
-      else FreeResource(clip);
    }
 }
 

@@ -194,12 +194,14 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
 {
    // The target area is the viewport that owns m_shape
 
-   acRedimension(m_clip->Viewport, m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0,
-      get_parent_width(m_shape), get_parent_height(m_shape), 0);
+   auto p_width  = get_parent_width(m_shape);
+   auto p_height = get_parent_height(m_shape);
+
+   acRedimension(m_clip->Viewport, m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0, p_width, p_height, 0);
 
    // The source area (viewbox) matches the dimensions of m_shape's parent viewport
 
-   m_clip->Viewport->setFields(fl::ViewWidth(get_parent_width(m_shape)), fl::ViewHeight(get_parent_height(m_shape)));
+   m_clip->Viewport->setFields(fl::ViewWidth(p_width), fl::ViewHeight(p_height));
 
    // Transforms: Client transforms for the shape are included, but not its (X,Y) position.
    // All parent transforms are then applied.
