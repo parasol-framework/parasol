@@ -12,25 +12,23 @@ with a black 'rect' which overlays a red 'rect' of a larger size. If there is no
 'clipPath' was not inherited by the second 'clipPath'.
 -->
 
-  <g id="test-body-content" font-family="SVGFreeSansASCII,sans-serif" font-size="18">
-    <clipPath id="testClipPathAncestor">
-      <rect x="50" y="50" width="50" height="50" />
+  <clipPath id="testClipPathAncestor">
+    <rect x="50" y="50" width="50" height="50" />
+  </clipPath>
+
+  <g clip-path="url(#testClipPathAncestor)">
+    <clipPath id="testClipPath">
+      <rect x="0" y="0" width="50" height="50" />
     </clipPath>
-
-    <g clip-path="url(#testClipPathAncestor)">
-      <clipPath id="testClipPath">
-        <rect x="0" y="0" width="50" height="50" />
-      </clipPath>
-    </g>
-
-    <svg x="0" y="0" width="200" height="200">
-      <rect x="0" y="0" width="50" height="50" fill="red" />
-      <rect x="0" y="0" width="200" height="200" fill="black" clip-path="url(#testClipPath)"/>
-    </svg>
-
-    <svg x="200" y="0" width="200" height="200">
-      <rect x="0" y="0" width="200" height="200" fill="red" clip-path="url(#testClipPath)"/>
-      <rect x="0" y="0" width="50" height="50" fill="black" />
-    </svg>
   </g>
+
+  <svg x="0" y="0" width="200" height="200">
+    <rect x="0" y="0" width="50" height="50" fill="red" />
+    <rect x="0" y="0" width="200" height="200" fill="black" clip-path="url(#testClipPath)"/>
+  </svg>
+
+  <svg x="200" y="0" width="200" height="200">
+    <rect x="0" y="0" width="200" height="200" fill="red" clip-path="url(#testClipPath)"/>
+    <rect x="0" y="0" width="50" height="50" fill="black" />
+  </svg>
 </svg>

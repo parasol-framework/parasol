@@ -171,7 +171,7 @@ void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
 
 //********************************************************************************************************************
 
-void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
+void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
 {
    if (!m_clip->Viewport->Child) {
       pf::Log log;
@@ -184,25 +184,38 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Render)
       vecNewMatrix(m_clip->Viewport, &matrix);
    }
 
-   if (m_clip->Units IS VUNIT::BOUNDING_BOX) draw_bounding_box(Render);
-   else draw_userspace(Render);
+   if (m_clip->Units IS VUNIT::BOUNDING_BOX) draw_bounding_box(Scene);
+   else draw_userspace(Scene);
 }
 
 //********************************************************************************************************************
 
-void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
+void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 {
    // The target area is the viewport that owns m_shape
 
-   auto p_width  = get_parent_width(m_shape);
-   auto p_height = get_parent_height(m_shape);
+   DOUBLE p_width, p_height;
+   if (auto view = (extVectorViewport *)m_shape->ParentView) {
+      if (view->vpViewWidth > 0) {
+         p_width = view->vpViewWidth;
+         p_height = view->vpViewHeight;
+      }
+      else if ((view->vpDimensions & DMF_WIDTH) or
+          ((view->vpDimensions & DMF_X) and (view->vpDimensions & DMF_X_OFFSET))) {
+         p_width = view->vpFixedWidth;
+         p_height = view->vpFixedHeight;
+      }
+      else { p_width = m_shape->Scene->PageWidth; p_height = m_shape->Scene->PageHeight; }
+   }
+   else if (m_shape->Scene) { p_width = m_shape->Scene->PageWidth; p_height = m_shape->Scene->PageHeight; }
+   else { p_width = 0; p_height = 0; }
 
-   acRedimension(m_clip->Viewport, m_shape->ParentView->vpViewX, m_shape->ParentView->vpViewY, 0, p_width, p_height, 0);
+   acRedimension(m_clip->Viewport, m_shape->ParentView->vpTargetX, m_shape->ParentView->vpTargetY, 0, p_width, p_height, 0);
 
-   // The source area (viewbox) matches the dimensions of m_shape's parent viewport
+   // The source area (viewbox) matches the dimensions of m_shape's parent viewport.  The ViewX/Y will be defined by the
+   // transforms.
 
-   m_clip->Viewport->setFields(fl::ViewX(m_shape->ParentView->vpViewX), fl::ViewY(m_shape->ParentView->vpViewY), 
-      fl::ViewWidth(p_width), fl::ViewHeight(p_height));
+   m_clip->Viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(p_width), fl::ViewHeight(p_height));
 
    // Transforms: Client transforms for the shape are included, but not its (X,Y) position.
    // All parent transforms are then applied.
@@ -226,7 +239,8 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
    agg::path_storage clip_bound_path = m_clip->Bounds.as_path();
    auto clip_bound_final = get_bounds(clip_bound_path);
 
-   resize_bitmap(F2T(clip_bound_final.left), F2T(clip_bound_final.top), F2T(clip_bound_final.right) + 2, F2T(clip_bound_final.bottom) + 2);
+   resize_bitmap(F2T(clip_bound_final.left), F2T(clip_bound_final.top), 
+      F2T(clip_bound_final.right) + 2, F2T(clip_bound_final.bottom) + 2);
 
    // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
@@ -235,7 +249,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Render)
    agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
    agg::rasterizer_scanline_aa<> rasterizer;
 
-   draw_clips(Render, (extVector *)m_clip->Viewport->Child, rasterizer, rb, agg::trans_affine());
+   draw_clips(Scene, (extVector *)m_clip->Viewport->Child, rasterizer, rb, agg::trans_affine());
 }
 
 //********************************************************************************************************************

@@ -108,7 +108,7 @@ function testTiger()              hashTestSVG('images/tiger.svg', 0x8e6b884e) en
 function testPod()                hashTestSVG('images/pod.svg', 0x9a0fbeda) end
 
 function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
-function testClipViewBox()        hashTestSVG('masks/clip-viewbox.svg', 0xbdbcd29a) end
+function testClipViewBox()        hashTestSVG('masks/clip-viewbox.svg', 0xd66308b7) end
 function testSplitCircles()       hashTestSVG('masks/split-circles.svg', 0xfc119919) end
 function testInheritClip()        hashTestSVG('masks/inherit-clip-path.svg', 0xb0749a78) end
 function testW3MasksFilter()      hashTestSVG('masks/masking-filter-01-f.svg', 0x8cb644c2) end
