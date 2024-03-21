@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<!-- This test confirms that a ClipPath honours the viewBox of the client using it -->
+
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="400" height="200" viewBox="0 0 400 200">
+
+  <clipPath id="CP">
+    <ellipse cx="200" cy="0" rx="200" ry="100"/>
+  </clipPath>
+
+  <svg width="400" height="200" viewBox="0 -100 400 200">
+    <rect fill="blue" x="0" y="-100" width="400" height="200" clip-path="url(#CP)"/>
+  </svg>
+</svg>
