@@ -102,6 +102,7 @@ function testCSS()                hashTestSVG('misc/css.svg', 0xefdc1bcf) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x125baa67) end
 function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x4b865f18) end
 
+function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xd7fb84ff) end
 function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
 function testClock()              hashTestSVG('images/clock.svg', 0xe5ad43cb) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0x8e6b884e) end
@@ -124,7 +125,7 @@ function testW3MasksPath5()       hashTestSVG('masks/masking-path-05-f.svg', 0x2
 function testW3MasksPath7()       hashTestSVG('masks/masking-path-07-b.svg', -1) end
 function testW3MasksPath8()       hashTestSVG('masks/masking-path-08-b.svg', 0x4d197454) end
 function testW3MasksPath10()      hashTestSVG('masks/masking-path-10-b.svg', 0x6ee58f7d) end
-function testW3MasksPath11()      hashTestSVG('masks/masking-path-11-b.svg', 0xae2cd707) end
+function testW3MasksPath11()      hashTestSVG('masks/masking-path-11-b.svg', 0x37eef93f) end
 function testW3MasksPath13()      hashTestSVG('masks/masking-path-13-f.svg', 0x1760390b) end
 function testW3MasksPath14()      hashTestSVG('masks/masking-path-14-f.svg', 0x2755d2bf) end
 
@@ -262,6 +263,7 @@ function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
         'testBrushStrokes',
         'testContourGradient',
         -- Stock Images
+        'testBottleTree',
         'testButton',
         'testClock',
         'testTiger',

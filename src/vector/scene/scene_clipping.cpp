@@ -126,14 +126,14 @@ void SceneRenderer::ClipBuffer::resize_bitmap(LONG X, LONG Y, LONG Width, LONG H
    m_width  = Width;
    m_height = Height;
 
-   Y *= m_width;
+   Y *= Width;
 
    if (X < 0) X = 0;
    if (Y < 0) Y = 0;
 
-   if ((X < m_width) and (Y < m_height)) {
-      for (; Y < m_height; Y += m_width) {
-         ClearMemory(m_bitmap.data() + Y + X, m_width - X);
+   if ((X < Width) and (Y < Height)) {
+      for (; Y < Height; Y += Width) {
+         ClearMemory(m_bitmap.data() + Y + X, Width - X);
       }
    }
 }
@@ -189,47 +189,38 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
 }
 
 //********************************************************************************************************************
+// This clip drawing technique borrows the same strategy from Viewport pattern drawing.
 
 void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 {
-   // The target area is the viewport that owns m_shape
-
-   DOUBLE p_width, p_height;
-   if (auto view = (extVectorViewport *)m_shape->ParentView) {
-      if (view->vpViewWidth > 0) {
-         p_width = view->vpViewWidth;
-         p_height = view->vpViewHeight;
-      }
-      else if ((view->vpDimensions & DMF_WIDTH) or
-          ((view->vpDimensions & DMF_X) and (view->vpDimensions & DMF_X_OFFSET))) {
-         p_width = view->vpFixedWidth;
-         p_height = view->vpFixedHeight;
-      }
-      else { p_width = m_shape->Scene->PageWidth; p_height = m_shape->Scene->PageHeight; }
+   if (!m_clip->Viewport->Matrices) {
+      if (vecNewMatrix(m_clip->Viewport, NULL)) return;
    }
-   else if (m_shape->Scene) { p_width = m_shape->Scene->PageWidth; p_height = m_shape->Scene->PageHeight; }
-   else { p_width = 0; p_height = 0; }
+   
+   auto &matrix = m_clip->Viewport->Matrices;
+   auto &t = m_shape->Transform;
 
-   acRedimension(m_clip->Viewport, m_shape->ParentView->vpTargetX, m_shape->ParentView->vpTargetY, 0, p_width, p_height, 0);
+   matrix->ScaleX = t.sx;
+   matrix->ScaleY = t.sy;
+   matrix->ShearX = t.shx;
+   matrix->ShearY = t.shy;
+   matrix->TranslateX = t.tx;
+   matrix->TranslateY = t.ty;
 
-   // The source area (viewbox) matches the dimensions of m_shape's parent viewport.  The ViewX/Y will be defined by the
-   // transforms.
+   if (m_shape->Class->ClassID IS ID_VECTORTEXT) {
+      // This feels a bit hacky and might not necessarily be right... but it does get around the 
+      // issue of VectorText's positioning around the baseline and having path bounds in negative space.
+      matrix->TranslateX = 0;
+      matrix->TranslateY = 0;
+   }
 
-   m_clip->Viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(p_width), fl::ViewHeight(p_height));
+   // Defining the viewport's dimensions is important for clip paths that use scaled coordinates
+   auto parent_width  = get_parent_width(m_shape);
+   auto parent_height = get_parent_height(m_shape);
+   //m_clip->Viewport->setFields(fl::X(m_shape->ParentView->vpTargetX), fl::Y(m_shape->ParentView->vpTargetY));
+   m_clip->Viewport->setFields(fl::Width(parent_width), fl::Height(parent_height));
 
-   // Transforms: Client transforms for the shape are included, but not its (X,Y) position.
-   // All parent transforms are then applied.
-
-   agg::trans_affine transform;
-   apply_transforms(*m_shape, transform);
-   apply_parent_transforms(get_parent(m_shape), transform);
-
-   m_clip->Viewport->Matrices->ScaleX = transform.sx;
-   m_clip->Viewport->Matrices->ScaleY = transform.sy;
-   m_clip->Viewport->Matrices->ShearX = transform.shx;
-   m_clip->Viewport->Matrices->ShearY = transform.shy;
-   m_clip->Viewport->Matrices->TranslateX = transform.tx;
-   m_clip->Viewport->Matrices->TranslateY = transform.ty;
+   mark_dirty(m_clip->Viewport, RC::TRANSFORM);
 
    m_clip->Bounds = TCR_EXPANDING;
    calc_full_boundary((extVector *)m_clip->Viewport, m_clip->Bounds, false, true, true);

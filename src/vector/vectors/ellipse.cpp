@@ -38,6 +38,8 @@ static void generate_ellipse(extVectorEllipse *Vector)
       if (Vector->eDimensions & DMF_SCALED_RADIUS_Y) ry *= view_height;
    }
 
+   // TODO: Replacing this path calculator with ARC commands would produce a more optimal result
+
    ULONG vertices;
    if (Vector->eVertices >= 3) vertices = Vector->eVertices;
    else {
