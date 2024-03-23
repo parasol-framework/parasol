@@ -23,7 +23,7 @@ static ERROR init_audio(extAudio *Self)
    Self->Stereo       = true;
    Self->MasterVolume = Self->Volumes[0].Channels[0];
    Self->Volumes[0].Flags |= VCF::MONO;
-   for (LONG i=1; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = -1;
+   for (LONG i=1; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = -1;
    if ((Self->Volumes[0].Flags & VCF::MUTE) != VCF::NIL) Self->Mute = true;
    else Self->Mute = false;
 
@@ -185,11 +185,11 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
    LONG idx;
-   for (idx=1; idx < (LONG)Self->Samples.size(); idx++) {
+   for (idx=1; idx < std::ssize(Self->Samples); idx++) {
       if (!Self->Samples[idx].Data) break;
    }
 
-   if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
+   if (idx >= std::ssize(Self->Samples)) Self->Samples.resize(std::ssize(Self->Samples)+10);
 
    auto shift = sample_shift(Args->SampleFormat);
 
@@ -299,11 +299,11 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
    LONG idx;
-   for (idx=1; idx < (LONG)Self->Samples.size(); idx++) {
+   for (idx=1; idx < std::ssize(Self->Samples); idx++) {
       if (!Self->Samples[idx].Data) break;
    }
 
-   if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
+   if (idx >= std::ssize(Self->Samples)) Self->Samples.resize(std::ssize(Self->Samples)+10);
 
    auto shift = sample_shift(Args->SampleFormat);
 
@@ -415,7 +415,7 @@ static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
    log.branch("Handle: $%.8x", Args->Handle);
 
    LONG index = Args->Handle>>16;
-   if ((index < 0) or (index >= (LONG)Self->Sets.size())) log.warning(ERR_Args);
+   if ((index < 0) or (index >= std::ssize(Self->Sets))) log.warning(ERR_Args);
 
    Self->Sets[index].clear(); // We can't erase because that would mess up other channel handles.
    return ERR_Okay;
@@ -520,15 +520,15 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 #ifdef __linux__
    Self->Volumes.resize(2);
    Self->Volumes[0].Name = "Master";
-   for (LONG i=0; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = 1.0;
+   for (LONG i=0; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = 1.0;
 
    Self->Volumes[1].Name = "PCM";
-   for (LONG i=0; i < (LONG)Self->Volumes[1].Channels.size(); i++) Self->Volumes[1].Channels[i] = 1.0;
+   for (LONG i=0; i < std::ssize(Self->Volumes[1].Channels); i++) Self->Volumes[1].Channels[i] = 1.0;
 #else
    Self->Volumes.resize(1);
    Self->Volumes[0].Name = "Master";
    Self->Volumes[0].Channels[0] = 1.0;
-   for (LONG i=1; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = -1;
+   for (LONG i=1; i < std::ssize(Self->Volumes[0].Channels); i++) Self->Volumes[0].Channels[i] = -1;
 #endif
 
    load_config(Self);
@@ -578,7 +578,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 
    // Bear in mind that the +1 is for channel set 0 being a dummy entry.
 
-   LONG index = Self->Sets.size() + 1;
+   LONG index = std::ssize(Self->Sets) + 1;
    Self->Sets.resize(index+1);
 
    Self->Sets[index].Channel.resize(Args->Total);
@@ -625,7 +625,7 @@ static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 
    log.branch("Sample: %d", Args->Handle);
 
-   if ((Args->Handle < 1) or (Args->Handle >= (LONG)Self->Samples.size())) return log.warning(ERR_OutOfRange);
+   if ((Args->Handle < 1) or (Args->Handle >= std::ssize(Self->Samples))) return log.warning(ERR_OutOfRange);
 
    Self->Samples[Args->Handle].clear();
 
@@ -675,7 +675,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       else config->write("AUDIO", "Device", "default");
 
       if ((!Self->Volumes.empty()) and ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL)) {
-         for (unsigned i=0; i < Self->Volumes.size(); i++) {
+         for (LONG i=0; i < std::ssize(Self->Volumes); i++) {
             std::ostringstream out;
             if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) out << "1,[";
             else out << "0,[";
@@ -683,7 +683,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             if ((Self->Volumes[i].Flags & VCF::MONO) != VCF::NIL) {
                out << Self->Volumes[i].Channels[0];
             }
-            else for (LONG c=0; c < (LONG)Self->Volumes[i].Channels.size(); c++) {
+            else for (LONG c=0; c < std::ssize(Self->Volumes[i].Channels); c++) {
                if (c > 0) out << ',';
                out << Self->Volumes[i].Channels[c];
             }
@@ -781,7 +781,7 @@ static ERROR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Ar
 
    log.msg("Sample: #%d, Length: %" PF64, Args->Sample, Args->Length);
 
-   if ((Args->Sample < 0) or (Args->Sample >= (LONG)Self->Samples.size())) return log.warning(ERR_Args);
+   if ((Args->Sample < 0) or (Args->Sample >= std::ssize(Self->Samples))) return log.warning(ERR_Args);
 
    auto &sample = Self->Samples[Args->Sample];
 
@@ -849,7 +849,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; index < (LONG)Self->Volumes.size(); index++) {
+      for (index=0; index < std::ssize(Self->Volumes); index++) {
          if (!StrMatch(Args->Name, Self->Volumes[index].Name.c_str())) break;
       }
 

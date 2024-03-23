@@ -408,7 +408,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
    if ((!Path) and (!Buffer)) return ERR_NullArgs;
 
-   log.branch("Path: %s [Log-level reduced]", Path);
+   log.branch("Path: %s [Log-level reduced]", Path ? Path : "<xml-statement>");
 
 #ifndef DEBUG
    AdjustLogLevel(1);

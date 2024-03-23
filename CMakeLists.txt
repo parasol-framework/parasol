@@ -452,6 +452,10 @@ else ()
       # In addition, gdb breakpoints are unlikely to work with these features enabled.
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+      set (DISABLE_AUDIO ON)
+      if (not PARASOL_STATIC)
+         message (FATAL_ERROR "Address analysis requires the build to be compiled with PARASOL_STATIC on.")
+      endif ()
    endif ()
 
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
