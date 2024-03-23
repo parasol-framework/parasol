@@ -143,6 +143,7 @@ void CloseCore(void)
          pf::Log log("Shutdown");
          log.branch("Freeing the task object and its resources.");
          FreeResource(glCurrentTask);
+         glCurrentTask = NULL;
       }
 
       // Remove locks on any private objects that have not been unlocked yet
