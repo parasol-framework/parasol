@@ -1668,7 +1668,7 @@ static ERROR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR 
 //********************************************************************************************************************
 // The Width/Height can be zero if the original image dimensions are desired.
 
-static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE Width = 0, DOUBLE Height = 0)
+static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1723,7 +1723,6 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUB
          fl::Owner(Self->Scene->UID),
          fl::Path(Path),
          fl::BitsPerPixel(32),
-         fl::Width(Width), fl::Height(Height),
          fl::Flags(PCF::FORCE_ALPHA_32)))) error = ERR_CreateObject;
    }
 
@@ -1781,7 +1780,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
 
       if ((!id.empty()) and (!src.empty())) {
          objPicture *pic;
-         if (!load_pic(Self, src, &pic, width, height)) {
+         if (!load_pic(Self, src, &pic)) {
             image->set(FID_Picture, pic);
             if (!InitObject(image)) {
                if (!Self->Cloning) {
@@ -1851,7 +1850,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
    if (id.empty()) {
       // An image always has an ID; this ensures that if the image bitmap is referenced repeatedly via a <symbol> then
       // we won't keep reloading it into the cache.
-      id = "img_" + std::to_string(StrHash(src)) + "_" + std::to_string(width) + "_" + std::to_string(height);
+      id = "img_" + std::to_string(StrHash(src));
       xmlNewAttrib(Tag, "id", id);
    }
 
@@ -1861,7 +1860,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
       // do so would be inconsistent with all other scene graph members being true path-based objects.
 
       objPicture *pic = NULL;
-      load_pic(Self, src, &pic, width, height);
+      load_pic(Self, src, &pic);
 
       if (pic) {
          if (auto image = objVectorImage::create::global(

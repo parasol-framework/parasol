@@ -18,11 +18,8 @@ also supported, but user preference may dictate whether or not the necessary dri
 
 <header>Technical Notes</>
 
-The Picture class will clip any loaded picture so that it fits the size given in the #Bitmap's Width and
-Height. If you specify the `RESIZE` flag, the picture will be shrunk or enlarged to fit the given dimensions.
-If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information
-about a picture before initialising it, #Query() it first so that the picture object can load initial details on the
-file format.
+To find out general information about a picture before initialising it, #Query() it first so that the picture object 
+can load initial details on the file format.
 
 Images are also remapped automatically if the source palette and destination palettes do not match, or if there are
 significant differences between the source and destination bitmap types.
@@ -166,8 +163,8 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
    png_get_IHDR(read_ptr, info_ptr, &png_width, &png_height, &bit_depth, &color_type, NULL, NULL, NULL);
    if (tlError) goto exit;
 
-   if (!bmp->Width)  bmp->Width  = png_width;
-   if (!bmp->Height) bmp->Height = png_height;
+   bmp->Width  = png_width;
+   bmp->Height = png_height;
    if (bmp->Type IS BMP::NIL) bmp->Type = BMP::CHUNKY;
 
    if (!Self->DisplayWidth)  Self->DisplayWidth  = png_width;
@@ -342,14 +339,14 @@ static ERROR PICTURE_Free(extPicture *Self, APTR Void)
 Init: Prepares the object for use.
 
 Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the
-#Path field or have chosen to use the NEW flag, the initialisation routine will create a
+#Path field or have chosen to use the `NEW` flag, the initialisation routine will create a
 #Bitmap area that contains no image data.  This allows you to fill the picture with your own image data and
 save it using the #SaveImage() or #SaveToObject() actions.  You must set the bitmap width, height
 and colour specifications at a minimum, or the initialisation process will fail.
 
-If you have set the #Path field and avoided the NEW flag, the initialisation process will analyse the
+If you have set the #Path field and avoided the `NEW` flag, the initialisation process will analyse the
 file location to determine whether or not the data is in fact a valid image file.  If the file does not match up
-with a registered data format, an error code of ERR_NoSupport is returned.  You will need to use the Activate or
+with a registered data format, an error code of `ERR_NoSupport` is returned.  You will need to use the Activate or
 Query actions to load or find out more information about the image format.
 -END-
 
@@ -370,7 +367,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
          Self->Bitmap->Flags |= BMF::ALPHA_CHANNEL;
       }
 
-      Self->Flags &= ~(PCF::RESIZE_X|PCF::RESIZE_Y|PCF::LAZY|PCF::SCALABLE); // Turn off irrelevant flags that don't match these
+      Self->Flags &= ~(PCF::LAZY|PCF::SCALABLE); // Turn off irrelevant flags that don't match these
 
       if (!Self->Bitmap->Width) Self->Bitmap->Width = Self->DisplayWidth;
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
@@ -877,10 +874,8 @@ static ERROR SET_Author(extPicture *Self, CSTRING Value)
 Bitmap: Represents a picture's image data.
 
 The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains
-information on the image dimensions and palette for example.  When loading a picture, you can place certain
-constraints on the image by presetting Bitmap fields such as the Width and Height (this will have the effect
-of clipping or resizing the source image). The Palette can also be preset if you want to remap the source
-image to a specific set of colour values.
+information on the image dimensions and palette for example.  The Palette can be preset if you want to remap the 
+source image to a specific set of colour values.
 
 Please refer to the @Bitmap class for more details on the structure of bitmap objects.
 
@@ -1187,7 +1182,7 @@ static ERROR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, i
    UBYTE *row;
    png_bytep row_pointers;
    RGB8 rgb;
-   LONG i, x, y;
+   LONG i;
    pf::Log log(__FUNCTION__);
 
    // Read the image data into our Bitmap
@@ -1205,171 +1200,72 @@ static ERROR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, i
    }
    if ((error = AllocMemory(rowsize, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR_Okay) return error;
 
-   if ((Self->Flags & PCF::RESIZE) != PCF::NIL) {
-      DOUBLE fx, fy;
-      LONG isrcy, isrcx, ify;
+   // Chop the image to the bitmap dimensions
 
-      DOUBLE xScale = (DOUBLE)PngWidth / (DOUBLE)Bitmap->Width;
-      DOUBLE yScale = (DOUBLE)PngHeight / (DOUBLE)Bitmap->Height;
+   if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
+   if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
 
-      row_pointers = row;
-      if (ColourType IS PNG_COLOR_TYPE_GRAY) {
-         isrcy = -1;
-         fy = 0;
-         rgb.Alpha = 255;
-         for (y=0; y < Bitmap->Height; y++, fy += yScale) {
-            ify = F2T(fy);
-            fx = 0;
-            while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-               isrcy++;
-            }
-            for (x=0; x < Bitmap->Width; x++, fx += xScale) {
-               isrcx = F2T(fx);
-               rgb.Red   = row[isrcx];
-               rgb.Green = row[isrcx];
-               rgb.Blue  = row[isrcx];
-               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
-            }
+   row_pointers = row;
+   if (ColourType IS PNG_COLOR_TYPE_GRAY) {
+      log.trace("Greyscale image source.");
+      rgb.Alpha = 255;
+      for (png_uint_32 y=0; y < PngHeight; y++) {
+         png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+         for (png_uint_32 x=0; x < PngWidth; x++) {
+            rgb.Red   = row[x];
+            rgb.Green = row[x];
+            rgb.Blue  = row[x];
+            Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
          }
       }
-      else if (ColourType IS PNG_COLOR_TYPE_PALETTE) {
-         isrcy = -1;
-         fy = 0;
-         rgb.Alpha = 255;
-         for (y=0; y < Bitmap->Height; y++, fy += yScale) {
-            fx = 0;
-            ify = F2T(fy);
-            while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-               isrcy++;
-            }
-            for (x=0; x < Bitmap->Width; x++, fx += xScale) {
-               isrcx = F2T(fx);
-               if (Bitmap->BitsPerPixel IS 8) Bitmap->DrawUCPixel(Bitmap, x, y, row[isrcx]);
-               else Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[isrcx]]);
-            }
-         }
-      }
-      else if (ColourType & PNG_COLOR_MASK_ALPHA) {
-         // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the
-         // alpha data.
-
-         isrcy = -1;
-         fy = 0;
-         for (y=0; y < Bitmap->Height; y++, fy += yScale) {
-            fx = 0;
-            ify = F2T(fy);
-            while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-               isrcy++;
-            }
-            for (x=0; x < Bitmap->Width; x++, fx += xScale) {
-               isrcx = F2T(fx);
-               isrcx <<=2;
-               rgb.Red   = row[isrcx];
-               rgb.Green = row[isrcx+1];
-               rgb.Blue  = row[isrcx+2];
-               rgb.Alpha = row[isrcx+3];
-               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
-
-               // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the
-               // alpha bytes)
-
-               if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = rgb.Alpha;
-            }
+   }
+   else if (ColourType IS PNG_COLOR_TYPE_PALETTE) {
+      log.trace("Palette-based image source.");
+      if (Bitmap->BitsPerPixel IS 8) {
+         for (png_uint_32 y=0; y < PngHeight; y++) {
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+            for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
          }
       }
       else {
-         isrcy = -1;
-         fy = 0;
          rgb.Alpha = 255;
-         for (y=0; y < Bitmap->Height; y++, fy += yScale) {
-            fx = 0;
-            ify = F2T(fy);
-            while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-               isrcy++;
-            }
-            for (x=0; x < Bitmap->Width; x++, fx += xScale) {
-               isrcx = F2T(fx);
-               isrcx *= 3;
-               rgb.Red   = row[isrcx];
-               rgb.Green = row[isrcx+1];
-               rgb.Blue  = row[isrcx+2];
-               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
+         for (png_uint_32 y=0; y < PngHeight; y++) {
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+            for (png_uint_32 x=0; x < PngWidth; x++) {
+               Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
             }
          }
       }
    }
+   else if (ColourType & PNG_COLOR_MASK_ALPHA) {
+      // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the alpha data.
+
+      log.trace("32-bit + alpha image source.");
+      for (png_uint_32 y=0; y < PngHeight; y++) {
+         png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+         i = 0;
+         for (png_uint_32 x=0; x < PngWidth; x++) {
+            Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
+
+            // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
+
+            if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = row[3];
+
+            i += 4;
+         }
+      }
+   }
    else {
-      // Chop the image to the bitmap dimensions
-
-      if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
-      if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
-
-      row_pointers = row;
-      if (ColourType IS PNG_COLOR_TYPE_GRAY) {
-         log.trace("Greyscale image source.");
-         rgb.Alpha = 255;
-         for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-            for (png_uint_32 x=0; x < PngWidth; x++) {
-               rgb.Red   = row[x];
-               rgb.Green = row[x];
-               rgb.Blue  = row[x];
-               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
-            }
-         }
-      }
-      else if (ColourType IS PNG_COLOR_TYPE_PALETTE) {
-         log.trace("Palette-based image source.");
-         if (Bitmap->BitsPerPixel IS 8) {
-            for (png_uint_32 y=0; y < PngHeight; y++) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-               for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
-            }
-         }
-         else {
-            rgb.Alpha = 255;
-            for (png_uint_32 y=0; y < PngHeight; y++) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-               for (png_uint_32 x=0; x < PngWidth; x++) {
-                  Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
-               }
-            }
-         }
-      }
-      else if (ColourType & PNG_COLOR_MASK_ALPHA) {
-         // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the alpha data.
-
-         log.trace("32-bit + alpha image source.");
-         for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-            i = 0;
-            for (png_uint_32 x=0; x < PngWidth; x++) {
-               Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
-
-               // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
-
-               if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = row[3];
-
-               i += 4;
-            }
-         }
-      }
-      else {
-         log.trace("24-bit image source.");
-         rgb.Alpha = 255;
-         for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-            i = 0;
-            for (png_uint_32 x=0; x < PngWidth; x++) {
-               rgb.Red   = row[i++];
-               rgb.Green = row[i++];
-               rgb.Blue  = row[i++];
-               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
-            }
+      log.trace("24-bit image source.");
+      rgb.Alpha = 255;
+      for (png_uint_32 y=0; y < PngHeight; y++) {
+         png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+         i = 0;
+         for (png_uint_32 x=0; x < PngWidth; x++) {
+            rgb.Red   = row[i++];
+            rgb.Green = row[i++];
+            rgb.Blue  = row[i++];
+            Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
          }
       }
    }

@@ -68,8 +68,8 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
    jpeg_stdio_src(&cinfo, Self->prvFile);
    jpeg_read_header(&cinfo, TRUE);
 
-   if (!bmp->Width)           bmp->Width          = cinfo.image_width;
-   if (!bmp->Height)          bmp->Height         = cinfo.image_height;
+   bmp->Width  = cinfo.image_width;
+   bmp->Height = cinfo.image_height;
    if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
    if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
    if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
@@ -89,9 +89,6 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
       jpeg_destroy_decompress(&cinfo);
       return ERR_Query;
    }
-
-   if ((Self->Flags & PCF::RESIZE_X) != PCF::NIL) cinfo.output_width = bmp->Width;
-   if ((Self->Flags & PCF::RESIZE_Y) != PCF::NIL) cinfo.output_height = bmp->Height;
 
    if (bmp->BitsPerPixel >= 24) {
       decompress_jpeg(Self, bmp, &cinfo);

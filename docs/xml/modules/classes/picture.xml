@@ -19,7 +19,7 @@
 <p>The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future proof in that future data formats can be supported by installing class drivers on the user's system.</p>
 <p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
 <header>Technical Notes</header>
-<p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height. If you specify the <code>RESIZE</code> flag, the picture will be shrunk or enlarged to fit the given dimensions. If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
+<p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height.  If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
 <p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p></description>
     <source>
       <file>picture.cpp</file>
@@ -230,9 +230,6 @@
       <const name="MASK">A mask has been generated for the image.</const>
       <const name="NEW">Indicates that the picture image will be created from scratch.</const>
       <const name="NO_PALETTE">Automatically upgrade palette based images to 32 bit colour.</const>
-      <const name="RESIZE">Synonym for RESIZE_X | RESIZE_Y</const>
-      <const name="RESIZE_X">Resizes the image on the horizontal axis if the Bitmap Width is preset and does not match the width of the image source.</const>
-      <const name="RESIZE_Y">Resizes the image on the vertical axis if the Bitmap Height is preset and does not match the height of the image source.</const>
       <const name="SCALABLE">This read-only flag is automatically set if the image source is scalable (such as SVG).</const>
     </constants>
 
