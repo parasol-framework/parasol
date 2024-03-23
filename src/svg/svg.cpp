@@ -100,7 +100,7 @@ struct svgState {
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
       m_fill_opacity(-1), m_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pSVG->Scene) { }
 
-   void applyTag(const XMLTag &) noexcept;
+   void applyTag(XMLTag &) noexcept;
    void applyAttribs(OBJECTPTR) const noexcept;
 };
 
@@ -110,26 +110,26 @@ static ERROR animation_timer(extSVG *, LARGE, LARGE);
 static void  convert_styles(objXML::TAGS &);
 static ERROR init_svg(void);
 static ERROR init_rsvg(void);
-static void  process_attrib(extSVG *, const XMLTag &, svgState &, objVector *);
-static void  process_children(extSVG *, svgState &, const XMLTag &, OBJECTPTR);
+static void  process_attrib(extSVG *, XMLTag &, svgState &, objVector *);
+static void  process_children(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void  process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
-static ERROR process_shape(extSVG *, CLASSID, svgState &, const XMLTag &, OBJECTPTR, objVector * &);
+static ERROR process_shape(extSVG *, CLASSID, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static ERROR save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_transform(VectorMatrix *, std::stringstream &);
-static ERROR set_property(extSVG *, objVector *, ULONG, const XMLTag &, svgState &, std::string);
-static ERROR xtag_animatemotion(extSVG *, const XMLTag &, OBJECTPTR Parent);
-static ERROR xtag_animatetransform(extSVG *, const XMLTag &, OBJECTPTR);
-static ERROR xtag_default(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector * &);
-static ERROR xtag_defs(extSVG *, svgState &, const XMLTag &, OBJECTPTR);
-static void  xtag_group(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector * &);
-static ERROR xtag_image(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector * &);
-static void  xtag_morph(extSVG *, const XMLTag &, OBJECTPTR Parent);
-static void  xtag_svg(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector * &);
-static void  xtag_use(extSVG *, svgState &, const XMLTag &, OBJECTPTR);
-static ERROR xtag_style(extSVG *, const XMLTag &);
-static void  xtag_symbol(extSVG *, const XMLTag &);
+static ERROR set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
+static ERROR xtag_animatemotion(extSVG *, XMLTag &, OBJECTPTR Parent);
+static ERROR xtag_animatetransform(extSVG *, XMLTag &, OBJECTPTR);
+static ERROR xtag_default(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static ERROR xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
+static void  xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static ERROR xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static void  xtag_morph(extSVG *, XMLTag &, OBJECTPTR Parent);
+static void  xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static void  xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
+static ERROR xtag_style(extSVG *, XMLTag &);
+static void  xtag_symbol(extSVG *, XMLTag &);
 
 //********************************************************************************************************************
 

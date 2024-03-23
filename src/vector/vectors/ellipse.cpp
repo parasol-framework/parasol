@@ -38,8 +38,18 @@ static void generate_ellipse(extVectorEllipse *Vector)
       if (Vector->eDimensions & DMF_SCALED_RADIUS_Y) ry *= view_height;
    }
 
-   // TODO: Replacing this path calculator with ARC commands would produce a more optimal result
+#if 0
+   // Create an ellipse using bezier arcs.  Unfortunately the precision of the existing arc code
+   // is not good enough to make this viable at the current time.
+   // Top -> right -> bottom -> left -> top
 
+   Vector->BasePath.move_to(cx, cy-ry);
+   Vector->BasePath.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, cx+rx, cy);
+   Vector->BasePath.arc_to(rx, ry, 0, 0, 1, cx, cy+ry);
+   Vector->BasePath.arc_to(rx, ry, 0, 0, 1, cx-rx, cy);
+   Vector->BasePath.arc_to(rx, ry, 0, 0, 1, cx, cy-ry);
+   Vector->BasePath.close_polygon();
+#else
    ULONG vertices;
    if (Vector->eVertices >= 3) vertices = Vector->eVertices;
    else {
@@ -63,6 +73,7 @@ static void generate_ellipse(extVectorEllipse *Vector)
       else Vector->BasePath.line_to(x, y);
    }
    Vector->BasePath.close_polygon();
+#endif
 
    Vector->Bounds = { cx - rx, cy - ry, cx + rx, cy + ry };
 }

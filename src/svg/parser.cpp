@@ -73,7 +73,7 @@ void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
 //********************************************************************************************************************
 // Copy a tag's attributes to the current state.
 
-void svgState::applyTag(const XMLTag &Tag) noexcept
+void svgState::applyTag(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -119,7 +119,7 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
 //********************************************************************************************************************
 // Process all child elements that belong to the target Tag.
 
-static void process_children(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Vector)
+static void process_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Vector)
 {
    objVector *sibling = NULL;
    for (auto &child : Tag.Children) {
@@ -131,7 +131,7 @@ static void process_children(extSVG *Self, svgState &State, const XMLTag &Tag, O
 
 //********************************************************************************************************************
 
-static void xtag_pathtransition(extSVG *Self, const XMLTag &Tag)
+static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -173,7 +173,7 @@ static void xtag_pathtransition(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
+static void xtag_clippath(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -240,7 +240,7 @@ static void xtag_clippath(extSVG *Self, const XMLTag &Tag)
 //
 // The formula used to get the luminance out of a given RGB value is: .2126R + .7152G + .0722B
 
-static void xtag_mask(extSVG *Self, const XMLTag &Tag)
+static void xtag_mask(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -308,7 +308,7 @@ static void xtag_mask(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -357,7 +357,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -390,7 +390,7 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -469,7 +469,7 @@ static const DOUBLE glTritanomaly[20] = { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 
 static const DOUBLE glAchromatopsia[20] = { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 };
 static const DOUBLE glAchromatomaly[20] = { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 };
 
-static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -546,7 +546,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -636,7 +636,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Filter, const XMLTag &Tag, LT Type)
+static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag, LT Type)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -761,7 +761,7 @@ static ERROR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *F
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -819,7 +819,7 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -905,7 +905,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1006,7 +1006,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1059,7 +1059,7 @@ static ERROR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filt
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1117,7 +1117,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1162,7 +1162,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
 //********************************************************************************************************************
 // This code replaces feImage elements where the href refers to a resource name.
 
-static ERROR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1221,7 +1221,7 @@ static ERROR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Fil
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter, const XMLTag &Tag)
+static ERROR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1319,7 +1319,7 @@ static ERROR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filt
 
 //********************************************************************************************************************
 
-static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
+static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1432,7 +1432,7 @@ static void xtag_filter(extSVG *Self, svgState &State, const XMLTag &Tag)
 // NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
 // If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
 
-static void process_pattern(extSVG *Self, const XMLTag &Tag)
+static void process_pattern(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorPattern *pattern;
@@ -1528,7 +1528,7 @@ static void process_pattern(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, const XMLTag &Tag,
+static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag &Tag,
    OBJECTPTR Parent, objVector * &Result)
 {
    pf::Log log(__FUNCTION__);
@@ -1587,7 +1587,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, cons
 //********************************************************************************************************************
 // See also process_children()
 
-static ERROR xtag_default(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+static ERROR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1739,7 +1739,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUB
 //********************************************************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
-static void def_image(extSVG *Self, const XMLTag &Tag)
+static void def_image(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorImage *image;
@@ -1808,15 +1808,15 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+static ERROR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   std::string src, filter, transform;
+   std::string src, filter, transform, id;
    ARF ratio = ARF::NIL;
    FUNIT x, y, width, height;
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &name = Tag.Attribs[a].Name;
       auto &value = Tag.Attribs[a].Value;
       if ((!StrMatch("xlink:href", name)) or (!StrMatch("href", name))) {
@@ -1839,12 +1839,23 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
          height = FUNIT(FID_Height, value);
          if (!height.valid_size()) return log.warning(ERR_InvalidDimension);
       }
+      else if (!StrMatch("id", name)) id = value;
+      else if (!StrMatch("transform", name)) transform = value;
       else if (!StrMatch("crossorigin", name)); // Defines the value of the credentials flag for CORS requests.
       else if (!StrMatch("decoding", name)); // Hint as to whether image decoding is synchronous or asynchronous
       else if (!StrMatch("clip", name)); // Deprecated from SVG; allows a rect() to be declared that functions as a clip-path
    }
 
-   if (!src.empty()) {
+   if (src.empty()) return ERR_FieldNotSet;
+
+   if (id.empty()) {
+      // An image always has an ID; this ensures that if the image bitmap is referenced repeatedly via a <symbol> then
+      // we won't keep reloading it into the cache.
+      id = "img_" + std::to_string(StrHash(src)) + "_" + std::to_string(width) + "_" + std::to_string(height);
+      xmlNewAttrib(Tag, "id", id);
+   }
+
+   if (add_id(Self, Tag, id)) {
       // Load the image and add it to the vector definition.  It will be rendered as a rectangle within the scene.
       // This may appear a little confusing because an image can be invoked in SVG like a first-class shape; however to
       // do so would be inconsistent with all other scene graph members being true path-based objects.
@@ -1862,44 +1873,42 @@ static ERROR xtag_image(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECT
 
             SetOwner(pic, image); // It's best if the pic belongs to the image.
 
-            auto id = std::to_string(image->UID);
-            id.insert(0, "img");
-            if (!Self->Cloning) scAddDef(Self->Scene, id.c_str(), image);
-
-            if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
-               SetOwner(Vector, Parent);
-               State.applyAttribs(Vector);
-
-               process_attrib(Self, Tag, State, Vector);
-
-               if (!x.empty()) x.set(Vector);
-               if (!y.empty()) y.set(Vector);
-               if (!width.empty()) width.set(Vector);
-               if (!height.empty()) height.set(Vector);
-
-               Vector->set(FID_Fill, "url(#" + id + ")");
-
-               if (!Vector->init()) {
-                  return ERR_Okay;
-               }
-               else {
-                  FreeResource(Vector);
-                  return ERR_Init;
-               }
-            }
-            else return ERR_CreateObject;
+            scAddDef(Self->Scene, id.c_str(), image);
          }
          else return ERR_CreateObject;
       }
       else log.warning("Failed to load picture via xlink:href.");
    }
+   
+   if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
+      SetOwner(Vector, Parent);
+      State.applyAttribs(Vector);
 
-   return ERR_Failed;
+      // All attributes of <image> will be applied to the rectangle.
+
+      process_attrib(Self, Tag, State, Vector);
+
+      if (!x.empty()) x.set(Vector);
+      if (!y.empty()) y.set(Vector);
+      if (!width.empty()) width.set(Vector);
+      if (!height.empty()) height.set(Vector);
+
+      Vector->set(FID_Fill, "url(#" + id + ")");
+
+      if (!Vector->init()) {
+         return ERR_Okay;
+      }
+      else {
+         FreeResource(Vector);
+         return ERR_Init;
+      }
+   }
+   else return ERR_CreateObject;
 }
 
 //********************************************************************************************************************
 
-static ERROR xtag_defs(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent)
+static ERROR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1941,7 +1950,7 @@ static ERROR xtag_defs(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
 
 //********************************************************************************************************************
 
-static ERROR xtag_style(extSVG *Self, const XMLTag &Tag)
+static ERROR xtag_style(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
@@ -2002,7 +2011,7 @@ static ERROR xtag_style(extSVG *Self, const XMLTag &Tag)
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
 // belong to it.
 
-static void xtag_symbol(extSVG *Self, const XMLTag &Tag)
+static void xtag_symbol(extSVG *Self, XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    log.traceBranch("Tag: %d", Tag.ID);
@@ -2020,7 +2029,7 @@ static void xtag_symbol(extSVG *Self, const XMLTag &Tag)
 //********************************************************************************************************************
 // Most vector shapes can be morphed to the path of another vector.
 
-static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
+static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2125,7 +2134,7 @@ static void xtag_morph(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
 // non-exposed DOM tree which had the 'use' element as its parent and all of the 'use' element's ancestors as its
 // higher-level ancestors.
 
-static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent)
+static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
    std::string ref;
@@ -2299,7 +2308,7 @@ static void xtag_use(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 
 //********************************************************************************************************************
 
-static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2330,7 +2339,7 @@ static void xtag_group(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTP
 // <svg/> tags can be embedded inside <svg/> tags - this establishes a new viewport.
 // Refer to section 7.9 of the SVG Specification for more information.
 
-static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
    LONG a;
@@ -2481,7 +2490,7 @@ static void xtag_svg(extSVG *Self, svgState &State, const XMLTag &Tag, OBJECTPTR
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERROR xtag_animatetransform(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
+static ERROR xtag_animatetransform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2618,7 +2627,7 @@ static ERROR xtag_animatetransform(extSVG *Self, const XMLTag &Tag, OBJECTPTR Pa
 //********************************************************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERROR xtag_animatemotion(extSVG *Self, const XMLTag &Tag, OBJECTPTR Parent)
+static ERROR xtag_animatemotion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
@@ -2649,7 +2658,7 @@ static ERROR xtag_animatemotion(extSVG *Self, const XMLTag &Tag, OBJECTPTR Paren
 
 //********************************************************************************************************************
 
-static void process_attrib(extSVG *Self, const XMLTag &Tag, svgState &State, objVector *Vector)
+static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector *Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2851,7 +2860,7 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
 
 //********************************************************************************************************************
 
-static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XMLTag &Tag, svgState &State, const std::string StrValue)
+static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag, svgState &State, const std::string StrValue)
 {
    pf::Log log(__FUNCTION__);
 
