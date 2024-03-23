@@ -97,6 +97,25 @@ function testTransformations()    hashTestSVG('transforms/transformations.svg', 
 function testW3AspectRatio()      hashTestSVG('transforms/w3-aspectratio.svg', 0x4a65034c) end
 function testW3SkewText()         hashTestSVG('transforms/w3-skew-text.svg', 0xd70c20b4) end
 function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xb29ce372) end
+function testW3Transform01()     hashTestSVG('transforms/w3-coords-trans-01-b.svg', 0xedbd88cb) end
+function testW3Transform02()     hashTestSVG('transforms/w3-coords-trans-02-t.svg', 0x7f037fa0) end
+function testW3Transform03()     hashTestSVG('transforms/w3-coords-trans-03-t.svg', 0xb167f04b) end
+function testW3Transform04()     hashTestSVG('transforms/w3-coords-trans-04-t.svg', 0xf45a6134) end
+function testW3Transform05()     hashTestSVG('transforms/w3-coords-trans-05-t.svg', 0x05fe81c4) end
+function testW3Transform06()     hashTestSVG('transforms/w3-coords-trans-06-t.svg', 0x70364d86) end
+function testW3Transform07()     hashTestSVG('transforms/w3-coords-trans-07-t.svg', 0x0b3ebff1) end
+function testW3Transform08()     hashTestSVG('transforms/w3-coords-trans-08-t.svg', 0x138f7d24) end
+function testW3Transform09()     hashTestSVG('transforms/w3-coords-trans-09-t.svg', 0x150bd748) end
+function testW3Transform10()     hashTestSVG('transforms/w3-coords-trans-10-f.svg', 0x3a490eb5) end
+function testW3Transform11()     hashTestSVG('transforms/w3-coords-trans-11-f.svg', 0x70c16d4a) end
+function testW3Transform12()     hashTestSVG('transforms/w3-coords-trans-12-f.svg', 0x1f61220c) end
+function testW3Transform13()     hashTestSVG('transforms/w3-coords-trans-13-f.svg', 0x30287805) end
+function testW3Transform14()     hashTestSVG('transforms/w3-coords-trans-14-f.svg', 0xb68b170d) end
+function testW3TransformAttr01() hashTestSVG('transforms/w3-coords-transformattr-01-f.svg', 0xe792b599) end
+function testW3TransformAttr02() hashTestSVG('transforms/w3-coords-transformattr-02-f.svg', 0x3fccf8c9) end
+function testW3TransformAttr03() hashTestSVG('transforms/w3-coords-transformattr-03-f.svg', 0xacba92f9) end
+function testW3TransformAttr04() hashTestSVG('transforms/w3-coords-transformattr-04-f.svg', 0x56175f01) end
+function testW3TransformAttr05() hashTestSVG('transforms/w3-coords-transformattr-05-f.svg', 0x20728ac5) end
 
 function testCSS()                hashTestSVG('misc/css.svg', 0xefdc1bcf) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x125baa67) end
@@ -260,6 +279,25 @@ function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
         'testW3AspectRatio',
         'testW3SkewText',
         'testW3Viewbox',
+        'testW3Transform01',
+        'testW3Transform02',
+        'testW3Transform03',
+        'testW3Transform04',
+        'testW3Transform05',
+        'testW3Transform06',
+        'testW3Transform07',
+        'testW3Transform08',
+        'testW3Transform09',
+        'testW3Transform10',
+        'testW3Transform11',
+        'testW3Transform12',
+        'testW3Transform13',
+        'testW3Transform14',
+        'testW3TransformAttr01',
+        'testW3TransformAttr02',
+        'testW3TransformAttr03',
+        'testW3TransformAttr04',
+        'testW3TransformAttr05',
         -- Misc
         'testCSS',
         'testBrushStrokes',

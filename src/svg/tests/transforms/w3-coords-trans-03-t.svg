@@ -1,0 +1,35 @@
+<svg version="1.1" baseProfile="tiny" id="svg-root"
+  width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <g id="test-body-content" font-family="SVGFreeSansASCII,sans-serif" font-size="18">
+    <g transform="translate(0, 30)" font-size="12">
+      <g id="elementary-transforms-test" transform="translate(0, 10)">
+        <g id="elementary-transforms" transform="translate(-560, 0) scale(2.5, 2.5)">
+          <!-- Skew X -->
+          <g transform="translate(250, 50) skewX(45)">
+            <rect x="0" y="0" width="20" height="2" fill="blue"/>
+            <rect x="0" y="0" width="2" height="20" fill="red"/>
+          </g>
+          <!-- Skew Y -->
+          <g transform="translate(350, 50) skewY(45)">
+            <rect x="0" y="0" width="20" height="2" fill="blue"/>
+            <rect x="0" y="0" width="2" height="20" fill="red"/>
+          </g>
+        </g>
+        <g id="elementary-transforms-test-markers" transform="translate(-560, 0) scale(2.5, 2.5)">
+          <!-- Skew X -->
+          <text x="240" y="40">skew x (45)</text>
+          <rect x="248" y="48" width="5" height="5" fill="black"/>
+          <rect x="268" y="48" width="5" height="5" fill="blue"/>
+          <rect x="268" y="68" width="5" height="5" fill="red"/>
+          <!-- Skew Y -->
+          <text x="340" y="40">skew y (45)</text>
+          <rect x="348" y="48" width="5" height="5" fill="black"/>
+          <rect x="368" y="68" width="5" height="5" fill="blue"/>
+          <rect x="348" y="68" width="5" height="5" fill="red"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
