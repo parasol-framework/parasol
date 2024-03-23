@@ -1812,7 +1812,7 @@ static ERROR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
    pf::Log log(__FUNCTION__);
 
    std::string src, filter, transform, id;
-   ARF ratio = ARF::NIL;
+   ARF ratio = ARF::X_MID|ARF::Y_MID|ARF::MEET; // SVG default if the client leaves preserveAspectRatio undefined
    FUNIT x, y, width, height;
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -1866,7 +1866,6 @@ static ERROR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
          if (auto image = objVectorImage::create::global(
                fl::Owner(Self->Scene->UID),
                fl::Picture(pic),
-               fl::SpreadMethod(VSPREAD::PAD),
                fl::Units(VUNIT::BOUNDING_BOX),
                fl::AspectRatio(ratio))) {
 
@@ -1879,6 +1878,10 @@ static ERROR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
       else log.warning("Failed to load picture via xlink:href.");
    }
    
+   // NOTE: Officially, the SVG standard requires that a viewport is created to host the image (this would still
+   // require a filled rectangle to reference the image).  In practice this doesn't seem necessary, as the image
+   // object supports built-in viewport concepts like preserveAspectRatio.
+
    if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); !error) {
       SetOwner(Vector, Parent);
       State.applyAttribs(Vector);

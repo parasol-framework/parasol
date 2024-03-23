@@ -73,12 +73,13 @@ static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
 
    Path.approximation_scale(Transform.scale());
 
-   agg::trans_affine transform;
-   if (Image.SpreadMethod IS VSPREAD::PAD) { // In pad mode, stretch the image to fit the boundary
-      transform.scale(Bounds.width() / Image.Bitmap->Width, Bounds.height() / Image.Bitmap->Height);
-   }
+   DOUBLE x_scale, y_scale, x_offset, y_offset;
+   calc_aspectratio("fill_image", Image.AspectRatio, c_width, c_height, 
+      Image.Bitmap->Width, Image.Bitmap->Height, &x_offset, &y_offset, &x_scale, &y_scale);
 
-   transform.translate(dx, dy);
+   agg::trans_affine transform;
+   transform.scale(x_scale, y_scale);
+   transform.translate(dx + x_offset, dy + y_offset);
    transform *= Transform;
 
    transform.invert();
