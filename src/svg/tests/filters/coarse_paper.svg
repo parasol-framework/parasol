@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <filter id="paper">
+    <feTurbulence type="fractalNoise" baseFrequency="0.03 0.06" numOctaves="10" result="noise" />
+    <feDiffuseLighting in="noise" lighting-color="#e2e1db" surfaceScale="2">
+      <feDistantLight azimuth="45" elevation="40" />
+    </feDiffuseLighting>
+  </filter>
+
+  <rect width="100%" height="100%" filter="url(#paper)"/>
+</svg>

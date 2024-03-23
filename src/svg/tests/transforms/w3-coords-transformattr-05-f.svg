@@ -1,38 +1,5 @@
 <svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <!--======================================================================-->
-  <!--=  SVG 1.1 2nd Edition Test Case                                     =-->
 
-  <d:SVGTestCase xmlns:d="http://www.w3.org/2000/02/svg/testsuite/description/" template-version="1.4" reviewer="CL" author="Microsoft" status="accepted" version="" testname="$RCSfile: coords-transformattr-05-f.svg,v $">
-    <d:testDescription xmlns="http://www.w3.org/1999/xhtml" href="http://dev.w3.org/SVG/profiles/1.1F2/publish/coords.html#TransformAttribute">
-      <p>
-        If 'cx' and 'cy' are not specified for a 'rotate' transform, the rotation is about the origin of the current user coordinate system and thus corresponds to the matrix [cos(a) sin(a) -sin(a) cos(a) 0 0].
-      </p>
-      <p>
-        Specify a series of various black graphics elements inside a 'g' element with 'transform' set to a 'rotate' value with unspecified 'cx'
-        and 'cy' parameters (i.e., 'rotate(15)'). Specify an equivalent series of red graphics elements inside a 'g' element with 'transform' set
-        to a 'matrix' value which would rotate the elements 15 degrees about the point (0,0) of the current user coordinate system. If the 'g' element containing the black elements correctly rotates its content by 15 degrees around the origin of the current user coordinate system, there will be no red on the page.
-      </p>
-    </d:testDescription>
-    <d:operatorScript xmlns="http://www.w3.org/1999/xhtml">
-	<p>Run the test. No interaction required.</p>
-    </d:operatorScript>
-    <d:passCriteria xmlns="http://www.w3.org/1999/xhtml">
-      <p>
-        Test passes if there is no red visible on the page.
-      </p>
-            
-    </d:passCriteria>
-  </d:SVGTestCase>
-  <title id="test-title">$RCSfile: coords-transformattr-05-f.svg,v $</title>
-  <defs>
-    <font-face
-      font-family="SVGFreeSansASCII"
-      unicode-range="U+0-7F">
-      <font-face-src>
-        <font-face-uri xlink:href="../resources/SVGFreeSans.svg#ascii"/>
-      </font-face-src>
-    </font-face>
-  </defs>
   <g id="test-body-content" font-family="SVGFreeSansASCII,sans-serif" font-size="18">
     <g transform="translate(50 15)">
         <g transform="matrix(0.96592582628906829 0.25881904510252076 -0.25881904510252076 0.96592582628906829 0 0)">
@@ -49,12 +16,4 @@
         </g>
     </g>
   </g>
-  <g font-family="SVGFreeSansASCII,sans-serif" font-size="32">
-    <text id="revision" x="10" y="340" stroke="none"
-      fill="black"></text>
-  </g>
-  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
-  <!--
-
-  -->
 </svg>
