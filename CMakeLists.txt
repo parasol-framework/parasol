@@ -490,63 +490,78 @@ add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLis
 
 add_subdirectory (3rdparty/freetype-2.13.2)
 
+if (NOT DISABLE_AUDIO)
+   add_subdirectory (src/audio)
+   list (APPEND LIB_LIST audio)
+endif ()
+
+if (NOT DISABLE_DISPLAY)
+   add_subdirectory (src/display)
+   list (APPEND LIB_LIST display)
+endif ()
+
+if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
+   add_subdirectory (src/document)
+   list (APPEND LIB_LIST document)
+endif ()
+
+if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
+   add_subdirectory (src/font)
+   list (APPEND LIB_LIST font)
+endif ()
+
+if (NOT DISABLE_HTTP AND NOT DISABLE_NETWORK)
+   add_subdirectory (src/http)
+   list (APPEND LIB_LIST http)
+endif ()
+
+if (NOT DISABLE_MP3 AND NOT DISABLE_AUDIO)
+   add_subdirectory (src/mp3)
+   list (APPEND LIB_LIST mp3)
+endif ()
+
+if (NOT DISABLE_NETWORK)
+   add_subdirectory (src/network)
+   list (APPEND LIB_LIST network)
+endif ()
+
+if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
+   add_subdirectory (src/picture)
+   list (APPEND LIB_LIST picture)
+endif ()
+
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+   add_subdirectory (src/picture_jpeg)
+   list (APPEND LIB_LIST jpeg)
+endif ()
+
+if (NOT DISABLE_SCINTILLA AND NOT DISABLE_DISPLAY AND NOT DISABLE_VECTOR AND NOT DISABLE_FONT)
+   add_subdirectory (src/scintilla)
+   list (APPEND LIB_LIST scintilla)
+endif ()
+
+if (NOT DISABLE_SVG AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
+   add_subdirectory (src/svg)
+   list (APPEND LIB_LIST svg)
+endif ()
+
+if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
+   add_subdirectory (src/vector)
+   list (APPEND LIB_LIST vector)
+endif ()
+
+if (X11_Xrandr_FOUND)
+   add_subdirectory (src/xrandr)
+   list (APPEND LIB_LIST xrandr)
+endif ()
+
+list (APPEND LIB_LIST fluid json jpeg xml)
+
 add_subdirectory (src/link)
 add_subdirectory (src/core)
 add_subdirectory (src/fluid)
 add_subdirectory (src/xml)
 add_subdirectory (src/json)
-
-if (NOT DISABLE_AUDIO)
-   add_subdirectory (src/audio)
-endif ()
-
-if (NOT DISABLE_DISPLAY)
-   add_subdirectory (src/display)
-endif ()
-
-if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
-   add_subdirectory (src/document)
-endif ()
-
-if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
-   add_subdirectory (src/font)
-endif ()
-
-if (NOT DISABLE_HTTP AND NOT DISABLE_NETWORK)
-   add_subdirectory (src/http)
-endif ()
-
-if (NOT DISABLE_MP3 AND NOT DISABLE_AUDIO)
-   add_subdirectory (src/mp3)
-endif ()
-
-if (NOT DISABLE_NETWORK)
-   add_subdirectory (src/network)
-endif ()
-
-if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
-   add_subdirectory (src/picture)
-endif ()
-
-if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
-   add_subdirectory (src/picture_jpeg)
-endif ()
-
-if (NOT DISABLE_SCINTILLA AND NOT DISABLE_DISPLAY AND NOT DISABLE_VECTOR AND NOT DISABLE_FONT)
-   add_subdirectory (src/scintilla)
-endif ()
-
-if (NOT DISABLE_SVG AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
-   add_subdirectory (src/svg)
-endif ()
-
-if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
-   add_subdirectory (src/vector)
-endif ()
-
-if (X11_Xrandr_FOUND)
-   add_subdirectory (src/xrandr)
-endif ()
 
 add_subdirectory (src/launcher)
 
