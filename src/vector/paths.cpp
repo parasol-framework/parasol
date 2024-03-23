@@ -66,6 +66,7 @@ void gen_vector_path(extVector *Vector)
    if (Vector->Class->ClassID IS ID_VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
+      Vector->Dirty &= ~RC::ALL; // Making out that the group has been refreshed is important
       return;
    }
    else if (Vector->Class->ClassID IS ID_VECTORVIEWPORT) {
