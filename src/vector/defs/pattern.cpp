@@ -10,7 +10,7 @@ It is the most efficient way of rendering a common set of graphics multiple time
 
 The VectorPattern must be registered with a @VectorScene via the <method class="VectorScene">AddDef</> method.
 Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its
-name through the @Vector.Fill and @Vector.Stroke fields.  For instance 'url(#dots)'.
+name through the @Vector.Fill and @Vector.Stroke fields.  For instance `url(#dots)`.
 
 A special use case is made for patterns that are applied as a fill operation in @VectorViewport objects.  In this
 case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the

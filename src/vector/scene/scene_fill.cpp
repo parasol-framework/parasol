@@ -497,6 +497,14 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
       else dheight = 1;
 
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
+         if ((dwidth < 1) or (dheight < 1) or (dwidth > 8192) or (dheight > 8192)) {
+            // Dimensions in excess of reasonable values can occur if the user is confused over the application
+            // of bounding-box values that are being scaled.
+            pf::Log log(__FUNCTION__);
+            log.warning("Invalid pattern dimensions of %gx%g detected.", dwidth, dheight);
+            dwidth  = 1;
+            dheight = 1;
+         }
          Pattern.Scene->PageWidth  = dwidth;
          Pattern.Scene->PageHeight = dheight;
          mark_dirty(Pattern.Scene->Viewport, RC::ALL);

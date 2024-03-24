@@ -1399,16 +1399,10 @@ static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
    }
 
    OBJECTPTR def = NULL;
-   if (!StrCompare("url(#", Value, 5)) {
-      LONG i;
-      for (i=5; (Value[i] != ')') and Value[i]; i++);
-      std::string name;
-      name.assign(Value, 5, i-5);
-      if (((extVectorScene *)Self->Scene)->Defs.contains(name)) def = ((extVectorScene *)Self->Scene)->Defs[name];
+   if (scFindDef(Self->Scene, Value, &def)) {
+      log.warning("Failed to resolve filter '%s'", Value);
+      return ERR_Search;
    }
-   else if (((extVectorScene *)Self->Scene)->Defs.contains(Value)) def = ((extVectorScene *)Self->Scene)->Defs[Value];
-
-   if (!def) return log.warning(ERR_Search);
 
    if (def->Class->BaseClassID IS ID_VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
