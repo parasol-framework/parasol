@@ -162,6 +162,8 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             break;
 
          case PE::ClosePath:
+            path.AbsX = lp.AbsX; // Inherit the previous AbsX/Y values
+            path.AbsY = lp.AbsY;
             bp->close_polygon();
             break;
 
