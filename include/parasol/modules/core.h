@@ -20,6 +20,10 @@
 #include <array>
 #endif
 
+#if defined(_DEBUG) && defined(__linux__)
+ #include <signal.h>
+#endif
+
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };

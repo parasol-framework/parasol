@@ -91,7 +91,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 
    log.branch();
 
-   for (LONG i=0; i < ARRAYSIZE(attributes); i++) {
+   for (LONG i=0; i < std::ssize(attributes); i++) {
       int attribute = attributes[i];
       CSTRING name = names[i];
       if (eglGetConfigAttrib(display, config, attribute, value)) {
@@ -171,7 +171,7 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
          { "Width",   Width },
          { "Height",  Height }
       };
-      scCallback(Feedback->Script.Script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      scCallback(Feedback->Script.Script, Feedback->Script.ProcedureID, args, std::ssize(args), NULL);
    }
 }
 
@@ -739,7 +739,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
 
          Atom protocols[1] = { XWADeleteWindow };
-         XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, ARRAYSIZE(protocols));
+         XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, std::ssize(protocols));
 
          Self->Flags |= SCR::HOSTED;
 
@@ -1206,13 +1206,6 @@ static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 
 #elif __snap__
 
-   UWORD gfxmode;
-   GA_modeInfo modeinfo;
-   LONG i, vx, vy, bytesperline, width, height;
-   LONG bestweight, weight, display;
-
-   if (!Args) return log.warning(ERR_Args);
-
    // Scan the available display modes and choose the one that most closely matches the requested display dimensions.
 
    if (!(width = Args->Width)) width = Self->Width;
@@ -1564,14 +1557,14 @@ static ERROR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
       Self->Gamma[2]  = blue;
    }
 
-   for (LONG i=0; i < ARRAYSIZE(palette); i++) {
+   for (LONG i=0; i < std::ssize(palette); i++) {
       intensity = (DOUBLE)i / 255.0;
       palette[i].Red   = F2T(pow(intensity, 1.0 / red)   * 255.0);
       palette[i].Green = F2T(pow(intensity, 1.0 / green) * 255.0);
       palette[i].Blue  = F2T(pow(intensity, 1.0 / blue)  * 255.0);
    }
 
-   SetGammaCorrectData(palette, ARRAYSIZE(palette), 0, TRUE);
+   SetGammaCorrectData(palette, std::ssize(palette), 0, TRUE);
    return ERR_Okay;
 #else
    return ERR_NoSupport;
@@ -1625,7 +1618,7 @@ static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *
       Self->Gamma[2]  = blue;
    }
 
-   for (WORD i=0; i < ARRAYSIZE(palette); i++) {
+   for (WORD i=0; i < std::ssize(palette); i++) {
       DOUBLE intensity = (DOUBLE)i / 255.0;
 
       if (red > 1.0) palette[i].Red = F2T(pow(intensity, 1.0 / red) * 255.0);
@@ -1638,7 +1631,7 @@ static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *
       else palette[i].Blue = F2T((DOUBLE)i * blue);
    }
 
-   glSNAP->Driver.SetGammaCorrectData(palette, ARRAYSIZE(palette), 0, TRUE);
+   glSNAP->Driver.SetGammaCorrectData(palette, std::ssize(palette), 0, TRUE);
 
    return ERR_Okay;
 #else
