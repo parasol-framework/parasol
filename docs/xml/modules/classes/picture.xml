@@ -19,7 +19,7 @@
 <p>The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future proof in that future data formats can be supported by installing class drivers on the user's system.</p>
 <p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
 <header>Technical Notes</header>
-<p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height.  If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
+<p>To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
 <p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p></description>
     <source>
       <file>picture.cpp</file>
@@ -41,8 +41,8 @@
       <name>Init</name>
       <comment>Prepares the object for use.</comment>
       <description>
-<p>Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the <field>Path</field> field or have chosen to use the NEW flag, the initialisation routine will create a <field>Bitmap</field> area that contains no image data.  This allows you to fill the picture with your own image data and save it using the <action>SaveImage</action> or <action>SaveToObject</action> actions.  You must set the bitmap width, height and colour specifications at a minimum, or the initialisation process will fail.</p>
-<p>If you have set the <field>Path</field> field and avoided the NEW flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of ERR_NoSupport is returned.  You will need to use the Activate or Query actions to load or find out more information about the image format.</p>
+<p>Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the <field>Path</field> field or have chosen to use the <code>NEW</code> flag, the initialisation routine will create a <field>Bitmap</field> area that contains no image data.  This allows you to fill the picture with your own image data and save it using the <action>SaveImage</action> or <action>SaveToObject</action> actions.  You must set the bitmap width, height and colour specifications at a minimum, or the initialisation process will fail.</p>
+<p>If you have set the <field>Path</field> field and avoided the <code>NEW</code> flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of <code>ERR_NoSupport</code> is returned.  You will need to use the Activate or Query actions to load or find out more information about the image format.</p>
       </description>
     </action>
 
@@ -100,7 +100,7 @@
       <access read="R">Read</access>
       <type class="Bitmap">*Bitmap</type>
       <description>
-<p>The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains information on the image dimensions and palette for example.  When loading a picture, you can place certain constraints on the image by presetting Bitmap fields such as the Width and Height (this will have the effect of clipping or resizing the source image). The Palette can also be preset if you want to remap the source image to a specific set of colour values.</p>
+<p>The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains information on the image dimensions and palette for example.  The Palette can be preset if you want to remap the source image to a specific set of colour values.</p>
 <p>Please refer to the <class name="Bitmap">Bitmap</class> class for more details on the structure of bitmap objects.</p>
       </description>
     </field>

@@ -89,7 +89,7 @@
       <name>Resize</name>
       <comment>Resizes a bitmap object's dimensions.</comment>
       <description>
-<p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained after this process.</p>
+<p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained by this process.</p>
 <p>The image data is cleared with <field>BkgdRGB</field> if the CLEAR flag is defined in <field>Flags</field>.</p>
       </description>
       <result>
