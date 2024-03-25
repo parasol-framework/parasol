@@ -66,3 +66,8 @@ src/fluid/luajit-2.0.5/src/jit/vmdef.lua
 release-git/
 src/display/simd/
 data/fonts/truetype/NotoColorEmoji.ttf
+build/
+debug-gdb/
+debug-mod/
+local-mod/
+local-gdb/
