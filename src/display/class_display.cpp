@@ -695,7 +695,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
                         |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
       if (!glX11.Manager) {
-         // If we are running inside a foreign window manager, use the following routine to create a new X11 window for us to run in.
+         // Window creation for running inside a foreign window manager.
 
          log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PF64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
 
@@ -1022,7 +1022,10 @@ static ERROR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
 #ifdef _WIN32
    winMoveToFront(Self->WindowHandle);
 #elif __xwindows__
-   if (XDisplay) XRaiseWindow(XDisplay, Self->XWindowHandle);
+   if (XDisplay) {
+      XRaiseWindow(XDisplay, Self->XWindowHandle);
+      XSync(XDisplay, False);
+   }
 #endif
    return ERR_Okay;
 }
@@ -1807,7 +1810,6 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
       // Mapping a window may cause the window manager to resize it without sending a notification event, so check the
       // window size here.
 
-      XFlush(XDisplay);
       XSync(XDisplay, False);
 
       Self->LeftMargin   = 0;
@@ -1819,11 +1821,11 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
       QueueAction(MT_GfxCheckXWindow, Self->UID);
 
-      // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
+      // Originally introduced as a hack to manage focusing for dropdown menus, possibly no longer required as focus should remain with the instigator.
 
-      if (!StrMatch("SystemDisplay", Self->Name)) {
-         XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-      }
+      //if (!StrMatch("SystemDisplay", Self->Name)) {
+      //   XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
+      //}
 
    #elif _WIN32
 
