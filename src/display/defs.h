@@ -96,10 +96,6 @@
 #define BLEND_MAX_THRESHOLD 255
 #define BLEND_MIN_THRESHOLD 1
 
-#ifndef PI
-#define PI (3.141592653589793238462643383279f)
-#endif
-
 #define ALIGN32(a) (((a) + 3) & (~3))
 
 #define SURFACE_READ      (0x0001)   // Read access

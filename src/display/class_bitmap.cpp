@@ -1236,7 +1236,6 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
                   if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
                      Self->x11.XShmImage = true;
-                     XSync(XDisplay, TRUE);
                   }
                   else log.warning(ERR_SystemCall);
                }
