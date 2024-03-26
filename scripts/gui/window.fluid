@@ -188,24 +188,38 @@ gui.window = function(Options)
       end
    end
 
-   -- Changes the size of the position of the window in relation to its parent.
+   -- Changes the size of the position of the window in relation to its parent.  All dimensions refer to the
+   -- border of the window.
 
    self.resize = function(self, X, Y, Width, Height)
-      if not X then X = self.surface.x end
-      if not Y then Y = self.surface.y end
       if not Width then Width = self.surface.width end
       if not Height then Height = self.surface.height end
 
       if hosted(self) then
+         if not X then X = self.surface.x end
+         if not Y then Y = self.surface.y end
          self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0,
             Width - self.client.left - self.client.right,
             Height - self.client.top - self.client.bottom, 0)
       else
          if (X) or (Y) then
+            if not X then X = self.surface.x end
+            if not Y then Y = self.surface.y end
             self.surface.acRedimension(X, Y, 0, Width, Height, 0)
          else
             self.surface.acResize(Width, Height, 0)
          end
+      end
+   end
+
+   -- Define window sizing limits.
+
+   self.sizeHints = function(self, MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect)
+      if self.surface.display.mtSizeHints(MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect) != ERR_Okay then
+         self.surface.maxWidth  = MaxWidth
+         self.surface.minWidth  = MinWidth
+         self.surface.maxHeight = MaxHeight
+         self.surface.minHeight = MinHeight
       end
    end
 

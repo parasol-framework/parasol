@@ -123,19 +123,16 @@ gui.dialog.message = function(Options)
       processMessages(-1)
    end
 
-   local function matchWindowToDocSize(Window, Document)
+   local function matchWindowToDocSize(self, Document)
       local page_width  = Document.pageWidth
       local page_height = Document.pageHeight
 
       if (page_width < 100) then page_width = 100 end
       if (page_height < 100) then page_height = 100 end
 
-      Window.surface.maxHeight    = page_height
-      Window.surface.minHeight    = page_height
-      Window.surface.insideHeight = page_height
-      Window.surface.maxWidth     = page_width
-      Window.surface.minWidth     = page_width
-      Window.surface.insideWidth  = page_width
+      self.window:sizeHints(page_width, page_height, page_width, page_height, false)
+      self.window.surface.insideWidth  = page_width
+      self.window.surface.insideHeight = page_height
    end
 
    local function docEvent(Document, EventFlag, Parameters)
@@ -339,7 +336,7 @@ gui.dialog.message = function(Options)
       self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
    end
 
-   matchWindowToDocSize(self.window, lDoc)
+   matchWindowToDocSize(self, lDoc)
 
    self.window:moveToFront()
    self.window:show()
