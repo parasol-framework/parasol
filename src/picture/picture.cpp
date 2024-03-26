@@ -24,6 +24,9 @@ can load initial details on the file format.
 Images are also remapped automatically if the source palette and destination palettes do not match, or if there are
 significant differences between the source and destination bitmap types.
 
+Dynamically sized image formats like SVG will use the #DisplayWidth and #DisplayHeight values to determine the
+rendered image size.
+
 -END-
 
 *********************************************************************************************************************/
