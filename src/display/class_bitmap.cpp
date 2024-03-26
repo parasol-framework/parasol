@@ -1782,7 +1782,7 @@ Resize: Resizes a bitmap object's dimensions.
 Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained by
 this process.
 
-The image data is cleared with #BkgdRGB if the CLEAR flag is defined in #Flags.
+The image data is cleared with #BkgdRGB if the `CLEAR` flag is defined in #Flags.
 
 -ERRORS-
 Okay

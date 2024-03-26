@@ -1174,7 +1174,7 @@ static ERROR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Fil
    std::string ref, result_name;
 
    ERROR error = ERR_Okay;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -1228,7 +1228,7 @@ static ERROR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filt
    // Check if the client has specified an href that refers to a pattern name instead of an image file.  In that
    // case we need to divert to the SourceFX parser.
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       if ((!StrMatch("xlink:href", Tag.Attribs[a].Name)) or (!StrMatch("href", Tag.Attribs[a].Name))) {
          if ((Tag.Attribs[a].Value[0] IS '#')) {
             return parse_fe_source(Self, State, Filter, Tag);
@@ -1245,7 +1245,7 @@ static ERROR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filt
    std::string path;
    std::string result_name;
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -1264,9 +1264,13 @@ static ERROR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filt
             break;
          }
 
-         case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); break;
+         case SVF_PRESERVEASPECTRATIO: 
+            fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); 
+            break;
 
-         case SVF_XLINK_HREF: path = val; break;
+         case SVF_XLINK_HREF: 
+            path = val; 
+            break;
 
          case SVF_EXTERNALRESOURCESREQUIRED: // If true and the image cannot be loaded, return a fatal error code.
             if (!StrMatch("true", val)) image_required = true;

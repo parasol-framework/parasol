@@ -163,8 +163,8 @@ static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 
    if (Args->Object->Class->ClassID IS ID_BITMAP) {
       if (!Self->Bitmap) {
-         if (Self->Bitmap->BytesPerPixel IS 4) Self->Bitmap = (objBitmap *)Args->Object;
-         else log.warning("Attached bitmap ignored; BPP of %d != 4", Self->Bitmap->BytesPerPixel);
+         if (((objBitmap *)Args->Object)->BytesPerPixel IS 4) Self->Bitmap = (objBitmap *)Args->Object;
+         else log.warning("Attached bitmap ignored; BPP of %d != 4", ((objBitmap *)Args->Object)->BytesPerPixel);
       }
       else log.warning("Attached bitmap ignored; Bitmap field already defined.");
    }
