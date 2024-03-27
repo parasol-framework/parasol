@@ -10,8 +10,8 @@ static inline OBJECTID get_display(Window Window)
 
    if (!XDisplay) return 0;
 
-   if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1,
-         False, AnyPropertyType, &atom, &format, &nitems, &nbytes, (UBYTE **)&data) IS Success) {
+   if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1, False, AnyPropertyType, &atom, &format, &nitems, 
+         &nbytes, (UBYTE **)&data) IS Success) {
       display_id = data[0];
       XFree(data);
       return display_id;
@@ -348,7 +348,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
       }
       else log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
    }
-   else log.warning("Failed to get display ID.");
+   else log.warning("Failed to retrieve Display from X window.");
 }
 
 //********************************************************************************************************************

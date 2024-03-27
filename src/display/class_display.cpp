@@ -405,12 +405,17 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = 0;
 
-   if (Self->XPixmap) { XFreePixmap(XDisplay, Self->XPixmap); Self->XPixmap = 0; }
+   if (Self->XPixmap) { 
+      XFreePixmap(XDisplay, Self->XPixmap); 
+      Self->XPixmap = 0; 
+      ((extBitmap *)Self->Bitmap)->x11.drawable = 0;
+   }
 
    // Kill all expose events associated with the X Window owned by the display
 
    if (XDisplay) {
-      while (XCheckWindowEvent(XDisplay, Self->XWindowHandle, ExposureMask, &xevent) IS True);
+      while (XCheckWindowEvent(XDisplay, Self->XWindowHandle, 
+         ExposureMask|FocusChangeMask|StructureNotifyMask, &xevent) IS True);
 
       if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
          if (Self->WindowHandle) {
@@ -419,6 +424,8 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
          }
       }
    }
+
+   XSync(XDisplay, False);
 #endif
 
 #ifdef _WIN32
@@ -532,7 +539,10 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 #ifdef _WIN32
    winHideWindow(Self->WindowHandle);
 #elif __xwindows__
-   if (XDisplay) XUnmapWindow(XDisplay, Self->XWindowHandle);
+   if ((XDisplay) and (Self->XWindowHandle)) {
+      XUnmapWindow(XDisplay, Self->XWindowHandle);
+      XSync(XDisplay, False);
+   }
 #elif __snap__
    // If the system is shutting down, don't touch the display.  This makes things look tidier when the system shuts down.
 
@@ -953,7 +963,10 @@ static ERROR DISPLAY_Minimise(extDisplay *Self, APTR Void)
 #ifdef _WIN32
    winMinimiseWindow(Self->WindowHandle);
 #elif __xwindows__
-   if (XDisplay) XUnmapWindow(XDisplay, Self->XWindowHandle);
+   if (XDisplay) {
+      XUnmapWindow(XDisplay, Self->XWindowHandle);
+      XSync(XDisplay, False);
+   }
 #endif
    return ERR_Okay;
 }
