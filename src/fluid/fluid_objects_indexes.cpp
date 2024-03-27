@@ -709,7 +709,10 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       STRING result;
-      if (!(error = obj->get(field->FieldID, &result))) lua_pushstring(Lua, result);
+      if (!(error = obj->get(field->FieldID, &result))) {
+         lua_pushstring(Lua, result);
+         if (field->Flags & FD_ALLOC) FreeResource(result);
+      }
       release_object(Def);
    }
    else error = ERR_AccessObject;
