@@ -405,6 +405,8 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = 0;
 
+   if (Self->XPixmap) { XFreePixmap(XDisplay, Self->XPixmap); Self->XPixmap = 0; }
+
    // Kill all expose events associated with the X Window owned by the display
 
    if (XDisplay) {
@@ -555,18 +557,11 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 {
    pf::Log log;
-   struct gfxUpdatePalette pal;
-   #ifdef __xwindows__
-      XWindowAttributes winattrib;
-      XPixmapFormatValues *list;
-      LONG xbpp, xbytes;
-      LONG count;
-   #endif
 
    #ifdef __xwindows__
       // Figure out how many bits and bytes are used per pixel on this XDisplay
 
-      xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+      auto xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
 
       if (xbpp <= 8) {
          log.msg(VLF::CRITICAL, "Please change your X11 setup so that it runs in 15 bit mode or better.");
@@ -574,12 +569,22 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          return ERR_Failed;
       }
 
+      if (xbpp IS 24) {
+         static bool bpp_warning = false;
+         if (!bpp_warning) {
+            bpp_warning = true;
+            log.warning("Running in 32bpp instead of 24bpp is strongly recommended.");
+         }
+      }
+
+      LONG xbytes;
       if (xbpp <= 8) xbytes = 1;
       else if (xbpp <= 16) xbytes = 2;
       else if (xbpp <= 24) xbytes = 3;
       else xbytes = 4;
 
-      if ((list = XListPixmapFormats(XDisplay, &count))) {
+      LONG count;
+      if (auto list = XListPixmapFormats(XDisplay, &count)) {
          for (LONG i=0; i < count; i++) {
             if (list[i].depth IS xbpp) {
                xbytes = list[i].bits_per_pixel;
@@ -712,25 +717,55 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
             bmp->Flags |= BMF::ALPHA_CHANNEL|BMF::FIXED_DEPTH;
             bmp->BitsPerPixel  = 32;
             bmp->BytesPerPixel = 4;
+            xbpp = 32;
          }
 
          if (!Self->XWindowHandle) {
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, DefaultRootWindow(XDisplay),
                   Self->X, Self->Y, Self->Width, Self->Height, 0 /* Border */, depth, InputOutput,
                   visual, cwflags, &swa))) {
-               log.warning("XCreateWindow() failed.");
-               return ERR_SystemCall;
+               return log.warning(ERR_SystemCall);
             }
          }
          else { // If the WindowHandle field is already set, use it as the parent for the new window.
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, Self->XWindowHandle,
                   0, 0, Self->Width, Self->Height, 0, depth, InputOutput, visual, cwflags, &swa))) {
-               log.warning("XCreateWindow() failed.");
-               return ERR_SystemCall;
+               return log.warning(ERR_SystemCall);
             }
          }
 
-         bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
+         bmp->x11.window = Self->XWindowHandle;
+
+         if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
+            // For composite windows, we can draw directly to the Window handle
+            bmp->x11.drawable = Self->XWindowHandle;
+         }
+         else {
+            // Create a pixmap buffer and associate it with the window by setting it as the background.
+
+            // Although creating a pixmap with the same size as the display is a little excessive, it produces
+            // the best user experience when resizing windows
+            bmp->x11.pix_width  = info.Width;  //Self->Width;
+            bmp->x11.pix_height = info.Height; //Self->Height;
+            if (!(Self->XPixmap = XCreatePixmap(XDisplay, Self->XWindowHandle, bmp->x11.pix_width, bmp->x11.pix_height, xbpp))) {
+               return log.warning(ERR_SystemCall);
+            }
+
+            // Blanking the pixmap reduces visible glitches caused by window resizing.
+            if (auto gc = XCreateGC(XDisplay, Self->XPixmap, 0, 0)) {
+               XSetFunction(XDisplay, gc, GXcopy);
+               if ((swa.override_redirect) and (glXCompositeSupported)) {
+                  XSetForeground(XDisplay, gc, 0x000000);
+               }
+               else XSetForeground(XDisplay, gc, 0xd0d0d0);
+               XFillRectangle(XDisplay, Self->XPixmap, gc, 0, 0, info.Width, info.Height);
+               XFreeGC(XDisplay, gc);
+            }
+
+            XSetWindowBackgroundPixmap(XDisplay, Self->XWindowHandle, Self->XPixmap);
+
+            bmp->x11.drawable = Self->XPixmap;
+         }
 
          CSTRING name;
          if ((!CurrentTask()->getPtr(FID_Name, &name)) and (name)) {
@@ -771,6 +806,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          if (XRandRBase) xrSelectInput(Self->XWindowHandle);
 
+         XWindowAttributes winattrib;
          XGetWindowAttributes(XDisplay, Self->XWindowHandle, &winattrib);
          Self->Width  = winattrib.width;
          Self->Height = winattrib.height;
@@ -877,7 +913,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
    if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
-   pal.NewPalette = bmp->Palette;
+   struct gfxUpdatePalette pal = { .NewPalette = bmp->Palette };
    Action(MT_GfxUpdatePalette, Self, &pal);
 
    // Take a record of the pixel format for GetDisplayInfo()
@@ -1186,6 +1222,8 @@ static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 
    log.branch();
 
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+
 #ifdef _WIN32
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -1202,7 +1240,11 @@ static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (XDisplay) XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
+   if (XDisplay) {
+      resize_pixmap(Self, Args->Width, Args->Height);
+      XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
+   }
+   
    Action(AC_Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
@@ -1807,9 +1849,6 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
          XMoveWindow(XDisplay, Self->XWindowHandle, Self->X, Self->Y);
       }
 
-      // Mapping a window may cause the window manager to resize it without sending a notification event, so check the
-      // window size here.
-
       XSync(XDisplay, False);
 
       Self->LeftMargin   = 0;
@@ -1817,7 +1856,8 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
       Self->RightMargin  = 0;
       Self->BottomMargin = 0;
 
-      // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
+      // Mapping a window may cause the window manager to resize it without sending a notification event, so check the
+      // window size on a delay.
 
       QueueAction(MT_GfxCheckXWindow, Self->UID);
 

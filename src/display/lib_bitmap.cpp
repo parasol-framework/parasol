@@ -582,14 +582,16 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
             }
             else XPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
 
-            XSync(XDisplay, False); // Essential because the graphics won't otherwise be immediately pushed to the display.
+            if ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) { // Composite window
+               XSync(XDisplay, False);
+            }
+            else XClearWindow(XDisplay, dest->x11.window); // 'Clear' the window to the pixmap background
 
             if ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpDemultiply(Bitmap);
          }
       }
       else { // Both the source and the destination are pixmaps
-         XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable,
-            dest->getGC(), X, Y, Width, Height, DestX, DestY);
+         XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable, dest->getGC(), X, Y, Width, Height, DestX, DestY);
       }
 
       return ERR_Okay;

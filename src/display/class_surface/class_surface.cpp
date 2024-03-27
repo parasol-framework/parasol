@@ -77,15 +77,12 @@ void refresh_pointer(extSurface *Self)
 static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
 {
    if (!AccessObject(DisplayID, 5000, Display)) {
+      #ifdef _WIN32
       APTR winhandle;
-
       if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
-         #ifdef _WIN32
-            Display[0]->Bitmap->setHandle(winGetDC(winhandle));
-         #else
-            Display[0]->Bitmap->setHandle(winhandle);
-         #endif
+         Display[0]->Bitmap->setHandle(winGetDC(winhandle));
       }
+      #endif
 
       if (Bitmap) *Bitmap = Display[0]->Bitmap;
       return ERR_Okay;

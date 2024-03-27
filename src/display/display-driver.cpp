@@ -457,6 +457,33 @@ int CatchXIOError(Display *XDisplay)
    return 0;
 }
 
+//********************************************************************************************************************
+// Resize the pixmap buffer for a window, but only if the new dimensions exceed the existing values.
+
+extern ERROR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
+{
+   auto bmp = (extBitmap *)Self->Bitmap;
+   if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) return ERR_Okay; // Composite window
+
+   if ((bmp->x11.pix_width > Width) and (bmp->x11.pix_height > Height)) return ERR_Okay;
+
+   if (Width  > bmp->x11.pix_width)  bmp->x11.pix_width  = Width;
+   if (Height > bmp->x11.pix_height) bmp->x11.pix_height = Height;
+
+   auto xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+   if ((bmp->Flags & BMF::FIXED_DEPTH) != BMF::NIL) xbpp = bmp->BitsPerPixel;
+
+   if (auto pixmap = XCreatePixmap(XDisplay, Self->XWindowHandle, bmp->x11.pix_width, bmp->x11.pix_height, xbpp)) {
+      XSetWindowBackgroundPixmap(XDisplay, Self->XWindowHandle, pixmap);
+      if (Self->XPixmap) XFreePixmap(XDisplay, Self->XPixmap);
+      Self->XPixmap = pixmap;
+      bmp->x11.drawable = pixmap;
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
+}
+
 #endif
 
 //********************************************************************************************************************

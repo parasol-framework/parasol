@@ -393,6 +393,7 @@ class extDisplay : public objDisplay {
       APTR   WindowHandle;
       Window XWindowHandle;
    };
+   Pixmap XPixmap;
    #elif __ANDROID__
       ANativeWindow *WindowHandle;
    #else
@@ -551,6 +552,7 @@ extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
 extern void init_xcursors(void);
 extern void free_xcursors(void);
+extern ERROR resize_pixmap(extDisplay *, LONG, LONG);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
@@ -663,11 +665,13 @@ class extBitmap : public objBitmap {
    LONG   prvAFlags;                  // Private allocation flags
    #ifdef __xwindows__
       struct {
+         Window window;
          XImage   ximage;
          Drawable drawable;
          XImage   *readable;
          XShmSegmentInfo ShmInfo;
          GC gc;
+         LONG pix_width, pix_height;
          bool XShmImage;
       } x11;
 

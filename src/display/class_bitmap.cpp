@@ -1971,9 +1971,6 @@ setfields:
       gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF::FILL);
    }
 
-#ifdef __xwindows__
-   if (!glHeadless) XSync(XDisplay, False);
-#endif
    return ERR_Okay;
 }
 
