@@ -20,7 +20,8 @@
 <p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
 <header>Technical Notes</header>
 <p>To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
-<p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p></description>
+<p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p>
+<p>Dynamically sized image formats like SVG will use the <field>DisplayWidth</field> and <field>DisplayHeight</field> values to determine the rendered image size.</p></description>
     <source>
       <file>picture.cpp</file>
     </source>

@@ -21,4 +21,12 @@ module({ name="Picture", copyright="Paul Manias © 2001-2024", version=1.0 }, fu
     int Quality         # Quality rating when saving image (0% low, 100% high)
     int FrameRate       # Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
   ]])
+
+  c_insert([[
+namespace fl {
+   using namespace pf;
+constexpr FieldValue DisplayWidth(LONG Value) { return FieldValue(FID_DisplayWidth, Value); }
+constexpr FieldValue DisplayHeight(LONG Value) { return FieldValue(FID_DisplayHeight, Value); }
+}
+  ]])
 end)

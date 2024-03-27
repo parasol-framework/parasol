@@ -180,3 +180,8 @@ class objPicture : public BaseClass {
 
 };
 
+namespace fl {
+   using namespace pf;
+constexpr FieldValue DisplayWidth(LONG Value) { return FieldValue(FID_DisplayWidth, Value); }
+constexpr FieldValue DisplayHeight(LONG Value) { return FieldValue(FID_DisplayHeight, Value); }
+}
