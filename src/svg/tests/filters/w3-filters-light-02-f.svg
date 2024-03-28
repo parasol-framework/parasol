@@ -1,5 +1,6 @@
-<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<?xml version="1.0" encoding="utf-8"?>
 
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
 <!--
 surfaceScale: height of surface when Alpha of Input = 1.  Defaults to 1
@@ -48,6 +49,4 @@ specularExponent: Exponent for specular term, larger is more "shiny". Range 1.0 
   <line marker-end="url(#arrow)" x1="0" y1="-25" x2="0" y2="25" stroke="black" stroke-width="3" transform="rotate(90) translate(200 -350)"/>
   <line marker-end="url(#arrow)" x1="0" y1="-25" x2="0" y2="25" stroke="black" stroke-width="3" transform="rotate(180) translate(-440 -225)"/>
   <line marker-end="url(#arrow)" x1="0" y1="-25" x2="0" y2="25" stroke="black" stroke-width="3" transform="rotate(270) translate(-200 50)"/>
-
-
 </svg>

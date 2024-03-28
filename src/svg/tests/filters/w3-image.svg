@@ -1,11 +1,6 @@
-<svg width="600" height="500" viewBox="0 0 600 500"
-     xmlns="http://www.w3.org/2000/svg"
-     xmlns:xlink="http://www.w3.org/1999/xlink">
-  <title>Example feImage - Examples of feImage use</title>
-  <desc>Three examples of using feImage, the first showing the
-        default rendering, the second showing the image fit
-        to a box and the third showing the image
-        shifted and clipped.</desc>
+<?xml version="1.0" encoding="utf-8"?>
+
+<svg width="600" height="500" viewBox="0 0 600 500" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
     <!-- The smiley image is 100x100 -->
 
@@ -50,7 +45,6 @@
 
     <rect x="450" y="25" width="100" height="200" filter="url(#Shifted)"/>
     <rect x="450" y="25" width="100" height="200" fill="none" stroke="green"/>
-
   </g>
 
    <g transform="translate(0,250)">
@@ -64,7 +58,5 @@
 
     <rect x="450" y="25" width="100" height="200" filter="url(#ShiftedSized)"/>
     <rect x="450" y="25" width="100" height="200" fill="none" stroke="red"/>
-
   </g>
-
 </svg>
