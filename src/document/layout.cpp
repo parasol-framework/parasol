@@ -30,6 +30,10 @@ given clipping zones.  This allows text to be laid out around the table with no 
 
 */
 
+enum struct WTC: UBYTE {
+   DO_NOTHING, WRAP_OVER, WRAP_LINE
+};
+
 // State machine for the layout process.  This information is discarded post-layout.
 
 struct layout {
@@ -68,7 +72,7 @@ private:
    DOUBLE m_page_width = 0;
    INDEX idx = 0;                 // Current seek position for processing of the stream
    stream_char m_word_index;      // Position of the word currently being operated on
-   DOUBLE m_align_width = 0;      // Available space for horizontal alignment.  Typically equivalent to wrap_edge(), but can be smaller if a clip region exists on the line.
+   DOUBLE m_align_edge = 0;      // Available space for horizontal alignment.  Typically equivalent to wrap_edge(), but can be smaller if a clip region exists on the line.
    LONG m_kernchar    = 0;        // Previous character of the word being operated on
    DOUBLE m_left_margin = 0;
    LONG m_paragraph_bottom = 0;   // Bottom Y coordinate of the current paragraph; defined on paragraph end.
@@ -207,7 +211,7 @@ private:
    void end_line(NL, stream_char);
    void new_code_segment();
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE);
-   void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
+   WTC wrap_through_clips(DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE &);
 
 public:
    layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, padding &pMargins) :
@@ -450,16 +454,16 @@ WRAP layout::place_widget(widget_mgr &Widget)
       }
       else if ((Widget.align & ALIGN::CENTER) != ALIGN::NIL) {
          // We use the left margin and not the cursor for calculating the center because the widget is floating.
-         Widget.x = m_left_margin + ((m_align_width - Widget.full_width()) * 0.5);
+         Widget.x = m_left_margin + ((m_align_edge - Widget.full_width()) * 0.5);
       }
       else if ((Widget.align & ALIGN::RIGHT) != ALIGN::NIL) {
-         Widget.x = m_align_width - Widget.full_width();
+         Widget.x = m_align_edge - Widget.full_width();
       }
       else Widget.x = m_cursor_x;
 
       if (m_line.index < idx) { // Any outstanding content has to be set prior to add_graphics_segment()
          finish_segment();
-         new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x);
+         new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_edge - m_line.x);
          reset_broken_segment();
       }
 
@@ -601,7 +605,7 @@ WRAP layout::lay_text()
 {
    auto wrap_result = WRAP::DO_NOTHING; // Needs to to change to WRAP::EXTEND_PAGE if a word is > width
 
-   m_align_width = wrap_edge(); // TODO: Not sure about this following the switch to embedded TEXT structures
+   m_align_edge = wrap_edge(); // TODO: Not sure about this following the switch to embedded TEXT structures
 
    auto ascent = m_font->metrics.Ascent;
    auto &text = m_stream->lookup<bc_text>(idx);
@@ -655,8 +659,8 @@ WRAP layout::lay_text()
    // Entire text string has been processed, perform one final wrapping check.
 
    if ((m_word_width) and (!m_no_wrap)) {
-      wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y,
-         m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+      wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+         (m_line.height < 1) ? 1 : m_line.height);
    }
 
    if ((m_no_wrap) and (m_cursor_x + m_word_width > m_page_width)) {
@@ -993,10 +997,10 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    if (Table.floating_x()) {
       if ((Table.align & ALIGN::CENTER) != ALIGN::NIL) {
-         Table.x = m_left_margin + ((m_align_width - Table.width) * 0.5);
+         Table.x = m_left_margin + ((m_align_edge - Table.width) * 0.5);
       }
       else if ((Table.align & ALIGN::RIGHT) != ALIGN::NIL) {
-         Table.x = m_align_width - Table.width;
+         Table.x = m_align_edge - Table.width;
       }
       else Table.x = m_left_margin;
    }
@@ -1063,6 +1067,10 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth)
 {
    pf::Log log(__FUNCTION__);
+
+   if (Width > AlignWidth) {
+      log.traceWarning("Content width exceeds align width: %g > %g", Width, AlignWidth);
+   }
 
    // Process trailing whitespace at the end of the line.  This helps to prevent situations such as underlining
    // occurring in whitespace at the end of the line during word-wrapping.
@@ -1381,7 +1389,7 @@ extend_page:
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
    m_left_margin    = m_margins.left;  // Retain the margin in an adjustable variable, in case we adjust the margin
-   m_align_width    = wrap_edge();
+   m_align_edge     = wrap_edge();
    m_cursor_x       = m_margins.left;
    m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
@@ -1417,14 +1425,14 @@ extend_page:
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
                std::string(strCodes[LONG(m_stream[0][idx].code)]).c_str(), m_line.index.index, m_line.x, m_word_width);
             finish_segment();
-            new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x);
+            new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_edge - m_line.x);
             reset_broken_segment();
          }
       }
 
       // Any escape code for an inline element that forces a word-break will initiate a wrapping check.
 
-      if (table) m_align_width = wrap_edge();
+      if (table) m_align_edge = wrap_edge();
       else switch (m_stream[0][idx].code) {
          case SCODE::TABLE_END: {
             auto &table = m_stream->lookup<bc_table>(idx);
@@ -1446,7 +1454,7 @@ extend_page:
          }
 
          default:
-            m_align_width = wrap_edge();
+            m_align_edge = wrap_edge();
             break;
       }
 
@@ -1816,13 +1824,13 @@ void layout::end_line(NL NewLine, stream_char Next)
       if (clip.transparent) continue;
       if ((m_cursor_y + m_line.height >= clip.top) and (m_cursor_y < clip.bottom)) {
          if (m_cursor_x + m_word_width < clip.left) {
-            if (clip.left < m_align_width) m_align_width = clip.left;
+            if (clip.left < m_align_edge) m_align_edge = clip.left;
          }
       }
    }
 
    if (idx > m_line.index.index) {
-      new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x);
+      new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_edge - m_line.x);
    }
 
    if (NewLine != NL::NONE) {
@@ -1889,11 +1897,32 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
    auto result = WRAP::DO_NOTHING;
    LONG breakloop;
    for (breakloop = MAXLOOP; breakloop > 0; breakloop--) {
-      m_align_width = wrap_edge();
+      m_align_edge = wrap_edge();
 
       if (!m_clips.empty()) {
-         // If clips are registered then we need to check them for collisions.  Updates m_align_width if necessary
-         wrap_through_clips(Cursor, X, Y, Width, Height);
+         // If clips are registered then we need to check them for collisions.  Updates m_align_edge if necessary
+
+         auto wrap_clip = WTC::DO_NOTHING;
+         do {
+            DOUBLE adv_x = 0;
+            wrap_clip = wrap_through_clips(X, Y, Width, Height, adv_x);
+
+            if (wrap_clip IS WTC::WRAP_OVER) {
+               // Set the line segment up to the encountered boundary and continue checking the vector position against the
+               // clipping boundaries.
+
+               if (m_line.index < Cursor) {
+                  if (!m_line.height) new_segment(m_line.index, Cursor, Y, X - m_line.x, X - m_line.x);
+                  else new_segment(m_line.index, Cursor, Y, X - m_line.x, m_align_edge - m_line.x);
+               }
+
+               X = adv_x;
+               m_line.index = Cursor;
+               m_line.x = X;
+
+               if (X + Width > wrap_edge()) wrap_clip = WTC::WRAP_LINE;
+            }
+         } while (wrap_clip IS WTC::WRAP_OVER);
       }
 
       if (X + Width <= wrap_edge()) break;
@@ -1919,7 +1948,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
       // in the first iteration.
 
       if (m_line.index < Cursor) {
-         new_segment(m_line.index, Cursor, Y, X - m_line.x, m_align_width - m_line.x);
+         new_segment(m_line.index, Cursor, Y, X - m_line.x, m_align_edge - m_line.x);
          m_line.index = Cursor;
       }
 
@@ -1957,55 +1986,27 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 }
 
 //********************************************************************************************************************
-// Compare a given area against clip regions and move the x,y position when there's a collision.
+// Compare a given area against clip regions and move the x,y position when there's a collision.  There are three 
+// possible outcomes when making these checks:
+// 
+// 1. There is no collision
+// 2. A collision occurs and the word can be advanced to white space that is available past the obstacle.
+// 3. A collision occurs and there is no further room available on this line (not handled by this routine).
 
-void layout::wrap_through_clips(stream_char WordIndex, DOUBLE &X, DOUBLE &Y, DOUBLE Width, DOUBLE Height)
+WTC layout::wrap_through_clips(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, DOUBLE &AdvanceTo)
 {
-   pf::Log log(__FUNCTION__);
-
-#ifdef DBG_WORDWRAP
-   log.branch("Index: %d-%d, WordIndex: %d, Graphic: %dx%d,%dx%d, TotalClips: %d",
-      m_line.index.index, idx, WordIndex, x, y, width, height, LONG(m_clips.size()));
-#endif
-
-restart:
    for (auto &clip : m_clips) {
       if (clip.transparent) continue;
-      if ((Y + Height < clip.top) or (Y >= clip.bottom)) continue;
-      if ((X >= clip.right) or (X + Width < clip.left)) continue;
+      if ((Y + Height < clip.top) or (Y >= clip.bottom)) continue; // Ignore clips above or below the line.
+      if ((X >= clip.right) or (X + Width < clip.left)) continue; // Ignore clips to the left or right
 
-      if (clip.left < m_align_width) m_align_width = clip.left;
+      if ((clip.right > X) and (clip.left < m_align_edge)) m_align_edge = clip.left; // Clips can reduce the available space for alignment
 
-      DWRAP("Word: \"%.20s\" (%gx%g,%gx%g) advances over clip %d-%d",
-         printable(Self, WordIndex).c_str(), X, Y, Width, Height, clip.left, clip.right);
-
-      // Set the line segment up to the encountered boundary and continue checking the vector position against the
-      // clipping boundaries.
-
-      // Advance the position.  We break if a wordwrap is required - the code outside of this loop will detect
-      // the need for a wordwrap and then restart the wordwrapping process.
-
-      if (X IS m_line.x) m_line.x = clip.right;
-      X = clip.right; // Go past the clip boundary
-
-      if (X + Width > wrap_edge()) {
-         DWRAP("Wrapping-Break: X(%g)+Width(%g) > Edge(%d) at clip '%s' %dx%d,%dx%d",
-            X, Width, wrap_edge(), clip.name.c_str(), clip.left, clip.top, clip.right, clip.bottom);
-         break;
-      }
-
-      if (m_line.index < WordIndex) {
-         if (!m_line.height) new_segment(m_line.index, WordIndex, Y, X - m_line.x, X - m_line.x);
-         else new_segment(m_line.index, WordIndex, Y, X + Width - m_line.x, m_align_width - m_line.x);
-      }
-
-      DWRAP("Line index reset to %d, previously %d", WordIndex.index, m_line.index.index);
-
-      m_line.index = WordIndex;
-      m_line.x = X;
-
-      goto restart; // Check all the clips from the beginning
+      AdvanceTo = clip.right;
+      return WTC::WRAP_OVER;
    }
+
+   return WTC::DO_NOTHING;
 }
 
 //********************************************************************************************************************

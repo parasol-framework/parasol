@@ -789,7 +789,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   DOUBLE x;
                   if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_advance + ((segment.align_width - segment.area.Width) * 0.5);
-                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_advance + segment.align_width - segment.area.Width;
+                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_advance + (segment.align_width - segment.area.Width);
                   else x = x_advance;
 
                   if (auto vt = objVectorText::create::global({
