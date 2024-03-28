@@ -273,7 +273,12 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             case SCODE::PARAGRAPH_START: {
                auto &para = segment.stream->lookup<bc_paragraph>(cursor);
                stack_para.push(&para);
+
                stack_style.push(&segment.stream->lookup<bc_paragraph>(cursor).font);
+               auto font = stack_style.top()->get_font();
+
+               DOUBLE x = segment.x(x_advance, stack_style.top()->options);
+               DOUBLE y = segment.y(stack_style.top()->valign, font);
 
                if ((!stack_list.empty()) and (para.list_item)) {
                   // Handling for paragraphs that form part of a list
@@ -282,20 +287,19 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                       (stack_list.top()->type IS bc_list::ORDERED)) {
                      if (!para.icon.empty()) {
                         para.icon->setFields(
-                           fl::X(F2T(segment.area.X - para.item_indent.px(*this))),
-                           fl::Y(F2T(segment.area.Y + segment.area.Height - segment.descent))
+                           fl::X(F2T(x - para.item_indent.px(*this))),
+                           fl::Y(F2T(y))
                         );
                      }
                   }
                   else if (stack_list.top()->type IS bc_list::BULLET) {
                      if (!para.icon.empty()) {
-                        auto font = stack_style.top()->get_font();
                         const DOUBLE radius = segment.area.Height * 0.2;
                         const DOUBLE avail_space = segment.area.Height - segment.descent;
-                        const DOUBLE cy = segment.area.Y + avail_space - (font->metrics.Ascent * 0.5);
+                        const DOUBLE cy = y - (font->metrics.Ascent * 0.5);
                      
                         para.icon->setFields(
-                           fl::CenterX(segment.area.X - para.item_indent.px(*this) + radius),
+                           fl::CenterX(x - para.item_indent.px(*this) + radius),
                            fl::CenterY(cy),
                            fl::Radius(radius));
                      }
@@ -779,18 +783,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                else str.append(txt.text, cursor.offset, segment.trim_stop.offset - cursor.offset);
 
                if (!str.empty()) {
-                  DOUBLE y = segment.area.Y;
-                  if ((stack_style.top()->valign & ALIGN::TOP) != ALIGN::NIL) y += font->metrics.Ascent;
-                  else if ((stack_style.top()->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
-                     DOUBLE avail_space = segment.area.Height - segment.descent;
-                     y += avail_space - ((avail_space - font->metrics.Height) * 0.5);
-                  }
-                  else y += segment.area.Height - segment.descent;
-
-                  DOUBLE x;
-                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_advance + ((segment.align_width - segment.area.Width) * 0.5);
-                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_advance + (segment.align_width - segment.area.Width);
-                  else x = x_advance;
+                  DOUBLE x = segment.x(x_advance, stack_style.top()->options);
+                  DOUBLE y = segment.y(stack_style.top()->valign, font);
 
                   if (auto vt = objVectorText::create::global({
                         fl::Name("doc_text"),

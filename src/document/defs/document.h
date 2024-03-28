@@ -522,11 +522,26 @@ struct doc_segment {
    stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
    FloatRect area;          // Dimensions of the segment.
-   DOUBLE  descent;          // The largest descent value after taking into account all fonts used on the line.
+   DOUBLE  descent;         // The largest descent value after taking into account all fonts used on the line.
    DOUBLE  align_width;     // Full width of this segment if it were non-breaking
    RSTREAM *stream;         // The stream that this segment refers to
    bool    edit;            // true if this segment represents content that can be edited
    bool    allow_merge;     // true if this segment can be merged with siblings that have allow_merge set to true
+
+   inline DOUBLE x(DOUBLE Advance, FSO StyleOptions) {
+      if ((StyleOptions & FSO::ALIGN_CENTER) != FSO::NIL) return Advance + ((align_width - area.Width) * 0.5);
+      else if ((StyleOptions & FSO::ALIGN_RIGHT) != FSO::NIL) return Advance + (align_width - area.Width);
+      else return Advance;
+   }
+
+   inline DOUBLE y(ALIGN VAlign, font_entry *Font) {
+      if ((VAlign & ALIGN::TOP) != ALIGN::NIL) return area.Y + Font->metrics.Ascent;
+      else if ((VAlign & ALIGN::VERTICAL) != ALIGN::NIL) {
+         const DOUBLE avail_space = area.Height - descent;
+         return area.Y + avail_space - ((avail_space - Font->metrics.Height) * 0.5);
+      }
+      else return area.Y + area.Height - descent;
+   }
 };
 
 struct doc_clip {

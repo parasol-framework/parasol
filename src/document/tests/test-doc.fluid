@@ -32,10 +32,10 @@ function crcTest(Name, Path, ExpectedCRC)
 
          local bmp_crc = mSys.GenCRC32(0, bmp.data, bmp.size)
          if (crc == 0) then
-            saveBitmap(bmp, Name .. '_ ' .. res)
+            saveBitmap(bmp, Name .. '_' .. res)
             error('File "' .. Path .. '" @ page width ' .. res .. ' is yet to be assigned a checksum, current CRC is ' .. string.format('0x%.8x', bmp_crc))
          elseif (crc != bmp_crc) then
-            saveBitmap(bmp, Name .. '_ ' .. res)
+            saveBitmap(bmp, Name .. '_' .. res)
             error('The CRC for "' .. Path .. '" @ page width ' .. res .. ' is ' .. string.format('0x%.8x', bmp_crc) .. ', expected ' .. string.format('0x%.8x', crc))
          end
       end
@@ -67,7 +67,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testAlignment()   crcTest('Alignment', 'alignment.rpl', { [1024] = 0x97e987c9, [600] = 0xb35e688d, [400] = 0x84612e0b }) end
+function testAlignment()   crcTest('Alignment', 'alignment.rpl', { [1024] = 0x5ae86296, [600] = 0x9af53a20, [400] = 0x8fb90845 }) end
 function testDialog()      crcTest('Dialog', 'dialog.rpl', 0x3551e8bf) end
 function testFonts()       crcTest('Fonts', 'fonts.rpl', 0x293c9498) end
 function testImages()      crcTest('Images', 'images.rpl', 0xb7301c70) end
