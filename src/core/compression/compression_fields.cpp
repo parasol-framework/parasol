@@ -10,7 +10,7 @@ module.  Please refer to the @FileArchive class for further information on this 
 
 ****************************************************************************/
 
-static ERROR SET_ArchiveName(extCompression *Self, CSTRING Value)
+static ERR SET_ArchiveName(extCompression *Self, CSTRING Value)
 {
    if ((Value) and (*Value)) Self->ArchiveHash = StrHash(Value, 0);
    else Self->ArchiveHash = 0;
@@ -18,7 +18,7 @@ static ERROR SET_ArchiveName(extCompression *Self, CSTRING Value)
    if (Self->ArchiveHash) add_archive(Self);
    else remove_archive(Self);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -32,12 +32,12 @@ but the compression ratio will improve.
 
 ****************************************************************************/
 
-static ERROR SET_CompressionLevel(extCompression *Self, LONG Value)
+static ERR SET_CompressionLevel(extCompression *Self, LONG Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 100) Value = 100;
    Self->CompressionLevel = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -46,13 +46,13 @@ static ERROR SET_CompressionLevel(extCompression *Self, LONG Value)
 Feedback: Provides feedback during the de/compression process.
 
 To receive feedback during any de/compression process, set a callback routine in this field. The format for the
-callback routine is `ERROR Function(*Compression, *CompressionFeedback)`.
+callback routine is `ERR Function(*Compression, *CompressionFeedback)`.
 
 For object classes, the object that initiated the de/compression process can be learned by calling the Core's
 ~Core.CurrentContext() function.
 
-During the processing of multiple files, any individual file can be skipped by returning `ERR_Skip` and the entire
-process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.
+During the processing of multiple files, any individual file can be skipped by returning `ERR::Skip` and the entire
+process can be cancelled by returning ERR::Terminate.  All other error codes are ignored.
 
 The &CompressionFeedback structure consists of the following fields:
 
@@ -60,16 +60,16 @@ The &CompressionFeedback structure consists of the following fields:
 
 ****************************************************************************/
 
-static ERROR GET_Feedback(extCompression *Self, FUNCTION **Value)
+static ERR GET_Feedback(extCompression *Self, FUNCTION **Value)
 {
    if (Self->Feedback.defined()) {
       *Value = &Self->Feedback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Feedback(extCompression *Self, FUNCTION *Value)
+static ERR SET_Feedback(extCompression *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
@@ -79,7 +79,7 @@ static ERROR SET_Feedback(extCompression *Self, FUNCTION *Value)
       }
    }
    else Self->Feedback.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -94,10 +94,10 @@ This field is only of use to sub-classes that need to examine the first 32 bytes
 
 ****************************************************************************/
 
-static ERROR GET_Header(extCompression *Self, UBYTE **Header)
+static ERR GET_Header(extCompression *Self, UBYTE **Header)
 {
    *Header = Self->Header;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -109,22 +109,22 @@ To load or create a new file archive, set the Path field to the path of that fil
 
 ****************************************************************************/
 
-static ERROR GET_Path(extCompression *Self, CSTRING *Value)
+static ERR GET_Path(extCompression *Self, CSTRING *Value)
 {
-   if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
-   else return ERR_FieldNotSet;
+   if (Self->Path) { *Value = Self->Path; return ERR::Okay; }
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Path(extCompression *Self, CSTRING Value)
+static ERR SET_Path(extCompression *Self, CSTRING Value)
 {
    pf::Log log;
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return log.warning(ERR_AllocMemory);
+      if (!(Self->Path = StrClone(Value))) return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -156,13 +156,13 @@ across to it.
 
 ****************************************************************************/
 
-static ERROR GET_Password(extCompression *Self, CSTRING *Value)
+static ERR GET_Password(extCompression *Self, CSTRING *Value)
 {
    *Value = Self->Password;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Password(extCompression *Self, CSTRING Value)
+static ERR SET_Password(extCompression *Self, CSTRING Value)
 {
    if ((Value) and (*Value)) {
       StrCopy(Value, Self->Password, sizeof(Self->Password));
@@ -170,7 +170,7 @@ static ERROR SET_Password(extCompression *Self, CSTRING Value)
    }
    else Self->Password[0] = 0;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -186,11 +186,11 @@ Size: Indicates the size of the source archive, in bytes.
 
 ****************************************************************************/
 
-static ERROR GET_Size(extCompression *Self, LARGE *Value)
+static ERR GET_Size(extCompression *Self, LARGE *Value)
 {
    *Value = 0;
    if (Self->FileIO) return Self->FileIO->get(FID_Size, Value);
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 /****************************************************************************
@@ -210,14 +210,14 @@ information that may identify the compressed data is not included in the total.
 
 ****************************************************************************/
 
-static ERROR GET_UncompressedSize(extCompression *Self, LARGE *Value)
+static ERR GET_UncompressedSize(extCompression *Self, LARGE *Value)
 {
    LARGE size = 0;
    for (auto &f : Self->Files) {
       size += f.OriginalSize;
    }
    *Value = size;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /****************************************************************************
@@ -236,14 +236,14 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 ****************************************************************************/
 
-static ERROR SET_WindowBits(extCompression *Self, LONG Value)
+static ERR SET_WindowBits(extCompression *Self, LONG Value)
 {
    pf::Log log;
 
    if (((Value >= 8) and (Value <= 15)) or ((Value >= -15) and (Value <= -8)) or
        (Value IS 15 + 32) or (Value IS 16 + 32)) {
       Self->WindowBits = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }

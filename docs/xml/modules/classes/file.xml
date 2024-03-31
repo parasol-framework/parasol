@@ -120,7 +120,7 @@
     <method>
       <name>BufferContent</name>
       <comment>Reads all file content into a local memory buffer.</comment>
-      <prototype>ERROR flBufferContent(OBJECTPTR Object)</prototype>
+      <prototype>ERR flBufferContent(OBJECTPTR Object)</prototype>
       <description>
 <p>File content may be buffered at any time by calling the BufferContent method.  This will allocate a buffer that matches the current file size and the file's content will be read into that buffer.  The BUFFER flag is set in the file object and a pointer to the content is referenced in the file's Buffer field.  Standard file operations such as read, write and seek have the same effect when a file is in buffer mode.</p>
 <p>Once a file has been buffered, the original file handle and any locks on that file are returned to the system. Physical operations on the file object such as delete, rename and attribute settings no longer have meaning when applied to a buffered file.  It is not possible to drop the buffer and return the file object to its original state once buffering has been enabled.</p>
@@ -135,7 +135,7 @@
     <method>
       <name>Copy</name>
       <comment>Copies the data of a file to another location.</comment>
-      <prototype>ERROR flCopy(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
+      <prototype>ERR flCopy(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
       <input>
         <param type="CSTRING" name="Dest">The destination file path for the copy operation.</param>
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
@@ -162,7 +162,7 @@
     <method>
       <name>Delete</name>
       <comment>Deletes a file from its source location.</comment>
-      <prototype>ERROR flDelete(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR flDelete(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
       </input>
@@ -184,7 +184,7 @@
     <method>
       <name>Move</name>
       <comment>Moves a file to a new location.</comment>
-      <prototype>ERROR flMove(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
+      <prototype>ERR flMove(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
       <input>
         <param type="CSTRING" name="Dest">The desired path for the file.</param>
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
@@ -205,7 +205,7 @@
     <method>
       <name>Next</name>
       <comment>Retrieve meta information describing the next indexed file in the folder list.</comment>
-      <prototype>ERROR flNext(OBJECTPTR Object, objFile ** File)</prototype>
+      <prototype>ERR flNext(OBJECTPTR Object, objFile ** File)</prototype>
       <input>
         <param type="objFile **" name="File">A pointer to a new File object will be returned in this parameter if the call is successful.</param>
       </input>
@@ -226,13 +226,13 @@
     <method>
       <name>ReadLine</name>
       <comment>Reads the next line from the file.</comment>
-      <prototype>ERROR flReadLine(OBJECTPTR Object, STRING * Result)</prototype>
+      <prototype>ERR flReadLine(OBJECTPTR Object, STRING * Result)</prototype>
       <input>
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
 <p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <field>Position</field> field by the amount of bytes read from the file.  You must have set the <code>FL::READ</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
-<p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns ERR_NoData when it runs out of information to read from the file.</p>
+<p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns ERR::NoData when it runs out of information to read from the file.</p>
       </description>
       <result>
         <error code="Okay">The file information was read into the buffer.</error>
@@ -248,7 +248,7 @@
     <method>
       <name>SetDate</name>
       <comment>Sets the date on a file.</comment>
-      <prototype>ERROR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
+      <prototype>ERR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
       <input>
         <param type="LONG" name="Year">Year (-ve for BC, +ve for AD).</param>
         <param type="LONG" name="Month">Month (1 - 12)</param>
@@ -262,7 +262,7 @@
 <p>The SetDate method provides a convenient way to set the date and time information for a file object.  Date information is set in a human readable year, month, day, hour, minute and second format for your convenience.</p>
 <p>Depending on the filesystem type, multiple forms of datestamp may be supported.  The default datestamp, FDT_MODIFIED defines the time at which the file data was last altered.  Other types include the date on which the file was created and the date it was last archived (backed up).  The following types are supported by the Type argument:</p>
 <types lookup="FDT"/>
-<p>If the specified datestamp is not supported by the filesystem, ERR_NoSupport is returned by this method.</p>
+<p>If the specified datestamp is not supported by the filesystem, ERR::NoSupport is returned by this method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -276,7 +276,7 @@
     <method>
       <name>StartStream</name>
       <comment>Starts streaming data from a file source.</comment>
-      <prototype>ERROR flStartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
+      <prototype>ERR flStartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
       <input>
         <param type="OBJECTID" name="Subscriber">Reference to an object that will receive streamed data notifications.</param>
         <param type="FL" name="Flags" lookup="FL">Use READ for incoming data, WRITE for outgoing data.</param>
@@ -300,7 +300,7 @@
     <method>
       <name>StopStream</name>
       <comment>Stops streaming data from a file source.</comment>
-      <prototype>ERROR flStopStream(OBJECTPTR Object)</prototype>
+      <prototype>ERR flStopStream(OBJECTPTR Object)</prototype>
       <description>
 <p>This method terminates data streaming from a file (instantiated by the <method>StartStream</method> method).  Any resources related to the streaming process will be deallocated.</p>
       </description>
@@ -314,7 +314,7 @@
     <method>
       <name>Watch</name>
       <comment>Monitors files and folders for file system events.</comment>
-      <prototype>ERROR flWatch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, MFF Flags)</prototype>
+      <prototype>ERR flWatch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, MFF Flags)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">The routine that will be called when a file change is triggered by the system.</param>
         <param type="LARGE" name="Custom">A custom 64-bit value that will passed to the Callback routine as a parameter.</param>
@@ -324,9 +324,9 @@
 <p>The WatchFile() function configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
 <p>The path that will be monitored is determined by the File object's <field>Path</field> field.  Both files and folders are supported as targets.</p>
 <p>The optional MFF Flags are used to filter events to those that are desired for monitoring.</p>
-<p>The client must provide a Callback that will be triggered when a monitored event is triggered.  The Callback must follow the format <code>ERROR Routine(*File, STRING Path, LARGE Custom, LONG Flags)</code></p>
+<p>The client must provide a Callback that will be triggered when a monitored event is triggered.  The Callback must follow the format <code>ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)</code></p>
 <p>Each event will be delivered in the sequence that they are originally raised.  The Flags parameter will reflect the specific event that has occurred.  The Custom parameter is identical to the Custom argument originally passed to this method.  The Path is a string that is relative to the File's <field>Path</field> field.</p>
-<p>If the callback routine returns ERR_Terminate, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the Flags parameter to 0.</p>
+<p>If the callback routine returns ERR::Terminate, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the Flags parameter to 0.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -388,7 +388,7 @@
       <description>
 <p>The group ID assigned to a file can be read from this field.  The ID is retrieved from the file system in real time in case the ID has been changed after initialisation of the file object.</p>
 <p>You can also change the group ID of a file by writing an integer value to this field.</p>
-<p>If the file system does not support group ID's, <code>ERR_NoSupport</code> is returned.</p>
+<p>If the file system does not support group ID's, <code>ERR::NoSupport</code> is returned.</p>
       </description>
     </field>
 
@@ -516,7 +516,7 @@
       <description>
 <p>The user ID assigned to a file can be read from this field.  The ID is retrieved from the file system in real time in case the ID has been changed after initialisation of the file object.</p>
 <p>You can also change the user ID of a file by writing an integer value to this field.  This can only be done post-initialisation or an error code will be returned.</p>
-<p>If the filesystem does not support user ID's, ERR_NoSupport is returned.</p>
+<p>If the filesystem does not support user ID's, ERR::NoSupport is returned.</p>
       </description>
     </field>
 

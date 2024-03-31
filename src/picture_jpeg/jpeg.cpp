@@ -29,16 +29,16 @@ JUMPTABLE_DISPLAY
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 
-static ERROR JPEG_Activate(extPicture *, APTR);
-static ERROR JPEG_Init(extPicture *, APTR);
-static ERROR JPEG_Query(extPicture *, APTR);
-static ERROR JPEG_SaveImage(extPicture *, struct acSaveImage *);
+static ERR JPEG_Activate(extPicture *, APTR);
+static ERR JPEG_Init(extPicture *, APTR);
+static ERR JPEG_Query(extPicture *, APTR);
+static ERR JPEG_SaveImage(extPicture *, struct acSaveImage *);
 
 static void decompress_jpeg(extPicture *, objBitmap *, struct jpeg_decompress_struct *);
 
 //********************************************************************************************************************
 
-static ERROR JPEG_Activate(extPicture *Self, APTR Void)
+static ERR JPEG_Activate(extPicture *Self, APTR Void)
 {
    pf::Log log;
    struct jpeg_decompress_struct cinfo;
@@ -46,15 +46,15 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
 
    // Return if the picture object has already been activated
 
-   if (Self->Bitmap->initialised()) return ERR_Okay;
+   if (Self->Bitmap->initialised()) return ERR::Okay;
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          log.warning("Failed to open file \"%s\".", path);
-         return ERR_File;
+         return ERR::File;
       }
    }
 
@@ -79,15 +79,15 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
       bmp->BitsPerPixel = 32;
    }
 
-   if (!acQuery(bmp)) {
-      if (InitObject(bmp) != ERR_Okay) {
+   if (acQuery(bmp) IS ERR::Okay) {
+      if (InitObject(bmp) != ERR::Okay) {
          jpeg_destroy_decompress(&cinfo);
-         return ERR_Init;
+         return ERR::Init;
       }
    }
    else {
       jpeg_destroy_decompress(&cinfo);
-      return ERR_Query;
+      return ERR::Query;
    }
 
    if (bmp->BitsPerPixel >= 24) {
@@ -106,7 +106,7 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
    FreeResource(Self->prvFile);
    Self->prvFile = NULL;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
@@ -162,7 +162,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 ** Picture: Init
 */
 
-static ERROR JPEG_Init(extPicture *Self, APTR Void)
+static ERR JPEG_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
    UBYTE *buffer;
@@ -178,29 +178,29 @@ static ERROR JPEG_Init(extPicture *Self, APTR Void)
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
-         if (!InitObject(Self->Bitmap)) {
-            return ERR_Okay;
+         if (InitObject(Self->Bitmap) IS ERR::Okay) {
+            return ERR::Okay;
          }
-         else return log.warning(ERR_Init);
+         else return log.warning(ERR::Init);
       }
-      else return log.warning(ERR_FieldNotSet);
+      else return log.warning(ERR::FieldNotSet);
    }
-   else if (!Self->getPtr(FID_Header, &buffer)) {
+   else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
          if ((Self->Flags & PCF::LAZY) IS PCF::NIL) acActivate(Self);
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else log.msg("The file is not a JPEG picture.");
    }
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
 
-static ERROR JPEG_Query(extPicture *Self, APTR Void)
+static ERR JPEG_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    struct jpeg_decompress_struct *cinfo;
@@ -210,15 +210,15 @@ static ERROR JPEG_Query(extPicture *Self, APTR Void)
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
-         return log.warning(ERR_CreateObject);
+         return log.warning(ERR::CreateObject);
       }
    }
 
    acSeek(Self->prvFile, 0.0, SEEK::START);
-   if (!AllocMemory(sizeof(struct jpeg_decompress_struct), MEM::DATA, &cinfo)) {
+   if (AllocMemory(sizeof(struct jpeg_decompress_struct), MEM::DATA, &cinfo) IS ERR::Okay) {
       auto bmp = Self->Bitmap;
       cinfo->err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
       jpeg_create_decompress(cinfo);
@@ -239,14 +239,14 @@ static ERROR JPEG_Query(extPicture *Self, APTR Void)
       FreeResource(cinfo);
       return acQuery(bmp);
    }
-   else return log.warning(ERR_Memory);
+   else return log.warning(ERR::Memory);
 }
 
 /*********************************************************************************************************************
 ** Picture: SaveImage
 */
 
-static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
+static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    pf::Log log;
 
@@ -257,10 +257,10 @@ static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
+      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
       if (!(file = objFile::create::integral(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {
-         return log.warning(ERR_CreateObject);
+         return log.warning(ERR::CreateObject);
       }
    }
 
@@ -308,7 +308,7 @@ static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
       else FreeResource(file);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -323,11 +323,11 @@ static ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::InitModule;
 
    objModule::create pic = { fl::Name("picture") }; // Load our dependency ahead of class registration
 
@@ -342,16 +342,16 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::Actions(clActions),
       fl::Path(MOD_PATH));
 
-   return clJPEG ? ERR_Okay : ERR_AddClass;
+   return clJPEG ? ERR::Okay : ERR::AddClass;
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (clJPEG)     { FreeResource(clJPEG);     clJPEG = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

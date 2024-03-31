@@ -37,7 +37,7 @@ static size_t glDitherSize = 0;
       }                                  \
    }
 
-static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
+static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
    pf::Log log(__FUNCTION__);
@@ -50,13 +50,13 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
    WORD index;
    UBYTE rmask, gmask, bmask;
 
-   if ((Width < 1) or (Height < 1)) return ERR_Okay;
+   if ((Width < 1) or (Height < 1)) return ERR::Okay;
 
    // Punch the developer for making stupid mistakes
 
    if ((Dest->BitsPerPixel >= 24) and (!Format)) {
       log.warning("Dithering attempted to a %dbpp bitmap.", Dest->BitsPerPixel);
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Do a straight copy if the bitmap is too small for dithering
@@ -68,7 +68,7 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
             Dest->DrawUCRPixel(Dest, x, y, &brgb);
          }
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Allocate buffer for dithering
@@ -76,8 +76,8 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
    if (Width * sizeof(RGB16) * 2 > glDitherSize) {
       if (glDither) { FreeResource(glDither); glDither = NULL; }
 
-      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM::NO_CLEAR|MEM::UNTRACKED, &glDither) != ERR_Okay) {
-         return ERR_AllocMemory;
+      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM::NO_CLEAR|MEM::UNTRACKED, &glDither) != ERR::Okay) {
+         return ERR::AllocMemory;
       }
       glDitherSize = Width * sizeof(RGB16) * 2;
    }
@@ -208,7 +208,7 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -231,7 +231,7 @@ will also need to have the `BMF::ALPHA_CHANNEL` flag set to indicate that an alp
 The quality of 32-bit alpha blending can be improved by selecting the `BAF::LINEAR` flag.  This enables an additional
 computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The
 discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this
-option is not usable if either bitmap is already in a linear colourspace (`ERR_InvalidState` will be returned if that
+option is not usable if either bitmap is already in a linear colourspace (`ERR::InvalidState` will be returned if that
 is the case).
 
 -INPUT-
@@ -303,7 +303,7 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
    return 0;
 }
 
-ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
+ERR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
 {
    pf::Log log(__FUNCTION__);
    RGB8 pixel, src;
@@ -312,25 +312,25 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
    ULONG colour;
    UBYTE *data, *srcdata;
 
-   if (!dest) return ERR_NullArgs;
+   if (!dest) return ERR::NullArgs;
    if (dest->Class->ClassID != ID_BITMAP) {
       log.warning("Destination #%d is not a Bitmap.", dest->UID);
-      return ERR_InvalidObject;
+      return ERR::InvalidObject;
    }
 
-   if (!Bitmap->initialised()) return log.warning(ERR_NotInitialised);
+   if (!Bitmap->initialised()) return log.warning(ERR::NotInitialised);
 
    //log.trace("%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, Bitmap->XOffset, Bitmap->YOffset, dest->XOffset, dest->YOffset);
 
-   if (validate_clip(__FUNCTION__, "Source", Bitmap)) return ERR_Okay;
+   if (validate_clip(__FUNCTION__, "Source", Bitmap)) return ERR::Okay;
 
    if (Bitmap != dest) { // Validate the clipping region of the destination
-      if (validate_clip(__FUNCTION__, "Dest", dest)) return ERR_Okay;
+      if (validate_clip(__FUNCTION__, "Dest", dest)) return ERR::Okay;
    }
 
    if ((Flags & BAF::LINEAR) != BAF::NIL) {
-      if ((Bitmap->ColourSpace IS CS::LINEAR_RGB) or (dest->ColourSpace IS CS::LINEAR_RGB)) return log.warning(ERR_InvalidState);
-      if ((Bitmap->BitsPerPixel != 32) or ((Bitmap->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) return log.warning(ERR_InvalidState);
+      if ((Bitmap->ColourSpace IS CS::LINEAR_RGB) or (dest->ColourSpace IS CS::LINEAR_RGB)) return log.warning(ERR::InvalidState);
+      if ((Bitmap->BitsPerPixel != 32) or ((Bitmap->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) return log.warning(ERR::InvalidState);
    }
 
    if (Bitmap IS dest) { // Use this clipping routine only if we are copying within the same bitmap
@@ -341,7 +341,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
       }
       else if (X >= Bitmap->Clip.Right) {
          log.trace("Clipped: X >= Bitmap->ClipRight (%d >= %d)", X, Bitmap->Clip.Right);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       if (Y < Bitmap->Clip.Top) {
@@ -351,31 +351,31 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
       }
       else if (Y >= Bitmap->Clip.Bottom) {
          log.trace("Clipped: Y >= Bitmap->ClipBottom (%d >= %d)", Y, Bitmap->Clip.Bottom);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       // Clip the destination coordinates
 
       if ((DestX < dest->Clip.Left)) {
          Width = Width - (dest->Clip.Left - DestX);
-         if (Width < 1) return ERR_Okay;
+         if (Width < 1) return ERR::Okay;
          X = X + (dest->Clip.Left - DestX);
          DestX = dest->Clip.Left;
       }
       else if (DestX >= dest->Clip.Right) {
          log.trace("Clipped: DestX >= RightClip (%d >= %d)", DestX, dest->Clip.Right);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       if ((DestY < dest->Clip.Top)) {
          Height = Height - (dest->Clip.Top - DestY);
-         if (Height < 1) return ERR_Okay;
+         if (Height < 1) return ERR::Okay;
          Y = Y + (dest->Clip.Top - DestY);
          DestY = dest->Clip.Top;
       }
       else if (DestY >= dest->Clip.Bottom) {
          log.trace("Clipped: DestY >= BottomClip (%d >= %d)", DestY, dest->Clip.Bottom);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       // Clip the Width and Height
@@ -391,37 +391,37 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
 
       if (DestX < dest->Clip.Left) {
          Width = Width - (dest->Clip.Left - DestX);
-         if (Width < 1) return ERR_Okay;
+         if (Width < 1) return ERR::Okay;
          X = X + (dest->Clip.Left - DestX);
          DestX = dest->Clip.Left;
       }
-      else if (DestX >= dest->Clip.Right) return ERR_Okay;
+      else if (DestX >= dest->Clip.Right) return ERR::Okay;
 
       if (DestY < dest->Clip.Top) {
          Height = Height - (dest->Clip.Top - DestY);
-         if (Height < 1) return ERR_Okay;
+         if (Height < 1) return ERR::Okay;
          Y = Y + (dest->Clip.Top - DestY);
          DestY = dest->Clip.Top;
       }
-      else if (DestY >= dest->Clip.Bottom) return ERR_Okay;
+      else if (DestY >= dest->Clip.Bottom) return ERR::Okay;
 
       // Check if the source that we are copying from is within its own drawable area.
 
       if (X < Bitmap->Clip.Left) {
          DestX += (Bitmap->Clip.Left - X);
          Width = Width - (Bitmap->Clip.Left - X);
-         if (Width < 1) return ERR_Okay;
+         if (Width < 1) return ERR::Okay;
          X = Bitmap->Clip.Left;
       }
-      else if (X >= Bitmap->Clip.Right) return ERR_Okay;
+      else if (X >= Bitmap->Clip.Right) return ERR::Okay;
 
       if (Y < Bitmap->Clip.Top) {
          DestY += (Bitmap->Clip.Top - Y);
          Height = Height - (Bitmap->Clip.Top - Y);
-         if (Height < 1) return ERR_Okay;
+         if (Height < 1) return ERR::Okay;
          Y = Bitmap->Clip.Top;
       }
-      else if (Y >= Bitmap->Clip.Bottom) return ERR_Okay;
+      else if (Y >= Bitmap->Clip.Bottom) return ERR::Okay;
 
       // Clip the Width and Height of the source area, based on the imposed clip region.
 
@@ -431,8 +431,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
       if ((Y + Height) >= Bitmap->Clip.Bottom) Height = Bitmap->Clip.Bottom - Y;
    }
 
-   if (Width < 1) return ERR_Okay;
-   if (Height < 1) return ERR_Okay;
+   if (Width < 1) return ERR::Okay;
+   if (Height < 1) return ERR::Okay;
 
    // Adjust coordinates by offset values
 
@@ -516,7 +516,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 #elif __xwindows__
@@ -594,7 +594,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable, dest->getGC(), X, Y, Width, Height, DestX, DestY);
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 #elif _GLES_
@@ -603,7 +603,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
       if ((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) { // Source is the video display.
          // No simple way to support this in OpenGL - we have to copy the display into a texture buffer, then copy the texture back to the display.
 
-         ERROR error;
+         ERR error;
          if (!lock_graphics_active(__func__)) {
             GLuint texture;
             if (alloc_texture(Bitmap->Width, Bitmap->Height, &texture) IS GL_NO_ERROR) {
@@ -614,13 +614,13 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                glBindTexture(GL_TEXTURE_2D, 0);
                eglSwapBuffers(glEGLDisplay, glEGLSurface);
                glDeleteTextures(1, &texture);
-               error = ERR_Okay;
+               error = ERR::Okay;
             }
-            else error = log.warning(ERR_OpenGL);
+            else error = log.warning(ERR::OpenGL);
 
             unlock_graphics();
          }
-         else error = ERR_LockFailed;
+         else error = ERR::LockFailed;
 
          return error;
       }
@@ -632,7 +632,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
       else {
          // RAM-to-video blitting.  We have to allocate a temporary texture, copy the data to it and then blit that to the display.
 
-         ERROR error;
+         ERR error;
          if (!lock_graphics_active(__func__)) {
             GLuint texture;
             if (alloc_texture(Bitmap->Width, Bitmap->Height, &texture) IS GL_NO_ERROR) {
@@ -642,16 +642,16 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                   glBindTexture(GL_TEXTURE_2D, 0);
                   eglSwapBuffers(glEGLDisplay, glEGLSurface);
                }
-               else error = ERR_OpenGL;
+               else error = ERR::OpenGL;
 
                glDeleteTextures(1, &texture);
-               error = ERR_Okay;
+               error = ERR::Okay;
             }
-            else error = log.warning(ERR_OpenGL);
+            else error = log.warning(ERR::OpenGL);
 
             unlock_graphics();
          }
-         else error = ERR_LockFailed;
+         else error = ERR::LockFailed;
 
          return error;
       }
@@ -664,8 +664,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
    if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
       // 32-bit alpha blending support
 
-      if (!lock_surface(Bitmap, SURFACE_READ)) {
-         if (!lock_surface(dest, SURFACE_WRITE)) {
+      if (lock_surface(Bitmap, SURFACE_READ) IS ERR::Okay) {
+         if (lock_surface(dest, SURFACE_WRITE) IS ERR::Okay) {
             UBYTE red, green, blue, *dest_lookup;
             UWORD alpha;
 
@@ -896,13 +896,13 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          unlock_surface(Bitmap);
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL) {
       // Transparent colour copying.  In this mode, the alpha component of individual source pixels is ignored
 
-      if (!lock_surface(Bitmap, SURFACE_READ)) {
-         if (!lock_surface(dest, SURFACE_WRITE)) {
+      if (lock_surface(Bitmap, SURFACE_READ) IS ERR::Okay) {
+         if (lock_surface(dest, SURFACE_WRITE) IS ERR::Okay) {
             if (Bitmap->Opacity < 255) { // Transparent mask with translucent pixels (consistent blend level)
                srctable  = glAlphaLookup.data() + (Bitmap->Opacity<<8);
                desttable = glAlphaLookup.data() + ((255-Bitmap->Opacity)<<8);
@@ -989,11 +989,11 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          unlock_surface(Bitmap);
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else { // Straight copy operation
-      if (!lock_surface(Bitmap, SURFACE_READ)) {
-         if (!lock_surface(dest, SURFACE_WRITE)) {
+      if (lock_surface(Bitmap, SURFACE_READ) IS ERR::Okay) {
+         if (lock_surface(dest, SURFACE_WRITE) IS ERR::Okay) {
             if (Bitmap->Opacity < 255) { // Translucent draw
                srctable  = glAlphaLookup.data() + (Bitmap->Opacity<<8);
                desttable = glAlphaLookup.data() + ((255-Bitmap->Opacity)<<8);
@@ -1127,7 +1127,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          unlock_surface(Bitmap);
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -1194,7 +1194,7 @@ static ULONG read_surface32(BITMAPSURFACE *Surface, WORD X, WORD Y)
    return ((ULONG *)((UBYTE *)Surface->Data + (Surface->LineWidth * Y) + (X<<2)))[0];
 }
 
-ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
+ERR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
           CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
@@ -1207,10 +1207,10 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
    UBYTE *data, *srcdata;
    ULONG (*read_surface)(BITMAPSURFACE *, WORD, WORD);
 
-   if ((!Surface) or (!Bitmap)) return log.warning(ERR_NullArgs);
+   if ((!Surface) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
    if ((!Surface->Data) or (Surface->LineWidth < 1) or (!Surface->BitsPerPixel)) {
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
    srcwidth = Surface->LineWidth / Surface->BytesPerPixel;
@@ -1219,34 +1219,34 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
 
    if ((XDest < Bitmap->Clip.Left)) {
       Width = Width - (Bitmap->Clip.Left - X);
-      if (Width < 1) return ERR_Okay;
+      if (Width < 1) return ERR::Okay;
       X = X + (Bitmap->Clip.Left - X);
       XDest = Bitmap->Clip.Left;
    }
-   else if (XDest >= Bitmap->Clip.Right) return ERR_Okay;
+   else if (XDest >= Bitmap->Clip.Right) return ERR::Okay;
 
    if ((YDest < Bitmap->Clip.Top)) {
       Height = Height - (Bitmap->Clip.Top - YDest);
-      if (Height < 1) return ERR_Okay;
+      if (Height < 1) return ERR::Okay;
       Y = Y + (Bitmap->Clip.Top - YDest);
       YDest = Bitmap->Clip.Top;
    }
-   else if (YDest >= Bitmap->Clip.Bottom) return ERR_Okay;
+   else if (YDest >= Bitmap->Clip.Bottom) return ERR::Okay;
 
    // Check if the source that we are blitting from is within its own drawable area.
 
    if ((Flags & CSRF::CLIP) != CSRF::NIL) {
       if (X < 0) {
-         if ((Width += X) < 1) return ERR_Okay;
+         if ((Width += X) < 1) return ERR::Okay;
          X = 0;
       }
-      else if (X >= srcwidth) return ERR_Okay;
+      else if (X >= srcwidth) return ERR::Okay;
 
       if (Y < 0) {
-         if ((Height += Y) < 1) return ERR_Okay;
+         if ((Height += Y) < 1) return ERR::Okay;
          Y = 0;
       }
-      else if (Y >= Surface->Height) return ERR_Okay;
+      else if (Y >= Surface->Height) return ERR::Okay;
    }
 
    // Clip the width and height
@@ -1259,8 +1259,8 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       if ((Y + Height) >= Surface->Clip.Bottom) Height = Surface->Clip.Bottom - Y;
    }
 
-   if (Width < 1) return ERR_Okay;
-   if (Height < 1) return ERR_Okay;
+   if (Width < 1) return ERR::Okay;
+   if (Height < 1) return ERR::Okay;
 
    // Adjust coordinates by offset values
 
@@ -1281,7 +1281,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
               else read_surface = read_surface_msb24;
               break;
       case 4: read_surface = read_surface32; break;
-      default: return log.warning(ERR_Args);
+      default: return log.warning(ERR::Args);
    }
 
 #ifdef __xwindows__
@@ -1320,12 +1320,12 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       XPutImage(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(),
          &ximage, X, Y, XDest, YDest, Width, Height);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 #endif // __xwindows__
 
-   if (lock_surface(Bitmap, SURFACE_WRITE) IS ERR_Okay) {
+   if (lock_surface(Bitmap, SURFACE_WRITE) IS ERR::Okay) {
       if (((Flags & CSRF::ALPHA) != CSRF::NIL) and (Surface->BitsPerPixel IS 32)) { // 32-bit alpha blending support
          ULONG *sdata = (ULONG *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
 
@@ -1565,7 +1565,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       unlock_surface(Bitmap);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1613,7 +1613,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
       return;
    }
 
-   if (!Bitmap->initialised()) { log.warning(ERR_NotInitialised); return; }
+   if (!Bitmap->initialised()) { log.warning(ERR::NotInitialised); return; }
 
    X += Bitmap->XOffset;
    Y += Bitmap->YOffset;
@@ -1646,7 +1646,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
    UBYTE opacity = ((Flags & BAF::BLEND) != BAF::NIL) ? Bitmap->unpackAlpha(Colour) : Bitmap->Opacity;
 
    if (opacity < 255) {
-      if (!lock_surface(Bitmap, SURFACE_READWRITE)) {
+      if (lock_surface(Bitmap, SURFACE_READWRITE) IS ERR::Okay) {
          UWORD wordpixel;
 
          if (Bitmap->BitsPerPixel IS 32) {
@@ -1779,7 +1779,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 
    // Standard rectangle data support
 
-   if (!lock_surface(Bitmap, SURFACE_WRITE)) {
+   if (lock_surface(Bitmap, SURFACE_WRITE) IS ERR::Okay) {
       if (!Bitmap->Data) {
          unlock_surface(Bitmap);
          return;
@@ -2096,12 +2096,12 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR gfxResample(extBitmap *Bitmap, ColourFormat *Format)
+ERR gfxResample(extBitmap *Bitmap, ColourFormat *Format)
 {
-   if ((!Bitmap) or (!Format)) return ERR_NullArgs;
+   if ((!Bitmap) or (!Format)) return ERR::NullArgs;
 
    dither(Bitmap, Bitmap, Format, Bitmap->Width, Bitmap->Height, 0, 0, 0, 0);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

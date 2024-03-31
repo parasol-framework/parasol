@@ -104,11 +104,11 @@ class extFont : public objFont {
 
 #include "font_bitmap.cpp"
 
-static ERROR add_font_class(void);
+static ERR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
+static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
 static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
 
 //********************************************************************************************************************
@@ -176,12 +176,12 @@ static DOUBLE global_point_size(void)
    if (!glPointSet) {
       pf::Log log(__FUNCTION__);
       OBJECTID style_id;
-      if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
+      if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
          pf::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char pointsize[20];
             glPointSet = true;
-            if (!acGetVar(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize))) {
+            if (acGetVar(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
                glDefaultPoint = StrToFloat(pointsize);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
@@ -330,7 +330,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 
 static objConfig *glConfig = NULL; // Font database
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log;
 
@@ -338,20 +338,20 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &modFont);
 
-   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_LoadModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::LoadModule;
 
-   if (FT_Init_FreeType(&glFTLibrary)) return log.warning(ERR_LoadModule);
+   if (FT_Init_FreeType(&glFTLibrary)) return log.warning(ERR::LoadModule);
 
    LOC type;
-   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC::FILE);
+   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR::Okay) or (type != LOC::FILE);
 
    if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
       if (refresh) fntRefreshFonts();
 
       ConfigGroups *groups;
-      if (not ((!glConfig->getPtr(FID_Data, &groups)) and (!groups->empty()))) {
+      if (not ((glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) and (!groups->empty()))) {
          log.error("Failed to build a database of valid fonts.");
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
       // Merge tailored font options into the machine-generated database
@@ -360,19 +360,19 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
    else {
       log.error("Failed to load or prepare the font configuration file.");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    return add_font_class();
 }
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERR CMDOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (glCacheTimer) { UpdateTimer(glCacheTimer, 0);  glCacheTimer = NULL; }
    if (glFTLibrary)  { FT_Done_FreeType(glFTLibrary); glFTLibrary  = NULL; }
@@ -380,7 +380,7 @@ static ERROR CMDExpunge(void)
    if (clFont)       { FreeResource(clFont);          clFont       = NULL; }
    if (modDisplay)   { FreeResource(modDisplay);      modDisplay   = NULL; }
    glBitmapCache.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -427,22 +427,22 @@ AccessObject: Access to the font database was denied, or the object does not exi
 
 *********************************************************************************************************************/
 
-ERROR fntGetList(FontList **Result)
+ERR fntGetList(FontList **Result)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Result) return log.warning(ERR_NullArgs);
+   if (!Result) return log.warning(ERR::NullArgs);
 
    log.branch();
 
    *Result = NULL;
 
    pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
-   if (!config.granted()) return log.warning(ERR_AccessObject);
+   if (!config.granted()) return log.warning(ERR::AccessObject);
 
    size_t size = 0;
    ConfigGroups *groups;
-   if (!glConfig->getPtr(FID_Data, &groups)) {
+   if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
       for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
          if (keys.contains("Alias")) size += keys["Alias"].size() + 1;
@@ -450,7 +450,7 @@ ERROR fntGetList(FontList **Result)
       }
 
       FontList *list, *last_list = NULL;
-      if (!AllocMemory(size, MEM::DATA, &list)) {
+      if (AllocMemory(size, MEM::DATA, &list) IS ERR::Okay) {
          STRING buffer = (STRING)(list + groups->size());
          *Result = list;
 
@@ -464,7 +464,7 @@ ERROR fntGetList(FontList **Result)
             }
 
             if (keys.contains("Hidden")) {
-               if (!StrMatch("Yes", keys["Hidden"])) list->Hidden = TRUE;
+               if (StrMatch("Yes", keys["Hidden"]) IS ERR::Okay) list->Hidden = TRUE;
             }
 
             auto it = keys.find("Alias");
@@ -480,17 +480,17 @@ ERROR fntGetList(FontList **Result)
                }
 
                if (keys.contains("Scalable")) {
-                  if (!StrMatch("Yes", keys["Scalable"])) list->Scalable = TRUE;
+                  if (StrMatch("Yes", keys["Scalable"]) IS ERR::Okay) list->Scalable = TRUE;
                }
 
                if (keys.contains("Variable")) {
-                  if (!StrMatch("Yes", keys["Variable"])) list->Variable = TRUE;
+                  if (StrMatch("Yes", keys["Variable"]) IS ERR::Okay) list->Variable = TRUE;
                }
 
                if (keys.contains("Hinting")) {
-                  if (!StrMatch("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
-                  else if (!StrMatch("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
-                  else if (!StrMatch("Light", keys["Hinting"])) list->Hinting = HINT::LIGHT;
+                  if (StrMatch("Normal", keys["Hinting"]) IS ERR::Okay) list->Hinting = HINT::NORMAL;
+                  else if (StrMatch("Internal", keys["Hinting"]) IS ERR::Okay) list->Hinting = HINT::INTERNAL;
+                  else if (StrMatch("Light", keys["Hinting"]) IS ERR::Okay) list->Hinting = HINT::LIGHT;
                }
 
                if (keys.contains("Axes")) {
@@ -520,11 +520,11 @@ ERROR fntGetList(FontList **Result)
 
          if (last_list) last_list->Next = NULL;
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
-   else return ERR_NoData;
+   else return ERR::NoData;
 }
 
 /*********************************************************************************************************************
@@ -621,26 +621,26 @@ Search: Unable to find a suitable font.
 
 *********************************************************************************************************************/
 
-ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
+ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 {
    pf::Log log(__FUNCTION__);
 
    log.branch("%s:%s", Name, Style);
 
-   if (not Name) return log.warning(ERR_NullArgs);
+   if (not Name) return log.warning(ERR::NullArgs);
 
    pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
-   if (not config.granted()) return log.warning(ERR_AccessObject);
+   if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups)) return ERR_Search;
+   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return ERR::Search;
 
    auto get_meta = [](ConfigKeys &Group) {
       FMETA meta = FMETA::NIL;
       if (Group.contains("Hinting")) {
-         if (!StrMatch("Normal", Group["Hinting"])) meta |= FMETA::HINT_NORMAL;
-         else if (!StrMatch("Internal", Group["Hinting"])) meta |= FMETA::HINT_INTERNAL;
-         else if (!StrMatch("Light", Group["Hinting"])) meta |= FMETA::HINT_LIGHT;
+         if (StrMatch("Normal", Group["Hinting"]) IS ERR::Okay) meta |= FMETA::HINT_NORMAL;
+         else if (StrMatch("Internal", Group["Hinting"]) IS ERR::Okay) meta |= FMETA::HINT_INTERNAL;
+         else if (StrMatch("Light", Group["Hinting"]) IS ERR::Okay) meta |= FMETA::HINT_LIGHT;
       }
 
       if (Group.contains("Variable")) meta |= FMETA::VARIABLE;
@@ -651,7 +651,7 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 
    auto get_font_path = [](ConfigKeys &Keys, const std::string &Style) {
       if (Keys.contains(Style)) return StrClone(Keys[Style].c_str());
-      else if (StrMatch("Regular", Style.c_str()) != ERR_Okay) {
+      else if (StrMatch("Regular", Style.c_str()) != ERR::Okay) {
          if (Keys.contains("Regular")) return StrClone(Keys["Regular"].c_str());
       }
       return STRING(NULL);
@@ -661,11 +661,11 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    pf::camelcase(style_name);
 
    for (auto & [group, keys] : groups[0]) {
-      if (StrMatch(Name, keys["Name"])) continue;
+      if (StrMatch(Name, keys["Name"]) != ERR::Okay) continue;
 
       if ((*Path = get_font_path(keys, style_name))) {
          if (Meta) *Meta = get_meta(keys);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       log.traceWarning("Requested style '%s' not available, choosing first style.", style_name.c_str());
@@ -678,13 +678,13 @@ ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
       if (keys.contains(first_style)) {
          *Path = StrClone(keys[first_style].c_str());
          if (Meta) *Meta = get_meta(keys);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Search;
+      else return ERR::Search;
    }
 
    log.warning("The \"%s\" font is not available.", Name);
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -704,14 +704,14 @@ AccessObject: Access to the font database was denied, or the object does not exi
 
 *********************************************************************************************************************/
 
-ERROR fntRefreshFonts(void)
+ERR fntRefreshFonts(void)
 {
    pf::Log log(__FUNCTION__);
 
    log.branch();
 
    pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
-   if (!config.granted()) return log.warning(ERR_AccessObject);
+   if (!config.granted()) return log.warning(ERR::AccessObject);
 
    acClear(glConfig); // Clear out existing font information
 
@@ -727,7 +727,7 @@ ERROR fntRefreshFonts(void)
    //    Styles = Bold,Bold Italic,Italic,Regular
 
    ConfigGroups *groups;
-   if (not glConfig->getPtr(FID_Data, &groups)) {
+   if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
@@ -751,7 +751,7 @@ ERROR fntRefreshFonts(void)
    objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
    if (file.ok()) glConfig->saveToObject(*file);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -780,17 +780,17 @@ Search: It was not possible to resolve the String to a known font family.
 
 *********************************************************************************************************************/
 
-ERROR fntResolveFamilyName(CSTRING String, CSTRING *Result)
+ERR fntResolveFamilyName(CSTRING String, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!String) or (!Result)) return ERR_NullArgs;
+   if ((!String) or (!Result)) return ERR::NullArgs;
 
    pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
-   if (not config.granted()) return log.warning(ERR_AccessObject);
+   if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups)) return log.warning(ERR_GetField);
+   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return log.warning(ERR::GetField);
 
    std::vector<std::string> names;
    pf::split(std::string(String), std::back_inserter(names));
@@ -805,16 +805,16 @@ restart:
          for (auto & [group, keys] : groups[0]) {
             if (keys.contains("Default")) {
                *Result = keys["Name"].c_str();
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
 
          *Result = "Noto Sans";
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       for (auto & [group, keys] : groups[0]) {
-         if (!StrCompare(name, keys["Name"], 0, STR::WILDCARD)) {
+         if (StrCompare(name, keys["Name"], 0, STR::WILDCARD) IS ERR::Okay) {
             if (auto it = keys.find("Alias"); it != keys.end()) {
                const std::string &alias = it->second;
                if (!alias.empty()) {
@@ -824,13 +824,13 @@ restart:
             }
 
             *Result = keys["Name"].c_str();
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
 
    log.msg("Failed to resolve family \"%s\"", String);
-   return ERR_Search;
+   return ERR::Search;
 }
 
 //********************************************************************************************************************
@@ -842,14 +842,14 @@ static void scan_truetype_folder(objConfig *Config)
    log.branch("Scanning for truetype fonts.");
 
    STRING path;
-   if (!ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, (STRING *)&path)) {
+   if (ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, (STRING *)&path) IS ERR::Okay) {
       GuardedResource free_path(path);
 
       DirInfo *dir;
-      if (not OpenDir(path, RDF::FILE, &dir)) {
+      if (OpenDir(path, RDF::FILE, &dir) IS ERR::Okay) {
          GuardedResource free_dir(dir);
 
-         while (not ScanDir(dir)) {
+         while (ScanDir(dir) IS ERR::Okay) {
             std::string ttpath(path);
             ttpath.append(dir->Info->Name);
 
@@ -949,7 +949,7 @@ static void scan_truetype_folder(objConfig *Config)
                   std::string path("fonts:truetype/");
                   path.append(dir->Info->Name);
 
-                  if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
+                  if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR::Okay)) {
                      Config->write(group.c_str(), ftface->style_name, path);
                   }
                   else {
@@ -977,8 +977,8 @@ static void scan_fixed_folder(objConfig *Config)
    log.branch("Scanning for fixed fonts.");
 
    DirInfo *dir;
-   if (not OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
-      while (not ScanDir(dir)) {
+   if (OpenDir("fonts:fixed/", RDF::FILE, &dir) IS ERR::Okay) {
+      while (ScanDir(dir) IS ERR::Okay) {
          std::string location("fonts:fixed/");
          location.append(dir->Info->Name);
          auto src = location.c_str();
@@ -986,7 +986,7 @@ static void scan_fixed_folder(objConfig *Config)
          winfnt_header_fields header;
          std::vector<UWORD> points;
          std::string facename;
-         if (!analyse_bmp_font(src, &header, facename, points)) {
+         if (analyse_bmp_font(src, &header, facename, points) IS ERR::Okay) {
             log.detail("Detected font file \"%s\", name: %s", src, facename.c_str());
 
             if (facename.empty()) continue;
@@ -1056,7 +1056,7 @@ static void scan_fixed_folder(objConfig *Config)
 
 //********************************************************************************************************************
 
-static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<UWORD> &Points)
+static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<UWORD> &Points)
 {
    pf::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
@@ -1065,7 +1065,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
    UWORD size_shift, font_count, count;
    char face[50];
 
-   if ((!Path) or (!Header)) return ERR_NullArgs;
+   if ((!Path) or (!Header)) return ERR::NullArgs;
 
    objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
@@ -1074,7 +1074,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
       if (mz_header.magic IS ID_WINMZ) {
          file->seekStart(mz_header.lfanew);
 
-         if ((!file->read(&ne_header, sizeof(ne_header))) and (ne_header.magic IS ID_WINNE)) {
+         if ((file->read(&ne_header, sizeof(ne_header)) IS ERR::Okay) and (ne_header.magic IS ID_WINNE)) {
             res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
             file->seekStart(res_offset);
 
@@ -1085,7 +1085,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
 
             UWORD type_id = 0;
             for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
-               if (!flReadLE(*file, &count)) {
+               if (flReadLE(*file, &count) IS ERR::Okay) {
                   if (type_id IS 0x8008) {
                      font_count  = count;
                      file->get(FID_Position, &font_offset);
@@ -1099,7 +1099,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
 
             if ((!font_count) or (!font_offset)) {
                log.warning("There are no fonts in file \"%s\"", Path);
-               return ERR_Failed;
+               return ERR::Failed;
             }
 
             file->seekStart(font_offset);
@@ -1122,7 +1122,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
 
                for (i=0; i < font_count; i++) {
                   file->seekStart(fonts[i].Offset);
-                  if (!file->read(Header, sizeof(winfnt_header_fields))) {
+                  if (file->read(Header, sizeof(winfnt_header_fields)) IS ERR::Okay) {
                      Points.push_back(Header->nominal_point_size);
                   }
                }
@@ -1131,20 +1131,20 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
 
                file->seekStart(fonts[0].Offset);
 
-               if (file->read(Header, sizeof(winfnt_header_fields))) {
-                  return ERR_Read;
+               if (file->read(Header, sizeof(winfnt_header_fields)) != ERR::Okay) {
+                  return ERR::Read;
                }
 
                 // NOTE: 0x100 indicates the Microsoft vector font format, which we do not support.
 
                if ((Header->version != 0x200) and (Header->version != 0x300)) {
                   log.warning("Font \"%s\" is written in unsupported version %d / $%x.", Path, Header->version, Header->version);
-                  return ERR_NoSupport;
+                  return ERR::NoSupport;
                }
 
                if (Header->file_type & 1) {
                   log.warning("Font \"%s\" is in the non-supported vector font format.", Path);
-                  return ERR_NoSupport;
+                  return ERR::NoSupport;
                }
 
                // Extract the name of the font
@@ -1152,19 +1152,19 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::s
                file->seekStart(fonts[0].Offset + Header->face_name_offset);
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  if ((file->read(face+i, 1)) or (!face[i])) break;
+                  if ((file->read(face+i, 1) != ERR::Okay) or (!face[i])) break;
                }
                face[i] = 0;
                FaceName = face;
             }
 
-            return ERR_Okay;
+            return ERR::Okay;
          }
-         else return ERR_NoSupport;
+         else return ERR::NoSupport;
       }
-      else return ERR_NoSupport;
+      else return ERR::NoSupport;
    }
-   else return ERR_File;
+   else return ERR::File;
 }
 
 //********************************************************************************************************************

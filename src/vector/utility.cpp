@@ -91,7 +91,7 @@ static void update_dpi(void)
 
    if (current_time - last_update > 3000000LL) {
       DISPLAYINFO *display;
-      if (!gfxGetDisplayInfo(0, &display)) {
+      if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
          last_update = PreciseTime();
          if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
             glDisplayVDPI = display->VDensity;
@@ -105,7 +105,7 @@ static void update_dpi(void)
 //********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
 
-ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
+ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -201,19 +201,19 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
          default: {
             log.warning("Invalid path command '%c'", *Value);
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
 
       if (--max_cmds == 0) {
          Path.clear();
-         return log.warning(ERR_BufferOverflow);
+         return log.warning(ERR::BufferOverflow);
       }
 
       Path.push_back(path);
    }
 
-   return (Path.size() >= 2) ? ERR_Okay : ERR_Failed;
+   return (Path.size() >= 2) ? ERR::Okay : ERR::Failed;
 }
 
 //********************************************************************************************************************
@@ -393,7 +393,7 @@ std::string weight_to_style(CSTRING Style, LONG Weight)
    else if (Weight <= 200) weight_name = "Extra Light";
    else if (Weight <= 300) weight_name = "Light";
 
-   if (!StrMatch("Italic", Style)) {
+   if (StrMatch("Italic", Style) IS ERR::Okay) {
       if (weight_name.empty()) return "Italic";
       else return weight_name + " Italic";
    }
@@ -403,18 +403,18 @@ std::string weight_to_style(CSTRING Style, LONG Weight)
 
 //********************************************************************************************************************
 
-ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
+ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
 {
    Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
 
-   if (!Style) return Log.warning(ERR_NullArgs);
+   if (!Style) return Log.warning(ERR::NullArgs);
 
    const std::lock_guard lock{glFontMutex};
 
    std::string family(Family ? Family : "*");
    if (!family.ends_with("*")) family.append(",*");
    CSTRING final_name;
-   if (!fntResolveFamilyName(family.c_str(), &final_name)) family.assign(final_name);
+   if (fntResolveFamilyName(family.c_str(), &final_name) IS ERR::Okay) family.assign(final_name);
 
    std::string style(Style);
    if ((Weight) and (Weight != 400)) {
@@ -426,7 +426,7 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
    const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
    CSTRING location = NULL;
    FMETA meta = FMETA::NIL;
-   if (auto error = fntSelectFont(family.c_str(), style.c_str(), &location, &meta); !error) {
+   if (auto error = fntSelectFont(family.c_str(), style.c_str(), &location, &meta); error IS ERR::Okay) {
       GuardedResource loc(location);
 
       if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
@@ -434,7 +434,7 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
 
          if (glBitmapFonts.contains(key)) {
             *Handle = &glBitmapFonts[key];
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
                fl::Owner(glVectorModule->UID),
@@ -444,9 +444,9 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
                fl::Path(location))) {
             glBitmapFonts.emplace(key, font);
             *Handle = &glBitmapFonts[key];
-            return ERR_Okay;
+            return ERR::Okay;
          }
-         else return ERR_CreateObject;
+         else return ERR::CreateObject;
       }
       else {
          // For scalable fonts the key is made from the location only, ensuring that the face file is loaded
@@ -457,13 +457,13 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
 
          if (!glFreetypeFonts.contains(key)) {
             STRING resolved;
-            if (!ResolvePath(location, RSF::NIL, &resolved)) {
+            if (ResolvePath(location, RSF::NIL, &resolved) IS ERR::Okay) {
                FT_Face ftface;
                FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved };
                if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
                   Log.warning("Fatal error in attempting to load font \"%s\".", resolved);
                   FreeResource(resolved);
-                  return ERR_Failed;
+                  return ERR::Failed;
                }
 
                freetype_font::METRIC_TABLE metrics;
@@ -516,7 +516,7 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
                glFreetypeFonts.try_emplace(key, ftface, styles, metrics, meta);
                FreeResource(resolved);
             }
-            else return Log.warning(ERR_ResolvePath);
+            else return Log.warning(ERR::ResolvePath);
          }
 
          auto &font = glFreetypeFonts[key];
@@ -527,24 +527,24 @@ ERROR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Si
 
                if (font.metrics.contains(style)) {
                   auto new_size = sz.try_emplace(Size, font, font.metrics[style], Size);
-                  if (!new_size.first->second.ft_size) return ERR_Failed; // Verify success
+                  if (!new_size.first->second.ft_size) return ERR::Failed; // Verify success
                   *Handle = &new_size.first->second;
-                  return ERR_Okay;
+                  return ERR::Okay;
                }
                else {
                   if (!font.metrics.empty()) Log.warning("Font metrics do not support style '%s'", style.c_str());
                   auto new_size = sz.try_emplace(Size, font, Size);
-                  if (!new_size.first->second.ft_size) return ERR_Failed; // Verify success
+                  if (!new_size.first->second.ft_size) return ERR::Failed; // Verify success
                   *Handle = &new_size.first->second;
-                  return ERR_Okay;
+                  return ERR::Okay;
                }
             }
             else {
                *Handle = &size->second;
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
-         else return ERR_Search;
+         else return ERR::Search;
       }
    }
    else return error;

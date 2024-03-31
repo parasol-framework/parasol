@@ -17,7 +17,7 @@ Support for audio recording is not currently available.
 *********************************************************************************************************************/
 
 #ifndef ALSA_ENABLED
-static ERROR init_audio(extAudio *Self)
+static ERR init_audio(extAudio *Self)
 {
    Self->BitDepth     = 16;
    Self->Stereo       = true;
@@ -27,7 +27,7 @@ static ERROR init_audio(extAudio *Self)
    if ((Self->Volumes[0].Flags & VCF::MUTE) != VCF::NIL) Self->Mute = true;
    else Self->Mute = false;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 #endif
 
@@ -44,18 +44,18 @@ An inactive audio object can operate in a limited fashion but is without access 
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
+static ERR AUDIO_Activate(extAudio *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Initialising) return ERR_Okay;
+   if (Self->Initialising) return ERR::Okay;
 
    log.branch();
 
    Self->Initialising = true;
 
-   ERROR error;
-   if ((error = init_audio(Self)) != ERR_Okay) {
+   ERR error;
+   if ((error = init_audio(Self)) != ERR::Okay) {
       Self->Initialising = false;
       return error;
    }
@@ -80,7 +80,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
-   if (!AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer)) {
+   if (AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer) IS ERR::Okay) {
       // Pick the correct mixing routines
 
       if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
@@ -104,12 +104,12 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
          if (auto strerr = sndCreateBuffer(Self, &wave, Self->MixBufferSize, 0x7fffffff, (PlatformData *)Self->PlatformData, TRUE)) {
             log.warning(strerr);
             Self->Initialising = false;
-            return ERR_Failed;
+            return ERR::Failed;
          }
 
          if (sndPlay((PlatformData *)Self->PlatformData, TRUE, 0)) {
             Self->Initialising = false;
-            return log.warning(ERR_Failed);
+            return log.warning(ERR::Failed);
          }
       #endif
 
@@ -117,11 +117,11 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
       // is executed by the client.
 
       Self->Initialising = false;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       Self->Initialising = false;
-      return log.warning(ERR_AllocMemory);
+      return log.warning(ERR::AllocMemory);
    }
 }
 
@@ -174,11 +174,11 @@ AllocMemory: Failed to allocate enough memory to hold the sample data.
 
 *********************************************************************************************************************/
 
-ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
+ERR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Data: %p, Length: %d", Args->Data, Args->DataSize);
 
@@ -219,13 +219,13 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    if ((sample.SampleType IS SFM::NIL) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample.Data = NULL;
    }
-   else if (!AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data)) {
+   else if (AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data) IS ERR::Okay) {
       CopyMemory(Args->Data, sample.Data, Args->DataSize);
    }
-   else return log.warning(ERR_AllocMemory);
+   else return log.warning(ERR::AllocMemory);
 
    Args->Result = idx;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -287,12 +287,12 @@ AllocMemory: Failed to allocate the stream buffer.
 
 static const LONG MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in bytes
 
-static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
+static ERR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (Args->SampleFormat IS SFM::NIL)) return log.warning(ERR_NullArgs);
-   if (!Args->Callback.Type) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->SampleFormat IS SFM::NIL)) return log.warning(ERR::NullArgs);
+   if (!Args->Callback.Type) return log.warning(ERR::NullArgs);
 
    log.branch("Length: %d", Args->SampleLength);
 
@@ -343,12 +343,12 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
    }
 
-   if (AllocMemory(buffer_len, MEM::DATA|MEM::NO_CLEAR, &sample.Data) != ERR_Okay) {
-      return ERR_AllocMemory;
+   if (AllocMemory(buffer_len, MEM::DATA|MEM::NO_CLEAR, &sample.Data) != ERR::Okay) {
+      return ERR::AllocMemory;
    }
 
    Args->Result = idx;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -372,18 +372,18 @@ NoSupport: PC speaker support is not available.
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
+static ERR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
 #ifdef __linux__
    LONG console;
    if ((console = GetResource(RES::CONSOLE_FD)) != -1) {
       ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((ULONG)Args->Duration << 16));
-      return ERR_Okay;
+      return ERR::Okay;
    }
 #endif
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -406,19 +406,19 @@ Args
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
+static ERR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Handle: $%.8x", Args->Handle);
 
    LONG index = Args->Handle>>16;
-   if ((index < 0) or (index >= std::ssize(Self->Sets))) log.warning(ERR_Args);
+   if ((index < 0) or (index >= std::ssize(Self->Sets))) log.warning(ERR::Args);
 
    Self->Sets[index].clear(); // We can't erase because that would mess up other channel handles.
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -430,7 +430,7 @@ resources back to the host system.  The audio object will remain in a suspended 
 -END-
 *********************************************************************************************************************/
 
-static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
+static ERR AUDIO_Deactivate(extAudio *Self, APTR Void)
 {
    pf::Log log;
 
@@ -438,7 +438,7 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 
    if (Self->Initialising) {
       log.msg("Audio is still in the process of initialisation.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    acClear(Self);
@@ -449,12 +449,12 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
    //if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = 0; }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR AUDIO_Free(extAudio *Self, APTR Void)
+static ERR AUDIO_Free(extAudio *Self, APTR Void)
 {
    if ((Self->Flags & ADF::AUTO_SAVE) != ADF::NIL) Self->saveSettings();
 
@@ -476,12 +476,12 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 
    Self->~extAudio();
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR AUDIO_Init(extAudio *Self, APTR Void)
+static ERR AUDIO_Init(extAudio *Self, APTR Void)
 {
    pf::Log log;
 
@@ -489,12 +489,12 @@ static ERROR AUDIO_Init(extAudio *Self, APTR Void)
    Self->OutputRate = 44100; // Mix rate is forced for direct sound
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
+static ERR AUDIO_NewObject(extAudio *Self, APTR Void)
 {
    pf::Log log;
 
@@ -511,7 +511,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->MaxChannels = 8;
 
    const SystemState *state = GetSystemState();
-   if ((!StrMatch(state->Platform, "Native")) or (!StrMatch(state->Platform, "Linux"))) {
+   if ((StrMatch(state->Platform, "Native") IS ERR::Okay) or (StrMatch(state->Platform, "Linux") IS ERR::Okay)) {
       Self->Flags |= ADF::SYSTEM_WIDE;
    }
 
@@ -533,7 +533,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 
    load_config(Self);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -563,17 +563,17 @@ AllocMemory: Memory for the audio channels could not be allocated.
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
+static ERR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Total: %d", Args->Total);
 
    Args->Result = 0;
    if ((Args->Total < 0) or (Args->Total > 64)) {
-      return log.warning(ERR_OutOfRange);
+      return log.warning(ERR::OutOfRange);
    }
 
    // Bear in mind that the +1 is for channel set 0 being a dummy entry.
@@ -591,7 +591,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    Self->Sets[index].Commands.reserve(32);
 
    Args->Result = index<<16;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -617,19 +617,19 @@ OutOfRange: The provided sample handle is not within the valid range.
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
+static ERR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Sample: %d", Args->Handle);
 
-   if ((Args->Handle < 1) or (Args->Handle >= std::ssize(Self->Samples))) return log.warning(ERR_OutOfRange);
+   if ((Args->Handle < 1) or (Args->Handle >= std::ssize(Self->Samples))) return log.warning(ERR::OutOfRange);
 
    Self->Samples[Args->Handle].clear();
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -638,12 +638,12 @@ SaveSettings: Saves the current audio settings.
 -END-
 *********************************************************************************************************************/
 
-static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
+static ERR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
    objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
 
    if (file.ok()) return Self->saveToObject(*file);
-   else return ERR_CreateFile;
+   else return ERR::CreateFile;
 }
 
 /*********************************************************************************************************************
@@ -652,11 +652,11 @@ SaveToObject: Saves the current audio settings to another object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
+static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
    objConfig::create config = { };
    if (config.ok()) {
@@ -746,7 +746,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       config->saveToObject(Args->Dest);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -773,23 +773,23 @@ Failed: Sample is not a stream.
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Args)
+static ERR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.msg("Sample: #%d, Length: %" PF64, Args->Sample, Args->Length);
 
-   if ((Args->Sample < 0) or (Args->Sample >= std::ssize(Self->Samples))) return log.warning(ERR_Args);
+   if ((Args->Sample < 0) or (Args->Sample >= std::ssize(Self->Samples))) return log.warning(ERR::Args);
 
    auto &sample = Self->Samples[Args->Sample];
 
    if (sample.Stream) {
       sample.StreamLength = BYTELEN(Args->Length);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Failed);
+   else return log.warning(ERR::Failed);
 }
 
 /*********************************************************************************************************************
@@ -828,7 +828,7 @@ OutOfRange: The Volume or Index is out of the acceptable range.
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
+static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 {
    pf::Log log;
 
@@ -839,12 +839,12 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    snd_mixer_elem_t *elem;
    long pmin, pmax;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
-      return log.warning(ERR_OutOfRange);
+      return log.warning(ERR::OutOfRange);
    }
-   if (Self->Volumes.empty()) return log.warning(ERR_NoSupport);
-   if (!Self->MixHandle) return ERR_NotInitialised;
+   if (Self->Volumes.empty()) return log.warning(ERR::NoSupport);
+   if (!Self->MixHandle) return ERR::NotInitialised;
 
    // Determine what mixer we are going to adjust
 
@@ -853,14 +853,14 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
          if (!StrMatch(Args->Name, Self->Volumes[index].Name.c_str())) break;
       }
 
-      if (index IS (LONG)Self->Volumes.size()) return ERR_Search;
+      if (index IS (LONG)Self->Volumes.size()) return ERR::Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR_OutOfRange;
+      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR::OutOfRange;
    }
 
-   if (!StrMatch("Master", Self->Volumes[index].Name.c_str())) {
+   if (StrMatch("Master", Self->Volumes[index].Name.c_str()) IS ERR::Okay) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
@@ -884,7 +884,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    snd_mixer_selem_id_set_name(sid, Self->Volumes[index].Name.c_str());
    if (!(elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
       log.msg("Mixer \"%s\" not found.", Self->Volumes[index].Name.c_str());
-      return ERR_Search;
+      return ERR::Search;
    }
 
    if (Args->Volume >= 0) {
@@ -951,33 +951,33 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    EVENTID evid = GetEventID(EVG::AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
-   return ERR_Okay;
+   return ERR::Okay;
 
 #else
 
    LONG index;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
-      return log.warning(ERR_OutOfRange);
+      return log.warning(ERR::OutOfRange);
    }
-   if (Self->Volumes.empty()) return log.warning(ERR_NoSupport);
+   if (Self->Volumes.empty()) return log.warning(ERR::NoSupport);
 
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
       for (index=0; index < (LONG)Self->Volumes.size(); index++) {
-         if (!StrMatch(Args->Name, Self->Volumes[index].Name.c_str())) break;
+         if (StrMatch(Args->Name, Self->Volumes[index].Name.c_str()) IS ERR::Okay) break;
       }
 
-      if (index IS (LONG)Self->Volumes.size()) return ERR_Search;
+      if (index IS (LONG)Self->Volumes.size()) return ERR::Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR_OutOfRange;
+      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR::OutOfRange;
    }
 
-   if (!StrMatch("Master", Self->Volumes[index].Name.c_str())) {
+   if (StrMatch("Master", Self->Volumes[index].Name.c_str()) IS ERR::Okay) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
@@ -1021,7 +1021,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
 
-   return ERR_Okay;
+   return ERR::Okay;
 
 #endif
 }
@@ -1036,13 +1036,13 @@ recommended value for CD quality playback.
 
 *********************************************************************************************************************/
 
-static ERROR SET_BitDepth(extAudio *Self, LONG Value)
+static ERR SET_BitDepth(extAudio *Self, LONG Value)
 {
    if (Value IS 16) Self->BitDepth = 16;
    else if (Value IS 8) Self->BitDepth = 8;
    else if (Value IS 24) Self->BitDepth = 24;
-   else return ERR_Failed;
-   return ERR_Okay;
+   else return ERR::Failed;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1058,13 +1058,13 @@ The default device can always be referenced with a name of `default`.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Device(extAudio *Self, CSTRING *Value)
+static ERR GET_Device(extAudio *Self, CSTRING *Value)
 {
    *Value = Self->Device.c_str();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Device(extAudio *Self, CSTRING Value)
+static ERR SET_Device(extAudio *Self, CSTRING Value)
 {
    if ((!Value) or (!*Value)) Self->Device = "default";
    else {
@@ -1072,7 +1072,7 @@ static ERROR SET_Device(extAudio *Self, CSTRING Value)
       std::transform(Self->Device.begin(), Self->Device.end(), Self->Device.begin(), ::tolower);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1104,13 +1104,13 @@ a value between 0 and 1.0.
 
 *********************************************************************************************************************/
 
-static ERROR GET_MasterVolume(extAudio *Self, DOUBLE *Value)
+static ERR GET_MasterVolume(extAudio *Self, DOUBLE *Value)
 {
    *Value = Self->MasterVolume;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
+static ERR SET_MasterVolume(extAudio *Self, DOUBLE Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -1134,10 +1134,10 @@ in seconds and will differ between platforms and user configurations.
 
 *********************************************************************************************************************/
 
-static ERROR GET_MixerLag(extAudio *Self, DOUBLE *Value)
+static ERR GET_MixerLag(extAudio *Self, DOUBLE *Value)
 {
    *Value = Self->MixerLag();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1150,19 +1150,19 @@ field to FALSE.  Muting does not disable the audio system, which is achieved by 
 
 *********************************************************************************************************************/
 
-static ERROR GET_Mute(extAudio *Self, LONG *Value)
+static ERR GET_Mute(extAudio *Self, LONG *Value)
 {
    *Value = FALSE;
-   for (LONG i=0; i < (LONG)Self->Volumes.size(); i++) {
-      if (!StrMatch("Master", Self->Volumes[i].Name.c_str())) {
+   for (LONG i=0; i < std::ssize(Self->Volumes); i++) {
+      if (StrMatch("Master", Self->Volumes[i].Name.c_str()) IS ERR::Okay) {
          if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) *Value = TRUE;
          break;
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Mute(extAudio *Self, LONG Value)
+static ERR SET_Mute(extAudio *Self, LONG Value)
 {
    struct sndSetVolume setvol = {
       .Index   = 0,
@@ -1186,12 +1186,12 @@ The OutputRate can only be set prior to initialisation, further attempts to set 
 
 *********************************************************************************************************************/
 
-static ERROR SET_OutputRate(extAudio *Self, LONG Value)
+static ERR SET_OutputRate(extAudio *Self, LONG Value)
 {
-   if (Value < 0) return ERR_OutOfRange;
+   if (Value < 0) return ERR::OutOfRange;
    else if (Value > 44100) Self->OutputRate = 44100;
    else Self->OutputRate = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1207,12 +1207,12 @@ The minimum period size is 1K and maximum 16K.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Periods(extAudio *Self, LONG Value)
+static ERR SET_Periods(extAudio *Self, LONG Value)
 {
    Self->Periods = Value;
    if (Self->Periods < 2) Self->Periods = 2;
    else if (Self->Periods > 16) Self->Periods = 16;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1224,12 +1224,12 @@ Refer to the #Periods field for further information.
 
 *********************************************************************************************************************/
 
-static ERROR SET_PeriodSize(extAudio *Self, LONG Value)
+static ERR SET_PeriodSize(extAudio *Self, LONG Value)
 {
    Self->PeriodSize = Value;
    if (Self->PeriodSize < 1024) Self->PeriodSize = 1024;
    else if (Self->PeriodSize > 16384) Self->PeriodSize = 16384;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1246,18 +1246,18 @@ of low quality.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Quality(extAudio *Self, LONG Value)
+static ERR SET_Quality(extAudio *Self, LONG Value)
 {
    Self->Quality = Value;
 
    Self->Flags &= ~(ADF::FILTER_LOW|ADF::FILTER_HIGH|ADF::OVER_SAMPLING);
 
-   if (Self->Quality < 10) return ERR_Okay;
+   if (Self->Quality < 10) return ERR::Okay;
    else if (Self->Quality < 33) Self->Flags |= ADF::FILTER_LOW;
    else if (Self->Quality < 66) Self->Flags |= ADF::FILTER_HIGH;
    else Self->Flags |= ADF::OVER_SAMPLING|ADF::FILTER_HIGH;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1269,18 +1269,18 @@ Stereo: Set to TRUE for stereo output and FALSE for mono output.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Stereo(extAudio *Self, LONG *Value)
+static ERR GET_Stereo(extAudio *Self, LONG *Value)
 {
    if ((Self->Flags & ADF::STEREO) != ADF::NIL) *Value = TRUE;
    else *Value = FALSE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Stereo(extAudio *Self, LONG Value)
+static ERR SET_Stereo(extAudio *Self, LONG Value)
 {
    if (Value IS TRUE) Self->Flags |= ADF::STEREO;
    else Self->Flags &= ~ADF::STEREO;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1300,15 +1300,14 @@ static void load_config(extAudio *Self)
       config->read("AUDIO", "BitDepth", &Self->BitDepth);
 
       LONG value;
-      if (!config->read("AUDIO", "Periods", &value)) SET_Periods(Self, value);
-      if (!config->read("AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
-
-      if (config->read("AUDIO", "Device", Self->Device)) Self->Device = "default";
+      if (config->read("AUDIO", "Periods", &value) IS ERR::Okay) SET_Periods(Self, value);
+      if (config->read("AUDIO", "PeriodSize", &value) IS ERR::Okay) SET_PeriodSize(Self, value);
+      if (config->read("AUDIO", "Device", Self->Device) != ERR::Okay) Self->Device = "default";
 
       std::string str;
       Self->Flags |= ADF::STEREO;
-      if (!config->read("AUDIO", "Stereo", str)) {
-         if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF::STEREO;
+      if (config->read("AUDIO", "Stereo", str) IS ERR::Okay) {
+         if (StrMatch("FALSE", str.c_str()) IS ERR::Okay) Self->Flags &= ~ADF::STEREO;
       }
 
       if ((Self->BitDepth != 8) and (Self->BitDepth != 16) and (Self->BitDepth != 24)) Self->BitDepth = 16;
@@ -1317,9 +1316,9 @@ static void load_config(extAudio *Self)
       // Find the mixer section, then load the mixer information
 
       ConfigGroups *groups;
-      if (!config->getPtr(FID_Data, &groups)) {
+      if (config->getPtr(FID_Data, &groups) IS ERR::Okay) {
          for (auto& [group, keys] : groups[0]) {
-            if (!StrMatch("MIXER", group.c_str())) {
+            if (StrMatch("MIXER", group.c_str()) IS ERR::Okay) {
                Self->Volumes.clear();
                Self->Volumes.resize(keys.size());
 
@@ -1379,7 +1378,7 @@ static const FieldArray clAudioFields[] = {
 
 //********************************************************************************************************************
 
-ERROR add_audio_class(void)
+ERR add_audio_class(void)
 {
    clAudio = objMetaClass::create::global(
       fl::BaseClassID(ID_AUDIO),
@@ -1392,7 +1391,7 @@ ERROR add_audio_class(void)
       fl::Size(sizeof(extAudio)),
       fl::Path(MOD_PATH));
 
-   return clAudio ? ERR_Okay : ERR_AddClass;
+   return clAudio ? ERR::Okay : ERR::AddClass;
 }
 
 void free_audio_class(void)

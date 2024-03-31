@@ -3,7 +3,9 @@
 -- Refer to data_errors.c for the official description strings for each error code.
 
 function declareErrors()
-  enum("ERR", { start=0, comment="Universal error codes" },
+  cpp_include("<cstdint>")
+
+  enum("ERR", { start=0, comment="Universal error codes", type="int32" },
     "Okay|True",
     "False",            -- Non-fatal
     "LimitedSuccess",   -- Limited success.
@@ -82,7 +84,7 @@ function declareErrors()
     "NoMatchingObject",     -- Unable to find object
     "AccessMemory",
     "MissingPath",
-    "NotLocked",           -- Attempted to release a lock that doesn't exist or doesn't belong to you
+    "NotLocked",           -- Attempted to release a lock that doesn't exist or doesn't belong to the caller
     "NoSearchResult",
     "StatementUnsatisfied",
     "ObjectCorrupt",
@@ -131,7 +133,7 @@ function declareErrors()
     "SanityFailure",           -- A sanity check failed
     "OutOfSpace",              -- Run out of space, no room to complete request
     "GetSurfaceInfo",          -- GetSurfaceInfo() failed
-    "Finished|EOF|EndOfFile|OutOfData", -- Operation or process loop finished
+    "Finished|EndOfFile|OutOfData", -- Operation or process loop finished
     "Syntax|StringFormat",     -- Invalid syntax detected
     "InvalidState",            -- Object was in an invalid state for processing.
     "HostNotFound",            -- The internet host name could not be resolved
@@ -195,11 +197,12 @@ function declareErrors()
     "SetValueNotPointer",      -- Attempted to set a pointer field with an incompatible value.
     "SetValueNotArray",        -- Attempted to set an array field with an incompatible value.
     "SetValueNotLookup",       -- Attempted to set a lookup field with an incompatible value.
-    "END") -- NB: Any new error messages need to be added to data_errors.c manually.
+    "END",
+    { Notified = 0x40000000 }
+  ) -- NB: Any new error messages need to be added to data_errors.c manually.
 
   const("ERF", { comment="Special error flags" }, {
-    Notified=0x40000000,
-    Delay=0x20000000
+    Notified=0x40000000
   })
 end
 

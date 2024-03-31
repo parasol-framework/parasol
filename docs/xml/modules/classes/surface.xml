@@ -144,7 +144,7 @@ the surface area first).</li>
     <method>
       <name>AddCallback</name>
       <comment>Inserts a function hook into the drawing process of a surface object.</comment>
-      <prototype>ERROR drwAddCallback(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR drwAddCallback(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Pointer to the callback routine or NULL to remove callbacks for the given Object.</param>
       </input>
@@ -164,7 +164,7 @@ the surface area first).</li>
     <method>
       <name>Expose</name>
       <comment>Redraws a surface region to the display, preferably from its graphics buffer.</comment>
-      <prototype>ERROR drwExpose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+      <prototype>ERR drwExpose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
       <input>
         <param type="LONG" name="X">X coordinate of the expose area.</param>
         <param type="LONG" name="Y">Y coordinate of the expose area.</param>
@@ -183,7 +183,7 @@ the surface area first).</li>
     <method>
       <name>InvalidateRegion</name>
       <comment>Redraws all of the content in a surface object.</comment>
-      <prototype>ERROR drwInvalidateRegion(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <prototype>ERR drwInvalidateRegion(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
       <input>
         <param type="LONG" name="X">X coordinate of the region to invalidate.</param>
         <param type="LONG" name="Y">Y coordinate of the region to invalidate.</param>
@@ -204,7 +204,7 @@ the surface area first).</li>
     <method>
       <name>Minimise</name>
       <comment>For hosted surfaces only, this method will minimise the surface to an icon.</comment>
-      <prototype>ERROR drwMinimise(OBJECTPTR Object)</prototype>
+      <prototype>ERR drwMinimise(OBJECTPTR Object)</prototype>
       <description>
 <p>If a surface is hosted in a desktop window, calling the Minimise method will perform the default minimise action on that window.  On a platform such as Microsoft Windows, this would normally result in the window being minimised to the task bar.</p>
 <p>Calling Minimise on a surface that is already in the minimised state may result in the host window being restored to the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the host platform.</p>
@@ -214,7 +214,7 @@ the surface area first).</li>
     <method>
       <name>RemoveCallback</name>
       <comment>Removes a callback previously inserted by AddCallback().</comment>
-      <prototype>ERROR drwRemoveCallback(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR drwRemoveCallback(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Pointer to the callback routine to remove, or NULL to remove all assoicated callback routines.</param>
       </input>
@@ -231,7 +231,7 @@ the surface area first).</li>
     <method>
       <name>ResetDimensions</name>
       <comment>Changes the dimensions of a surface.</comment>
-      <prototype>ERROR drwResetDimensions(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions)</prototype>
+      <prototype>ERR drwResetDimensions(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions)</prototype>
       <input>
         <param type="DOUBLE" name="X">New X coordinate.</param>
         <param type="DOUBLE" name="Y">New Y coordinate.</param>
@@ -255,7 +255,7 @@ the surface area first).</li>
     <method>
       <name>ScheduleRedraw</name>
       <comment>Schedules a redraw operation for the next frame.</comment>
-      <prototype>ERROR drwScheduleRedraw(OBJECTPTR Object)</prototype>
+      <prototype>ERR drwScheduleRedraw(OBJECTPTR Object)</prototype>
       <description>
 <p>Use ScheduleRedraw to indicate that a surface needs to be drawn to the display.  The surface and all child surfaces will be drawn on the next frame cycle (typically 1/60th of a second).  All manual draw operations for the target surface are ignored until the scheduled operation is completed.</p>
 <p>Scheduling is ideal in situations where a cluster of redraw events may occur within a tight time period, and it would be inefficient to draw those changes to the display individually.</p>
@@ -269,7 +269,7 @@ the surface area first).</li>
     <method>
       <name>SetDisplay</name>
       <comment>Changes the screen resolution (applies to top-level surface objects only).</comment>
-      <prototype>ERROR drwSetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</prototype>
+      <prototype>ERR drwSetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</prototype>
       <input>
         <param type="LONG" name="X">The horizontal coordinate/offset for the display.</param>
         <param type="LONG" name="Y">The vertical coordinate/offset for the display.</param>
@@ -296,7 +296,7 @@ the surface area first).</li>
     <method>
       <name>SetOpacity</name>
       <comment>Alters the opacity of a surface object.</comment>
-      <prototype>ERROR drwSetOpacity(OBJECTPTR Object, DOUBLE Value, DOUBLE Adjustment)</prototype>
+      <prototype>ERR drwSetOpacity(OBJECTPTR Object, DOUBLE Value, DOUBLE Adjustment)</prototype>
       <input>
         <param type="DOUBLE" name="Value">The new opacity value between 0 and 100% (ignored if you have set the Adjustment parameter).</param>
         <param type="DOUBLE" name="Adjustment">Adjustment value to add or subtract from the existing opacity (set to zero if you want to set a fixed Value instead).</param>
@@ -629,7 +629,7 @@ the surface area first).</li>
       <description>
 <p>Setting the PopOver field to a sibling surface ID will keep the surface in front of its sibling at all times.  For dialog windows, it is recommended that the popover and modal options be combined together to prevent interaction with other surfaces created by the current program.</p>
 <p>Setting the PopOver field to zero will return the surface to its normal state.</p>
-<p>If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's Surface field, if available.  If this does not yield a valid surface then ERR_InvalidObject is returned.</p>
+<p>If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's Surface field, if available.  If this does not yield a valid surface then ERR::InvalidObject is returned.</p>
       </description>
     </field>
 
@@ -768,7 +768,7 @@ the surface area first).</li>
       <description>
 <p>The width of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the Width and Height at the same time.  A client can set the Width as a fixed value by default, or as a scaled value in conjunction with the <code>FD_SCALED</code> flag.  Scaled values are multiplied by the width of their parent container.</p>
 <p>Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
-<p>Width values of 0 or less are illegal, and will result in an <code>ERR_OutOfRange</code> error-code.</p>
+<p>Width values of 0 or less are illegal, and will result in an <code>ERR::OutOfRange</code> error-code.</p>
       </description>
     </field>
 

@@ -51,7 +51,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="DMF">INT</type>
       <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, SCALED_X and SCALED_Y are applicable.</p>
+<p>Of the Dimension flags that are available, only <code>FIXED_X</code>, <code>FIXED_Y</code>, <code>SCALED_X</code> and <code>SCALED_Y</code> are applicable.</p>
 <types lookup="DMF"/>
       </description>
     </field>
@@ -68,11 +68,11 @@
 
     <field>
       <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
+      <comment>Defines image tiling behaviour, if desired.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
+<p>The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the available space.  It is secondary to the application of <field>AspectRatio</field>.  The default setting is <code>CLIP</code>, which prevents the image from being tiled.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -83,7 +83,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
+<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is <code>BOUNDING_BOX</code>.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>

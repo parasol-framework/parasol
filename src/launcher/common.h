@@ -13,6 +13,6 @@ enum IntegrityLevel {
 
 extern "C" {
 IntegrityLevel get_integrity_level();
-ERROR create_low_process(const char *ExePath, BYTE);
+ERR create_low_process(const char *ExePath, BYTE);
 int get_exe(char *Buffer, int Size);
 };

@@ -78,7 +78,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Value;
+         if (StrMatch(Attribs[a].Name, Name) IS ERR::Okay) return &Attribs[a].Value;
       }
       return NULL;
    }
@@ -119,7 +119,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
     int(XMF) Flags  # Optional user flags
     int Start       # Starting cursor position (tag index) used for certain operations
     int Modified    # Modification timestamp
-    int ParseError  # Private
+    error ParseError  # Private
     int LineNo      # Private
   ]],
   nil,
@@ -132,13 +132,13 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
   c_insert([[
 //********************************************************************************************************************
 
-template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
 }
 
-template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
@@ -147,7 +147,7 @@ template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Fl
 inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
-      if (!StrMatch(Name, a->Name)) {
+      if (StrMatch(Name, a->Name) IS ERR::Okay) {
          a->Name  = Name;
          a->Value = Value;
          return;
@@ -174,15 +174,16 @@ inline std::string xmlGetContent(const XMLTag &Tag) {
    return value;
 }
 
-template <class T> inline ERROR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
+template <class T> inline ERR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
-   auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
-   if (!error) {
+
+   if (auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert); error IS ERR::Okay) {
       struct xmlGetTag get = { insert.Result };
       error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &get);
       *Result = get.Result;
+      return error;
    }
-   return(error);
+   else return error;
 }
 
 //********************************************************************************************************************

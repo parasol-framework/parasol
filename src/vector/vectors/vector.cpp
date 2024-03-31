@@ -29,7 +29,7 @@ unless otherwise documented.
 static std::unordered_map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
 static std::mutex glResizeLock;
 
-static ERROR VECTOR_Push(extVector *, struct vecPush *);
+static ERR VECTOR_Push(extVector *, struct vecPush *);
 
 //********************************************************************************************************************
 // For the use of the VectorScene's Debug() method.
@@ -88,10 +88,10 @@ static void validate_tree(extVector *Vector)
 //********************************************************************************************************************
 // Determine the parent object, based on the owner.
 
-static ERROR set_parent(extVector *Self, OBJECTPTR Owner)
+static ERR set_parent(extVector *Self, OBJECTPTR Owner)
 {
    if ((Owner->Class->ClassID != ID_VECTORSCENE) and (Owner->Class->BaseClassID != ID_VECTOR)) {
-      return ERR_UnsupportedOwner;
+      return ERR::UnsupportedOwner;
    }
 
    Self->Parent = Owner;
@@ -127,14 +127,14 @@ static ERROR set_parent(extVector *Self, OBJECTPTR Owner)
 
       Self->Scene = (objVectorScene *)Self->Parent;
    }
-   else return ERR_UnsupportedOwner;
+   else return ERR::UnsupportedOwner;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 #if 0
-static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if (Self->FeedbackSubscriptions) {
@@ -150,7 +150,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
 #endif
 //********************************************************************************************************************
 
-static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = NULL;
@@ -158,7 +158,7 @@ static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERROR Re
 
 //********************************************************************************************************************
 
-static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = NULL;
@@ -166,7 +166,7 @@ static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 
 //********************************************************************************************************************
 
-static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
@@ -174,7 +174,7 @@ static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
 
 //********************************************************************************************************************
 
-static void notify_free_resize_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_resize_event(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if (auto scene = (extVectorScene *)Self->Scene) {
@@ -197,11 +197,11 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Debug(extVector *Self, APTR Void)
+static ERR VECTOR_Debug(extVector *Self, APTR Void)
 {
    LONG level = 0;
    debug_tree(Self, level);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -210,11 +210,11 @@ Disable: Disabling a vector can be used to trigger style changes and prevent use
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Disable(extVector *Self, APTR Void)
+static ERR VECTOR_Disable(extVector *Self, APTR Void)
 {
    // It is up to the client to monitor the Disable action if any reaction is required.
    Self->Flags |= VF::DISABLED;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -230,7 +230,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
+static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
       if (Self->dirty()) gen_vector_tree(Self);
@@ -251,13 +251,13 @@ static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       pf::ScopedObjectLock surface(Self->Scene->SurfaceID);
       if (surface.granted()) {
          Action(MT_DrwScheduleRedraw, *surface, NULL);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AccessObject;
+      else return ERR::AccessObject;
    }
    else {
       pf::Log log;
-      return log.warning(ERR_FieldNotSet);
+      return log.warning(ERR::FieldNotSet);
    }
 }
 
@@ -267,16 +267,16 @@ Enable: Reverses the effects of disabling the vector.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Enable(extVector *Self, APTR Void)
+static ERR VECTOR_Enable(extVector *Self, APTR Void)
 {
   // It is up to the client to subscribe to the Enable action if any activity needs to take place.
   Self->Flags &= ~VF::DISABLED;
-  return ERR_Okay;
+  return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_Free(extVector *Self, APTR Void)
+static ERR VECTOR_Free(extVector *Self, APTR Void)
 {
    Self->~extVector();
 
@@ -358,7 +358,7 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL;
    delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = NULL;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -378,9 +378,9 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
+static ERR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
 {
-   if ((!Args) or (!Args->Matrix)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Matrix)) return ERR::NullArgs;
 
    // Clean up the linked list
 
@@ -399,7 +399,7 @@ static ERROR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
    FreeResource(Args->Matrix);
 
    mark_dirty(Self, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -435,18 +435,18 @@ NotPossible: The vector does not support path generation.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
+static ERR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   if (!Self->Scene) return log.warning(ERR_NotInitialised);
+   if (!Self->Scene) return log.warning(ERR::NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector so that BX/BY etc are defined.
       if (Self->dirty()) gen_vector_tree(Self);
 
-      if (!Self->BasePath.total_vertices()) return ERR_NoData;
+      if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
       auto bounds = TCR_EXPANDING;
 
@@ -467,7 +467,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       Args->Y      = bounds.top;
       Args->Width  = bounds.width();
       Args->Height = bounds.height();
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
       if (Self->dirty()) gen_vector_tree(Self);
@@ -477,9 +477,9 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       Args->Y      = view->vpBounds.top;
       Args->Width  = view->vpBounds.width();
       Args->Height = view->vpBounds.height();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_NotPossible;
+   else return ERR::NotPossible;
 }
 
 /*********************************************************************************************************************
@@ -488,25 +488,25 @@ Hide: Changes the vector's visibility setting to hidden.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Hide(extVector *Self, APTR Void)
+static ERR VECTOR_Hide(extVector *Self, APTR Void)
 {
    Self->Visibility = VIS::HIDDEN;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_Init(extVector *Self, APTR Void)
+static ERR VECTOR_Init(extVector *Self, APTR Void)
 {
    pf::Log log;
 
    if (Self->Class->ClassID IS ID_VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if (!Self->Parent) {
-      if (auto error = set_parent(Self, Self->Owner)) return log.warning(error);
+      if (auto error = set_parent(Self, Self->Owner); error != ERR::Okay) return log.warning(error);
    }
 
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
@@ -533,7 +533,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -542,7 +542,7 @@ MoveToBack: Move a vector to the back of its stack.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_MoveToBack(extVector *Self, APTR Void)
+static ERR VECTOR_MoveToBack(extVector *Self, APTR Void)
 {
    struct vecPush push = { -32768 };
    return VECTOR_Push(Self, &push);
@@ -554,7 +554,7 @@ MoveToFront: Move a vector to the front of its stack.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_MoveToFront(extVector *Self, APTR Void)
+static ERR VECTOR_MoveToFront(extVector *Self, APTR Void)
 {
    struct vecPush push = { 32767 };
    return VECTOR_Push(Self, &push);
@@ -562,7 +562,7 @@ static ERROR VECTOR_MoveToFront(extVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
+static ERR VECTOR_NewObject(extVector *Self, APTR Void)
 {
    new (Self) extVector;
    Self->StrokeOpacity = 1.0;
@@ -580,25 +580,25 @@ static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
    Self->Dirty         = RC::ALL;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
+static ERR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
    pf::Log log;
 
-   if (!Self->Class->ClassID) return ERR_Okay;
+   if (!Self->Class->ClassID) return ERR::Okay;
 
    // Modifying the owner after the root vector has been established is not permitted.
    // The client should instead create a new object under the target and transfer the field values.
 
-   if (Self->initialised()) return log.warning(ERR_AlreadyDefined);
+   if (Self->initialised()) return log.warning(ERR::AlreadyDefined);
 
    set_parent(Self, Args->NewOwner);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -625,12 +625,12 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
+static ERR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    VectorMatrix *transform;
-   if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &transform)) {
+   if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &transform) IS ERR::Okay) {
       // Insert transform at the start of the list.
 
       transform->Vector = Self;
@@ -646,9 +646,9 @@ static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
       Args->Transform = transform;
 
       mark_dirty(Self, RC::TRANSFORM);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -672,15 +672,15 @@ NoSupport: The vector type does not support path generation.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
+static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (Self->dirty()) gen_vector_tree(Self);
 
-   if (!Self->BasePath.total_vertices()) return ERR_NoData;
+   if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
    if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
       auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
@@ -691,7 +691,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       vertices.vertex(2, &z.x, &z.y);
       vertices.vertex(3, &w.x, &w.y);
 
-      if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR_Okay;
+      if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR::Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORRECTANGLE) {
       agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
@@ -703,26 +703,26 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       t_path.vertex(&z.x, &z.y);
       t_path.vertex(&w.x, &w.y);
 
-      if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR_Okay;
+      if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR::Okay;
    }
    else {
       // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
 
       auto path = Self->Bounds.as_path(Self->Transform);
       if (get_bounds(path).hit_test(Args->X, Args->Y)) {
-         if ((Self->DisableHitTesting) or (Self->Class->ClassID IS ID_VECTORTEXT)) return ERR_Okay;
+         if ((Self->DisableHitTesting) or (Self->Class->ClassID IS ID_VECTORTEXT)) return ERR::Okay;
          else {
             // Full hit testing using the true path.  TODO: Find out if there are more optimal hit testing methods.
 
             agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
             agg::rasterizer_scanline_aa<> raster;
             raster.add_path(t_path);
-            if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
+            if (raster.hit_test(Args->X, Args->Y)) return ERR::Okay;
          }
       }
    }
 
-   return ERR_False;
+   return ERR::False;
 }
 
 /*********************************************************************************************************************
@@ -735,7 +735,7 @@ to the current position of the vector.  Every unit specified in the Position par
 index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.
 
 It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector
-reaches the edge of its branch with excess units remaining, the method will return immediately with an ERR_Okay error
+reaches the edge of its branch with excess units remaining, the method will return immediately with an ERR::Okay error
 code.
 
 -INPUT-
@@ -747,17 +747,17 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
+static ERR VECTOR_Push(extVector *Self, struct vecPush *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (!Args->Position) return ERR_Okay;
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (!Args->Position) return ERR::Okay;
 
    auto scan = Self;
    if (Args->Position < 0) { // Move backward through the stack.
       for (LONG i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
-      if (scan IS Self) return ERR_Okay;
+      if (scan IS Self) return ERR::Okay;
 
       // Patch up either side of the current position.
 
@@ -776,7 +776,7 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
    }
    else { // Move forward through the stack.
       for (LONG i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
-      if (scan IS Self) return ERR_Okay;
+      if (scan IS Self) return ERR::Okay;
 
       if (Self->Prev) Self->Prev->Next = Self->Next;
       if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -792,7 +792,7 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       scan->Next = Self;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -801,10 +801,10 @@ Show: Changes the vector's visibility setting to visible.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Show(extVector *Self, APTR Void)
+static ERR VECTOR_Show(extVector *Self, APTR Void)
 {
    Self->Visibility = VIS::VISIBLE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -815,11 +815,11 @@ SubscribeFeedback: Subscribe to events that relate to the vector.
 Use this method to receive feedback for events that have affected the state of a vector.
 
 To remove an existing subscription, call this method again with the same Callback and an empty Mask.
-Alternatively have the callback function return `ERR_Terminate`.
+Alternatively have the callback function return `ERR::Terminate`.
 
 The synopsis for the Callback is:
 
-`ERROR callback(*Vector, FM Event)`
+`ERR callback(*Vector, FM Event)`
 
 -INPUT-
 int(FM) Mask: Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.
@@ -831,16 +831,16 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
+static ERR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
    if (Args->Mask != FM::NIL) {
       if (!Self->FeedbackSubscriptions) {
          Self->FeedbackSubscriptions = new (std::nothrow) std::vector<FeedbackSubscription>;
-         if (!Self->FeedbackSubscriptions) return log.warning(ERR_AllocMemory);
+         if (!Self->FeedbackSubscriptions) return log.warning(ERR::AllocMemory);
       }
 
       Self->FeedbackSubscriptions->emplace_back(*Args->Callback, Args->Mask);
@@ -852,7 +852,7 @@ static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedba
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -868,13 +868,13 @@ the clipping area.
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
 To remove an existing subscription, call this method again with the same Callback and an empty Mask.
-Alternatively have the function return `ERR_Terminate`.
+Alternatively have the function return `ERR::Terminate`.
 
 Please refer to gfxSubscribeInput() for further information on event management and message handling.
 
 The synopsis for the Callback is:
 
-`ERROR callback(*Vector, *InputEvent)`
+`ERR callback(*Vector, *InputEvent)`
 
 -INPUT-
 flags(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
@@ -889,18 +889,18 @@ Function: A call to gfxSubscribeInput() failed.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Args)
+static ERR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
    if (Args->Mask != JTYPE::NIL) {
-      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return ERR_FieldNotSet;
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return ERR::FieldNotSet;
 
       if (!Self->InputSubscriptions) {
          Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
-         if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
+         if (!Self->InputSubscriptions) return log.warning(ERR::AllocMemory);
       }
 
       auto mask = Args->Mask;
@@ -922,7 +922,7 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -938,9 +938,9 @@ The prototype for the callback is as follows, whereby Qualifers are `KQ` flags a
 representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are
 translated through the user's keymap.
 
-`ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);`
+`ERR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);`
 
-If the callback returns `ERR_Terminate` then the subscription will be ended.  All other error codes are ignored.
+If the callback returns `ERR::Terminate` then the subscription will be ended.  All other error codes are ignored.
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
@@ -954,22 +954,22 @@ Function: A call to gfxSubscribeInput() failed.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard *Args)
+static ERR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
-   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
+   if (!Self->Scene->SurfaceID) return log.warning(ERR::FieldNotSet);
 
    if (!Self->KeyboardSubscriptions) {
       Self->KeyboardSubscriptions = new (std::nothrow) std::vector<KeyboardSubscription>;
-      if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
+      if (!Self->KeyboardSubscriptions) return log.warning(ERR::AllocMemory);
    }
 
    ((extVectorScene *)Self->Scene)->KeyboardSubscriptions.emplace(Self);
    Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -979,12 +979,12 @@ TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for
 each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback
-function is `ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
+function is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
 
 The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
 the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.
 
-If the Callback returns `ERR_Terminate`, then no further coordinates will be processed.
+If the Callback returns `ERR::Terminate`, then no further coordinates will be processed.
 
 -INPUT-
 ptr(func) Callback: The function to call with each coordinate of the path.
@@ -995,15 +995,15 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
+static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->Callback)) return log.warning(ERR::NullArgs);
 
    if (Self->dirty()) gen_vector_tree(Self);
 
-   if (!Self->BasePath.total_vertices()) return ERR_NoData;
+   if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
    Self->BasePath.rewind(0);
 
@@ -1040,12 +1040,12 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
             args[2].Long = cmd;
             args[3].Double = x;
             args[4].Double = y;
-            scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            scCallback(script, Args->Callback->Script.ProcedureID, args, std::ssize(args), NULL);
          }
       } while (cmd != agg::path_cmd_stop);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1066,16 +1066,16 @@ terms of outcome, the ClipRule works similarly to #FillRule.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_ClipRule(extVector *Self, VFR *Value)
+static ERR VECTOR_GET_ClipRule(extVector *Self, VFR *Value)
 {
    *Value = Self->ClipRule;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
+static ERR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
 {
    Self->ClipRule = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1099,7 +1099,7 @@ It is a pre-requisite that the associated @VectorScene has been linked to a @Sur
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Cursor(extVector *Self, PTC Value)
+static ERR VECTOR_SET_Cursor(extVector *Self, PTC Value)
 {
    Self->Cursor = Value;
 
@@ -1129,7 +1129,7 @@ static ERROR VECTOR_SET_Cursor(extVector *Self, PTC Value)
       scene_input_events(&event, 0);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1143,7 +1143,7 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
+static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
@@ -1153,10 +1153,10 @@ static ERROR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Element
       *Value    = NULL;
       *Elements = 0;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
+static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 {
    pf::Log log;
 
@@ -1181,7 +1181,7 @@ static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;
                Self->DashArray = NULL;
-               return ERR_InvalidValue;
+               return ERR::InvalidValue;
             }
 
             Self->DashArray->path.add_dash(Self->DashArray->values[i], Self->DashArray->values[i+1]);
@@ -1194,10 +1194,10 @@ static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
          if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
          else if (Self->DashOffset < 0) Self->DashArray->path.dash_start(total_length + Self->DashOffset);
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1210,14 +1210,14 @@ negative then the shift will be to the right.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
 {
    Self->DashOffset = Value;
    if (Self->DashArray) {
       if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
       else Self->DashArray->path.dash_start(Self->DashArray->path.dash_length() + Self->DashOffset);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1234,17 +1234,17 @@ sub-classes will ignore the option if used.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_EnableBkgd(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_EnableBkgd(extVector *Self, LONG *Value)
 {
    *Value = Self->EnableBkgd;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
+static ERR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
 {
    if (Value) Self->EnableBkgd = TRUE;
    else Self->EnableBkgd = FALSE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1263,19 +1263,19 @@ feature is intended for programmed use-cases and is not SVG compliant.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Fill(extVector *Self, CSTRING *Value)
+static ERR VECTOR_GET_Fill(extVector *Self, CSTRING *Value)
 {
    *Value = Self->FillString;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
+static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
    CSTRING next;
-   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); !error) {
+   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = StrClone(Value);
 
       if (next) {
@@ -1288,7 +1288,7 @@ static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else return error;
 }
@@ -1306,14 +1306,14 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->Fill[0].Colour;
    *Elements = 4;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Fill[0].Colour.Red   = Value[0];
@@ -1330,7 +1330,7 @@ static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
 
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1343,13 +1343,13 @@ the #Opacity to determine a final opacity value for the render.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
 {
    *Value = Self->FillOpacity;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
 {
    pf::Log log;
 
@@ -1357,9 +1357,9 @@ static ERROR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
       Self->FillOpacity = Value;
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }
 
 /*********************************************************************************************************************
@@ -1376,41 +1376,41 @@ The Filter value can be in the format `ID` or `url(#ID)` according to client pre
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Filter(extVector *Self, CSTRING *Value)
+static ERR VECTOR_GET_Filter(extVector *Self, CSTRING *Value)
 {
    *Value = Self->FilterString;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
+static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 {
    pf::Log log;
 
    if ((!Value) or (!Value[0])) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->Filter = NULL;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (!Self->Scene) { // Vector is not yet initialised, so store the filter string for later.
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    OBJECTPTR def = NULL;
-   if (scFindDef(Self->Scene, Value, &def)) {
+   if (scFindDef(Self->Scene, Value, &def) != ERR::Okay) {
       log.warning("Failed to resolve filter '%s'", Value);
-      return ERR_Search;
+      return ERR::Search;
    }
 
    if (def->Class->BaseClassID IS ID_VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
       Self->Filter = (extVectorFilter *)def;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_InvalidValue);
+   else return log.warning(ERR::InvalidValue);
 }
 
 /*********************************************************************************************************************
@@ -1424,16 +1424,16 @@ interpretation of "inside" is not so obvious.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillRule(extVector *Self, VFR *Value)
+static ERR VECTOR_GET_FillRule(extVector *Self, VFR *Value)
 {
    *Value = Self->FillRule;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_FillRule(extVector *Self, VFR Value)
+static ERR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 {
    Self->FillRule = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1445,13 +1445,13 @@ existing object name and automatically assigned ID's for identifiers.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_ID(extVector *Self, STRING *Value)
+static ERR VECTOR_GET_ID(extVector *Self, STRING *Value)
 {
    *Value = Self->ID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_ID(extVector *Self, CSTRING Value)
+static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
 {
    if (Self->ID) FreeResource(Self->ID);
 
@@ -1463,7 +1463,7 @@ static ERROR VECTOR_SET_ID(extVector *Self, CSTRING Value)
       Self->ID = NULL;
       Self->NumericID = 0;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1484,7 +1484,7 @@ path.
 
 // See the AGG bezier_div demo to get a better understanding of what is affected by this field value.
 
-static ERROR VECTOR_GET_InnerJoin(extVector *Self, VIJ *Value)
+static ERR VECTOR_GET_InnerJoin(extVector *Self, VIJ *Value)
 {
    if (Self->InnerJoin IS agg::inner_miter)      *Value = VIJ::MITER;
    else if (Self->InnerJoin IS agg::inner_round) *Value = VIJ::ROUND;
@@ -1492,10 +1492,10 @@ static ERROR VECTOR_GET_InnerJoin(extVector *Self, VIJ *Value)
    else if (Self->InnerJoin IS agg::inner_jag)   *Value = VIJ::JAG;
    else if (Self->InnerJoin IS agg::inner_inherit) *Value = VIJ::INHERIT;
    else *Value = VIJ::NIL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
+static ERR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
 {
    switch(Value) {
       case VIJ::MITER: Self->InnerJoin = agg::inner_miter; break;
@@ -1503,9 +1503,9 @@ static ERROR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
       case VIJ::BEVEL: Self->InnerJoin = agg::inner_bevel; break;
       case VIJ::JAG:   Self->InnerJoin = agg::inner_jag; break;
       case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
-      default: return ERR_Failed;
+      default: return ERR::Failed;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1522,26 +1522,26 @@ of a stroked path.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineCap(extVector *Self, VLC *Value)
+static ERR VECTOR_GET_LineCap(extVector *Self, VLC *Value)
 {
    if (Self->LineCap IS agg::butt_cap)         *Value = VLC::BUTT;
    else if (Self->LineCap IS agg::square_cap)  *Value = VLC::SQUARE;
    else if (Self->LineCap IS agg::round_cap)   *Value = VLC::ROUND;
    else if (Self->LineCap IS agg::inherit_cap) *Value = VLC::INHERIT;
    else *Value = VLC::NIL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_LineCap(extVector *Self, VLC Value)
+static ERR VECTOR_SET_LineCap(extVector *Self, VLC Value)
 {
    switch(Value) {
       case VLC::BUTT:    Self->LineCap = agg::butt_cap; break;
       case VLC::SQUARE:  Self->LineCap = agg::square_cap; break;
       case VLC::ROUND:   Self->LineCap = agg::round_cap; break;
       case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
-      default: return ERR_Failed;
+      default: return ERR::Failed;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1554,7 +1554,7 @@ that are being stroked.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
+static ERR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
 {
    if (Self->LineJoin IS agg::miter_join)        *Value = VLJ::MITER;
    else if (Self->LineJoin IS agg::round_join)   *Value = VLJ::ROUND;
@@ -1564,10 +1564,10 @@ static ERROR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
    else if (Self->LineJoin IS agg::miter_join_round)  *Value = VLJ::MITER_ROUND;
    else *Value = VLJ::NIL;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
+static ERR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
 {
    switch (Value) {
       case VLJ::MITER:        Self->LineJoin = agg::miter_join; break;
@@ -1576,9 +1576,9 @@ static ERROR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
       case VLJ::MITER_REVERT: Self->LineJoin = agg::miter_join_revert; break;
       case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
       case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
-      default: return ERR_Failed;
+      default: return ERR::Failed;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1590,13 +1590,13 @@ refer to the @VectorClip class for further information.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Mask(extVector *Self, extVectorClip **Value)
+static ERR VECTOR_GET_Mask(extVector *Self, extVectorClip **Value)
 {
    *Value = Self->ClipMask;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
+static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 {
    pf::Log log;
 
@@ -1605,18 +1605,18 @@ static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
          UnsubscribeAction(Self->ClipMask, AC_Free);
          Self->ClipMask = NULL;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Value->Class->ClassID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC_Free, FUNCTION(notify_free_clipmask));
          Self->ClipMask = Value;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_NotInitialised);
+      else return log.warning(ERR::NotInitialised);
    }
-   else return log.warning(ERR_InvalidObject);
+   else return log.warning(ERR::InvalidObject);
 }
 
 /*********************************************************************************************************************
@@ -1647,15 +1647,15 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
 {
    pf::Log log;
 
    if (Value >= 1.0) {
       Self->MiterLimit = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_InvalidValue);
+   else return log.warning(ERR::InvalidValue);
 }
 
 /*********************************************************************************************************************
@@ -1671,13 +1671,13 @@ best utilised.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Morph(extVector *Self, extVector **Value)
+static ERR VECTOR_GET_Morph(extVector *Self, extVector **Value)
 {
    *Value = Self->Morph;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
+static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
@@ -1686,18 +1686,18 @@ static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
          UnsubscribeAction(Self->Morph, AC_Free);
          Self->Morph = NULL;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Value->Class->BaseClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free, FUNCTION(notify_free_morph));
          Self->Morph = Value;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_NotInitialised);
+      else return log.warning(ERR::NotInitialised);
    }
-   else return log.warning(ERR_InvalidObject);
+   else return log.warning(ERR::InvalidObject);
 }
 
 /*********************************************************************************************************************
@@ -1707,16 +1707,16 @@ MorphFlags: Optional flags that affect morphing.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_MorphFlags(extVector *Self, VMF *Value)
+static ERR VECTOR_GET_MorphFlags(extVector *Self, VMF *Value)
 {
    *Value = Self->MorphFlags;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
+static ERR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
 {
     Self->MorphFlags = Value;
-    return ERR_Okay;
+    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1738,13 +1738,13 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
+static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
-   if ((!Value) or (Value IS Self)) return log.warning(ERR_InvalidValue);
-   if (Self->Owner != Value->Owner) return log.warning(ERR_UnsupportedOwner); // Owners must match
+   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::InvalidObject);
+   if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
+   if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1760,7 +1760,7 @@ static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
       else if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1775,17 +1775,17 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
 {
    *Value = Self->NumericID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_NumericID(extVector *Self, LONG Value)
+static ERR VECTOR_SET_NumericID(extVector *Self, LONG Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1799,13 +1799,13 @@ calculated as `#FillOpacity * Opacity`.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->Opacity = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -1841,13 +1841,13 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
+static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
-   if (!Value) return log.warning(ERR_InvalidValue);
-   if (Self->Owner != Value->Owner) return log.warning(ERR_UnsupportedOwner); // Owners must match
+   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::InvalidObject);
+   if (!Value) return log.warning(ERR::InvalidValue);
+   if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1870,7 +1870,7 @@ static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (Value->Next) Value->Next->Prev = Self;
    Value->Next = Self;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1893,7 +1893,7 @@ any time.  The conventional means for monitoring the size and position of any ve
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
+static ERR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
 {
    if (Value) {
       Self->ResizeSubscription = true;
@@ -1919,7 +1919,7 @@ static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1957,15 +1957,15 @@ of the previous command).
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
+static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 {
    pf::Log log;
 
-   if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
+   if (!Self->GeneratePath) return log.warning(ERR::Mismatch); // Path generation must be supported by the vector.
 
    if (Self->dirty()) gen_vector_tree(Self);
 
-   if (!Self->BasePath.total_vertices()) return ERR_NoData;
+   if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
    std::ostringstream seq;
 
@@ -2034,9 +2034,9 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
    auto out = seq.str();
    if (out.length() > 0) {
       *Value = StrClone(out.c_str());
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_NoData;
+   else return ERR::NoData;
 }
 
 /*********************************************************************************************************************
@@ -2049,19 +2049,19 @@ the ~ReadPainter() function in the Vector module.  Please refer to it for furthe
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
+static ERR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 {
    *Value = Self->StrokeString;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_Stroke(extVector *Self, STRING Value)
+static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
    vecReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
    Self->Stroked = Self->is_stroked();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2076,14 +2076,14 @@ This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->Stroke.Colour;
    *Elements = 4;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Stroke.Colour.Red   = Value[0];
@@ -2095,7 +2095,7 @@ static ERROR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Element
    else Self->Stroke.Colour.Alpha = 0;
 
    Self->Stroked = Self->is_stroked();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2110,20 +2110,20 @@ rendering.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_StrokeOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_StrokeOpacity(extVector *Self, DOUBLE *Value)
 {
    *Value = Self->StrokeOpacity;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
       Self->Stroked = Self->is_stroked();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -2138,7 +2138,7 @@ The size of the stroke is also affected by scaling factors imposed by transforms
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
+static ERR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
 {
    DOUBLE val;
 
@@ -2150,24 +2150,24 @@ static ERROR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
+static ERR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if ((val >= 0.0) and (val <= 2000.0)) {
       Self->StrokeWidth = val;
       Self->ScaledStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
       Self->Stroked = Self->is_stroked();
       mark_dirty(Self, RC::FINAL_PATH); // Not really a path change, but needed for some dependent code like clip-masks.
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -2181,19 +2181,19 @@ When two vectors share the same priority, preference is given to the older of th
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_TabOrder(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_TabOrder(extVector *Self, LONG *Value)
 {
    *Value = Self->TabOrder;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_TabOrder(extVector *Self, LONG Value)
+static ERR VECTOR_SET_TabOrder(extVector *Self, LONG Value)
 {
    if ((Value >= 1) and (Value <= 255)) {
       Self->TabOrder = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -2209,13 +2209,13 @@ and @VectorWave are able to take full advantage of this feature.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Transition(extVector *Self, objVectorTransition **Value)
+static ERR VECTOR_GET_Transition(extVector *Self, objVectorTransition **Value)
 {
    *Value = Self->Transition;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
+static ERR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
 {
    pf::Log log;
 
@@ -2224,18 +2224,18 @@ static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
          UnsubscribeAction(Self->Transition, AC_Free);
          Self->Transition = NULL;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Value->Class->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free, FUNCTION(notify_free_transition));
          Self->Transition = Value;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_NotInitialised);
+      else return log.warning(ERR::NotInitialised);
    }
-   else return log.warning(ERR_InvalidObject);
+   else return log.warning(ERR::InvalidObject);
 }
 
 /*********************************************************************************************************************
@@ -2255,14 +2255,14 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
    if (!Vector->FeedbackSubscriptions) return;
 
    for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {
-      ERROR result;
+      ERR result;
       auto &sub = *it;
       if ((sub.Mask & Event) != FM::NIL) {
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
          if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(extVector *, FM, APTR, APTR))sub.Callback.StdC.Routine;
+            auto callback = (ERR (*)(extVector *, FM, APTR, APTR))sub.Callback.StdC.Routine;
             result = callback(Vector, Event, EventObject, sub.Callback.StdC.Meta);
          }
          else if (sub.Callback.isScript()) {
@@ -2272,12 +2272,12 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
                { "Event",  LONG(Event) },
                { "EventObject", EventObject, FDF_OBJECT }
             };
-            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, std::ssize(args), &result);
          }
 
          sub.Mask |= Event;
 
-         if (result IS ERR_Terminate) Vector->FeedbackSubscriptions->erase(it);
+         if (result IS ERR::Terminate) Vector->FeedbackSubscriptions->erase(it);
          else it++;
       }
       else it++;
@@ -2388,7 +2388,7 @@ static const FieldArray clVectorFields[] = {
    END_FIELD
 };
 
-static ERROR init_vector(void)
+static ERR init_vector(void)
 {
    clVector = objMetaClass::create::global(
       fl::ClassVersion(VER_VECTOR),
@@ -2400,5 +2400,5 @@ static ERROR init_vector(void)
       fl::Size(sizeof(extVector)),
       fl::Path(MOD_PATH));
 
-   return clVector ? ERR_Okay : ERR_AddClass;
+   return clVector ? ERR::Okay : ERR::AddClass;
 }

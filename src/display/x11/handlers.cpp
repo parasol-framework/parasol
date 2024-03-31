@@ -10,7 +10,7 @@ static inline OBJECTID get_display(Window Window)
 
    if (!XDisplay) return 0;
 
-   if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1, False, AnyPropertyType, &atom, &format, &nitems, 
+   if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1, False, AnyPropertyType, &atom, &format, &nitems,
          &nbytes, (UBYTE **)&data) IS Success) {
       display_id = data[0];
       XFree(data);
@@ -110,7 +110,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                         ScriptArg args[] = {
                            { "SurfaceID", surface_id, FDF_OBJECTID }
                         };
-                        scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
+                        scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
                      }
                      else result = ERR_Okay;
 
@@ -326,7 +326,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
          Window childwin;
          LONG absx, absy;
 
-         XTranslateCoordinates(XDisplay, (Window)display->WindowHandle, DefaultRootWindow(XDisplay), 
+         XTranslateCoordinates(XDisplay, (Window)display->WindowHandle, DefaultRootWindow(XDisplay),
             0, 0, &absx, &absy, &childwin);
 
          display->X = absx;

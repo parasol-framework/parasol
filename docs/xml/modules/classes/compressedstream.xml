@@ -165,7 +165,7 @@
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
+      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR::Search is returned.</const>
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">
@@ -199,7 +199,7 @@
     <constants lookup="MSF" comment="Message flags.">
       <const name="ADD">The default behaviour - this will add the message to the end of the queue.</const>
       <const name="MESSAGE_ID">The Type parameter refers to a unique message ID rather than a message type for this call.</const>
-      <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.</const>
+      <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR::Okay.</const>
       <const name="UPDATE">If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
       <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
     </constants>
@@ -231,7 +231,7 @@
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
-      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR::ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.</const>
     </constants>
 
@@ -340,7 +340,7 @@
     <constants lookup="RSF" comment="Flags for ResolvePath()">
       <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
       <const name="CASE_SENSITIVE">For use on host systems that use case-insensitive file systems such as Windows; this option checks that the discovered file is a case-sensitive match to the Path.</const>
-      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
+      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR::VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
@@ -399,9 +399,9 @@
 
     <struct name="Field" comment="Used to describe the public fields of a class.">
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
-      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>

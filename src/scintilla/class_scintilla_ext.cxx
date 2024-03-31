@@ -277,7 +277,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
 
    auto clipboard = objClipboard::create { };
    if (clipboard.ok()) {
-      if (!clipAddText(*clipboard, selectedText.s)) {
+      if (clipAddText(*clipboard, selectedText.s) IS ERR::Okay) {
 
       }
    }
@@ -327,14 +327,14 @@ void ScintillaParasol::Paste()
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
       struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
-      if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
+      if (Action(MT_ClipGetFiles, *clipboard, &get) IS ERR::Okay) {
          objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {
             LONG len, size;
-            if ((!file->get(FID_Size, &size)) and (size > 0)) {
+            if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
                STRING buffer;
-               if (!AllocMemory(size, MEM::STRING, &buffer)) {
-                  if (!file->read(buffer, size, &len)) {
+               if (AllocMemory(size, MEM::STRING, &buffer) IS ERR::Okay) {
+                  if (file->read(buffer, size, &len) IS ERR::Okay) {
                      pdoc->BeginUndoAction();
 
                         ClearSelection();
@@ -348,17 +348,17 @@ void ScintillaParasol::Paste()
 
                      calc_longest_line(scintilla);
                   }
-                  else error_dialog("Paste Error", "Failed to read data from the clipboard file.", 0);
+                  else error_dialog("Paste Error", "Failed to read data from the clipboard file.", ERR::Okay);
 
                   FreeResource(buffer);
                }
-               else error_dialog("Paste Error", NULL, ERR_AllocMemory);
+               else error_dialog("Paste Error", NULL, ERR::AllocMemory);
             }
          }
          else {
             char msg[200];
             snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
-            error_dialog("Paste Error", msg, 0);
+            error_dialog("Paste Error", msg, ERR::Okay);
          }
       }
    }

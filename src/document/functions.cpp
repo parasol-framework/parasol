@@ -37,7 +37,7 @@ constexpr DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
    VectorPainter painter;
-   if (!vecReadPainter(NULL, Value, &painter, NULL)) {
+   if (vecReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
       RGB->Red   = F2T(painter.Colour.Red   * 255.0);
       RGB->Green = F2T(painter.Colour.Green * 255.0);
       RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
@@ -181,7 +181,7 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 //********************************************************************************************************************
 // Process an XML tree by setting correct style information and then calling parse_tags().
 
-static ERROR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex,
+static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex,
    STYLE StyleFlags, IPF Options)
 {
    pf::Log log(__FUNCTION__);
@@ -253,7 +253,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML:
 
    if (Self->FocusIndex >= std::ssize(Self->Tabs)) Self->FocusIndex = -1;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -262,14 +262,14 @@ static ERROR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML:
 //
 // Preformat must be set to true if all consecutive whitespace characters in Text are to be inserted.
 
-static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, const std::string_view Text, bool Preformat)
+static ERR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, const std::string_view Text, bool Preformat)
 {
    // Check if there is content to be processed
 
    if ((!Preformat) and (Self->NoWhitespace)) {
       unsigned i;
       for (i=0; i < Text.size(); i++) if (unsigned(Text[i]) > 0x20) break;
-      if (i IS Text.size()) return ERR_Okay;
+      if (i IS Text.size()) return ERR::Okay;
    }
 
    if (Preformat) {
@@ -295,12 +295,12 @@ static ERROR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index,
       Stream->emplace(Index, et);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD UnloadFlags)
+static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD UnloadFlags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -315,7 +315,7 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
    auto i = Path.find_first_of("&#?");
    if (i != std::string::npos) Path.erase(i);
 
-   if (!AnalysePath(Path.c_str(), NULL)) {
+   if (AnalysePath(Path.c_str(), NULL) IS ERR::Okay) {
       auto task = CurrentTask();
       task->setPath(Path);
 
@@ -349,10 +349,10 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
       }
       else {
          error_dialog("Document Load Error", std::string("Failed to load document file '") + Path + "'");
-         return log.warning(ERR_OpenFile);
+         return log.warning(ERR::OpenFile);
       }
    }
-   else return log.warning(ERR_FileNotFound);
+   else return log.warning(ERR::FileNotFound);
 }
 
 //********************************************************************************************************************
@@ -364,7 +364,7 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
 // The PageName is not freed because the desired page must not be dropped during refresh of manually loaded XML for
 // example.
 
-static ERROR unload_doc(extDocument *Self, ULD Flags)
+static ERR unload_doc(extDocument *Self, ULD Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -463,7 +463,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 
    if (!Self->Templates) {
       if (!(Self->Templates = objXML::create::integral(fl::Name("xmlTemplates"), fl::Statement(glDefaultStyles),
-         fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) return ERR_CreateObject;
+         fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) return ERR::CreateObject;
 
       Self->TemplatesModified = Self->Templates->Modified;
       Self->RefreshTemplates = true;
@@ -473,7 +473,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
       Self->Page->setMask(NULL); // Reset the clipping mask if it was defined by <body>
 
       pf::vector<ChildEntry> list;
-      if (!ListChildren(Self->Page->UID, &list)) {
+      if (ListChildren(Self->Page->UID, &list) IS ERR::Okay) {
          for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
       }
    }
@@ -481,7 +481,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    if ((Self->View) and (Self->Page)) {
       // Client generated objects can appear in the view if <svg placement="background"/> was used.
       pf::vector<ChildEntry> list;
-      if (!ListChildren(Self->View->UID, &list)) {
+      if (ListChildren(Self->View->UID, &list) IS ERR::Okay) {
          for (auto it=list.rbegin(); it != list.rend(); it++) {
             if (it->ObjectID != Self->Page->UID) FreeResource(it->ObjectID);
          }
@@ -499,7 +499,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
       Self->Viewport->draw();
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -632,13 +632,13 @@ static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 //********************************************************************************************************************
 // For a given line segment, convert a horizontal coordinate to the corresponding character index and its coordinate.
 /*
-static ERROR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, stream_char &Char)
+static ERR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, stream_char &Char)
 {
    pf::Log log(__FUNCTION__);
 
    bc_font *style = find_style(Segment.stream[0], Char);
    auto font = style ? style->get_font() : glFonts[0].font;
-   if (!font) return ERR_Search;
+   if (!font) return ERR::Search;
 
    for (INDEX i = Segment.start.index; i < Segment.stop.index; i++) {
       if (Segment.stream[0][i].code IS SCODE::TEXT) {
@@ -647,14 +647,14 @@ static ERROR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, str
          if (!fntConvertCoords(font, str.c_str(), X - Segment.area.X, 0, NULL, NULL, NULL, &offset, &cx)) {
             CharX = cx;
             Char.set(Segment.start.index, offset);
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else break;
       }
    }
 
   log.trace("Failed to convert coordinate %d to a font-relative cursor position.", X);
-   return ERR_Failed;
+   return ERR::Failed;
 }
 */
 //********************************************************************************************************************
@@ -779,7 +779,7 @@ static void process_parameters(extDocument *Self, const std::string_view String)
 // Resolves function references.
 // E.g. "script.function(Args...)"; "function(Args...)"; "function()", "function", "script.function"
 
-static ERROR extract_script(extDocument *Self, const std::string &Link, objScript **Script, std::string &Function, std::string &Args)
+static ERR extract_script(extDocument *Self, const std::string &Link, objScript **Script, std::string &Function, std::string &Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -787,7 +787,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, objScrip
       if (!(*Script = Self->DefaultScript)) {
          if (!(*Script = Self->ClientScript)) {
             log.warning("Cannot call function '%s', no default script in document.", Link.c_str());
-            return ERR_Search;
+            return ERR::Search;
          }
       }
    }
@@ -802,17 +802,17 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, objScrip
          std::string script_name;
          script_name.assign(Link, 0, dot);
          OBJECTID id;
-         if (!FindObject(script_name.c_str(), ID_SCRIPT, FOF::NIL, &id)) {
+         if (FindObject(script_name.c_str(), ID_SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
             // Security checks
             *Script = (objScript *)GetObjectPtr(id);
             if ((Script[0]->Owner != Self) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
                log.warning("Script '%s' does not belong to this document.  Request ignored due to security restrictions.", script_name.c_str());
-               return ERR_NoPermission;
+               return ERR::NoPermission;
             }
          }
          else {
             log.warning("Unable to find '%s'", script_name.c_str());
-            return ERR_Search;
+            return ERR::Search;
          }
       }
    }
@@ -820,7 +820,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, objScrip
 
    if ((open_bracket != std::string::npos) and (open_bracket < dot)) {
       log.warning("Malformed function reference: %s", Link.c_str());
-      return ERR_InvalidData;
+      return ERR::InvalidData;
    }
 
    if (open_bracket != std::string::npos) {
@@ -832,7 +832,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, objScrip
    }
    else Function.assign(Link, pos);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -853,7 +853,7 @@ void ui_link::exec(extDocument *Self)
 
       if (origin.type IS LINK::FUNCTION) {
          std::string function_name, args;
-         if (!extract_script(Self, origin.ref, NULL, function_name, args)) {
+         if (extract_script(Self, origin.ref, NULL, function_name, args) IS ERR::Okay) {
             params.emplace("onclick", function_name);
          }
       }
@@ -868,13 +868,13 @@ void ui_link::exec(extDocument *Self)
          else params.emplace(origin.args[i].first, origin.args[i].second);
       }
 
-      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &origin, &params);
-      if (result IS ERR_Skip) goto end;
+      ERR result = report_event(Self, DEF::LINK_ACTIVATED, &origin, &params);
+      if (result IS ERR::Skip) goto end;
    }
 
    if (origin.type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
       std::string function_name, fargs;
-      if (!extract_script(Self, origin.ref, &script, function_name, fargs)) {
+      if (extract_script(Self, origin.ref, &script, function_name, fargs) IS ERR::Okay) {
          std::vector<ScriptArg> sa;
 
          if (!origin.args.empty()) {
@@ -928,7 +928,7 @@ void ui_link::exec(extDocument *Self)
 
             auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
-            if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
+            if (IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id) IS ERR::Okay) {
                if (class_id IS ID_DOCUMENT) {
                   Self->set(FID_Path, lk);
 
@@ -959,7 +959,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
    // Find the indexes for the bookmark name
 
    LONG start, end;
-   if (!docFindIndex(Self, Bookmark.c_str(), &start, &end)) {
+   if (docFindIndex(Self, Bookmark.c_str(), &start, &end) IS ERR::Okay) {
       // Get the vertical position of the index and scroll to it
 
       auto &esc_index = Self->Stream.lookup<bc_index>(start);
@@ -971,16 +971,16 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 //********************************************************************************************************************
 // Generic function for reporting events that relate to entities.
 
-static ERROR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *EventData)
+static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *EventData)
 {
    pf::Log log(__FUNCTION__);
-   ERROR result = ERR_Okay;
+   ERR result = ERR::Okay;
 
    if ((Event & Self->EventMask) != DEF::NIL) {
       log.traceBranch("Event $%x -> Entity %d", LONG(Event), Entity->uid);
 
       if (Self->EventCallback.isC()) {
-         auto routine = (ERROR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.StdC.Routine;
+         auto routine = (ERR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.StdC.Routine;
          pf::SwitchContext context(Self->EventCallback.StdC.Context);
          result = routine(Self, Event, EventData, Entity, Self->EventCallback.StdC.Meta);
       }

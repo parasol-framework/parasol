@@ -61,7 +61,7 @@ Lr,Lg,Lb = RGB components of light
     <method>
       <name>SetDistantLight</name>
       <comment>Configure lighting with a distant light source.</comment>
-      <prototype>ERROR ltSetDistantLight(OBJECTPTR Object, DOUBLE Azimuth, DOUBLE Elevation)</prototype>
+      <prototype>ERR ltSetDistantLight(OBJECTPTR Object, DOUBLE Azimuth, DOUBLE Elevation)</prototype>
       <input>
         <param type="DOUBLE" name="Azimuth">Direction angle for the light source on the XY plane (clockwise), in degrees from the X axis.</param>
         <param type="DOUBLE" name="Elevation">Direction angle for the light source from the XY plane towards the Z axis, in degrees.  A positive value points towards the viewer of the content.</param>
@@ -75,7 +75,7 @@ Lr,Lg,Lb = RGB components of light
     <method>
       <name>SetPointLight</name>
       <comment>Configure lighting with a pointed light source.</comment>
-      <prototype>ERROR ltSetPointLight(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z)</prototype>
+      <prototype>ERR ltSetPointLight(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z)</prototype>
       <input>
         <param type="DOUBLE" name="X">X location for the light source.</param>
         <param type="DOUBLE" name="Y">Y location for the light source.</param>
@@ -90,7 +90,7 @@ Lr,Lg,Lb = RGB components of light
     <method>
       <name>SetSpotLight</name>
       <comment>Configure lighting with a spot light source.</comment>
-      <prototype>ERROR ltSetSpotLight(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle)</prototype>
+      <prototype>ERR ltSetSpotLight(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle)</prototype>
       <input>
         <param type="DOUBLE" name="X">X location for the light source.</param>
         <param type="DOUBLE" name="Y">Y location for the light source.</param>

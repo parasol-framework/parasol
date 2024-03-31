@@ -30,10 +30,10 @@ The alpha component value, measured from 0 to 1.0.  The default is 1.0.
 
 *********************************************************************************************************************/
 
-static ERROR COLOUR_NewObject(objVectorColour *Self, APTR Void)
+static ERR COLOUR_NewObject(objVectorColour *Self, APTR Void)
 {
    Self->Alpha = 1.0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static const ActionArray clColourActions[] = {
@@ -51,7 +51,7 @@ static const FieldArray clColourFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_colour(void)
+ERR init_colour(void)
 {
    clVectorColour = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORCOLOUR),
@@ -62,7 +62,7 @@ ERROR init_colour(void)
       fl::Size(sizeof(objVectorColour)),
       fl::Path(MOD_PATH));
 
-   return clVectorColour ? ERR_Okay : ERR_AddClass;
+   return clVectorColour ? ERR::Okay : ERR::AddClass;
 }
 
 

@@ -33,24 +33,23 @@ AllocMemory:
 
 *********************************************************************************************************************/
 
-ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
+ERR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
    static THREADVAR DISPLAYINFO *t_info = NULL;
 
-   if (!Result) return ERR_NullArgs;
+   if (!Result) return ERR::NullArgs;
 
    if (!t_info) {
       // Each thread gets an allocation that can't be resource tracked, so MEM::HIDDEN is used in this case.
       // Note that this could conceivably cause memory leaks if temporary threads were to use this function.
-      if (AllocMemory(sizeof(DISPLAYINFO), MEM::NO_CLEAR|MEM::HIDDEN, &t_info)) {
-         return ERR_AllocMemory;
+      if (AllocMemory(sizeof(DISPLAYINFO), MEM::NO_CLEAR|MEM::HIDDEN, &t_info) != ERR::Okay) {
+         return ERR::AllocMemory;
       }
    }
 
-   ERROR error;
-   if (!(error = get_display_info(DisplayID, t_info, sizeof(DISPLAYINFO)))) {
+   if (auto error = get_display_info(DisplayID, t_info, sizeof(DISPLAYINFO)); error IS ERR::Okay) {
       *Result = t_info;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else return error;
 }
@@ -110,7 +109,7 @@ Search: There are no more display modes to return that are a match for the Filte
 
 *********************************************************************************************************************/
 
-ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
+ERR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 {
 #ifdef __snap__
 
@@ -125,7 +124,7 @@ ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
    WORD f_maxrefresh, c_maxrefresh;
    BYTE interlace, matched;
 
-   if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR_Args;
+   if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR::Args;
 
    // Reset all filters
 
@@ -216,14 +215,14 @@ ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
       Info->MaxRefresh    = maxrefresh;
       Info->RefreshRate   = refresh;
       Info->Index         = i + 1;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   return ERR_Search;
+   return ERR::Search;
 
 #else
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 
 #endif
 }
@@ -244,7 +243,7 @@ Okay
 
 *********************************************************************************************************************/
 
-ERROR gfxSetHostOption(HOST Option, LARGE Value)
+ERR gfxSetHostOption(HOST Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    pf::Log log(__FUNCTION__);
@@ -269,7 +268,7 @@ ERROR gfxSetHostOption(HOST Option, LARGE Value)
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

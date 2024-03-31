@@ -106,162 +106,162 @@ class objFont : public BaseClass {
 
    // Action stubs
 
-   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR init() noexcept { return InitObject(this); }
+   inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
 
-   inline ERROR setPoint(const DOUBLE Value) noexcept {
+   inline ERR setPoint(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setGlyphSpacing(const DOUBLE Value) noexcept {
+   inline ERR setGlyphSpacing(const DOUBLE Value) noexcept {
       this->GlyphSpacing = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setBitmap(objBitmap * Value) noexcept {
+   inline ERR setBitmap(objBitmap * Value) noexcept {
       this->Bitmap = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   template <class T> inline ERROR setString(T && Value) noexcept {
+   template <class T> inline ERR setString(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) noexcept {
+   template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setStyle(T && Value) noexcept {
+   template <class T> inline ERR setStyle(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setFace(T && Value) noexcept {
+   template <class T> inline ERR setFace(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setOutline(const struct RGB8 Value) noexcept {
+   inline ERR setOutline(const struct RGB8 Value) noexcept {
       this->Outline = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setUnderline(const struct RGB8 Value) noexcept {
+   inline ERR setUnderline(const struct RGB8 Value) noexcept {
       this->Underline = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setColour(const struct RGB8 Value) noexcept {
+   inline ERR setColour(const struct RGB8 Value) noexcept {
       this->Colour = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFlags(const FTF Value) noexcept {
+   inline ERR setFlags(const FTF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setGutter(const LONG Value) noexcept {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setGutter(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Gutter = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setLineSpacing(const LONG Value) noexcept {
+   inline ERR setLineSpacing(const LONG Value) noexcept {
       this->LineSpacing = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setX(const LONG Value) noexcept {
+   inline ERR setX(const LONG Value) noexcept {
       this->X = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setY(const LONG Value) noexcept {
+   inline ERR setY(const LONG Value) noexcept {
       this->Y = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setTabSize(const LONG Value) noexcept {
+   inline ERR setTabSize(const LONG Value) noexcept {
       this->TabSize = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setWrapEdge(const LONG Value) noexcept {
+   inline ERR setWrapEdge(const LONG Value) noexcept {
       this->WrapEdge = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFixedWidth(const LONG Value) noexcept {
+   inline ERR setFixedWidth(const LONG Value) noexcept {
       this->FixedWidth = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setHeight(const LONG Value) noexcept {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setHeight(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Height = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setMaxHeight(const LONG Value) noexcept {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setMaxHeight(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->MaxHeight = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setAlign(const ALIGN Value) noexcept {
+   inline ERR setAlign(const ALIGN Value) noexcept {
       this->Align = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setAlignWidth(const LONG Value) noexcept {
+   inline ERR setAlignWidth(const LONG Value) noexcept {
       this->AlignWidth = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setAlignHeight(const LONG Value) noexcept {
+   inline ERR setAlignHeight(const LONG Value) noexcept {
       this->AlignHeight = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setEndX(const LONG Value) noexcept {
+   inline ERR setEndX(const LONG Value) noexcept {
       this->EndX = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setEndY(const LONG Value) noexcept {
+   inline ERR setEndY(const LONG Value) noexcept {
       this->EndY = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setBold(const LONG Value) noexcept {
+   inline ERR setBold(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setItalic(const LONG Value) noexcept {
+   inline ERR setItalic(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -277,32 +277,32 @@ class objFont : public BaseClass {
 
 struct FontBase {
 #ifndef PARASOL_STATIC
-   ERROR (*_GetList)(struct FontList ** Result);
+   ERR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
    LONG (*_CharWidth)(objFont * Font, ULONG Char);
-   ERROR (*_RefreshFonts)(void);
-   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
-   ERROR (*_ResolveFamilyName)(CSTRING String, CSTRING * Result);
+   ERR (*_RefreshFonts)(void);
+   ERR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
+   ERR (*_ResolveFamilyName)(CSTRING String, CSTRING * Result);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_FONT_MODULE
 #ifndef PARASOL_STATIC
 extern struct FontBase *FontBase;
-inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
+inline ERR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
 inline LONG fntCharWidth(objFont * Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
-inline ERROR fntRefreshFonts(void) { return FontBase->_RefreshFonts(); }
-inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
-inline ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
+inline ERR fntRefreshFonts(void) { return FontBase->_RefreshFonts(); }
+inline ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
+inline ERR fntResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
 #else
 extern "C" {
-extern ERROR fntGetList(struct FontList ** Result);
+extern ERR fntGetList(struct FontList ** Result);
 extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
 extern LONG fntCharWidth(objFont * Font, ULONG Char);
-extern ERROR fntRefreshFonts(void);
-extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
-extern ERROR fntResolveFamilyName(CSTRING String, CSTRING * Result);
+extern ERR fntRefreshFonts(void);
+extern ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
+extern ERR fntResolveFamilyName(CSTRING String, CSTRING * Result);
 }
 #endif // PARASOL_STATIC
 #endif

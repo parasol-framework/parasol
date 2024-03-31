@@ -71,21 +71,21 @@ static void free_client(extNetSocket *, NetClient *);
 static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
-static ERROR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
+static ERR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
 
 //********************************************************************************************************************
 
-static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extNetSocket *)CurrentContext())->Feedback.clear();
 }
 
-static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extNetSocket *)CurrentContext())->Incoming.clear();
 }
 
-static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extNetSocket *)CurrentContext())->Outgoing.clear();
 }
@@ -105,7 +105,7 @@ the connection state.
 
 Pre-Condition: Must be in a connection state of `NTC::DISCONNECTED`
 
-Post-Condition: If this method returns `ERR_Okay`, will be in state `NTC::CONNECTING`.
+Post-Condition: If this method returns `ERR::Okay`, will be in state `NTC::CONNECTING`.
 
 -INPUT-
 cstr Address: String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")
@@ -121,22 +121,22 @@ Failed: The connect failed for some other reason.
 
 *********************************************************************************************************************/
 
-static void connect_name_resolved_nl(objNetLookup *, ERROR, const std::string &, const std::vector<IPAddress> &);
-static void connect_name_resolved(extNetSocket *, ERROR, const std::string &, const std::vector<IPAddress> &);
+static void connect_name_resolved_nl(objNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &);
+static void connect_name_resolved(extNetSocket *, ERR, const std::string &, const std::vector<IPAddress> &);
 
-static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
+static ERR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Address) or (Args->Port <= 0) or (Args->Port >= 65536)) return log.warning(ERR_Args);
+   if ((!Args) or (!Args->Address) or (Args->Port <= 0) or (Args->Port >= 65536)) return log.warning(ERR::Args);
 
-   if ((Self->Flags & NSF::SERVER) != NSF::NIL) return ERR_Failed;
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) return ERR::Failed;
 
-   if (!Self->SocketHandle) return log.warning(ERR_NotInitialised);
+   if (!Self->SocketHandle) return log.warning(ERR::NotInitialised);
 
    if (Self->State != NTC::DISCONNECTED) {
       log.warning("Attempt to connect when socket is not in disconnected state");
-      return ERR_InvalidState;
+      return ERR::InvalidState;
    }
 
    log.branch("Address: %s, Port: %d", Args->Address, Args->Port);
@@ -148,43 +148,43 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
    Self->Port = Args->Port;
 
    IPAddress server_ip;
-   if (!netStrToAddress(Self->Address, &server_ip)) { // The address is an IP string, no resolution is necessary
+   if (netStrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
       std::vector<IPAddress> list;
       list.emplace_back(server_ip);
-      connect_name_resolved(Self, ERR_Okay, "", list);
+      connect_name_resolved(Self, ERR::Okay, "", list);
    }
    else { // Assume address is a domain name, perform name resolution
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       if (!Self->NetLookup) {
          if (!(Self->NetLookup = extNetLookup::create::integral())) {
-            return ERR_CreateObject;
+            return ERR::CreateObject;
          }
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = FUNCTION(connect_name_resolved_nl);
-      if (nlResolveName(Self->NetLookup, Self->Address) != ERR_Okay) {
-         return log.warning(Self->Error = ERR_HostNotFound);
+      if (nlResolveName(Self->NetLookup, Self->Address) != ERR::Okay) {
+         return log.warning(Self->Error = ERR::HostNotFound);
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // This function is called on completion of nlResolveName().
 
-static void connect_name_resolved_nl(objNetLookup *NetLookup, ERROR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
+static void connect_name_resolved_nl(objNetLookup *NetLookup, ERR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
 {
    connect_name_resolved((extNetSocket *)CurrentContext(), Error, HostName, IPs);
 }
 
-static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
+static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
 {
    pf::Log log(__FUNCTION__);
    struct sockaddr_in server_address;
 
-   if (Error != ERR_Okay) {
+   if (Error != ERR::Okay) {
       log.warning("DNS resolution failed: %s", GetErrorMsg(Error));
       return;
    }
@@ -210,7 +210,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
       }
       else {
          log.warning("Connect() failed: %s", strerror(errno));
-         Socket->Error = ERR_Failed;
+         Socket->Error = ERR::Failed;
          Socket->setState(NTC::DISCONNECTED);
          return;
       }
@@ -230,7 +230,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
    }
 
 #elif _WIN32
-   if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address)))) {
+   if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address))) != ERR::Okay) {
       log.warning("connect() failed: %s", GetErrorMsg(Socket->Error));
       return;
    }
@@ -242,13 +242,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
 //********************************************************************************************************************
 // Action: DataFeed
 
-static ERROR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
+static ERR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -264,7 +264,7 @@ Failed: Shutdown operation failed.
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
 {
    pf::Log log;
 
@@ -278,10 +278,10 @@ static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
 
    if (result) { // Zero is success on both platforms
       log.warning("shutdown() failed.");
-      return ERR_SystemCall;
+      return ERR::SystemCall;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -305,11 +305,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectClient *Args)
+static ERR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectClient *Args)
 {
-   if ((!Args) or (!Args->Client)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Client)) return ERR::NullArgs;
    free_client(Self, Args->Client);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -330,17 +330,17 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectSocket *Args)
+static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectSocket *Args)
 {
-   if ((!Args) or (!Args->Socket)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Socket)) return ERR::NullArgs;
    free_client_socket(Self, (extClientSocket *)(Args->Socket), TRUE);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Action: Free
 
-static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 {
 #ifdef ENABLE_SSL
    sslDisconnect(Self);
@@ -355,7 +355,7 @@ static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 
    while (Self->Clients) free_client(Self, Self->Clients);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -364,7 +364,7 @@ static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 // If a netsocket object is about to be freed, ensure that we are not using the netsocket object in one of our message
 // handlers.  We can still delay the free request in any case.
 
-static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
 {
 
    if (Self->InUse) {
@@ -374,9 +374,9 @@ static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
          Self->Terminating = TRUE;
          SendMessage(MSGID_FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
       }
-      return ERR_InUse;
+      return ERR::InUse;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -398,13 +398,13 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAddress *Args)
+static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAddress *Args)
 {
    pf::Log log;
 
    log.traceBranch("");
 
-   if ((!Args) or (!Args->Address)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
 
    struct sockaddr_in addr;
    LONG result;
@@ -423,20 +423,20 @@ static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIP
       Args->Address->Data[2] = 0;
       Args->Address->Data[3] = 0;
       Args->Address->Type = IPADDR::V4;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Failed);
+   else return log.warning(ERR::Failed);
 }
 
 //********************************************************************************************************************
 // Action: Init()
 
-static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 {
    pf::Log log;
-   ERROR error;
+   ERR error;
 
-   if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR_Okay; // The socket has been pre-configured by the developer
+   if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR::Okay; // The socket has been pre-configured by the developer
 
 #ifdef ENABLE_SSL
    // Initialise the SSL structures (do not perform any connection yet).  Notice how the NSF::SSL flag is used to check
@@ -444,8 +444,8 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
    // field.
 
    if ((Self->Flags & NSF::SSL) != NSF::NIL) {
-      if ((error = sslInit()) != ERR_Okay) return error;
-      if ((error = sslSetup(Self)) != ERR_Okay) return error;
+      if ((error = sslInit()) != ERR::Okay) return error;
+      if ((error = sslSetup(Self)) != ERR::Okay) return error;
    }
 #endif
 
@@ -456,7 +456,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
    //if ((Self->SocketHandle = socket(PF_INET6, SOCK_STREAM, 0)) IS NOHANDLE) {
       if ((Self->SocketHandle = socket(PF_INET, SOCK_STREAM, 0)) IS NOHANDLE) {
          log.warning("socket() %s", strerror(errno));
-         return ERR_Failed;
+         return ERR::Failed;
       }
    //}
    //else Self->IPV6 = TRUE;
@@ -468,9 +468,9 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
       // Was there any reason to use ioctl() when we have fcntl()???
       ULONG non_blocking = 1;
       LONG result = ioctl(Self->SocketHandle, FIONBIO, &non_blocking);
-      if (result) return log.warning(ERR_Failed);
+      if (result) return log.warning(ERR::Failed);
    #else
-      if (fcntl(Self->SocketHandle, F_SETFL, fcntl(Self->SocketHandle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR_Failed);
+      if (fcntl(Self->SocketHandle, F_SETFL, fcntl(Self->SocketHandle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::Failed);
    #endif
 
    // Set the send timeout so that connect() will timeout after a reasonable time
@@ -482,7 +482,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 #elif _WIN32
 
    Self->SocketHandle = win_socket(Self, TRUE, FALSE);
-   if (Self->SocketHandle IS NOHANDLE) return ERR_Failed;
+   if (Self->SocketHandle IS NOHANDLE) return ERR::Failed;
 
 #endif
 
@@ -493,7 +493,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 #endif
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      if (!Self->Port) return log.warning(ERR_FieldNotSet);
+      if (!Self->Port) return log.warning(ERR::FieldNotSet);
 
       if (Self->IPV6) {
          #ifdef __linux__
@@ -513,12 +513,12 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                listen(Self->SocketHandle, Self->Backlog);
                RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else if (result IS EADDRINUSE) return log.warning(ERR_InUse);
-            else return log.warning(ERR_Failed);
+            else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
+            else return log.warning(ERR::Failed);
          #else
-            return ERR_NoSupport;
+            return ERR::NoSupport;
          #endif
       }
       else {
@@ -537,17 +537,17 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                listen(Self->SocketHandle, Self->Backlog);
                RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else if (result IS EADDRINUSE) return log.warning(ERR_InUse);
+            else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
             else {
                log.warning("bind() failed with error: %s", strerror(errno));
-               return ERR_Failed;
+               return ERR::Failed;
             }
          #elif _WIN32
-            if (!(error = win_bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr)))) {
-               if (!(error = win_listen(Self->SocketHandle, Self->Backlog))) {
-                  return ERR_Okay;
+            if ((error = win_bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
+               if ((error = win_listen(Self->SocketHandle, Self->Backlog)) IS ERR::Okay) {
+                  return ERR::Okay;
                }
                else return log.warning(error);
             }
@@ -556,21 +556,21 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
       }
    }
    else if ((Self->Address) and (Self->Port > 0)) {
-      if ((error = nsConnect(Self, Self->Address, Self->Port)) != ERR_Okay) {
+      if ((error = nsConnect(Self, Self->Address, Self->Port)) != ERR::Okay) {
          return error;
       }
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Action: NewObject
 
-static ERROR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
 {
    Self->SocketHandle = NOHANDLE;
-   Self->Error        = ERR_Okay;
+   Self->Error        = ERR::Okay;
    Self->Backlog      = 10;
    Self->State        = NTC::DISCONNECTED;
    Self->MsgLimit     = 1024768;
@@ -579,7 +579,7 @@ static ERROR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
       Self->WriteSocket = NULL;
       Self->ReadSocket = NULL;
    #endif
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -599,26 +599,26 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
+static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       log.warning("DEPRECATED: Read from the ClientSocket instead.");
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
    else { // Read from the server that we're connected to
-      if (Self->SocketHandle IS NOHANDLE) return log.warning(ERR_Disconnected);
+      if (Self->SocketHandle IS NOHANDLE) return log.warning(ERR::Disconnected);
 
       Self->ReadCalled = TRUE;
 
-      if (!Args->Length) { Args->Result = 0; return ERR_Okay; }
+      if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
 
-      ERROR error = RECEIVE(Self, Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
+      ERR error = RECEIVE(Self, Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 
-      if (error != ERR_Okay) {
+      if (error != ERR::Okay) {
          log.branch("Freeing socket, error '%s'", GetErrorMsg(error));
          free_socket(Self);
       }
@@ -655,11 +655,11 @@ AllocMemory: A message buffer could not be allocated.
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
+static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Reading message.");
 
@@ -670,28 +670,28 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 
    NetQueue *queue;
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
 
    queue = &Self->ReadQueue;
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR_Okay) {
-         return ERR_AllocMemory;
+      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR::Okay) {
+         return ERR::AllocMemory;
       }
    }
 
    LONG msglen, result, magic;
    ULONG total_length;
-   ERROR error;
+   ERR error;
 
    if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
       msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
       total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
-      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result))) {
+      if ((error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result)) IS ERR::Okay) {
          queue->Index += result;
 
          if (queue->Index >= sizeof(NetMsg)) {
@@ -702,12 +702,12 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
             if (magic != NETMSG_MAGIC) {
                log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
                queue->Index = 0;
-               return ERR_InvalidData;
+               return ERR::InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
                log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
                queue->Index = 0;
-               return ERR_InvalidData;
+               return ERR::InvalidData;
             }
 
             total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
@@ -717,7 +717,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
             if (total_length > queue->Length) {
                log.trace("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
+               if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
@@ -725,17 +725,17 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
                   queue->Buffer = buffer;
                   queue->Length = total_length;
                }
-               else return log.warning(ERR_AllocMemory);
+               else return log.warning(ERR::AllocMemory);
             }
          }
          else {
             log.trace("Succeeded in reading partial message header only (%d bytes).", result);
-            return ERR_LimitedSuccess;
+            return ERR::LimitedSuccess;
          }
       }
       else {
          log.trace("Read() failed, error '%s'", GetErrorMsg(error));
-         return ERR_LimitedSuccess;
+         return ERR::LimitedSuccess;
       }
    }
 
@@ -745,7 +745,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 
    //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
 
-   if (!(error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result))) {
+   if ((error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR::Okay) {
       queue->Index += result;
       Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
@@ -763,15 +763,15 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 
          if (NETMSG_MAGIC_TAIL != magic) {
             log.warning("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            return ERR_InvalidData;
+            return ERR::InvalidData;
          }
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_LimitedSuccess;
+      else return ERR::LimitedSuccess;
    }
    else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
+      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, LONG(error));
       queue->Index = 0;
       return error;
    }
@@ -793,43 +793,43 @@ and automatically send it once the first connection has been made.
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
+static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    Args->Result = 0;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       log.warning("DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
 
    if ((Self->SocketHandle IS NOHANDLE) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
       log.trace("Writing %d bytes to server (queued for connection).", Args->Length);
       write_queue(Self, &Self->WriteQueue, Args->Buffer, Args->Length);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Note that if a write queue has been setup, there is no way that we can write to the server until the queue has
    // been exhausted.  Thus we have add more data to the queue if it already exists.
 
    LONG len;
-   ERROR error;
+   ERR error;
    if (!Self->WriteQueue.Buffer) {
       len = Args->Length;
       error = SEND(Self, Self->SocketHandle, Args->Buffer, &len, 0);
    }
    else {
       len = 0;
-      error = ERR_BufferOverflow;
+      error = ERR::BufferOverflow;
    }
 
-   if ((error) or (len < Args->Length)) {
-      if (error) log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
+   if ((error != ERR::Okay) or (len < Args->Length)) {
+      if (error != ERR::Okay) log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
-      if ((error IS ERR_DataSize) or (error IS ERR_BufferOverflow) or (len > 0))  {
+      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
          write_queue(Self, &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
@@ -842,7 +842,7 @@ static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -865,12 +865,12 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERROR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
+static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.warning(ERR_Args);
-   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.warning(ERR_OutOfRange);
+   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.warning(ERR::Args);
+   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.warning(ERR::OutOfRange);
 
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
@@ -887,7 +887,7 @@ static ERROR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
    end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -902,11 +902,11 @@ connection.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Address(extNetSocket *Self, CSTRING Value)
+static ERR SET_Address(extNetSocket *Self, CSTRING Value)
 {
    if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
    if (Value) Self->Address = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -935,13 +935,13 @@ In the case where a NetSocket object enters the `NTC::DISCONNECTED` state from t
 can be used to determine how a TCP connection was closed.
 
 <types type="Error">
-<type name="ERR_Okay">The connection was closed gracefully.  All data sent by the peer has been received.</>
-<type name="ERR_Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</>
-<type name="ERR_TimeOut">The connect operation timed out.</>
-<type name="ERR_ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</>
-<type name="ERR_NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</>
-<type name="ERR_HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</>
-<type name="ERR_Failed">An unspecified error occurred.</>
+<type name="ERR::Okay">The connection was closed gracefully.  All data sent by the peer has been received.</>
+<type name="ERR::Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</>
+<type name="ERR::TimeOut">The connect operation timed out.</>
+<type name="ERR::ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</>
+<type name="ERR::NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</>
+<type name="ERR::HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</>
+<type name="ERR::Failed">An unspecified error occurred.</>
 </>
 
 -FIELD-
@@ -957,16 +957,16 @@ the new value in the #State field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
+static ERR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 {
    if (Self->Feedback.defined()) {
       *Value = &Self->Feedback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
+static ERR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
@@ -977,7 +977,7 @@ static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
    }
    else Self->Feedback.clear();
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -989,27 +989,27 @@ Flags: Optional flags.
 Incoming: Callback that is triggered when the socket receives data.
 
 The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The
-function must follow this definition: `ERROR Incoming(*NetSocket, OBJECTPTR Context)`
+function must follow this definition: `ERR Incoming(*NetSocket, OBJECTPTR Context)`
 
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
-If the callback function returns ERR_Terminate then the Incoming field will be cleared and the function will no
+If the callback function returns ERR::Terminate then the Incoming field will be cleared and the function will no
 longer be called.  All other error codes are ignored.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
+static ERR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 {
    if (Self->Incoming.defined()) {
       *Value = &Self->Incoming;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
+static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
@@ -1019,7 +1019,7 @@ static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
       }
    }
    else Self->Incoming.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1028,33 +1028,33 @@ static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 Outgoing: Callback that is triggered when a socket is ready to send data.
 
 The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data.
-The function must be in the format `ERROR Outgoing(*NetSocket, OBJECTPTR Context)`
+The function must be in the format `ERR Outgoing(*NetSocket, OBJECTPTR Context)`
 
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.
 
 To send data to the NetSocket object, call the #Write() action.  If the callback function returns
-ERR_Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error
+ERR::Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error
 codes are ignored.
 
 The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).
 
 *********************************************************************************************************************/
 
-static ERROR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
+static ERR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 {
    if (Self->Incoming.defined()) {
       *Value = &Self->Incoming;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
+static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 {
    pf::Log log;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
    else {
       if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
@@ -1076,7 +1076,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1095,10 +1095,10 @@ OutQueueSize: The number of bytes on the socket's outgoing queue.
 
 *********************************************************************************************************************/
 
-static ERROR GET_OutQueueSize(extNetSocket *Self, LONG *Value)
+static ERR GET_OutQueueSize(extNetSocket *Self, LONG *Value)
 {
    *Value = Self->WriteQueue.Length;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1111,20 +1111,20 @@ SocketHandle: Platform specific reference to the network socket handle.
 
 *********************************************************************************************************************/
 
-static ERROR GET_SocketHandle(extNetSocket *Self, APTR *Value)
+static ERR GET_SocketHandle(extNetSocket *Self, APTR *Value)
 {
    *Value = (APTR)(MAXINT)Self->SocketHandle;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_SocketHandle(extNetSocket *Self, APTR Value)
+static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
 {
    // The user can set SocketHandle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
 
    Self->SocketHandle = (SOCKET_HANDLE)(MAXINT)Value;
    Self->ExternalSocket = TRUE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1134,7 +1134,7 @@ State: The current connection state of the netsocket object.
 
 *********************************************************************************************************************/
 
-static ERROR SET_State(extNetSocket *Self, NTC Value)
+static ERR SET_State(extNetSocket *Self, NTC Value)
 {
    pf::Log log;
 
@@ -1168,7 +1168,7 @@ static ERROR SET_State(extNetSocket *Self, NTC Value)
                { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
                { "State",        LONG(Self->State) }
             };
-            scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, std::ssize(args), NULL);
          }
       }
 
@@ -1185,7 +1185,7 @@ static ERROR SET_State(extNetSocket *Self, NTC Value)
 
    SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1209,13 +1209,13 @@ ValidCert: Indicates certificate validity if the socket is encrypted with a cert
 After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of
 the server's certificate.
 
-If encrypted communication is not supported, `ERR_NoSupport` is returned.  If the certificate is valid or the
+If encrypted communication is not supported, `ERR::NoSupport` is returned.  If the certificate is valid or the
 connection is not encrypted, a value of zero is returned to indicate that the connection is valid.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
+static ERR GET_ValidCert(extNetSocket *Self, LONG *Value)
 {
 #ifdef ENABLE_SSL
    if ((Self->SSL) and (Self->State IS NTC::CONNECTED)) {
@@ -1223,9 +1223,9 @@ static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
    }
    else *Value = 0;
 
-   return ERR_Okay;
+   return ERR::Okay;
 #else
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 #endif
 }
 
@@ -1271,7 +1271,7 @@ static void free_socket(extNetSocket *Self)
 
 //********************************************************************************************************************
 
-static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
+static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1288,7 +1288,7 @@ static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
    if (Queue->Buffer) { // Add more information to an existing queue
       if (Queue->Length + Length > (ULONG)Self->MsgLimit) {
          log.trace("Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
-         return ERR_BufferOverflow;
+         return ERR::BufferOverflow;
       }
 
       log.trace("Extending current buffer to %d bytes.", Queue->Length + Length);
@@ -1301,21 +1301,21 @@ static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
 
       // Adjust the buffer size
 
-      if (!ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, NULL)) {
+      if (ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, NULL) IS ERR::Okay) {
          CopyMemory(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
          Queue->Length += Length;
       }
-      else return ERR_ReallocMemory;
+      else return ERR::ReallocMemory;
    }
-   else if (!AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer)) {
+   else if (AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer) IS ERR::Okay) {
       log.trace("Allocated new buffer of %d bytes.", Length);
       Queue->Index = 0;
       Queue->Length = Length;
       CopyMemory(Message, Queue->Buffer, Length);
    }
-   else return log.warning(ERR_AllocMemory);
+   else return log.warning(ERR::AllocMemory);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 // This function is called from winsockwrappers.c whenever a network event occurs on a NetSocket.  Callbacks
@@ -1327,7 +1327,7 @@ static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
+void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERR Error)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1353,7 +1353,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
    Socket->InUse++;
 
    if (Message IS NTE_READ) {
-      if (Error) log.warning("Socket failed on incoming data, error %d.", Error);
+      if (Error != ERR::Okay) log.warning("Socket failed on incoming data, error %d.", LONG(Error));
 
       #ifdef NO_NETRECURSION
          if (Socket->WinRecursion) {
@@ -1376,7 +1376,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       #endif
    }
    else if (Message IS NTE_WRITE) {
-      if (Error) log.warning("Socket failed on outgoing data, error %d.", Error);
+      if (Error != ERR::Okay) log.warning("Socket failed on outgoing data, error %d.", LONG(Error));
 
       #ifdef NO_NETRECURSION
          if (Socket->WinRecursion) {
@@ -1399,7 +1399,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       #endif
    }
    else if (Message IS NTE_CLOSE) {
-      log.msg("Socket closed by server, error %d.", Error);
+      log.msg("Socket closed by server, error %d.", LONG(Error));
       if (Socket->State != NTC::DISCONNECTED) Socket->setState(NTC::DISCONNECTED);
       free_socket(Socket);
    }
@@ -1408,7 +1408,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       server_client_connect(Socket->SocketHandle, Socket);
    }
    else if (Message IS NTE_CONNECT) {
-      if (Error IS ERR_Okay) {
+      if (Error IS ERR::Okay) {
          log.msg("Connection to server granted.");
 
          #ifdef ENABLE_SSL
@@ -1504,7 +1504,7 @@ static const FieldArray clSocketFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR init_netsocket(void)
+static ERR init_netsocket(void)
 {
    clNetSocket = objMetaClass::create::global(
       fl::ClassVersion(VER_NETSOCKET),
@@ -1516,5 +1516,5 @@ static ERROR init_netsocket(void)
       fl::Size(sizeof(extNetSocket)),
       fl::Path(MOD_PATH));
 
-   return clNetSocket ? ERR_Okay : ERR_AddClass;
+   return clNetSocket ? ERR::Okay : ERR::AddClass;
 }

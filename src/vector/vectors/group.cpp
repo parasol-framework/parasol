@@ -15,7 +15,7 @@ single bounds area.  The calc_full_boundary() function can be used to do this.
 
 *********************************************************************************************************************/
 
-static ERROR init_group(void)
+static ERR init_group(void)
 {
    clVectorGroup = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
@@ -25,5 +25,5 @@ static ERROR init_group(void)
       fl::Size(sizeof(extVector)),
       fl::Path(MOD_PATH));
 
-   return clVectorGroup ? ERR_Okay : ERR_AddClass;
+   return clVectorGroup ? ERR::Okay : ERR::AddClass;
 }

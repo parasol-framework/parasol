@@ -177,43 +177,43 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
 
 //********************************************************************************************************************
 
-static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 {
    Self->Commands.clear();
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 {
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Free(extVectorPath *Self, APTR Void)
 {
    Self->Commands.~vector();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORPATH_Init(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Init(extVectorPath *Self, APTR Void)
 {
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
 {
    new(&Self->Commands) std::vector<PathCommand>;
    Self->GeneratePath = (void (*)(extVector *))&generate_path;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -236,15 +236,15 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
+static ERR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Commands)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Commands)) return log.warning(ERR::NullArgs);
 
    const LONG total_cmds = Args->Size / sizeof(PathCommand);
 
-   if ((total_cmds <= 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
+   if ((total_cmds <= 0) or (total_cmds > 1000000)) return log.warning(ERR::Args);
 
    PathCommand *list = Args->Commands;
    for (LONG i=0; i < total_cmds; i++) {
@@ -252,7 +252,7 @@ static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Arg
    }
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -274,15 +274,15 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
+static ERR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->Index < 0) or ((size_t)Args->Index >= Self->Commands.size())) return log.warning(ERR_OutOfRange);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((Args->Index < 0) or ((size_t)Args->Index >= Self->Commands.size())) return log.warning(ERR::OutOfRange);
 
    Args->Command = &Self->Commands[Args->Index];
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -305,20 +305,20 @@ NothingDone
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
+static ERR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
-   if ((Args->Index < 0) or ((size_t)Args->Index > Self->Commands.size()-1)) return log.warning(ERR_OutOfRange);
-   if (Self->Commands.empty()) return ERR_NothingDone;
+   if (!Args) return ERR::NullArgs;
+   if ((Args->Index < 0) or ((size_t)Args->Index > Self->Commands.size()-1)) return log.warning(ERR::OutOfRange);
+   if (Self->Commands.empty()) return ERR::NothingDone;
 
    auto first = Self->Commands.begin() + Args->Index;
    auto last = first + Args->Total;
    Self->Commands.erase(first, last);
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -341,12 +341,12 @@ BufferOverflow
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
+static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Command)) return ERR_NullArgs;
-   if (Args->Index < 0) return log.warning(ERR_OutOfRange);
+   if ((!Args) or (!Args->Command)) return ERR::NullArgs;
+   if (Args->Index < 0) return log.warning(ERR::OutOfRange);
 
    const LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((size_t)Args->Index + total_cmds > Self->Commands.size()) Self->Commands.resize(Args->Index + total_cmds);
@@ -354,7 +354,7 @@ static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Arg
    CopyMemory(Args->Command, &Self->Commands[Args->Index], total_cmds * sizeof(PathCommand));
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -379,16 +379,16 @@ Args
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
+static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Size)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Size)) return log.warning(ERR::NullArgs);
 
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    const LONG total_cmds = Args->Size / sizeof(PathCommand);
-   if ((total_cmds < 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
+   if ((total_cmds < 0) or (total_cmds > 1000000)) return log.warning(ERR::Args);
 
    Self->Commands.clear();
 
@@ -398,7 +398,7 @@ static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandL
    }
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -414,17 +414,17 @@ existing path, if any.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, LONG *Elements)
+static ERR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, LONG *Elements)
 {
    *Value = Self->Commands.data();
    *Elements = Self->Commands.size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORPATH_SET_Commands(extVectorPath *Self, PathCommand *Value, LONG Elements)
+static ERR VECTORPATH_SET_Commands(extVectorPath *Self, PathCommand *Value, LONG Elements)
 {
-   if (!Value) return ERR_NullArgs;
-   if ((Elements < 0) or (Elements > 1000000)) return ERR_Args;
+   if (!Value) return ERR::NullArgs;
+   if ((Elements < 0) or (Elements > 1000000)) return ERR::Args;
 
    Self->Commands.clear();
    for (LONG i=0; i < Elements; i++) {
@@ -432,7 +432,7 @@ static ERROR VECTORPATH_SET_Commands(extVectorPath *Self, PathCommand *Value, LO
    }
 
    if (Self->initialised()) reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -447,19 +447,19 @@ operations.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_GET_PathLength(extVectorPath *Self, LONG *Value)
+static ERR VECTORPATH_GET_PathLength(extVectorPath *Self, LONG *Value)
 {
    *Value = Self->PathLength;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
+static ERR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -492,11 +492,11 @@ To terminate a path without joining it to the first coordinate, omit the 'Z' fro
 
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
+static ERR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
 {
    Self->Commands.clear();
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if (Value) error = read_path(Self->Commands, Value);
    reset_path(Self);
    return error;
@@ -511,18 +511,18 @@ permitted, although this should be used for shrinking the list because expansion
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORPATH_GET_TotalCommands(extVectorPath *Self, LONG *Value)
+static ERR VECTORPATH_GET_TotalCommands(extVectorPath *Self, LONG *Value)
 {
    *Value = Self->Commands.size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
+static ERR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
 {
    pf::Log log;
-   if (Value < 0) return log.warning(ERR_OutOfRange);
+   if (Value < 0) return log.warning(ERR::OutOfRange);
    Self->Commands.resize(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -539,7 +539,7 @@ static const FieldArray clPathFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR init_path(void)
+static ERR init_path(void)
 {
    clVectorPath = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
@@ -552,5 +552,5 @@ static ERROR init_path(void)
       fl::Size(sizeof(extVectorPath)),
       fl::Path(MOD_PATH));
 
-   return clVectorPath ? ERR_Okay : ERR_AddClass;
+   return clVectorPath ? ERR::Okay : ERR::AddClass;
 }

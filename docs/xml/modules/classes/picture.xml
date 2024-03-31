@@ -43,7 +43,7 @@
       <comment>Prepares the object for use.</comment>
       <description>
 <p>Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the <field>Path</field> field or have chosen to use the <code>NEW</code> flag, the initialisation routine will create a <field>Bitmap</field> area that contains no image data.  This allows you to fill the picture with your own image data and save it using the <action>SaveImage</action> or <action>SaveToObject</action> actions.  You must set the bitmap width, height and colour specifications at a minimum, or the initialisation process will fail.</p>
-<p>If you have set the <field>Path</field> field and avoided the <code>NEW</code> flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of <code>ERR_NoSupport</code> is returned.  You will need to use the Activate or Query actions to load or find out more information about the image format.</p>
+<p>If you have set the <field>Path</field> field and avoided the <code>NEW</code> flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of <code>ERR::NoSupport</code> is returned.  You will need to use the Activate or Query actions to load or find out more information about the image format.</p>
       </description>
     </action>
 

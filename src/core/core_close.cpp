@@ -307,9 +307,9 @@ __export void Expunge(WORD Force)
                if (mod_master->Expunge) {
                   pf::Log log(__FUNCTION__);
                   log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
-                  if (!mod_master->Expunge()) {
+                  if (mod_master->Expunge() IS ERR::Okay) {
                      ccount++;
-                     if (FreeResource(mod_master)) {
+                     if (FreeResource(mod_master) != ERR::Okay) {
                         log.warning("RootModule data is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
@@ -319,7 +319,7 @@ __export void Expunge(WORD Force)
                }
                else {
                   ccount++;
-                  if (FreeResource(mod_master)) {
+                  if (FreeResource(mod_master) != ERR::Okay) {
                      log.warning("RootModule data is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;

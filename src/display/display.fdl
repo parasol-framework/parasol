@@ -370,7 +370,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
       else {
          struct bmpGetColour args = { Red, Green, Blue, Alpha };
-         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
    }
@@ -379,7 +379,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
          struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
-         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
    }
@@ -648,22 +648,22 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
 
 // Stubs
 
-INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
+inline ERR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
    struct drwInvalidateRegion args = { X, Y, Width, Height };
    return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
 }
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
+inline ERR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return ActionMsg(MT_DrwExpose, ObjectID, &args);
 }
 
-INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
+inline ERR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
    struct drwSetOpacity args = { Value, Adjustment};
    return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
 }
 
-INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
+inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = FUNCTION(Callback);
       struct drwAddCallback args = { &call };
@@ -675,7 +675,7 @@ INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    }
 }
 
-INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
+inline ERR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = FUNCTION(Callback);
       struct drwRemoveCallback args = { &call };

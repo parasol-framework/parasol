@@ -72,7 +72,7 @@
   <function>
     <name>SetSSL</name>
     <comment>Alters SSL settings on an initialised NetSocket object.</comment>
-    <prototype>ERROR netSetSSL(objNetSocket * NetSocket, ...)</prototype>
+    <prototype>ERR netSetSSL(objNetSocket * NetSocket, ...)</prototype>
     <input>
       <param type="objNetSocket *" name="NetSocket">The target NetSocket object.</param>
       <param type="..." name="Tags">Series of tags terminated by TAGEND.</param>
@@ -81,7 +81,7 @@
 <p>Use the SetSSL() function to send SSL commands to a NetSocket object.  The following table illustrates the commands that are currently available:</p>
 <p>If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is returned immediately.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -103,7 +103,7 @@
   <function>
     <name>StrToAddress</name>
     <comment>Converts an IP Address in string form to an IPAddress structure.</comment>
-    <prototype>ERROR netStrToAddress(CSTRING String, struct IPAddress * Address)</prototype>
+    <prototype>ERR netStrToAddress(CSTRING String, struct IPAddress * Address)</prototype>
     <input>
       <param type="CSTRING" name="String">A null-terminated string containing the IP Address in dotted format.</param>
       <param type="struct IPAddress *" name="Address">Must point to an IPAddress structure that will be filled in.</param>
@@ -116,7 +116,7 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 }
 </pre>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>

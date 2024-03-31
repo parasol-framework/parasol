@@ -76,12 +76,12 @@ Search: The string sequence was not found.
 
 *********************************************************************************************************************/
 
-static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
+static ERR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 {
    pf::Log log;
    LONG start, end, pos, startLine, endLine, i, targstart, targend;
 
-   if (!Self->Text) return log.warning(ERR_FieldNotSet);
+   if (!Self->Text) return log.warning(ERR::FieldNotSet);
 
    log.msg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, LONG(Self->Flags));
 
@@ -111,7 +111,7 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 
       if (start IS end) {
          if ((Self->Flags & STF::WRAP) != STF::NIL) start = 0;
-         else return ERR_Search;
+         else return ERR::Search;
       }
    }
 
@@ -136,7 +136,7 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
       pos = SCICALL(SCI_SEARCHINTARGET, StrLength((STRING)Self->Text), (char *)Self->Text);
    }
 
-   if (pos IS -1) return ERR_Search;
+   if (pos IS -1) return ERR::Search;
 
    targstart = SCICALL(SCI_GETTARGETSTART);
    targend   = SCICALL(SCI_GETTARGETEND);
@@ -157,20 +157,20 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
    }
 
    Args->Pos = pos; // Return the position to the user
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
+static ERR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 {
    if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
+static ERR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 {
    pf::Log log;
 
@@ -180,12 +180,12 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
          obj = obj->Owner;
       }
       if (obj) Self->Scintilla = (objScintilla *)obj;
-      else return log.warning(ERR_UnsupportedOwner);
+      else return log.warning(ERR::UnsupportedOwner);
    }
 
-   if ((!Self->Text) or (!Self->Scintilla)) return log.warning(ERR_FieldNotSet);
+   if ((!Self->Text) or (!Self->Scintilla)) return log.warning(ERR::FieldNotSet);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -194,7 +194,7 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 Next: Continues a text search.
 
 Use Next to continue a search after calling the #Find() method.  If a string sequence matching that of #Text is
-discovered, its byte position will be returned in the Pos parameter.  If a new match is not discovered then ERR_Search
+discovered, its byte position will be returned in the Pos parameter.  If a new match is not discovered then ERR::Search
 is returned to indicate an end to the search.
 
 -INPUT-
@@ -209,11 +209,11 @@ Search: The string could not be found.
 
 *********************************************************************************************************************/
 
-static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
+static ERR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, LONG(Self->Flags), Self->Start, Self->End);
 
@@ -240,7 +240,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 
       if (start IS end) {
          if ((Self->Flags & STF::WRAP) != STF::NIL) start = 0;
-         else return ERR_Search;
+         else return ERR::Search;
       }
    }
 
@@ -274,7 +274,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
       pos = SCICALL(SCI_SEARCHINTARGET, StrLength((STRING)Self->Text), (char *)Self->Text);
    }
 
-   if (pos IS -1) return ERR_Search;
+   if (pos IS -1) return ERR::Search;
 
    LONG targstart = SCICALL(SCI_GETTARGETSTART);
    LONG targend   = SCICALL(SCI_GETTARGETEND);
@@ -293,7 +293,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
    }
 
    Args->Pos = pos;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -315,9 +315,9 @@ Search: The string could not be found.
 
 *********************************************************************************************************************/
 
-static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
+static ERR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    // Temporarily set the STF::BACKWARDS flag
 
@@ -328,7 +328,7 @@ static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
    SEARCH_Next(Self, (struct ssNext *)Args);
 
    Self->Flags = flags; // Restore the original flags
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -351,13 +351,13 @@ This field defines the string sequence that will be searched for when calling ei
 
 *********************************************************************************************************************/
 
-static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
+static ERR SET_Text(objScintillaSearch *Self, CSTRING Value)
 {
    if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
    if (Value) {
-      if (!(Self->Text = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->Text = StrClone(Value))) return ERR::AllocMemory;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -404,7 +404,7 @@ static const FieldArray clFields[] = {
 
 OBJECTPTR clScintillaSearch = NULL;
 
-ERROR init_search(void)
+ERR init_search(void)
 {
    clScintillaSearch = objMetaClass::create::global(
       fl::ClassVersion(1.0),
@@ -416,5 +416,5 @@ ERROR init_search(void)
       fl::Size(sizeof(objScintillaSearch)),
       fl::Path("modules:scintilla"));
 
-   return clScintillaSearch ? ERR_Okay : ERR_AddClass;
+   return clScintillaSearch ? ERR::Okay : ERR::AddClass;
 }

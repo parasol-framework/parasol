@@ -26,11 +26,11 @@ NoPermission: An attempt to delete a system volume was denied.
 
 *********************************************************************************************************************/
 
-ERROR DeleteVolume(CSTRING Name)
+ERR DeleteVolume(CSTRING Name)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Name) or (!Name[0])) return ERR_NullArgs;
+   if ((!Name) or (!Name[0])) return ERR::NullArgs;
 
    log.branch("Name: %s", Name);
 
@@ -40,14 +40,14 @@ ERROR DeleteVolume(CSTRING Name)
       std::string vol(Name, i);
 
       if (glVolumes.contains(vol)) {
-         if (glVolumes[vol]["System"] == "Yes") return log.warning(ERR_NoPermission);
+         if (glVolumes[vol]["System"] == "Yes") return log.warning(ERR::NoPermission);
 
          glVolumes.erase(vol);
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -58,7 +58,7 @@ RenameVolume: Renames a volume.
 
 *********************************************************************************************************************/
 
-ERROR RenameVolume(CSTRING Volume, CSTRING Name)
+ERR RenameVolume(CSTRING Volume, CSTRING Name)
 {
    pf::Log log(__FUNCTION__);
 
@@ -85,12 +85,12 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
          ((EVENTID *)evcreated.get())[0] = EVID_FILESYSTEM_VOLUME_CREATED;
          CopyMemory(Name, evcreated.get() + sizeof(EVENTID), namelen);
          BroadcastEvent(evcreated.get(), sizeof(EVENTID) + namelen);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
-      return ERR_Search;
+      return ERR::Search;
    }
-   else return log.warning(ERR_LockFailed);
+   else return log.warning(ERR::LockFailed);
 }
 
 /*********************************************************************************************************************
@@ -121,11 +121,11 @@ LockFailed:
 
 *********************************************************************************************************************/
 
-ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)
+ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Name) or (!Path)) return log.warning(ERR_NullArgs);
+   if ((!Name) or (!Path)) return log.warning(ERR::NullArgs);
 
    std::string name;
 
@@ -145,7 +145,7 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
             auto &keys = glVolumes[name];
             if ((Flags & VOLUME::PRIORITY) != VOLUME::NIL) keys["Path"] = std::string(Path) + "|" + keys["Path"];
             else keys["Path"] = keys["Path"] + "|" + Path;
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
 
@@ -164,9 +164,9 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
       ((EVENTID *)evbuf.get())[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
       CopyMemory(name.c_str(), evbuf.get() + sizeof(EVENTID), name.size() + 1);
       BroadcastEvent(evbuf.get(), sizeof(EVENTID) + name.size() + 1);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -190,31 +190,31 @@ Exists: The named volume already exists.
 
 *********************************************************************************************************************/
 
-using CALL_CLOSE_DIR       = ERROR (*)(DirInfo *);
-using CALL_DELETE          = ERROR (*)(STRING, FUNCTION *);
-using CALL_GET_INFO        = ERROR (*)(CSTRING, FileInfo*, LONG);
-using CALL_GET_DEVICE_INFO = ERROR (*)(CSTRING, objStorageDevice*);
-using CALL_IDENTIFY_FILE   = ERROR (*)(STRING, CLASSID*, CLASSID*);
+using CALL_CLOSE_DIR       = ERR (*)(DirInfo *);
+using CALL_DELETE          = ERR (*)(STRING, FUNCTION *);
+using CALL_GET_INFO        = ERR (*)(CSTRING, FileInfo*, LONG);
+using CALL_GET_DEVICE_INFO = ERR (*)(CSTRING, objStorageDevice*);
+using CALL_IDENTIFY_FILE   = ERR (*)(STRING, CLASSID*, CLASSID*);
 using CALL_IGNORE_FILE     = void  (*)(extFile*);
-using CALL_MAKE_DIR        = ERROR (*)(CSTRING, PERMIT);
-using CALL_OPEN_DIR        = ERROR (*)(DirInfo*);
-using CALL_RENAME          = ERROR (*)(STRING, STRING);
-using CALL_SAME_FILE       = ERROR (*)(CSTRING, CSTRING);
-using CALL_SCAN_DIR        = ERROR (*)(DirInfo*);
-using CALL_TEST_PATH       = ERROR (*)(CSTRING, RSF, LOC *);
-using CALL_WATCH_PATH      = ERROR (*)(extFile*);
+using CALL_MAKE_DIR        = ERR (*)(CSTRING, PERMIT);
+using CALL_OPEN_DIR        = ERR (*)(DirInfo*);
+using CALL_RENAME          = ERR (*)(STRING, STRING);
+using CALL_SAME_FILE       = ERR (*)(CSTRING, CSTRING);
+using CALL_SCAN_DIR        = ERR (*)(DirInfo*);
+using CALL_TEST_PATH       = ERR (*)(CSTRING, RSF, LOC *);
+using CALL_WATCH_PATH      = ERR (*)(extFile*);
 
-ERROR VirtualVolume(CSTRING Name, ...)
+ERR VirtualVolume(CSTRING Name, ...)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Name) or (!Name[0])) return log.warning(ERR_NullArgs);
+   if ((!Name) or (!Name[0])) return log.warning(ERR::NullArgs);
 
    log.branch("%s", Name);
 
    auto id = StrHash(Name, FALSE);
 
-   if (glVirtual.contains(id)) return ERR_Exists;
+   if (glVirtual.contains(id)) return ERR::Exists;
 
    LONG i = StrCopy(Name, glVirtual[id].Name, sizeof(glVirtual[id].Name)-2);
    glVirtual[id].Name[i++]     = ':';
@@ -230,7 +230,7 @@ ERROR VirtualVolume(CSTRING Name, ...)
          case VAS::DEREGISTER:
             glVirtual.erase(id);
             va_end(list);
-            return ERR_Okay; // The volume has been removed, so any further tags are redundant.
+            return ERR::Okay; // The volume has been removed, so any further tags are redundant.
 
          case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize = va_arg(list, LONG); break;
          case VAS::CASE_SENSITIVE:  glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false; break;
@@ -251,11 +251,11 @@ ERROR VirtualVolume(CSTRING Name, ...)
          default:
             log.warning("Bad VAS tag $%.8x @ pair index %d, aborting.", tagid, arg);
             va_end(list);
-            return ERR_Args;
+            return ERR::Args;
       }
       arg++;
    }
 
    va_end(list);
-   return ERR_Okay;
+   return ERR::Okay;
 }

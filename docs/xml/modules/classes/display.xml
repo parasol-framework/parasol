@@ -100,7 +100,7 @@
       <description>
 <p>The MoveToPoint action moves the display to a new position.</p>
 <p>In a hosted environment, the supplied coordinates are treated as being indicative of the absolute position of the host window (not the client area).</p>
-<p>For full-screen displays, MoveToPoint can alter the screen position for the hardware device managing the display output.  This is a rare feature that requires hardware support.  ERR_NoSupport is returned if this feature is unavailable.</p>
+<p>For full-screen displays, MoveToPoint can alter the screen position for the hardware device managing the display output.  This is a rare feature that requires hardware support.  ERR::NoSupport is returned if this feature is unavailable.</p>
       </description>
     </action>
 
@@ -145,7 +145,7 @@
     <method>
       <name>Minimise</name>
       <comment>Minimise the desktop window hosting the display.</comment>
-      <prototype>ERROR gfxMinimise(OBJECTPTR Object)</prototype>
+      <prototype>ERR gfxMinimise(OBJECTPTR Object)</prototype>
       <description>
 <p>If a display is hosted in a desktop window, calling the Minimise method will perform the default minimise action on that window.  On a platform such as Microsoft Windows, this would normally result in the window being minimised to the task bar.</p>
 <p>Calling Minimise on a display that is already in the minimised state may result in the host window being restored to the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the host platform.</p>
@@ -158,7 +158,7 @@
     <method>
       <name>SetDisplay</name>
       <comment>Changes the current display mode.</comment>
-      <prototype>ERROR gfxSetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</prototype>
+      <prototype>ERR gfxSetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</prototype>
       <input>
         <param type="LONG" name="X">Horizontal offset of the display, relative to its default position.</param>
         <param type="LONG" name="Y">Vertical offset of the display, relative to its default position.</param>
@@ -186,7 +186,7 @@
     <method>
       <name>SetGamma</name>
       <comment>Sets the display gamma levels.</comment>
-      <prototype>ERROR gfxSetGamma(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
+      <prototype>ERR gfxSetGamma(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
       <input>
         <param type="DOUBLE" name="Red">Gamma correction for the red gun.</param>
         <param type="DOUBLE" name="Green">Gamma correction for the green gun.</param>
@@ -208,7 +208,7 @@
     <method>
       <name>SetGammaLinear</name>
       <comment>Sets the display gamma level using a linear algorithm.</comment>
-      <prototype>ERROR gfxSetGammaLinear(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
+      <prototype>ERR gfxSetGammaLinear(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
       <input>
         <param type="DOUBLE" name="Red">New red gamma value.</param>
         <param type="DOUBLE" name="Green">New green gamma value.</param>
@@ -227,7 +227,7 @@
     <method>
       <name>SetMonitor</name>
       <comment>Changes the default monitor settings.</comment>
-      <prototype>ERROR gfxSetMonitor(OBJECTPTR Object, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags)</prototype>
+      <prototype>ERR gfxSetMonitor(OBJECTPTR Object, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the display.</param>
         <param type="LONG" name="MinH">The minimum horizontal scan rate.  Usually set to 31.</param>
@@ -250,7 +250,7 @@
     <method>
       <name>SizeHints</name>
       <comment>Sets the width and height restrictions for the host window (hosted environments only).</comment>
-      <prototype>ERROR gfxSizeHints(OBJECTPTR Object, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect)</prototype>
+      <prototype>ERR gfxSizeHints(OBJECTPTR Object, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect)</prototype>
       <input>
         <param type="LONG" name="MinWidth">The minimum width of the window.</param>
         <param type="LONG" name="MinHeight">The minimum height of the window.</param>
@@ -259,7 +259,7 @@
         <param type="LONG" name="EnforceAspect">Set to true to enforce an aspect ratio that is scaled by MinHeight / MinWidth.</param>
       </input>
       <description>
-<p>If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window from being shrunk or expanded beyond a certain size.  This feature is platform dependent and <code>ERR_NoSupport</code> will be returned if it is not implemented.</p>
+<p>If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window from being shrunk or expanded beyond a certain size.  This feature is platform dependent and <code>ERR::NoSupport</code> will be returned if it is not implemented.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -270,7 +270,7 @@
     <method>
       <name>UpdatePalette</name>
       <comment>Updates the video display palette to new colour values if in 256 colour mode.</comment>
-      <prototype>ERROR gfxUpdatePalette(OBJECTPTR Object, struct RGBPalette * NewPalette)</prototype>
+      <prototype>ERR gfxUpdatePalette(OBJECTPTR Object, struct RGBPalette * NewPalette)</prototype>
       <input>
         <param type="struct RGBPalette *" name="NewPalette">The new palette to apply to the display bitmap.</param>
       </input>
@@ -287,9 +287,9 @@
     <method>
       <name>WaitVBL</name>
       <comment>Waits for a vertical blank.</comment>
-      <prototype>ERROR gfxWaitVBL(OBJECTPTR Object)</prototype>
+      <prototype>ERR gfxWaitVBL(OBJECTPTR Object)</prototype>
       <description>
-<p>This method waits for the strobe to reach the vertical blank area at the bottom of the display.  Not all graphics hardware will support this method.  If this is the case, WaitVBL() will return immediately with ERR_NoSupport.</p>
+<p>This method waits for the strobe to reach the vertical blank area at the bottom of the display.  Not all graphics hardware will support this method.  If this is the case, WaitVBL() will return immediately with ERR::NoSupport.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -564,7 +564,7 @@
       <type>OBJECTID</type>
       <description>
 <p>The PopOver field can be used when a display is hosted as a window.  Setting the PopOver field to refer to the object ID of another display will ensure that the host window is always in front of the other display's window (assuming both windows are visible on the desktop).</p>
-<p>The ERR_NoSupport error code is returned if the host does not support this functionality or if the display owns the output device.</p>
+<p>The ERR::NoSupport error code is returned if the host does not support this functionality or if the display owns the output device.</p>
       </description>
     </field>
 

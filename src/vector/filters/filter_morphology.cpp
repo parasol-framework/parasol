@@ -42,12 +42,12 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
+static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 {
    const LONG canvasWidth = Self->Target->Clip.Right - Self->Target->Clip.Left;
    const LONG canvasHeight = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
-   if (canvasWidth * canvasHeight > 4096 * 4096) return ERR_Failed; // Bail on really large bitmaps.
+   if (canvasWidth * canvasHeight > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
 
    const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
    const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
@@ -64,7 +64,7 @@ static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
    if ((Self->RadiusX > 0) and (Self->RadiusY > 0)) {
       buffer = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * 4];
-      if (!buffer) return ERR_Memory;
+      if (!buffer) return ERR::Memory;
       out_line = buffer;
       out_linewidth = canvasWidth * 4;
       buffer_as_input = true;
@@ -76,7 +76,7 @@ static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
    }
 
    objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
    UBYTE *input = inBmp->Data + (inBmp->Clip.Top * inBmp->LineWidth) + (inBmp->Clip.Left * inBmp->BytesPerPixel);
 
    if (Self->RadiusX > 0) { // Top-to-bottom dilate
@@ -195,15 +195,15 @@ static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
    if (buffer) delete [] buffer;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MORPHOLOGYFX_NewObject(extMorphologyFX *Self, APTR Void)
+static ERR MORPHOLOGYFX_NewObject(extMorphologyFX *Self, APTR Void)
 {
    Self->Operator = MOP::ERODE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -214,16 +214,16 @@ Lookup: MOP
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_Operator(extMorphologyFX *Self, MOP *Value)
+static ERR MORPHOLOGYFX_GET_Operator(extMorphologyFX *Self, MOP *Value)
 {
    *Value = Self->Operator;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_Operator(extMorphologyFX *Self, MOP Value)
+static ERR MORPHOLOGYFX_SET_Operator(extMorphologyFX *Self, MOP Value)
 {
    Self->Operator = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -233,19 +233,19 @@ RadiusX: X radius value.
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_RadiusX(extMorphologyFX *Self, LONG *Value)
+static ERR MORPHOLOGYFX_GET_RadiusX(extMorphologyFX *Self, LONG *Value)
 {
    *Value = Self->RadiusX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_RadiusX(extMorphologyFX *Self, LONG Value)
+static ERR MORPHOLOGYFX_SET_RadiusX(extMorphologyFX *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->RadiusX = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -255,19 +255,19 @@ RadiusY: Y radius value.
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_RadiusY(extMorphologyFX *Self, LONG *Value)
+static ERR MORPHOLOGYFX_GET_RadiusY(extMorphologyFX *Self, LONG *Value)
 {
    *Value = Self->RadiusY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_RadiusY(extMorphologyFX *Self, LONG Value)
+static ERR MORPHOLOGYFX_SET_RadiusY(extMorphologyFX *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->RadiusY = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -278,7 +278,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
+static ERR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -290,7 +290,7 @@ static ERROR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
    stream << "radius=\"" << Self->RadiusX << " " << Self->RadiusY << "\"";
 
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -313,7 +313,7 @@ static const FieldArray clMorphologyFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_morphfx(void)
+ERR init_morphfx(void)
 {
    clMorphologyFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -325,5 +325,5 @@ ERROR init_morphfx(void)
       fl::Size(sizeof(extMorphologyFX)),
       fl::Path(MOD_PATH));
 
-   return clMorphologyFX ? ERR_Okay : ERR_AddClass;
+   return clMorphologyFX ? ERR::Okay : ERR::AddClass;
 }

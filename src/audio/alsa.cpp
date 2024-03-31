@@ -12,7 +12,7 @@ static void free_alsa(extAudio *Self)
 
 //********************************************************************************************************************
 
-static ERROR init_audio(extAudio *Self)
+static ERR init_audio(extAudio *Self)
 {
    pf::Log log(__FUNCTION__);
    struct sndSetVolume setvol;
@@ -33,7 +33,7 @@ static ERROR init_audio(extAudio *Self)
 
    if (Self->Handle) {
       log.msg("Audio system is already active.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    snd_ctl_card_info_alloca(&info);
@@ -48,13 +48,13 @@ static ERROR init_audio(extAudio *Self)
 
    // Convert english pcm_name to the device number
 
-   if (StrMatch("default", pcm_name.c_str()) != ERR_Okay) {
+   if (StrMatch("default", pcm_name.c_str()) != ERR::Okay) {
       STRING cardid, cardname;
 
       LONG card = -1;
       if ((snd_card_next(&card) < 0) or (card < 0)) {
          log.warning("There are no sound cards supported by audio drivers.");
-         return ERR_NoSupport;
+         return ERR::NoSupport;
       }
 
       while (card >= 0) {
@@ -87,7 +87,7 @@ static ERROR init_audio(extAudio *Self)
       LONG card = -1;
       if ((snd_card_next(&card) < 0) or (card < 0)) {
          log.warning("There are no sound cards supported by audio drivers.");
-         return ERR_NoSupport;
+         return ERR::NoSupport;
       }
 
       // Check the number of mixer controls for all cards that support output.  We'll choose the card that has the most
@@ -156,22 +156,22 @@ next_card:
 
    if ((err = snd_mixer_open(&Self->MixHandle, 0)) < 0) {
       log.warning("snd_mixer_open() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if ((err = snd_mixer_attach(Self->MixHandle, pcm_name.c_str())) < 0) {
       log.warning("snd_mixer_attach() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if ((err = snd_mixer_selem_register(Self->MixHandle, NULL, NULL)) < 0) {
       log.warning("snd_mixer_selem_register() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if ((err = snd_mixer_load(Self->MixHandle)) < 0) {
       log.warning("snd_mixer_load() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Build a list of all available volume controls
@@ -184,7 +184,7 @@ next_card:
 
    if (voltotal < 1) {
       log.warning("Aborting due to lack of mixers for the sound device.");
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
 
    std::vector<VolumeCtl> volctl;
@@ -259,19 +259,19 @@ next_card:
    stream = SND_PCM_STREAM_PLAYBACK;
    if ((err = snd_pcm_open(&pcmhandle, pcm_name.c_str(), stream, 0)) < 0) {
       log.warning("snd_pcm_open(%s) %s", pcm_name.c_str(), snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Set access type, either SND_PCM_ACCESS_RW_INTERLEAVED or SND_PCM_ACCESS_RW_NONINTERLEAVED.
 
    if ((err = snd_pcm_hw_params_any(pcmhandle, hwparams)) < 0) {
       log.warning("Broken configuration for this PCM: no configurations available");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_access(pcmhandle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
       log.warning("set_access() %d %s", err, snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Set the preferred audio bit format
@@ -279,18 +279,18 @@ next_card:
    if (Self->BitDepth IS 32) {
       if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_FLOAT_LE)) < 0) {
          log.warning("set_format(32) %s", snd_strerror(err));
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
    else if (Self->BitDepth IS 16) {
       if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_S16_LE)) < 0) {
          log.warning("set_format(16) %s", snd_strerror(err));
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
    else if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_U8)) < 0) {
       log.warning("set_format(8) %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Retrieve the bit rate from alsa
@@ -313,7 +313,7 @@ next_card:
 
       default:
          log.warning("Hardware uses an unsupported audio format.");
-         return ERR_Failed;
+         return ERR::Failed;
    }
 
    log.msg("ALSA bit rate: %d", Self->BitDepth);
@@ -324,7 +324,7 @@ next_card:
    dir = 0;
    if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (ULONG *)&Self->OutputRate, &dir)) < 0) {
       log.warning("set_rate_near() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Set number of channels
@@ -332,7 +332,7 @@ next_card:
    ULONG channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if (channels IS 2) Self->Stereo = true;
@@ -369,24 +369,24 @@ next_card:
 
    if ((err = snd_pcm_hw_params_set_period_size_near(pcmhandle, hwparams, &periodsize, 0)) < 0) {
       log.warning("Period size failure: %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_buffer_size_near(pcmhandle, hwparams, &buffersize)) < 0) {
       log.warning("Buffer size failure: %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // ALSA device initialisation
 
    if ((err = snd_pcm_hw_params(pcmhandle, hwparams)) < 0) {
       log.warning("snd_pcm_hw_params() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if ((err = snd_pcm_prepare(pcmhandle)) < 0) {
       log.warning("snd_pcm_prepare() %s", snd_strerror(err));
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Retrieve ALSA buffer sizes
@@ -459,10 +459,10 @@ next_card:
       Self->Handle = pcmhandle;
    }
    else {
-      return log.warning(ERR_AllocMemory);
+      return log.warning(ERR::AllocMemory);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 #endif

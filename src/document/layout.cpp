@@ -190,7 +190,7 @@ private:
 
    void size_widget(widget_mgr &, bool);
    WRAP place_widget(widget_mgr &);
-   ERROR position_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, DOUBLE &, DOUBLE, bool,
+   ERR position_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, DOUBLE &, DOUBLE, bool,
       DOUBLE &, DOUBLE &);
 
    WRAP lay_button(bc_button &);
@@ -217,9 +217,9 @@ public:
    layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport, padding &pMargins) :
       Self(pSelf), m_stream(pStream), m_viewport(pViewport), m_margins(pMargins) { }
 
-   ERROR do_layout(font_entry **, DOUBLE &, DOUBLE &, bool &);
+   ERR do_layout(font_entry **, DOUBLE &, DOUBLE &, bool &);
    void gen_scene_graph(objVectorViewport *, std::vector<doc_segment> &);
-   ERROR gen_scene_init(objVectorViewport *);
+   ERR gen_scene_init(objVectorViewport *);
 };
 
 //********************************************************************************************************************
@@ -240,7 +240,7 @@ CELL layout::lay_cell(bc_table *Table)
    auto &cell = m_stream->lookup<bc_cell>(idx);
 
    if (!Table) {
-      Self->Error = log.warning(ERR_InvalidData);
+      Self->Error = log.warning(ERR::InvalidData);
       return CELL::ABORT;
    }
 
@@ -504,7 +504,7 @@ WRAP layout::place_widget(widget_mgr &Widget)
 WRAP layout::lay_button(bc_button &Button)
 {
    pf::Log log(__FUNCTION__);
-   
+
    if (!Button.inner_padding.configured) {
       // A default for padding is required if the client hasn't defined any.
       Button.inner_padding.configured = true;
@@ -512,11 +512,11 @@ WRAP layout::lay_button(bc_button &Button)
       Button.inner_padding.scale_all();
    }
 
-   // The size of the button will be determined by its content.  Dimensions specified by the client are interpreted 
+   // The size of the button will be determined by its content.  Dimensions specified by the client are interpreted
    // as minimum values.
-   
+
    size_widget(Button, true); // Defines final_pad, final_width, final_height
-   
+
    if (Button.viewport.empty()) {
       Button.viewport.set(objVectorViewport::create::global({
          fl::Name("btn_viewport"),
@@ -543,7 +543,7 @@ WRAP layout::lay_button(bc_button &Button)
 
       layout sl(Self, Button.stream, *Button.viewport, inner_pad);
       sl.m_depth = m_depth + 1;
-      
+
       bool vertical_repass = false;
       sl.do_layout(&m_font, Button.final_width, Button.final_height, vertical_repass);
       Button.segments = sl.m_segments;  // The main product of do_layout() are the produced segments.
@@ -659,7 +659,7 @@ WRAP layout::lay_text()
    // Entire text string has been processed, perform one final wrapping check.
 
    if ((m_word_width) and (!m_no_wrap)) {
-      wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+      wrap_result = check_wordwrap(m_word_index, m_cursor_x, m_cursor_y, m_word_width,
          (m_line.height < 1) ? 1 : m_line.height);
    }
 
@@ -830,7 +830,7 @@ void layout::lay_paragraph()
    if (!m_font) {
       pf::Log log;
       DLAYOUT("Failed to lookup font for %s:%g", para.font.face.c_str(), para.font.point);
-      Self->Error = ERR_Failed;
+      Self->Error = ERR::Failed;
       return;
    }
 
@@ -1253,7 +1253,7 @@ static void layout_doc(extDocument *Self)
 
       Self->SortSegments.clear();
       Self->PageProcessed = false;
-      Self->Error = ERR_Okay;
+      Self->Error = ERR::Okay;
 
       if (glFonts.empty()) return;
       auto font = &glFonts[0];
@@ -1261,7 +1261,7 @@ static void layout_doc(extDocument *Self)
       DOUBLE page_height = 1;
       l = layout(Self, &Self->Stream, Self->Page, margins);
       bool vertical_repass = false;
-      if (l.do_layout(&font, page_width, page_height, vertical_repass) != ERR_Okay) break;
+      if (l.do_layout(&font, page_width, page_height, vertical_repass) != ERR::Okay) break;
 
       // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
       // the number of passes required for the next time we do a layout.
@@ -1273,10 +1273,10 @@ static void layout_doc(extDocument *Self)
       Self->CalcWidth = page_width;
    }
 
-   if (!Self->Error) Self->EditCells = l.m_ecells;
+   if (Self->Error IS ERR::Okay) Self->EditCells = l.m_ecells;
    else Self->EditCells.clear();
 
-   if ((!Self->Error) and (!l.m_segments.empty())) Self->Segments = l.m_segments;
+   if ((Self->Error IS ERR::Okay) and (!l.m_segments.empty())) Self->Segments = l.m_segments;
    else Self->Segments.clear();
 
    Self->UpdatingLayout = false;
@@ -1287,11 +1287,11 @@ static void layout_doc(extDocument *Self)
    // possible to display a document up to the point at which the error occurred, we want to maintain a strict approach
    // so that human error is considered excusable in document formatting).
 
-   if (Self->Error) {
+   if (Self->Error != ERR::Okay) {
       unload_doc(Self, ULD::REDRAW);
 
       std::string msg = "A failure occurred during the layout of this document - it cannot be displayed.\n\nDetails: ";
-      if (Self->Error IS ERR_Loop) msg.append("This page cannot be rendered correctly in its current form.");
+      if (Self->Error IS ERR::Loop) msg.append("This page cannot be rendered correctly in its current form.");
       else msg.append(GetErrorMsg(Self->Error));
 
       error_dialog("Document Layout Error", msg);
@@ -1299,7 +1299,7 @@ static void layout_doc(extDocument *Self)
    else {
       acResize(Self->Page, Self->CalcWidth, Self->PageHeight, 0);
 
-      if (!l.gen_scene_init(Self->Page)) {
+      if (l.gen_scene_init(Self->Page) IS ERR::Okay) {
          l.gen_scene_graph(Self->Page, l.m_segments);
       }
 
@@ -1311,7 +1311,7 @@ static void layout_doc(extDocument *Self)
                { "PageWidth",  Self->CalcWidth },
                { "PageHeight", Self->PageHeight }
             };
-            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, std::ssize(args), NULL);
          }
          else if (trigger.isC()) {
             auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG, APTR))trigger.StdC.Routine;
@@ -1336,15 +1336,15 @@ static void layout_doc(extDocument *Self)
 // Margins:    Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell,
 //             margins reflect cell padding values.
 
-ERROR layout::do_layout(font_entry **Font, DOUBLE &Width, DOUBLE &Height, bool &VerticalRepass)
+ERR layout::do_layout(font_entry **Font, DOUBLE &Width, DOUBLE &Height, bool &VerticalRepass)
 {
    pf::Log log(__FUNCTION__);
 
    if ((m_stream->data.empty()) or (!Font) or (!Font[0])) {
-      return log.traceWarning(ERR_NoData);
+      return log.traceWarning(ERR::NoData);
    }
 
-   if (m_depth >= MAX_DEPTH) return log.traceWarning(ERR_Recursion);
+   if (m_depth >= MAX_DEPTH) return log.traceWarning(ERR::Recursion);
 
    auto page_height = Height;
    m_page_width = Width;
@@ -1372,11 +1372,11 @@ extend_page:
       if (m_break_loop > 4) m_break_loop = 4; // Very large page widths normally means that there's a parsing problem
    }
 
-   if (Self->Error) {
+   if (Self->Error != ERR::Okay) {
       return Self->Error;
    }
    else if (m_break_loop <= 0) {
-      Self->Error = ERR_Loop;
+      Self->Error = ERR::Loop;
       return Self->Error;
    }
    m_break_loop--;
@@ -1401,10 +1401,10 @@ extend_page:
    m_line.index.set(0);
    m_line.full_reset(m_margins.left);
 
-   for (idx = 0; (idx < INDEX(m_stream->size())) and (!Self->Error); idx++) {
+   for (idx = 0; (idx < INDEX(m_stream->size())) and (Self->Error IS ERR::Okay); idx++) {
       if ((m_cursor_x >= MAX_PAGE_WIDTH) or (m_cursor_y >= MAX_PAGE_HEIGHT)) {
          log.warning("Invalid cursor position reached @ %gx%g", m_cursor_x, m_cursor_y);
-         Self->Error = ERR_InvalidDimension;
+         Self->Error = ERR::InvalidDimension;
          break;
       }
 
@@ -1775,7 +1775,7 @@ exit:
 
    if (page_height > MAX_PAGE_HEIGHT) {
       log.warning("Calculated page_height of %g is invalid.", page_height);
-      Self->Error = ERR_InvalidDimension;
+      Self->Error = ERR::InvalidDimension;
       return Self->Error;
    }
 
@@ -1885,7 +1885,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 
    if ((X > MAX_PAGE_WIDTH) or (Y > MAX_PAGE_HEIGHT) or (m_page_width > MAX_PAGE_WIDTH)) {
       log.warning("Invalid element position of %gx%g in page of %g", X, Y, m_page_width);
-      Self->Error = ERR_InvalidDimension;
+      Self->Error = ERR::InvalidDimension;
       return WRAP::DO_NOTHING;
    }
 
@@ -1975,7 +1975,7 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 
    if (breakloop < 0) {
       log.traceWarning("Infinite loop detected.");
-      Self->Error = ERR_Loop;
+      Self->Error = ERR::Loop;
    }
 
    #ifdef DBG_WORDWRAP
@@ -1986,9 +1986,9 @@ WRAP layout::check_wordwrap(stream_char Cursor, DOUBLE &X, DOUBLE &Y, DOUBLE Wid
 }
 
 //********************************************************************************************************************
-// Compare a given area against clip regions and move the x,y position when there's a collision.  There are three 
+// Compare a given area against clip regions and move the x,y position when there's a collision.  There are three
 // possible outcomes when making these checks:
-// 
+//
 // 1. There is no collision
 // 2. A collision occurs and the word can be advanced to white space that is available past the obstacle.
 // 3. A collision occurs and there is no further room available on this line (not handled by this routine).

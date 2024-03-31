@@ -43,7 +43,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Do not proceed with initialisation if the module is being probed
 
-   if ((((objModule *)argModule)->Flags & MOF::SYSTEM_PROBE) != MOF::NIL) return ERR_ServiceUnavailable|ERF_Notified;
+   if ((((objModule *)argModule)->Flags & MOF::SYSTEM_PROBE) != MOF::NIL) return ERR_ServiceUnavailable|ERR::Notified;
 
    if (!acGetVar(argModule, "XDisplay", buffer, sizeof(buffer))) {
       XDisplay = (struct _XDisplay *)(MAXINT)StrToInt(buffer);
@@ -58,7 +58,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (XRRQueryExtension(XDisplay, &events, &errors)) avail = true;
    else log.msg("XRRQueryExtension() failed.");
 
-   if (!avail) return ERR_ServiceUnavailable|ERF_Notified;
+   if (!avail) return ERR_ServiceUnavailable|ERR::Notified;
 
    if ((sizes = XRRSizes(XDisplay, screen, &count)) and (count)) {
       glSizes = sizes;

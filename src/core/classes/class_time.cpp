@@ -29,10 +29,10 @@ To get the current system time, use the #Query() action.
 #include <unistd.h>
 #endif
 
-static ERROR GET_TimeStamp(objTime *, LARGE *);
+static ERR GET_TimeStamp(objTime *, LARGE *);
 
-static ERROR TIME_Query(objTime *, APTR);
-static ERROR TIME_SetTime(objTime *, APTR);
+static ERR TIME_Query(objTime *, APTR);
+static ERR TIME_SetTime(objTime *, APTR);
 
 /*********************************************************************************************************************
 -ACTION-
@@ -40,7 +40,7 @@ Query: Updates the values in a time object with the current system date and time
 -END-
 *********************************************************************************************************************/
 
-static ERROR TIME_Query(objTime *Self, APTR Void)
+static ERR TIME_Query(objTime *Self, APTR Void)
 {
    #ifdef __unix__
 
@@ -88,7 +88,7 @@ static ERROR TIME_Query(objTime *Self, APTR Void)
    LONG m = Self->Month + 12 * a - 2;
    Self->DayOfWeek = (Self->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -102,7 +102,7 @@ work if the user is logged in as the administrator.
 
 *********************************************************************************************************************/
 
-static ERROR TIME_SetTime(objTime *Self, APTR Void)
+static ERR TIME_SetTime(objTime *Self, APTR Void)
 {
 #ifdef __unix__
    pf::Log log;
@@ -153,9 +153,9 @@ static ERROR TIME_SetTime(objTime *Self, APTR Void)
    }
    else log.warning("mktime() failed [%d/%d/%d, %d:%d:%d]", Self->Day, Self->Month, Self->Year, Self->Hour, Self->Minute, Self->Second);
 
-   return ERR_Okay;
+   return ERR::Okay;
 #else
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 #endif
 }
 
@@ -206,7 +206,7 @@ The TimeStamp value is dynamically calculated when reading this field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
+static ERR GET_TimeStamp(objTime *Self, LARGE *Value)
 {
    *Value = Self->Second +
             (LARGE(Self->Minute) * 60) +
@@ -219,7 +219,7 @@ static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
 
    *Value += Self->MilliSecond;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -258,7 +258,7 @@ static const MethodEntry clMethods[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_time_class(void)
+extern "C" ERR add_time_class(void)
 {
    glTimeClass = objMetaClass::create::global(
       fl::BaseClassID(ID_TIME),
@@ -271,5 +271,5 @@ extern "C" ERROR add_time_class(void)
       fl::Size(sizeof(objTime)),
       fl::Path("modules:core"));
 
-   return glTimeClass ? ERR_Okay : ERR_AddClass;
+   return glTimeClass ? ERR::Okay : ERR::AddClass;
 }

@@ -637,7 +637,7 @@ inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 
 //********************************************************************************************************************
 
-INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
+inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->Class->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
@@ -1142,17 +1142,17 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 
     c_insert([[
 
-INLINE ERROR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
+INLINE ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
    struct vecSubscribeInput args = { Mask, &Callback };
    return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecSubscribeKeyboard(APTR Ob, FUNCTION Callback) {
+INLINE ERR vecSubscribeKeyboard(APTR Ob, FUNCTION Callback) {
    struct vecSubscribeKeyboard args = { &Callback };
    return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
+INLINE ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
    struct vecSubscribeFeedback args = { Mask, &Callback };
    return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }

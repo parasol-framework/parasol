@@ -61,7 +61,7 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_Reset(extVectorScene *, APTR);
+static ERR VECTORSCENE_Reset(extVectorScene *, APTR);
 
 void apply_focus(extVectorScene *, extVector *);
 static void scene_key_event(extVectorScene *, evKey *, LONG);
@@ -82,7 +82,7 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 
 //********************************************************************************************************************
 
-static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (objVectorScene *)CurrentContext();
    if (Self->SurfaceID IS Object->UID) Self->SurfaceID = 0;
@@ -90,7 +90,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
 
 //********************************************************************************************************************
 
-static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acRedimension *Args)
 {
    auto Self = (objVectorScene *)CurrentContext();
 
@@ -109,7 +109,7 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 //********************************************************************************************************************
 // Called when the subscribed Surface loses the focus.
 
-static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = NULL; }
@@ -120,7 +120,7 @@ static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, 
 //********************************************************************************************************************
 // Called when the subscribed Surface receives the focus.
 
-static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->KeyHandle) {
@@ -157,11 +157,11 @@ UnsupportedOwner: The definition is not owned by the scene.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
+static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR::NullArgs);
 
    if (Self->HostScene) { // Defer all definitions if a hosting scene is active.
       return Action(MT_ScAddDef, Self->HostScene, Args);
@@ -180,13 +180,13 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
        (def->Class->ClassID IS ID_VECTORCLIP)) {
       // The use of this object as a definition is valid.
    }
-   else return log.warning(ERR_InvalidObject);
+   else return log.warning(ERR::InvalidObject);
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
    if (!def->hasOwner(Self->UID)) {
       log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->UID, def->ownerID());
-      return ERR_UnsupportedOwner;
+      return ERR::UnsupportedOwner;
    }
 
    // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
@@ -195,11 +195,11 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    if (Self->Defs.contains(Args->Name)) { // Check that the definition name is unique.
       log.detail("The vector definition name '%s' is already in use.", Args->Name);
-      return ERR_ResourceExists;
+      return ERR::ResourceExists;
    }
 
    Self->Defs[Args->Name] = def;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -214,12 +214,12 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
 {
    pf::Log log("debug_tree");
 
    pf::vector<ChildEntry> list;
-   if ((!ListChildren(Self->UID, &list)) and (list.size() > 1)) {
+   if ((ListChildren(Self->UID, &list) IS ERR::Okay) and (list.size() > 1)) {
       log.msg("Scene #%d has %d children:", Self->UID, LONG(std::ssize(list)-1));
       for (auto &rec : list) {
          auto obj = GetObjectPtr(rec.ObjectID);
@@ -232,7 +232,7 @@ static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
 
    LONG level = 0;
    debug_tree((extVector *)Self->Viewport, level);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -251,12 +251,12 @@ FieldNotSet: The Bitmap field is NULL.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
+static ERR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 {
    pf::Log log;
    objBitmap *bmp;
 
-   if (!(bmp = Self->Bitmap)) return log.warning(ERR_FieldNotSet);
+   if (!(bmp = Self->Bitmap)) return log.warning(ERR::FieldNotSet);
 
    // Any pending resize messages for viewports must be processed prior to drawing.
 
@@ -305,7 +305,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 //   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
 //   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -330,18 +330,18 @@ Search: A definition with the given Name was not found.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
+static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    if (Self->HostScene) return Action(MT_ScFindDef, Self->HostScene, Args);
 
    CSTRING name = Args->Name;
 
    if (*name IS '#') name = name + 1;
-   else if (!StrCompare("url(#", name, 5)) {
+   else if (StrCompare("url(#", name, 5) IS ERR::Okay) {
       LONG i;
       for (i=5; (name[i] != ')') and name[i]; i++);
       std::string lookup;
@@ -350,22 +350,22 @@ static ERROR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
       auto def = Self->Defs.find(lookup);
       if (def != Self->Defs.end()) {
          Args->Def = def->second;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Search;
+      else return ERR::Search;
    }
 
    auto def = Self->Defs.find(name);
    if (def != Self->Defs.end()) {
       Args->Def = def->second;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
+static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 {
    Self->~extVectorScene();
 
@@ -375,17 +375,17 @@ static ERROR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 
    if (Self->SurfaceID) {
       OBJECTPTR surface;
-      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
          UnsubscribeAction(surface, 0);
          ReleaseObject(surface);
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 {
    // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
    // alternative for the client is to set the Bitmap field and manage rendering manually.
@@ -415,19 +415,19 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
       }
 
       auto callback = FUNCTION(scene_input_events);
-      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::CROSSING|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle)) {
-         return ERR_Function;
+      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::CROSSING|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle) != ERR::Okay) {
+         return ERR::Function;
       }
    }
 
    Self->Cursor = PTC::DEFAULT;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_NewObject(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_NewObject(extVectorScene *Self, APTR Void)
 {
    Self->SampleMethod = VSM::BILINEAR;
 
@@ -443,14 +443,14 @@ Redimension: Redefines the size of the page.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Redimension(extVectorScene *Self, struct acRedimension *Args)
+static ERR VECTORSCENE_Redimension(extVectorScene *Self, struct acRedimension *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (Args->Width >= 1.0)  Self->PageWidth  = F2T(Args->Width);
    if (Args->Height >= 1.0) Self->PageHeight = F2T(Args->Height);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -459,12 +459,12 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Reset(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_Reset(extVectorScene *Self, APTR Void)
 {
    if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
    Self->Defs.clear();
    Self->Gamma = 1.0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -473,12 +473,12 @@ Resize: Redefines the size of the page.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Resize(extVectorScene *Self, struct acResize *Args)
+static ERR VECTORSCENE_Resize(extVectorScene *Self, struct acResize *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
    if (Args->Width >= 1.0)  Self->PageWidth  = F2T(Args->Width);
    if (Args->Height >= 1.0) Self->PageHeight = F2T(Args->Height);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -505,9 +505,9 @@ Search: A vector with a matching ID was not found.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *Args)
+static ERR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
    Args->Result = NULL;
 
    auto vector = (extVector *)Self->Viewport;
@@ -516,24 +516,24 @@ static ERROR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *A
 cont:
       if (vector->NumericID IS Args->ID) {
          Args->Result = vector;
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       if (vector->Child) vector = (extVector *)vector->Child;
       else if (vector->Next) vector = (extVector *)vector->Next;
       else {
          while ((vector = get_parent(vector))) { // Unwind back up the stack, looking for the first Parent with a Next field.
-            if (vector->Class->BaseClassID != ID_VECTOR) return ERR_Search;
+            if (vector->Class->BaseClassID != ID_VECTOR) return ERR::Search;
             if (vector->Next) {
                vector = (extVector *)vector->Next;
                goto cont;
             }
          }
-         return ERR_Search;
+         return ERR::Search;
       }
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -544,7 +544,7 @@ The target bitmap to use when drawing the vectors must be specified here.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
+static ERR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
 {
    if (Value) {
       if (Self->Buffer) delete Self->Buffer;
@@ -559,11 +559,11 @@ static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
             Self->PageHeight = Value->Height;
          }
       }
-      else return ERR_Memory;
+      else return ERR::Memory;
    }
    else Self->Buffer = NULL;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -580,10 +580,10 @@ Direct access is provided for internal use only and not for the benefit of clien
 
 *********************************************************************************************************************/
 
-static ERROR GET_Defs(extVectorScene *Self, std::unordered_map<std::string, OBJECTPTR> **Value)
+static ERR GET_Defs(extVectorScene *Self, std::unordered_map<std::string, OBJECTPTR> **Value)
 {
    *Value = &Self->Defs;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -611,15 +611,15 @@ option is used then the viewport will be scaled to fit within the page.
 
 *********************************************************************************************************************/
 
-static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
+static ERR SET_PageHeight(extVectorScene *Self, LONG Value)
 {
-   if (Value IS Self->PageHeight) return ERR_Okay;
+   if (Value IS Self->PageHeight) return ERR::Okay;
 
    if (Value < 1) Self->PageHeight = 1;
    else Self->PageHeight = Value;
 
    if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -632,15 +632,15 @@ option is used then the viewport will be scaled to fit within the page.
 
 *********************************************************************************************************************/
 
-static ERROR SET_PageWidth(extVectorScene *Self, LONG Value)
+static ERR SET_PageWidth(extVectorScene *Self, LONG Value)
 {
-   if (Value IS Self->PageWidth) return ERR_Okay;
+   if (Value IS Self->PageWidth) return ERR::Okay;
 
    if (Value < 1) Self->PageWidth = 1;
    else Self->PageWidth = Value;
 
    if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -656,11 +656,11 @@ The `RENDER_TIME` flag should also be set before fetching this value, as it is r
 
 *********************************************************************************************************************/
 
-static ERROR GET_RenderTime(extVectorScene *Self, LARGE *Value)
+static ERR GET_RenderTime(extVectorScene *Self, LARGE *Value)
 {
    Self->Flags |= VPF::RENDER_TIME;
    *Value = Self->RenderTime;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -682,10 +682,10 @@ and user focus management will also require an associated surface as a pre-requi
 
 *********************************************************************************************************************/
 
-static ERROR SET_Surface(extVectorScene *Self, OBJECTID Value)
+static ERR SET_Surface(extVectorScene *Self, OBJECTID Value)
 {
    Self->SurfaceID = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -781,12 +781,12 @@ static void process_resize_msgs(extVectorScene *Self)
 
          auto list = Self->ResizeSubscriptions[view]; // take copy
          for (auto &sub : list) {
-            ERROR result;
+            ERR result;
             auto vector = sub.first;
             auto func   = sub.second;
             if (func.isC()) {
                pf::SwitchContext ctx(func.StdC.Context);
-               auto callback = (ERROR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.StdC.Routine;
+               auto callback = (ERR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.StdC.Routine;
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.StdC.Meta);
             }
             else if (func.isScript()) {
@@ -798,7 +798,7 @@ static void process_resize_msgs(extVectorScene *Self)
                   { "ViewportWidth",  view->vpFixedWidth },
                   { "ViewportHeight", view->vpFixedHeight }
                };
-               scCallback(func.Script.Script, func.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+               scCallback(func.Script.Script, func.Script.ProcedureID, args, std::ssize(args), &result);
             }
          }
       }
@@ -810,14 +810,14 @@ static void process_resize_msgs(extVectorScene *Self)
 //********************************************************************************************************************
 // Receiver for keyboard events
 
-static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
+static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 {
    for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
-      ERROR result = ERR_Terminate;
+      ERR result = ERR::Terminate;
       auto &sub = *it;
       if (sub.Callback.isC()) {
          pf::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERROR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.StdC.Routine;
+         auto callback = (ERR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.StdC.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.StdC.Meta);
       }
       else if (sub.Callback.isScript()) {
@@ -828,14 +828,14 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
             { "Code",       LONG(Event->Code) },
             { "Unicode",    Event->Unicode }
          };
-         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, std::ssize(args), &result);
       }
 
-      if (result IS ERR_Terminate) Vector->KeyboardSubscriptions->erase(it);
+      if (result IS ERR::Terminate) Vector->KeyboardSubscriptions->erase(it);
       else it++;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -914,7 +914,7 @@ static const FieldArray clSceneFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_vectorscene(void)
+ERR init_vectorscene(void)
 {
    clVectorScene = objMetaClass::create::global(
       fl::ClassVersion(VER_VECTORSCENE),
@@ -926,5 +926,5 @@ ERROR init_vectorscene(void)
       fl::Size(sizeof(extVectorScene)),
       fl::Path(MOD_PATH));
 
-   return clVectorScene ? ERR_Okay : ERR_AddClass;
+   return clVectorScene ? ERR::Okay : ERR::AddClass;
 }

@@ -150,8 +150,8 @@ static bool parse_id3v1(objSound *Self)
    prv->File->seekEnd(sizeof(id3));
 
    LONG result;
-   if ((!prv->File->read(&id3, sizeof(id3), &result)) and (result IS sizeof(id3))) {
-      if (!StrCompare("TAG", (STRING)&id3, 3, STR::CASE)) {
+   if ((prv->File->read(&id3, sizeof(id3), &result) IS ERR::Okay) and (result IS sizeof(id3))) {
+      if (StrCompare("TAG", (STRING)&id3, 3, STR::CASE) IS ERR::Okay) {
          char buffer[sizeof(id3)];
 
          log.detail("ID3v1 tag found.");
@@ -195,7 +195,7 @@ static bool parse_id3v1(objSound *Self)
 
 static LONG detect_id3v2(const char *Buffer)
 {
-   if (!StrCompare(Buffer, "ID3", 3, STR::CASE)) {
+   if (StrCompare(Buffer, "ID3", 3, STR::CASE) IS ERR::Okay) {
       if (!((Buffer[5] & 15) or (Buffer[6] & 0x80) or (Buffer[7] & 0x80) or (Buffer[8] & 0x80) or (Buffer[9] & 0x80))) {
          LONG id3v2size = (((Buffer[6] & 0x7f) << 21) | ((Buffer[7] & 0x7f) << 14) | ((Buffer[8] & 0x7f) << 7) | (Buffer[9] & 0x7f)) + 10;
          if ((Buffer[5] & 16)) id3v2size += 10; // footer
@@ -230,7 +230,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    if (L3_read_side_info(bs, gr_info, Frame) < 0) return 0; // side info corrupted
 
    const UBYTE *tag = Frame + HDR_SIZE + bs->pos / 8;
-   if ((!StrCompare("Xing", (CSTRING)tag, 4, STR::CASE)) and (!StrCompare("Info", (CSTRING)tag, 4, STR::CASE))) return 0;
+   if ((StrCompare("Xing", (CSTRING)tag, 4, STR::CASE) IS ERR::Okay) and (StrCompare("Info", (CSTRING)tag, 4, STR::CASE) IS ERR::Okay)) return 0;
    const LONG flags = tag[7];
    if (!(flags & XING_FRAMES)) return -1;
    tag += 8;
@@ -303,20 +303,20 @@ static void parse_id3v2(objSound *Self)
 
 //********************************************************************************************************************
 
-static ERROR MP3_Free(objSound *Self, APTR Void)
+static ERR MP3_Free(objSound *Self, APTR Void)
 {
    prvMP3 *prv;
-   if (!(prv = (prvMP3 *)Self->ChildPrivate)) return ERR_Okay;
+   if (!(prv = (prvMP3 *)Self->ChildPrivate)) return ERR::Okay;
 
    if (prv->File) { FreeResource(prv->File); prv->File = NULL; }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Playback is managed by Sound.acActivate()
 
-static ERROR MP3_Init(objSound *Self, APTR Void)
+static ERR MP3_Init(objSound *Self, APTR Void)
 {
    pf::Log log;
 
@@ -327,15 +327,15 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
       // If no location has been specified, assume that the sound is being
       // created from scratch (e.g. to record an mp3 file to disk).
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    prvMP3 *prv;
-   if (!AllocMemory(sizeof(prvMP3), MEM::DATA, &Self->ChildPrivate)) {
+   if (AllocMemory(sizeof(prvMP3), MEM::DATA, &Self->ChildPrivate) IS ERR::Okay) {
       prv = (prvMP3 *)Self->ChildPrivate;
       new (prv) prvMP3;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 
    mp3dec_init(&prv->mp3d);
    prv->reset();
@@ -345,7 +345,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
 
    if (!prv->File) {
       if (!(prv->File = objFile::create::integral(fl::Path(location), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
-         return log.warning(ERR_CreateObject);
+         return log.warning(ERR::CreateObject);
       }
    }
    else prv->File->seekStart(0);
@@ -358,7 +358,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    // Process ID3V2 and Xing VBR headers if present.
 
    LONG result;
-   if (!prv->File->read(prv->Input.data(), prv->Input.size(), &result)) {
+   if (prv->File->read(prv->Input.data(), prv->Input.size(), &result) IS ERR::Okay) {
       if (auto id3size = detect_id3v2((const char *)prv->Input.data())) {
          log.msg("Detected ID3v2 header of %d bytes.", id3size);
          prv->SeekOffset = id3size;
@@ -379,7 +379,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    }
    else {
       FreeResource(Self->ChildPrivate); Self->ChildPrivate = NULL;
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
 
    prv->File->seekStart(prv->SeekOffset);
@@ -400,19 +400,19 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    log.msg("File is MP3.  Stereo: %c, BytesPerSecond: %d, Freq: %d, Byte Length: %d",
       ((Self->Flags & SDF::STEREO) != SDF::NIL) ? 'Y' : 'N', Self->BytesPerSecond, Self->Frequency, Self->Length);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MP3_Read(objSound *Self, struct acRead *Args)
+static ERR MP3_Read(objSound *Self, struct acRead *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    Args->Result = 0;
-   if (Args->Length <= 0) return ERR_Okay;
+   if (Args->Length <= 0) return ERR::Okay;
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
@@ -441,7 +441,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 
       if ((prv->CompressedOffset < (LONG)prv->Input.size()) and (!prv->EndOfFile) and (!no_more_input)) {
          LONG result;
-         if (auto error = prv->File->read(prv->Input.data() + prv->CompressedOffset, prv->Input.size() - prv->CompressedOffset, &result)) {
+         if (auto error = prv->File->read(prv->Input.data() + prv->CompressedOffset, prv->Input.size() - prv->CompressedOffset, &result); error != ERR::Okay) {
             log.warning("File read error: %s", GetErrorMsg(error));
             prv->EndOfFile = true;
             break;
@@ -542,19 +542,19 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 
    Self->Position = prv->WriteOffset;
    Args->Result = prv->WriteOffset - write_offset;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Accuracy when seeking within an MP3 file is not guaranteed.  This means that offsets can be a little too far
 // forward or backward relative to the known length.
 
-static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
+static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
@@ -563,9 +563,9 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
    else if (Args->Position IS SEEK::END)      offset = Self->Length - F2T(Args->Offset);
    else if (Args->Position IS SEEK::CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
    else if (Args->Position IS SEEK::RELATIVE) offset = Self->Length * Args->Offset;
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 
-   if (offset IS Self->Position) return ERR_Okay;
+   if (offset IS Self->Position) return ERR::Okay;
 
    if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
       prv->reset();
@@ -580,7 +580,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 
          if (Self->Length <= 0) {
             log.warning("MP3 stream length unknown, cannot seek.");
-            return ERR_Failed;
+            return ERR::Failed;
          }
 
          DOUBLE pct = DOUBLE(offset) / DOUBLE(Self->Length);
@@ -633,7 +633,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
       }
 
       LONG active;
-      if (!Self->get(FID_Active, &active)) {
+      if (Self->get(FID_Active, &active) IS ERR::Okay) {
          if (active) {
             log.branch("Resetting state of active sample, seek to byte %" PF64, prv->WriteOffset);
             Self->deactivate();
@@ -642,11 +642,11 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       // Revert to base-class behaviour for fully buffered samples, since the MP3 is already decoded.
-      return ERR_NoAction;
+      return ERR::NoAction;
    }
 }
 
@@ -683,7 +683,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    prv->File->get(FID_Size, &filesize);
 
    UBYTE *buffer;
-   if (!AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, &buffer, NULL)) {
+   if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, &buffer, NULL) IS ERR::Okay) {
       // Load MP3 data from the file
 
       prv->File->seekStart(prv->SeekOffset);
@@ -872,11 +872,11 @@ static const struct ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("audio", &modAudio, &AudioBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("audio", &modAudio, &AudioBase) != ERR::Okay) return ERR::InitModule;
 
    clMP3 = objMetaClass::create::global(
       fl::BaseClassID(ID_SOUND),
@@ -889,13 +889,13 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::Actions(clActions),
       fl::Path(MOD_PATH));
 
-   return clMP3 ? ERR_Okay : ERR_AddClass;
+   return clMP3 ? ERR::Okay : ERR::AddClass;
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (clMP3) { FreeResource(clMP3); clMP3 = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

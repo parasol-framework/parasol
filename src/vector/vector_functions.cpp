@@ -29,8 +29,8 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-ERROR simplevector_free(APTR Address) {
-   return ERR_Okay;
+ERR simplevector_free(APTR Address) {
+   return ERR::Okay;
 }
 
 static ResourceManager glResourceSimpleVector = {
@@ -47,7 +47,7 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR_Okay) return NULL;
+   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return NULL;
    set_memory_manager(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
@@ -59,10 +59,10 @@ static SimpleVector * new_simplevector(void)
 
 //********************************************************************************************************************
 
-ERROR CMDOpen(OBJECTPTR Module)
+ERR CMDOpen(OBJECTPTR Module)
 {
    ((objModule *)Module)->setFunctionList(glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -86,13 +86,13 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
+ERR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
-   if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
+   if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
+   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR::Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -213,21 +213,21 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
+ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Bitmap) or (!Path)) return log.warning(ERR_NullArgs);
+   if ((!Bitmap) or (!Path)) return log.warning(ERR::NullArgs);
    if (StrokeWidth < 0.001) StrokeStyle = NULL;
 
    if ((!StrokeStyle) and (!FillStyle)) {
       log.traceWarning("No Stroke or Fill parameter provided.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    Path->DrawPath(Bitmap, StrokeWidth, StrokeStyle, FillStyle);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -250,15 +250,15 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecFlushMatrix(VectorMatrix *Matrix)
+ERR vecFlushMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -326,14 +326,14 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
+ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    auto vector = new_simplevector();
-   if (!vector) return log.warning(ERR_CreateResource);
+   if (!vector) return log.warning(ERR::CreateResource);
 
 #if 0
    // Bezier curves can produce a reasonable approximation of an ellipse, but in practice there is
@@ -374,7 +374,7 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
 #endif
 
    *Path = vector;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -399,14 +399,14 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
+ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    auto vector = new_simplevector();
-   if (!vector) return log.warning(ERR_CreateResource);
+   if (!vector) return log.warning(ERR::CreateResource);
 
    vector->mPath.move_to(X, Y);
    vector->mPath.line_to(X+Width, Y);
@@ -414,7 +414,7 @@ ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR
    vector->mPath.line_to(X, Y+Height);
    vector->mPath.close_polygon();
    *Path = vector;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -462,26 +462,26 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
+ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   if (!Path) return ERR::NullArgs;
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    if (!Sequence) {
       auto vector = new_simplevector();
       if (vector) *Path = vector;
-      else error = ERR_AllocMemory;
+      else error = ERR::AllocMemory;
    }
    else {
       std::vector<PathCommand> paths;
-      if (!(error = read_path(paths, Sequence))) {
+      if ((error = read_path(paths, Sequence)) IS ERR::Okay) {
          auto vector = new_simplevector();
          if (vector) {
             convert_to_aggpath(NULL, paths, &vector->mPath);
             *Path = vector;
          }
-         else error = ERR_AllocMemory;
+         else error = ERR::AllocMemory;
       }
    }
 
@@ -553,12 +553,12 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
+ERR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
    DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    auto &d = *Matrix;
@@ -573,7 +573,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    d.TranslateX = t4;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -594,11 +594,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
+ERR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    auto &d = *Target;
@@ -614,7 +614,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    d.TranslateX = t4;
 
    if (Target->Vector) mark_dirty(Target->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -641,11 +641,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
+ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
@@ -662,13 +662,13 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    auto str = Commands;
    while (*str) {
       if ((*str >= 'a') and (*str <= 'z')) {
-         if (!StrCompare(str, "matrix", 6)) {
+         if (StrCompare(str, "matrix", 6) IS ERR::Okay) {
             cmd m(M_MUL);
             str += 6;
             read_numseq(str, { &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "translate", 9)) {
+         else if (StrCompare(str, "translate", 9) IS ERR::Okay) {
             cmd m(M_TRANSLATE);
             str += 9;
             bool scaled_x, scaled_y;
@@ -679,13 +679,13 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             read_numseq(str, { &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "rotate", 6)) {
+         else if (StrCompare(str, "rotate", 6) IS ERR::Okay) {
             cmd m(M_ROTATE);
             str += 6;
             read_numseq(str, { &m.angle, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "scale", 5)) {
+         else if (StrCompare(str, "scale", 5) IS ERR::Okay) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
@@ -694,14 +694,14 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewX", 5)) {
+         else if (StrCompare(str, "skewX", 5) IS ERR::Okay) {
             cmd m(M_SKEW);
             m.ty = 0;
             str += 5;
             read_numseq(str, { &m.tx });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewY", 5)) {
+         else if (StrCompare(str, "skewY", 5) IS ERR::Okay) {
             cmd m(M_SKEW);
             m.tx = 0;
             str += 5;
@@ -763,7 +763,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    });
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -799,12 +799,12 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
+ERR vecReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
    ULONG i;
 
-   if ((!IRI) or (!Painter)) return ERR_NullArgs;
+   if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
    Painter->Colour.Alpha = 0; // Nullify the colour
    Painter->Gradient = NULL;
@@ -817,11 +817,11 @@ next:
    if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
-   if (!StrCompare("url(", IRI, 4)) {
-      if (!Scene) return log.warning(ERR_NullArgs);
+   if (StrCompare("url(", IRI, 4) IS ERR::Okay) {
+      if (!Scene) return log.warning(ERR::NullArgs);
 
       if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->Class->ClassID != ID_VECTORSCENE) return log.warning(ERR_InvalidObject);
+      else if (Scene->Class->ClassID != ID_VECTORSCENE) return log.warning(ERR::InvalidObject);
 
       if (Scene->HostScene) Scene = Scene->HostScene;
 
@@ -854,18 +854,18 @@ next:
             }
 
             if (Result) *Result = IRI[0] ? IRI : NULL;
-            return ERR_Okay;
+            return ERR::Okay;
          }
 
          log.warning("Failed to lookup IRI '%s' in scene #%d", IRI, Scene->UID);
-         return ERR_NotFound;
+         return ERR::NotFound;
       }
       else {
          log.warning("Invalid IRI: %s", IRI);
-         return ERR_Syntax;
+         return ERR::Syntax;
       }
    }
-   else if (!StrCompare("rgb(", IRI, 4)) {
+   else if (StrCompare("rgb(", IRI, 4) IS ERR::Okay) {
       auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
@@ -911,7 +911,7 @@ next:
          while ((*IRI) and (*IRI != ';')) IRI++;
          *Result = IRI[0] ? IRI : NULL;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (*IRI IS '#') {
       auto &rgb = Painter->Colour;
@@ -927,7 +927,7 @@ next:
          rgb.Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
          if (Result) *Result = IRI[0] ? IRI : NULL;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (n IS 6) {
          rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
@@ -935,7 +935,7 @@ next:
          rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
          if (Result) *Result = IRI[0] ? IRI : NULL;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (n IS 8) {
          rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
@@ -943,9 +943,9 @@ next:
          rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
          if (Result) *Result = IRI[0] ? IRI : NULL;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Syntax;
+      else return ERR::Syntax;
    }
    else {
       if (auto it = glNamedColours.find(StrHash(IRI)); it != glNamedColours.end()) {
@@ -959,12 +959,12 @@ next:
             while ((*IRI) and (*IRI != ';')) IRI++;
             *Result = IRI[0] ? IRI : NULL;
          }
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       // Note: Resolving 'currentColour' is handled in the SVG parser and not the Vector API.
       log.warning("Failed to interpret colour \"%s\"", IRI);
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 }
 
@@ -984,11 +984,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecResetMatrix(VectorMatrix *Matrix)
+ERR vecResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->ScaleX     = 1.0;
@@ -999,7 +999,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    Matrix->TranslateY = 0;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1042,11 +1042,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
+ERR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->TranslateX -= CenterX;
@@ -1068,7 +1068,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    Matrix->TranslateY += CenterY;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1097,11 +1097,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->ScaleX     *= X;
@@ -1112,7 +1112,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->TranslateY *= Y;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1136,11 +1136,11 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 *********************************************************************************************************************/
 
-ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Matrix) return log.warning(ERR_NullArgs);
+   if (!Matrix) return log.warning(ERR::NullArgs);
 
    if ((X > -90) and (X < 90)) {
       VectorMatrix skew = {
@@ -1150,7 +1150,7 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 
       vecMultiplyMatrix(Matrix, &skew);
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 
    if ((Y > -90) and (Y < 90)) {
       VectorMatrix skew = {
@@ -1160,9 +1160,9 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 
       vecMultiplyMatrix(Matrix, &skew);
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1288,7 +1288,7 @@ DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Handle) or (!String)) return log.warning(ERR_NullArgs);
+   if ((!Handle) or (!String)) { log.warning(ERR::NullArgs); return 0; }
 
    const std::lock_guard lock(glFontMutex);
 
@@ -1353,17 +1353,17 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Size < 1) return log.warning(ERR_Args);
+   if (Size < 1) return log.warning(ERR::Args);
 
    if (!Style) Style = "Regular";
    common_font *handle;
-   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); !error) {
+   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); error IS ERR::Okay) {
       *Handle = handle;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else return error;
 }
@@ -1387,9 +1387,9 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
+ERR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
 {
-   if ((!Handle) or (!Metrics)) return ERR_NullArgs;
+   if ((!Handle) or (!Metrics)) return ERR::NullArgs;
 
    if (((common_font *)Handle)->type IS CF_FREETYPE) {
       auto pt = (freetype_font::ft_point *)Handle;
@@ -1397,7 +1397,7 @@ ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
       Metrics->LineSpacing = pt->line_spacing;
       Metrics->Ascent      = pt->ascent;
       Metrics->Descent     = pt->descent;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       auto font = ((bmp_font *)Handle)->font;
@@ -1405,7 +1405,7 @@ ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
       Metrics->LineSpacing = font->LineSpacing;
       Metrics->Ascent      = font->Height;
       Metrics->Descent     = font->Gutter;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -1428,18 +1428,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->TranslateX += X;
    Matrix->TranslateY += Y;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

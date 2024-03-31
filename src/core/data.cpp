@@ -207,7 +207,7 @@ objTime *glTime = NULL;
 THREADVAR WORD tlMsgRecursion = 0;
 THREADVAR TaskMessage *tlCurrentMsg = NULL;
 
-ERROR (*glMessageHandler)(struct Message *) = NULL;
+ERR (*glMessageHandler)(struct Message *) = NULL;
 void (*glVideoRecovery)(void) = NULL;
 void (*glKeyboardRecovery)(void) = NULL;
 void (*glNetProcessMessages)(LONG, APTR) = NULL;

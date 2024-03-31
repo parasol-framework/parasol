@@ -86,7 +86,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
    if (Self->TotalClients >= Self->ClientLimit) {
       CLOSESOCKET(clientfd);
-      log.error(ERR_ArrayFull);
+      log.error(ERR::ArrayFull);
       return;
    }
 
@@ -99,7 +99,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR_Okay) {
+      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR::Okay) {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -130,7 +130,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    // Socket Management
 
    extClientSocket *client_socket;
-   if (!NewObject(ID_CLIENTSOCKET, &client_socket)) {
+   if (NewObject(ID_CLIENTSOCKET, &client_socket) IS ERR::Okay) {
       client_socket->Handle = clientfd;
       client_socket->Client = client_ip;
       InitObject(client_socket);
@@ -154,7 +154,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       };
 
       auto script = Self->Feedback.Script.Script;
-      scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      scCallback(script, Self->Feedback.Script.ProcedureID, args, std::ssize(args), NULL);
    }
 
    log.trace("Total clients: %d", Self->TotalClients);
@@ -228,7 +228,7 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
          };
 
          auto script = Socket->Feedback.Script.Script;
-         scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(script, Socket->Feedback.Script.ProcedureID, args, std::ssize(args), NULL);
       }
    }
 

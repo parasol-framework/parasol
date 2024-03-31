@@ -26,193 +26,198 @@ glActionStubs = {
    NewOwner      = "",
 
    -- Actions without parameters
-   Activate     = "   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }",
-   Clear        = "   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }",
-   Deactivate   = "   inline ERROR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }",
-   Disable      = "   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }",
-   Enable       = "   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }",
-   Flush        = "   inline ERROR flush() noexcept { return Action(AC_Flush, this, NULL); }",
-   Focus        = "   inline ERROR focus() noexcept { return Action(AC_Focus, this, NULL); }",
-   Hide         = "   inline ERROR hide() noexcept { return Action(AC_Hide, this, NULL); }",
-   Init         = "   inline ERROR init() noexcept { return InitObject(this); }",
-   Lock         = "   inline ERROR lock() noexcept { return Action(AC_Lock, this, NULL); }",
-   LostFocus    = "   inline ERROR lostFocus() noexcept { return Action(AC_LostFocus, this, NULL); }",
-   MoveToBack   = "   inline ERROR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }",
-   MoveToFront  = "   inline ERROR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }",
-   Next         = "   inline ERROR next() noexcept { return Action(AC_Next, this, NULL); }",
-   Prev         = "   inline ERROR prev() noexcept { return Action(AC_Prev, this, NULL); }",
-   Query        = "   inline ERROR query() noexcept { return Action(AC_Query, this, NULL); }",
-   Refresh      = "   inline ERROR refresh() noexcept { return Action(AC_Refresh, this, NULL); }",
-   Reset        = "   inline ERROR reset() noexcept { return Action(AC_Reset, this, NULL); }",
-   SaveSettings = "   inline ERROR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }",
-   Show         = "   inline ERROR show() noexcept { return Action(AC_Show, this, NULL); }",
-   Sort         = "   inline ERROR sort() noexcept { return Action(AC_Sort, this, NULL); }",
-   Unlock       = "   inline ERROR unlock() noexcept { return Action(AC_Unlock, this, NULL); }",
+   Activate     = "   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }",
+   Clear        = "   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }",
+   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }",
+   Disable      = "   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }",
+   Enable       = "   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }",
+   Flush        = "   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }",
+   Focus        = "   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }",
+   Hide         = "   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }",
+   Init         = "   inline ERR init() noexcept { return InitObject(this); }",
+   Lock         = "   inline ERR lock() noexcept { return Action(AC_Lock, this, NULL); }",
+   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC_LostFocus, this, NULL); }",
+   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }",
+   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }",
+   Next         = "   inline ERR next() noexcept { return Action(AC_Next, this, NULL); }",
+   Prev         = "   inline ERR prev() noexcept { return Action(AC_Prev, this, NULL); }",
+   Query        = "   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }",
+   Refresh      = "   inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }",
+   Reset        = "   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }",
+   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }",
+   Show         = "   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }",
+   Sort         = "   inline ERR sort() noexcept { return Action(AC_Sort, this, NULL); }",
+   Unlock       = "   inline ERR unlock() noexcept { return Action(AC_Unlock, this, NULL); }",
 
    CopyData = [[
-   inline ERROR copyData(OBJECTPTR Dest) noexcept {
+   inline ERR copyData(OBJECTPTR Dest) noexcept {
       struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }]],
    DragDrop = [[
-   inline ERROR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) noexcept {
+   inline ERR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) noexcept {
       struct acDragDrop args = { .Source = Source, .Item = Item, .Datatype = Datatype };
       return Action(AC_DragDrop, this, &args);
    }]],
    Clipboard = [[
-   inline ERROR clipboard(CLIPMODE Mode) noexcept {
+   inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }]],
    Draw = [[
-   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }]],
    DataFeed = [[
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }]],
    Move = [[
-   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC_Move, this, &args);
    }]],
    Read = [[
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) noexcept {
+   template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      ERROR error;
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
-      else *Result = 0;
-      return error;
+      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+         *Result = static_cast<U>(read.Result);
+         return ERR::Okay;
+      }
+      else { *Result = 0; return error; }
    }
-   template <class T> ERROR read(APTR Buffer, T Size) noexcept {
+   template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }]],
    Redo = [[
-   inline ERROR redo(LONG Steps) noexcept {
+   inline ERR redo(LONG Steps) noexcept {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
    }]],
    Redimension = [[
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC_Redimension, this, &args);
    }]],
    Rename = [[
-   inline ERROR rename(CSTRING Name) noexcept {
+   inline ERR rename(CSTRING Name) noexcept {
       struct acRename args = { Name };
       return Action(AC_Rename, this, &args);
    }]],
    Resize = [[
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }]],
    Scroll = [[
-   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) noexcept {
+   inline ERR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) noexcept {
       struct acScroll args = { X, Y, Z };
       return Action(AC_Scroll, this, &args);
    }]],
    ScrollToPoint = [[
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
+   inline ERR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }]],
    Undo = [[
-   inline ERROR undo(LONG Steps) noexcept {
+   inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
    }]],
    GetVar = [[
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
+   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
+      auto error = Action(AC_GetVar, this, &args);
+      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
       return error;
    }]],
    MoveToPoint = [[
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
+   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }]],
    SaveImage = [[
-   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }]],
    SaveToObject = [[
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }]],
    Seek = [[
-   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
+   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
-   inline ERROR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
-   inline ERROR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    ]],
    SetVars = [[
-   inline ERROR setVars(CSTRING tags, ...) noexcept {
+   inline ERR setVars(CSTRING tags, ...) noexcept {
       struct acSetVar args;
       va_list list;
       va_start(list, tags);
       while ((args.Field = va_arg(list, STRING)) != TAGEND) {
          args.Value = va_arg(list, STRING);
-         if (Action(AC_SetVar, this, &args) != ERR_Okay) {
+         if (Action(AC_SetVar, this, &args) != ERR::Okay) {
             va_end(list);
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
       va_end(list);
-      return ERR_Okay;
+      return ERR::Okay;
    }]],
    Write = [[
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
-      ERROR error;
+   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      ERROR error;
+   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!Action(AC_Write, this, &write)) return write.Result;
+      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }]],
    SelectArea = [[
-   inline ERROR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acSelectArea area = { X, Y, Width, Height };
       return Action(AC_SelectArea, this, &area);
    }]],
    SetVar = [[
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
+   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }]],
@@ -654,13 +659,31 @@ function enum(Prefix, Options, ...)
             else
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc)
             end
+
             table.insert(list, { name=name, value=inc, comment=comment, synonym=synonym })
             synonym = true
          end
+
+         inc = inc + 1
+      elseif (type(va) == 'table') then -- The client provided a table of fixed values
+         for name, client_val in pairs(va) do
+            if (type(client_val) != 'number') then
+               error('Client-provided enum values must be numeric')
+            end
+
+            if (Options.type) then
+               table.insert(out, '   ' .. name .. ' = ' .. client_val .. ',')
+            elseif (Options.bits == 64) then
+               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. client_val .. 'LL')
+            else
+               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. client_val)
+            end
+
+            table.insert(list, { name=name, value=client_val })
+         end
       else
-         error('Invalid flag type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
+         error('Invalid enum type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
       end
-      inc = inc + 1
    end
 
    if (Options.type) then
@@ -924,12 +947,12 @@ function class(Name, Options, Blueprint, Private, Custom)
          local content = file.readAll(glFDLFolder .. path)
          content = content:gsub('\r\n', '\n')
 
-         -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
+         -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
          local patterns = {
-            'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
-            'ERROR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
+            'ERR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
+            'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
          }
          for _, pattern in pairs(patterns) do
             for actionName in string.gmatch(content, pattern) do
@@ -983,7 +1006,7 @@ function class(Name, Options, Blueprint, Private, Custom)
    --
    -- #define MT_[Prefix][Method] [ID]
    -- struct [Prefix][Method] { [Args] }
-   -- INLINE ERROR [Prefix][Method]([Args]) { }
+   -- INLINE ERR [Prefix][Method]([Args]) { }
 
    if (class.methods != nil) then
       local pfx  = class.methodPrefix
@@ -1052,10 +1075,10 @@ function class(Name, Options, Blueprint, Private, Custom)
             class.methods[k].struct = 'struct ' .. lpfx .. method.name .. ' { ' .. def .. ' };'
 
             if (method.inline != false) then
-               local inline = 'INLINE ERROR ' .. lpfx .. method.name .. '(' .. call .. ') noexcept {\n'
+               local inline = 'INLINE ERR ' .. lpfx .. method.name .. '(' .. call .. ') noexcept {\n'
                inline = inline .. '   struct ' .. lpfx .. method.name .. ' args = { ' .. values .. ' };\n'
                if (results) then
-                  inline = inline .. '   ERROR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args);\n'
+                  inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args);\n'
                   for _, p in pairs(method.params) do
                      if (p.resultValue) then
                         inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
@@ -1584,21 +1607,21 @@ function outputClassHeader(class, Private, Custom)
 
                   if (field_type:sub(-2) == '[]') then
                      field_type = field_type:sub(1,-3) .. '*'
-                     output(string.format('   inline ERROR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+                     output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
                   elseif (bit.band(f.flags, FD_ARRAY) != 0) then
                      if bit.band(f.flags, FD_CPP) != 0 then
-                        output(string.format('   inline ERROR set%s(%s *Value) noexcept {', fid_name, field_type))
+                        output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
                      else
-                        output(string.format('   inline ERROR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+                        output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
                      end
                   elseif (field_type == 'T &&') then
-                     output(string.format('   template <class T> inline ERROR set%s(%s Value) noexcept {', fid_name, field_type))
+                     output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
                   else
-                     output(string.format('   inline ERROR set%s(%s Value) noexcept {', fid_name, field_type))
+                     output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
                   end
 
                   if (f.write == 'Init') then
-                     output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
+                     output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
                   end
 
                   local err, fl, target = class.meta.mtFindField(mSys.StrHash(f.name, false))
@@ -1648,15 +1671,15 @@ function outputClassHeader(class, Private, Custom)
                   end
                else
                   if (field_type == 'T &&') then
-                     output(string.format('   template <class T> inline ERROR set%s(%s Value) noexcept {', fid_name, field_type))
+                     output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
                   else
-                     output(string.format('   inline ERROR set%s(%s Value) noexcept {', fid_name, field_type))
+                     output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
                   end
                   if (f.write == 'Init') then
-                     output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
+                     output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
                   end
                   output(indent .. string.format('this->%s = Value;', field_name))
-                  output(indent .. 'return ERR_Okay;')
+                  output(indent .. 'return ERR::Okay;')
                end
 
                output('   }\n')
@@ -1761,11 +1784,11 @@ function functionNames(Prefix, ...)
          name  = fname,
          def   = '   void (*_' .. fname .. ')(void);',
          macro = function() -- Default macro, to be overridden by documented function
-            return 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname ..
+            return 'template <typename... Args> inline ERR ' .. glFunctionPrefix:lower() .. fname ..
                '(Args... pArgs) noexcept { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
          end,
          staticMacro = function()
-            return 'template <typename... Args> ERROR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
+            return 'template <typename... Args> ERR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
          end
       }
 
@@ -2320,7 +2343,7 @@ function buildPrototypes()
                      proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
                   end
                end
-               method.prototype = "ERROR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
+               method.prototype = "ERR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
             end
          end
       end

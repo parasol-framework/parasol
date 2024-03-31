@@ -692,7 +692,7 @@ function docFunction(Function)
          end
 
          if nz(errors) then
-            out = out .. "    <result type=\"ERROR\">\n" .. errors .. "    </result>\n"
+            out = out .. "    <result type=\"ERR\">\n" .. errors .. "    </result>\n"
          end
       elseif nz(Function.result.comment) then
          local ref = ''

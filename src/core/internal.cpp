@@ -48,11 +48,11 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 
 //********************************************************************************************************************
 
-ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
+ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
    if (glTasks.empty()) {
       glJanitorActive = false;
-      return ERR_Terminate;
+      return ERR::Terminate;
    }
 
 #ifdef __unix__
@@ -93,7 +93,7 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -125,19 +125,19 @@ public|untracked and private memory flags as necessary.  Example:
 
 *********************************************************************************************************************/
 
-ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
+ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, CSTRING ActionName)
 {
    pf::Log log("CopyArguments");
    BYTE *src, *data;
    LONG memsize, j, len;
-   ERROR error;
+   ERR error;
    STRING str;
 
-   if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR::NullArgs);
 
    for (LONG i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
-      if (i >= BufferSize) return log.warning(ERR_BufferOverflow);
+      if (i >= BufferSize) return log.warning(ERR::BufferOverflow);
       Buffer[i] = ArgsBuffer[i];
    }
 
@@ -161,7 +161,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                Buffer[offset++] = 0;
                ((STRING *)(Buffer + pos))[0] = str;
             }
-            else { error = ERR_BufferOverflow; goto looperror; }
+            else { error = ERR::BufferOverflow; goto looperror; }
          }
          else ((STRING *)(Buffer + pos))[0] = NULL;
 
@@ -174,7 +174,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
                offset += sizeof(LONG);
             }
-            else { error = ERR_BufferOverflow; goto looperror; }
+            else { error = ERR::BufferOverflow; goto looperror; }
          }
          else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) { // Pointer to large/double
             if ((size_t)offset < (BufferSize - sizeof(LARGE))) {
@@ -182,7 +182,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
                offset += sizeof(LARGE);
             }
-            else { error = ERR_BufferOverflow; goto looperror; }
+            else { error = ERR::BufferOverflow; goto looperror; }
          }
          else {
             // There are two types of pointer references:
@@ -206,27 +206,27 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                if (memsize > 0) {
                   if (Args[i].Type & FD_RESULT) { // "Receive" pointer type: Prepare a buffer so that we can accept a result
                      APTR mem;
-                     if (!AllocMemory(memsize, MEM::NO_CLEAR, &mem, NULL)) {
+                     if (AllocMemory(memsize, MEM::NO_CLEAR, &mem, NULL) IS ERR::Okay) {
                         ((APTR *)(Buffer + pos))[0] = mem;
                      }
-                     else { error = ERR_AllocMemory; goto looperror; }
+                     else { error = ERR::AllocMemory; goto looperror; }
                   }
                   else {
                      // "Send" pointer type: Prepare the argument structure for sending data to the other task
                      if ((src = ((BYTE **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
                         if (memsize > MSG_MAXARGSIZE) {
                            // For large data areas, we need to allocate them as public memory blocks
-                           if (!AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL)) {
+                           if (AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL) IS ERR::Okay) {
                               ((APTR *)(Buffer + pos))[0] = data;
                               CopyMemory(src, data, memsize);
                            }
-                           else { error = ERR_AllocMemory; goto looperror; }
+                           else { error = ERR::AllocMemory; goto looperror; }
                         }
                         else {
                            ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset; // Record the address at which we are going to write the data
                            for (LONG len=0; len < memsize; len++) {
                               if (offset >= BufferSize) {
-                                 error = ERR_BufferOverflow;
+                                 error = ERR::BufferOverflow;
                                  goto looperror;
                               }
                               else Buffer[offset++] = src[len];
@@ -247,7 +247,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
    }
 
    *NewSize = offset;
-   return ERR_Okay;
+   return ERR::Okay;
 
 looperror:
    // When an error occurs inside the loop, we back-track through the position at where the error occurred and free any
@@ -283,11 +283,11 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
 ** Resolves pointers and strings within an ActionMessage structure.
 */
 
-ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
+ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
 {
    pf::Log log(__FUNCTION__);
    LONG i;
-   ERROR error;
+   ERR error;
    BYTE *Buffer = (BYTE *)Parameters;
    LONG pos = 0;
    for (i=0; Args[i].Name; i++) {
@@ -307,7 +307,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
             if (mid) {
                log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
-               error = ERR_AccessMemory;
+               error = ERR::AccessMemory;
                goto looperror;
             }
          }
@@ -322,7 +322,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
       else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
       else pos += sizeof(LONG);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 
 looperror:
    // On failure we must back-track through the array looking for pointers that we have already gained access to, and release them before returning.

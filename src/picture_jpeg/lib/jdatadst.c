@@ -56,7 +56,7 @@ METHODDEF(boolean) empty_output_buffer (j_compress_ptr cinfo)
 {
    my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
 
-   if (acWrite(dest->outfile, dest->buffer, OUTPUT_BUF_SIZE, NULL) != ERR_Okay) ERREXIT(cinfo, JERR_FILE_WRITE);
+   if (acWrite(dest->outfile, dest->buffer, OUTPUT_BUF_SIZE, NULL) != ERR::Okay) ERREXIT(cinfo, JERR_FILE_WRITE);
 
    dest->pub.next_output_byte = dest->buffer;
    dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
@@ -77,7 +77,7 @@ METHODDEF(void) term_destination(j_compress_ptr cinfo)
    if (datacount > 0) {
       write.Buffer = dest->buffer;
       write.Length = datacount;
-      if (Action(AC_Write, dest->outfile, &write) != ERR_Okay) ERREXIT(cinfo, JERR_FILE_WRITE);
+      if (Action(AC_Write, dest->outfile, &write) != ERR::Okay) ERREXIT(cinfo, JERR_FILE_WRITE);
    }
 }
 

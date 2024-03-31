@@ -52,12 +52,12 @@ static THREADVAR bool tlError = false;
 JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 
-static ERROR decompress_png(extPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
+static ERR decompress_png(extPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
 static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
-static ERROR create_picture_class(void);
+static ERR create_picture_class(void);
 
 //********************************************************************************************************************
 
@@ -83,22 +83,22 @@ static void conv_l2r_row24(UBYTE *Row, LONG Width) {
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::InitModule;
 
    return(create_picture_class());
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (clPicture)  { FreeResource(clPicture); clPicture = NULL; }
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -121,15 +121,15 @@ Bitmap using its available drawing methods.
 
 *********************************************************************************************************************/
 
-static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
+static ERR PICTURE_Activate(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Bitmap->initialised()) return ERR_Okay;
+   if (Self->Bitmap->initialised()) return ERR::Okay;
 
    log.branch();
 
-   ERROR error = ERR_Failed;
+   ERR error = ERR::Failed;
    tlError = false;
 
    auto bmp = Self->Bitmap;
@@ -139,7 +139,7 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
@@ -292,9 +292,9 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
 
       // Init our bitmap, since decompress_png() won't in this case.
 
-      if ((error = bmp->query())) goto exit;
+      if (error = bmp->query(); error != ERR::Okay) goto exit;
       if (!bmp->initialised()) {
-         if ((error = bmp->init())) goto exit;
+         if (error = bmp->init(); error != ERR::Okay) goto exit;
       }
 
       objBitmap::create tmp_bitmap = {
@@ -302,14 +302,14 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
       };
 
       if (tmp_bitmap.ok()) {
-         if (!(error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height))) {
+         if ((error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height)) IS ERR::Okay) {
             gfxCopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
       }
    }
    else error = decompress_png(Self, bmp, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height);
 
-   if (!error) {
+   if (error IS ERR::Okay) {
       png_read_end(read_ptr, end_info);
       if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
    }
@@ -325,7 +325,7 @@ exit:
 
 //********************************************************************************************************************
 
-static ERROR PICTURE_Free(extPicture *Self, APTR Void)
+static ERR PICTURE_Free(extPicture *Self, APTR Void)
 {
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
@@ -333,7 +333,7 @@ static ERROR PICTURE_Free(extPicture *Self, APTR Void)
    if (Self->prvFile)        { FreeResource(Self->prvFile); Self->prvFile = NULL; }
    if (Self->Bitmap)         { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Mask)           { FreeResource(Self->Mask); Self->Mask = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -349,13 +349,13 @@ and colour specifications at a minimum, or the initialisation process will fail.
 
 If you have set the #Path field and avoided the `NEW` flag, the initialisation process will analyse the
 file location to determine whether or not the data is in fact a valid image file.  If the file does not match up
-with a registered data format, an error code of `ERR_NoSupport` is returned.  You will need to use the Activate or
+with a registered data format, an error code of `ERR::NoSupport` is returned.  You will need to use the Activate or
 Query actions to load or find out more information about the image format.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR PICTURE_Init(extPicture *Self, APTR Void)
+static ERR PICTURE_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
@@ -376,7 +376,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
-         if (!InitObject(Self->Bitmap)) {
+         if (InitObject(Self->Bitmap) IS ERR::Okay) {
             if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
 
             if ((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) {
@@ -386,82 +386,82 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
                      fl::BitsPerPixel(((Self->Flags & PCF::ALPHA) != PCF::NIL) ? 8 : 1)))) {
                   Self->Flags |= PCF::MASK;
                }
-               else return log.warning(ERR_Init);
+               else return log.warning(ERR::Init);
             }
 
-            if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
+            if (Self->isSubClass()) return ERR::Okay; // Break here to let the sub-class continue initialisation
 
-            return ERR_Okay;
+            return ERR::Okay;
          }
-         else return log.warning(ERR_Init);
+         else return log.warning(ERR::Init);
       }
-      else return log.warning(ERR_InvalidDimension);
+      else return log.warning(ERR::InvalidDimension);
    }
    else {
-      if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
+      if (Self->isSubClass()) return ERR::Okay; // Break here to let the sub-class continue initialisation
 
       // Test the given path to see if it matches our supported file format.
 
       STRING res_path;
-      if (!ResolvePath(Self->prvPath, RSF::APPROXIMATE, &res_path)) {
+      if (ResolvePath(Self->prvPath, RSF::APPROXIMATE, &res_path) IS ERR::Okay) {
          LONG result;
 
          FreeResource(Self->prvPath); // Switch to the resolved path in case it was approximated
          Self->prvPath = res_path;
 
-         if (!ReadFileToBuffer(res_path, Self->prvHeader, sizeof(Self->prvHeader)-1, &result)) {
+         if (ReadFileToBuffer(res_path, Self->prvHeader, sizeof(Self->prvHeader)-1, &result) IS ERR::Okay) {
             Self->prvHeader[result] = 0;
 
             auto buffer = (UBYTE *)Self->prvHeader;
 
             if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
                 (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
-               if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR_Okay;
+               if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR::Okay;
                return acActivate(Self);
             }
-            else return ERR_NoSupport;
+            else return ERR::NoSupport;
          }
          else {
             log.warning("Failed to read '%s'", res_path);
-            return ERR_File;
+            return ERR::File;
          }
       }
-      else return log.warning(ERR_FileNotFound);
+      else return log.warning(ERR::FileNotFound);
    }
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
 
-static ERROR PICTURE_NewObject(extPicture *Self, APTR Void)
+static ERR PICTURE_NewObject(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
    Self->Quality = 80; // 80% quality rating when saving
 
-   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) {
-      return ERR_Okay;
+   if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap) IS ERR::Okay) {
+      return ERR::Okay;
    }
-   else return log.warning(ERR_NewObject);
+   else return log.warning(ERR::NewObject);
 }
 
 //********************************************************************************************************************
 
-static ERROR PICTURE_Query(extPicture *Self, APTR Void)
+static ERR PICTURE_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    STRING path;
    png_uint_32 width, height;
    int bit_depth, color_type;
 
-   if ((Self->Bitmap->Flags & BMF::QUERIED) != BMF::NIL) return ERR_Okay;
-   if (!Self->prvFile) return ERR_NotInitialised;
+   if ((Self->Bitmap->Flags & BMF::QUERIED) != BMF::NIL) return ERR::Okay;
+   if (!Self->prvFile) return ERR::NotInitialised;
 
    log.branch();
 
    objBitmap *Bitmap = Self->Bitmap;
-   ERROR error = ERR_Failed;
+   ERR error = ERR::Failed;
    png_structp read_ptr = NULL;
    png_infop info_ptr = NULL;
    png_infop end_info = NULL;
@@ -470,7 +470,7 @@ static ERROR PICTURE_Query(extPicture *Self, APTR Void)
    // Open the data file
 
    if (!Self->prvFile) {
-      if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
@@ -514,7 +514,7 @@ static ERROR PICTURE_Query(extPicture *Self, APTR Void)
 
 //   acQuery(Bitmap);
 
-   error = ERR_Okay;
+   error = ERR::Okay;
 
 exit:
    png_destroy_read_struct(&read_ptr, &info_ptr, &end_info);
@@ -527,7 +527,7 @@ Read: Reads raw image data from a Picture object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PICTURE_Read(extPicture *Self, struct acRead *Args)
+static ERR PICTURE_Read(extPicture *Self, struct acRead *Args)
 {
    return Action(AC_Read, Self->Bitmap, Args);
 }
@@ -538,9 +538,9 @@ Refresh: Refreshes a loaded picture - draws the next frame.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PICTURE_Refresh(extPicture *Self, APTR Void)
+static ERR PICTURE_Refresh(extPicture *Self, APTR Void)
 {
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -552,7 +552,7 @@ If no destination is specified then the image will be saved as a new file target
 -END-
 *********************************************************************************************************************/
 
-static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
+static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    pf::Log log;
    STRING path;
@@ -565,14 +565,14 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    OBJECTPTR file        = NULL;
    png_structp write_ptr = NULL;
    png_infop info_ptr    = NULL;
-   ERROR error = ERR_Failed;
+   ERR error = ERR::Failed;
    tlError = false;
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
-      if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
+      if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
-      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) return ERR_CreateObject;
+      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) return ERR::CreateObject;
    }
 
    // Allocate PNG structures
@@ -788,7 +788,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    png_write_end(write_ptr, NULL);
 
-   error = ERR_Okay;
+   error = ERR::Okay;
 
 exit:
    png_destroy_write_struct(&write_ptr, &info_ptr);
@@ -796,8 +796,8 @@ exit:
    if ((Args) and (Args->Dest));
    else if (file) FreeResource(file);
 
-   if (error) return log.warning(error);
-   else return ERR_Okay;
+   if (error != ERR::Okay) return log.warning(error);
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -806,14 +806,14 @@ SaveToObject: Saves the picture image to a data object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
+static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
-   ERROR (**routine)(OBJECTPTR, APTR);
+   ERR (**routine)(OBJECTPTR, APTR);
 
    if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((mc->getPtr(FID_ActionTable, &routine) IS ERR_Okay) and (routine)) {
+      if ((mc->getPtr(FID_ActionTable, &routine) IS ERR::Okay) and (routine)) {
          if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PICTURE_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);
          }
@@ -822,9 +822,9 @@ static ERROR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
             saveimage.Dest = Args->Dest;
             return routine[AC_SaveImage](Self, &saveimage);
          }
-         else return log.warning(ERR_NoSupport);
+         else return log.warning(ERR::NoSupport);
       }
-      else return log.warning(ERR_GetField);
+      else return log.warning(ERR::GetField);
    }
    else return acSaveImage(Self, Args->Dest, Args->ClassID);
 }
@@ -835,7 +835,7 @@ Seek: Seeks to a new read/write position within a Picture object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PICTURE_Seek(extPicture *Self, struct acSeek *Args)
+static ERR PICTURE_Seek(extPicture *Self, struct acSeek *Args)
 {
    return Action(AC_Seek, Self->Bitmap, Args);
 }
@@ -846,7 +846,7 @@ Write: Writes raw image data to a picture object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PICTURE_Write(extPicture *Self, struct acWrite *Args)
+static ERR PICTURE_Write(extPicture *Self, struct acWrite *Args)
 {
    return Action(AC_Write, Self->Bitmap, Args);
 }
@@ -858,17 +858,17 @@ Author: The name of the person or company that created the image.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Author(extPicture *Self, STRING *Value)
+static ERR GET_Author(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvAuthor;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Author(extPicture *Self, CSTRING Value)
+static ERR SET_Author(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvAuthor, sizeof(Self->prvAuthor));
    else Self->prvAuthor[0] = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -890,17 +890,17 @@ example "Copyright H.R. Giger (c) 1992."
 
 *********************************************************************************************************************/
 
-static ERROR GET_Copyright(extPicture *Self, STRING *Value)
+static ERR GET_Copyright(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvCopyright;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Copyright(extPicture *Self, CSTRING Value)
+static ERR SET_Copyright(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvCopyright, sizeof(Self->prvCopyright));
    else Self->prvCopyright[0] = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -912,28 +912,28 @@ description.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Description(extPicture *Self, STRING *Value)
+static ERR GET_Description(extPicture *Self, STRING *Value)
 {
    if (Self->prvDescription) {
       *Value = Self->prvDescription;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_Description(extPicture *Self, CSTRING Value)
+static ERR SET_Description(extPicture *Self, CSTRING Value)
 {
    pf::Log log;
 
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->prvDescription = StrClone(Value))) return log.warning(ERR_AllocMemory);
+      if (!(Self->prvDescription = StrClone(Value))) return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -944,28 +944,28 @@ If it is necessary to associate a disclaimer with an image, the legal text may b
 
 *********************************************************************************************************************/
 
-static ERROR GET_Disclaimer(extPicture *Self, STRING *Value)
+static ERR GET_Disclaimer(extPicture *Self, STRING *Value)
 {
    if (Self->prvDisclaimer) {
       *Value = Self->prvDisclaimer;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_Disclaimer(extPicture *Self, CSTRING Value)
+static ERR SET_Disclaimer(extPicture *Self, CSTRING Value)
 {
    pf::Log log;
 
    if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->prvDisclaimer = StrClone(Value))) return log.warning(ERR_AllocMemory);
+      if (!(Self->prvDisclaimer = StrClone(Value))) return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1006,10 +1006,10 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *********************************************************************************************************************/
 
-static ERROR GET_Header(extPicture *Self, APTR *Value)
+static ERR GET_Header(extPicture *Self, APTR *Value)
 {
    *Value = Self->prvHeader;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1018,28 +1018,28 @@ Path: The location of source image data.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(extPicture *Self, STRING *Value)
+static ERR GET_Path(extPicture *Self, STRING *Value)
 {
    if (Self->prvPath) {
       *Value = Self->prvPath;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_Path(extPicture *Self, CSTRING Value)
+static ERR SET_Path(extPicture *Self, CSTRING Value)
 {
    pf::Log log;
 
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->prvPath = StrClone(Value))) return log.warning(ERR_AllocMemory);
+      if (!(Self->prvPath = StrClone(Value))) return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1068,17 +1068,17 @@ Software: The name of the application that was used to draw the image.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Software(extPicture *Self, STRING *Value)
+static ERR GET_Software(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvSoftware;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Software(extPicture *Self, CSTRING Value)
+static ERR SET_Software(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvSoftware, sizeof(Self->prvSoftware));
    else Self->prvSoftware[0] = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1087,17 +1087,17 @@ Title: The title of the image.
 -END-
 *********************************************************************************************************************/
 
-static ERROR GET_Title(extPicture *Self, STRING *Value)
+static ERR GET_Title(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvTitle;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Title(extPicture *Self, CSTRING Value)
+static ERR SET_Title(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvTitle, sizeof(Self->prvTitle));
    else Self->prvTitle[0] = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1118,7 +1118,7 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
    struct acRead read = { data, (LONG)length };
-   if ((Action(AC_Read, (OBJECTPTR)png->io_ptr, &read) != ERR_Okay) or ((png_size_t)read.Result != length)) {
+   if ((Action(AC_Read, (OBJECTPTR)png->io_ptr, &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
 }
@@ -1136,7 +1136,7 @@ void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 {
    struct acWrite write = { data, (LONG)length };
-   if ((Action(AC_Write, (OBJECTPTR)png->io_ptr, &write) != ERR_Okay) or ((png_size_t)write.Result != length)) {
+   if ((Action(AC_Write, (OBJECTPTR)png->io_ptr, &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
 }
@@ -1178,10 +1178,10 @@ ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
 
 //********************************************************************************************************************
 
-static ERROR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
+static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
                             png_infop InfoPtr, png_uint_32 PngWidth, png_uint_32 PngHeight)
 {
-   ERROR error;
+   ERR error;
    UBYTE *row;
    png_bytep row_pointers;
    RGB8 rgb;
@@ -1197,11 +1197,11 @@ static ERROR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, i
    log.branch("Size: %dx%dx%d", (LONG)PngWidth, (LONG)PngHeight, BitDepth);
 
    LONG rowsize = png_get_rowbytes(ReadPtr, InfoPtr);
-   if ((error = acQuery(Bitmap)) != ERR_Okay) return error;
+   if ((error = acQuery(Bitmap)) != ERR::Okay) return error;
    if (!Bitmap->initialised()) {
-      if ((error = InitObject(Bitmap)) != ERR_Okay) return error;
+      if ((error = InitObject(Bitmap)) != ERR::Okay) return error;
    }
-   if ((error = AllocMemory(rowsize, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR_Okay) return error;
+   if ((error = AllocMemory(rowsize, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR::Okay) return error;
 
    // Chop the image to the bitmap dimensions
 
@@ -1304,7 +1304,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-static ERROR create_picture_class(void)
+static ERR create_picture_class(void)
 {
    clPicture = objMetaClass::create::global(
       fl::ClassVersion(VER_PICTURE),
@@ -1319,7 +1319,7 @@ static ERROR create_picture_class(void)
       fl::Size(sizeof(extPicture)),
       fl::Path(MOD_PATH));
 
-   return clPicture ? ERR_Okay : ERR_AddClass;
+   return clPicture ? ERR::Okay : ERR::AddClass;
 }
 
 //********************************************************************************************************************

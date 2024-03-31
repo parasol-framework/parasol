@@ -1534,9 +1534,9 @@ int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamas
    }
 
    if (mred) {
-      *redmask = mred;
+      *redmask   = mred;
       *greenmask = mgreen;
-      *bluemask = mblue;
+      *bluemask  = mblue;
       *alphamask = malpha;
       return 0;
    }

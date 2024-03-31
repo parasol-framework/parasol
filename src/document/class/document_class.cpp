@@ -31,17 +31,17 @@ https://github.com/microsoft/win32-app-isolation is one potential way of doing t
 
 *********************************************************************************************************************/
 
-static void notify_disable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_disable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   if (!Result) acDisable(CurrentContext());
+   if (Result IS ERR::Okay) acDisable(CurrentContext());
 }
 
-static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   if (!Result) acEnable(CurrentContext());
+   if (Result IS ERR::Okay) acEnable(CurrentContext());
 }
 
-static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
    Self->Scene = NULL;
@@ -55,7 +55,7 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
 
 // Used by EventCallback for subscribers that disappear without notice.
 
-static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
    Self->EventCallback.clear();
@@ -63,20 +63,20 @@ static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 
 //********************************************************************************************************************
 
-static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
 
-   if (Result) return;
+   if (Result != ERR::Okay) return;
 
    Self->HasFocus = true;
 
    if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
 }
 
-static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   if (Result) return;
+   if (Result != ERR::Okay) return;
 
    auto Self = (extDocument *)CurrentContext();
    Self->HasFocus = false;
@@ -100,7 +100,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
 // be zero initially, and will be controlled by the scrollbar.  For that reason we don't need to do much here other
 // than respond by updating the layout of the page.
 
-static ERROR feedback_view(objVectorViewport *View, FM Event)
+static ERR feedback_view(objVectorViewport *View, FM Event)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
@@ -108,7 +108,7 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
    auto width  = View->get<DOUBLE>(FID_Width);
    auto height = View->get<DOUBLE>(FID_Height);
 
-   if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR_Okay;
+   if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR::Okay;
 
    log.traceBranch("Redimension: %gx%g -> %gx%g", Self->VPWidth, Self->VPHeight, width, height);
 
@@ -124,7 +124,7 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
             { "ViewWidth",  Self->VPWidth },
             { "ViewHeight", Self->VPHeight }
          };
-         scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, std::ssize(args), NULL);
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.StdC.Routine;
@@ -141,7 +141,7 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
 
    layout_doc(Self);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -154,17 +154,17 @@ belong to the document object.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Activate(extDocument *Self, APTR Void)
 {
    pf::Log log;
    log.branch();
 
    pf::vector<ChildEntry> list;
-   if (!ListChildren(Self->UID, &list)) {
+   if (ListChildren(Self->UID, &list) IS ERR::Okay) {
       for (unsigned i=0; i < list.size(); i++) acActivate(list[i].ObjectID);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -208,12 +208,12 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
+static ERR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
 {
-   if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR_NullArgs;
+   if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
    Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -241,17 +241,17 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
+static ERR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Function)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Function)) return log.warning(ERR::NullArgs);
 
    // Function is in the format 'function()' or 'script.function()'
 
    objScript *script;
    std::string function_name, args;
-   if (auto error = extract_script(Self, Args->Function, &script, function_name, args); !error) {
+   if (auto error = extract_script(Self, Args->Function, &script, function_name, args); error IS ERR::Okay) {
       return scExec(script, function_name.c_str(), Args->Args, Args->TotalArgs);
    }
    else return error;
@@ -267,14 +267,14 @@ document.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Clear(extDocument *Self, APTR Void)
 {
    pf::Log log;
 
    log.branch();
    unload_doc(Self);
    redraw(Self, false);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -285,11 +285,11 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
+static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR::NullArgs);
 
    if ((Args->Mode IS CLIPMODE::CUT) or (Args->Mode IS CLIPMODE::COPY)) {
       if (Args->Mode IS CLIPMODE::CUT) log.branch("Operation: Cut");
@@ -304,7 +304,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
          objClipboard::create clipboard = { };
          if (clipboard.ok()) {
-            if (!clipAddText(*clipboard, buffer.c_str())) {
+            if (clipAddText(*clipboard, buffer.c_str()) IS ERR::Okay) {
                // Delete the highlighted document if the CUT mode was used
                if (Args->Mode IS CLIPMODE::CUT) {
                   //delete_selection(Self);
@@ -314,43 +314,43 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Args->Mode IS CLIPMODE::PASTE) {
       log.branch("Operation: Paste");
 
       if ((Self->Flags & DCF::EDIT) IS DCF::NIL) {
          log.warning("Edit mode is not enabled, paste operation aborted.");
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
          struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
-         if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
+         if (Action(MT_ClipGetFiles, *clipboard, &get) IS ERR::Okay) {
             objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                LONG size;
-               if ((!file->get(FID_Size, &size)) and (size > 0)) {
+               if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
                      LONG result;
-                     if (!file->read(buffer, size, &result)) {
+                     if (file->read(buffer, size, &result) IS ERR::Okay) {
                         buffer[result] = 0;
                         acDataText(Self, buffer);
                      }
-                     else error_dialog("Clipboard Paste Error", ERR_Read);
+                     else error_dialog("Clipboard Paste Error", ERR::Read);
                      delete[] buffer;
                   }
-                  else error_dialog("Clipboard Paste Error", ERR_AllocMemory);
+                  else error_dialog("Clipboard Paste Error", ERR::AllocMemory);
                }
             }
             else error_dialog("Paste Error", "Failed to load clipboard file \"" + std::string(get.Files[0]) + "\"");
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -370,11 +370,11 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
+static ERR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
    if ((Args->Datatype IS DATA::TEXT) or (Args->Datatype IS DATA::XML)) {
       // Incoming data is translated on the fly and added to the end of the current document page.  The original XML
@@ -382,8 +382,8 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       //
       // NOTE: Content identified by DATA::TEXT is assumed to be in a serialised XML format.
 
-      if (!Self->initialised()) return log.warning(ERR_NotInitialised);
-      if (Self->Processing) return log.warning(ERR_Recursion);
+      if (!Self->initialised()) return log.warning(ERR::NotInitialised);
+      if (Self->Processing) return log.warning(ERR::Recursion);
 
       objXML::create xml = {
          fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
@@ -407,9 +407,9 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
          #endif
          return Self->Error;
       }
-      else return log.warning(ERR_CreateObject);
+      else return log.warning(ERR::CreateObject);
    }
-   else return log.warning(ERR_Mismatch);
+   else return log.warning(ERR::Mismatch);
 }
 
 /*********************************************************************************************************************
@@ -418,10 +418,10 @@ Disable: Disables user interactivity.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Disable(extDocument *Self, APTR Void)
 {
    Self->Flags |= DCF::DISABLED;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -430,14 +430,14 @@ Draw: Force a page layout update (if changes are pending) and redraw to the disp
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
    if (Self->Viewport) {
       if (Self->Processing) Self->Viewport->draw();
       else redraw(Self, false);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
 /*********************************************************************************************************************
@@ -463,19 +463,19 @@ Search: The cell was not found.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
+static ERR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (!Args->Name) {
-      if ((!Self->CursorIndex.valid()) or (!Self->ActiveEditDef)) return ERR_Okay;
+      if ((!Self->CursorIndex.valid()) or (!Self->ActiveEditDef)) return ERR::Okay;
       deactivate_edit(Self, true);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (auto cellindex = Self->Stream.find_editable_cell(Args->Name); cellindex >= 0) {
       return activate_cell_edit(Self, cellindex, stream_char(0,0));
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -484,10 +484,10 @@ Enable: Enables object functionality.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Enable(extDocument *Self, APTR Void)
 {
    Self->Flags &= ~DCF::DISABLED;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -506,19 +506,19 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
+static ERR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->String)) return ERR_NullArgs;
+   if ((!Args) or (!Args->String)) return ERR::NullArgs;
 
-   if (!Self->Processing) return log.warning(ERR_Failed);
-
-
+   if (!Self->Processing) return log.warning(ERR::Failed);
 
 
 
-   return ERR_NoSupport;
+
+
+   return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -547,11 +547,11 @@ Search: The index was not found.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
+static ERR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    log.trace("Name: %s", Args->Name);
 
@@ -570,7 +570,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
                   if (end_id IS Self->Stream.lookup<bc_index_end>(i).id) {
                      Args->End = i;
                      log.trace("Found index at range %d - %d", Args->Start, Args->End);
-                     return ERR_Okay;
+                     return ERR::Okay;
                   }
                }
             }
@@ -579,7 +579,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    }
 
    log.detail("Failed to find index '%s'", Args->Name);
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -588,15 +588,15 @@ Focus: Sets the user focus on the document page.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
+static ERR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
    acFocus(Self->Page);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
@@ -619,7 +619,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
 
    Self->~extDocument();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -628,26 +628,26 @@ GetVar: Script arguments can be retrieved through this action.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
+static ERR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 {
-   if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR_Args;
+   if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR::Args;
 
    if (Self->Vars.contains(Args->Field)) {
       StrCopy(Self->Vars[Args->Field], Args->Buffer, Args->Size);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Self->Params.contains(Args->Field)) {
       StrCopy(Self->Params[Args->Field], Args->Buffer, Args->Size);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    Args->Buffer[0] = 0;
-   return ERR_UnsupportedField;
+   return ERR::UnsupportedField;
 }
 
 //********************************************************************************************************************
 
-static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    pf::Log log;
 
@@ -655,13 +655,13 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORVIEWPORT)) {
          Self->Viewport = (objVectorViewport *)Self->Owner;
       }
-      else return log.warning(ERR_UnsupportedOwner);
+      else return log.warning(ERR::UnsupportedOwner);
    }
 
    if (!Self->Focus) Self->Focus = Self->Viewport;
 
    if (Self->Focus->Class->ClassID != ID_VECTORVIEWPORT) {
-      return log.warning(ERR_WrongObjectType);
+      return log.warning(ERR::WrongObjectType);
    }
 
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
@@ -688,7 +688,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    //      fl::Name("docScene"),
    //      fl::Owner(Self->Viewport->UID)))) {
    //}
-   //else return ERR_CreateObject;
+   //else return ERR::CreateObject;
 
    Self->Scene = Self->Viewport->Scene;
 
@@ -699,7 +699,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          fl::X(0), fl::Y(0),
          fl::XOffset(0), fl::YOffset(0)))) {
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 
    if ((Self->Page = objVectorViewport::create::global(
          fl::Name("docPage"),
@@ -713,7 +713,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(consume_input_events));
       //}
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 
    vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, FUNCTION(feedback_view));
 
@@ -728,7 +728,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    Self->UpdatingLayout = true;
    if (!Self->Path.empty()) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if (auto error = load_doc(Self, Self->Path, false)) {
+         if (auto error = load_doc(Self, Self->Path, false); error != ERR::Okay) {
             return error;
          }
       }
@@ -741,7 +741,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    redraw(Self, true);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -766,12 +766,12 @@ Search
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
+static ERR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 {
    pf::Log log(__FUNCTION__);
    LONG tab;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    log.msg("Index: %s", Args->Name);
 
@@ -781,7 +781,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
       if (stream[i].code IS SCODE::INDEX_START) {
          auto &index = Self->Stream.lookup<bc_index>(i);
          if (name_hash IS index.name_hash) {
-            if (!index.visible) return ERR_Okay; // It's already invisible!
+            if (!index.visible) return ERR::Okay; // It's already invisible!
 
             index.visible = false;
 
@@ -822,12 +822,12 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
             }
 
             Self->Viewport->draw();
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -858,14 +858,14 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
+static ERR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XML)) return log.warning(ERR_NullArgs);
-   if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
+   if ((!Args) or (!Args->XML)) return log.warning(ERR::NullArgs);
+   if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
 
-   if (Self->Stream.data.empty()) return ERR_NoData;
+   if (Self->Stream.data.empty()) return ERR::NoData;
 
    objXML::create xml = {
       fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS),
@@ -875,12 +875,12 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!xml.ok()) {
       Self->UpdatingLayout = true;
 
-      ERROR error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
-      if (error) log.warning("Insert failed for: %s", Args->XML);
+      ERR error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
+      if (error != ERR::Okay) log.warning("Insert failed for: %s", Args->XML);
 
       return error;
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -912,12 +912,12 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
+static ERR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Args) or (!Args->Text)) return log.warning(ERR_NullArgs);
-   if ((Args->Index < -1) or (Args->Index > std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
+   if ((!Args) or (!Args->Text)) return log.warning(ERR::NullArgs);
+   if ((Args->Index < -1) or (Args->Index > std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
 
    log.traceBranch("Index: %d, Preformat: %d", Args->Index, Args->Preformat);
 
@@ -927,7 +927,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    if (index < 0) index = Self->Stream.size();
 
    stream_char sc(index, 0);
-   ERROR error = insert_text(Self, &Self->Stream, sc, std::string(Args->Text), Args->Preformat);
+   ERR error = insert_text(Self, &Self->Stream, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
       print_stream(Self->Stream);
@@ -938,11 +938,11 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
 //********************************************************************************************************************
 
-static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
+static ERR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
    new (Self) extDocument;
    unload_doc(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -972,17 +972,17 @@ NoData: Operation successful, but no data was present for extraction.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
+static ERR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    Args->Result = NULL;
 
-   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
-   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
-   if (Args->End <= Args->Start) return log.warning(ERR_Args);
+   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if (Args->End <= Args->Start) return log.warning(ERR::Args);
 
    if (Args->Format IS DATA::TEXT) {
       std::ostringstream buffer;
@@ -994,21 +994,21 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
       }
 
       auto str = buffer.str();
-      if (str.empty()) return ERR_NoData;
-      if ((Args->Result = StrClone(str.c_str()))) return ERR_Okay;
-      else return log.warning(ERR_AllocMemory);
+      if (str.empty()) return ERR::NoData;
+      if ((Args->Result = StrClone(str.c_str()))) return ERR::Okay;
+      else return log.warning(ERR::AllocMemory);
    }
    else if (Args->Format IS DATA::RAW) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
+      if (AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output) IS ERR::Okay) {
          CopyMemory(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -1017,27 +1017,27 @@ Refresh: Reloads the document data from the original source location.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 {
    pf::Log log;
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
       QueueAction(AC_Refresh, Self->UID);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    Self->Processing++;
 
    for (auto &trigger : Self->Triggers[LONG(DRT::REFRESH)]) {
       if (trigger.isScript()) {
-         // The refresh trigger can return ERR_Skip to prevent a complete reload of the document.
+         // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 
-         ERROR error;
-         if (!scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, &error)) {
-            if (error IS ERR_Skip) {
+         ERR error;
+         if (scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, &error) IS ERR::Okay) {
+            if (error IS ERR::Skip) {
                log.msg("The refresh request has been handled by an event trigger.");
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
       }
@@ -1048,7 +1048,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
       }
    }
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if ((!Self->Path.empty()) and (Self->Path[0] != '#') and (Self->Path[0] != '?')) {
       log.branch("Refreshing from path '%s'", Self->Path.c_str());
       error = load_doc(Self, Self->Path, true, ULD::REFRESH);
@@ -1080,21 +1080,21 @@ Args
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
+static ERR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
-   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR_OutOfRange);
-   if (Args->End <= Args->Start) return log.warning(ERR_Args);
+   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if (Args->End <= Args->Start) return log.warning(ERR::Args);
 
    CopyMemory(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
    Self->Stream.data.resize(Self->Stream.data.size() - Args->End - Args->Start);
 
    Self->UpdatingLayout = true;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1115,15 +1115,15 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
+static ERR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
 {
-   if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR::NullArgs;
 
    if (Args->Function->isC()) {
       for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
          if ((it->isC()) and (it->StdC.Routine IS Args->Function->StdC.Routine)) {
             Self->Triggers[Args->Trigger].erase(it);
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
@@ -1133,12 +1133,12 @@ static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener
              (it->Script.Script IS Args->Function->Script.Script) and
              (it->Script.ProcedureID IS Args->Function->Script.ProcedureID)) {
             Self->Triggers[Args->Trigger].erase(it);
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1147,15 +1147,15 @@ SaveToObject: Use this action to save edited information as an XML document file
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
+static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Destination: %d", Args->Dest->UID);
    acWrite(Args->Dest, "Save not supported.", 0, NULL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1164,9 +1164,9 @@ ScrollToPoint: Scrolls a document object's graphical content.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
+static ERR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if ((Args->Flags & STP::X) != STP::NIL) Self->XPosition = -Args->X;
    if ((Args->Flags & STP::Y) != STP::NIL) Self->YPosition = -Args->Y;
@@ -1183,7 +1183,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
    acMoveToPoint(Self->Page, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1213,11 +1213,11 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
+static ERR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if ((Args->Name) and (Args->Name[0])) {
 /*
@@ -1235,14 +1235,14 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
       }
 */
 
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
    else if ((Args->Index >= 0) and (Args->Index < std::ssize(Self->Tabs))) {
       Self->FocusIndex = Args->Index;
       set_focus(Self, Args->Index, "SelectLink");
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }
 
 /*********************************************************************************************************************
@@ -1251,16 +1251,16 @@ SetVar: Passes variable parameters to loaded documents.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
+static ERR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
 {
    // Please note that it is okay to set zero-length arguments
 
-   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
-   if (!Args->Field[0]) return ERR_Args;
+   if ((!Args) or (!Args->Field)) return ERR::NullArgs;
+   if (!Args->Field[0]) return ERR::Args;
 
    Self->Vars[Args->Field] = Args->Value;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1285,11 +1285,11 @@ Search: The index could not be found.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
+static ERR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    log.branch("Index: %s", Args->Name);
 
@@ -1299,7 +1299,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
       if (stream[i].code IS SCODE::INDEX_START) {
          auto &index = Self->Stream.lookup<bc_index>(i);
          if (name_hash != index.name_hash) continue;
-         if (index.visible) return ERR_Okay; // It's already visible!
+         if (index.visible) return ERR::Okay; // It's already visible!
 
          index.visible = true;
          if (index.parent_visible) { // We are visible, but parents must also be visible to show content
@@ -1348,11 +1348,11 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
             Self->Viewport->draw();
          }
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 //********************************************************************************************************************

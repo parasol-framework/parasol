@@ -18,6 +18,8 @@ struct IPAddress {
 #define IPADDR_V4 0
 #define IPADDR_V6 1
 
+#include <parasol/system/errors.h>
+
 #include "winsockwrappers.h"
 
 #include <unordered_map>
@@ -25,8 +27,6 @@ struct IPAddress {
 #include <mutex>
 
 using namespace std;
-
-#include <parasol/system/errors.h>
 
 enum {
    NETMSG_START=0,
@@ -62,48 +62,48 @@ static char glWinsockInitialised = FALSE;
 
 static const struct {
    int WinError;
-   int PanError;
+   ERR PanError;
 } glErrors[] = {
-   { WSAEINTR,              ERR_Cancelled },
-   { WSAEACCES,             ERR_PermissionDenied },
-   { WSAEFAULT,             ERR_InvalidData },
-   { WSAEINVAL,             ERR_Args },
-   { WSAEMFILE,             ERR_OutOfSpace },
-   { WSAEWOULDBLOCK,        ERR_InvalidState },
-   { WSAEINPROGRESS,        ERR_Busy },
-   { WSAEALREADY,           ERR_Busy },
-   { WSAENOTSOCK,           ERR_Args },
-   { WSAEDESTADDRREQ,       ERR_Args },
-   { WSAEMSGSIZE,           ERR_DataSize },
-   { WSAEPROTOTYPE,         ERR_Args },
-   { WSAENOPROTOOPT,        ERR_Args },
-   { WSAEPROTONOSUPPORT,    ERR_NoSupport },
-   { WSAESOCKTNOSUPPORT,    ERR_NoSupport },
-   { WSAEOPNOTSUPP,         ERR_NoSupport },
-   { WSAEPFNOSUPPORT,       ERR_NoSupport },
-   { WSAEAFNOSUPPORT,       ERR_NoSupport },
-   { WSAEADDRINUSE,         ERR_InUse },
-   { WSAENETDOWN,           ERR_NetworkUnreachable },
-   { WSAENETUNREACH,        ERR_NetworkUnreachable },
-   { WSAENETRESET,          ERR_Disconnected },
-   { WSAECONNABORTED,       ERR_ConnectionAborted },
-   { WSAECONNRESET,         ERR_Disconnected },
-   { WSAENOBUFS,            ERR_BufferOverflow },
-   { WSAEISCONN,            ERR_DoubleInit },
-   { WSAENOTCONN,           ERR_Disconnected },
-   { WSAESHUTDOWN,          ERR_Disconnected },
-   { WSAETIMEDOUT,          ERR_TimeOut },
-   { WSAECONNREFUSED,       ERR_ConnectionRefused },
-   { WSAEHOSTDOWN,          ERR_HostUnreachable },
-   { WSAEHOSTUNREACH,       ERR_HostUnreachable },
-   { WSAHOST_NOT_FOUND,     ERR_HostNotFound },
-   { WSASYSCALLFAILURE,     ERR_SystemCall },
-   { 0, 0 }
+   { WSAEINTR,              ERR::Cancelled },
+   { WSAEACCES,             ERR::PermissionDenied },
+   { WSAEFAULT,             ERR::InvalidData },
+   { WSAEINVAL,             ERR::Args },
+   { WSAEMFILE,             ERR::OutOfSpace },
+   { WSAEWOULDBLOCK,        ERR::InvalidState },
+   { WSAEINPROGRESS,        ERR::Busy },
+   { WSAEALREADY,           ERR::Busy },
+   { WSAENOTSOCK,           ERR::Args },
+   { WSAEDESTADDRREQ,       ERR::Args },
+   { WSAEMSGSIZE,           ERR::DataSize },
+   { WSAEPROTOTYPE,         ERR::Args },
+   { WSAENOPROTOOPT,        ERR::Args },
+   { WSAEPROTONOSUPPORT,    ERR::NoSupport },
+   { WSAESOCKTNOSUPPORT,    ERR::NoSupport },
+   { WSAEOPNOTSUPP,         ERR::NoSupport },
+   { WSAEPFNOSUPPORT,       ERR::NoSupport },
+   { WSAEAFNOSUPPORT,       ERR::NoSupport },
+   { WSAEADDRINUSE,         ERR::InUse },
+   { WSAENETDOWN,           ERR::NetworkUnreachable },
+   { WSAENETUNREACH,        ERR::NetworkUnreachable },
+   { WSAENETRESET,          ERR::Disconnected },
+   { WSAECONNABORTED,       ERR::ConnectionAborted },
+   { WSAECONNRESET,         ERR::Disconnected },
+   { WSAENOBUFS,            ERR::BufferOverflow },
+   { WSAEISCONN,            ERR::DoubleInit },
+   { WSAENOTCONN,           ERR::Disconnected },
+   { WSAESHUTDOWN,          ERR::Disconnected },
+   { WSAETIMEDOUT,          ERR::TimeOut },
+   { WSAECONNREFUSED,       ERR::ConnectionRefused },
+   { WSAEHOSTDOWN,          ERR::HostUnreachable },
+   { WSAEHOSTUNREACH,       ERR::HostUnreachable },
+   { WSAHOST_NOT_FOUND,     ERR::HostNotFound },
+   { WSASYSCALLFAILURE,     ERR::SystemCall },
+   { 0, ERR::NIL }
 };
 
 //********************************************************************************************************************
 
-static int convert_error(int error)
+static ERR convert_error(int error)
 {
    if (!error) error = WSAGetLastError();
 
@@ -111,7 +111,7 @@ static int convert_error(int error)
    for (i=0; glErrors[i].WinError; i++) {
       if (glErrors[i].WinError IS error) return glErrors[i].PanError;
    }
-   return ERR_Failed;
+   return ERR::Failed;
 }
 
 //********************************************************************************************************************
@@ -134,7 +134,7 @@ struct hostent * win_gethostbyaddr(const struct IPAddress *Address)
 
 static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, LPARAM lParam)
 {
-   int error = WSAGETSELECTERROR(lParam);
+   int winerror = WSAGETSELECTERROR(lParam);
    int event = WSAGETSELECTEVENT(lParam);
 
    if (msgcode IS WM_NETWORK) {
@@ -151,8 +151,10 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
             default:         state = 0; break;
          }
 
-         if (error IS WSAEWOULDBLOCK) error = ERR_Okay;
-         else if (error) error = convert_error(error);
+         ERR error;
+         if (winerror IS WSAEWOULDBLOCK) error = ERR::Okay;
+         else if (winerror) error = convert_error(winerror);
+         else error = ERR::Okay;
 
          socket_info *info = &glNetLookup[(WSW_SOCKET)wParam];
          if ((info->Flags & FD_READ) and (!glSocketsDisabled)) {
@@ -250,10 +252,10 @@ void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
 
 //********************************************************************************************************************
 
-int win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
+ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
    if (bind(SocketHandle, Name, NameLen) IS SOCKET_ERROR) return convert_error(0);
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -267,13 +269,13 @@ int win_closesocket(WSW_SOCKET SocketHandle)
 
 //********************************************************************************************************************
 
-int win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
+ERR win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
    if (connect(SocketHandle, Name, NameLen) IS SOCKET_ERROR) {
-      if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR_Okay; // connect() will always 'fail' for non-blocking sockets (however it will continue to connect/succeed...!)
+      if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay; // connect() will always 'fail' for non-blocking sockets (however it will continue to connect/succeed...!)
       return convert_error(0);
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -318,46 +320,46 @@ char * win_inet_ntoa(unsigned long Addr) //struct in_addr);
 
 //********************************************************************************************************************
 
-int win_listen(WSW_SOCKET SocketHandle, int BackLog)
+ERR win_listen(WSW_SOCKET SocketHandle, int BackLog)
 {
    if (listen(SocketHandle, BackLog) IS SOCKET_ERROR) return convert_error(0);
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-int WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *Result)
+ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *Result)
 {
    *Result = 0;
-   if (!Len) return ERR_Okay;
+   if (!Len) return ERR::Okay;
    auto result = recv(SocketHandle, reinterpret_cast<char *>(Buffer), Len, Flags);
    if (result > 0) {
       *Result = result;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (result IS 0) {
-      return ERR_Disconnected;
+      return ERR::Disconnected;
    }
-   else if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR_Okay;
+   else if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay;
    else return convert_error(0);
 }
 
 //********************************************************************************************************************
 
-int WIN_SEND(WSW_SOCKET Socket, const void *Buffer, int *Length, int Flags)
+ERR WIN_SEND(WSW_SOCKET Socket, const void *Buffer, int *Length, int Flags)
 {
-   if (!*Length) return ERR_Okay;
+   if (!*Length) return ERR::Okay;
    *Length = send(Socket, reinterpret_cast<const char *>(Buffer), *Length, Flags);
-   if (*Length >= 0) return ERR_Okay;
+   if (*Length >= 0) return ERR::Okay;
    else {
       *Length = 0;
 
       switch (WSAGetLastError()) {
          case WSAEWOULDBLOCK:
          case WSAEALREADY:
-            return ERR_BufferOverflow;
+            return ERR::BufferOverflow;
          case WSAEINPROGRESS:
-            return ERR_Busy;
+            return ERR::Busy;
          default:
             return convert_error(0);
       }

@@ -106,29 +106,29 @@ struct svgState {
 
 //********************************************************************************************************************
 
-static ERROR animation_timer(extSVG *, LARGE, LARGE);
+static ERR animation_timer(extSVG *, LARGE, LARGE);
 static void  convert_styles(objXML::TAGS &);
-static ERROR init_svg(void);
-static ERROR init_rsvg(void);
+static ERR init_svg(void);
+static ERR init_rsvg(void);
 static void  process_attrib(extSVG *, XMLTag &, svgState &, objVector *);
 static void  process_children(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void  process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
-static ERROR process_shape(extSVG *, CLASSID, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static ERROR save_svg_scan(extSVG *, objXML *, objVector *, LONG);
-static ERROR save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
-static ERROR save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
-static ERROR save_svg_transform(VectorMatrix *, std::stringstream &);
-static ERROR set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
-static ERROR xtag_animatemotion(extSVG *, XMLTag &, OBJECTPTR Parent);
-static ERROR xtag_animatetransform(extSVG *, XMLTag &, OBJECTPTR);
-static ERROR xtag_default(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static ERROR xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
+static ERR process_shape(extSVG *, CLASSID, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static ERR save_svg_scan(extSVG *, objXML *, objVector *, LONG);
+static ERR save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
+static ERR save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
+static ERR save_svg_transform(VectorMatrix *, std::stringstream &);
+static ERR set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
+static ERR xtag_animatemotion(extSVG *, XMLTag &, OBJECTPTR Parent);
+static ERR xtag_animatetransform(extSVG *, XMLTag &, OBJECTPTR);
+static ERR xtag_default(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static ERR xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void  xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static ERROR xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static ERR xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void  xtag_morph(extSVG *, XMLTag &, OBJECTPTR Parent);
 static void  xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void  xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
-static ERROR xtag_style(extSVG *, XMLTag &);
+static ERR xtag_style(extSVG *, XMLTag &);
 static void  xtag_symbol(extSVG *, XMLTag &);
 
 //********************************************************************************************************************
@@ -139,26 +139,26 @@ static void  xtag_symbol(extSVG *, XMLTag &);
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("vector", &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::InitModule;
+   if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
 
-   if (init_svg()) return ERR_AddClass;
-   if (init_rsvg()) return ERR_AddClass;
-   return ERR_Okay;
+   if (init_svg() != ERR::Okay) return ERR::AddClass;
+   if (init_rsvg() != ERR::Okay) return ERR::AddClass;
+   return ERR::Okay;
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modVector)  { FreeResource(modVector);  modVector = NULL; }
 
    if (clSVG)  { FreeResource(clSVG);  clSVG = NULL; }
    if (clRSVG) { FreeResource(clRSVG); clRSVG = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

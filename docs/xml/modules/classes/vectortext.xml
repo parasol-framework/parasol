@@ -36,7 +36,7 @@
     <method>
       <name>DeleteLine</name>
       <comment>Deletes any line number.</comment>
-      <prototype>ERROR vtDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
+      <prototype>ERR vtDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
       <input>
         <param type="LONG" name="Line">The line number that you want to delete.  If negative, the last line will be deleted.</param>
       </input>

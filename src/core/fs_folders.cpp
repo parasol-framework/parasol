@@ -4,7 +4,7 @@ Name: Files
 -END-
 *********************************************************************************************************************/
 
-static ERROR folder_free(APTR Address)
+static ERR folder_free(APTR Address)
 {
    pf::Log log("CloseDir");
    auto folder = (DirInfo *)Address;
@@ -21,7 +21,7 @@ static ERROR folder_free(APTR Address)
    }
 
    fs_closedir(folder);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static ResourceManager glResourceFolder = {
@@ -56,11 +56,11 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
+ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Path) or (!Result)) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!Result)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Path: '%s'", Path);
 
@@ -70,7 +70,7 @@ ERROR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 
    STRING resolved_path;
    if (!Path[0]) Path = ":"; // A path of ':' will return all known volumes.
-   if (auto error = ResolvePath(Path, RSF::NIL, &resolved_path); !error) {
+   if (auto error = ResolvePath(Path, RSF::NIL, &resolved_path); error IS ERR::Okay) {
       auto vd = get_fs(resolved_path);
 
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
@@ -79,9 +79,9 @@ ERROR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
       LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
-      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
+      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR::Okay) {
          FreeResource(resolved_path);
-         return ERR_AllocMemory;
+         return ERR::AllocMemory;
       }
 
       set_memory_manager(dir, &glResourceFolder);
@@ -105,27 +105,27 @@ ERROR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       if ((Path[0] IS ':') or (!Path[0])) {
          if ((Flags & RDF::FOLDER) IS RDF::NIL) {
             FreeResource(dir);
-            return ERR_DirEmpty;
+            return ERR::DirEmpty;
          }
          *Result = dir;
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       if (!vd->OpenDir) {
          FreeResource(dir);
-         return ERR_DirEmpty;
+         return ERR::DirEmpty;
       }
 
-      if (!(error = vd->OpenDir(dir))) {
+      if ((error = vd->OpenDir(dir)) IS ERR::Okay) {
          dir->prvVirtualID = vd->VirtualID;
          *Result = dir;
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       FreeResource(dir);
       return error;
    }
-   else return log.warning(ERR_ResolvePath);
+   else return log.warning(ERR::ResolvePath);
 }
 
 /*********************************************************************************************************************
@@ -165,15 +165,15 @@ DirEmpty: There are no more items to scan.
 
 *********************************************************************************************************************/
 
-ERROR ScanDir(DirInfo *Dir)
+ERR ScanDir(DirInfo *Dir)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Dir) return log.warning(ERR_NullArgs);
+   if (!Dir) return log.warning(ERR::NullArgs);
 
    FileInfo *file;
-   if (!(file = Dir->Info)) { log.trace("Missing Dir->Info"); return log.warning(ERR_InvalidData); }
-   if (!file->Name) { log.trace("Missing Dir->Info->Name"); return log.warning(ERR_InvalidData); }
+   if (!(file = Dir->Info)) { log.trace("Missing Dir->Info"); return log.warning(ERR::InvalidData); }
+   if (!file->Name) { log.trace("Missing Dir->Info->Name"); return log.warning(ERR::InvalidData); }
 
    file->Name[0] = 0;
    file->Flags   = RDF::NIL;
@@ -208,19 +208,19 @@ ERROR ScanDir(DirInfo *Dir)
                }
 
                file->Flags |= RDF::VOLUME;
-               return ERR_Okay;
+               return ERR::Okay;
             }
             else count++;
          }
 
-         return ERR_DirEmpty;
+         return ERR::DirEmpty;
       }
-      else return log.warning(ERR_SystemLocked);
+      else return log.warning(ERR::SystemLocked);
    }
 
    // In all other cases, pass functionality to the filesystem driver.
 
-   ERROR error = ERR_NoSupport;
+   ERR error = ERR::NoSupport;
    if (Dir->prvVirtualID IS DEFAULT_VIRTUALID) {
       error = fs_scandir(Dir);
    }

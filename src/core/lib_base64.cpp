@@ -169,10 +169,10 @@ Args
 
 **********************************************************************************************************************/
 
-ERROR Base64Decode(pfBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
+ERR Base64Decode(pfBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
 {
-   if ((!State) or (!Input) or (!Output) or (!Written)) return ERR_NullArgs;
-   if (InputSize < 4) return ERR_Args;
+   if ((!State) or (!Input) or (!Output) or (!Written)) return ERR::NullArgs;
+   if (InputSize < 4) return ERR::Args;
 
    if (!State->Initialised) {
       State->Initialised = TRUE;
@@ -181,7 +181,7 @@ ERROR Base64Decode(pfBase64Decode *State, CSTRING Input, LONG InputSize, APTR Ou
    }
 
    *Written = base64_decode_block(Input, InputSize, (char *)Output, State);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintext_out, pfBase64Decode *State)

@@ -11,8 +11,8 @@ that is distributed with this package.  Please refer to it for further informati
 using namespace display;
 #endif
 
-ERROR GET_HDensity(extDisplay *Self, LONG *Value);
-ERROR GET_VDensity(extDisplay *Self, LONG *Value);
+ERR GET_HDensity(extDisplay *Self, LONG *Value);
+ERR GET_VDensity(extDisplay *Self, LONG *Value);
 
 //********************************************************************************************************************
 
@@ -278,7 +278,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 // display is unavailable then this function will fail even if the lock could otherwise be granted.
 
 #ifdef _GLES_
-ERROR lock_graphics_active(CSTRING Caller)
+ERR lock_graphics_active(CSTRING Caller)
 {
    pf::Log log(__FUNCTION__);
 
@@ -294,23 +294,23 @@ ERROR lock_graphics_active(CSTRING Caller)
       if ((glEGLState != EGL_INITIALISED) or (glEGLDisplay IS EGL_NO_DISPLAY)) {
          pthread_mutex_unlock(&glGraphicsMutex);
          //log.trace("EGL not initialised.");
-         return ERR_NotInitialised;
+         return ERR::NotInitialised;
       }
 
       if ((glEGLContext != EGL_NO_CONTEXT) and (!glLockCount)) {
          // eglMakeCurrent() allows our thread to use OpenGL.
          if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) { // Failure probably indicates that a power management event has occurred (requires re-initialisation).
             pthread_mutex_unlock(&glGraphicsMutex);
-            return ERR_NotInitialised;
+            return ERR::NotInitialised;
          }
       }
 
       glLockCount++;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.warning("Failed to get lock for %s.  Locked by %s.  Error: %s", Caller, glLastLock, strerror(errno));
-      return ERR_TimeOut;
+      return ERR::TimeOut;
    }
 }
 
@@ -460,12 +460,12 @@ int CatchXIOError(Display *XDisplay)
 //********************************************************************************************************************
 // Resize the pixmap buffer for a window, but only if the new dimensions exceed the existing values.
 
-extern ERROR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
+extern ERR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
 {
    auto bmp = (extBitmap *)Self->Bitmap;
-   if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) return ERR_Okay; // Composite window
+   if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) return ERR::Okay; // Composite window
 
-   if ((bmp->x11.pix_width > Width) and (bmp->x11.pix_height > Height)) return ERR_Okay;
+   if ((bmp->x11.pix_width > Width) and (bmp->x11.pix_height > Height)) return ERR::Okay;
 
    if (Width  > bmp->x11.pix_width)  bmp->x11.pix_width  = Width;
    if (Height > bmp->x11.pix_height) bmp->x11.pix_height = Height;
@@ -479,35 +479,35 @@ extern ERROR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
       if (Self->XPixmap) XFreePixmap(XDisplay, Self->XPixmap);
       Self->XPixmap = pixmap;
       bmp->x11.drawable = pixmap;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 #endif
 
 //********************************************************************************************************************
 
-ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
+ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
   //log.traceBranch("Display: %d, Info: %p, Size: %d", DisplayID, Info, InfoSize);
 
-   if (!Info) return log.warning(ERR_NullArgs);
+   if (!Info) return log.warning(ERR::NullArgs);
 
    if (InfoSize != sizeof(DisplayInfoV3)) {
       log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, (LONG)sizeof(DisplayInfoV3));
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
    extDisplay *display;
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
          CopyMemory(&glDisplayInfo, Info, InfoSize);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else if (!AccessObject(DisplayID, 5000, &display)) {
+      else if (AccessObject(DisplayID, 5000, &display) IS ERR::Okay) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -541,9 +541,9 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->PixelFormat.AlphaPos   = display->Bitmap->ColourFormat->AlphaPos;
 
          ReleaseObject(display);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
    else {
       // If no display is specified, return default display settings for the main monitor and availability flags.
@@ -666,20 +666,20 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          }
          else {
             adUnlockAndroid();
-            return log.warning(ERR_SystemCall);
+            return log.warning(ERR::SystemCall);
          }
 
          adUnlockAndroid();
       }
-      else return log.warning(ERR_TimeOut);
+      else return log.warning(ERR::TimeOut);
 
       CopyMemory(glDisplayInfo, Info, InfoSize);
-      return ERR_Okay;
+      return ERR::Okay;
 #else
 
       if (glDisplayInfo.DisplayID) {
          CopyMemory(glDisplayInfo, Info, InfoSize);
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          Info->Width         = 1024;
@@ -715,13 +715,13 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       else Info->AmtColours = 1<<Info->BitsPerPixel;
 
       log.trace("%dx%dx%d", Info->Width, Info->Height, Info->BitsPerPixel);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log(__FUNCTION__);
 
@@ -740,13 +740,13 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_bitmap_class();
       create_clipboard_class();
       create_surface_class();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 #endif
 
    if (auto driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER)) {
       log.msg("User requested display driver '%s'", driver_name);
-      if ((!StrMatch(driver_name, "none")) or (!StrMatch(driver_name, "headless"))) {
+      if ((StrMatch(driver_name, "none") IS ERR::Okay) or (StrMatch(driver_name, "headless") IS ERR::Okay)) {
          glHeadless = true;
       }
    }
@@ -765,7 +765,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    #ifdef __ANDROID__
       if (GetResource(RES::SYSTEM_STATE) >= 0) {
-         if (objModule::load("android", (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
+         if (objModule::load("android", (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR::Okay) return ERR::InitModule;
 
          FUNCTION fInitWindow, fTermWindow;
          SET_CALLBACK_STDC(fInitWindow, &android_init_window); // Sets EGL for re-initialisation and draws the display.
@@ -773,8 +773,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (adAddCallbacks(ACB_INIT_WINDOW, &fInitWindow,
                             ACB_TERM_WINDOW, &fTermWindow,
-                            TAGEND) != ERR_Okay) {
-            return ERR_SystemCall;
+                            TAGEND) != ERR::Okay) {
+            return ERR::SystemCall;
          }
       }
    #endif
@@ -808,7 +808,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          XSetErrorHandler((XErrorHandler)CatchXError);
          XSetIOErrorHandler(CatchXIOError);
       }
-      else return ERR_Failed;
+      else return ERR::Failed;
 
       // Try to load XRandR if we are the display manager, but it's okay if not available
 
@@ -818,7 +818,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          acSetVar(modXRR, "XDisplay", buffer);
          modXRR->set(FID_Name, "xrandr");
          if (!InitObject(modXRR)) {
-            if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
+            if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR::Okay) XRandRBase = NULL;
          }
       }
       else XRandRBase = NULL;
@@ -886,9 +886,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #elif _WIN32
 
    if ((glInstance = winGetModuleHandle())) {
-      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
+      if (!winCreateScreenClass()) return log.warning(ERR::SystemCall);
    }
-   else return log.warning(ERR_SystemCall);
+   else return log.warning(ERR::SystemCall);
 
    winDisableBatching();
 
@@ -896,11 +896,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #endif
 
-   if (create_pointer_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_display_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_bitmap_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_clipboard_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_surface_class() != ERR_Okay) return log.warning(ERR_AddClass);
+   if (create_pointer_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_display_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_bitmap_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_clipboard_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_surface_class() != ERR::Okay) return log.warning(ERR::AddClass);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
@@ -932,11 +932,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
+         if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
             cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
          }
 
-         if ((cfgRead(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
+         if ((cfgRead(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
             cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
          }
 
@@ -958,14 +958,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       cfgRead(*config, "DISPLAY", "GammaGreen", &glpGammaGreen);
       cfgRead(*config, "DISPLAY", "GammaBlue", &glpGammaBlue);
       CSTRING dpms;
-      if (!cfgReadValue(*config, "DISPLAY", "DPMS", &dpms)) {
+      if (cfgReadValue(*config, "DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
          StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
    }
 #endif
 
    STRING icon_path;
-   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
+   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR::Okay) { // The client can set iconsource: to redefine the icon origins
       icon_path = StrClone("styles:icons/");
    }
 
@@ -973,14 +973,14 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    auto src = std::string(icon_path) + "Default.zip";
    if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
-      return ERR_CreateObject;
+      return ERR::CreateObject;
    }
 
    FreeResource(icon_path);
 
    // The icons: special volume is a simple reference to the archive path.
 
-   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN)) return ERR_SetVolume;
+   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
@@ -990,23 +990,23 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERR CMDOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    pf::Log log(__FUNCTION__);
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    
    clean_clipboard();
 
@@ -1047,7 +1047,7 @@ static ERROR CMDExpunge(void)
       // termination.  In order to resolve this problem we return DoNotExpunge to prevent the removal of X11
       // dependent code.
 
-      error = ERR_DoNotExpunge;
+      error = ERR::DoNotExpunge;
    }
 
 #elif __ANDROID__
@@ -1128,7 +1128,7 @@ GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
 ** PLEASE NOTE: EGL's design for embedded devices means that only one Display object can be active at any time.
 */
 
-ERROR init_egl(void)
+ERR init_egl(void)
 {
    pf::Log log(__FUNCTION__);
    EGLint format;
@@ -1138,7 +1138,7 @@ ERROR init_egl(void)
 
    if (glEGLDisplay != EGL_NO_DISPLAY) {
       log.msg("EGL display is already initialised.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    depth = glEGLPreferredDepth;
@@ -1184,13 +1184,13 @@ ERROR init_egl(void)
       glEGLContext = eglCreateContext(glEGLDisplay, config, NULL, NULL);
    }
    else {
-      log.warning(ERR_SystemCall);
-      return ERR_SystemCall;
+      log.warning(ERR::SystemCall);
+      return ERR::SystemCall;
    }
 
    if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) {
-      log.warning(ERR_SystemCall);
-      return ERR_SystemCall;
+      log.warning(ERR::SystemCall);
+      return ERR::SystemCall;
    }
 
    eglQuerySurface(glEGLDisplay, glEGLSurface, EGL_WIDTH, &glEGLWidth);
@@ -1226,13 +1226,13 @@ ERROR init_egl(void)
             log.msg("Click-slop calculated as %d.", pointer->ClickSlop);
             ReleaseObject(pointer);
          }
-         else log.warning(ERR_AccessObject);
+         else log.warning(ERR::AccessObject);
       }
       else log.warning("Failed to get Android Config object.");
    }
 
    glEGLState = EGL_INITIALISED;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1292,7 +1292,7 @@ void free_egl(void)
 
       pthread_mutex_unlock(&glGraphicsMutex);
    }
-   else log.warning(ERR_LockFailed);
+   else log.warning(ERR::LockFailed);
 
    log.msg("EGL successfully terminated.");
 }
@@ -1301,7 +1301,7 @@ void free_egl(void)
 //********************************************************************************************************************
 // Updates the display using content from a source bitmap.
 
-ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
+ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
 {
 #ifdef _WIN32
    auto dest   = Self->Bitmap;
@@ -1316,33 +1316,33 @@ ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG W
 
    if ((xdest < dest->Clip.Left)) {
       width = width - (dest->Clip.Left - xdest);
-      if (width < 1) return ERR_Okay;
+      if (width < 1) return ERR::Okay;
       x = x + (dest->Clip.Left - xdest);
       xdest = dest->Clip.Left;
    }
-   else if (xdest >= dest->Clip.Right) return ERR_Okay;
+   else if (xdest >= dest->Clip.Right) return ERR::Okay;
 
    if ((ydest < dest->Clip.Top)) {
       height = height - (dest->Clip.Top - ydest);
-      if (height < 1) return ERR_Okay;
+      if (height < 1) return ERR::Okay;
       y = y + (dest->Clip.Top - ydest);
       ydest = dest->Clip.Top;
    }
-   else if (ydest >= dest->Clip.Bottom) return ERR_Okay;
+   else if (ydest >= dest->Clip.Bottom) return ERR::Okay;
 
    // Check if the source that we are copying from is within its own drawable area.
 
    if (x < 0) {
-      if ((width += x) < 1) return ERR_Okay;
+      if ((width += x) < 1) return ERR::Okay;
       x = 0;
    }
-   else if (x >= Bitmap->Width) return ERR_Okay;
+   else if (x >= Bitmap->Width) return ERR::Okay;
 
    if (y < 0) {
-      if ((height += y) < 1) return ERR_Okay;
+      if ((height += y) < 1) return ERR::Okay;
       y = 0;
    }
-   else if (y >= Bitmap->Height) return ERR_Okay;
+   else if (y >= Bitmap->Height) return ERR::Okay;
 
    // Clip the Width and Height
 
@@ -1352,8 +1352,8 @@ ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG W
    if ((x + width)  >= Bitmap->Width)  width  = Bitmap->Width - x;
    if ((y + height) >= Bitmap->Height) height = Bitmap->Height - y;
 
-   if (width < 1) return ERR_Okay;
-   if (height < 1) return ERR_Okay;
+   if (width < 1) return ERR::Okay;
+   if (height < 1) return ERR::Okay;
 
    // Adjust coordinates by offset values
 
@@ -1376,7 +1376,7 @@ ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG W
       Bitmap->ColourFormat->BlueMask  << Bitmap->ColourFormat->BluePos,
       ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) ? (Bitmap->ColourFormat->AlphaMask << Bitmap->ColourFormat->AlphaPos) : 0,
       Self->Opacity);
-   return ERR_Okay;
+   return ERR::Okay;
 #else
    return(gfxCopyArea(Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL, X, Y, Width, Height, XDest, YDest));
 #endif

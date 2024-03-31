@@ -37,7 +37,7 @@
     <method>
       <name>AddCommand</name>
       <comment>Add one or more commands to the end of the path sequence.</comment>
-      <prototype>ERROR vpAddCommand(OBJECTPTR Object, struct PathCommand * Commands, LONG Size)</prototype>
+      <prototype>ERR vpAddCommand(OBJECTPTR Object, struct PathCommand * Commands, LONG Size)</prototype>
       <input>
         <param type="struct PathCommand *" name="Commands">Array of commands to add to the path.</param>
         <param type="LONG" name="Size">The size of the Command buffer, in bytes.</param>
@@ -51,7 +51,7 @@
     <method>
       <name>GetCommand</name>
       <comment>Retrieve a specific command from the path sequence.</comment>
-      <prototype>ERROR vpGetCommand(OBJECTPTR Object, LONG Index, struct PathCommand ** Command)</prototype>
+      <prototype>ERR vpGetCommand(OBJECTPTR Object, LONG Index, struct PathCommand ** Command)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the command to retrieve.</param>
         <param type="struct PathCommand **" name="Command">The requested command will be returned in this parameter.</param>
@@ -64,7 +64,7 @@
     <method>
       <name>RemoveCommand</name>
       <comment>Remove at least one command from the path sequence.</comment>
-      <prototype>ERROR vpRemoveCommand(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
+      <prototype>ERR vpRemoveCommand(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the command to remove.</param>
         <param type="LONG" name="Total">The total number of commands to remove, starting from the given Index.</param>
@@ -77,7 +77,7 @@
     <method>
       <name>SetCommand</name>
       <comment>Copies one or more commands into an existing path.</comment>
-      <prototype>ERROR vpSetCommand(OBJECTPTR Object, LONG Index, struct PathCommand * Command, LONG Size)</prototype>
+      <prototype>ERR vpSetCommand(OBJECTPTR Object, LONG Index, struct PathCommand * Command, LONG Size)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the command that is to be set.</param>
         <param type="struct PathCommand *" name="Command">An array of commands to set in the path.</param>
@@ -91,7 +91,7 @@
     <method>
       <name>SetCommandList</name>
       <comment>The fastest available mechanism for setting a series of path instructions.</comment>
-      <prototype>ERROR vpSetCommandList(OBJECTPTR Object, APTR Commands, LONG Size)</prototype>
+      <prototype>ERR vpSetCommandList(OBJECTPTR Object, APTR Commands, LONG Size)</prototype>
       <input>
         <param type="APTR" name="Commands">An array of PathCommand structures.</param>
         <param type="LONG" name="Size">The byte size of the Commands buffer.</param>

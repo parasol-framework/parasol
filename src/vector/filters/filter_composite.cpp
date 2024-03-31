@@ -553,11 +553,11 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
+static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 {
    pf::Log log;
 
-   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
 
    objBitmap *inBmp;
 
@@ -565,9 +565,9 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 
    switch (Self->Operator) {
       case OP::OVER: {
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_over>(inBmp, mixBmp, dest, in, mix);
@@ -577,9 +577,9 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
 
       case OP::IN: {
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_in>(inBmp, mixBmp, dest, in, mix);
@@ -589,9 +589,9 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
 
       case OP::OUT: {
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_out>(inBmp, mixBmp, dest, in, mix);
@@ -601,9 +601,9 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
 
       case OP::ATOP: {
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_atop>(inBmp, mixBmp, dest, in, mix);
@@ -613,9 +613,9 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
 
       case OP::XOR: {
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                Self->doMix<composite_xor>(inBmp, mixBmp, dest, in, mix);
@@ -625,7 +625,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
 
       case OP::ARITHMETIC: {
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
             LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
             LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
@@ -637,7 +637,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
             const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
             const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
 
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                for (LONG y=0; y < height; y++) {
@@ -699,9 +699,9 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
 
       default: { // These mix routines use pre-multiplied content.
-         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, true)) {
+         if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, true) IS ERR::Okay) {
             objBitmap *mixBmp;
-            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, true)) {
+            if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, true) IS ERR::Okay) {
                UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                #pragma GCC diagnostic ignored "-Wswitch"
@@ -733,29 +733,29 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
+static ERR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 {
    pf::Log log;
 
    if (Self->MixType IS VSF::NIL) {
       log.warning("A mix input is required.");
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COMPOSITEFX_NewObject(extCompositeFX *Self, APTR Void)
+static ERR COMPOSITEFX_NewObject(extCompositeFX *Self, APTR Void)
 {
    Self->Operator = OP::OVER;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -765,16 +765,16 @@ K1: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K1(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K1(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K1;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K1(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K1(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K1 = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -784,16 +784,16 @@ K2: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K2(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K2(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K2;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K2(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K2(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K2 = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -803,16 +803,16 @@ K3: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K3(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K3(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K3;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K3(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K3(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K3 = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -822,16 +822,16 @@ K4: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K4(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K4(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K4;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K4(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K4(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K4 = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -844,16 +844,16 @@ Setting the Operator will determine the algorithm that is used for compositing. 
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_Operator(extCompositeFX *Self, OP *Value)
+static ERR COMPOSITEFX_GET_Operator(extCompositeFX *Self, OP *Value)
 {
    *Value = Self->Operator;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COMPOSITEFX_SET_Operator(extCompositeFX *Self, OP Value)
+static ERR COMPOSITEFX_SET_Operator(extCompositeFX *Self, OP Value)
 {
    Self->Operator = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -864,10 +864,10 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_XMLDef(extCompositeFX *Self, STRING *Value)
+static ERR COMPOSITEFX_GET_XMLDef(extCompositeFX *Self, STRING *Value)
 {
    *Value = StrClone("feComposite");
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -913,7 +913,7 @@ static const FieldArray clCompositeFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_compositefx(void)
+ERR init_compositefx(void)
 {
    clCompositeFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -925,5 +925,5 @@ ERROR init_compositefx(void)
       fl::Size(sizeof(extCompositeFX)),
       fl::Path(MOD_PATH));
 
-   return clCompositeFX ? ERR_Okay : ERR_AddClass;
+   return clCompositeFX ? ERR::Okay : ERR::AddClass;
 }

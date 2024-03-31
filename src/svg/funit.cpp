@@ -48,7 +48,7 @@ struct FUNIT {
       return (value >= 0.001);
    }
 
-   inline ERROR set(OBJECTPTR Object) { return SetField(Object, field(), value); }
+   inline ERR set(OBJECTPTR Object) { return SetField(Object, field(), value); }
 };
 
 FUNIT::FUNIT(CSTRING pValue, DOUBLE pMin)

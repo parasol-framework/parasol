@@ -7,6 +7,8 @@
 #include <type_traits>
 #include <utility>
 
+//********************************************************************************************************************
+
 template <class Tag, typename T>
 class strong_typedef {
    public:
@@ -27,6 +29,7 @@ struct SCALE : strong_typedef<SCALE, DOUBLE> {
     using strong_typedef::strong_typedef;
 };
 
+//********************************************************************************************************************
 // Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
 // Fluid).
 

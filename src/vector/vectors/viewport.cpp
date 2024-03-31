@@ -27,7 +27,7 @@ NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions i
 // Input event handler for the dragging of viewports by the user.  Requires the client to set the DragCallback field
 // to be active.
 
-static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
+static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
 {
    static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
    static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
@@ -60,7 +60,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
                      ScriptArg("OriginX", glDragOriginX),
                      ScriptArg("OriginY", glDragOriginY)
                   };
-                  scCallback(script, Viewport->vpDragCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+                  scCallback(script, Viewport->vpDragCallback.Script.ProcedureID, args, std::ssize(args), NULL);
                }
             }
          }
@@ -85,7 +85,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -94,19 +94,19 @@ Clear: Free all child objects contained by the viewport.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
 {
    pf::vector<ChildEntry> list;
-   if (!ListChildren(Self->UID, &list)) {
+   if (ListChildren(Self->UID, &list) IS ERR::Okay) {
       for (unsigned i=0; i < list.size(); i++) FreeResource(list[i].ObjectID);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
 {
    if ((Self->Scene) and (!Self->Scene->collecting()) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
       if (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self)) {
@@ -116,19 +116,19 @@ static ERROR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
 
    if (Self->vpDragCallback.Type) vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORVIEWPORT_Init(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_Init(extVectorViewport *Self, APTR Void)
 {
    // Initialisation is performed by VECTOR_Init()
 
    // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height, which has
    // its own section for dealing with viewports.
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -137,16 +137,16 @@ Move: Move the position of the viewport by delta X, Y.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORVIEWPORT_Move(extVectorViewport *Self, struct acMove *Args)
+static ERR VECTORVIEWPORT_Move(extVectorViewport *Self, struct acMove *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    Self->vpDimensions = (Self->vpDimensions|DMF_FIXED_X|DMF_FIXED_Y) & (~(DMF_SCALED_X|DMF_SCALED_Y));
    Self->vpTargetX += Args->DeltaX;
    Self->vpTargetY += Args->DeltaY;
 
    mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -155,9 +155,9 @@ MoveToPoint: Move the position of the viewport to a fixed point.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveToPoint *Args)
+static ERR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveToPoint *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if ((Args->Flags & MTF::X) != MTF::NIL) {
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
@@ -170,12 +170,12 @@ static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveTo
    }
 
    mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
 {
    Self->vpAspectRatio = ARF::MEET|ARF::X_MID|ARF::Y_MID;
    Self->vpOverflowX   = VOF::VISIBLE;
@@ -184,7 +184,7 @@ static ERROR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
    // NB: vpTargetWidth and vpTargetHeight are not set to a default because we need to know if the client has
    // intentionally avoided setting the viewport and/or viewbox dimensions (which typically means that the viewport
    // will expand to fit the parent).
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -193,9 +193,9 @@ Redimension: Reposition and resize a viewport to a fixed size.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORVIEWPORT_Redimension(extVectorViewport *Self, struct acRedimension *Args)
+static ERR VECTORVIEWPORT_Redimension(extVectorViewport *Self, struct acRedimension *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    Self->vpDimensions = (Self->vpDimensions|DMF_FIXED_X|DMF_FIXED_Y|DMF_FIXED_WIDTH|DMF_FIXED_HEIGHT) &
       (~(DMF_SCALED_X|DMF_SCALED_Y|DMF_SCALED_WIDTH|DMF_SCALED_HEIGHT));
@@ -208,7 +208,7 @@ static ERROR VECTORVIEWPORT_Redimension(extVectorViewport *Self, struct acRedime
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
    mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -217,9 +217,9 @@ Resize: Resize a viewport to a fixed size.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORVIEWPORT_Resize(extVectorViewport *Self, struct acResize *Args)
+static ERR VECTORVIEWPORT_Resize(extVectorViewport *Self, struct acResize *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
    Self->vpTargetWidth = Args->Width;
@@ -230,7 +230,7 @@ static ERROR VECTORVIEWPORT_Resize(extVectorViewport *Self, struct acResize *Arg
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
    mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -243,12 +243,12 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_AbsX(extVectorViewport *Self, LONG *Value)
+static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG *Value)
 {
    if (Self->dirty()) gen_vector_tree(Self);
 
    *Value = Self->vpBounds.left;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -261,12 +261,12 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_AbsY(extVectorViewport *Self, LONG *Value)
+static ERR VIEW_GET_AbsY(extVectorViewport *Self, LONG *Value)
 {
    if (Self->dirty()) gen_vector_tree(Self);
 
    *Value = Self->vpBounds.top;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -281,16 +281,16 @@ area.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_AspectRatio(extVectorViewport *Self, ARF *Value)
+static ERR VIEW_GET_AspectRatio(extVectorViewport *Self, ARF *Value)
 {
    *Value = Self->vpAspectRatio;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_AspectRatio(extVectorViewport *Self, ARF Value)
+static ERR VIEW_SET_AspectRatio(extVectorViewport *Self, ARF Value)
 {
    Self->vpAspectRatio = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -302,17 +302,17 @@ Lookup: DMF
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Dimensions(extVectorViewport *Self, LONG *Value)
+static ERR VIEW_GET_Dimensions(extVectorViewport *Self, LONG *Value)
 {
    *Value = Self->vpDimensions;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_Dimensions(extVectorViewport *Self, LONG Value)
+static ERR VIEW_SET_Dimensions(extVectorViewport *Self, LONG Value)
 {
    Self->vpDimensions = Value;
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -335,25 +335,25 @@ It is required that the parent @VectorScene is associated with a @Surface for th
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_DragCallback(extVectorViewport *Self, FUNCTION **Value)
+static ERR VIEW_GET_DragCallback(extVectorViewport *Self, FUNCTION **Value)
 {
    if (Self->vpDragCallback.defined()) {
       *Value = &Self->vpDragCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
+static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
 {
    if (Value) {
       if ((!Self->Scene) or (!Self->Scene->SurfaceID)) {
          pf::Log log;
-         return log.warning(ERR_FieldNotSet);
+         return log.warning(ERR::FieldNotSet);
       }
 
-      if (vecSubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(drag_callback))) {
-         return ERR_Failed;
+      if (vecSubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(drag_callback)) != ERR::Okay) {
+         return ERR::Failed;
       }
 
       Self->vpDragCallback = *Value;
@@ -362,7 +362,7 @@ static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
       Self->vpDragCallback.clear();
       vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -376,7 +376,7 @@ The fixed value is always returned when retrieving the height.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
@@ -413,24 +413,24 @@ static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_SetValueNotNumeric;
+   else return ERR::SetValueNotNumeric;
 
    Self->vpTargetHeight = val;
    if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
 
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -446,17 +446,17 @@ If the viewport's #AspectRatio is set to `SLICE` then it will have priority over
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Overflow(extVectorViewport *Self, VOF *Value)
+static ERR VIEW_GET_Overflow(extVectorViewport *Self, VOF *Value)
 {
    *Value = Self->vpOverflowX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_Overflow(extVectorViewport *Self, VOF Value)
+static ERR VIEW_SET_Overflow(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowX = Value;
    Self->vpOverflowY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -471,16 +471,16 @@ This option controls the x axis only.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_OverflowX(extVectorViewport *Self, VOF *Value)
+static ERR VIEW_GET_OverflowX(extVectorViewport *Self, VOF *Value)
 {
    *Value = Self->vpOverflowX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_OverflowX(extVectorViewport *Self, VOF Value)
+static ERR VIEW_SET_OverflowX(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowX = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -495,16 +495,16 @@ This option controls the y axis only.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_OverflowY(extVectorViewport *Self, VOF *Value)
+static ERR VIEW_GET_OverflowY(extVectorViewport *Self, VOF *Value)
 {
    *Value = Self->vpOverflowY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_OverflowY(extVectorViewport *Self, VOF Value)
+static ERR VIEW_SET_OverflowY(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -516,20 +516,20 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_ViewHeight(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewHeight(extVectorViewport *Self, DOUBLE *Value)
 {
    *Value = Self->vpViewHeight;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_ViewHeight(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewHeight(extVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewHeight = Value;
       mark_dirty((extVector *)Self, RC::ALL);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -542,17 +542,17 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE *Value)
 {
    *Value = Self->vpViewX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_ViewX(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewX(extVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewX = Value;
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -565,20 +565,20 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_ViewWidth(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewWidth(extVectorViewport *Self, DOUBLE *Value)
 {
    *Value = Self->vpViewWidth;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_ViewWidth(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewWidth(extVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewWidth = Value;
       mark_dirty((extVector *)Self, RC::ALL);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -591,17 +591,17 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE *Value)
 {
    *Value = Self->vpViewY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_ViewY(extVectorViewport *Self, DOUBLE Value)
+static ERR VIEW_SET_ViewY(extVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewY = Value;
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -613,7 +613,7 @@ full coverage.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
@@ -650,23 +650,23 @@ static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_SetValueNotNumeric;
+   else return ERR::SetValueNotNumeric;
 
    Self->vpTargetWidth = val;
    if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
 
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -682,7 +682,7 @@ width.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE width, value;
 
@@ -706,26 +706,26 @@ static ERROR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
       pf::Log log;
-      return log.warning(ERR_FieldTypeMismatch);
+      return log.warning(ERR::FieldTypeMismatch);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_SetValueNotNumeric;
+   else return ERR::SetValueNotNumeric;
 
    Self->vpTargetX = val;
    if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
 
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -741,7 +741,7 @@ width.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE width;
    DOUBLE value = 0;
@@ -767,27 +767,27 @@ static ERROR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
       pf::Log log;
-      return log.warning(ERR_FieldTypeMismatch);
+      return log.warning(ERR::FieldTypeMismatch);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_SetValueNotNumeric;
+   else return ERR::SetValueNotNumeric;
 
    Self->vpTargetXO = val;
    if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_SCALED_X_OFFSET);
 
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -803,7 +803,7 @@ height.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE value, height;
 
@@ -827,26 +827,26 @@ static ERROR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
       pf::Log log;
-      return log.warning(ERR_FieldTypeMismatch);
+      return log.warning(ERR::FieldTypeMismatch);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_SetValueNotNumeric;
+   else return ERR::SetValueNotNumeric;
 
    Self->vpTargetY = val;
    if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
 
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -862,7 +862,7 @@ height.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE height;
    DOUBLE value = 0;
@@ -888,26 +888,26 @@ static ERROR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
       pf::Log log;
-      return log.warning(ERR_FieldTypeMismatch);
+      return log.warning(ERR::FieldTypeMismatch);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR_SetValueNotNumeric;
+   else return ERR::SetValueNotNumeric;
 
    Self->vpTargetYO = val;
    if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_SCALED_Y_OFFSET);
 
    mark_dirty((extVector *)Self, RC::ALL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -948,7 +948,7 @@ static const FieldArray clViewFields[] = {
    END_FIELD
 };
 
-static ERROR init_viewport(void)
+static ERR init_viewport(void)
 {
    clVectorViewport = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
@@ -960,5 +960,5 @@ static ERROR init_viewport(void)
       fl::Size(sizeof(extVectorViewport)),
       fl::Path(MOD_PATH));
 
-   return clVectorViewport ? ERR_Okay : ERR_AddClass;
+   return clVectorViewport ? ERR::Okay : ERR::AddClass;
 }

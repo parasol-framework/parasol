@@ -46,11 +46,11 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
    else {
       log.trace("getsockopt() result %d", result);
 
-      if (result IS ECONNREFUSED)      Self->Error = ERR_ConnectionRefused;
-      else if (result IS ENETUNREACH)  Self->Error = ERR_NetworkUnreachable;
-      else if (result IS EHOSTUNREACH) Self->Error = ERR_HostUnreachable;
-      else if (result IS ETIMEDOUT)    Self->Error = ERR_TimeOut;
-      else Self->Error = ERR_Failed;
+      if (result IS ECONNREFUSED)      Self->Error = ERR::ConnectionRefused;
+      else if (result IS ENETUNREACH)  Self->Error = ERR::NetworkUnreachable;
+      else if (result IS EHOSTUNREACH) Self->Error = ERR::HostUnreachable;
+      else if (result IS ETIMEDOUT)    Self->Error = ERR::TimeOut;
+      else Self->Error = ERR::Failed;
 
       log.error(Self->Error);
 
@@ -110,20 +110,20 @@ restart:
    Self->ReadCalled = FALSE;
 
    LONG result;
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if (Self->Incoming.defined()) {
       if (Self->Incoming.isC()) {
-         auto routine = (ERROR (*)(extNetSocket *, APTR))Self->Incoming.StdC.Routine;
+         auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.StdC.Routine;
          pf::SwitchContext context(Self->Incoming.StdC.Context);
          error = routine(Self, Self->Incoming.StdC.Meta);
       }
       else if (Self->Incoming.isScript()) {
          const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
          auto script = Self->Incoming.Script.Script;
-         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
       }
 
-      if (error IS ERR_Terminate) log.trace("Termination of socket requested by channel subscriber.");
+      if (error IS ERR::Terminate) log.trace("Termination of socket requested by channel subscriber.");
       else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->UID);
    }
 
@@ -136,10 +136,10 @@ restart:
          total += result;
       } while (result > 0);
 
-      if (error) error = ERR_Terminate;
+      if (error != ERR::Okay) error = ERR::Terminate;
    }
 
-   if (error IS ERR_Terminate) {
+   if (error IS ERR::Terminate) {
       log.traceBranch("Socket %d will be terminated.", FD);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
    }
@@ -195,7 +195,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    Self->InUse++;
    Self->OutgoingRecursion++;
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    // Send out remaining queued data before getting new data to send
 
@@ -210,7 +210,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
-            if ((error) or (!len)) break;
+            if ((error != ERR::Okay) or (!len)) break;
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
             Self->WriteQueue.Index += len;
          }
@@ -231,17 +231,17 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
       if (Self->Outgoing.defined()) {
          if (Self->Outgoing.isC()) {
-            auto routine = (ERROR (*)(extNetSocket *, APTR))Self->Outgoing.StdC.Routine;
+            auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.StdC.Routine;
             pf::SwitchContext context(Self->Outgoing.StdC.Context);
             error = routine(Self, Self->Outgoing.StdC.Meta);
          }
          else if (Self->Outgoing.isScript()) {
             const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
             auto script = Self->Outgoing.Script.Script;
-            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error) Self->Outgoing.clear();
+         if (error != ERR::Okay) Self->Outgoing.clear();
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that

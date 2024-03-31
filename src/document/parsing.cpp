@@ -65,20 +65,20 @@ struct parser {
       }
    }
 
-   inline ERROR calc(const std::string &, DOUBLE *, std::string &);
-   inline TRF   parse_tag(XMLTag &, IPF &);
-   inline TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
-   inline TRF   parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
-   inline TRF   parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
-   inline void  process_page(objXML *pXML);
-   inline void  tag_xml_content(XMLTag &, PXF);
-   inline void  translate_attrib_args(pf::vector<XMLAttrib> &);
-   inline void  translate_args(const std::string &, std::string &);
-   inline void  translate_calc(std::string &, size_t);
-   inline void  translate_param(std::string &, size_t);
-   inline void  translate_reserved(std::string &, size_t, bool &);
-   inline ERROR tag_xml_content_eval(std::string &);
-   inline void  trim_preformat(extDocument *);
+   inline ERR  calc(const std::string &, DOUBLE *, std::string &);
+   inline TRF  parse_tag(XMLTag &, IPF &);
+   inline TRF  parse_tags(objXML::TAGS &, IPF = IPF::NIL);
+   inline TRF  parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
+   inline TRF  parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
+   inline void process_page(objXML *pXML);
+   inline void tag_xml_content(XMLTag &, PXF);
+   inline void translate_attrib_args(pf::vector<XMLAttrib> &);
+   inline void translate_args(const std::string &, std::string &);
+   inline void translate_calc(std::string &, size_t);
+   inline void translate_param(std::string &, size_t);
+   inline void translate_reserved(std::string &, size_t, bool &);
+   inline ERR  tag_xml_content_eval(std::string &);
+   inline void trim_preformat(extDocument *);
 
    // Switching out the XML object is sometimes done for things like template injection
 
@@ -165,7 +165,7 @@ void parser::process_page(objXML *pXML)
 
    log.branch("Page: %s", Self->PageName.c_str());
 
-   if (!pXML) { Self->Error = ERR_NoData; return; }
+   if (!pXML) { Self->Error = ERR::NoData; return; }
    m_xml = pXML;
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
@@ -173,17 +173,17 @@ void parser::process_page(objXML *pXML)
 
    XMLTag *page = NULL;
    for (auto &scan : m_xml->Tags) {
-      if (StrMatch("page", scan.Attribs[0].Name)) continue;
+      if (StrMatch("page", scan.Attribs[0].Name) != ERR::Okay) continue;
 
       if (!page) page = &scan;
 
       if (Self->PageName.empty()) break;
       else if (auto name = scan.attrib("name")) {
-         if (!StrMatch(Self->PageName, *name)) page = &scan;
+         if (StrMatch(Self->PageName, *name) IS ERR::Okay) page = &scan;
       }
    }
 
-   Self->Error = ERR_Okay;
+   Self->Error = ERR::Okay;
    if ((page) and (!page->Children.empty())) {
       Self->PageTag = page;
 
@@ -202,7 +202,7 @@ void parser::process_page(objXML *pXML)
       Self->XPosition      = 0;
       Self->YPosition      = 0;
       Self->UpdatingLayout = true;
-      Self->Error          = ERR_Okay;
+      Self->Error          = ERR::Okay;
 
       m_index = stream_char(m_stream->size());
       parse_tags(m_xml->Tags, IPF::NO_CONTENT);
@@ -238,13 +238,13 @@ void parser::process_page(objXML *pXML)
       // If an error occurred then we have to kill the document as the stream may contain unsynchronised
       // byte codes (e.g. an unterminated SCODE::TABLE sequence).
 
-      if (Self->Error) unload_doc(Self);
+      if (Self->Error != ERR::Okay) unload_doc(Self);
    }
    else {
       if (!Self->PageName.empty()) {
          auto msg = std::string("Failed to find page '") + Self->PageName + "' in document '" + Self->Path + "'.";
          error_dialog("Load Failed", msg);
-         Self->Error = ERR_Search;
+         Self->Error = ERR::Search;
       }
       else {
          // If no name was specified and there is no page to process, revert to performing a standard insert
@@ -252,7 +252,7 @@ void parser::process_page(objXML *pXML)
          auto orig_size = m_stream->size();
          Self->Error = insert_xml(Self, &Self->Stream, m_xml, m_xml->Tags, m_stream->size(), STYLE::NIL); //STYLE::RESET_STYLE);
 
-         if (Self->Error) m_stream->data.resize(orig_size);
+         if (Self->Error != ERR::Okay) m_stream->data.resize(orig_size);
       }
    }
 /*
@@ -286,7 +286,7 @@ void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
 {
    if (Attribs[0].isContent()) return;
 
-   for (unsigned attrib=1; (attrib < Attribs.size()); attrib++) {
+   for (LONG attrib=1; attrib < std::ssize(Attribs); attrib++) {
       if (Attribs[attrib].Name.starts_with('$')) continue;
 
       std::string output;
@@ -354,15 +354,17 @@ void parser::translate_args(const std::string &Input, std::string &Output)
       unsigned i;
       for (i=0; i < Input.size(); i++) {
          if (Input[i] IS '[') break;
-         if ((Input[i] IS '&') and ((!StrCompare("&lsqr;", Input.c_str()+i)) or (!StrCompare("&rsqr;", Input.c_str()+i)))) break;
+         if ((Input[i] IS '&') and 
+             ((StrCompare("&lsqr;", Input.c_str()+i) IS ERR::Okay) or 
+              (StrCompare("&rsqr;", Input.c_str()+i) IS ERR::Okay))) break;
       }
       if (i >= Input.size()) return;
    }
 
    for (auto pos = std::ssize(Output)-1; pos >= 0; pos--) {
       if (Output[pos] IS '&') {
-         if (!StrCompare("&lsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "[");
-         else if (!StrCompare("&rsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "]");
+         if (StrCompare("&lsqr;", Output.c_str()+pos) IS ERR::Okay) Output.replace(pos, 6, "[");
+         else if (StrCompare("&rsqr;", Output.c_str()+pos) IS ERR::Okay) Output.replace(pos, 6, "]");
       }
       else if (Output[pos] IS '[') {
          if (Output[pos+1] IS '=') { // Perform a calcuation within [= ... ]
@@ -396,7 +398,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
 
             OBJECTID objectid = 0;
             if (!name.empty()) {
-               if (!FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid)) {
+               if (FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid) IS ERR::Okay) {
                   if ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL) {
                      // Only consider objects that are children of the document
                      bool valid = false;
@@ -421,7 +423,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
                            if (auto classfield = FindField(object.obj, StrHash(fieldname), &target)) {
                               if (classfield->Flags & FD_STRING) {
                                  CSTRING str;
-                                 if (!target->get(classfield->FieldID, &str)) Output.replace(pos, end-pos, str);
+                                 if (target->get(classfield->FieldID, &str) IS ERR::Okay) Output.replace(pos, end-pos, str);
                                  else Output.replace(pos, end-pos, "");
                               }
                               else {
@@ -513,7 +515,7 @@ void parser::translate_param(std::string &Output, size_t pos)
       for (auto it=Self->TemplateArgs.rbegin(); (!processed) and (it != Self->TemplateArgs.rend()); it++) {
          auto args = *it;
          for (LONG arg=1; arg < std::ssize(args->Attribs); arg++) {
-            if (StrCompare(args->Attribs[arg].Name, argname)) continue;
+            if (StrCompare(args->Attribs[arg].Name, argname) != ERR::Okay) continue;
             Output.replace(pos, true_end+1-pos, args->Attribs[arg].Value);
             processed = true;
             break;
@@ -758,7 +760,7 @@ static bool eval_condition(const std::string &String)
       cond[c] = 0;
 
       for (unsigned j=0; table[j].Name; j++) {
-         if (!StrMatch(cond, table[j].Name)) {
+         if (StrMatch(cond, table[j].Name) IS ERR::Okay) {
             condition = table[j].Value;
             break;
          }
@@ -789,10 +791,10 @@ static bool eval_condition(const std::string &String)
             }
          }
          else if (condition IS COND_EQUAL) {
-            if (!StrMatch(test, String.c_str()+i)) truth = true;
+            if (StrMatch(test, String.c_str()+i) IS ERR::Okay) truth = true;
          }
          else if (condition IS COND_NOT_EQUAL) {
-            if (StrMatch(test, String.c_str()+i) != ERR_Okay) truth = true;
+            if (StrMatch(test, String.c_str()+i) != ERR::Okay) truth = true;
          }
          else log.warning("String comparison for condition %d not possible.", condition);
       }
@@ -814,31 +816,31 @@ static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
    bool satisfied = false;
    bool reverse = false;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("statement", Tag.Attribs[i].Name)) {
+      if (StrMatch("statement", Tag.Attribs[i].Name) IS ERR::Okay) {
          satisfied = eval_condition(Tag.Attribs[i].Value);
          log.trace("Statement: %s", Tag.Attribs[i].Value);
          break;
       }
-      else if (!StrMatch("exists", Tag.Attribs[i].Name)) {
+      else if (StrMatch("exists", Tag.Attribs[i].Name) IS ERR::Okay) {
          OBJECTID object_id;
-         if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id)) {
+         if (FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id) IS ERR::Okay) {
             satisfied = valid_objectid(Self, object_id) ? true : false;
          }
          break;
       }
-      else if (!StrMatch("notnull", Tag.Attribs[i].Name)) {
+      else if (StrMatch("notnull", Tag.Attribs[i].Name) IS ERR::Okay) {
          log.trace("NotNull: %s", Tag.Attribs[i].Value);
          if (Tag.Attribs[i].Value.empty()) satisfied = false;
          else if (Tag.Attribs[i].Value == "0") satisfied = false;
          else satisfied = true;
       }
-      else if ((!StrMatch("isnull", Tag.Attribs[i].Name)) or (!StrMatch("null", Tag.Attribs[i].Name))) {
+      else if ((StrMatch("isnull", Tag.Attribs[i].Name) IS ERR::Okay) or (StrMatch("null", Tag.Attribs[i].Name) IS ERR::Okay)) {
          log.trace("IsNull: %s", Tag.Attribs[i].Value);
             if (Tag.Attribs[i].Value.empty()) satisfied = true;
             else if (Tag.Attribs[i].Value == "0") satisfied = true;
             else satisfied = false;
       }
-      else if (!StrMatch("not", Tag.Attribs[i].Name)) {
+      else if (StrMatch("not", Tag.Attribs[i].Name) IS ERR::Okay) {
          reverse = true;
       }
    }
@@ -858,7 +860,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Self->Error) {
+   if (Self->Error != ERR::Okay) {
       log.traceWarning("Error field is set, returning immediately.");
       return TRF::NIL;
    }
@@ -902,7 +904,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
          for (XMLTag &scan : Self->Templates->Tags) {
             for (unsigned i=0; i < scan.Attribs.size(); i++) {
-               if (!StrMatch("name", scan.Attribs[i].Name)) {
+               if (StrMatch("name", scan.Attribs[i].Name) IS ERR::Okay) {
                   Self->TemplateIndex[StrHash(scan.Attribs[i].Value)] = &scan;
                }
             }
@@ -1118,7 +1120,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_row:
          if ((Flags & IPF::FILTER_TABLE) IS IPF::NIL) {
             log.warning("Invalid use of <row> - Applied to invalid parent tag.");
-            Self->Error = ERR_InvalidData;
+            Self->Error = ERR::InvalidData;
          }
          else if (!Tag.Children.empty()) tag_row(Tag);
          break;
@@ -1127,7 +1129,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_cell:
          if ((Flags & IPF::FILTER_ROW) IS IPF::NIL) {
             log.warning("Invalid use of <cell> - Applied to invalid parent tag.");
-            Self->Error = ERR_InvalidData;
+            Self->Error = ERR::InvalidData;
          }
          else if (!Tag.Children.empty()) tag_cell(Tag);
          break;
@@ -1201,7 +1203,7 @@ TRF parser::parse_tags(objXML::TAGS &Tags, IPF Flags)
    for (auto &tag : Tags) {
       // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
       result = parse_tag(tag, Flags);
-      if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
+      if ((Self->Error != ERR::Okay) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
    }
 
    return result;
@@ -1216,7 +1218,8 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
    if ((Style.options & (FSO::BOLD|FSO::ITALIC)) != (m_style.options & (FSO::BOLD|FSO::ITALIC))) {
       font_change = true;
    }
-   else if ((Style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != (m_style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
+   else if ((Style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != 
+            (m_style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
       font_change = true;
    }
    else if ((Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (m_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
@@ -1239,7 +1242,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
 
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
-         if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
+         if ((Self->Error != ERR::Okay) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
 
       m_style = save_status;
@@ -1249,7 +1252,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
       for (auto &tag : Tags) {
          // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
          result = parse_tag(tag, Flags);
-         if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
+         if ((Self->Error != ERR::Okay) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
    }
 
@@ -1271,7 +1274,7 @@ TRF parser::parse_tags_with_embedded_style(objXML::TAGS &Tags, bc_font &Style, I
    for (auto &tag : Tags) {
       // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
       result = parse_tag(tag, Flags);
-      if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
+      if ((Self->Error != ERR::Okay) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
    }
 
    m_style = save_style;
@@ -1291,10 +1294,11 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
          // Vertical alignment defines the vertical position for text in cases where the line height is greater than
          // the text itself (e.g. if an image is anchored in the line).
          ALIGN align = ALIGN::NIL;
-         if (!StrMatch("top", Attrib.Value)) align = ALIGN::TOP;
-         else if (!StrMatch("center", Attrib.Value)) align = ALIGN::VERTICAL;
-         else if (!StrMatch("middle", Attrib.Value)) align = ALIGN::VERTICAL;
-         else if (!StrMatch("bottom", Attrib.Value)) align = ALIGN::BOTTOM;
+         if (StrMatch("top", Attrib.Value) IS ERR::Okay) align = ALIGN::TOP;
+         else if (StrMatch("center", Attrib.Value) IS ERR::Okay) align = ALIGN::VERTICAL;
+         else if (StrMatch("middle", Attrib.Value) IS ERR::Okay) align = ALIGN::VERTICAL;
+         else if (StrMatch("bottom", Attrib.Value) IS ERR::Okay) align = ALIGN::BOTTOM;
+
          if (align != ALIGN::NIL) {
             Style.valign = (Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) | align;
          }
@@ -1353,9 +1357,9 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
             j = Attrib.Value.find(':', j);
             if (j != std::string::npos) { // Style follows
                j++;
-               if (!StrMatch("bold", str+j)) Style.options |= FSO::BOLD;
-               else if (!StrMatch("italic", str+j)) Style.options |= FSO::ITALIC;
-               else if (!StrMatch("bold italic", str+j)) Style.options |= FSO::BOLD|FSO::ITALIC;
+               if (StrMatch("bold", str+j) IS ERR::Okay) Style.options |= FSO::BOLD;
+               else if (StrMatch("italic", str+j) IS ERR::Okay) Style.options |= FSO::ITALIC;
+               else if (StrMatch("bold italic", str+j) IS ERR::Okay) Style.options |= FSO::BOLD|FSO::ITALIC;
             }
          }
 
@@ -1372,9 +1376,9 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       case HASH_font_style:
          [[fallthrough]];
       case HASH_style:
-         if (!StrMatch("bold", Attrib.Value)) Style.options |= FSO::BOLD;
-         else if (!StrMatch("italic", Attrib.Value)) Style.options |= FSO::ITALIC;
-         else if (!StrMatch("bold italic", Attrib.Value)) Style.options |= FSO::BOLD|FSO::ITALIC;
+         if (StrMatch("bold", Attrib.Value) IS ERR::Okay) Style.options |= FSO::BOLD;
+         else if (StrMatch("italic", Attrib.Value) IS ERR::Okay) Style.options |= FSO::ITALIC;
+         else if (StrMatch("bold italic", Attrib.Value) IS ERR::Okay) Style.options |= FSO::BOLD|FSO::ITALIC;
          return true;
    }
 
@@ -1409,7 +1413,7 @@ void parser::tag_advance(XMLTag &Tag)
 {
    auto &adv = m_stream->emplace<bc_advance>(m_index);
 
-   for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_x: adv.x = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
          case HASH_y: adv.y = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
@@ -1429,7 +1433,7 @@ void parser::tag_body(XMLTag &Tag)
 
    // Body tag needs to be placed before any content
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_link:
             Self->LinkFill = Tag.Attribs[i].Value;
@@ -1445,7 +1449,7 @@ void parser::tag_body(XMLTag &Tag)
          
          case HASH_clip_path: {
             OBJECTPTR clip;
-            if (!scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip)) {
+            if (scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip) IS ERR::Okay) {
                Self->Page->set(FID_Mask, clip);
             }
             break;
@@ -1554,13 +1558,13 @@ void parser::tag_call(XMLTag &Tag)
    OBJECTPTR script = Self->DefaultScript;
 
    std::string function;
-   if (Tag.Attribs.size() > 1) {
-      if (!StrMatch("function", Tag.Attribs[1].Name)) {
+   if (std::ssize(Tag.Attribs) > 1) {
+      if (StrMatch("function", Tag.Attribs[1].Name) IS ERR::Okay) {
          if (auto i = Tag.Attribs[1].Value.find('.');  i != std::string::npos) {
             auto script_name = Tag.Attribs[1].Value.substr(0, i);
 
             OBJECTID id;
-            if (!FindObject(script_name.c_str(), 0, FOF::NIL, &id)) script = GetObjectPtr(id);
+            if (FindObject(script_name.c_str(), 0, FOF::NIL, &id) IS ERR::Okay) script = GetObjectPtr(id);
 
             function.assign(Tag.Attribs[1].Value, i + 1);
          }
@@ -1570,13 +1574,13 @@ void parser::tag_call(XMLTag &Tag)
 
    if (function.empty()) {
       log.warning("The first attribute to <call/> must be a function reference.");
-      Self->Error = ERR_Syntax;
+      Self->Error = ERR::Syntax;
       return;
    }
 
    if (!script) {
       log.warning("No script in this document for a requested <call/>.");
-      Self->Error = ERR_Failed;
+      Self->Error = ERR::Failed;
       return;
    }
 
@@ -1607,7 +1611,7 @@ void parser::tag_call(XMLTag &Tag)
 
    CSTRING *results;
    LONG size;
-   if ((!GetFieldArray(script, FID_Results, &results, &size)) and (size > 0)) {
+   if ((GetFieldArray(script, FID_Results, &results, &size) IS ERR::Okay) and (size > 0)) {
       auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
       if (xmlinc) {
          auto old_xml = change_xml(xmlinc);
@@ -1660,7 +1664,7 @@ void parser::tag_button(XMLTag &Tag)
 
    bc_button &widget = m_stream->emplace<bc_button>(m_index);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_fill)          widget.fill   = value;
@@ -1757,17 +1761,17 @@ void parser::tag_checkbox(XMLTag &Tag)
 
    bc_checkbox &widget = m_stream->emplace<bc_checkbox>(m_index);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
 
-      if (hash IS HASH_label) widget.label = value;
-      else if (hash IS HASH_name) widget.name = value;
-      else if (hash IS HASH_fill) widget.fill = value;
+      if (hash IS HASH_label)      widget.label = value;
+      else if (hash IS HASH_name)  widget.name  = value;
+      else if (hash IS HASH_fill)  widget.fill  = value;
       else if (hash IS HASH_width) widget.width = DUNIT(value);
       else if (hash IS HASH_label_pos) {
-         if (!StrMatch("left", value)) widget.label_pos = 0;
-         else if (!StrMatch("right", value)) widget.label_pos = 1;
+         if (StrMatch("left", value) IS ERR::Okay) widget.label_pos = 0;
+         else if (StrMatch("right", value) IS ERR::Okay) widget.label_pos = 1;
       }
       else if (hash IS HASH_value) {
          widget.alt_state = (value == "1") or (value == "true");
@@ -1850,7 +1854,7 @@ void parser::tag_combobox(XMLTag &Tag)
 
    bc_combobox &widget = m_stream->emplace<bc_combobox>(m_index);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_label)          widget.label = value;
@@ -1859,8 +1863,8 @@ void parser::tag_combobox(XMLTag &Tag)
       else if (hash IS HASH_font_fill) widget.font_fill = value;
       else if (hash IS HASH_name)      widget.name = value;
       else if (hash IS HASH_label_pos) {
-         if (!StrMatch("left", value)) widget.label_pos = 0;
-         else if (!StrMatch("right", value)) widget.label_pos = 1;
+         if (StrMatch("left", value) IS ERR::Okay) widget.label_pos = 0;
+         else if (StrMatch("right", value) IS ERR::Okay) widget.label_pos = 1;
       }
       else if (hash IS HASH_width) widget.width = DUNIT(value);
       else log.warning("<combobox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -1873,23 +1877,23 @@ void parser::tag_combobox(XMLTag &Tag)
 
    if (!Tag.Children.empty()) {
       for (auto &scan : Tag.Children) {
-         if (!StrMatch("style", scan.name())) {
+         if (StrMatch("style", scan.name()) IS ERR::Okay) {
             // Client is overriding the decorator: A custom SVG background is expected, defs and body
             // adjustments may also be provided.
             if (scan.hasContent()) {
                STRING xml_ser;
-               if (!xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser)) {
+               if (xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser) IS ERR::Okay) {
                   widget.style = xml_ser;
                   FreeResource(xml_ser);
                }
             }
          }
-         else if (!StrMatch("option", scan.name())) {
+         else if (StrMatch("option", scan.name()) IS ERR::Okay) {
             std::string value;
 
             if (!scan.Children.empty()) {
                STRING xml_ser;
-               if (!xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser)) {
+               if (xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser) IS ERR::Okay) {
                   value = xml_ser;
                   FreeResource(xml_ser);
                }
@@ -1967,7 +1971,7 @@ void parser::tag_input(XMLTag &Tag)
 
    bc_input &widget = m_stream->emplace<bc_input>(m_index);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &value = Tag.Attribs[i].Value;
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_label:     widget.label = value; break;
@@ -1977,8 +1981,8 @@ void parser::tag_input(XMLTag &Tag)
          case HASH_font_fill: widget.font_fill = value; break;
          case HASH_name:      widget.name = value; break;
          case HASH_label_pos:
-            if (!StrMatch("left", value)) widget.label_pos = 0;
-            else if (!StrMatch("right", value)) widget.label_pos = 1;
+            if (StrMatch("left", value) IS ERR::Okay) widget.label_pos = 0;
+            else if (StrMatch("right", value) IS ERR::Okay) widget.label_pos = 1;
             break;
          default:
             log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -2004,8 +2008,8 @@ void parser::tag_input(XMLTag &Tag)
 void parser::tag_debug(XMLTag &Tag)
 {
    pf::Log log("DocMsg");
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("msg", Tag.Attribs[i].Name)) log.warning("%s", Tag.Attribs[i].Value.c_str());
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("msg", Tag.Attribs[i].Name) IS ERR::Okay) log.warning("%s", Tag.Attribs[i].Value.c_str());
    }
 }
 
@@ -2022,29 +2026,29 @@ void parser::tag_svg(XMLTag &Tag)
    pf::Log log(__FUNCTION__);
 
    if (Self->SVG) {
-      Self->Error = ERR_AlreadyDefined;
+      Self->Error = ERR::AlreadyDefined;
       log.warning("Illegal attempt to declare <svg/> more than once.");
       return;
    }
 
    objVectorViewport *target = Self->Page;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("placement", Tag.Attribs[i].Name)) {
-         if (!StrMatch("foreground", Tag.Attribs[i].Value)) target = Self->Page;
-         else if (!StrMatch("background", Tag.Attribs[i].Value)) target = Self->View;
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("placement", Tag.Attribs[i].Name) IS ERR::Okay) {
+         if (StrMatch("foreground", Tag.Attribs[i].Value) IS ERR::Okay) target = Self->Page;
+         else if (StrMatch("background", Tag.Attribs[i].Value) IS ERR::Okay) target = Self->View;
          Tag.Attribs.erase(Tag.Attribs.begin() + i);
          i--;
       }
    }
 
    STRING xml_svg;
-   if (auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg); !err) {
+   if (auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg); err IS ERR::Okay) {
       if ((Self->SVG = objSVG::create::integral({ fl::Statement(xml_svg), fl::Target(target) }))) {
          if (target IS Self->View) { // Put the page back in front of the background objects
             acMoveToFront(Self->Page);
          }
       }
-      else Self->Error = ERR_CreateObject;
+      else Self->Error = ERR::CreateObject;
    }
 }
 
@@ -2060,7 +2064,7 @@ void parser::tag_use(XMLTag &Tag)
 {
    std::string id;
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("href", Tag.Attribs[i].Name)) {
+      if (StrMatch("href", Tag.Attribs[i].Name) IS ERR::Okay) {
          id = Tag.Attribs[i].Value;
       }
    }
@@ -2080,12 +2084,13 @@ void parser::tag_div(XMLTag &Tag)
    pf::Log log(__FUNCTION__);
 
    auto new_style = m_style;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("align", Tag.Attribs[i].Name)) {
-         if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("align", Tag.Attribs[i].Name) IS ERR::Okay) {
+         if ((StrMatch(Tag.Attribs[i].Value, "center") IS ERR::Okay) or 
+             (StrMatch(Tag.Attribs[i].Value, "horizontal") IS ERR::Okay)) {
             new_style.options |= FSO::ALIGN_CENTER;
          }
-         else if (!StrMatch(Tag.Attribs[i].Value, "right")) {
+         else if (StrMatch(Tag.Attribs[i].Value, "right") IS ERR::Okay) {
             new_style.options |= FSO::ALIGN_RIGHT;
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
@@ -2107,7 +2112,7 @@ void parser::tag_editdef(XMLTag &Tag)
    doc_edit edit;
    std::string name;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_maxchars:
             edit.max_chars = StrToInt(Tag.Attribs[i].Value);
@@ -2160,31 +2165,31 @@ void parser::tag_head(XMLTag &Tag)
 
    for (auto &scan : Tag.Children) {
       // Anything allocated here needs to be freed in unload_doc()
-      if (!StrMatch("title", scan.name())) {
+      if (StrMatch("title", scan.name()) IS ERR::Okay) {
          if (scan.hasContent()) {
             if (Self->Title) FreeResource(Self->Title);
             Self->Title = StrClone(scan.Children[0].Attribs[0].Value.c_str());
          }
       }
-      else if (!StrMatch("author", scan.name())) {
+      else if (StrMatch("author", scan.name()) IS ERR::Okay) {
          if (scan.hasContent()) {
             if (Self->Author) FreeResource(Self->Author);
             Self->Author = StrClone(scan.Children[0].Attribs[0].Value.c_str());
          }
       }
-      else if (!StrMatch("copyright", scan.name())) {
+      else if (StrMatch("copyright", scan.name()) IS ERR::Okay) {
          if (scan.hasContent()) {
             if (Self->Copyright) FreeResource(Self->Copyright);
             Self->Copyright = StrClone(scan.Children[0].Attribs[0].Value.c_str());
          }
       }
-      else if (!StrMatch("keywords", scan.name())) {
+      else if (StrMatch("keywords", scan.name()) IS ERR::Okay) {
          if (scan.hasContent()) {
             if (Self->Keywords) FreeResource(Self->Keywords);
             Self->Keywords = StrClone(scan.Children[0].Attribs[0].Value.c_str());
          }
       }
-      else if (!StrMatch("description", scan.name())) {
+      else if (StrMatch("description", scan.name()) IS ERR::Okay) {
          if (scan.hasContent()) {
             if (Self->Description) FreeResource(Self->Description);
             Self->Description = StrClone(scan.Children[0].Attribs[0].Value.c_str());
@@ -2200,8 +2205,8 @@ void parser::tag_include(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("src", Tag.Attribs[i].Name)) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("src", Tag.Attribs[i].Name) IS ERR::Okay) {
          if (auto xmlinc = objXML::create::integral(fl::Path(Tag.Attribs[i].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             auto old_xml = change_xml(xmlinc);
             parse_tags(xmlinc->Tags);
@@ -2226,8 +2231,9 @@ void parser::tag_parse(XMLTag &Tag)
    // The value attribute will contain XML.  We will parse the XML as if it were part of the document source.  This feature
    // is typically used when pulling XML information out of an object field.
 
-   if (Tag.Attribs.size() > 1) {
-      if ((!StrMatch("value", Tag.Attribs[1].Name)) or (!StrMatch("$value", Tag.Attribs[1].Name))) {
+   if (std::ssize(Tag.Attribs) > 1) {
+      if ((StrMatch("value", Tag.Attribs[1].Name) IS ERR::Okay) or 
+          (StrMatch("$value", Tag.Attribs[1].Name) IS ERR::Okay)) {
          log.traceBranch("Parsing string value as XML...");
 
          if (auto xmlinc = objXML::create::integral(fl::Statement(Tag.Attribs[1].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
@@ -2261,7 +2267,7 @@ void parser::tag_image(XMLTag &Tag)
    bc_image img;
    img.def_size = DUNIT(0.9, DU::FONT_SIZE);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &value = Tag.Attribs[i].Value;
 
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -2339,11 +2345,11 @@ void parser::tag_index(XMLTag &Tag)
 
    ULONG name = 0;
    bool visible = true;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("name", Tag.Attribs[i].Name)) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("name", Tag.Attribs[i].Name) IS ERR::Okay) {
          name = StrHash(Tag.Attribs[i].Value);
       }
-      else if (!StrMatch("hide", Tag.Attribs[i].Name)) {
+      else if (StrMatch("hide", Tag.Attribs[i].Name) IS ERR::Okay) {
          visible = false;
       }
       else log.warning("<index> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -2391,7 +2397,7 @@ void parser::tag_link(XMLTag &Tag)
    bool select = false;
    link.fill = Self->LinkFill;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_href:
             if (link.type IS LINK::NIL) {
@@ -2464,31 +2470,31 @@ void parser::tag_list(XMLTag &Tag)
    list.fill     = m_style.fill; // Default fill matches the current font colour
    list.item_num = list.start;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &name  = Tag.Attribs[i].Name;
       auto &value = Tag.Attribs[i].Value;
-      if (!StrMatch("fill", name)) {
+      if (StrMatch("fill", name) IS ERR::Okay) {
          list.fill = value;
       }
-      else if (!StrMatch("indent", name)) {
+      else if (StrMatch("indent", name) IS ERR::Okay) {
          // Affects the indenting to apply to child items.
          list.block_indent = DUNIT(value, DU::PIXEL);
       }
-      else if (!StrMatch("v-spacing", name)) {
+      else if (StrMatch("v-spacing", name) IS ERR::Okay) {
          // Affects the vertical advance from one list-item paragraph to the next.
          // Equivalent to paragraph leading, not v-spacing, which affects each line
          list.v_spacing = DUNIT(value, DU::LINE_HEIGHT);
          if (list.v_spacing.value < 0) list.v_spacing.clear();
       }
-      else if (!StrMatch("type", name)) {
-         if (!StrMatch("bullet", value)) {
+      else if (StrMatch("type", name) IS ERR::Okay) {
+         if (StrMatch("bullet", value) IS ERR::Okay) {
             list.type = bc_list::BULLET;
          }
-         else if (!StrMatch("ordered", value)) {
+         else if (StrMatch("ordered", value) IS ERR::Okay) {
             list.type = bc_list::ORDERED;
             list.item_indent.clear();
          }
-         else if (!StrMatch("custom", value)) {
+         else if (StrMatch("custom", value) IS ERR::Okay) {
             list.type = bc_list::CUSTOM;
             list.item_indent.clear();
          }
@@ -2520,17 +2526,18 @@ void parser::tag_paragraph(XMLTag &Tag)
 
    bc_paragraph para(m_style);
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("align", Tag.Attribs[i].Name)) {
-         if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("align", Tag.Attribs[i].Name) IS ERR::Okay) {
+         if ((StrMatch(Tag.Attribs[i].Value, "center") IS ERR::Okay) or
+             (StrMatch(Tag.Attribs[i].Value, "horizontal") IS ERR::Okay)) {
             para.font.options |= FSO::ALIGN_CENTER;
          }
-         else if (!StrMatch(Tag.Attribs[i].Value, "right")) {
+         else if (StrMatch(Tag.Attribs[i].Value, "right") IS ERR::Okay) {
             para.font.options |= FSO::ALIGN_RIGHT;
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
-      else if (!StrMatch("leading", Tag.Attribs[i].Name)) {
+      else if (StrMatch("leading", Tag.Attribs[i].Name) IS ERR::Okay) {
          // The leading is a line height multiplier that applies to the first line in the paragraph only.
          // It is typically used for things like headers.
 
@@ -2565,14 +2572,14 @@ void parser::tag_print(XMLTag &Tag)
       auto tagname = Tag.Attribs[1].Name.c_str();
       if (*tagname IS '$') tagname++;
 
-      if (!StrMatch("value", tagname)) {
+      if (StrMatch("value", tagname) IS ERR::Okay) {
          insert_text(Self, m_stream, m_index, Tag.Attribs[1].Value, (m_style.options & FSO::PREFORMAT) != FSO::NIL);
       }
-      else if (!StrMatch("src", Tag.Attribs[1].Name)) {
+      else if (StrMatch("src", Tag.Attribs[1].Name) IS ERR::Okay) {
          // This option is only supported in unrestricted mode
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             CacheFile *cache;
-            if (!LoadFile(Tag.Attribs[1].Value.c_str(), LDF::NIL, &cache)) {
+            if (LoadFile(Tag.Attribs[1].Value.c_str(), LDF::NIL, &cache) IS ERR::Okay) {
                insert_text(Self, m_stream, m_index, std::string((CSTRING)cache->Data), (m_style.options & FSO::PREFORMAT) != FSO::NIL);
                UnloadFile(cache);
             }
@@ -2593,13 +2600,13 @@ void parser::tag_template(XMLTag &Tag)
 
    // Validate the template (must have a name)
 
-   unsigned i;
-   for (i=1; i < Tag.Attribs.size(); i++) {
-      if ((!StrMatch("name", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
-      if ((!StrMatch("class", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
+   LONG i;
+   for (i=1; i < std::ssize(Tag.Attribs); i++) {
+      if ((StrMatch("name", Tag.Attribs[i].Name) IS ERR::Okay) and (!Tag.Attribs[i].Value.empty())) break;
+      if ((StrMatch("class", Tag.Attribs[i].Name) IS ERR::Okay) and (!Tag.Attribs[i].Value.empty())) break;
    }
 
-   if (i >= Tag.Attribs.size()) {
+   if (i >= std::ssize(Tag.Attribs)) {
       log.warning("A <template> is missing a name or class attribute.");
       return;
    }
@@ -2611,7 +2618,7 @@ void parser::tag_template(XMLTag &Tag)
    // styles by placing updated definitions at the end of the style list.
 
    STRING strxml;
-   if (!xmlSerialise(m_xml, Tag.ID, XMF::NIL, &strxml)) {
+   if (xmlSerialise(m_xml, Tag.ID, XMF::NIL, &strxml) IS ERR::Okay) {
       xmlInsertXML(Self->Templates, 0, XMI::PREV, strxml, 0);
       FreeResource(strxml);
    }
@@ -2620,7 +2627,7 @@ void parser::tag_template(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-ERROR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
+ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
 {
    enum SIGN { PLUS=1, MINUS, MULTIPLY, DIVIDE, MODULO };
 
@@ -2733,7 +2740,7 @@ ERROR parser::calc(const std::string &String, DOUBLE *Result, std::string &Outpu
 
    if (number) Output += write_calc(total, precision);
    if (Result) *Result = overall + total;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2775,19 +2782,19 @@ KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` 
 
 // Evaluate object references and calculations
 
-ERROR parser::tag_xml_content_eval(std::string &Buffer)
+ERR parser::tag_xml_content_eval(std::string &Buffer)
 {
    pf::Log log(__FUNCTION__);
    LONG i;
 
    // Quick check for translation symbols
 
-   if (Buffer.find('[') IS std::string::npos) return ERR_EmptyString;
+   if (Buffer.find('[') IS std::string::npos) return ERR::EmptyString;
 
    log.traceBranch("%.80s", Buffer.c_str());
 
-   ERROR error = ERR_Okay;
-   ERROR majorerror = ERR_Okay;
+   ERR error = ERR::Okay;
+   ERR majorerror = ERR::Okay;
 
    // Skip to the end of the buffer (translation occurs 'backwards')
 
@@ -2812,7 +2819,7 @@ ERROR parser::tag_xml_content_eval(std::string &Buffer)
 
          if (Buffer[end] != ']') {
             log.warning("Unbalanced string: %.90s ...", Buffer.c_str());
-            return ERR_InvalidData;
+            return ERR::InvalidData;
          }
 
          if (Buffer[pos+1] IS '=') { // Perform a calculation
@@ -2852,7 +2859,7 @@ ERROR parser::tag_xml_content_eval(std::string &Buffer)
             }
             else {
                OBJECTID objectid = 0;
-               if (!StrMatch(name, "self")) objectid = CurrentContext()->UID;
+               if (StrMatch(name, "self") IS ERR::Okay) objectid = CurrentContext()->UID;
                else FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid);
 
                if (objectid) {
@@ -2862,12 +2869,12 @@ ERROR parser::tag_xml_content_eval(std::string &Buffer)
                      i++;
 
                      std::string field(Buffer, i, end);
-                     if (!AccessObject(objectid, 2000, &object)) {
+                     if (AccessObject(objectid, 2000, &object) IS ERR::Okay) {
                         OBJECTPTR target;
                         const Field *classfield;
                         if (((classfield = find_field(object, field.c_str(), &target))) and (classfield->Flags & FD_STRING)) {
                            CSTRING str;
-                           if (!GetField(object, (FIELD)classfield->FieldID|TSTR, &str)) {
+                           if (GetField(object, (FIELD)classfield->FieldID|TSTR, &str) IS ERR::Okay) {
                               Buffer.insert(end-pos+1, str);
                            }
                         }
@@ -2876,7 +2883,7 @@ ERROR parser::tag_xml_content_eval(std::string &Buffer)
                            tbuffer.reserve(4096);
 repeat:
                            tbuffer[tbuffer.capacity()-1] = 0;
-                           if (!GetFieldVariable(object, field.c_str(), tbuffer.data(), tbuffer.capacity())) {
+                           if (GetFieldVariable(object, field.c_str(), tbuffer.data(), tbuffer.capacity()) IS ERR::Okay) {
                               if (tbuffer[tbuffer.capacity()-1]) {
                                  tbuffer.reserve(tbuffer.capacity() * 2);
                                  goto repeat;
@@ -2888,23 +2895,23 @@ repeat:
 
                         ReleaseObject(object);
                      }
-                     else error = ERR_AccessObject;
+                     else error = ERR::AccessObject;
                   }
                   else { // Convert the object reference to an ID
                      Buffer.insert(end-pos+1, std::move(std::string("#") + std::to_string(objectid)));
                   }
                }
                else {
-                  error = ERR_NoMatchingObject;
+                  error = ERR::NoMatchingObject;
                   log.traceWarning("Failed to find object '%s'", name.c_str());
                }
             }
          }
 
-         if (error != ERR_Okay) {
+         if (error != ERR::Okay) {
             pos--;
             majorerror = error;
-            error = ERR_Okay;
+            error = ERR::Okay;
          }
       }
       else pos--;
@@ -2924,8 +2931,8 @@ void parser::tag_font(XMLTag &Tag)
    auto new_style = m_style;
    bool preformat = false;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("preformat", Tag.Attribs[i].Name)) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("preformat", Tag.Attribs[i].Name) IS ERR::Okay) {
          new_style.options |= FSO::PREFORMAT;
          preformat = true;
          m_strip_feeds = true;
@@ -3203,26 +3210,26 @@ void parser::tag_script(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objScript *script;
-   ERROR error;
+   ERR error;
 
    std::string type = "fluid";
    std::string src, cachefile, name;
    bool defaultscript = false;
    bool persistent = false;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto tagname = Tag.Attribs[i].Name.c_str();
       if (*tagname IS '$') tagname++;
       if (*tagname IS '@') continue; // Variables are set later
 
-      if (!StrMatch("type", tagname)) {
+      if (StrMatch("type", tagname) IS ERR::Okay) {
          type = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("persistent", tagname)) {
+      else if (StrMatch("persistent", tagname) IS ERR::Okay) {
          // A script that is marked as persistent will survive refreshes
          persistent = true;
       }
-      else if (!StrMatch("src", tagname)) {
+      else if (StrMatch("src", tagname) IS ERR::Okay) {
          if (safe_file_path(Self, Tag.Attribs[i].Value)) {
             src = Tag.Attribs[i].Value;
          }
@@ -3231,7 +3238,7 @@ void parser::tag_script(XMLTag &Tag)
             return;
          }
       }
-      else if (!StrMatch("cachefile", tagname)) {
+      else if (StrMatch("cachefile", tagname) IS ERR::Okay) {
          // Currently the security risk of specifying a cache file is that you could overwrite files on the user's PC,
          // so for the time being this requires unrestricted mode.
 
@@ -3243,20 +3250,20 @@ void parser::tag_script(XMLTag &Tag)
             return;
          }
       }
-      else if (!StrMatch("name", tagname)) {
+      else if (StrMatch("name", tagname) IS ERR::Okay) {
          name = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("postprocess", tagname)) {
+      else if (StrMatch("postprocess", tagname) IS ERR::Okay) {
          log.warning("--- PostProcess mode for scripts is obsolete - please use the PageProcessed event trigger or call an initialisation function directly ---");
       }
-      else if (!StrMatch("default", tagname)) {
+      else if (StrMatch("default", tagname) IS ERR::Okay) {
          defaultscript = true;
       }
-      else if (!StrMatch("external", tagname)) {
+      else if (StrMatch("external", tagname) IS ERR::Okay) {
          // Reference an external script as the default for function calls
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             OBJECTID id;
-            if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::NIL, &id)) {
+            if (FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::NIL, &id) IS ERR::Okay) {
                Self->DefaultScript = (objScript *)GetObjectPtr(id);
                return;
             }
@@ -3288,7 +3295,7 @@ void parser::tag_script(XMLTag &Tag)
       for (auto &resource : Self->Resources) {
          if (resource.type IS RTD::PERSISTENT_SCRIPT) {
             script = (objScript *)GetObjectPtr(resource.object_id);
-            if (!StrMatch(name, script->Name)) {
+            if (StrMatch(name, script->Name) IS ERR::Okay) {
                log.msg("Persistent script discovered.");
                if ((!Self->DefaultScript) or (defaultscript)) Self->DefaultScript = script;
                return;
@@ -3297,15 +3304,15 @@ void parser::tag_script(XMLTag &Tag)
       }
    }
 
-   if (!StrMatch("fluid", type)) {
+   if (StrMatch("fluid", type) IS ERR::Okay) {
       error = NewObject(ID_FLUID, NF::INTEGRAL, &script);
    }
    else {
-      error = ERR_NoSupport;
+      error = ERR::NoSupport;
       log.warning("Unsupported script type '%s'", type.c_str());
    }
 
-   if (!error) {
+   if (error IS ERR::Okay) {
       if (!name.empty()) SetName(script, name.c_str());
 
       if (!src.empty()) script->setPath(src);
@@ -3328,16 +3335,16 @@ void parser::tag_script(XMLTag &Tag)
          if (*tagname IS '@') acSetVar(script, tagname+1, Tag.Attribs[i].Value.c_str());
       }
 
-      if (!InitObject(script)) {
+      if (InitObject(script) IS ERR::Okay) {
          // Pass document arguments to the script
 
          std::unordered_map<std::string, std::string> *vs;
-         if (!script->getPtr(FID_Variables, &vs)) {
+         if (script->getPtr(FID_Variables, &vs) IS ERR::Okay) {
             Self->Vars   = *vs;
             Self->Params = *vs;
          }
 
-         if (!acActivate(script)) { // Persistent scripts survive refreshes.
+         if (acActivate(script) IS ERR::Okay) { // Persistent scripts survive refreshes.
             Self->Resources.emplace_back(script->UID, persistent ? RTD::PERSISTENT_SCRIPT : RTD::OBJECT_UNLOAD_DELAY);
 
             if ((!Self->DefaultScript) or (defaultscript)) {
@@ -3349,7 +3356,7 @@ void parser::tag_script(XMLTag &Tag)
 
             CSTRING *results;
             LONG size;
-            if ((!GetFieldArray(script, FID_Results, &results, &size)) and (size > 0)) {
+            if ((GetFieldArray(script, FID_Results, &results, &size) IS ERR::Okay) and (size > 0)) {
                auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
                if (xmlinc) {
                   auto old_xml = change_xml(xmlinc);
@@ -3399,14 +3406,14 @@ void parser::tag_li(XMLTag &Tag)
    para.list_item   = true;
    para.item_indent = list->item_indent;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto tagname = Tag.Attribs[i].Name.c_str();
       if (*tagname IS '$') tagname++;
 
-      if (!StrMatch("value", tagname)) {
+      if (StrMatch("value", tagname) IS ERR::Okay) {
          para.value = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("aggregate", tagname)) {
+      else if (StrMatch("aggregate", tagname) IS ERR::Okay) {
          if (Tag.Attribs[i].Value == "true") para.aggregate = true;
          else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
       }
@@ -3466,25 +3473,25 @@ void parser::tag_repeat(XMLTag &Tag)
    std::string index_name;
    LONG loop_start = 0, loop_end = 0, count = 0, step  = 0;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("start", Tag.Attribs[i].Name)) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("start", Tag.Attribs[i].Name) IS ERR::Okay) {
          loop_start = StrToInt(Tag.Attribs[i].Value);
          if (loop_start < 0) loop_start = 0;
       }
-      else if (!StrMatch("count", Tag.Attribs[i].Name)) {
+      else if (StrMatch("count", Tag.Attribs[i].Name) IS ERR::Okay) {
          count = StrToInt(Tag.Attribs[i].Value);
          if (count < 0) {
             log.warning("Invalid count value of %d", count);
             return;
          }
       }
-      else if (!StrMatch("end", Tag.Attribs[i].Name)) {
+      else if (StrMatch("end", Tag.Attribs[i].Name) IS ERR::Okay) {
          loop_end = StrToInt(Tag.Attribs[i].Value) + 1;
       }
-      else if (!StrMatch("step", Tag.Attribs[i].Name)) {
+      else if (StrMatch("step", Tag.Attribs[i].Name) IS ERR::Okay) {
          step = StrToInt(Tag.Attribs[i].Value);
       }
-      else if (!StrMatch("index", Tag.Attribs[i].Name)) {
+      else if (StrMatch("index", Tag.Attribs[i].Name) IS ERR::Okay) {
          // If an index name is specified, the programmer will need to refer to it as [@indexname] and [%index] will
          // remain unchanged from any parent repeat loop.
 
@@ -3550,7 +3557,7 @@ void parser::tag_table(XMLTag &Tag)
    table.min_height = DUNIT(1, DU::PIXEL);
 
    std::string columns;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &value = Tag.Attribs[i].Value;
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_columns:
@@ -3653,18 +3660,18 @@ void parser::tag_row(XMLTag &Tag)
 
    if (m_table_stack.empty()) {
       log.warning("<row> not defined inside <table> section.");
-      Self->Error = ERR_InvalidData;
+      Self->Error = ERR::InvalidData;
       return;
    }
 
    bc_row escrow;
 
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("height", Tag.Attribs[i].Name)) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+      if (StrMatch("height", Tag.Attribs[i].Name) IS ERR::Okay) {
          escrow.min_height = std::clamp(StrToFloat(Tag.Attribs[i].Value), 0.0, 4000.0);
       }
-      else if (!StrMatch("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
-      else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
+      else if (StrMatch("fill", Tag.Attribs[i].Name) IS ERR::Okay)   escrow.fill   = Tag.Attribs[i].Value;
+      else if (StrMatch("stroke", Tag.Attribs[i].Name) IS ERR::Okay) escrow.stroke = Tag.Attribs[i].Value;
    }
 
    auto &table = m_table_stack.top();
@@ -3696,24 +3703,24 @@ void parser::tag_cell(XMLTag &Tag)
 
    if (m_table_stack.empty()) {
       log.warning("<cell> not defined inside <table> section.");
-      Self->Error = ERR_InvalidData;
+      Self->Error = ERR::InvalidData;
       return;
    }
 
    bc_cell cell(glUID++, m_table_stack.top().row_col);
    bool select = false;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_border: {
             std::vector<std::string> list;
             pf::split(Tag.Attribs[i].Value, std::back_inserter(list));
 
             for (auto &v : list) {
-               if (!StrMatch("all", v))         cell.border = CB::ALL;
-               else if (!StrMatch("top", v))    cell.border |= CB::TOP;
-               else if (!StrMatch("left", v))   cell.border |= CB::LEFT;
-               else if (!StrMatch("bottom", v)) cell.border |= CB::BOTTOM;
-               else if (!StrMatch("right", v))  cell.border |= CB::RIGHT;
+               if (StrMatch("all", v) IS ERR::Okay)         cell.border = CB::ALL;
+               else if (StrMatch("top", v) IS ERR::Okay)    cell.border |= CB::TOP;
+               else if (StrMatch("left", v) IS ERR::Okay)   cell.border |= CB::LEFT;
+               else if (StrMatch("bottom", v) IS ERR::Okay) cell.border |= CB::BOTTOM;
+               else if (StrMatch("right", v) IS ERR::Okay)  cell.border |= CB::RIGHT;
             }
 
             break;
@@ -3730,7 +3737,7 @@ void parser::tag_cell(XMLTag &Tag)
          case HASH_edit:
             if (edit_recurse) {
                log.warning("Edit cells cannot be embedded recursively.");
-               Self->Error = ERR_Recursion;
+               Self->Error = ERR::Recursion;
                return;
             }
             cell.edit_def = Tag.Attribs[i].Value;
@@ -3854,7 +3861,7 @@ void parser::tag_trigger(XMLTag &Tag)
    LARGE function_id;
 
    std::string event, function_name;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_event: event = Tag.Attribs[i].Value; break;
          case HASH_function: function_name = Tag.Attribs[i].Value; break;
@@ -3883,8 +3890,8 @@ void parser::tag_trigger(XMLTag &Tag)
       // Get the script
 
       std::string args;
-      if (!extract_script(Self, function_name.c_str(), &script, function_name, args)) {
-         if (!scGetProcedureID(script, function_name.c_str(), &function_id)) {
+      if (extract_script(Self, function_name.c_str(), &script, function_name, args) IS ERR::Okay) {
+         if (scGetProcedureID(script, function_name.c_str(), &function_id) IS ERR::Okay) {
             Self->Triggers[LONG(trigger_code)].emplace_back(FUNCTION(script, function_id));
          }
          else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name.c_str(), script->UID);

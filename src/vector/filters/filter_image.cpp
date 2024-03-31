@@ -42,7 +42,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
+static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -132,32 +132,32 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR IMAGEFX_Free(extImageFX *Self, APTR Void)
+static ERR IMAGEFX_Free(extImageFX *Self, APTR Void)
 {
    if (Self->Picture) { FreeResource(Self->Picture); Self->Picture = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR IMAGEFX_Init(extImageFX *Self, APTR Void)
+static ERR IMAGEFX_Init(extImageFX *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->Bitmap) return log.warning(ERR_UndefinedField);
+   if (!Self->Bitmap) return log.warning(ERR::UndefinedField);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // If the client attaches a bitmap as a child of our object, we use it as the primary image source.
 
-static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
+static ERR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
    pf::Log log;
 
@@ -169,17 +169,17 @@ static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
       else log.warning("Attached bitmap ignored; Bitmap field already defined.");
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
+static ERR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
 {
    Self->AspectRatio    = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->ResampleMethod = VSM::BILINEAR;
    Self->SourceType     = VSF::PREVIOUS;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -190,16 +190,16 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_AspectRatio(extImageFX *Self, ARF *Value)
+static ERR IMAGEFX_GET_AspectRatio(extImageFX *Self, ARF *Value)
 {
    *Value = Self->AspectRatio;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR IMAGEFX_SET_AspectRatio(extImageFX *Self, ARF Value)
+static ERR IMAGEFX_SET_AspectRatio(extImageFX *Self, ARF Value)
 {
    Self->AspectRatio = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -215,10 +215,10 @@ processed.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_Bitmap(extImageFX *Self, objBitmap **Value)
+static ERR IMAGEFX_GET_Bitmap(extImageFX *Self, objBitmap **Value)
 {
    *Value = Self->Bitmap;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -228,22 +228,22 @@ Path: Path to an image file supported by the Picture class.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_Path(extImageFX *Self, STRING *Value)
+static ERR IMAGEFX_GET_Path(extImageFX *Self, STRING *Value)
 {
    if (Self->Picture) return Self->Picture->get(FID_Path, Value);
    else *Value = NULL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
+static ERR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
 {
-   if ((Self->Bitmap) or (Self->Picture)) return ERR_Failed;
+   if ((Self->Bitmap) or (Self->Picture)) return ERR::Failed;
 
    if ((Self->Picture = objPicture::create::integral(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF::FORCE_ALPHA_32)))) {
       Self->Bitmap = Self->Picture->Bitmap;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -253,16 +253,16 @@ ResampleMethod: The resample algorithm to use for transforming the source image.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_ResampleMethod(extImageFX *Self, VSM *Value)
+static ERR IMAGEFX_GET_ResampleMethod(extImageFX *Self, VSM *Value)
 {
    *Value = Self->ResampleMethod;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR IMAGEFX_SET_ResampleMethod(extImageFX *Self, VSM Value)
+static ERR IMAGEFX_SET_ResampleMethod(extImageFX *Self, VSM Value)
 {
    Self->ResampleMethod = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -273,10 +273,10 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_XMLDef(extImageFX *Self, STRING *Value)
+static ERR IMAGEFX_GET_XMLDef(extImageFX *Self, STRING *Value)
 {
    *Value = StrClone("feImage");
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -314,7 +314,7 @@ static const FieldArray clImageFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_imagefx(void)
+ERR init_imagefx(void)
 {
    clImageFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -326,5 +326,5 @@ ERROR init_imagefx(void)
       fl::Size(sizeof(extImageFX)),
       fl::Path(MOD_PATH));
 
-   return clImageFX ? ERR_Okay : ERR_AddClass;
+   return clImageFX ? ERR::Okay : ERR::AddClass;
 }

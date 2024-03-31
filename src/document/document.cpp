@@ -135,48 +135,48 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 
 struct layout; // Pre-def
 
-static ERROR activate_cell_edit(extDocument *, LONG, stream_char);
-static ERROR add_document_class(void);
+static ERR activate_cell_edit(extDocument *, LONG, stream_char);
+static ERR add_document_class(void);
 static LONG  add_tabfocus(extDocument *, TT, BYTECODE);
 static void  advance_tabfocus(extDocument *, BYTE);
 static void  deactivate_edit(extDocument *, bool);
-static ERROR extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
+static ERR extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
-static void  error_dialog(const std::string, ERROR);
+static void  error_dialog(const std::string, ERR);
 static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, TT, BYTECODE);
-static ERROR flash_cursor(extDocument *, LARGE, LARGE);
+static ERR flash_cursor(extDocument *, LARGE, LARGE);
 inline std::string get_font_style(const FSO);
-static LONG  getutf8(CSTRING, LONG *);
-static ERROR insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
-static ERROR insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
-static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
-static void  layout_doc(extDocument *);
-static ERROR load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
-static void  notify_disable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void  notify_enable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void  notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
-static ERROR feedback_view(objVectorViewport *, FM);
-static void  process_parameters(extDocument *, const std::string_view);
-static bool  read_rgb8(CSTRING, RGB8 *);
+static LONG getutf8(CSTRING, LONG *);
+static ERR  insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
+static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
+static ERR  key_event(objVectorViewport *, KQ, KEY, LONG);
+static void layout_doc(extDocument *);
+static ERR  load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
+static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
+static void notify_enable_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
+static void notify_focus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
+static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
+static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
+static ERR  feedback_view(objVectorViewport *, FM);
+static void process_parameters(extDocument *, const std::string_view);
+static bool read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
-static void  redraw(extDocument *, bool);
-static ERROR report_event(extDocument *, DEF, entity *, KEYVALUE *);
-static void  reset_cursor(extDocument *);
-static ERROR resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
-static LONG  safe_file_path(extDocument *, const std::string &);
-static void  set_focus(extDocument *, LONG, CSTRING);
-static void  show_bookmark(extDocument *, const std::string &);
+static void redraw(extDocument *, bool);
+static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
+static void reset_cursor(extDocument *);
+static ERR  resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
+static LONG safe_file_path(extDocument *, const std::string &);
+static void set_focus(extDocument *, LONG, CSTRING);
+static void show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
-static ERROR unload_doc(extDocument *, ULD = ULD::NIL);
-static bool  valid_objectid(extDocument *, OBJECTID);
-static bool  view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
+static bool valid_objectid(extDocument *, OBJECTID);
+static bool view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 static std::string write_calc(DOUBLE, WORD);
 
-static ERROR GET_WorkingPath(extDocument *, CSTRING *);
+static ERR GET_WorkingPath(extDocument *, CSTRING *);
 
 inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
    return read_rgb8(Value.c_str(), RGB);
@@ -217,10 +217,10 @@ font_entry * bc_font::get_font()
    auto style_name = get_font_style(options);
    APTR new_handle;
    CSTRING resolved_face;
-   if (!fntResolveFamilyName(face.c_str(), &resolved_face)) {
+   if (fntResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
       face.assign(resolved_face);
 
-      if (!vecGetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle)) {
+      if (vecGetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
          for (unsigned i=0; i < glFonts.size(); i++) {
             if (new_handle IS glFonts[i].handle) {
                font_index = i;
@@ -267,20 +267,20 @@ template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T In
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
    argModule->getPtr(FID_Root, &modDocument);
 
-   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("font", &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("vector", &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::InitModule;
+   if (objModule::load("font", &modFont, &FontBase) != ERR::Okay) return ERR::InitModule;
+   if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
 
    OBJECTID style_id;
-   if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
+   if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
       char buffer[32];
-      if (!acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
+      if (acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
          glHighlight.assign(buffer);
       }
    }
@@ -288,7 +288,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return add_document_class();
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    glFonts.clear();
 
@@ -297,7 +297,7 @@ static ERROR CMDExpunge(void)
    if (modFont)    { FreeResource(modFont);    modFont    = NULL; }
 
    if (clDocument) { FreeResource(clDocument); clDocument = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -365,7 +365,7 @@ inline void layout_doc_fast(extDocument *Self)
 
 //********************************************************************************************************************
 
-static ERROR add_document_class(void)
+static ERR add_document_class(void)
 {
    clDocument = objMetaClass::create::global(
       fl::BaseClassID(ID_DOCUMENT),
@@ -380,7 +380,7 @@ static ERROR add_document_class(void)
       fl::Path(MOD_PATH),
       fl::FileExtension("*.rpl|*.ripple|*.ripl"));
 
-   return clDocument ? ERR_Okay : ERR_AddClass;
+   return clDocument ? ERR::Okay : ERR::AddClass;
 }
 
 //********************************************************************************************************************

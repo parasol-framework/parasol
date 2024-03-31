@@ -79,7 +79,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>Connect</name>
       <comment>Connects a NetSocket to an address.</comment>
-      <prototype>ERROR nsConnect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
+      <prototype>ERR nsConnect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
       <input>
         <param type="CSTRING" name="Address">String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")</param>
         <param type="LONG" name="Port">Remote port to connect to.</param>
@@ -88,7 +88,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
 <p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <field>State</field> field to respond to changes to the connection state.</p>
 <p>Pre-Condition: Must be in a connection state of <code>NTC::DISCONNECTED</code></p>
-<p>Post-Condition: If this method returns <code>ERR_Okay</code>, will be in state <code>NTC::CONNECTING</code>.</p>
+<p>Post-Condition: If this method returns <code>ERR::Okay</code>, will be in state <code>NTC::CONNECTING</code>.</p>
       </description>
       <result>
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
@@ -102,7 +102,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERROR nsDisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
+      <prototype>ERR nsDisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
       <input>
         <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
       </input>
@@ -119,7 +119,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectSocket</name>
       <comment>Disconnects a single socket that is connected to a client IP address.</comment>
-      <prototype>ERROR nsDisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</prototype>
+      <prototype>ERR nsDisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</prototype>
       <input>
         <param type="objClientSocket *" name="Socket">The client socket to be disconnected.</param>
       </input>
@@ -135,7 +135,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>GetLocalIPAddress</name>
       <comment>Returns the IP address that the socket is locally bound to.</comment>
-      <prototype>ERROR nsGetLocalIPAddress(OBJECTPTR Object, struct IPAddress * Address)</prototype>
+      <prototype>ERR nsGetLocalIPAddress(OBJECTPTR Object, struct IPAddress * Address)</prototype>
       <input>
         <param type="struct IPAddress *" name="Address">Pointer to an IPAddress structure which will be set to the result of the query if successful.</param>
       </input>
@@ -152,7 +152,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>ReadMsg</name>
       <comment>Read a message from the socket.</comment>
-      <prototype>ERROR nsReadMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <prototype>ERR nsReadMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
       <input>
         <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
         <param type="LONG *" name="Length">The length of the message is returned here.</param>
@@ -177,7 +177,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>WriteMsg</name>
       <comment>Writes a message to the socket.</comment>
-      <prototype>ERROR nsWriteMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <prototype>ERR nsWriteMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
         <param type="LONG" name="Length">The length of the message.</param>
@@ -234,18 +234,18 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Error</name>
       <comment>Information about the last error that occurred during a NetSocket operation</comment>
       <access read="R">Read</access>
-      <type>ERROR</type>
+      <type>ERR</type>
       <description>
 <p>This field describes the last error that occurred during a NetSocket operation:</p>
 <p>In the case where a NetSocket object enters the <code>NTC::DISCONNECTED</code> state from the <code>NTC::CONNECTED</code> state, this field can be used to determine how a TCP connection was closed.</p>
 <types type="Error">
-<type name="ERR_Okay">The connection was closed gracefully.  All data sent by the peer has been received.</type>
-<type name="ERR_Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</type>
-<type name="ERR_TimeOut">The connect operation timed out.</type>
-<type name="ERR_ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</type>
-<type name="ERR_NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</type>
-<type name="ERR_HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR_Failed.</type>
-<type name="ERR_Failed">An unspecified error occurred.</type>
+<type name="ERR::Okay">The connection was closed gracefully.  All data sent by the peer has been received.</type>
+<type name="ERR::Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</type>
+<type name="ERR::TimeOut">The connect operation timed out.</type>
+<type name="ERR::ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</type>
+<type name="ERR::NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</type>
+<type name="ERR::HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</type>
+<type name="ERR::Failed">An unspecified error occurred.</type>
 </types>
       </description>
     </field>
@@ -278,9 +278,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERROR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
 <p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
-<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns ERR_Terminate then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns ERR::Terminate then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
 
@@ -308,9 +308,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERROR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
+<p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
 <p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.</p>
-<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns ERR_Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns ERR::Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
 <p>The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).</p>
       </description>
     </field>
@@ -367,7 +367,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>INT</type>
       <description>
 <p>After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of the server's certificate.</p>
-<p>If encrypted communication is not supported, <code>ERR_NoSupport</code> is returned.  If the certificate is valid or the connection is not encrypted, a value of zero is returned to indicate that the connection is valid.</p>
+<p>If encrypted communication is not supported, <code>ERR::NoSupport</code> is returned.  If the certificate is valid or the connection is not encrypted, a value of zero is returned to indicate that the connection is valid.</p>
       </description>
     </field>
 

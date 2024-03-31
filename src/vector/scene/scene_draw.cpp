@@ -703,7 +703,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          #endif
 
          objBitmap *bmp;
-         if (!render_filter(filter, mView, shape, mBitmap, &bmp)) {
+         if (render_filter(filter, mView, shape, mBitmap, &bmp) IS ERR::Okay) {
             bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
             gfxCopyArea(bmp, mBitmap, BAF::BLEND|BAF::COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }

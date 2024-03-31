@@ -49,12 +49,12 @@
     <method>
       <name>Callback</name>
       <comment>An internal method for managing callbacks.</comment>
-      <prototype>ERROR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error)</prototype>
+      <prototype>ERR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error)</prototype>
       <input>
         <param type="LARGE" name="ProcedureID">An identifier for the target procedure.</param>
         <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure.</param>
         <param type="LONG" name="TotalArgs">The total number of arguments in the Args parameter.</param>
-        <param type="LONG *" name="Error">The error code returned from the script, if any.</param>
+        <param type="ERR *" name="Error">The error code returned from the script, if any.</param>
       </input>
       <description>
 <p>Private</p>
@@ -68,7 +68,7 @@
     <method>
       <name>DerefProcedure</name>
       <comment>Dereferences a function.</comment>
-      <prototype>ERROR scDerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
+      <prototype>ERR scDerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
       <input>
         <param type="FUNCTION *" name="Procedure">The function to be dereferenced.</param>
       </input>
@@ -85,7 +85,7 @@
     <method>
       <name>Exec</name>
       <comment>Executes a procedure in the script.</comment>
-      <prototype>ERROR scExec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
+      <prototype>ERR scExec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure to execute, or NULL for the default entry point.</param>
         <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure (applies to script-based Exec only).</param>
@@ -129,7 +129,7 @@ struct ScriptArg {
     <method>
       <name>GetProcedureID</name>
       <comment>Converts a procedure name to an ID.</comment>
-      <prototype>ERROR scGetProcedureID(OBJECTPTR Object, CSTRING Procedure, LARGE * ProcedureID)</prototype>
+      <prototype>ERR scGetProcedureID(OBJECTPTR Object, CSTRING Procedure, LARGE * ProcedureID)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure.</param>
         <param type="LARGE *" name="ProcedureID">The computed ID will be returned in this parameter.</param>
@@ -176,9 +176,9 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <name>Error</name>
       <comment>If a script fails during execution, an error code may be readable here.</comment>
       <access read="R">Read</access>
-      <type>ERROR</type>
+      <type>ERR</type>
       <description>
-<p>On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful that if a script is likely to be executed recursively then the first thrown error will have priority and be propagated through the call stack.</p>
+<p>On execution of a script, the Error value is reset to ERR::Okay and will be updated if the script fails.  Be mindful that if a script is likely to be executed recursively then the first thrown error will have priority and be propagated through the call stack.</p>
       </description>
     </field>
 

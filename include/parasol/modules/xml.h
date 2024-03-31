@@ -110,7 +110,7 @@ typedef struct XMLTag {
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Value;
+         if (StrMatch(Attribs[a].Name, Name) IS ERR::Okay) return &Attribs[a].Value;
       }
       return NULL;
    }
@@ -165,93 +165,93 @@ struct xmlInsertContent { LONG Index; XMI Where; CSTRING Content; LONG Result;  
 struct xmlRemoveXPath { CSTRING XPath; LONG Limit;  };
 struct xmlGetTag { LONG Index; struct XMLTag * Result;  };
 
-INLINE ERROR xmlSetAttrib(APTR Ob, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) noexcept {
+INLINE ERR xmlSetAttrib(APTR Ob, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) noexcept {
    struct xmlSetAttrib args = { Index, Attrib, Name, Value };
    return(Action(MT_XMLSetAttrib, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlSerialise(APTR Ob, LONG Index, XMF Flags, STRING * Result) noexcept {
+INLINE ERR xmlSerialise(APTR Ob, LONG Index, XMF Flags, STRING * Result) noexcept {
    struct xmlSerialise args = { Index, Flags, (STRING)0 };
-   ERROR error = Action(MT_XMLSerialise, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLSerialise, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR xmlInsertXML(APTR Ob, LONG Index, XMI Where, CSTRING XML, LONG * Result) noexcept {
+INLINE ERR xmlInsertXML(APTR Ob, LONG Index, XMI Where, CSTRING XML, LONG * Result) noexcept {
    struct xmlInsertXML args = { Index, Where, XML, (LONG)0 };
-   ERROR error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR xmlGetContent(APTR Ob, LONG Index, STRING Buffer, LONG Length) noexcept {
+INLINE ERR xmlGetContent(APTR Ob, LONG Index, STRING Buffer, LONG Length) noexcept {
    struct xmlGetContent args = { Index, Buffer, Length };
    return(Action(MT_XMLGetContent, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlSort(APTR Ob, CSTRING XPath, CSTRING Sort, XSF Flags) noexcept {
+INLINE ERR xmlSort(APTR Ob, CSTRING XPath, CSTRING Sort, XSF Flags) noexcept {
    struct xmlSort args = { XPath, Sort, Flags };
    return(Action(MT_XMLSort, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlRemoveTag(APTR Ob, LONG Index, LONG Total) noexcept {
+INLINE ERR xmlRemoveTag(APTR Ob, LONG Index, LONG Total) noexcept {
    struct xmlRemoveTag args = { Index, Total };
    return(Action(MT_XMLRemoveTag, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlMoveTags(APTR Ob, LONG Index, LONG Total, LONG DestIndex, XMI Where) noexcept {
+INLINE ERR xmlMoveTags(APTR Ob, LONG Index, LONG Total, LONG DestIndex, XMI Where) noexcept {
    struct xmlMoveTags args = { Index, Total, DestIndex, Where };
    return(Action(MT_XMLMoveTags, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlGetAttrib(APTR Ob, LONG Index, CSTRING Attrib, CSTRING * Value) noexcept {
+INLINE ERR xmlGetAttrib(APTR Ob, LONG Index, CSTRING Attrib, CSTRING * Value) noexcept {
    struct xmlGetAttrib args = { Index, Attrib, (CSTRING)0 };
-   ERROR error = Action(MT_XMLGetAttrib, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLGetAttrib, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
 }
 
-INLINE ERROR xmlInsertXPath(APTR Ob, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result) noexcept {
+INLINE ERR xmlInsertXPath(APTR Ob, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result) noexcept {
    struct xmlInsertXPath args = { XPath, Where, XML, (LONG)0 };
-   ERROR error = Action(MT_XMLInsertXPath, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLInsertXPath, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR xmlFindTag(APTR Ob, CSTRING XPath, FUNCTION * Callback, LONG * Result) noexcept {
+INLINE ERR xmlFindTag(APTR Ob, CSTRING XPath, FUNCTION * Callback, LONG * Result) noexcept {
    struct xmlFindTag args = { XPath, Callback, (LONG)0 };
-   ERROR error = Action(MT_XMLFindTag, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLFindTag, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR xmlFilter(APTR Ob, CSTRING XPath) noexcept {
+INLINE ERR xmlFilter(APTR Ob, CSTRING XPath) noexcept {
    struct xmlFilter args = { XPath };
    return(Action(MT_XMLFilter, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlCount(APTR Ob, CSTRING XPath, LONG * Result) noexcept {
+INLINE ERR xmlCount(APTR Ob, CSTRING XPath, LONG * Result) noexcept {
    struct xmlCount args = { XPath, (LONG)0 };
-   ERROR error = Action(MT_XMLCount, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLCount, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR xmlInsertContent(APTR Ob, LONG Index, XMI Where, CSTRING Content, LONG * Result) noexcept {
+INLINE ERR xmlInsertContent(APTR Ob, LONG Index, XMI Where, CSTRING Content, LONG * Result) noexcept {
    struct xmlInsertContent args = { Index, Where, Content, (LONG)0 };
-   ERROR error = Action(MT_XMLInsertContent, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLInsertContent, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR xmlRemoveXPath(APTR Ob, CSTRING XPath, LONG Limit) noexcept {
+INLINE ERR xmlRemoveXPath(APTR Ob, CSTRING XPath, LONG Limit) noexcept {
    struct xmlRemoveXPath args = { XPath, Limit };
    return(Action(MT_XMLRemoveXPath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) noexcept {
+INLINE ERR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) noexcept {
    struct xmlGetTag args = { Index, (struct XMLTag *)0 };
-   ERROR error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
@@ -269,7 +269,7 @@ class objXML : public BaseClass {
    XMF       Flags;     // Optional flags.
    LONG      Start;     // Set a starting cursor to affect the starting point for some XML operations.
    LONG      Modified;  // A timestamp of when the XML data was last modified.
-   LONG      ParseError; // Private
+   ERR       ParseError; // Private
    LONG      LineNo;    // Private
    public:
    typedef pf::vector<XMLTag> TAGS;
@@ -278,59 +278,59 @@ class objXML : public BaseClass {
 
    // Action stubs
 
-   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
+   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
+      auto error = Action(AC_GetVar, this, &args);
+      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() noexcept { return InitObject(this); }
-   inline ERROR reset() noexcept { return Action(AC_Reset, this, NULL); }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
+   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
 
    // Customised field setting
 
-   template <class T> inline ERROR setPath(T && Value) noexcept {
+   template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setSource(OBJECTPTR Value) noexcept {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setSource(OBJECTPTR Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Source = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFlags(const XMF Value) noexcept {
+   inline ERR setFlags(const XMF Value) noexcept {
       this->Flags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setStart(const LONG Value) noexcept {
+   inline ERR setStart(const LONG Value) noexcept {
       this->Start = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setReadOnly(const LONG Value) noexcept {
+   inline ERR setReadOnly(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setStatement(T && Value) noexcept {
+   template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
@@ -340,13 +340,13 @@ class objXML : public BaseClass {
 
 //********************************************************************************************************************
 
-template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
 }
 
-template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
@@ -355,7 +355,7 @@ template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Fl
 inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
-      if (!StrMatch(Name, a->Name)) {
+      if (StrMatch(Name, a->Name) IS ERR::Okay) {
          a->Name  = Name;
          a->Value = Value;
          return;
@@ -382,15 +382,16 @@ inline std::string xmlGetContent(const XMLTag &Tag) {
    return value;
 }
 
-template <class T> inline ERROR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
+template <class T> inline ERR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
-   auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
-   if (!error) {
+
+   if (auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert); error IS ERR::Okay) {
       struct xmlGetTag get = { insert.Result };
       error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &get);
       *Result = get.Result;
+      return error;
    }
-   return(error);
+   else return error;
 }
 
 //********************************************************************************************************************

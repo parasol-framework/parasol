@@ -32,7 +32,7 @@ not listed in the class dictionary or if it is listed more than once, the first 
 loaded and checked against classes that can match against file header information.  If a match is found, the ID of the
 matching class will be returned.
 
-This function returns an error code of `ERR_Search` in the event that a suitable class is not available to match
+This function returns an error code of `ERR::Search` in the event that a suitable class is not available to match
 against the given file.
 
 -INPUT-
@@ -50,42 +50,42 @@ Read
 
 *********************************************************************************************************************/
 
-ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
+ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 {
    pf::Log log(__FUNCTION__);
    LONG i, bytes_read;
    #define HEADER_SIZE 80
 
-   if ((!Path) or (!ClassID)) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!ClassID)) return log.warning(ERR::NullArgs);
 
    log.branch("File: %s", Path);
 
    // Determine the class type by examining the Path file name.  If the file extension does not tell us the class
    // that supports the data, we then load the first 256 bytes from the file and then compare file headers.
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    STRING res_path = NULL;
    if (ClassID) *ClassID = 0;
    if (SubClassID) *SubClassID = 0;
    UBYTE buffer[400] = { 0 };
 
-   if ((error = load_datatypes())) { // Load the associations configuration file
+   if ((error = load_datatypes()) != ERR::Okay) { // Load the associations configuration file
       return log.warning(error);
    }
 
-   ERROR reserror;
-   if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR_Okay) {
-      if (reserror IS ERR_VirtualVolume) {
+   ERR reserror;
+   if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR::Okay) {
+      if (reserror IS ERR::VirtualVolume) {
          // Virtual volumes may support the IdentifyFile() request as a means of speeding up file identification.  This
          // is often useful when probing remote file systems.  If the FS doesn't support this option, we can still
          // fall-back to the standard file reading option.
          //
-         // Note: A virtual volume may return ERR_Okay even without identifying the class of the queried file.  This
+         // Note: A virtual volume may return ERR::Okay even without identifying the class of the queried file.  This
          // means that the file was analysed but belongs to no known class.
 
          if (auto vd = get_virtual(res_path)) {
             if (vd->IdentifyFile) {
-               if (!vd->IdentifyFile(res_path, ClassID, SubClassID)) {
+               if (vd->IdentifyFile(res_path, ClassID, SubClassID) IS ERR::Okay) {
                   log.trace("Virtual volume identified the target file.");
                   goto class_identified;
                }
@@ -99,8 +99,8 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
 
-         if (!StrCompare("string:", Path, 7)) { // Do not check for '|' when string: is in use
-            return ERR_FileNotFound;
+         if (StrCompare("string:", Path, 7) IS ERR::Okay) { // Do not check for '|' when string: is in use
+            return ERR::FileNotFound;
          }
 
          for (i=0; (Path[i]) and (Path[i] != '|'); i++) {
@@ -110,13 +110,13 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
          if (Path[i] IS '|') {
             STRING tmp = StrClone(Path);
             tmp[i] = 0;
-            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR_Okay) {
+            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR::Okay) {
                FreeResource(tmp);
-               return ERR_FileNotFound;
+               return ERR::FileNotFound;
             }
             else FreeResource(tmp);
          }
-         else return ERR_FileNotFound;
+         else return ERR::FileNotFound;
       }
    }
 
@@ -132,7 +132,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (!rec.Match.empty()) {
-                  if (!StrCompare(rec.Match.c_str(), filename, 0, STR::WILDCARD)) {
+                  if (StrCompare(rec.Match.c_str(), filename, 0, STR::WILDCARD) IS ERR::Okay) {
                      if (rec.ParentID) {
                         *ClassID = rec.ParentID;
                         if (SubClassID) *SubClassID = rec.ClassID;
@@ -151,7 +151,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       if (!*ClassID) {
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
-         if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) and (bytes_read >= 4)) {
+         if ((ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read) IS ERR::Okay) and (bytes_read >= 4)) {
             log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, glClassDB.size());
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
@@ -228,25 +228,25 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
                }
             } // for all classes
          }
-         else error = log.warning(ERR_Read);
+         else error = log.warning(ERR::Read);
       }
    }
    else {
       log.warning("Class database not available.");
-      error = ERR_Search;
+      error = ERR::Search;
    }
 
 class_identified:
    if (res_path) FreeResource(res_path);
 
-   if (!error) {
+   if (error IS ERR::Okay) {
       if (*ClassID) log.detail("File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
       else {
          log.detail("Failed to identify file \"%s\"", Path);
-         error = ERR_Search;
+         error = ERR::Search;
       }
    }
 
-   if (!(*ClassID)) return ERR_Search;
+   if (!(*ClassID)) return ERR::Search;
    else return error;
 }

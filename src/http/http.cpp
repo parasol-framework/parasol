@@ -112,9 +112,9 @@ typedef char HASHHEX[HASHHEXLEN+1];
 #define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 #define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-#define SET_ERROR(http, code) { (http)->Error = (code); log.detail("Set error code %d: %s", code, GetErrorMsg(code)); }
+template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", LONG(code), GetErrorMsg(code)); }
 
-static ERROR create_http_class(void);
+static ERR create_http_class(void);
 
 JUMPTABLE_CORE
 JUMPTABLE_NETWORK
@@ -179,14 +179,14 @@ class extHTTP : public objHTTP {
    UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
 };
 
-static ERROR HTTP_Activate(extHTTP *, APTR);
-static ERROR HTTP_Deactivate(extHTTP *, APTR);
-static ERROR HTTP_Free(extHTTP *, APTR);
-static ERROR HTTP_GetVar(extHTTP *, struct acGetVar *);
-static ERROR HTTP_Init(extHTTP *, APTR);
-static ERROR HTTP_NewObject(extHTTP *, APTR);
-static ERROR HTTP_SetVar(extHTTP *, struct acSetVar *);
-static ERROR HTTP_Write(extHTTP *, struct acWrite *);
+static ERR HTTP_Activate(extHTTP *, APTR);
+static ERR HTTP_Deactivate(extHTTP *, APTR);
+static ERR HTTP_Free(extHTTP *, APTR);
+static ERR HTTP_GetVar(extHTTP *, struct acGetVar *);
+static ERR HTTP_Init(extHTTP *, APTR);
+static ERR HTTP_NewObject(extHTTP *, APTR);
+static ERR HTTP_SetVar(extHTTP *, struct acSetVar *);
+static ERR HTTP_Write(extHTTP *, struct acWrite *);
 
 #include "http_def.c"
 
@@ -239,23 +239,23 @@ static const FieldDef clStatus[] = {
 //********************************************************************************************************************
 
 static CSTRING adv_crlf(CSTRING);
-static ERROR check_incoming_end(extHTTP *);
-static ERROR parse_file(extHTTP *, STRING, LONG);
+static ERR check_incoming_end(extHTTP *);
+static ERR parse_file(extHTTP *, STRING, LONG);
 static void parse_file(extHTTP *, std::ostringstream &);
-static ERROR parse_response(extHTTP *, CSTRING);
-static ERROR process_data(extHTTP *, APTR, LONG);
+static ERR parse_response(extHTTP *, CSTRING);
+static ERR process_data(extHTTP *, APTR, LONG);
 static LONG  extract_value(CSTRING, STRING *);
 static void  writehex(HASH, HASHHEX);
 static void  digest_calc_ha1(extHTTP *, HASHHEX);
 static void  digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERROR write_socket(extHTTP *, CPTR, LONG, LONG *);
+static ERR write_socket(extHTTP *, CPTR, LONG, LONG *);
 static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &);
-static ERROR SET_Path(extHTTP *, CSTRING);
-static ERROR SET_Location(extHTTP *, CSTRING);
-static ERROR timeout_manager(extHTTP *, LARGE, LARGE);
+static ERR SET_Path(extHTTP *, CSTRING);
+static ERR SET_Location(extHTTP *, CSTRING);
+static ERR timeout_manager(extHTTP *, LARGE, LARGE);
 static void  socket_feedback(objNetSocket *, objClientSocket *, NTC);
-static ERROR socket_incoming(objNetSocket *);
-static ERROR socket_outgoing(objNetSocket *);
+static ERR socket_incoming(objNetSocket *);
+static ERR socket_outgoing(objNetSocket *);
 
 /*   if (Object->UID IS Self->DialogWindow) {
       Self->DialogWindow = 0;
@@ -283,11 +283,11 @@ INLINE CSTRING GETSTATUS(LONG Code)
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("network", &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("network", &modNetwork, &NetworkBase) != ERR::Okay) return ERR::InitModule;
 
    glProxy = objProxy::create::global();
 
@@ -296,32 +296,32 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (clHTTP)     { FreeResource(clHTTP);     clHTTP     = NULL; }
    if (glProxy)    { FreeResource(glProxy);    glProxy    = NULL; }
    if (modNetwork) { FreeResource(modNetwork); modNetwork = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extHTTP *)CurrentContext())->Outgoing.clear();
 }
 
-static void notify_free_state_changed(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_state_changed(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extHTTP *)CurrentContext())->StateChanged.clear();
 }
 
-static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extHTTP *)CurrentContext())->Incoming.clear();
 }
 
-static void notify_free_auth_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_auth_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extHTTP *)CurrentContext())->AuthCallback.clear();
 }
@@ -359,18 +359,18 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 
 *********************************************************************************************************************/
 
-static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
+static ERR HTTP_Activate(extHTTP *Self, APTR Void)
 {
    pf::Log log;
    LONG i;
 
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, ((Self->Flags & HTF::SSL) != HTF::NIL) ? 1 : 0);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
-   SET_ERROR(Self, ERR_Okay);
+   SET_ERROR(log, Self, ERR::Okay);
    Self->ResponseIndex = 0;
    Self->SearchIndex   = 0;
    Self->Index         = 0;
@@ -431,7 +431,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          }
          else {
             log.warning("HTTP COPY request requires a destination path.");
-            SET_ERROR(Self, ERR_FieldNotSet);
+            SET_ERROR(log, Self, ERR::FieldNotSet);
             return Self->Error;
          }
       }
@@ -457,7 +457,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          }
          else {
             log.warning("HTTP MOVE request requires a destination path.");
-            SET_ERROR(Self, ERR_FieldNotSet);
+            SET_ERROR(log, Self, ERR::FieldNotSet);
             return Self->Error;
          }
       }
@@ -506,14 +506,14 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                   if (!Self->Size) {
                      Self->flInput->get(FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
                      if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
-                        SET_ERROR(Self, ERR_NoData);
+                        SET_ERROR(log, Self, ERR::NoData);
                         return Self->Error;
                      }
                   }
                   else Self->ContentLength = Self->Size; // Allow the developer to define the ContentLength
                }
                else {
-                  SET_ERROR(Self, ERR_File);
+                  SET_ERROR(log, Self, ERR::File);
                   return log.warning(Self->Error);
                }
             }
@@ -528,7 +528,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             }
             else {
                log.warning("No data source specified for POST/PUT method.");
-               SET_ERROR(Self, ERR_FieldNotSet);
+               SET_ERROR(log, Self, ERR::FieldNotSet);
                return Self->Error;
             }
 
@@ -564,7 +564,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
       }
       else {
          log.warning("HTTP method no. %d not understood.", LONG(Self->Method));
-         SET_ERROR(Self, ERR_Failed);
+         SET_ERROR(log, Self, ERR::Failed);
          return Self->Error;
       }
 
@@ -640,7 +640,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             fl::Incoming((CPTR)socket_incoming),
             fl::Feedback((CPTR)socket_feedback),
             fl::Flags(flags)))) {
-         SET_ERROR(Self, ERR_CreateObject);
+         SET_ERROR(log, Self, ERR::CreateObject);
          return log.warning(Self->Error);
       }
    }
@@ -664,30 +664,30 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
 
    auto cstr = cmd.str();
-   if (!write_socket(Self, cstr.c_str(), cstr.length(), NULL)) {
+   if (write_socket(Self, cstr.c_str(), cstr.length(), NULL) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
-         ERROR result;
-         if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR_Okay) {
+         ERR result;
+         if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR::Okay) {
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
             else SubscribeTimer(Self->ConnectTimeout, FUNCTION(timeout_manager), &Self->TimeoutManager);
 
-            return ERR_Okay;
+            return ERR::Okay;
          }
-         else if (result IS ERR_HostNotFound) {
-            SET_ERROR(Self, ERR_HostNotFound);
+         else if (result IS ERR::HostNotFound) {
+            SET_ERROR(log, Self, ERR::HostNotFound);
             return log.warning(Self->Error);
          }
          else {
-            SET_ERROR(Self, ERR_Failed);
+            SET_ERROR(log, Self, ERR::Failed);
             return log.warning(Self->Error);
          }
       }
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
    else {
-      SET_ERROR(Self, ERR_Write);
+      SET_ERROR(log, Self, ERR::Write);
       return log.warning(Self->Error);
    }
 }
@@ -706,7 +706,7 @@ Active HTTP requests can be manually cancelled by calling the Deactivate action 
 -END-
 *********************************************************************************************************************/
 
-static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
+static ERR HTTP_Deactivate(extHTTP *Self, APTR Void)
 {
    pf::Log log;
 
@@ -738,12 +738,12 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR HTTP_Free(extHTTP *Self, APTR Args)
+static ERR HTTP_Free(extHTTP *Self, APTR Args)
 {
    if (Self->Args) { delete Self->Args; Self->Args = NULL; }
    if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
@@ -781,7 +781,7 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
       Self->Password = NULL;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -790,32 +790,32 @@ GetVar: Entries in the HTTP response header can be read as variable fields.
 -END-
 *********************************************************************************************************************/
 
-static ERROR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
+static ERR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if ((Self->Args) and (Self->Args->contains(Args->Field))) {
       StrCopy(Self->Args[0][Args->Field].c_str(), Args->Buffer, Args->Size);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((Self->Headers) and (Self->Headers->contains(Args->Field))) {
       StrCopy(Self->Headers[0][Args->Field].c_str(), Args->Buffer, Args->Size);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   return ERR_UnsupportedField;
+   return ERR::UnsupportedField;
 }
 
 //********************************************************************************************************************
 
-static ERROR HTTP_Init(extHTTP *Self, APTR Args)
+static ERR HTTP_Init(extHTTP *Self, APTR Args)
 {
    pf::Log log;
 
    if (!Self->ProxyDefined) {
       if (glProxy) {
-         if (!prxFind(glProxy, Self->Port, TRUE)) {
+         if (prxFind(glProxy, Self->Port, TRUE) IS ERR::Okay) {
             if (Self->ProxyServer) FreeResource(Self->ProxyServer);
             Self->ProxyServer = StrClone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
@@ -827,14 +827,14 @@ static ERROR HTTP_Init(extHTTP *Self, APTR Args)
    }
    else log.msg("Proxy pre-defined by user.");
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
+static ERR HTTP_NewObject(extHTTP *Self, APTR Args)
 {
-   Self->Error          = ERR_Okay;
+   Self->Error          = ERR::Okay;
    Self->UserAgent      = StrClone("Parasol Client");
    Self->DataTimeout    = 5.0;
    Self->ConnectTimeout = 10.0;
@@ -842,7 +842,7 @@ static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
    Self->BufferSize     = 16 * 1024;
    StrCopy("auth", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
    StrCopy("md5", (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -851,24 +851,24 @@ SetVar: Options to pass in the HTTP method header can be set as variable fields.
 -END-
 *********************************************************************************************************************/
 
-static ERROR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
+static ERR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (!Self->Headers) {
       Self->Headers = new (std::nothrow) std::unordered_map<std::string, std::string>;
-      if (!Self->Headers) return ERR_Memory;
+      if (!Self->Headers) return ERR::Memory;
    }
    Self->Headers[0][Args->Field] = Args->Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Writing to an HTTP object's outgoing buffer is possible if the Outgoing callback function is active.
 
-static ERROR HTTP_Write(extHTTP *Self, struct acWrite *Args)
+static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
 {
-   if ((!Args) or (!Args->Buffer)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
 
    if ((Self->WriteBuffer) and (Self->WriteSize > 0)) {
       LONG len = Args->Length;
@@ -880,15 +880,15 @@ static ERROR HTTP_Write(extHTTP *Self, struct acWrite *Args)
          CopyMemory(Args->Buffer, Self->WriteBuffer + Self->WriteOffset, len);
          Self->WriteOffset += len;
          Args->Result = len;
-         if (Args->Result != Args->Length) return ERR_LimitedSuccess;
-         else return ERR_Okay;
+         if (Args->Result != Args->Length) return ERR::LimitedSuccess;
+         else return ERR::Okay;
       }
       else {
          Args->Result = 0;
-         return ERR_BufferOverflow;
+         return ERR::BufferOverflow;
       }
    }
-   else return ERR_InvalidState;
+   else return ERR::InvalidState;
 }
 
 /*********************************************************************************************************************
@@ -897,16 +897,16 @@ AuthCallback: Private.  This field is reserved for future use.
 
 *********************************************************************************************************************/
 
-static ERROR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
+static ERR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->AuthCallback.defined()) {
       *Value = &Self->AuthCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
+static ERR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
@@ -916,7 +916,7 @@ static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
       }
    }
    else Self->AuthCallback.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -931,11 +931,11 @@ Note that the actual buffer size may not reflect the exact size that you set her
 
 *********************************************************************************************************************/
 
-static ERROR SET_BufferSize(extHTTP *Self, LONG Value)
+static ERR SET_BufferSize(extHTTP *Self, LONG Value)
 {
    if (Value < 2 * 1024) Value = 2 * 1024;
    Self->BufferSize = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -944,7 +944,7 @@ static ERROR SET_BufferSize(extHTTP *Self, LONG Value)
 ConnectTimeout: The initial connection timeout value, measured in seconds.
 
 The timeout for connect operations is specified here.  In the event of a timeout, the HTTP object will be deactivated
-and the #Error field will be updated to a value of ERR_TimeOut.
+and the #Error field will be updated to a value of ERR::TimeOut.
 
 The timeout value is measured in seconds.
 
@@ -968,17 +968,17 @@ be applied.
 
 *********************************************************************************************************************/
 
-static ERROR GET_ContentType(extHTTP *Self, STRING *Value)
+static ERR GET_ContentType(extHTTP *Self, STRING *Value)
 {
    *Value = Self->ContentType;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_ContentType(extHTTP *Self, CSTRING Value)
+static ERR SET_ContentType(extHTTP *Self, CSTRING Value)
 {
    if (Self->ContentType) { FreeResource(Self->ContentType); Self->ContentType = NULL; }
    if (Value) Self->ContentType = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -992,7 +992,7 @@ noted that a timeout does not necessarily indicate failure if the content is bei
 (#ContentLength is set to -1).
 
 In the event of a timeout, the HTTP object will be deactivated and the #Error field will be updated to a value
-of `ERR_TimeOut`.
+of `ERR::TimeOut`.
 
 The timeout value is measured in seconds.
 
@@ -1008,8 +1008,8 @@ The receiving object can identify the data as HTTP information by checking the c
 Error: The error code received for the most recently executed HTTP command.
 
 On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful
-then the value will be zero (ERR_Okay). It should be noted that certain error codes may not necessarily indicate
-failure - for instance, an `ERR_TimeOut` error may be received on termination of streamed content.  For genuine HTML
+then the value will be zero (ERR::Okay). It should be noted that certain error codes may not necessarily indicate
+failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content.  For genuine HTML
 error codes, see the #Status field.
 
 -FIELD-
@@ -1023,11 +1023,11 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 
 *********************************************************************************************************************/
 
-static ERROR SET_Host(extHTTP *Self, CSTRING Value)
+static ERR SET_Host(extHTTP *Self, CSTRING Value)
 {
    if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
    Self->Host = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1036,23 +1036,23 @@ static ERROR SET_Host(extHTTP *Self, CSTRING Value)
 Incoming: A callback routine can be defined here for incoming data.
 
 Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the
-callback routine is `ERROR Function(*HTTP, APTR Data, LONG Length)`.
+callback routine is `ERR Function(*HTTP, APTR Data, LONG Length)`.
 
-If an error code of `ERR_Terminate` is returned by the callback routine, the currently executing HTTP request will be
+If an error code of `ERR::Terminate` is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Incoming(extHTTP *Self, FUNCTION **Value)
+static ERR GET_Incoming(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->Incoming.defined()) {
       *Value = &Self->Incoming;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
+static ERR SET_Incoming(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
@@ -1062,7 +1062,7 @@ static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
       }
    }
    else Self->Incoming.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1088,7 +1088,7 @@ An alternative is to set the #InputObject for abstracting the data source.
 
 *********************************************************************************************************************/
 
-static ERROR SET_InputFile(extHTTP *Self, CSTRING Value)
+static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1116,7 +1116,7 @@ static ERROR SET_InputFile(extHTTP *Self, CSTRING Value)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1142,13 +1142,13 @@ URI string is inconvenient.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Location(extHTTP *Self, STRING *Value)
+static ERR GET_Location(extHTTP *Self, STRING *Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
    if (Self->URI) { FreeResource(Self->URI); Self->URI = NULL; }
 
-   ERROR error;
+   ERR error;
    LONG len;
    {
       pf::SwitchContext context(Self);
@@ -1156,7 +1156,7 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
       error = AllocMemory(len, MEM::STRING|MEM::NO_CLEAR, &Self->URI);
    }
 
-   if (!error) {
+   if (error IS ERR::Okay) {
       if (Self->Port IS 80) snprintf(Self->URI, len, "http://%s/%s", Self->Host, Self->Path); // http
       else if (Self->Port IS 443) {
          snprintf(Self->URI, len, "https://%s/%s", Self->Host, Self->Path); // https
@@ -1165,15 +1165,15 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
       else if (Self->Port IS 21) snprintf(Self->URI, len, "ftp://%s/%s", Self->Host, Self->Path); // ftp
       else snprintf(Self->URI, len, "http://%s:%d/%s", Self->Host, Self->Port, Self->Path);
       *Value = Self->URI;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_AllocMemory;
+      return ERR::AllocMemory;
    }
 }
 
-static ERROR SET_Location(extHTTP *Self, CSTRING Value)
+static ERR SET_Location(extHTTP *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1195,8 +1195,8 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 
    Self->Port = 80;
 
-   if (!StrCompare("http://", str, 7)) str += 7;
-   else if (!StrCompare("https://", str, 8)) {
+   if (StrCompare("http://", str, 7) IS ERR::Okay) str += 7;
+   else if (StrCompare("https://", str, 8) IS ERR::Okay) {
       str += 8;
       Self->Port = 443;
       Self->Flags |= HTF::SSL;
@@ -1210,8 +1210,8 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
    LONG len;
    for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
-   if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Host) != ERR_Okay) {
-      return ERR_AllocMemory;
+   if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Host) != ERR::Okay) {
+      return ERR::AllocMemory;
    }
 
    CopyMemory(str, Self->Host, len);
@@ -1233,10 +1233,10 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str) { // Parse absolute path
       SET_Path(Self, str+1);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1246,13 +1246,13 @@ Method: The HTTP instruction to execute is defined here (defaults to GET).
 
 *********************************************************************************************************************/
 
-static ERROR SET_Method(extHTTP *Self, HTM Value)
+static ERR SET_Method(extHTTP *Self, HTM Value)
 {
    // Changing/Setting the method results in a reset of the variable fields
    if (Self->Args) { delete Self->Args; Self->Args = NULL; }
    if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
    Self->Method = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1270,28 +1270,28 @@ object.
 Outgoing: Outgoing data can be managed using a function callback if this field is set.
 
 Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype
-for the callback routine is `ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
+for the callback routine is `ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
 `function(HTTP, Buffer, BufferSize)`.
 
 Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of
 bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.
 
-If an error code of `ERR_Terminate` is returned by the callback routine, any remaining data will be sent and the transfer
-will be treated as having completed successfully.  Use `ERR_TimeOut` if data cannot be returned in a reasonable time
-frame.  All other error codes apart from `ERR_Okay` indicate failure.
+If an error code of `ERR::Terminate` is returned by the callback routine, any remaining data will be sent and the transfer
+will be treated as having completed successfully.  Use `ERR::TimeOut` if data cannot be returned in a reasonable time
+frame.  All other error codes apart from `ERR::Okay` indicate failure.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
+static ERR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->Outgoing.defined()) {
       *Value = &Self->Outgoing;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
+static ERR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
@@ -1301,7 +1301,7 @@ static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
       }
    }
    else Self->Outgoing.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1315,11 +1315,11 @@ set in the #Flags field.
 
 *********************************************************************************************************************/
 
-static ERROR SET_OutputFile(extHTTP *Self, CSTRING Value)
+static ERR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
    if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = NULL; }
    Self->OutputFile = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1344,12 +1344,12 @@ A 401 status code is returned in the event of an authorisation failure.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Password(extHTTP *Self, CSTRING Value)
+static ERR SET_Password(extHTTP *Self, CSTRING Value)
 {
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
    Self->Password = StrClone(Value);
    Self->AuthPreset = TRUE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1365,13 +1365,13 @@ automatic conversions are operated when setting the Path field.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Path(extHTTP *Self, CSTRING Value)
+static ERR SET_Path(extHTTP *Self, CSTRING Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if (!Value) return ERR_Okay;
+   if (!Value) return ERR::Okay;
 
    while (*Value IS '/') Value++; // Skip '/' prefix
 
@@ -1381,7 +1381,7 @@ static ERROR SET_Path(extHTTP *Self, CSTRING Value)
       else len++;
    }
 
-   if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path)) {
+   if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
       LONG len = 0;
       for (LONG i=0; Value[i]; i++) {
          if (Value[i] IS ' ') {
@@ -1404,7 +1404,7 @@ static ERROR SET_Path(extHTTP *Self, CSTRING Value)
          while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
 
          if (i IS len) {
-            if (!StrCompare(Self->Path, Self->AuthPath, len)) {
+            if (StrCompare(Self->Path, Self->AuthPath, len) IS ERR::Okay) {
                // No change to the current path
                Self->SecurePath = FALSE;
             }
@@ -1413,9 +1413,9 @@ static ERROR SET_Path(extHTTP *Self, CSTRING Value)
 
       Self->AuthPath = StrClone(Self->Path);
       Self->AuthPath[len] = 0;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -1440,12 +1440,12 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 
 *********************************************************************************************************************/
 
-static ERROR SET_ProxyServer(extHTTP *Self, CSTRING Value)
+static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
    if ((Value) and (Value[0])) Self->ProxyServer = StrClone(Value);
    Self->ProxyDefined = TRUE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1458,11 +1458,11 @@ this name string.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Realm(extHTTP *Self, CSTRING Value)
+static ERR SET_Realm(extHTTP *Self, CSTRING Value)
 {
    if (Self->Realm) { FreeResource(Self->Realm); Self->Realm = NULL; }
    if (Value) Self->Realm = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1478,11 +1478,11 @@ The buffer is null-terminated if you wish to use it as a string.
 
 *********************************************************************************************************************/
 
-static ERROR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
+static ERR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
 {
    *Value = Self->RecvBuffer;
    *Elements = Self->RecvSize;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1504,11 +1504,11 @@ On completion of an HTTP request, the state will be changed to either `COMPLETED
 
 *********************************************************************************************************************/
 
-static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
+static ERR SET_CurrentState(extHTTP *Self, HGS Value)
 {
    pf::Log log;
 
-   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR_OutOfRange);
+   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR::OutOfRange);
 
    if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
 
@@ -1519,9 +1519,9 @@ static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
    else Self->CurrentState = Value;
 
    if (Self->StateChanged.defined()) {
-      ERROR error;
+      ERR error;
       if (Self->StateChanged.isC()) {
-         auto routine = (ERROR (*)(extHTTP *, HGS, APTR))Self->StateChanged.StdC.Routine;
+         auto routine = (ERR (*)(extHTTP *, HGS, APTR))Self->StateChanged.StdC.Routine;
          error = routine(Self, Self->CurrentState, Self->StateChanged.StdC.Meta);
       }
       else if (Self->StateChanged.isScript()) {
@@ -1531,26 +1531,26 @@ static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
          };
 
          auto script = Self->StateChanged.Script.Script;
-         if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+         if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
       }
-      else error = ERR_Okay;
+      else error = ERR::Okay;
 
-      if (error > ERR_ExceptionThreshold) SET_ERROR(Self, error);
+      if (error > ERR::ExceptionThreshold) SET_ERROR(log, Self, error);
 
-      if (error IS ERR_Terminate) {
+      if (error IS ERR::Terminate) {
          if (Self->CurrentState IS HGS::SENDING_CONTENT) {
             // Stop sending and expect a response from the server.  If the client doesn't care about the response
-            // then a subsequent ERR_Terminate code can be returned on notification of this state change.
+            // then a subsequent ERR::Terminate code can be returned on notification of this state change.
             SET_CurrentState(Self, HGS::SEND_COMPLETE);
          }
          else if ((Self->CurrentState != HGS::TERMINATED) and (Self->CurrentState != HGS::COMPLETED)) {
-            log.branch("State changing to HGS::COMPLETED (ERR_Terminate received).");
+            log.branch("State changing to HGS::COMPLETED (ERR::Terminate received).");
             SET_CurrentState(Self, HGS::COMPLETED);
          }
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1559,23 +1559,23 @@ static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
 StateChanged: A callback routine can be defined here for monitoring changes to the HTTP state.
 
 Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an
-HTTP object.  The format for the routine is `ERROR Function(*HTTP, HGS State)`.
+HTTP object.  The format for the routine is `ERR Function(*HTTP, HGS State)`.
 
-If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be
+If an error code of ERR::Terminate is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
 
 *********************************************************************************************************************/
 
-static ERROR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
+static ERR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->StateChanged.defined()) {
       *Value = &Self->StateChanged;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
+static ERR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Script.Script, AC_Free);
@@ -1585,7 +1585,7 @@ static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
       }
    }
    else Self->StateChanged.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1600,11 +1600,11 @@ This field describe the 'user-agent' value that will be sent in HTTP requests.  
 
 *********************************************************************************************************************/
 
-static ERROR SET_UserAgent(extHTTP *Self, CSTRING Value)
+static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
    if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = NULL; }
    Self->UserAgent = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1625,11 +1625,11 @@ presented with a dialog box and asked to enter the correct username and password
 
 *********************************************************************************************************************/
 
-static ERROR SET_Username(extHTTP *Self, CSTRING Value)
+static ERR SET_Username(extHTTP *Self, CSTRING Value)
 {
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
    Self->Username = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1678,7 +1678,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR create_http_class(void)
+static ERR create_http_class(void)
 {
    clHTTP = objMetaClass::create::global(
       fl::BaseClassID(ID_HTTP),
@@ -1690,7 +1690,7 @@ static ERROR create_http_class(void)
       fl::Size(sizeof(extHTTP)),
       fl::Path(MOD_PATH));
 
-   return clHTTP ? ERR_Okay : ERR_AddClass;
+   return clHTTP ? ERR::Okay : ERR::AddClass;
 }
 
 //********************************************************************************************************************

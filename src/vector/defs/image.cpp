@@ -18,27 +18,27 @@ NOTE: For the rendering of vectors as flattened images, use @VectorPattern.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
+static ERR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->Bitmap) return log.warning(ERR_FieldNotSet);
+   if (!Self->Bitmap) return log.warning(ERR::FieldNotSet);
 
    if ((Self->Bitmap->BitsPerPixel != 24) and (Self->Bitmap->BitsPerPixel != 32)) {
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
+static ERR IMAGE_NewObject(objVectorImage *Self, APTR Void)
 {
    Self->Units        = VUNIT::BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD::CLIP;
    Self->AspectRatio  = ARF::X_MID|ARF::Y_MID|ARF::MEET; // SVG defaults
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -59,11 +59,11 @@ algorithm.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
+static ERR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
 {
    Self->Bitmap = Value;
    Self->Picture = NULL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -81,11 +81,11 @@ will not be used directly by the VectorImage, as only the bitmap is of interest.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
+static ERR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
 {
    Self->Picture = Value;
    if (Value) Self->Bitmap = Value->Bitmap;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -154,7 +154,7 @@ static const FieldArray clImageFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
+ERR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    clVectorImage = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORIMAGE),
@@ -165,6 +165,6 @@ ERROR init_image(void) // The gradient is a definition type for creating gradien
       fl::Size(sizeof(objVectorImage)),
       fl::Path(MOD_PATH));
 
-   return clVectorImage ? ERR_Okay : ERR_AddClass;
+   return clVectorImage ? ERR::Okay : ERR::AddClass;
 }
 

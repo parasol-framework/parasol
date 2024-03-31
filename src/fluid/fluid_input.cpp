@@ -49,7 +49,7 @@ static void key_event(struct finput *, evKey *, LONG);
 
 //********************************************************************************************************************
 
-static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+static ERR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -62,7 +62,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    if (!list) {
       log.warning("Dangling input feed subscription %d", Handle);
       gfxUnsubscribeInput(Handle);
-      return ERR_NotFound;
+      return ERR::NotFound;
    }
 
    LONG branch = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
@@ -89,7 +89,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
    log.traceBranch("Collecting garbage.");
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -150,7 +150,7 @@ static int input_keyboard(lua_State *Lua)
       }
 
       objSurface *surface;
-      if (!AccessObject(object_id, 5000, &surface)) {
+      if (AccessObject(object_id, 5000, &surface) IS ERR::Okay) {
          if (surface->hasFocus()) sub_keyevent = true;
          ReleaseObject(surface);
       }
@@ -223,17 +223,17 @@ static int input_request_item(lua_State *Lua)
    DATA datatype;
    if (lua_isstring(Lua, 3)) {
       CSTRING dt = lua_tostring(Lua, 3);
-      if (!StrMatch("text", dt))              datatype = DATA::TEXT;
-      else if (!StrMatch("raw", dt))          datatype = DATA::RAW;
-      else if (!StrMatch("device_input", dt)) datatype = DATA::DEVICE_INPUT;
-      else if (!StrMatch("xml", dt))          datatype = DATA::XML;
-      else if (!StrMatch("audio", dt))        datatype = DATA::AUDIO;
-      else if (!StrMatch("record", dt))       datatype = DATA::RECORD;
-      else if (!StrMatch("image", dt))        datatype = DATA::IMAGE;
-      else if (!StrMatch("request", dt))      datatype = DATA::REQUEST;
-      else if (!StrMatch("receipt", dt))      datatype = DATA::RECEIPT;
-      else if (!StrMatch("file", dt))         datatype = DATA::FILE;
-      else if (!StrMatch("content", dt))      datatype = DATA::CONTENT;
+      if (StrMatch("text", dt) IS ERR::Okay)              datatype = DATA::TEXT;
+      else if (StrMatch("raw", dt) IS ERR::Okay)          datatype = DATA::RAW;
+      else if (StrMatch("device_input", dt) IS ERR::Okay) datatype = DATA::DEVICE_INPUT;
+      else if (StrMatch("xml", dt) IS ERR::Okay)          datatype = DATA::XML;
+      else if (StrMatch("audio", dt) IS ERR::Okay)        datatype = DATA::AUDIO;
+      else if (StrMatch("record", dt) IS ERR::Okay)       datatype = DATA::RECORD;
+      else if (StrMatch("image", dt) IS ERR::Okay)        datatype = DATA::IMAGE;
+      else if (StrMatch("request", dt) IS ERR::Okay)      datatype = DATA::REQUEST;
+      else if (StrMatch("receipt", dt) IS ERR::Okay)      datatype = DATA::RECEIPT;
+      else if (StrMatch("file", dt) IS ERR::Okay)         datatype = DATA::FILE;
+      else if (StrMatch("content", dt) IS ERR::Okay)      datatype = DATA::CONTENT;
       else {
          luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
@@ -274,7 +274,7 @@ static int input_request_item(lua_State *Lua)
       pf::Log log("input.request_item");
       log.branch();
       auto error = ActionMsg(AC_DataFeed, source_id, &dc);
-      if (error) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+      if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
    }
 
    return 0;
@@ -306,10 +306,10 @@ static int input_subscribe(lua_State *Lua)
       return 0;
    }
 
-   ERROR error;
+   ERR error;
    if (!modDisplay) {
       pf::SwitchContext context(modFluid);
-      if ((error = objModule::load("display", &modDisplay, &DisplayBase))) {
+      if ((error = objModule::load("display", &modDisplay, &DisplayBase)) != ERR::Okay) {
          luaL_error(Lua, "Failed to load display module.");
          return 0;
       }
@@ -344,7 +344,7 @@ static int input_subscribe(lua_State *Lua)
       prv->InputList = input;
 
       auto callback = FUNCTION(consume_input_events);
-      if ((error = gfxSubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle))) goto failed;
+      if ((error = gfxSubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle)) != ERR::Okay) goto failed;
 
       return 1;
    }

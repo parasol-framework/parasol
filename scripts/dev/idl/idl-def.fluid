@@ -141,6 +141,10 @@ function enum(Prefix, Options, ...)
          for _, name in ipairs(val:split('|')) do
             list[name] = inc
          end
+      elseif (type(enum_def) == 'table') then -- The client provided a table of fixed values
+         for name, client_val in pairs(enum_def) do
+            list[name] = client_val
+         end
       else
          error("Invalid flag type for '" .. Prefix .. "', expected string, got '" .. type(enum_def) .. "'")
       end

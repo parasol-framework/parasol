@@ -122,72 +122,72 @@ struct docHideIndex { CSTRING Name;  };
 struct docEdit { CSTRING Name; LONG Flags;  };
 struct docReadContent { DATA Format; LONG Start; LONG End; STRING Result;  };
 
-INLINE ERROR docFeedParser(APTR Ob, CSTRING String) noexcept {
+INLINE ERR docFeedParser(APTR Ob, CSTRING String) noexcept {
    struct docFeedParser args = { String };
    return(Action(MT_docFeedParser, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docSelectLink(APTR Ob, LONG Index, CSTRING Name) noexcept {
+INLINE ERR docSelectLink(APTR Ob, LONG Index, CSTRING Name) noexcept {
    struct docSelectLink args = { Index, Name };
    return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) noexcept {
+INLINE ERR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) noexcept {
    struct docFindIndex args = { Name, (LONG)0, (LONG)0 };
-   ERROR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
    if (Start) *Start = args.Start;
    if (End) *End = args.End;
    return(error);
 }
 
-INLINE ERROR docInsertXML(APTR Ob, CSTRING XML, LONG Index) noexcept {
+INLINE ERR docInsertXML(APTR Ob, CSTRING XML, LONG Index) noexcept {
    struct docInsertXML args = { XML, Index };
    return(Action(MT_docInsertXML, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docRemoveContent(APTR Ob, LONG Start, LONG End) noexcept {
+INLINE ERR docRemoveContent(APTR Ob, LONG Start, LONG End) noexcept {
    struct docRemoveContent args = { Start, End };
    return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Char, LONG Preformat) noexcept {
+INLINE ERR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Char, LONG Preformat) noexcept {
    struct docInsertText args = { Text, Index, Char, Preformat };
    return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docCallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) noexcept {
+INLINE ERR docCallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) noexcept {
    struct docCallFunction args = { Function, Args, TotalArgs };
    return(Action(MT_docCallFunction, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docAddListener(APTR Ob, DRT Trigger, FUNCTION * Function) noexcept {
+INLINE ERR docAddListener(APTR Ob, DRT Trigger, FUNCTION * Function) noexcept {
    struct docAddListener args = { Trigger, Function };
    return(Action(MT_docAddListener, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docRemoveListener(APTR Ob, LONG Trigger, FUNCTION * Function) noexcept {
+INLINE ERR docRemoveListener(APTR Ob, LONG Trigger, FUNCTION * Function) noexcept {
    struct docRemoveListener args = { Trigger, Function };
    return(Action(MT_docRemoveListener, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docShowIndex(APTR Ob, CSTRING Name) noexcept {
+INLINE ERR docShowIndex(APTR Ob, CSTRING Name) noexcept {
    struct docShowIndex args = { Name };
    return(Action(MT_docShowIndex, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docHideIndex(APTR Ob, CSTRING Name) noexcept {
+INLINE ERR docHideIndex(APTR Ob, CSTRING Name) noexcept {
    struct docHideIndex args = { Name };
    return(Action(MT_docHideIndex, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docEdit(APTR Ob, CSTRING Name, LONG Flags) noexcept {
+INLINE ERR docEdit(APTR Ob, CSTRING Name, LONG Flags) noexcept {
    struct docEdit args = { Name, Flags };
    return(Action(MT_docEdit, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docReadContent(APTR Ob, DATA Format, LONG Start, LONG End, STRING * Result) noexcept {
+INLINE ERR docReadContent(APTR Ob, DATA Format, LONG Start, LONG End, STRING * Result) noexcept {
    struct docReadContent args = { Format, Start, End, (STRING)0 };
-   ERROR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
@@ -213,111 +213,111 @@ class objDocument : public BaseClass {
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.
    DCF      Flags;                  // Optional flags that affect object behaviour.
    LONG     PageHeight;             // Measures the page height of the document, in pixels.
-   ERROR    Error;                  // The most recently generated error code.
+   ERR      Error;                  // The most recently generated error code.
 
    // Action stubs
 
-   inline ERROR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERROR clear() noexcept { return Action(AC_Clear, this, NULL); }
-   inline ERROR clipboard(CLIPMODE Mode) noexcept {
+   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERROR draw() noexcept { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR enable() noexcept { return Action(AC_Enable, this, NULL); }
-   inline ERROR focus() noexcept { return Action(AC_Focus, this, NULL); }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
+   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
+   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
+      auto error = Action(AC_GetVar, this, &args);
+      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() noexcept { return InitObject(this); }
-   inline ERROR refresh() noexcept { return Action(AC_Refresh, this, NULL); }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
+   inline ERR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
+   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
 
    // Customised field setting
 
-   inline ERROR setViewport(objVectorViewport * Value) noexcept {
+   inline ERR setViewport(objVectorViewport * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setFocus(objVectorViewport * Value) noexcept {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setFocus(objVectorViewport * Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Focus = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setTabFocus(OBJECTID Value) noexcept {
+   inline ERR setTabFocus(OBJECTID Value) noexcept {
       this->TabFocusID = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setEventMask(const DEF Value) noexcept {
+   inline ERR setEventMask(const DEF Value) noexcept {
       this->EventMask = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFlags(const DCF Value) noexcept {
+   inline ERR setFlags(const DCF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setClientScript(OBJECTPTR Value) noexcept {
+   inline ERR setClientScript(OBJECTPTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
-   inline ERROR setEventCallback(FUNCTION Value) noexcept {
+   inline ERR setEventCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) noexcept {
+   template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setOrigin(T && Value) noexcept {
+   template <class T> inline ERR setOrigin(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setPageWidth(const LONG Value) noexcept {
+   inline ERR setPageWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   template <class T> inline ERROR setPretext(T && Value) noexcept {
+   template <class T> inline ERR setPretext(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);

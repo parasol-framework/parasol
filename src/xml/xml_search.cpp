@@ -24,19 +24,19 @@
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
-ERROR extXML::find_tag(CSTRING XPath)
+ERR extXML::find_tag(CSTRING XPath)
 {
    pf::Log log(__FUNCTION__);
    LONG i;
 
    if ((!XPath[0]) or (XPath[0] != '/')) {
       log.warning("Missing '/' prefix in '%s'.", XPath);
-      return ERR_StringFormat;
+      return ERR::StringFormat;
    }
 
    if ((!CursorTags) or (CursorTags->empty())) {
       log.warning("Sanity check failed; CursorTags not defined or empty.");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    bool deepscan = false;
@@ -88,12 +88,12 @@ ERROR extXML::find_tag(CSTRING XPath)
                    (XPath[len] IS '_')) len++;
 
             attribname.assign(XPath, pos, len - pos);
-            if (attribname.empty()) return ERR_Syntax;
+            if (attribname.empty()) return ERR::Syntax;
 
             pos = len;
             while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++; // Skip whitespace
 
-            if (XPath[pos] != '=') return ERR_Syntax;
+            if (XPath[pos] != '=') return ERR::Syntax;
             pos++;
          }
          else pos++; // Skip '=' (indicates matching on content)
@@ -118,14 +118,14 @@ ERROR extXML::find_tag(CSTRING XPath)
                end++;
             }
 
-            if (XPath[end] != quote) return ERR_Syntax; // Quote not terminated correctly
+            if (XPath[end] != quote) return ERR::Syntax; // Quote not terminated correctly
 
             attribvalue.assign(XPath, pos, end - pos);
 
             pos = end + 1;
 
             if (escattrib) {
-               for (i=0; i < LONG(attribvalue.size()); i++) {
+               for (i=0; i < std::ssize(attribvalue); i++) {
                   if (attribvalue[i] != '\\') continue;
                   auto ch = attribvalue[i+1];
                   if ((ch IS '*') or (ch IS quote) or (ch IS '\\')) {
@@ -145,10 +145,10 @@ ERROR extXML::find_tag(CSTRING XPath)
             pos = end;
          }
       }
-      else return ERR_Syntax;
+      else return ERR::Syntax;
 
       while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++; // Skip whitespace
-      if (XPath[pos] != endchar) return ERR_Syntax;
+      if (XPath[pos] != endchar) return ERR::Syntax;
       pos++;
    }
 
@@ -157,13 +157,13 @@ ERROR extXML::find_tag(CSTRING XPath)
 
    for (; Cursor != CursorTags->end(); Cursor++) {
       bool match = false;
-      if (!StrCompare(tagname, Cursor->name(), 0, tagwild)) { // Desired tag name found.
+      if (StrCompare(tagname, Cursor->name(), 0, tagwild) IS ERR::Okay) { // Desired tag name found.
          if ((!attribname.empty()) or (!attribvalue.empty())) {
             if (Cursor->name()) {
                if (!attribname.empty()) { // Match by named attribute value
-                  for (LONG a=1; a < LONG(Cursor->Attribs.size()); ++a) {
-                     if ((!StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size())) and
-                         (!StrCompare(Cursor->Attribs[a].Value, attribvalue, 0, cmpflags))) {
+                  for (LONG a=1; a < std::ssize(Cursor->Attribs); ++a) {
+                     if ((StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size()) IS ERR::Okay) and
+                         (StrCompare(Cursor->Attribs[a].Value, attribvalue, 0, cmpflags) IS ERR::Okay)) {
                         match = true;
                         break;
                      }
@@ -171,7 +171,7 @@ ERROR extXML::find_tag(CSTRING XPath)
                }
                else if (!attribvalue.empty()) {
                   if ((!Cursor->Children.empty()) and (Cursor->Children[0].Attribs[0].isContent())) {
-                     if (!StrCompare(Cursor->Children[0].Attribs[0].Value, attribvalue, 0, cmpflags)) {
+                     if (StrCompare(Cursor->Children[0].Attribs[0].Value, attribvalue, 0, cmpflags) IS ERR::Okay) {
                         match = true;
                      }
                   }
@@ -186,8 +186,8 @@ ERROR extXML::find_tag(CSTRING XPath)
                CursorTags = &Cursor->Children;
                Cursor     = Cursor->Children.begin();
 
-               ERROR error = find_tag(XPath);
-               if ((!error) and (!Callback.defined())) return ERR_Okay;
+               ERR error = find_tag(XPath);
+               if ((error IS ERR::Okay) and (!Callback.defined())) return ERR::Okay;
 
                Cursor     = save_cursor;
                CursorTags = save_tags;
@@ -205,11 +205,11 @@ ERROR extXML::find_tag(CSTRING XPath)
          if (XPath[pos]) Attrib.assign(XPath + pos + 2);
          else Attrib.clear();
 
-         if (!Callback.defined()) return ERR_Okay; // End of query, successfully found tag
+         if (!Callback.defined()) return ERR::Okay; // End of query, successfully found tag
 
-         ERROR error = ERR_Okay;
+         ERR error = ERR::Okay;
          if (Callback.isC()) {
-            auto routine = (ERROR (*)(extXML *, LONG, CSTRING, APTR))Callback.StdC.Routine;
+            auto routine = (ERR (*)(extXML *, LONG, CSTRING, APTR))Callback.StdC.Routine;
             error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.StdC.Meta);
          }
          else if (Callback.isScript()) {
@@ -219,13 +219,13 @@ ERROR extXML::find_tag(CSTRING XPath)
                { "Attrib", Attrib.empty() ? CSTRING(NULL) : Attrib.c_str() }
             };
             auto script = Callback.Script.Script;
-            if (scCallback(script, Callback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+            if (scCallback(script, Callback.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
          }
-         else return ERR_InvalidValue;
+         else return ERR::InvalidValue;
 
-         if (error IS ERR_Terminate) return ERR_Terminate;
+         if (error IS ERR::Terminate) return ERR::Terminate;
 
-         if (error) return error;
+         if (error != ERR::Okay) return error;
 
          // Searching will continue because the client specified a callback...
       }
@@ -236,16 +236,16 @@ ERROR extXML::find_tag(CSTRING XPath)
          CursorTags = &Cursor->Children;
          Cursor     = Cursor->Children.begin();
 
-         ERROR error = find_tag(XPath+pos);
-         if ((!error) and (!Callback.defined())) return ERR_Okay;
+         ERR error = find_tag(XPath+pos);
+         if ((error IS ERR::Okay) and (!Callback.defined())) return ERR::Okay;
 
-         if (error IS ERR_Terminate) return ERR_Terminate;
+         if (error IS ERR::Terminate) return ERR::Terminate;
 
          Cursor     = save_cursor;
          CursorTags = save_tags;
       }
    }
 
-   if (Callback.Type) return ERR_Okay;
-   else return ERR_Search;
+   if (Callback.Type) return ERR::Okay;
+   else return ERR::Search;
 }

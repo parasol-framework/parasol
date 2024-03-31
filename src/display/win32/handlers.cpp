@@ -76,7 +76,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
    if (!glPointerID) {
-      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
 
    struct dcDeviceInput joy;
@@ -150,7 +150,7 @@ void MsgButtonPress(LONG button, LONG State)
          feed.Datatype = DATA::DEVICE_INPUT;
          feed.Buffer   = &joy;
          feed.Size     = sizeof(struct dcDeviceInput) * i;
-         if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
+         if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
             glPointerID = 0;
          }
       }
@@ -168,10 +168,10 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
       extDisplay *display;
       OBJECTID display_id = surface->DisplayID;
-      if (!AccessObject(display_id, 3000, &display)) {
+      if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
          FUNCTION feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
@@ -202,7 +202,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
 {
    pf::Log log;
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
@@ -220,7 +220,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
       auto minwidth  = surface->get<LONG>(FID_MinWidth);
       auto minheight = surface->get<LONG>(FID_MinHeight);
       auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
@@ -279,27 +279,27 @@ void MsgWindowClose(OBJECTID SurfaceID)
 
       if (glWindowHooks.contains(hook)) {
          auto func = &glWindowHooks[hook];
-         ERROR result;
+         ERR result;
 
          if (func->isC()) {
             pf::SwitchContext ctx(func->StdC.Context);
-            auto callback = (ERROR (*)(OBJECTID SurfaceID, APTR))func->StdC.Routine;
+            auto callback = (ERR (*)(OBJECTID SurfaceID, APTR))func->StdC.Routine;
             result = callback(SurfaceID, func->StdC.Meta);
          }
          else if (func->isScript()) {
             ScriptArg args[] = { { "SurfaceID", SurfaceID, FDF_OBJECTID } };
-            scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
          }
-         else result = ERR_Okay;
+         else result = ERR::Okay;
 
-         if (result IS ERR_Terminate) glWindowHooks.erase(hook);
-         else if (result IS ERR_Cancelled) {
+         if (result IS ERR::Terminate) glWindowHooks.erase(hook);
+         else if (result IS ERR::Cancelled) {
             log.msg("Window closure cancelled by client.");
             return;
          }
       }
 
-      if (!CheckMemoryExists(SurfaceID)) FreeResource(SurfaceID);
+      if (CheckMemoryExists(SurfaceID) IS ERR::Okay) FreeResource(SurfaceID);
    }
 }
 

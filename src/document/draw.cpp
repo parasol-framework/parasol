@@ -34,7 +34,7 @@ static void redraw(extDocument *Self, bool Focus)
 //
 // Irrespective of the drawing method, the X/Y/W/H dimensions of the widget are updated before returning.
 
-ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *ParentVP, bc_font *Style,
+ERR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *ParentVP, bc_font *Style,
    DOUBLE &XAdvance, DOUBLE LabelWidth, bool AsViewport, DOUBLE &X, DOUBLE &Y)
 {
    if (Widget.floating_x()) {
@@ -81,7 +81,7 @@ ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVecto
             fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
          });
 
-         if (!vp) return ERR_CreateObject;
+         if (!vp) return ERR::CreateObject;
          else Widget.viewport.set(vp);
       }
 
@@ -96,7 +96,7 @@ ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVecto
             fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
          });
 
-         if (!rect) return ERR_CreateObject;
+         if (!rect) return ERR::CreateObject;
          else Widget.rect = rect;
       }
 
@@ -105,7 +105,7 @@ ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVecto
 
    if (!Widget.floating_x()) XAdvance += Widget.final_pad.left + Widget.final_pad.right + width;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -117,7 +117,7 @@ ERROR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVecto
 // relating to things like obscuration of graphics elements are considered to be the job of the VectorScene's drawing
 // functionality.
 
-ERROR layout::gen_scene_init(objVectorViewport *Viewport)
+ERR layout::gen_scene_init(objVectorViewport *Viewport)
 {
    pf::Log log(__FUNCTION__);
 
@@ -135,11 +135,11 @@ ERROR layout::gen_scene_init(objVectorViewport *Viewport)
    Self->Links.clear();
    Self->VPToEntity.clear(); // NB: Widgets are cleared and re-added because they use direct pointers to the std::vector stream
 
-   if (Self->UpdatingLayout) return ERR_NothingDone; // Drawing is disabled if the layout is being updated
+   if (Self->UpdatingLayout) return ERR::NothingDone; // Drawing is disabled if the layout is being updated
 
    if (glFonts.empty()) { // Sanity check
       log.traceWarning("Failed to load a default font.");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    #ifdef GUIDELINES // Make clip regions visible
@@ -153,7 +153,7 @@ ERROR layout::gen_scene_init(objVectorViewport *Viewport)
       }
    #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segment> &Segments)
@@ -295,7 +295,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   else if (stack_list.top()->type IS bc_list::BULLET) {
                      if (!para.icon.empty()) {
                         const DOUBLE radius = segment.area.Height * 0.2;
-                        const DOUBLE avail_space = segment.area.Height - segment.descent;
                         const DOUBLE cy = y - (font->metrics.Ascent * 0.5);
                      
                         para.icon->setFields(
@@ -496,7 +495,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                gen_scene_graph(*button.viewport, button.segments);
                
                DOUBLE wx, wy;
-               if (!position_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
+               if (position_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy) IS ERR::Okay) {
                   Self->VPToEntity.emplace(button.viewport.id, vp_to_entity { &button });
                }
                break;
@@ -509,7 +508,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.label.empty()) {
                   if (checkbox.label_pos) {
                      // Right-sided labels can be integrated with the widget so that clicking affects state.
-                     if (!position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy)) {
+                     if (position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy) IS ERR::Okay) {
                         DOUBLE x, y;
                         auto font = stack_style.top()->get_font();
                         const DOUBLE avail_space = checkbox.final_height - font->metrics.Descent;
@@ -540,7 +539,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      auto font = stack_style.top()->get_font();
                      auto x_label = x_advance;
                      x_advance += checkbox.label_width + checkbox.label_pos;
-                     if (!position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
+                     if (position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy) IS ERR::Okay) {
                         const DOUBLE avail_space = checkbox.final_height - font->metrics.Descent;
                         DOUBLE y = wy + avail_space - ((avail_space - font->metrics.Height) * 0.5);
 

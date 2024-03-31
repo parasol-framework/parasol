@@ -27,11 +27,11 @@ class extFloodFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR FLOODFX_NewObject(extFloodFX *Self, APTR Void)
+static ERR FLOODFX_NewObject(extFloodFX *Self, APTR Void)
 {
    Self->Opacity = 1.0;
    Self->SourceType = VSF::NONE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -40,7 +40,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
+static ERR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
 {
    auto &filter = Self->Filter;
 
@@ -71,7 +71,7 @@ static ERROR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
    solid_render.color(col);
    agg::render_scanlines(raster, scanline, solid_render);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -85,14 +85,14 @@ The colour is complemented by the #Opacity field.
 
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
+static ERR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->Colour;
    *Elements = 4;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
+static ERR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
 {
    pf::Log log;
    if (Value) {
@@ -107,10 +107,10 @@ static ERROR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
          Self->ColourRGB.Blue  = F2T(Self->Colour.Blue * 255.0);
          Self->ColourRGB.Alpha = F2T(Self->Colour.Alpha * 255.0);
       }
-      else return log.warning(ERR_InvalidValue);
+      else return log.warning(ERR::InvalidValue);
    }
    else Self->Colour.Alpha = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -120,20 +120,20 @@ Opacity: Modifies the opacity of the flood colour.
 
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
+static ERR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
 {
    *Value = Self->Opacity;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
+static ERR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
 {
    pf::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {
       Self->Opacity = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }
 
 /*********************************************************************************************************************
@@ -144,14 +144,14 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_GET_XMLDef(extFloodFX *Self, STRING *Value)
+static ERR FLOODFX_GET_XMLDef(extFloodFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
    stream << "<feFlood opacity=\"" << Self->Opacity << "\"/>";
 
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -167,7 +167,7 @@ static const FieldArray clFloodFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_floodfx(void)
+ERR init_floodfx(void)
 {
    clFloodFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -179,5 +179,5 @@ ERROR init_floodfx(void)
       fl::Size(sizeof(extFloodFX)),
       fl::Path(MOD_PATH));
 
-   return clFloodFX ? ERR_Okay : ERR_AddClass;
+   return clFloodFX ? ERR::Okay : ERR::AddClass;
 }

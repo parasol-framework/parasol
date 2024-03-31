@@ -20,22 +20,22 @@ used for all interactions with this service.
 using namespace display;
 #endif
 
-static ERROR GET_ButtonOrder(extPointer *, CSTRING *);
-static ERROR GET_ButtonState(extPointer *, LONG *);
+static ERR GET_ButtonOrder(extPointer *, CSTRING *);
+static ERR GET_ButtonState(extPointer *, LONG *);
 
-static ERROR SET_ButtonOrder(extPointer *, CSTRING);
-static ERROR SET_MaxSpeed(extPointer *, LONG);
-static ERROR PTR_SET_X(extPointer *, DOUBLE);
-static ERROR PTR_SET_Y(extPointer *, DOUBLE);
+static ERR SET_ButtonOrder(extPointer *, CSTRING);
+static ERR SET_MaxSpeed(extPointer *, LONG);
+static ERR PTR_SET_X(extPointer *, DOUBLE);
+static ERR PTR_SET_Y(extPointer *, DOUBLE);
 
 #ifdef _WIN32
-static ERROR PTR_SetWinCursor(extPointer *, struct ptrSetWinCursor *);
+static ERR PTR_SetWinCursor(extPointer *, struct ptrSetWinCursor *);
 static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { NULL, 0 } };
 #endif
 
 #ifdef __xwindows__
-static ERROR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
-static ERROR PTR_UngrabX11Pointer(extPointer *, APTR);
+static ERR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
+static ERR PTR_UngrabX11Pointer(extPointer *, APTR);
 static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 } };
 #endif
 
@@ -43,7 +43,7 @@ static LONG glDefaultSpeed = 160;
 static DOUBLE glDefaultAcceleration = 0.8;
 static TIMER glRepeatTimer = 0;
 
-static ERROR repeat_timer(extPointer *, LARGE, LARGE);
+static ERR repeat_timer(extPointer *, LARGE, LARGE);
 static void set_pointer_defaults(extPointer *);
 static LONG examine_chain(extPointer *, LONG, SURFACELIST &, LONG);
 static bool get_over_object(extPointer *);
@@ -75,11 +75,11 @@ inline void add_input(CSTRING Debug, InputEvent &input, JTYPE Flags, OBJECTID Re
 
 //********************************************************************************************************************
 #ifdef _WIN32
-static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
+static ERR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 {
    winSetCursor(GetWinCursor(Args->Cursor));
    Self->CursorID = Args->Cursor;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 #endif
 
@@ -87,7 +87,7 @@ static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 // Private action used to grab the window cursor under X11.  Can only be executed by the task that owns the pointer.
 
 #ifdef __xwindows__
-static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
+static ERR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
 {
    APTR xwin;
    OBJECTPTR surface;
@@ -99,13 +99,13 @@ static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args
       if (xwin) XGrabPointer(XDisplay, (Window)xwin, True, 0, GrabModeAsync, GrabModeAsync, (Window)xwin, None, CurrentTime);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
+static ERR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
 {
    XUngrabPointer(XDisplay, CurrentTime);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 #endif
 
@@ -124,16 +124,16 @@ flag for that button.
 
 *********************************************************************************************************************/
 
-static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
+static ERR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (Args->Datatype IS DATA::DEVICE_INPUT) {
       if (auto input = (struct dcDeviceInput *)Args->Buffer) {
          for (LONG i=0; i < std::ssize(Self->Buttons); i++) {
-            if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
+            if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR::Okay)) Self->Buttons[i].LastClicked = 0;
          }
 
          for (LONG i=sizeof(struct dcDeviceInput); i <= Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
@@ -149,9 +149,9 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
          }
       }
    }
-   else return log.warning(ERR_WrongType);
+   else return log.warning(ERR::WrongType);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -200,7 +200,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
       if (Self->Buttons[bi].LastClicked) {
          LONG absx, absy;
-         if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
+         if (get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0) IS ERR::Okay) {
             uiflags |= Self->DragSourceID ? JTYPE::DRAG_ITEM : JTYPE::NIL;
 
             if ((std::abs(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
@@ -233,8 +233,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          modal_id = 0;
       }
       else { // Check if the OverObject is one of the children of modal_id.
-         ERROR error = gfxCheckIfChild(modal_id, Self->OverObjectID);
-         if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
+         ERR error = gfxCheckIfChild(modal_id, Self->OverObjectID);
+         if ((error IS ERR::True) or (error IS ERR::LimitedSuccess)) modal_id = 0;
       }
    }
 
@@ -405,7 +405,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       // the pointer is locked.
 
       if (Self->AnchorID) {
-         if (CheckObjectExists(Self->AnchorID) != ERR_Okay) {
+         if (CheckObjectExists(Self->AnchorID) != ERR::Okay) {
             Self->AnchorID = 0;
          }
       }
@@ -425,7 +425,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       }
       else {
          struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
-         NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
+         NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR::Okay);
 
          // Recalculate the OverObject due to cursor movement
 
@@ -444,7 +444,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             DOUBLE sy = Self->Y + DRAG_YOFFSET;
             if (Self->DragParent) {
                LONG absx, absy;
-               if (!gfxGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL)) {
+               if (gfxGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL) IS ERR::Okay) {
                   sx -= absx;
                   sy -= absy;
                }
@@ -454,7 +454,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          }
 
          LONG absx, absy;
-         if (!get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
+         if (get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0) IS ERR::Okay) {
             auto uiflags = Self->DragSourceID ? JTYPE::DRAG_ITEM : JTYPE::NIL;
 
             // Send the movement message to the last clicked object
@@ -508,7 +508,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
 //********************************************************************************************************************
 
-static ERROR PTR_Free(extPointer *Self, APTR Void)
+static ERR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
@@ -521,7 +521,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
       ReleaseObject(object);
    }
 */
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -530,7 +530,7 @@ Hide: Hides the pointer from the display.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PTR_Hide(extPointer *Self, APTR Void)
+static ERR PTR_Hide(extPointer *Self, APTR Void)
 {
    pf::Log log;
 
@@ -541,7 +541,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       APTR xwin;
       OBJECTPTR surface;
 
-      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
+      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
          surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
@@ -552,12 +552,12 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
    #endif
 
    Self->Flags &= ~PF::VISIBLE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR PTR_Init(extPointer *Self, APTR Void)
+static ERR PTR_Init(extPointer *Self, APTR Void)
 {
    pf::Log log;
 
@@ -584,12 +584,12 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
          fl::BytesPerPixel(4),
          fl::Flags(BMF::ALPHA_CHANNEL)))) {
    }
-   else log.warning(ERR_NewObject);
+   else log.warning(ERR::NewObject);
 
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -603,12 +603,12 @@ change).
 
 *********************************************************************************************************************/
 
-static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
+static ERR PTR_Move(extPointer *Self, struct acMove *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_Args);
-   if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR_Okay;
+   if (!Args) return log.warning(ERR::Args);
+   if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR::Okay;
    return acMoveToPoint(Self, Self->X + Args->DeltaX, Self->Y + Args->DeltaY, 0, MTF::X|MTF::Y);
 }
 
@@ -626,15 +626,15 @@ The client can subscribe to this action to listen for changes to the cursor's po
 
 *********************************************************************************************************************/
 
-static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
+static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs)|ERF_Notified;
+   if (!Args) return log.warning(ERR::NullArgs)|ERR::Notified;
 /*
    if ((!(Args->Flags & MTF::X)) or ((Args->Flags & MTF::X) and (Self->X IS Args->X))) {
       if ((!(Args->Flags & MTF::Y)) or ((Args->Flags & MTF::Y) and (Self->Y IS Args->Y))) {
-         return ERR_Okay|ERF_Notified;
+         return ERR::Okay|ERR::Notified;
       }
    }
 */
@@ -659,7 +659,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #elif _WIN32
    OBJECTPTR surface;
 
-   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
+   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR::Okay) {
       if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = Args->X;
       if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = Args->Y;
       if (Self->X < 0) Self->X = 0;
@@ -679,19 +679,19 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    // Customised notification (ensures that both X and Y coordinates are reported).
 
    struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
-   NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
+   NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR::Okay);
 
-   return ERR_Okay|ERF_Notified;
+   return ERR::Okay|ERR(ERR::Notified);
 }
 
 //********************************************************************************************************************
 
-static ERROR PTR_NewObject(extPointer *Self, APTR Void)
+static ERR PTR_NewObject(extPointer *Self, APTR Void)
 {
    Self->CursorID = PTC::DEFAULT;
    Self->ClickSlop = 2;
    set_pointer_defaults(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -700,13 +700,13 @@ Refresh: Refreshes the pointer's cursor status.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PTR_Refresh(extPointer *Self, APTR Void)
+static ERR PTR_Refresh(extPointer *Self, APTR Void)
 {
    // Calling OverObject will refresh the cursor image from the underlying surface object.  Incidentally, the point of
    // all this is to satisfy the Surface class' need to have the pointer refreshed if a surface's cursor ID is changed.
 
    get_over_object(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -715,14 +715,14 @@ Reset: Resets the pointer settings back to the default.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PTR_Reset(extPointer *Self, APTR Void)
+static ERR PTR_Reset(extPointer *Self, APTR Void)
 {
    Self->Speed        = 150;
    Self->Acceleration = 0.50;
    Self->DoubleClick  = 0.30;
    Self->MaxSpeed     = 100;
    Self->WheelSpeed   = DEFAULT_WHEELSPEED;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -731,11 +731,11 @@ SaveToObject: Saves the current pointer settings to another object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
+static ERR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
    auto config = objConfig::create { };
    if (config.ok()) {
@@ -748,7 +748,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
       config->saveToObject(Args->Dest);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -757,7 +757,7 @@ Show: Shows the pointer if it is not already on the display.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PTR_Show(extPointer *Self, APTR Void)
+static ERR PTR_Show(extPointer *Self, APTR Void)
 {
    pf::Log log;
 
@@ -780,7 +780,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
    #endif
 
    Self->Flags |= PF::VISIBLE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -823,19 +823,19 @@ Changes to this field will have an immediate impact on the pointing device's beh
 
 *********************************************************************************************************************/
 
-static ERROR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
+static ERR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
 {
    *Value = Self->ButtonOrder;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
+static ERR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 {
    pf::Log log;
 
    log.msg("%s", Value);
 
-   if (!Value) return ERR_Okay;
+   if (!Value) return ERR::Okay;
 
    // Assign the buttons
 
@@ -871,7 +871,7 @@ static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
       Self->ButtonOrderFlags[i] = 1<<j;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -885,7 +885,7 @@ respectively.
 
 *********************************************************************************************************************/
 
-static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
+static ERR GET_ButtonState(extPointer *Self, LONG *Value)
 {
    LONG i;
    LONG state = 0;
@@ -894,7 +894,7 @@ static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
    }
 
    *Value = state;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -955,12 +955,12 @@ movement at larger offsets than what is normal).  You can also set the value to 
 
 *********************************************************************************************************************/
 
-static ERROR SET_MaxSpeed(extPointer *Self, LONG Value)
+static ERR SET_MaxSpeed(extPointer *Self, LONG Value)
 {
    if (Value < 2) Self->MaxSpeed = 2;
    else if (Value > 200) Self->MaxSpeed = 200;
    else Self->MaxSpeed = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1022,11 +1022,11 @@ X: The horizontal position of the pointer within its parent display.
 
 *********************************************************************************************************************/
 
-static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
+static ERR PTR_SET_X(extPointer *Self, DOUBLE Value)
 {
    if (Self->initialised()) acMoveToPoint(Self, Value, 0, 0, MTF::X);
    else Self->X = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1037,11 +1037,11 @@ Y: The vertical position of the pointer within its parent display.
 
 *********************************************************************************************************************/
 
-static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
+static ERR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 {
    if (Self->initialised()) acMoveToPoint(Self, 0, Value, 0, MTF::Y);
    else Self->Y = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1060,12 +1060,12 @@ static void set_pointer_defaults(extPointer *Self)
    if (config.ok()) {
       DOUBLE dbl;
       CSTRING str;
-      if (!cfgRead(*config, "POINTER", "Speed", &dbl)) speed = dbl;
-      if (!cfgRead(*config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
-      if (!cfgRead(*config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
-      if (!cfgRead(*config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
-      if (!cfgRead(*config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
-      if (!cfgReadValue(*config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
+      if (cfgRead(*config, "POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
+      if (cfgRead(*config, "POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
+      if (cfgRead(*config, "POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
+      if (cfgRead(*config, "POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
+      if (cfgRead(*config, "POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
+      if (cfgReadValue(*config, "POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;
@@ -1085,7 +1085,7 @@ static bool get_over_object(extPointer *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR_Okay)) Self->SurfaceID = 0;
+   if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR::Okay)) Self->SurfaceID = 0;
 
    bool changed = false;
 
@@ -1182,7 +1182,7 @@ static LONG examine_chain(extPointer *Self, LONG Index, SURFACELIST &List, LONG 
 //********************************************************************************************************************
 // This timer is used for handling repeat-clicks.
 
-static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
+static ERR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1201,7 +1201,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
                input.X = Self->OverX;
                input.Y = Self->OverY;
             }
-            else if (!get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
+            else if (get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0) IS ERR::Okay) {
                input.X = Self->X - surface_x;
                input.Y = Self->Y - surface_y;
             }
@@ -1229,8 +1229,8 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
       }
    }
 
-   if (unsub) return ERR_Terminate;
-   else return ERR_Okay;
+   if (unsub) return ERR::Terminate;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1332,7 +1332,7 @@ static const FieldArray clPointerFields[] = {
 
 //********************************************************************************************************************
 
-ERROR create_pointer_class(void)
+ERR create_pointer_class(void)
 {
    clPointer = objMetaClass::create::global(
       fl::BaseClassID(ID_POINTER),
@@ -1345,5 +1345,5 @@ ERROR create_pointer_class(void)
       fl::Size(sizeof(extPointer)),
       fl::Path(MOD_PATH));
 
-   return clPointer ? ERR_Okay : ERR_AddClass;
+   return clPointer ? ERR::Okay : ERR::AddClass;
 }

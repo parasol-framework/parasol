@@ -202,20 +202,20 @@ class extConvolveFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
+static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 {
-   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
 
    const LONG canvas_width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
    const LONG canvas_height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
-   if (canvas_width * canvas_height > 4096 * 4096) return ERR_Failed; // Bail on really large bitmaps.
+   if (canvas_width * canvas_height > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
 
    UBYTE *output = new (std::nothrow) UBYTE[canvas_width * canvas_height * Self->Target->BytesPerPixel];
-   if (!output) return ERR_Memory;
+   if (!output) return ERR::Memory;
 
    objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToLinear(inBmp);
    bmpPremultiply(inBmp);
@@ -247,12 +247,12 @@ static ERROR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToRGB(inBmp);
 
    bmpDemultiply(inBmp);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
+static ERR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
 {
    pf::Log log;
 
@@ -260,14 +260,14 @@ static ERROR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
 
    if (Self->MatrixColumns * Self->MatrixRows > MAX_DIM * MAX_DIM) {
       log.warning("Size of matrix exceeds internally imposed limits.");
-      return ERR_BufferOverflow;
+      return ERR::BufferOverflow;
    }
 
    const LONG filter_size = Self->MatrixColumns * Self->MatrixRows;
 
    if (Self->MatrixSize != filter_size) {
       log.warning("Matrix size of %d does not match the filter size of %dx%d", Self->MatrixSize, Self->MatrixColumns, Self->MatrixRows);
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    // Use client-provided tx/ty values, otherwise default according to the SVG standard.
@@ -289,23 +289,23 @@ static ERROR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
 
    log.trace("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", Self->MatrixColumns, Self->MatrixRows, Self->Divisor, Self->Bias);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_Free(extConvolveFX *Self, APTR Void)
+static ERR CONVOLVEFX_Free(extConvolveFX *Self, APTR Void)
 {
    Self->~extConvolveFX();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_NewObject(extConvolveFX *Self, APTR Void)
+static ERR CONVOLVEFX_NewObject(extConvolveFX *Self, APTR Void)
 {
    new (Self) extConvolveFX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -320,16 +320,16 @@ clamped to 0 or 1.  The default is 0.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_Bias(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_Bias(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->Bias;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_Bias(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_Bias(extConvolveFX *Self, DOUBLE Value)
 {
    Self->Bias = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -344,18 +344,18 @@ exception that if the sum is zero, then the divisor is set to 1.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->Divisor;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, DOUBLE Value)
 {
    pf::Log log;
-   if (Value <= 0) return log.warning(ERR_InvalidValue);
+   if (Value <= 0) return log.warning(ERR::InvalidValue);
    Self->Divisor = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -368,16 +368,16 @@ when the #Matrix is positioned at or near the edge of the input image.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_EdgeMode(extConvolveFX *Self, EM *Value)
+static ERR CONVOLVEFX_GET_EdgeMode(extConvolveFX *Self, EM *Value)
 {
    *Value = Self->EdgeMode;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_EdgeMode(extConvolveFX *Self, EM Value)
+static ERR CONVOLVEFX_SET_EdgeMode(extConvolveFX *Self, EM Value)
 {
    Self->EdgeMode = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -390,23 +390,23 @@ A list of numbers that make up the kernel matrix for the convolution.  The numbe
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, DOUBLE **Value, LONG *Elements)
+static ERR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, DOUBLE **Value, LONG *Elements)
 {
    *Elements = Self->MatrixSize;
    *Value    = Self->Matrix;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elements)
+static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elements)
 {
    pf::Log log;
 
    if ((Elements > 0) and (Elements <= ARRAYSIZE(Self->Matrix))) {
       Self->MatrixSize = Elements;
       CopyMemory(Value, Self->Matrix, sizeof(DOUBLE) * Elements);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_InvalidValue);
+   else return log.warning(ERR::InvalidValue);
 }
 
 /*********************************************************************************************************************
@@ -420,19 +420,19 @@ the impact on performance.  The default value is 3.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->MatrixRows;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, LONG Value)
 {
    pf::Log log;
-   if (Value <= 0) return log.warning(ERR_InvalidValue);
+   if (Value <= 0) return log.warning(ERR::InvalidValue);
 
    Self->MatrixRows = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -446,19 +446,19 @@ the impact on performance.  The default value is 3.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->MatrixColumns;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, LONG Value)
 {
    pf::Log log;
-   if (Value <= 0) return log.warning(ERR_InvalidValue);
+   if (Value <= 0) return log.warning(ERR::InvalidValue);
 
    Self->MatrixColumns = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -468,16 +468,16 @@ PreserveAlpha: If TRUE, the alpha channel is protected from the effects of the c
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_PreserveAlpha(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_PreserveAlpha(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->PreserveAlpha;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_PreserveAlpha(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_PreserveAlpha(extConvolveFX *Self, LONG Value)
 {
    Self->PreserveAlpha = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -492,21 +492,21 @@ default, the convolution matrix is centered in X over each pixel of the input im
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->TargetX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, LONG Value)
 {
    if (Self->initialised()) {
       pf::Log log;
-      if ((Value < 0) or (Value >= Self->MatrixColumns)) return log.warning(ERR_OutOfRange);
+      if ((Value < 0) or (Value >= Self->MatrixColumns)) return log.warning(ERR::OutOfRange);
    }
 
    Self->TargetX = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -521,21 +521,21 @@ default, the convolution matrix is centered in Y over each pixel of the input im
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, LONG *Value)
+static ERR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->TargetY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, LONG Value)
+static ERR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, LONG Value)
 {
    if (Self->initialised()) {
       pf::Log log;
-      if ((Value < 0) or (Value >= Self->MatrixRows)) return log.warning(ERR_OutOfRange);
+      if ((Value < 0) or (Value >= Self->MatrixRows)) return log.warning(ERR::OutOfRange);
    }
 
    Self->TargetY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -555,18 +555,18 @@ aligns with the pixel grid of the kernel.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_UnitX(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_UnitX(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_UnitX(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_UnitX(extConvolveFX *Self, DOUBLE Value)
 {
-   if (Value < 0) return ERR_InvalidValue;
+   if (Value < 0) return ERR::InvalidValue;
 
    Self->UnitX = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -586,18 +586,18 @@ aligns with the pixel grid of the kernel.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_UnitY(extConvolveFX *Self, DOUBLE *Value)
+static ERR CONVOLVEFX_GET_UnitY(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CONVOLVEFX_SET_UnitY(extConvolveFX *Self, DOUBLE Value)
+static ERR CONVOLVEFX_SET_UnitY(extConvolveFX *Self, DOUBLE Value)
 {
-   if (Value < 0) return ERR_InvalidValue;
+   if (Value < 0) return ERR::InvalidValue;
 
    Self->UnitY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -608,14 +608,14 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_XMLDef(extConvolveFX *Self, STRING *Value)
+static ERR CONVOLVEFX_GET_XMLDef(extConvolveFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
    stream << "feConvolveMatrix";
 
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -647,7 +647,7 @@ static const FieldArray clConvolveFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_convolvefx(void)
+ERR init_convolvefx(void)
 {
    clConvolveFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -659,5 +659,5 @@ ERROR init_convolvefx(void)
       fl::Size(sizeof(extConvolveFX)),
       fl::Path(MOD_PATH));
 
-   return clConvolveFX ? ERR_Okay : ERR_AddClass;
+   return clConvolveFX ? ERR::Okay : ERR::AddClass;
 }

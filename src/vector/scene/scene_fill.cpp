@@ -513,7 +513,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
 
    // Redraw the pattern source if any part of the definition is marked as dirty.
    if ((check_dirty((extVector *)Pattern.Scene->Viewport)) or (!Pattern.Bitmap)) {
-      if (acDraw(&Pattern) != ERR_Okay) return;
+      if (acDraw(&Pattern) != ERR::Okay) return;
    }
 
    agg::trans_affine transform;

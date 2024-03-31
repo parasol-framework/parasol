@@ -57,7 +57,7 @@ static void generate_polygon(extVectorPoly *Vector)
 //********************************************************************************************************************
 // Converts a string of paired coordinates into a VectorPoint array.
 
-static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
+static ERR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -73,12 +73,12 @@ static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCo
       else pos++;
    }
 
-   if (count >= MAX_POINTS) return ERR_InvalidValue;
+   if (count >= MAX_POINTS) return ERR::InvalidValue;
 
    if (count >= 2) {
       LONG points = count>>1; // A point consists of 2 values.
       if (PointCount) *PointCount = points;
-      if (!AllocMemory(sizeof(VectorPoint) * count, MEM::DATA, Array)) {
+      if (AllocMemory(sizeof(VectorPoint) * count, MEM::DATA, Array) IS ERR::Okay) {
          LONG point = 0;
          LONG index = 0;
          for (LONG pos=0; (Value[pos]) and (point < points);) {
@@ -96,22 +96,22 @@ static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCo
             else pos++;
          }
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
    else {
       log.traceWarning("List of points requires a minimum of 2 number pairs.");
-      return log.warning(ERR_InvalidValue);
+      return log.warning(ERR::InvalidValue);
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
+static ERR POLYGON_Free(extVectorPoly *Self, APTR Void)
 {
    if (Self->Points) { FreeResource(Self->Points); Self->Points = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -120,15 +120,15 @@ Move: Moves a polygon to a new position.
 -END-
 *********************************************************************************************************************/
 
-static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
+static ERR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    // If any of the polygon's points are relative then we have to cancel the move.
    for (LONG i=0; i < Self->TotalPoints; i++) {
-      if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR_InvalidValue;
+      if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR::InvalidValue;
    }
 
    for (LONG i=0; i < Self->TotalPoints; i++) {
@@ -142,7 +142,7 @@ static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
    Self->Bounds.bottom += Args->DeltaY;
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -155,17 +155,17 @@ The operation will abort if any of the points in the polygon are discovered to b
 -END-
 *********************************************************************************************************************/
 
-static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
+static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    LONG i;
 
    // Check if any of the polygon's points are relative, in which case we have to cancel the move.
    for (i=0; i < Self->TotalPoints; i++) {
-      if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR_InvalidValue;
+      if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR::InvalidValue;
    }
 
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
@@ -190,18 +190,18 @@ static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args
    }
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
+static ERR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
 {
    Self->GeneratePath = (void (*)(extVector *))&generate_polygon;
    Self->Closed       = TRUE;
    Self->TotalPoints  = 2;
-   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM::DATA, &Self->Points)) return ERR_AllocMemory;
-   return ERR_Okay;
+   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM::DATA, &Self->Points) != ERR::Okay) return ERR::AllocMemory;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -215,11 +215,11 @@ If a Width and/or Height value of zero is passed, no scaling on the associated a
 
 *********************************************************************************************************************/
 
-static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
+static ERR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    DOUBLE current_width = Self->Bounds.width();
    DOUBLE current_height = Self->Bounds.height();
@@ -232,7 +232,7 @@ static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
    }
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -244,18 +244,18 @@ the default.  If FALSE, the polygon will not be closed, which results in the equ
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
 {
    *Value = Self->Closed;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
+static ERR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
 {
    if (Value) Self->Closed = TRUE;
    else Self->Closed = FALSE;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -270,19 +270,19 @@ operations.
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
 {
    *Value = Self->PathLength;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
+static ERR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -296,27 +296,27 @@ points is required for the shape to be valid.  The &VectorPoint structure consis
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
+static ERR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
 {
    *Value = Self->Points;
    *Elements = Self->TotalPoints;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG Elements)
+static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG Elements)
 {
    if (Elements >= 2) {
       VectorPoint *points;
-      if (!AllocMemory(sizeof(VectorPoint) * Elements, MEM::DATA|MEM::NO_CLEAR, &points)) {
+      if (AllocMemory(sizeof(VectorPoint) * Elements, MEM::DATA|MEM::NO_CLEAR, &points) IS ERR::Okay) {
          CopyMemory(Value, points, sizeof(VectorPoint) * Elements);
          Self->Points = points;
          Self->TotalPoints = Elements;
          reset_path(Self);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -329,12 +329,12 @@ a comma.
 
 *********************************************************************************************************************/
 
-static ERROR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
+static ERR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
 {
-   ERROR error;
+   ERR error;
    VectorPoint *points;
    LONG total;
-   if (!(error = read_points(Self, &points, &total, Value))) {
+   if ((error = read_points(Self, &points, &total, Value)) IS ERR::Okay) {
       if (Self->Points) FreeResource(Self->Points);
       Self->Points = points;
       Self->TotalPoints = total;
@@ -352,10 +352,10 @@ TotalPoints is a read-only field value that reflects the total number of coordin
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
 {
    *Value = Self->TotalPoints;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -370,15 +370,15 @@ a percentage.
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].X;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
@@ -386,13 +386,13 @@ static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   else return log.warning(ERR::SetValueNotNumeric);
 
    if (Value->Type & FD_SCALED) Self->Points[0].XScaled = TRUE;
    else Self->Points[0].XScaled = FALSE;
    Self->Points[0].X = val;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -407,15 +407,15 @@ a percentage.
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].X;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
@@ -423,13 +423,13 @@ static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   else return log.warning(ERR::SetValueNotNumeric);
 
    if (Value->Type & FD_SCALED) Self->Points[1].XScaled = TRUE;
    else Self->Points[1].XScaled = FALSE;
    Self->Points[1].X = val;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -444,15 +444,15 @@ a percentage.
 
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].Y;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
@@ -460,13 +460,13 @@ static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   else return log.warning(ERR::SetValueNotNumeric);
 
    if (Value->Type & FD_SCALED) Self->Points[0].YScaled = TRUE;
    else Self->Points[0].YScaled = FALSE;
    Self->Points[0].Y = val;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -481,15 +481,15 @@ a percentage.
 -END-
 *********************************************************************************************************************/
 
-static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].Y;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
@@ -497,13 +497,13 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   else return log.warning(ERR::SetValueNotNumeric);
 
    if (Value->Type & FD_SCALED) Self->Points[1].YScaled = TRUE;
    else Self->Points[1].YScaled = FALSE;
    Self->Points[1].Y = val;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -533,7 +533,7 @@ static const FieldArray clPolygonFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR init_polygon(void)
+static ERR init_polygon(void)
 {
    clVectorPolygon = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
@@ -545,5 +545,5 @@ static ERROR init_polygon(void)
       fl::Size(sizeof(extVectorPoly)),
       fl::Path(MOD_PATH));
 
-   return clVectorPolygon ? ERR_Okay : ERR_AddClass;
+   return clVectorPolygon ? ERR::Okay : ERR::AddClass;
 }

@@ -25,9 +25,9 @@ static const char * glSVGTail = R"LONGSTRING(
 </svg>
 )LONGSTRING";
 
-static ERROR menu_doc_events(extDocument *, DEF, KEYVALUE *, entity *, APTR);
-static void menu_hidden(OBJECTPTR, ACTIONID, ERROR, APTR, doc_menu *);
-static void menu_lost_focus(OBJECTPTR, ACTIONID, ERROR, APTR, doc_menu *);
+static ERR menu_doc_events(extDocument *, DEF, KEYVALUE *, entity *, APTR);
+static void menu_hidden(OBJECTPTR, ACTIONID, ERR, APTR, doc_menu *);
+static void menu_lost_focus(OBJECTPTR, ACTIONID, ERR, APTR, doc_menu *);
 
 //********************************************************************************************************************
 
@@ -161,7 +161,7 @@ void doc_menu::refresh()
    DOUBLE view_height = doc_height;
 
    DISPLAYINFO *display;
-   if (!gfxGetDisplayInfo(0, &display)) {
+   if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
       if (view_height > display->Height * 0.25) view_height = display->Height * 0.25;
    }
 
@@ -174,13 +174,13 @@ void doc_menu::refresh()
       m_view->setFields(fl::Height(view_height));
 
       objVectorViewport *doc_page, *doc_view;
-      if (!m_doc->getPtr(FID_Page, &doc_page)) {
-         if (!m_doc->getPtr(FID_View, &doc_view)) {
+      if (m_doc->getPtr(FID_Page, &doc_page) IS ERR::Okay) {
+         if (m_doc->getPtr(FID_View, &doc_view) IS ERR::Okay) {
             m_scroll.init((extDocument *)CurrentContext(), doc_page, doc_view);
             m_scroll.m_auto_adjust_view_size = false;
 
             OBJECTPTR clip;
-            if (!scFindDef(m_scene, "PageClip", &clip)) {
+            if (scFindDef(m_scene, "PageClip", &clip) IS ERR::Okay) {
                doc_page->set(FID_Mask, clip);
             }
          }
@@ -239,24 +239,24 @@ void doc_menu::toggle(objVectorViewport *Relative)
 
 //********************************************************************************************************************
 
-static void menu_lost_focus(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
+static void menu_lost_focus(OBJECTPTR Surface, ACTIONID ActionID, ERR Error, APTR Args, doc_menu *Menu)
 {
-   if (Error) return;
+   if (Error != ERR::Okay) return;
    acHide(Surface);
 }
 
 //********************************************************************************************************************
 
-static void menu_hidden(OBJECTPTR Surface, ACTIONID ActionID, ERROR Error, APTR Args, doc_menu *Menu)
+static void menu_hidden(OBJECTPTR Surface, ACTIONID ActionID, ERR Error, APTR Args, doc_menu *Menu)
 {
-   if (Error) return;
+   if (Error != ERR::Okay) return;
    Menu->m_hide_time = PreciseTime();
 }
 
 //********************************************************************************************************************
 // Intercept interactions with menu items
 
-static ERROR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventData, entity *Entity, APTR Meta)
+static ERR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventData, entity *Entity, APTR Meta)
 {
    pf::Log log(__FUNCTION__);
 
@@ -265,14 +265,14 @@ static ERROR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventDat
 
       acHide(*menu->m_surface);
 
-      if (!menu->m_callback) return ERR_Okay;
+      if (!menu->m_callback) return ERR::Okay;
 
       auto kv_item = EventData->find("id");
       if ((kv_item != EventData->end()) and (!kv_item->second.empty())) {
          for (auto &item : menu->m_items) {
             if (item.id IS kv_item->second) {
                menu->m_callback(*menu, item);
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
       }
@@ -282,7 +282,7 @@ static ERROR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventDat
          for (auto &item : menu->m_items) {
             if (item.value IS kv_item->second) {
                menu->m_callback(*menu, item);
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
       }
@@ -300,5 +300,5 @@ static ERROR menu_doc_events(extDocument *DocMenu, DEF Event, KEYVALUE *EventDat
       cell->viewport->draw();
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

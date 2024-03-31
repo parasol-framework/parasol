@@ -3,11 +3,11 @@
 ** Initialise SSL for the first time.  NB: Refer to MODExpunge() for the resource termination code.
 */
 
-static ERROR sslInit(void)
+static ERR sslInit(void)
 {
    pf::Log log(__FUNCTION__);
 
-   if (ssl_init) return ERR_Okay;
+   if (ssl_init) return ERR::Okay;
 
    log.traceBranch("");
 
@@ -18,7 +18,7 @@ static ERROR sslInit(void)
    OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
 
    ssl_init = TRUE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -90,25 +90,25 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
 ** certificates.
 */
 
-static ERROR sslSetup(extNetSocket *Self)
+static ERR sslSetup(extNetSocket *Self)
 {
    STRING path;
-   ERROR error;
+   ERR error;
    pf::Log log(__FUNCTION__);
 
    if (!ssl_init) {
       error = sslInit();
-      if (error) return error;
+      if (error != ERR::Okay) return error;
    }
 
-   if (Self->CTX) return ERR_Okay;
+   if (Self->CTX) return ERR::Okay;
 
    log.traceBranch("");
 
    if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
       //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
-      if (!ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path)) {
+      if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
          if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path)) {
             FreeResource(path);
 
@@ -117,24 +117,24 @@ static ERROR sslSetup(extNetSocket *Self)
 
                if (GetResource(RES::LOG_LEVEL) > 3) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
 
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else { log.warning("Failed to initialise new SSL object."); error = ERR_Failed; }
+            else { log.warning("Failed to initialise new SSL object."); error = ERR::Failed; }
          }
          else {
             FreeResource(path);
             log.warning("Failed to define certificate folder: %s", path);
-            error = ERR_Failed;
+            error = ERR::Failed;
          }
       }
-      else error = ERR_ResolvePath;
+      else error = ERR::ResolvePath;
 
       SSL_CTX_free(Self->CTX);
       Self->CTX = NULL;
    }
    else {
       log.warning("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), NULL));
-      error = ERR_Failed;
+      error = ERR::Failed;
    }
 
    return error;
@@ -142,7 +142,7 @@ static ERROR sslSetup(extNetSocket *Self)
 
 //********************************************************************************************************************
 
-static ERROR sslLinkSocket(extNetSocket *Self)
+static ERR sslLinkSocket(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -156,7 +156,7 @@ static ERROR sslLinkSocket(extNetSocket *Self)
    }
    else log.warning("Failed to create a SSL BIO object.");
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -168,13 +168,13 @@ static ERROR sslLinkSocket(extNetSocket *Self)
 // NTC::CONNECTING_SSL may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
 // NTC::DISCONNECTED and the Error field is set appropriately.
 
-static ERROR sslConnect(extNetSocket *Self)
+static ERR sslConnect(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
-   if (!Self->SSL) return ERR_FieldNotSet;
+   if (!Self->SSL) return ERR::FieldNotSet;
 
    LONG result = SSL_connect(Self->SSL);
 
@@ -185,27 +185,27 @@ static ERROR sslConnect(extNetSocket *Self)
       // non-blocking sockets are used.  This is technically not an error.
 
       switch(result) {
-         case SSL_ERROR_NONE:             Self->Error = ERR_Okay;
-                                          return ERR_Okay;
+         case SSL_ERROR_NONE:             Self->Error = ERR::Okay;
+                                          return ERR::Okay;
 
-         case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR_Disconnected; break;
+         case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR::Disconnected; break;
 
          case SSL_ERROR_WANT_READ:        Self->setState(NTC::CONNECTING_SSL);
-                                          return ERR_Okay;
+                                          return ERR::Okay;
 
          case SSL_ERROR_WANT_WRITE:       Self->setState(NTC::CONNECTING_SSL);
-                                          return ERR_Okay;
+                                          return ERR::Okay;
 
-         case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR_WouldBlock; break;
-         case SSL_ERROR_WANT_ACCEPT:      Self->Error = ERR_WouldBlock; break;
-         case SSL_ERROR_WANT_X509_LOOKUP: Self->Error = ERR_Retry; break;
-         case SSL_ERROR_SYSCALL:          Self->Error = ERR_InputOutput; break;
+         case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR::WouldBlock; break;
+         case SSL_ERROR_WANT_ACCEPT:      Self->Error = ERR::WouldBlock; break;
+         case SSL_ERROR_WANT_X509_LOOKUP: Self->Error = ERR::Retry; break;
+         case SSL_ERROR_SYSCALL:          Self->Error = ERR::InputOutput; break;
 
-         case SSL_ERROR_SSL:              Self->Error = ERR_SystemCall;
+         case SSL_ERROR_SSL:              Self->Error = ERR::SystemCall;
                                           ERR_print_errors(Self->BIO);
                                           break;
 
-         default:                         Self->Error = ERR_Failed;
+         default:                         Self->Error = ERR::Failed;
       }
 
       log.warning("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
@@ -215,7 +215,7 @@ static ERROR sslConnect(extNetSocket *Self)
    else {
       log.trace("sslConnect:","SSL server connection successful.");
       Self->setState(NTC::CONNECTED);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 

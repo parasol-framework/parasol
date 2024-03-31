@@ -59,7 +59,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
+static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 {
    pf::Log log;
 
@@ -72,8 +72,8 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    // expected format, most probably SRGB and not linear.
 
    objBitmap *inBmp, *mixBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return log.warning(ERR_Failed);
-   if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) return log.warning(ERR_Failed);
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return log.warning(ERR::Failed);
+   if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) != ERR::Okay) return log.warning(ERR::Failed);
 
    const UBYTE RGBA[4] = {
       UBYTE(Self->Target->ColourFormat->RedPos>>3),
@@ -140,17 +140,17 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
       dest += Self->Target->LineWidth;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR DISPLACEMENTFX_NewObject(extDisplacementFX *Self, APTR Void)
+static ERR DISPLACEMENTFX_NewObject(extDisplacementFX *Self, APTR Void)
 {
    Self->Scale = 0; // SVG default requires this is 0, which makes the displacment algorithm ineffective.
    Self->XChannel = CMP::ALPHA;
    Self->YChannel = CMP::ALPHA;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -163,16 +163,16 @@ When the value of this field is 0, this operation has no effect on the source im
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_Scale(extDisplacementFX *Self, DOUBLE *Value)
+static ERR DISPLACEMENTFX_GET_Scale(extDisplacementFX *Self, DOUBLE *Value)
 {
    *Value = Self->Scale;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_Scale(extDisplacementFX *Self, DOUBLE Value)
+static ERR DISPLACEMENTFX_SET_Scale(extDisplacementFX *Self, DOUBLE Value)
 {
    Self->Scale = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -183,16 +183,16 @@ Lookup: CMP
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_XChannel(extDisplacementFX *Self, CMP *Value)
+static ERR DISPLACEMENTFX_GET_XChannel(extDisplacementFX *Self, CMP *Value)
 {
    *Value = Self->XChannel;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_XChannel(extDisplacementFX *Self, CMP Value)
+static ERR DISPLACEMENTFX_SET_XChannel(extDisplacementFX *Self, CMP Value)
 {
    Self->XChannel = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -203,16 +203,16 @@ Lookup: CMP
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_YChannel(extDisplacementFX *Self, CMP *Value)
+static ERR DISPLACEMENTFX_GET_YChannel(extDisplacementFX *Self, CMP *Value)
 {
    *Value = Self->YChannel;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_YChannel(extDisplacementFX *Self, CMP Value)
+static ERR DISPLACEMENTFX_SET_YChannel(extDisplacementFX *Self, CMP Value)
 {
    Self->YChannel = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -223,14 +223,14 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_XMLDef(extDisplacementFX *Self, STRING *Value)
+static ERR DISPLACEMENTFX_GET_XMLDef(extDisplacementFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
    stream << "<feDisplacement/>";
 
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -255,7 +255,7 @@ static const FieldArray clDisplacementFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_displacementfx(void)
+ERR init_displacementfx(void)
 {
    clDisplacementFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -267,5 +267,5 @@ ERROR init_displacementfx(void)
       fl::Size(sizeof(extDisplacementFX)),
       fl::Path(MOD_PATH));
 
-   return clDisplacementFX ? ERR_Okay : ERR_AddClass;
+   return clDisplacementFX ? ERR::Okay : ERR::AddClass;
 }

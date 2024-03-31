@@ -37,7 +37,7 @@ class extSourceFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static void notify_free_source(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_source(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    ((extSourceFX *)CurrentContext())->Source = NULL;
 }
@@ -48,11 +48,11 @@ Draw: Render the source vector to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
+static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 {
    pf::Log log;
 
-   if (!Self->Source) return ERR_Okay;
+   if (!Self->Source) return ERR::Okay;
 
    auto &filter = Self->Filter;
 
@@ -115,10 +115,10 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       }
 
       if (!cache->Data) {
-         if (!AllocMemory(cache->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Self->BitmapData)) {
+         if (AllocMemory(cache->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Self->BitmapData) IS ERR::Okay) {
             Self->DataSize = cache->LineWidth * canvas_height;
          }
-         else return ERR_AllocMemory;
+         else return ERR::AllocMemory;
       }
 
       cache->Data = Self->BitmapData - (cache->Clip.Left * cache->BytesPerPixel) - (cache->Clip.Top * cache->LineWidth);
@@ -159,36 +159,36 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
    gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
 
    Self->Render = false;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_Free(extSourceFX *Self, APTR Void)
+static ERR SOURCEFX_Free(extSourceFX *Self, APTR Void)
 {
    if (Self->Bitmap)     { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Source)     { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
    if (Self->Scene)      { FreeResource(Self->Scene); Self->Scene = NULL; }
    if (Self->BitmapData) { FreeResource(Self->BitmapData); Self->BitmapData = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
+static ERR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->Source) return log.warning(ERR_UndefinedField);
+   if (!Self->Source) return log.warning(ERR::UndefinedField);
 
    Self->Scene->Viewport->setColourSpace(Self->Filter->ColourSpace);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
+static ERR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
 {
    Self->AspectRatio = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->SourceType  = VSF::NONE;
@@ -201,13 +201,13 @@ static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
                fl::Height(1),
                fl::BitsPerPixel(32),
                fl::Flags(BMF::ALPHA_CHANNEL|BMF::NO_DATA)))) {
-            return ERR_Okay;
+            return ERR::Okay;
          }
-         else return ERR_CreateObject;
+         else return ERR::CreateObject;
       }
-      else return ERR_CreateObject;
+      else return ERR::CreateObject;
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -218,17 +218,17 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_GET_AspectRatio(extSourceFX *Self, ARF *Value)
+static ERR SOURCEFX_GET_AspectRatio(extSourceFX *Self, ARF *Value)
 {
    *Value = Self->AspectRatio;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SOURCEFX_SET_AspectRatio(extSourceFX *Self, ARF Value)
+static ERR SOURCEFX_SET_AspectRatio(extSourceFX *Self, ARF Value)
 {
    Self->AspectRatio = Value;
    Self->Render = true;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -241,17 +241,17 @@ ownership of the same @VectorScene that the filter pipeline belongs.
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
+static ERR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 {
    pf::Log log;
-   if (!Value) return log.warning(ERR_InvalidValue);
-   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
+   if (!Value) return log.warning(ERR::InvalidValue);
+   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::WrongClass);
 
    if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
    Self->Source = Value;
    SubscribeAction(Value, AC_Free, FUNCTION(notify_free_source));
    Self->Render = true;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -260,17 +260,17 @@ static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 SourceName: Name of a source definition to be rendered.
 
 Setting Def to the name of a pre-registered scene definition will reference that object in #Source.  If the name is
-not registered then `ERR_Search` is returned.  The named object must be derived from the @Vector class.
+not registered then `ERR::Search` is returned.  The named object must be derived from the @Vector class.
 
 Vectors are registered via the @VectorScene AddDef() method.
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
+static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if ((!Self->Filter) or (!Self->Filter->Scene)) log.warning(ERR_UndefinedField);
+   if ((!Self->Filter) or (!Self->Filter->Scene)) log.warning(ERR::UndefinedField);
 
    if (Self->Source) {
       UnsubscribeAction(Self->Source, AC_Free);
@@ -278,14 +278,14 @@ static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    }
 
    objVector *src;
-   if (!scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src)) {
-      if (src->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
+   if (scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src) IS ERR::Okay) {
+      if (src->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::WrongClass);
       Self->Source = src;
       SubscribeAction(src, AC_Free, FUNCTION(notify_free_source));
       Self->Render = true;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Search);
+   else return log.warning(ERR::Search);
 }
 
 /*********************************************************************************************************************
@@ -296,10 +296,10 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_GET_XMLDef(extSourceFX *Self, STRING *Value)
+static ERR SOURCEFX_GET_XMLDef(extSourceFX *Self, STRING *Value)
 {
    *Value = StrClone("feImage");
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -316,7 +316,7 @@ static const FieldArray clSourceFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_sourcefx(void)
+ERR init_sourcefx(void)
 {
    clSourceFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -328,5 +328,5 @@ ERROR init_sourcefx(void)
       fl::Size(sizeof(extSourceFX)),
       fl::Path(MOD_PATH));
 
-   return clSourceFX ? ERR_Okay : ERR_AddClass;
+   return clSourceFX ? ERR::Okay : ERR::AddClass;
 }

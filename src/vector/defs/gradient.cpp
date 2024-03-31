@@ -138,7 +138,7 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
 
 //********************************************************************************************************************
 
-static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
+static ERR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
 {
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
@@ -151,23 +151,23 @@ static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
    }
    Self->Matrices = NULL;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
+static ERR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 {
    pf::Log log;
 
    if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
-      return ERR_OutOfRange;
+      return ERR::OutOfRange;
    }
 
    if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
-      return ERR_OutOfRange;
+      return ERR::OutOfRange;
    }
 
    if ((Self->Type IS VGT::CONTOUR) and (Self->Units IS VUNIT::USERSPACE)) {
@@ -175,12 +175,12 @@ static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
       Self->Units = VUNIT::BOUNDING_BOX;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
+static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
 {
    Self->SpreadMethod = VSPREAD::PAD;
    Self->Type    = VGT::LINEAR;
@@ -192,7 +192,7 @@ static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
    Self->X1      = 0;
    Self->X2      = 100; // For an effective contoured gradient, this needs to default to 100
    Self->Flags  |= VGF::SCALED_CX|VGF::SCALED_CY|VGF::SCALED_RADIUS;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -205,26 +205,26 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterX;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_CX) & (~VGF::FIXED_CX);
    else Self->Flags = (Self->Flags | VGF::FIXED_CX) & (~VGF::SCALED_CX);
 
    Self->CenterX = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -237,26 +237,26 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterY;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_CY) & (~VGF::FIXED_CY);
    else Self->Flags = (Self->Flags | VGF::FIXED_CY) & (~VGF::SCALED_CY);
 
    Self->CenterY = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -282,26 +282,26 @@ center of the gradient.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FX;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_FX) & (~VGF::FIXED_FX);
    else Self->Flags = (Self->Flags | VGF::FIXED_FX) & (~VGF::SCALED_FX);
 
    Self->FX = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -314,26 +314,26 @@ center of the gradient.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FY;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_FY) & (~VGF::FIXED_FY);
    else Self->Flags = (Self->Flags | VGF::FIXED_FY) & (~VGF::SCALED_FY);
 
    Self->FY = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -345,13 +345,13 @@ existing object name and automatically assigned ID's for identifiers.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_ID(extVectorGradient *Self, STRING *Value)
+static ERR VECTORGRADIENT_GET_ID(extVectorGradient *Self, STRING *Value)
 {
    *Value = Self->ID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
+static ERR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
 {
    if (Self->ID) FreeResource(Self->ID);
 
@@ -363,7 +363,7 @@ static ERROR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
       Self->ID = NULL;
       Self->NumericID = 0;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -376,14 +376,14 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
+static ERR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
 {
    if (Value) {
       if (Value->Class->ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
-      else return ERR_InvalidValue;
+      else return ERR::InvalidValue;
    }
    else Self->Inherit = NULL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -397,19 +397,19 @@ represented by a VectorMatrix structure, and are linked in the order in which th
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Matrices(extVectorGradient *Self, VectorMatrix **Value)
+static ERR VECTORGRADIENT_GET_Matrices(extVectorGradient *Self, VectorMatrix **Value)
 {
    *Value = Self->Matrices;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *Value)
+static ERR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *Value)
 {
    if (!Value) {
       auto hook = &Self->Matrices;
       while (Value) {
          VectorMatrix *matrix;
-         if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
+         if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix) IS ERR::Okay) {
             matrix->Vector = NULL;
             matrix->Next   = NULL;
             matrix->ScaleX = Value->ScaleX;
@@ -421,7 +421,7 @@ static ERROR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *
             *hook = matrix;
             hook = &matrix->Next;
          }
-         else return ERR_AllocMemory;
+         else return ERR::AllocMemory;
 
          Value = Value->Next;
       }
@@ -435,7 +435,7 @@ static ERROR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *
       Self->Matrices = NULL;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -450,17 +450,17 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, LONG *Value)
+static ERR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, LONG *Value)
 {
    *Value = Self->NumericID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
+static ERR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -474,29 +474,29 @@ The Radius value has no effect if the gradient is linear.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (val >= 0) {
       if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_RADIUS) & (~VGF::FIXED_RADIUS);
       else Self->Flags = (Self->Flags | VGF::FIXED_RADIUS) & (~VGF::SCALED_RADIUS);
 
       Self->Radius = val;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -515,33 +515,33 @@ to define a start and end point for interpolating the gradient colours.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
+static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
    *Value    = Self->Stops;
    *Elements = Self->TotalStops;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
+static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
 {
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
 
    if (Elements >= 2) {
-      if (!AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops)) {
+      if (AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops) IS ERR::Okay) {
          Self->TotalStops = Elements;
          CopyMemory(Value, Self->Stops, Elements * sizeof(GradientStop));
          if (Self->Colours) delete Self->Colours;
          Self->Colours = new (std::nothrow) GradientColours(Self, 1.0);
-         if (!Self->Colours) return ERR_AllocMemory;
+         if (!Self->Colours) return ERR::AllocMemory;
          Self->ChangeCounter++;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
    else {
       pf::Log log;
       log.warning("Array size %d < 2", Elements);
-      return ERR_InvalidValue;
+      return ERR::InvalidValue;
    }
 }
 
@@ -559,15 +559,15 @@ A transform can be applied to the gradient by setting this field with an SVG com
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Commands)
+static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Commands)
 {
    pf::Log log;
 
-   if (!Commands) return log.warning(ERR_InvalidValue);
+   if (!Commands) return log.warning(ERR::InvalidValue);
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
-      if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
+      if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix) IS ERR::Okay) {
          matrix->Vector = NULL;
          matrix->Next   = Self->Matrices;
          matrix->ScaleX = 1.0;
@@ -580,7 +580,7 @@ static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Comma
          Self->Matrices = matrix;
          return vecParseTransform(Self->Matrices, Commands);
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
    else {
       vecResetMatrix(Self->Matrices);
@@ -612,26 +612,26 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X1;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_X1) & (~VGF::FIXED_X1);
    else Self->Flags = (Self->Flags | VGF::FIXED_X1) & (~VGF::SCALED_X1);
 
    Self->X1 = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -645,26 +645,26 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X2;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_X2) & (~VGF::FIXED_X2);
    else Self->Flags = (Self->Flags | VGF::FIXED_X2) & (~VGF::SCALED_X2);
 
    Self->X2 = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -676,26 +676,26 @@ these values.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y1;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_Y1) & (~VGF::FIXED_Y1);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y1) & (~VGF::SCALED_Y1);
 
    Self->Y1 = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -709,26 +709,26 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y2;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_Y2) & (~VGF::FIXED_Y2);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y2) & (~VGF::SCALED_Y2);
 
    Self->Y2 = val;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -763,7 +763,7 @@ static const FieldArray clGradientFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
+ERR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    clVectorGradient = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORGRADIENT),
@@ -774,5 +774,5 @@ ERROR init_gradient(void) // The gradient is a definition type for creating grad
       fl::Size(sizeof(extVectorGradient)),
       fl::Path(MOD_PATH));
 
-   return clVectorGradient ? ERR_Okay : ERR_AddClass;
+   return clVectorGradient ? ERR::Okay : ERR::AddClass;
 }

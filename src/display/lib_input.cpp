@@ -51,7 +51,7 @@ A callback is required for receiving the input events.  The following C++ code i
 events in the callback:
 
 <pre>
-ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+ERR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    for (auto e=Events; e; e=e->Next) {
       if (((e->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (e->Value > 0)) {
@@ -59,7 +59,7 @@ ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 </pre>
 
@@ -89,12 +89,12 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
+ERR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
 {
    static LONG counter = 1;
    pf::Log log(__FUNCTION__);
 
-   if ((!Callback) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Callback) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, LONG(InputMask));
 
@@ -111,7 +111,7 @@ ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputM
    if (glInputEvents.processing) glNewSubscriptions.push_back(std::make_pair(*Handle, is));
    else glInputCallbacks.emplace(*Handle, is);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -132,18 +132,18 @@ NotFound
 
 *********************************************************************************************************************/
 
-ERROR gfxUnsubscribeInput(LONG Handle)
+ERR gfxUnsubscribeInput(LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Handle) return log.warning(ERR_NullArgs);
+   if (!Handle) return log.warning(ERR::NullArgs);
 
    log.branch("Handle: %d", Handle);
 
    const std::lock_guard<std::recursive_mutex> lock(glInputLock);
 
    auto it = glInputCallbacks.find(Handle);
-   if (it IS glInputCallbacks.end()) return log.warning(ERR_NotFound);
+   if (it IS glInputCallbacks.end()) return log.warning(ERR::NotFound);
    else {
       if (glInputEvents.processing) { // Cannot erase during input processing
          ClearMemory(&it->second, sizeof(it->second));
@@ -151,7 +151,7 @@ ERROR gfxUnsubscribeInput(LONG Handle)
       else glInputCallbacks.erase(it);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -196,7 +196,7 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
             pf::ScopedObjectLock lock(cb.StdC.Context, 2000); // Ensure that the object can't be removed until after input processing
             if (lock.granted()) {
                pf::SwitchContext ctx(cb.StdC.Context);
-               auto func = (ERROR (*)(InputEvent *, LONG, APTR))cb.StdC.Routine;
+               auto func = (ERR (*)(InputEvent *, LONG, APTR))cb.StdC.Routine;
                func(first, handle, cb.StdC.Meta);
             }
          }
@@ -205,8 +205,8 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
                { "Events:InputEvent", first, FD_PTR|FDF_STRUCT },
                { "Handle", handle },
             };
-            ERROR result;
-            scCallback(cb.Script.Script, cb.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            ERR result;
+            scCallback(cb.Script.Script, cb.Script.ProcedureID, args, std::ssize(args), &result);
          }
 
          glInputLock.lock();

@@ -314,5 +314,5 @@ class extSound : public objSound {
 
 struct BufferCommand {
    CMD CommandID;
-   ERROR (*Routine)(extAudio *Self, APTR);
+   ERR (*Routine)(extAudio *Self, APTR);
 };

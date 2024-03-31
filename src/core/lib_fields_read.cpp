@@ -185,10 +185,10 @@ UnsupportedField: The Field is not supported by the object's class.
 
 *********************************************************************************************************************/
 
-ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
+ERR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
    pf::Log log(__FUNCTION__);
-   if ((!Object) or (!Result)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Result)) return log.warning(ERR::NullArgs);
 
    ULONG type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -207,7 +207,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
       if (!(field->Flags & FD_READ)) {
          if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
-         return ERR_NoFieldAccess;
+         return ERR::NoFieldAccess;
       }
 
       ScopedObjectAccess objlock(Object);
@@ -215,7 +215,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
    }
    else log.warning("Unsupported field %s", FieldName(FieldID));
 
-   return ERR_UnsupportedField;
+   return ERR::UnsupportedField;
 }
 
 /*********************************************************************************************************************
@@ -248,11 +248,11 @@ Mismatch
 
 *********************************************************************************************************************/
 
-ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Elements)
+ERR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Elements)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Object) or (!Result) or (!Elements)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Result) or (!Elements)) return log.warning(ERR::NullArgs);
 
    LONG req_type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -263,20 +263,20 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
       if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
          if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
-         return ERR_NoFieldAccess;
+         return ERR::NoFieldAccess;
       }
 
       if (req_type) { // Perform simple type validation if requested to do so.
-         if (!(req_type & field->Flags)) return log.warning(ERR_Mismatch);
+         if (!(req_type & field->Flags)) return log.warning(ERR::Mismatch);
       }
 
       ScopedObjectAccess objlock(Object);
-      ERROR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, NULL, Elements);
+      ERR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, NULL, Elements);
       return error;
    }
    else log.warning("Unsupported field %s", FieldName(FieldID));
 
-   return ERR_UnsupportedField;
+   return ERR::UnsupportedField;
 }
 
 /*********************************************************************************************************************
@@ -323,18 +323,18 @@ Mismatch:         The field value cannot be converted into a string.
 
 *********************************************************************************************************************/
 
-ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG BufferSize)
+ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG BufferSize)
 {
    pf::Log log("GetVariable");
 
    if ((!Object) or (!FieldName) or (!Buffer) or (BufferSize < 2)) {
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
    Field *field;
    char flagref[80];
    LONG i;
-   ERROR error;
+   ERR error;
 
    Buffer[0] = 0;
    flagref[0] = 0;
@@ -383,14 +383,14 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
       if (!(field->Flags & FD_READ)) {
          if (!field->Name) log.warning("Illegal attempt to read field %d.", field->FieldID);
          else log.warning("Illegal attempt to read field %s.", field->Name);
-         return ERR_NoFieldAccess;
+         return ERR::NoFieldAccess;
       }
 
       ScopedObjectAccess objlock(Object);
 
       if (field->Flags & (FD_STRING|FD_ARRAY)) {
          STRING str = NULL;
-         if (!(error = copy_field_to_buffer(Object, field, FD_POINTER|FD_STRING, &str, ext, NULL))) {
+         if ((error = copy_field_to_buffer(Object, field, FD_POINTER|FD_STRING, &str, ext, NULL)) IS ERR::Okay) {
             if (checkdefined) {
                if (field->Flags & FD_STRING) {
                   if ((str) and (str[0])) Buffer[0] = '1'; // A string needs only one char (of any kind) to be considered to be defined
@@ -414,14 +414,14 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          FieldDef *lookup;
          LARGE large;
 
-         if (!(error = copy_field_to_buffer(Object, field, FD_LARGE, &large, ext, NULL))) {
+         if ((error = copy_field_to_buffer(Object, field, FD_LARGE, &large, ext, NULL)) IS ERR::Okay) {
             if ((ext) and (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
                Buffer[0] = '0';
                Buffer[1] = 0;
 
                if ((lookup = (FieldDef *)field->Arg)) {
                   while (lookup->Name) {
-                     if (!StrMatch(lookup->Name, ext)) {
+                     if (StrMatch(lookup->Name, ext) IS ERR::Okay) {
                         if (field->Flags & FD_FLAGS) {
                            if (large & lookup->Value) Buffer[0] = '1';
                         }
@@ -433,7 +433,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                }
                else log.warning("No lookup table for field '%s', class '%s'.", fname, Object->className());
 
-               return ERR_Okay;
+               return ERR::Okay;
             }
             else if (strconvert) {
                if (field->Flags & FD_FLAGS) {
@@ -446,7 +446,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                         }
                         lookup++;
                      }
-                     return ERR_Okay;
+                     return ERR::Okay;
                   }
                }
                else if (field->Flags & FD_LOOKUP) {
@@ -458,7 +458,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                         }
                         lookup++;
                      }
-                     return ERR_Okay;
+                     return ERR::Okay;
                   }
                }
             }
@@ -473,14 +473,14 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
       }
       else if (field->Flags & FD_DOUBLE) {
          DOUBLE dbl;
-         if (!(error = copy_field_to_buffer(Object, field, FD_DOUBLE, &dbl, ext, NULL))) {
+         if ((error = copy_field_to_buffer(Object, field, FD_DOUBLE, &dbl, ext, NULL)) IS ERR::Okay) {
             snprintf(Buffer, BufferSize, "%f", dbl);
          }
          else return error;
       }
       else if (field->Flags & (FD_INTEGRAL|FD_OBJECT)) {
          OBJECTPTR obj;
-         if (!(error = copy_field_to_buffer(Object, field, FD_POINTER, &obj, ext, NULL))) {
+         if ((error = copy_field_to_buffer(Object, field, FD_POINTER, &obj, ext, NULL)) IS ERR::Okay) {
             if (ext) {
                error = GetFieldVariable(obj, ext, Buffer, BufferSize);
                return error;
@@ -491,33 +491,33 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
       }
       else {
          log.warning("Field %s is not a value that can be converted to a string.", field->Name);
-         return ERR_Mismatch;
+         return ERR::Mismatch;
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
-      if (!CheckAction(Object, AC_GetVar)) {
+      if (CheckAction(Object, AC_GetVar) IS ERR::Okay) {
          struct acGetVar var = {
             .Field  = FieldName, // Must use the original field name argument, not the modified fname
             .Buffer = Buffer,
             .Size   = BufferSize
          };
-         if (!Action(AC_GetVar, Object, &var)) {
-            return ERR_Okay;
+         if (Action(AC_GetVar, Object, &var) IS ERR::Okay) {
+            return ERR::Okay;
          }
          else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());
       }
       else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());
 
-      return ERR_UnsupportedField;
+      return ERR::UnsupportedField;
    }
 }
 
 //********************************************************************************************************************
 // Used by the GetField() range of functions.
 
-ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
+ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
 {
    pf::Log log("GetField");
 
@@ -531,10 +531,10 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    if (!(DestFlags & (FD_VARIABLE|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
 
    if (srcflags & FD_VARIABLE) {
-      if (!Field->GetValue) return ERR_NoFieldAccess;
+      if (!Field->GetValue) return ERR::NoFieldAccess;
 
       Variable var;
-      ERROR error;
+      ERR error;
       ObjectContext ctx(Object, 0, Field);
 
       if (DestFlags & FD_VARIABLE) {
@@ -544,22 +544,22 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
          var.Type = FD_DOUBLE | (DestFlags & (~(FD_LONG|FD_LARGE)));
          error = Field->GetValue(Object, &var);
 
-         if (!error) {
+         if (error IS ERR::Okay) {
             if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Double;
             else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Double;
             else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Double;
-            else error = ERR_FieldTypeMismatch;
+            else error = ERR::FieldTypeMismatch;
          }
       }
       else if (srcflags & (FD_LARGE|FD_LONG)) {
          var.Type = FD_LARGE | (DestFlags & (~(FD_LARGE|FD_LONG|FD_DOUBLE)));
 
          error = Field->GetValue(Object, &var);
-         if (!error) {
+         if (error IS ERR::Okay) {
             if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Large;
             else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Large;
             else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Large;
-            else error = ERR_FieldTypeMismatch;
+            else error = ERR::FieldTypeMismatch;
          }
       }
       else {
@@ -568,7 +568,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
          else var.Type = DestFlags;
 
          error = Field->GetValue(Object, &var);
-         if (!error) {
+         if (error IS ERR::Okay) {
             if (DestFlags & FD_LARGE)        *((LARGE *)Result)  = var.Large;
             else if (DestFlags & FD_LONG)    *((LONG *)Result)   = (LONG)var.Large;
             else if (DestFlags & FD_DOUBLE)  *((DOUBLE *)Result) = var.Double;
@@ -576,15 +576,15 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
          }
       }
 
-      if (error IS ERR_FieldTypeMismatch) goto mismatch;
+      if (error IS ERR::FieldTypeMismatch) goto mismatch;
       else return error;
    }
 
    if (Field->GetValue) {
       ObjectContext ctx(Object, 0, Field);
-      auto get_field = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
-      ERROR error = get_field(Object, value, &array_size);
-      if (error) return error;
+      auto get_field = (ERR (*)(APTR, APTR, LONG *))Field->GetValue;
+      ERR error = get_field(Object, value, &array_size);
+      if (error != ERR::Okay) return error;
       data = value;
    }
    else data = ((BYTE *)Object) + Field->Offset;
@@ -604,7 +604,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
                else goto mismatch;
                // Drop through to field value conversion
             }
-            else return ERR_OutOfRange;
+            else return ERR::OutOfRange;
          }
          else if (DestFlags & FD_STRING) {
             // Special feature: If a string is requested, the array values are converted to CSV format.
@@ -634,7 +634,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
       else {
          if (array_size IS -1) {
             log.warning("Array sizing not supported for field %s", Field->Name);
-            return ERR_Failed;
+            return ERR::Failed;
          }
 
          if (TotalElements) *TotalElements = array_size;
@@ -648,7 +648,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
                else goto mismatch;
                // Drop through to field value conversion
             }
-            else return ERR_OutOfRange;
+            else return ERR::OutOfRange;
          }
          else if (DestFlags & FD_STRING) {
             // Special feature: If a string is requested, the array values are converted to CSV format.
@@ -680,7 +680,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
          else if (DestFlags & FD_POINTER) *((APTR *)Result) = *((APTR *)data);
          else goto mismatch;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (srcflags & FD_LONG) {
@@ -696,7 +696,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
                while (lookup->Name) {
                   if (value IS lookup->Value) {
                      *((CSTRING *)Result) = lookup->Name;
-                     return ERR_Okay;
+                     return ERR::Okay;
                   }
                   lookup++;
                }
@@ -744,12 +744,12 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    }
    else {
       log.warning("I dont recognise field flags of $%.8x.", srcflags);
-      return ERR_UnrecognisedFieldType;
+      return ERR::UnrecognisedFieldType;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 
 mismatch:
    log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", Object->className(), Field->Name, Field->Flags, DestFlags);
-   return ERR_FieldTypeMismatch;
+   return ERR::FieldTypeMismatch;
 }

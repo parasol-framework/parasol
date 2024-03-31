@@ -4,219 +4,225 @@
 // Copyright: Paul Manias © 1996-2024
 // Generator: idl-c
 
+#ifdef __cplusplus
+#include <cstdint>
+#endif
+
 // Universal error codes
 
-#define ERR_Okay 0
-#define ERR_True 0
-#define ERR_False 1
-#define ERR_LimitedSuccess 2
-#define ERR_Cancelled 3
-#define ERR_NothingDone 4
-#define ERR_Continue 5
-#define ERR_Skip 6
-#define ERR_Retry 7
-#define ERR_DirEmpty 8
-#define ERR_Terminate 9
-#define ERR_ExceptionThreshold 9
-#define ERR_NoMemory 10
-#define ERR_NoPointer 11
-#define ERR_InUse 12
-#define ERR_Failed 13
-#define ERR_File 14
-#define ERR_InvalidData 15
-#define ERR_Search 16
-#define ERR_NotFound 16
-#define ERR_InitModule 17
-#define ERR_FileNotFound 18
-#define ERR_FileDoesNotExist 18
-#define ERR_WrongVersion 19
-#define ERR_Args 20
-#define ERR_NoData 21
-#define ERR_Read 22
-#define ERR_Write 23
-#define ERR_LockFailed 24
-#define ERR_Lock 24
-#define ERR_ExamineFailed 25
-#define ERR_LostClass 26
-#define ERR_NoAction 27
-#define ERR_NoSupport 28
-#define ERR_Memory 29
-#define ERR_TimeOut 30
-#define ERR_NoStats 31
-#define ERR_LowCapacity 32
-#define ERR_Init 33
-#define ERR_NoPermission 34
-#define ERR_Permissions 34
-#define ERR_PermissionDenied 34
-#define ERR_SystemCorrupt 35
-#define ERR_NeedOwner 36
-#define ERR_OwnerNeedsBitmap 37
-#define ERR_CoreVersion 38
-#define ERR_NeedWidthHeight 39
-#define ERR_NegativeSubClassID 40
-#define ERR_NegativeClassID 41
-#define ERR_MissingClassName 42
-#define ERR_OutOfRange 43
-#define ERR_ObtainMethod 44
-#define ERR_ArrayFull 45
-#define ERR_Query 46
-#define ERR_LostOwner 47
-#define ERR_DoNotExpunge 48
-#define ERR_MemoryCorrupt 49
-#define ERR_FieldSearch 50
-#define ERR_InvalidPath 51
-#define ERR_SetField 52
-#define ERR_MarkedForDeletion 53
-#define ERR_IllegalMethodID 54
-#define ERR_IllegalActionID 55
-#define ERR_ModuleOpenFailed 56
-#define ERR_IllegalActionAttempt 57
-#define ERR_EntryMissingHeader 58
-#define ERR_ModuleMissingInit 59
-#define ERR_ModuleInitFailed 60
-#define ERR_MemoryDoesNotExist 61
-#define ERR_DeadLock 62
-#define ERR_SystemLocked 63
-#define ERR_ModuleMissingName 64
-#define ERR_AddClass 65
-#define ERR_Activate 66
-#define ERR_DoubleInit 67
-#define ERR_UndefinedField 68
-#define ERR_FieldNotSet 68
-#define ERR_MissingClass 69
-#define ERR_FileReadFlag 70
-#define ERR_FileWriteFlag 71
-#define ERR_Draw 72
-#define ERR_NoMethods 73
-#define ERR_NoMatchingObject 74
-#define ERR_AccessMemory 75
-#define ERR_MissingPath 76
-#define ERR_NotLocked 77
-#define ERR_NoSearchResult 78
-#define ERR_StatementUnsatisfied 79
-#define ERR_ObjectCorrupt 80
-#define ERR_OwnerPassThrough 81
-#define ERR_UnsupportedOwner 82
-#define ERR_ExclusiveDenied 83
-#define ERR_AccessObject 83
-#define ERR_AllocMemory 84
-#define ERR_NewObject 85
-#define ERR_GetField 86
-#define ERR_NoFieldAccess 87
-#define ERR_VirtualVolume 88
-#define ERR_InvalidDimension 89
-#define ERR_FieldTypeMismatch 90
-#define ERR_UnrecognisedFieldType 91
-#define ERR_BufferOverflow 92
-#define ERR_UnsupportedField 93
-#define ERR_Mismatch 94
-#define ERR_OutOfBounds 95
-#define ERR_Seek 96
-#define ERR_ReallocMemory 97
-#define ERR_Loop 98
-#define ERR_FileExists 99
-#define ERR_ResolvePath 100
-#define ERR_CreateObject 101
-#define ERR_MemoryInfo 102
-#define ERR_NotInitialised 103
-#define ERR_ResourceExists 104
-#define ERR_Refresh 105
-#define ERR_ListChildren 106
-#define ERR_SystemCall 107
-#define ERR_SmallMask 108
-#define ERR_EmptyString 109
-#define ERR_ObjectExists 110
-#define ERR_ExpectedFile 111
-#define ERR_Resize 112
-#define ERR_Redimension 113
-#define ERR_AllocSemaphore 114
-#define ERR_AccessSemaphore 115
-#define ERR_CreateFile 116
-#define ERR_DeleteFile 117
-#define ERR_OpenFile 118
-#define ERR_ReadOnly 119
-#define ERR_DoesNotExist 120
-#define ERR_IdenticalPaths 121
-#define ERR_Exists 122
-#define ERR_SanityFailure 123
-#define ERR_OutOfSpace 124
-#define ERR_GetSurfaceInfo 125
-#define ERR_Finished 126
-#define ERR_EOF 126
-#define ERR_EndOfFile 126
-#define ERR_OutOfData 126
-#define ERR_Syntax 127
-#define ERR_StringFormat 127
-#define ERR_InvalidState 128
-#define ERR_HostNotFound 129
-#define ERR_InvalidURI 130
-#define ERR_ConnectionRefused 131
-#define ERR_NetworkUnreachable 132
-#define ERR_HostUnreachable 133
-#define ERR_Disconnected 134
-#define ERR_TaskStillExists 135
-#define ERR_IntegrityViolation 136
-#define ERR_ConstraintViolation 136
-#define ERR_SchemaViolation 137
-#define ERR_DataSize 138
-#define ERR_Busy 139
-#define ERR_ConnectionAborted 140
-#define ERR_NullArgs 141
-#define ERR_InvalidObject 142
-#define ERR_WrongObjectType 142
-#define ERR_WrongClass 142
-#define ERR_ExecViolation 143
-#define ERR_Recursion 144
-#define ERR_IllegalAddress 145
-#define ERR_UnbalancedXML 146
-#define ERR_WouldBlock 147
-#define ERR_InputOutput 148
-#define ERR_LoadModule 149
-#define ERR_InvalidHandle 150
-#define ERR_Security 151
-#define ERR_InvalidValue 152
-#define ERR_ServiceUnavailable 153
-#define ERR_Deactivated 154
-#define ERR_LockRequired 155
-#define ERR_AlreadyLocked 156
-#define ERR_Locked 156
-#define ERR_CardReaderUnknown 157
-#define ERR_NoMediaInserted 158
-#define ERR_CardReaderUnavailable 159
-#define ERR_ProxySSLTunnel 160
-#define ERR_InvalidHTTPResponse 161
-#define ERR_InvalidReference 162
-#define ERR_Exception 163
-#define ERR_ThreadAlreadyActive 164
-#define ERR_OpenGL 165
-#define ERR_OutsideMainThread 166
-#define ERR_UseSubClass 167
-#define ERR_WrongType 168
-#define ERR_ThreadNotLocked 169
-#define ERR_LockMutex 170
-#define ERR_SetVolume 171
-#define ERR_Decompression 172
-#define ERR_Compression 173
-#define ERR_ExpectedFolder 174
-#define ERR_Immutable 175
-#define ERR_ReadFileToBuffer 176
-#define ERR_Obsolete 177
-#define ERR_CreateResource 178
-#define ERR_NotPossible 179
-#define ERR_ResolveSymbol 180
-#define ERR_Function 181
-#define ERR_AlreadyDefined 182
-#define ERR_SetValueNotNumeric 183
-#define ERR_SetValueNotString 184
-#define ERR_SetValueNotObject 185
-#define ERR_SetValueNotFunction 186
-#define ERR_SetValueNotPointer 187
-#define ERR_SetValueNotArray 188
-#define ERR_SetValueNotLookup 189
-#define ERR_END 190
+enum class ERR : int32_t {
+   NIL = 0,
+   Okay = 0,
+   True = 0,
+   False = 1,
+   LimitedSuccess = 2,
+   Cancelled = 3,
+   NothingDone = 4,
+   Continue = 5,
+   Skip = 6,
+   Retry = 7,
+   DirEmpty = 8,
+   Terminate = 9,
+   ExceptionThreshold = 9,
+   NoMemory = 10,
+   NoPointer = 11,
+   InUse = 12,
+   Failed = 13,
+   File = 14,
+   InvalidData = 15,
+   Search = 16,
+   NotFound = 16,
+   InitModule = 17,
+   FileNotFound = 18,
+   FileDoesNotExist = 18,
+   WrongVersion = 19,
+   Args = 20,
+   NoData = 21,
+   Read = 22,
+   Write = 23,
+   LockFailed = 24,
+   Lock = 24,
+   ExamineFailed = 25,
+   LostClass = 26,
+   NoAction = 27,
+   NoSupport = 28,
+   Memory = 29,
+   TimeOut = 30,
+   NoStats = 31,
+   LowCapacity = 32,
+   Init = 33,
+   NoPermission = 34,
+   Permissions = 34,
+   PermissionDenied = 34,
+   SystemCorrupt = 35,
+   NeedOwner = 36,
+   OwnerNeedsBitmap = 37,
+   CoreVersion = 38,
+   NeedWidthHeight = 39,
+   NegativeSubClassID = 40,
+   NegativeClassID = 41,
+   MissingClassName = 42,
+   OutOfRange = 43,
+   ObtainMethod = 44,
+   ArrayFull = 45,
+   Query = 46,
+   LostOwner = 47,
+   DoNotExpunge = 48,
+   MemoryCorrupt = 49,
+   FieldSearch = 50,
+   InvalidPath = 51,
+   SetField = 52,
+   MarkedForDeletion = 53,
+   IllegalMethodID = 54,
+   IllegalActionID = 55,
+   ModuleOpenFailed = 56,
+   IllegalActionAttempt = 57,
+   EntryMissingHeader = 58,
+   ModuleMissingInit = 59,
+   ModuleInitFailed = 60,
+   MemoryDoesNotExist = 61,
+   DeadLock = 62,
+   SystemLocked = 63,
+   ModuleMissingName = 64,
+   AddClass = 65,
+   Activate = 66,
+   DoubleInit = 67,
+   UndefinedField = 68,
+   FieldNotSet = 68,
+   MissingClass = 69,
+   FileReadFlag = 70,
+   FileWriteFlag = 71,
+   Draw = 72,
+   NoMethods = 73,
+   NoMatchingObject = 74,
+   AccessMemory = 75,
+   MissingPath = 76,
+   NotLocked = 77,
+   NoSearchResult = 78,
+   StatementUnsatisfied = 79,
+   ObjectCorrupt = 80,
+   OwnerPassThrough = 81,
+   UnsupportedOwner = 82,
+   ExclusiveDenied = 83,
+   AccessObject = 83,
+   AllocMemory = 84,
+   NewObject = 85,
+   GetField = 86,
+   NoFieldAccess = 87,
+   VirtualVolume = 88,
+   InvalidDimension = 89,
+   FieldTypeMismatch = 90,
+   UnrecognisedFieldType = 91,
+   BufferOverflow = 92,
+   UnsupportedField = 93,
+   Mismatch = 94,
+   OutOfBounds = 95,
+   Seek = 96,
+   ReallocMemory = 97,
+   Loop = 98,
+   FileExists = 99,
+   ResolvePath = 100,
+   CreateObject = 101,
+   MemoryInfo = 102,
+   NotInitialised = 103,
+   ResourceExists = 104,
+   Refresh = 105,
+   ListChildren = 106,
+   SystemCall = 107,
+   SmallMask = 108,
+   EmptyString = 109,
+   ObjectExists = 110,
+   ExpectedFile = 111,
+   Resize = 112,
+   Redimension = 113,
+   AllocSemaphore = 114,
+   AccessSemaphore = 115,
+   CreateFile = 116,
+   DeleteFile = 117,
+   OpenFile = 118,
+   ReadOnly = 119,
+   DoesNotExist = 120,
+   IdenticalPaths = 121,
+   Exists = 122,
+   SanityFailure = 123,
+   OutOfSpace = 124,
+   GetSurfaceInfo = 125,
+   Finished = 126,
+   EndOfFile = 126,
+   OutOfData = 126,
+   Syntax = 127,
+   StringFormat = 127,
+   InvalidState = 128,
+   HostNotFound = 129,
+   InvalidURI = 130,
+   ConnectionRefused = 131,
+   NetworkUnreachable = 132,
+   HostUnreachable = 133,
+   Disconnected = 134,
+   TaskStillExists = 135,
+   IntegrityViolation = 136,
+   ConstraintViolation = 136,
+   SchemaViolation = 137,
+   DataSize = 138,
+   Busy = 139,
+   ConnectionAborted = 140,
+   NullArgs = 141,
+   InvalidObject = 142,
+   WrongObjectType = 142,
+   WrongClass = 142,
+   ExecViolation = 143,
+   Recursion = 144,
+   IllegalAddress = 145,
+   UnbalancedXML = 146,
+   WouldBlock = 147,
+   InputOutput = 148,
+   LoadModule = 149,
+   InvalidHandle = 150,
+   Security = 151,
+   InvalidValue = 152,
+   ServiceUnavailable = 153,
+   Deactivated = 154,
+   LockRequired = 155,
+   AlreadyLocked = 156,
+   Locked = 156,
+   CardReaderUnknown = 157,
+   NoMediaInserted = 158,
+   CardReaderUnavailable = 159,
+   ProxySSLTunnel = 160,
+   InvalidHTTPResponse = 161,
+   InvalidReference = 162,
+   Exception = 163,
+   ThreadAlreadyActive = 164,
+   OpenGL = 165,
+   OutsideMainThread = 166,
+   UseSubClass = 167,
+   WrongType = 168,
+   ThreadNotLocked = 169,
+   LockMutex = 170,
+   SetVolume = 171,
+   Decompression = 172,
+   Compression = 173,
+   ExpectedFolder = 174,
+   Immutable = 175,
+   ReadFileToBuffer = 176,
+   Obsolete = 177,
+   CreateResource = 178,
+   NotPossible = 179,
+   ResolveSymbol = 180,
+   Function = 181,
+   AlreadyDefined = 182,
+   SetValueNotNumeric = 183,
+   SetValueNotString = 184,
+   SetValueNotObject = 185,
+   SetValueNotFunction = 186,
+   SetValueNotPointer = 187,
+   SetValueNotArray = 188,
+   SetValueNotLookup = 189,
+   END = 190,
+   Notified = 1073741824,
+};
 
 // Special error flags
 
-#define ERF_Delay 536870912
 #define ERF_Notified 1073741824
 

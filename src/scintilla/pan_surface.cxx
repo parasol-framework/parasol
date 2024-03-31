@@ -301,7 +301,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 
       //bmpDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), PackPixel(bitmap, 255, 0, 0, 255), BAF::NIL);
    }
-   else log.warning(ERR_Args);
+   else log.warning(ERR::Args);
 }
 
 /****************************************************************************/

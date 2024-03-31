@@ -194,7 +194,7 @@ static void generate_text(extVectorText *Vector)
    pf::Log log(__FUNCTION__);
 
    if (!Vector->txHandle) {
-      if (reset_font(Vector)) return;
+      if (reset_font(Vector) != ERR::Okay) return;
    }
 
    auto &lines = Vector->txLines;

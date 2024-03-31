@@ -6,6 +6,8 @@
 #pragma warning (disable : 4244 4311 4312 4267 4244 4068) // Disable annoying VC++ typecast warnings
 #endif
 
+#include <parasol/system/errors_c.h>
+
 #include "keys.h"
 #include <windows.h>
 #include <windowsx.h>
@@ -13,8 +15,6 @@
 #include <winuser.h>
 #include <shlobj.h>
 #include <objidl.h>
-
-#include <parasol/system/errors.h>
 
 #include <stdlib.h>
 #include <stdio.h>

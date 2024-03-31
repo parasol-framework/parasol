@@ -70,7 +70,7 @@ std::unordered_map<std::string, ULONG> glStructSizes;
 
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
-static ERROR flSetVariable(objScript *, CSTRING, LONG, ...);
+static ERR flSetVariable(objScript *, CSTRING, LONG, ...);
 
 //********************************************************************************************************************
 
@@ -197,10 +197,9 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
    return NULL;
 }
 
-/*********************************************************************************************************************
-** Returns a pointer to an object (if the object exists).  To guarantee safety, object access always utilises the ID
-** so that we don't run into issues if the object has been collected.
-*/
+//********************************************************************************************************************
+// Returns a pointer to an object (if the object exists).  To guarantee safety, object access always utilises the ID
+// so that we don't run into issues if the object has been collected.
 
 OBJECTPTR access_object(struct object *Object)
 {
@@ -210,10 +209,10 @@ OBJECTPTR access_object(struct object *Object)
    }
    else if (!Object->UID) return NULL; // Object reference is dead
    else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
-      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); !error) {
+      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
          Object->Locked = true;
       }
-      else if (error IS ERR_DoesNotExist) {
+      else if (error IS ERR::DoesNotExist) {
          pf::Log log(__FUNCTION__);
          log.trace("Object #%d has been terminated.", Object->UID);
          Object->ObjectPtr = NULL;
@@ -245,8 +244,8 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    pf::Log log(__FUNCTION__);
 
    CSTRING module_name;
-   ERROR error;
-   if (!(error = MetaClass->get(FID_Module, (STRING *)&module_name))) {
+   ERR error;
+   if ((error = MetaClass->get(FID_Module, (STRING *)&module_name)) IS ERR::Okay) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -254,10 +253,10 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
          prv->Includes.insert(module_name); // Mark the module as processed.
 
          OBJECTPTR mod;
-         if (!(error = MetaClass->getPtr(FID_RootModule, &mod))) {
+         if ((error = MetaClass->getPtr(FID_RootModule, &mod)) IS ERR::Okay) {
             struct ModHeader *header;
 
-            if ((!(error = mod->getPtr(FID_Header, &header))) and (header)) {
+            if (((error = mod->getPtr(FID_Header, &header)) IS ERR::Okay) and (header)) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) {
                      glStructSizes[s.first] = s.second;
@@ -284,7 +283,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -301,24 +300,24 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Get the user's language for translation purposes
 
    CSTRING str;
-   if (!StrReadLocale("Language", &str)) {
+   if (StrReadLocale("Language", &str) IS ERR::Okay) {
       StrCopy(str, glLocale, sizeof(glLocale));
    }
 
    return create_fluid();
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (clFluid)    { FreeResource(clFluid); clFluid = NULL; }
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERR CMDOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTableV1);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -344,17 +343,17 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 
 *********************************************************************************************************************/
 
-static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
+static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 {
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
    va_list list;
 
-   if ((!Script) or (Script->Class->ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
+   if ((!Script) or (Script->Class->ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR::Args);
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
-   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    va_start(list, Type);
 
@@ -365,13 +364,13 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, DOUBLE));
    else {
       va_end(list);
-      return log.warning(ERR_FieldTypeMismatch);
+      return log.warning(ERR::FieldTypeMismatch);
    }
 
    lua_setglobal(prv->Lua, Name);
 
    va_end(list);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -476,7 +475,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
       std::vector<lua_ref> ref;
       for (LONG i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
-         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR_Okay) lua_pushnil(Lua);
+         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR::Okay) lua_pushnil(Lua);
          lua_settable(Lua, -3);
       }
    }
@@ -519,7 +518,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
 
       for (LONG i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
-         if (struct_to_table(Lua, ref, *def, Data) != ERR_Okay) lua_pushnil(Lua);
+         if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
          Data = (BYTE *)Data + def_size;
          lua_settable(Lua, -3);
       }
@@ -567,7 +566,7 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 
 //********************************************************************************************************************
 
-ERROR load_include(objScript *Script, CSTRING IncName)
+ERR load_include(objScript *Script, CSTRING IncName)
 {
    pf::Log log(__FUNCTION__);
 
@@ -587,15 +586,15 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
    if ((IncName[i]) or (i >= 32)) {
       log.msg("Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    if (prv->Includes.contains(IncName)) {
       log.trace("Include file '%s' has already been loaded.", IncName);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    AdjustLogLevel(1);
 
@@ -604,9 +603,9 @@ ERROR load_include(objScript *Script, CSTRING IncName)
          prv->Includes.insert(IncName); // Mark the file as loaded.
 
          OBJECTPTR root;
-         if (!(error = module->getPtr(FID_Root, &root))) {
+         if ((error = module->getPtr(FID_Root, &root)) IS ERR::Okay) {
             struct ModHeader *header;
-            if ((!(error = root->getPtr(FID_Header, &header)) and (header))) {
+            if ((((error = root->getPtr(FID_Header, &header)) IS ERR::Okay) and (header))) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
                }
@@ -624,7 +623,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
             }
          }
       }
-      else error = ERR_CreateObject;
+      else error = ERR::CreateObject;
 
    AdjustLogLevel(-1);
    return error;
@@ -738,7 +737,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   if (!acWrite((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
+   if (acWrite((OBJECTID)(MAXINT)FileID, (APTR)Data, Size) IS ERR::Okay) {
       return 0;
    }
    else {
@@ -754,7 +753,7 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
    if (Size <= 0) return 0; // Ignore bad size requests
 
    LONG result;
-   if (!acWrite(File, (APTR)Data, Size, &result)) {
+   if (acWrite(File, (APTR)Data, Size, &result) IS ERR::Okay) {
       if ((size_t)result != Size) {
          log.warning("Wrote %d bytes instead of %d.", result, (int)Size);
          return 1;
@@ -774,7 +773,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 {
    auto handle = (code_reader_handle *)Handle;
    LONG result;
-   if (!acRead(handle->File, handle->Buffer, SIZE_READ, &result)) {
+   if (acRead(handle->File, handle->Buffer, SIZE_READ, &result) IS ERR::Okay) {
       *Size = result;
       return (CSTRING)handle->Buffer;
    }

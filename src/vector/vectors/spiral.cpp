@@ -81,11 +81,11 @@ static void generate_spiral(extVectorSpiral *Vector)
 
 //********************************************************************************************************************
 
-static ERROR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
+static ERR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
 {
    Self->Step   = 1.0;
    Self->GeneratePath = (void (*)(extVector *))&generate_spiral;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -96,22 +96,22 @@ The horizontal center of the spiral is defined here as either a fixed or scaled 
 -END-
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_CenterX(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_GET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR::FieldTypeMismatch);
 
    if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
@@ -119,7 +119,7 @@ static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
    Self->CX = val;
 
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -130,29 +130,29 @@ The vertical center of the spiral is defined here as either a fixed or scaled va
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_CenterY(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_GET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR::FieldTypeMismatch);
 
    if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
 
    Self->CY = val;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -166,20 +166,20 @@ If the LoopLimit is not set, the #Radius will take precedence.
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_LoopLimit(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_LoopLimit(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->LoopLimit;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_LoopLimit(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_LoopLimit(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value >= 0) {
       Self->LoopLimit = Value;
       reset_path(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -193,20 +193,20 @@ If Spacing is undeclared, the spiral expands at an incremental rate of `#Step * 
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_Spacing(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_Spacing(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->Spacing;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_Spacing(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_Spacing(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value >= 0.0) {
       Self->Spacing = Value;
       reset_path(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -217,25 +217,25 @@ The height of the spiral is expressed as '#Radius * 2.0'.
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_Height(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_GET_Height(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_Height(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_SET_Height(extVectorSpiral *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR::FieldTypeMismatch);
    Self->Radius = val * 0.5;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -247,20 +247,20 @@ Offset is set to zero.
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_Offset(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_Offset(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->Offset;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_Offset(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_Offset(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value >= 0.0) {
       Self->Offset = Value;
       reset_path(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -274,19 +274,19 @@ length.
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_PathLength(extVectorSpiral *Self, LONG *Value)
+static ERR SPIRAL_GET_PathLength(extVectorSpiral *Self, LONG *Value)
 {
    *Value = Self->PathLength;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
+static ERR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -298,31 +298,31 @@ The radius of the spiral is defined here as either a fixed or scaled value.  If 
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_Radius(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_GET_Radius(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR::FieldTypeMismatch);
 
-   if (val < 0) return log.warning(ERR_InvalidDimension);
+   if (val < 0) return log.warning(ERR::InvalidDimension);
 
    if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
 
    Self->Radius = val;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -334,20 +334,20 @@ is 1.0.  Using larger values will create a spiral with jagged corners due to the
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_Step(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_Step(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->Step;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_Step(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_Step(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value != 0.0) {
       Self->Step = Value;
       reset_path(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -360,26 +360,26 @@ The width of the spiral is expressed as '#Radius * 2.0'.
 
 *********************************************************************************************************************/
 
-static ERROR SPIRAL_GET_Width(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_GET_Width(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SPIRAL_SET_Width(extVectorSpiral *Self, Variable *Value)
+static ERR SPIRAL_SET_Width(extVectorSpiral *Self, Variable *Value)
 {
    pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR::FieldTypeMismatch);
 
    Self->Radius = val * 0.5;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -409,7 +409,7 @@ static const FieldArray clVectorSpiralFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR init_spiral(void)
+static ERR init_spiral(void)
 {
    clVectorSpiral = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
@@ -421,6 +421,6 @@ static ERROR init_spiral(void)
       fl::Size(sizeof(extVectorSpiral)),
       fl::Path(MOD_PATH));
 
-   return clVectorSpiral ? ERR_Okay : ERR_AddClass;
+   return clVectorSpiral ? ERR::Okay : ERR::AddClass;
 }
 

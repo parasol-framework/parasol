@@ -39,7 +39,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
+static ERR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 {
    objBitmap *bmp;
    BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
@@ -53,24 +53,24 @@ static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
       copy_flags |= BAF::BLEND|BAF::COPY; // Any subsequent copies are to be blended
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MERGEFX_Free(extMergeFX *Self, APTR Void)
+static ERR MERGEFX_Free(extMergeFX *Self, APTR Void)
 {
    Self->~extMergeFX();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
+static ERR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
 {
    new (Self) extMergeFX;
    Self->SourceType = VSF::IGNORE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -85,23 +85,23 @@ direct pointer to the referenced effect in the Effect field, or an error will be
 
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG Elements)
+static ERR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG Elements)
 {
    if ((!Value) or (Elements <= 0)) {
       Self->List.clear();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    for (LONG i=0; i < Elements; i++) {
       if (Value[i].SourceType IS VSF::REFERENCE) {
          if (Value[i].Effect) ((extFilterEffect *)Value[i].Effect)->UsageCount++;
-         else return ERR_InvalidData;
+         else return ERR::InvalidData;
       }
 
       Self->List.push_back(Value[i]);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -112,10 +112,10 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
+static ERR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
 {
    *Value = StrClone("feMerge");
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -130,7 +130,7 @@ static const FieldArray clMergeFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_mergefx(void)
+ERR init_mergefx(void)
 {
    clMergeFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -142,5 +142,5 @@ ERROR init_mergefx(void)
       fl::Size(sizeof(extMergeFX)),
       fl::Path(MOD_PATH));
 
-   return clMergeFX ? ERR_Okay : ERR_AddClass;
+   return clMergeFX ? ERR::Okay : ERR::AddClass;
 }

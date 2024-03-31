@@ -44,29 +44,29 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 //********************************************************************************************************************
 // Support for the 'currentColor' colour value.  Finds the first parent with a defined fill colour and returns it.
 
-static ERROR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB &RGB)
+static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB &RGB)
 {
    if (!State.m_color.empty()) {
       VectorPainter painter;
-      if (!vecReadPainter(NULL, State.m_color.c_str(), &painter, NULL)) {
+      if (vecReadPainter(NULL, State.m_color.c_str(), &painter, NULL) IS ERR::Okay) {
          RGB = painter.Colour;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
-   if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
+   if (Vector->Class->BaseClassID != ID_VECTOR) return ERR::Failed;
 
    Vector = (objVector *)Vector->Parent;
    while (Vector) {
-      if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
+      if (Vector->Class->BaseClassID != ID_VECTOR) return ERR::Failed;
 
-      if (!GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL)) {
-         if (RGB.Alpha != 0) return ERR_Okay;
+      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL) IS ERR::Okay) {
+         if (RGB.Alpha != 0) return ERR::Okay;
       }
       Vector = (objVector *)Vector->Parent;
    }
 
-   return ERR_Failed;
+   return ERR::Failed;
 }
 
 //********************************************************************************************************************
@@ -113,7 +113,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 
    std::vector<Transition> stops;
    for (auto &scan : Tags) {
-      if (!StrMatch("stop", scan.name())) {
+      if (StrMatch("stop", scan.name()) IS ERR::Okay) {
          Transition stop;
          stop.Offset = 0;
          stop.Transform = NULL;
@@ -122,7 +122,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
             auto &value = scan.Attribs[a].Value;
             if (value.empty()) continue;
 
-            if (!StrMatch("offset", name)) {
+            if (StrMatch("offset", name) IS ERR::Okay) {
                char *end;
                stop.Offset = strtod(value.c_str(), &end);
                if (*end IS '%') {
@@ -132,7 +132,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
                if (stop.Offset < 0.0) stop.Offset = 0;
                else if (stop.Offset > 1.0) stop.Offset = 1.0;
             }
-            else if (!StrMatch("transform", name)) {
+            else if (StrMatch("transform", name) IS ERR::Okay) {
                stop.Transform = value.c_str();
             }
             else log.warning("Unable to process stop attribute '%s'", name.c_str());
@@ -176,7 +176,7 @@ static CSTRING folder(extSVG *Self)
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
    STRING folder;
-   if (!ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &folder)) {
+   if (ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &folder) IS ERR::Okay) {
       WORD last = 0;
       for (WORD i=0; folder[i]; i++) {
          if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;
@@ -195,7 +195,7 @@ static void parse_transform(objVector *Vector, const std::string Value)
 {
    if ((Vector->Class->BaseClassID IS ID_VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
-      if (!vecNewMatrix((objVector *)Vector, &matrix)) {
+      if (vecNewMatrix((objVector *)Vector, &matrix) IS ERR::Okay) {
          vecParseTransform(matrix, Value.c_str());
       }
       else {
@@ -215,7 +215,7 @@ static const std::string uri_name(const std::string Ref)
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
-   else if (!StrCompare("url(#", Ref.c_str() + skip, 5)) {
+   else if (StrCompare("url(#", Ref.c_str() + skip, 5) IS ERR::Okay) {
       LONG i;
       skip += 5;
       for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
@@ -402,11 +402,11 @@ static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
 
 //********************************************************************************************************************
 
-static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
+static ERR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Path) and (!Buffer)) return ERR_NullArgs;
+   if ((!Path) and (!Buffer)) return ERR::NullArgs;
 
    log.branch("Path: %s [Log-level reduced]", Path ? Path : "<xml-statement>");
 
@@ -415,13 +415,13 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 #endif
 
    objXML *xml;
-   ERROR error = ERR_Okay;
-   if (!NewObject(ID_XML, NF::INTEGRAL, &xml)) {
+   ERR error = ERR::Okay;
+   if (NewObject(ID_XML, NF::INTEGRAL, &xml) IS ERR::Okay) {
       objTask *task = CurrentTask();
       STRING working_path = NULL;
 
       if (Path) {
-         if (!StrCompare("*.svgz", Path, 0, STR::WILDCARD)) {
+         if (StrCompare("*.svgz", Path, 0, STR::WILDCARD) IS ERR::Okay) {
             if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL::READ))) {
                if (auto stream = objCompressedStream::create::global(fl::Owner(file->UID), fl::Input(file))) {
                   xml->setSource(stream);
@@ -429,19 +429,19 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
                else {
                   FreeResource(xml);
                   FreeResource(file);
-                  error = ERR_CreateObject;
+                  error = ERR::CreateObject;
                   goto end;
                }
             }
             else {
                FreeResource(xml);
-               error = ERR_CreateObject;
+               error = ERR::CreateObject;
                goto end;
             }
          }
          else xml->setPath(Path);
 
-         if (!task->get(FID_Path, &working_path)) working_path = StrClone(working_path);
+         if (task->get(FID_Path, &working_path) IS ERR::Okay) working_path = StrClone(working_path);
 
          // Set a new working path based on the path
 
@@ -456,7 +456,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       }
       else if (Buffer) xml->setStatement(Buffer);
 
-      if (!InitObject(xml)) {
+      if (InitObject(xml) IS ERR::Okay) {
          Self->SVGVersion = 1.0;
 
          Self->XML = xml;
@@ -465,7 +465,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          objVector *sibling = NULL;
          for (auto &scan : xml->Tags) {
-            if (!StrMatch("svg", scan.name())) {
+            if (StrMatch("svg", scan.name()) IS ERR::Okay) {
                svgState state(Self);
                if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
                else xtag_svg(Self, state, scan, Self->Scene, sibling);
@@ -476,7 +476,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          for (auto &inherit : Self->Inherit) {
             OBJECTPTR ref;
-            if (!scFindDef(Self->Scene, inherit.ID.c_str(), &ref)) {
+            if (scFindDef(Self->Scene, inherit.ID.c_str(), &ref) IS ERR::Okay) {
                inherit.Object->set(FID_Inherit, ref);
             }
             else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());
@@ -492,7 +492,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          Self->XML = NULL;
       }
-      else error = ERR_Init;
+      else error = ERR::Init;
 
       if (working_path) {
          task->setPath(working_path);
@@ -501,7 +501,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
       FreeResource(xml);
    }
-   else error = ERR_NewObject;
+   else error = ERR::NewObject;
 
 end:
 #ifndef DEBUG
@@ -518,8 +518,8 @@ static void convert_styles(objXML::TAGS &Tags)
    pf::Log log(__FUNCTION__);
 
    for (auto &tag : Tags) {
-      for (unsigned style=1; style < tag.Attribs.size(); style++) {
-         if (StrMatch("style", tag.Attribs[style].Name)) continue;
+      for (LONG style=1; style < std::ssize(tag.Attribs); style++) {
+         if (StrMatch("style", tag.Attribs[style].Name) != ERR::Okay) continue;
 
          // Convert all the style values into real attributes.
 

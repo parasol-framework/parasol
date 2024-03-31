@@ -241,18 +241,18 @@ void free_iconv(void)
 -FUNCTION-
 StrCompare: Compares strings to see if they are identical.
 
-This function compares two strings against each other.  If the strings match then it returns `ERR_Okay`, otherwise it
-returns `ERR_False`.  By default the function is not case sensitive, but you can turn on case sensitivity by
+This function compares two strings against each other.  If the strings match then it returns `ERR::Okay`, otherwise it
+returns `ERR::False`.  By default the function is not case sensitive, but you can turn on case sensitivity by
 specifying the `STR::CASE` flag.
 
 If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all
-characters matched up until the termination, `ERR_Okay` will be returned regardless of whether or not one of the strings
+characters matched up until the termination, `ERR::Okay` will be returned regardless of whether or not one of the strings
 happened to be longer than the other.
 
 If the Length is not 0, then the comparison will stop once the specified number of characters to match has been
-reached.  If one of the strings terminates before the specified Length is matched, `ERR_False` will be returned.
+reached.  If one of the strings terminates before the specified Length is matched, `ERR::False` will be returned.
 
-If the `STR::MATCH_LEN` flag is specified, you can force the function into returning an `ERR_Okay` code only on the
+If the `STR::MATCH_LEN` flag is specified, you can force the function into returning an `ERR::Okay` code only on the
 condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has
 been set to 0.
 
@@ -273,7 +273,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
+ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 {
    LONG len, i, j;
    UBYTE char1, char2;
@@ -281,9 +281,9 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
    CSTRING Original;
    #define Wildcard String1
 
-   if ((!String1) or (!String2)) return ERR_Args;
+   if ((!String1) or (!String2)) return ERR::Args;
 
-   if (String1 IS String2) return ERR_Okay; // Return a match if both addresses are equal
+   if (String1 IS String2) return ERR::Okay; // Return a match if both addresses are equal
 
    if (!Length) len = 0x7fffffff;
    else len = Length;
@@ -291,7 +291,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
    Original = String2;
 
    if ((Flags & STR::WILDCARD) != STR::NIL) {
-      if (!Wildcard[0]) return ERR_Okay;
+      if (!Wildcard[0]) return ERR::Okay;
 
       while ((*Wildcard) and (*String2)) {
          fail = false;
@@ -300,7 +300,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 
             for (i=0; (Wildcard[i]) and (Wildcard[i] != '*') and (Wildcard[i] != '|'); i++); // Count the number of printable characters after the '*'
 
-            if (i IS 0) return ERR_Okay; // Nothing left to compare as wildcard string terminates with a *, so return match
+            if (i IS 0) return ERR::Okay; // Nothing left to compare as wildcard string terminates with a *, so return match
 
             if ((!Wildcard[i]) or (Wildcard[i] IS '|')) {
                // Scan to the end of the string for wildcard situation like "*.txt"
@@ -365,22 +365,22 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
                Wildcard++;
                String2 = Original;
             }
-            else return ERR_False;
+            else return ERR::False;
          }
       }
 
       if (!String2[0]) {
-         if (!Wildcard[0]) return ERR_Okay;
-         else if (Wildcard[0] IS '|') return ERR_Okay;
+         if (!Wildcard[0]) return ERR::Okay;
+         else if (Wildcard[0] IS '|') return ERR::Okay;
       }
 
-      if ((Wildcard[0] IS '*') and (Wildcard[1] IS 0)) return ERR_Okay;
+      if ((Wildcard[0] IS '*') and (Wildcard[1] IS 0)) return ERR::Okay;
 
-      return ERR_False;
+      return ERR::False;
    }
    else if ((Flags & STR::CASE) != STR::NIL) {
       while ((len) and (*String1) and (*String2)) {
-         if (*String1++ != *String2++) return ERR_False;
+         if (*String1++ != *String2++) return ERR::False;
          len--;
       }
    }
@@ -390,7 +390,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
          char2 = *String2;
          if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
          if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-         if (char1 != char2) return ERR_False;
+         if (char1 != char2) return ERR::False;
 
          String1++; String2++;
          len--;
@@ -401,11 +401,11 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
    // requested to check.
 
    if ((Flags & (STR::MATCH_LEN|STR::WILDCARD)) != STR::NIL) {
-      if ((*String1 IS 0) and (*String2 IS 0)) return ERR_Okay;
-      else return ERR_False;
+      if ((*String1 IS 0) and (*String2 IS 0)) return ERR::Okay;
+      else return ERR::False;
    }
-   else if ((Length) and (len > 0)) return ERR_False;
-   else return ERR_Okay;
+   else if ((Length) and (len > 0)) return ERR::False;
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -535,11 +535,11 @@ NoData: Locale information is not available.
 
 *********************************************************************************************************************/
 
-ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
+ERR StrReadLocale(CSTRING Key, CSTRING *Value)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Key) or (!Value)) return ERR_NullArgs;
+   if ((!Key) or (!Value)) return ERR::NullArgs;
 
    #ifdef __ANDROID__
       // Android doesn't have locale.cfg, we have to load that information from the system.
@@ -578,22 +578,22 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
 
          log.msg("Android language code: %s", code);
 
-         if (code[0]) { *Value = code; return ERR_Okay; }
-         else return ERR_Failed;
+         if (code[0]) { *Value = code; return ERR::Okay; }
+         else return ERR::Failed;
       }
    #endif
 
    if (!glLocale) {
       if (!(glLocale = objConfig::create::untracked(fl::Path("user:config/locale.cfg")))) {
-         return ERR_NoData;
+         return ERR::NoData;
       }
    }
 
-   if (!cfgReadValue(glLocale, "LOCALE", Key, Value)) {
+   if (cfgReadValue(glLocale, "LOCALE", Key, Value) IS ERR::Okay) {
       if (!*Value) *Value = ""; // It is OK for some values to be empty strings.
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 //********************************************************************************************************************

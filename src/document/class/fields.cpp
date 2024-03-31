@@ -24,10 +24,10 @@ If a document defines a default script in its content, it will have priority ove
 
 *********************************************************************************************************************/
 
-static ERROR SET_ClientScript(extDocument *Self, objScript *Value)
+static ERR SET_ClientScript(extDocument *Self, objScript *Value)
 {
    Self->ClientScript = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -48,26 +48,26 @@ EventCallback: Provides callbacks for global state changes.
 Set this field with a function reference to receive event notifications.  It must be set in conjunction with
 #EventMask so that notifications are limited to those of interest.
 
-The callback function prototype is `ERROR Function(*Document, DEF EventFlag, KEYVALUE *EventData)`.
+The callback function prototype is `ERR Function(*Document, DEF EventFlag, KEYVALUE *EventData)`.
 
 The EventFlag value will indicate the event that occurred.  Please see the #EventMask field for a list of
 supported events and additional details.
 
-Error codes returned from the callback will normally be discarded, however in some cases ERR_Skip can be returned in
+Error codes returned from the callback will normally be discarded, however in some cases ERR::Skip can be returned in
 order to prevent the event from being processed any further.
 
 *********************************************************************************************************************/
 
-static ERROR GET_EventCallback(extDocument *Self, FUNCTION **Value)
+static ERR GET_EventCallback(extDocument *Self, FUNCTION **Value)
 {
    if (Self->EventCallback.defined()) {
       *Value = &Self->EventCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
+static ERR SET_EventCallback(extDocument *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
@@ -77,7 +77,7 @@ static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
       }
    }
    else Self->EventCallback.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -97,13 +97,13 @@ Flags: Optional flags that affect object behaviour.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Flags(extDocument *Self, DCF Value)
+static ERR SET_Flags(extDocument *Self, DCF Value)
 {
    if (Self->initialised()) {
       Self->Flags = Value & (~(DCF::UNRESTRICTED|DCF::DISABLED));
    }
    else Self->Flags = Value & (~(DCF::DISABLED));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -146,22 +146,22 @@ Other means of opening a document include loading the data manually and passing 
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(extDocument *Self, CSTRING *Value)
+static ERR GET_Path(extDocument *Self, CSTRING *Value)
 {
    *Value = Self->Path.c_str();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Path(extDocument *Self, CSTRING Value)
+static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
    pf::Log log;
    static BYTE recursion = 0;
 
-   if (recursion) return log.warning(ERR_Recursion);
+   if (recursion) return log.warning(ERR::Recursion);
 
-   if ((!Value) or (!*Value)) return ERR_NoData;
+   if ((!Value) or (!*Value)) return ERR::NoData;
 
-   Self->Error = ERR_Okay;
+   Self->Error = ERR::Okay;
 
    std::string newpath;
    if ((Value[0] IS '#') or (Value[0] IS '?')) {
@@ -189,7 +189,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
             { "OldURI", Self->Path },
             { "NewURI", newpath },
          };
-         scCallback(script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(script, trigger.Script.ProcedureID, args, std::ssize(args), NULL);
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING, APTR))trigger.StdC.Routine;
@@ -216,14 +216,14 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
       // If an error occurred, remove the location & page strings to show that no document is loaded.
 
-      if (Self->Error) {
+      if (Self->Error != ERR::Okay) {
          Self->Path.clear();
          Self->PageName.clear();
          Self->Bookmark.clear();
          Self->Viewport->draw();
       }
    }
-   else Self->Error = ERR_AllocMemory;
+   else Self->Error = ERR::AllocMemory;
 
    report_event(Self, DEF::PATH, 0, NULL);
 
@@ -241,11 +241,11 @@ changed without causing a load operation.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Origin(extDocument *Self, CSTRING Value)
+static ERR SET_Origin(extDocument *Self, CSTRING Value)
 {
    Self->Path.clear();
    if ((Value) and (*Value)) Self->Path.assign(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -264,7 +264,7 @@ margins.
 
 *********************************************************************************************************************/
 
-static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
+static ERR GET_PageWidth(extDocument *Self, Variable *Value)
 {
    DOUBLE value;
 
@@ -274,7 +274,7 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
       value = Self->CalcWidth;
 
       if (Value->Type & FD_SCALED) {
-         if (Self->VPWidth <= 0) return ERR_GetField;
+         if (Self->VPWidth <= 0) return ERR::GetField;
          value = (DOUBLE)(value * Self->VPWidth);
       }
    }
@@ -282,34 +282,34 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = value;
-   else return ERR_FieldTypeMismatch;
-   return ERR_Okay;
+   else return ERR::FieldTypeMismatch;
+   return ERR::Okay;
 }
 
-static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
+static ERR SET_PageWidth(extDocument *Self, Variable *Value)
 {
    pf::Log log;
 
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double <= 0) {
          log.warning("A page width of %.2f is illegal.", Value->Double);
-         return ERR_OutOfRange;
+         return ERR::OutOfRange;
       }
       Self->PageWidth = Value->Double;
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large <= 0) {
          log.warning("A page width of %" PF64 " is illegal.", Value->Large);
-         return ERR_OutOfRange;
+         return ERR::OutOfRange;
       }
       Self->PageWidth = Value->Large;
    }
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
 
    if (Value->Type & FD_SCALED) Self->RelPageWidth = true;
    else Self->RelPageWidth = false;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -326,11 +326,11 @@ A Pretext will always survive document unloading and resets.  It can be removed 
 
 *********************************************************************************************************************/
 
-static ERROR SET_Pretext(extDocument *Self, CSTRING Value)
+static ERR SET_Pretext(extDocument *Self, CSTRING Value)
 {
    if (!Value) {
       if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Self->PretextXML) {
       return Self->PretextXML->setStatement(Value);
@@ -342,9 +342,9 @@ static ERROR SET_Pretext(extDocument *Self, CSTRING Value)
             fl::ReadOnly(true)
          }))) {
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_CreateObject;
+      else return ERR::CreateObject;
    }
 }
 
@@ -370,17 +370,17 @@ the nearest viewport container will be determined based on object ownership.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Viewport(extDocument *Self, objVectorViewport *Value)
+static ERR SET_Viewport(extDocument *Self, objVectorViewport *Value)
 {
-   if (Value->CLASS_ID != ID_VECTORVIEWPORT) return ERR_InvalidObject;
+   if (Value->CLASS_ID != ID_VECTORVIEWPORT) return ERR::InvalidObject;
 
    if (Self->initialised()) {
-      if (Self->Viewport IS Value) return ERR_Okay;
-      return ERR_NoSupport;
+      if (Self->Viewport IS Value) return ERR::Okay;
+      return ERR::NoSupport;
    }
    else Self->Viewport = Value;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -400,13 +400,13 @@ You can manually change the working path by setting the #Origin field without af
 
 *********************************************************************************************************************/
 
-static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
+static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {
    pf::Log log;
 
    if (Self->Path.empty()) {
       log.warning("Document has no defined Path.");
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 
    Self->WorkingPath.clear();
@@ -435,19 +435,19 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
    if (path) { // Extract absolute path
       Self->WorkingPath.assign(Self->Path, 0, j);
    }
-   else if ((!CurrentTask()->get(FID_Path, &working_path)) and (working_path)) {
+   else if ((CurrentTask()->get(FID_Path, &working_path) IS ERR::Okay) and (working_path)) {
       std::string buf(working_path);
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
       if (j > 0) buf += Self->Path.substr(0, j);
 
-      if (!ResolvePath(buf.c_str(), RSF::APPROXIMATE, &working_path)) {
+      if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &working_path) IS ERR::Okay) {
          Self->WorkingPath.assign(working_path);
       }
    }
-   else { *Value = NULL; return ERR_NoData; }
+   else { *Value = NULL; return ERR::NoData; }
 
    *Value = Self->WorkingPath.c_str();
-   return ERR_Okay;
+   return ERR::Okay;
 }

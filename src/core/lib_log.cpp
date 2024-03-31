@@ -307,7 +307,7 @@ FuncError: Sends basic error messages to the application log.
 Status: Internal
 
 This function outputs a message to the application log.  It uses the codes listed in the system/errors.h file to
-display the correct string to the user.  The following example `FuncError(ERR_Write)` would produce input such
+display the correct string to the user.  The following example `FuncError(ERR::Write)` would produce input such
 as the following: `WriteFile: Error writing data to file.`.
 
 Notice that the Header parameter is not provided in the example.  It is not necessary to supply this parameter in
@@ -322,7 +322,7 @@ error: Returns the same code that was specified in the Error parameter.
 
 *********************************************************************************************************************/
 
-ERROR FuncError(CSTRING Header, ERROR Code)
+ERR FuncError(CSTRING Header, ERR Code)
 {
    if (tlLogStatus <= 0) return Code;
    if (glLogLevel < 2) return Code;
@@ -370,11 +370,11 @@ ERROR FuncError(CSTRING Header, ERROR Code)
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
          if (ctx->Field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[Code], hiend);
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[LONG(Code)], hiend);
          }
-         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[Code], hiend);
+         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[LONG(Code)], hiend);
       }
-      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
+      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[LONG(Code)], hiend);
 
       #if defined(__unix__) && !defined(__ANDROID__)
          if (glSync) { fflush(0); fsync(STDERR_FILENO); }

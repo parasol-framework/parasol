@@ -110,7 +110,7 @@ void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
 
 //********************************************************************************************************************
 
-static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
+static ERR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
    pf::Log log;
 
@@ -124,42 +124,42 @@ static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop,
    auto &m = Stop->Matrix;
    if (Stop->AGGTransform) {
       Stop->AGGTransform->load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX, m.TranslateY);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       Stop->AGGTransform = new (std::nothrow) agg::trans_affine(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX, m.TranslateY);
-      if (Stop->AGGTransform) return ERR_Okay;
-      else return log.warning(ERR_AllocMemory);
+      if (Stop->AGGTransform) return ERR::Okay;
+      else return log.warning(ERR::AllocMemory);
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
+static ERR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 {
    for (auto i=0; i < Self->TotalStops; i++) {
       delete Self->Stops[i].AGGTransform;
    }
    Self->TotalStops = 0;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
+static ERR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 {
    pf::Log log;
-   if (Self->TotalStops < 2) return log.warning(ERR_FieldNotSet);
-   return ERR_Okay;
+   if (Self->TotalStops < 2) return log.warning(ERR::FieldNotSet);
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
+static ERR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
 {
    Self->Dirty = true;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -178,24 +178,24 @@ a transform string.  The Transition structure consists of the following fields:
 
 *********************************************************************************************************************/
 
-static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
+static ERR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
 {
    pf::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {
       Self->TotalStops = Elements;
       DOUBLE last_offset = 0;
       for (auto i=0; i < Elements; i++) {
-         if (Value[i].Offset < last_offset) return log.warning(ERR_InvalidValue); // Offsets must be in incrementing order.
-         if ((Value[i].Offset < 0.0) or (Value[i].Offset > 1.0)) return log.warning(ERR_OutOfRange);
+         if (Value[i].Offset < last_offset) return log.warning(ERR::InvalidValue); // Offsets must be in incrementing order.
+         if ((Value[i].Offset < 0.0) or (Value[i].Offset > 1.0)) return log.warning(ERR::OutOfRange);
 
          Self->Stops[i].Offset = Value[i].Offset;
          set_stop_transform(Self, &Self->Stops[i], Value[i].Transform);
 
          last_offset = Value[i].Offset;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_DataSize);
+   else return log.warning(ERR::DataSize);
 }
 
 /*********************************************************************************************************************
@@ -222,7 +222,7 @@ static const FieldArray clTransitionFields[] = {
    END_FIELD
 };
 
-ERROR init_transition(void) // The transition is a definition type for creating transitions and not drawing.
+ERR init_transition(void) // The transition is a definition type for creating transitions and not drawing.
 {
    clVectorTransition = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORTRANSITION),
@@ -233,6 +233,6 @@ ERROR init_transition(void) // The transition is a definition type for creating 
       fl::Size(sizeof(objVectorTransition)),
       fl::Path(MOD_PATH));
 
-   return clVectorTransition ? ERR_Okay : ERR_AddClass;
+   return clVectorTransition ? ERR::Okay : ERR::AddClass;
 }
 

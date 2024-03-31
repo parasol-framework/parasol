@@ -140,7 +140,7 @@ class freetype_font {
       ~freetype_font();
 };
 
-extern ERROR get_font(pf::Log &Log, CSTRING, CSTRING, LONG, LONG, common_font **);
+extern ERR get_font(pf::Log &Log, CSTRING, CSTRING, LONG, LONG, common_font **);
 
 // Caching note: Although it is policy for cached fonts to be permanently retained, it is not necessary for the
 // glyphs themselves to be permanently cached.  Future resource management should therefore actively remove

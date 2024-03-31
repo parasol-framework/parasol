@@ -212,15 +212,15 @@ class extVectorText : public extVector {
 //********************************************************************************************************************
 
 static void add_line(extVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
-static ERROR cursor_timer(extVectorText *, LARGE, LARGE);
+static ERR cursor_timer(extVectorText *, LARGE, LARGE);
 static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *);
 static void raster_text_to_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
-static ERROR reset_font(extVectorText *, bool = false);
-static ERROR text_input_events(extVector *, const InputEvent *);
-static ERROR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
+static ERR reset_font(extVectorText *, bool = false);
+static ERR text_input_events(extVector *, const InputEvent *);
+static ERR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
 
 //********************************************************************************************************************
 
@@ -306,13 +306,13 @@ Args: The Line value was out of the valid range.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Args)
+static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Args)
 {
-   if (Self->txLines.empty()) return ERR_Okay;
+   if (Self->txLines.empty()) return ERR::Okay;
 
    if ((!Args) or (Args->Line < 0)) Self->txLines.pop_back();
    else if ((size_t)Args->Line < Self->txLines.size()) Self->txLines.erase(Self->txLines.begin() + Args->Line);
-   else return ERR_Args;
+   else return ERR::Args;
 
    mark_dirty(Self, RC::BASE_PATH);
 
@@ -325,12 +325,12 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
 
    Self->txFlags &= ~VTXF::AREA_SELECTED;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
+static ERR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 {
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
@@ -355,12 +355,12 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
       if (focus.granted()) vecSubscribeFeedback(*focus, FM::NIL, FUNCTION(text_focus_event));
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
+static ERR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 {
    if ((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) {
       if (!Self->txFocusID) {
@@ -384,7 +384,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
             fl::StrokeWidth(1.25),
             fl::Visibility(VIS::HIDDEN)))) {
       }
-      else return ERR_CreateObject;
+      else return ERR::CreateObject;
 
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
@@ -398,7 +398,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
+static ERR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
 {
    new (&Self->txLines) std::vector<TextLine>;
    new (&Self->txCursor) TextCursor;
@@ -413,7 +413,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
    Self->txLetterSpacing = 1.0;
    Self->DisableHitTesting = true;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -428,16 +428,16 @@ mentioned align flags.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Align(extVectorText *Self, ALIGN *Value)
+static ERR TEXT_GET_Align(extVectorText *Self, ALIGN *Value)
 {
    *Value = Self->txAlignFlags;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Align(extVectorText *Self, ALIGN Value)
+static ERR TEXT_SET_Align(extVectorText *Self, ALIGN Value)
 {
    Self->txAlignFlags = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -453,18 +453,18 @@ characters will be affected by the CharLimit value.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_CharLimit(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_CharLimit(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txCharLimit;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_CharLimit(extVectorText *Self, LONG Value)
+static ERR TEXT_SET_CharLimit(extVectorText *Self, LONG Value)
 {
-   if (Value < 0) return ERR_OutOfRange;
+   if (Value < 0) return ERR::OutOfRange;
 
    Self->txCharLimit = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -473,19 +473,19 @@ CursorColumn: The current column position of the cursor.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_CursorColumn(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_CursorColumn(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txCursor.column();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_CursorColumn(extVectorText *Self, LONG Value)
+static ERR TEXT_SET_CursorColumn(extVectorText *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->txCursor.move(Self, Self->txCursor.row(), Value);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -494,20 +494,20 @@ CursorRow: The current line position of the cursor.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_CursorRow(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_CursorRow(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txCursor.row();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_CursorRow(extVectorText *Self, LONG Value)
+static ERR TEXT_SET_CursorRow(extVectorText *Self, LONG Value)
 {
    if (Value >= 0) {
       if (Value < Self->txTotalLines) Self->txCursor.move(Self, Value, Self->txCursor.column());
       else Self->txCursor.move(Self, Self->txTotalLines - 1, Self->txCursor.column());
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -519,10 +519,10 @@ taken into account.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
 {
    if (!Self->txHandle) {
-      if (auto error = reset_font(Self)) return error;
+      if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
    if (Self->txHandle->type IS CF_BITMAP) *Value = Self->txBitmapFont->Gutter;
@@ -530,7 +530,7 @@ static ERROR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
       *Value = ((freetype_font::ft_point *)Self->txHandle)->descent;
    }
    else *Value = 1;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -542,10 +542,10 @@ account.  The height includes the top region reserved for accents, but excludes 
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
 {
    if (!Self->txHandle) {
-      if (auto error = reset_font(Self)) return error;
+      if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
    if (Self->txBitmapFont) *Value = Self->txBitmapFont->MaxHeight;
@@ -553,7 +553,7 @@ static ERROR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
       *Value = ((freetype_font::ft_point *)Self->txHandle)->height;
    }
    else *Value = 1;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -566,14 +566,14 @@ calculation `16 * 72 / 96`.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_DisplaySize(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_DisplaySize(extVectorText *Self, LONG *Value)
 {
    if (!Self->txHandle) {
-      if (auto error = reset_font(Self)) return error;
+      if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
    *Value = F2T(Self->txFontSize * 72.0 / DISPLAY_DPI);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -599,27 +599,27 @@ else (b) no extra shift along the x-axis occurs.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_DX(extVectorText *Self, DOUBLE **Values, LONG *Elements)
+static ERR TEXT_GET_DX(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 {
    *Values = Self->txDX;
    *Elements = Self->txTotalDX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
+static ERR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX)) {
+      if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX) IS ERR::Okay) {
          CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
          Self->txTotalDX = Elements;
          reset_path(Self);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -630,27 +630,27 @@ This field follows the same rules described in #DX.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_DY(extVectorText *Self, DOUBLE **Values, LONG *Elements)
+static ERR TEXT_GET_DY(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 {
    *Values   = Self->txDY;
    *Elements = Self->txTotalDY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
+static ERR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY)) {
+      if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY) IS ERR::Okay) {
          CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
          Self->txTotalDY = Elements;
          reset_path(Self);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -665,28 +665,28 @@ closest matching font will be stored as the Face value.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Face(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_Face(extVectorText *Self, CSTRING *Value)
 {
    *Value = Self->txFamily;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 {
    if (Value) {
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
       CSTRING name;
-      if (!fntResolveFamilyName(Value, &name)) {
+      if (fntResolveFamilyName(Value, &name) IS ERR::Okay) {
          Self->txFamily = StrClone(name);
       }
       else Self->txFamily = StrClone("Noto Sans"); // Better to resort to a default than fail completely
 
       if (Self->initialised()) return reset_font(Self);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -700,16 +700,16 @@ Changing this value post-initialisation has no effect.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Focus(extVectorText *Self, OBJECTID *Value)
+static ERR TEXT_GET_Focus(extVectorText *Self, OBJECTID *Value)
 {
    *Value = Self->txFocusID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Focus(extVectorText *Self, OBJECTID Value)
+static ERR TEXT_SET_Focus(extVectorText *Self, OBJECTID Value)
 {
    Self->txFocusID = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -722,7 +722,7 @@ initialised.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
+static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 {
    // Setting the Font with a reference to an external font object will copy across the configuration of
    // that font.  It is recommended that the external font is initialised beforehand.
@@ -738,7 +738,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       StrCopy(other->Style, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
    else if (Value->Class->ClassID IS ID_VECTORTEXT) {
       auto other = (extVectorText *)Value;
@@ -751,27 +751,27 @@ static ERROR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       StrCopy(other->txFontStyle, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
-   else return ERR_NoSupport;
+   else return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
 // Override the existing Vector Fill field - this is required for bitmap fonts as they need a path reset to be
 // triggered when decorative changes occur.
 
-static ERROR TEXT_GET_Fill(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_Fill(extVectorText *Self, CSTRING *Value)
 {
    *Value = Self->FillString;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 {
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
    CSTRING next;
-   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); !error) {
+   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = StrClone(Value);
 
       if (next) {
@@ -783,7 +783,7 @@ static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
       // Bitmap font reset/redraw required
       if (Self->txBitmapFont) reset_path(Self);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else return error;
 
@@ -809,15 +809,15 @@ When retrieving the font size, the resulting string must be freed by the client 
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
 {
    char buffer[32];
    IntToStr(Self->txFontSize, buffer, sizeof(buffer));
    *Value = StrClone(buffer);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
 {
    bool pct;
    auto size = read_unit(Value, pct);
@@ -826,9 +826,9 @@ static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
       Self->txFontSize = std::trunc(size);
       Self->txScaledFontSize = pct;
       if (Self->initialised()) return reset_font(Self);
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -844,17 +844,17 @@ Errors are not returned if the style name is invalid or unavailable.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_FontStyle(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_FontStyle(extVectorText *Self, CSTRING *Value)
 {
    *Value = Self->txFontStyle;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_FontStyle(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_FontStyle(extVectorText *Self, CSTRING Value)
 {
    if ((!Value) or (!Value[0])) StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    else StrCopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -868,17 +868,17 @@ The other dimension (height for horizontal text, width for vertical text) is of 
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_InlineSize(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_InlineSize(extVectorText *Self, DOUBLE *Value)
 {
    *Value = Self->txInlineSize;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_InlineSize(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_InlineSize(extVectorText *Self, DOUBLE Value)
 {
    Self->txInlineSize = Value;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -889,17 +889,17 @@ LetterSpacing: Private.  Currently unsupported.
 
 // SVG standard, presuming this inserts space as opposed to acting as a multiplier
 
-static ERROR TEXT_GET_LetterSpacing(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_LetterSpacing(extVectorText *Self, DOUBLE *Value)
 {
    *Value = Self->txLetterSpacing;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_LetterSpacing(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_LetterSpacing(extVectorText *Self, DOUBLE Value)
 {
    Self->txLetterSpacing = Value;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -911,16 +911,16 @@ field to a value of 1 for input boxes that have a limited amount of space availa
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_LineLimit(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_LineLimit(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txLineLimit;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_LineLimit(extVectorText *Self, LONG Value)
+static ERR TEXT_SET_LineLimit(extVectorText *Self, LONG Value)
 {
    Self->txLineLimit = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -931,23 +931,23 @@ This field can be queried for the amount of space between each line, measured in
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
 {
    if (!Self->txHandle) {
-      if (auto error = reset_font(Self)) return error;
+      if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
    if (Self->txBitmapFont) {
       *Value = Self->txBitmapFont->LineSpacing;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Self->txHandle->type IS CF_FREETYPE) {
       *Value = ((freetype_font::ft_point *)Self->txHandle)->line_spacing;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = 1;
-      return ERR_Failed;
+      return ERR::Failed;
    }
 }
 
@@ -959,10 +959,10 @@ Reading the Point value will return the point-size of the font, calculated as `F
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Point(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_Point(extVectorText *Self, LONG *Value)
 {
    *Value = std::round(Self->txFontSize * (72.0 / DISPLAY_DPI));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -976,10 +976,10 @@ To check whether or not an area has been selected, test the `AREA_SELECTED` bit 
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_SelectColumn(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_SelectColumn(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txCursor.selectColumn;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -993,10 +993,10 @@ To check whether or not an area has been selected, test the `AREA_SELECTED` bit 
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_SelectRow(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_SelectRow(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txCursor.selectRow;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1006,17 +1006,17 @@ Spacing: Private.  Not currently implemented.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Spacing(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_Spacing(extVectorText *Self, DOUBLE *Value)
 {
    *Value = Self->txSpacing;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Spacing(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_Spacing(extVectorText *Self, DOUBLE Value)
 {
    Self->txSpacing = Value;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1025,17 +1025,17 @@ StartOffset: Private.  Not currently implemented.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_StartOffset(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_StartOffset(extVectorText *Self, DOUBLE *Value)
 {
    *Value = Self->txStartOffset;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_StartOffset(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_StartOffset(extVectorText *Self, DOUBLE Value)
 {
    Self->txStartOffset = Value;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1045,16 +1045,16 @@ TextFlags: Private.  Optional flags.
 -END-
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Flags(extVectorText *Self, VTXF *Value)
+static ERR TEXT_GET_Flags(extVectorText *Self, VTXF *Value)
 {
    *Value = Self->txFlags;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Flags(extVectorText *Self, VTXF Value)
+static ERR TEXT_SET_Flags(extVectorText *Self, VTXF Value)
 {
    Self->txFlags = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1065,21 +1065,21 @@ The x-axis coordinate of the text is specified here as a fixed value.  Scaled co
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_X(extVectorText *Self, Variable *Value)
+static ERR TEXT_GET_X(extVectorText *Self, Variable *Value)
 {
    DOUBLE val = Self->txX;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_X(extVectorText *Self, Variable *Value)
+static ERR TEXT_SET_X(extVectorText *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) Self->txX = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txX = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1092,21 +1092,21 @@ Unlike other vector shapes, the Y coordinate positions the text from its base li
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Y(extVectorText *Self, Variable *Value)
+static ERR TEXT_GET_Y(extVectorText *Self, Variable *Value)
 {
    DOUBLE val = Self->txY;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Y(extVectorText *Self, Variable *Value)
+static ERR TEXT_SET_Y(extVectorText *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) Self->txY = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txY = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else return ERR::FieldTypeMismatch;
    reset_path(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1135,24 +1135,24 @@ and is supplemental to any rotation due to text on a path and to 'glyph-orientat
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Rotate(extVectorText *Self, DOUBLE **Values, LONG *Elements)
+static ERR TEXT_GET_Rotate(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 {
    *Values = Self->txRotate;
    *Elements = Self->txTotalRotate;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
+static ERR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
 
-   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate)) {
+   if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate) IS ERR::Okay) {
       CopyMemory(Values, Self->txRotate, Elements * sizeof(DOUBLE));
       Self->txTotalRotate = Elements;
       reset_path(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -1168,16 +1168,16 @@ a rectangular area.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_ShapeInside(extVectorText *Self, OBJECTID *Value)
+static ERR TEXT_GET_ShapeInside(extVectorText *Self, OBJECTID *Value)
 {
    *Value = Self->txShapeInsideID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_ShapeInside(extVectorText *Self, OBJECTID Value)
+static ERR TEXT_SET_ShapeInside(extVectorText *Self, OBJECTID Value)
 {
    Self->txShapeInsideID = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1189,16 +1189,16 @@ for word-wrapping.  It has no effect if #ShapeInside is undefined.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_ShapeSubtract(extVectorText *Self, OBJECTID *Value)
+static ERR TEXT_GET_ShapeSubtract(extVectorText *Self, OBJECTID *Value)
 {
    *Value = Self->txShapeSubtractID;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_ShapeSubtract(extVectorText *Self, OBJECTID Value)
+static ERR TEXT_SET_ShapeSubtract(extVectorText *Self, OBJECTID Value)
 {
    Self->txShapeSubtractID = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1211,16 +1211,16 @@ When retrieving a string that contains return codes, only the first line of text
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_String(extVectorText *Self, CSTRING *Value)
+static ERR TEXT_GET_String(extVectorText *Self, CSTRING *Value)
 {
    if (Self->txLines.size() > 0) {
       *Value = Self->txLines[0].c_str();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR TEXT_SET_String(extVectorText *Self, CSTRING Value)
+static ERR TEXT_SET_String(extVectorText *Self, CSTRING Value)
 {
    Self->txLines.clear();
 
@@ -1237,7 +1237,7 @@ static ERROR TEXT_SET_String(extVectorText *Self, CSTRING Value)
 
    reset_path(Self);
    if (Self->txCursor.vector) Self->txCursor.validate_position(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1253,16 +1253,16 @@ TextLength.
 // NB: Internally we can fulfil TextLength requirements simply by checking the width of the text path boundary
 // and if they don't match, apply a rescale transformation just prior to drawing (Width * (TextLength / Width))
 
-static ERROR TEXT_GET_TextLength(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_TextLength(extVectorText *Self, DOUBLE *Value)
 {
    *Value = Self->txTextLength;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
 {
    Self->txTextLength = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1274,12 +1274,12 @@ transforms.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
-   if (!Self->initialised()) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR::NotInitialised;
 
    if (!Self->txHandle) {
-      if (auto error = reset_font(Self)) return error;
+      if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
    LONG width = 0;
@@ -1294,7 +1294,7 @@ static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
       }
    }
    *Value = width;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1303,10 +1303,10 @@ TotalLines: The total number of lines stored in the object.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_TotalLines(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_TotalLines(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txLines.size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1321,20 +1321,20 @@ Please note that setting the Weight will give it priority over the #FontStyle va
 -END-
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Weight(extVectorText *Self, LONG *Value)
+static ERR TEXT_GET_Weight(extVectorText *Self, LONG *Value)
 {
    *Value = Self->txWeight;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TEXT_SET_Weight(extVectorText *Self, LONG Value)
+static ERR TEXT_SET_Weight(extVectorText *Self, LONG Value)
 {
    if ((Value >= 100) and (Value <= 900)) {
       Self->txWeight = Value;
       reset_path(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 //********************************************************************************************************************
@@ -1392,35 +1392,35 @@ extern void set_text_final_xy(extVectorText *Vector)
 // (Re)loads the font for a text object.  This is a resource intensive exercise that should be avoided until the object
 // is ready to initialise.
 
-static ERROR reset_font(extVectorText *Vector, bool Force)
+static ERR reset_font(extVectorText *Vector, bool Force)
 {
-   if ((!Vector->initialised()) and (!Force)) return ERR_NotInitialised;
+   if ((!Vector->initialised()) and (!Force)) return ERR::NotInitialised;
 
    pf::Log log;
-   if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); !error) {
+   if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); error IS ERR::Okay) {
       if (Vector->txHandle->type IS CF_BITMAP) {
          Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
          Vector->txFontSize = std::trunc(DOUBLE(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else return log.warning(error);
  }
 
 //********************************************************************************************************************
 
-static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
       pf::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
       Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS::VISIBLE : VIS::HIDDEN);
       acDraw(Self);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       Self->txCursor.timer = 0;
-      return ERR_Terminate;
+      return ERR::Terminate;
    }
 }
 
@@ -1453,7 +1453,7 @@ static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG 
 
 //********************************************************************************************************************
 
-static ERROR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, APTR Meta)
+static ERR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, APTR Meta)
 {
    auto Self = (extVectorText *)CurrentContext();
 
@@ -1489,12 +1489,12 @@ static ERROR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject
       acDraw(Self);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
+static ERR text_input_events(extVector *Vector, const InputEvent *Events)
 {
    auto Self = (extVectorText *)CurrentContext();
 
@@ -1586,7 +1586,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -2031,7 +2031,7 @@ static const FieldArray clTextFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR init_text(void)
+static ERR init_text(void)
 {
    FID_FreetypeFace = StrHash("FreetypeFace");
 
@@ -2046,5 +2046,5 @@ static ERROR init_text(void)
       fl::Size(sizeof(extVectorText)),
       fl::Path(MOD_PATH));
 
-   return clVectorText ? ERR_Okay : ERR_AddClass;
+   return clVectorText ? ERR::Okay : ERR::AddClass;
 }

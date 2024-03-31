@@ -264,7 +264,7 @@ public:
          }
 
          if (!Bitmap->Data) {
-            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Data)) {
+            if (AllocMemory(Bitmap->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Data) IS ERR::Okay) {
                DataSize = Bitmap->LineWidth * canvas_height;
             }
             else {
@@ -545,28 +545,28 @@ extern CSTRING get_name(OBJECTPTR);
 extern void read_numseq(CSTRING &, std::initializer_list<DOUBLE *>);
 extern void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
 extern DOUBLE read_unit(CSTRING &, bool &);
-extern ERROR init_blurfx(void);
-extern ERROR init_colour(void);
-extern ERROR init_colourfx(void);
-extern ERROR init_compositefx(void);
-extern ERROR init_convolvefx(void);
-extern ERROR init_displacementfx(void);
-extern ERROR init_filter(void);
-extern ERROR init_filtereffect(void);
-extern ERROR init_floodfx(void);
-extern ERROR init_gradient(void);
-extern ERROR init_image(void);
-extern ERROR init_imagefx(void);
-extern ERROR init_lightingfx(void);
-extern ERROR init_mergefx(void);
-extern ERROR init_morphfx(void);
-extern ERROR init_offsetfx(void);
-extern ERROR init_pattern(void);
-extern ERROR init_remapfx(void);
-extern ERROR init_sourcefx(void);
-extern ERROR init_transition(void);
-extern ERROR init_turbulencefx(void);
-extern ERROR init_vectorscene(void);
+extern ERR init_blurfx(void);
+extern ERR init_colour(void);
+extern ERR init_colourfx(void);
+extern ERR init_compositefx(void);
+extern ERR init_convolvefx(void);
+extern ERR init_displacementfx(void);
+extern ERR init_filter(void);
+extern ERR init_filtereffect(void);
+extern ERR init_floodfx(void);
+extern ERR init_gradient(void);
+extern ERR init_image(void);
+extern ERR init_imagefx(void);
+extern ERR init_lightingfx(void);
+extern ERR init_mergefx(void);
+extern ERR init_morphfx(void);
+extern ERR init_offsetfx(void);
+extern ERR init_pattern(void);
+extern ERR init_remapfx(void);
+extern ERR init_sourcefx(void);
+extern ERR init_transition(void);
+extern ERR init_turbulencefx(void);
+extern ERR init_vectorscene(void);
 
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
@@ -580,9 +580,9 @@ extern void gen_vector_tree(extVector *);
 extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, DOUBLE);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern objBitmap * get_source_graphic(extVectorFilter *);
-extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
-extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
-extern ERROR scene_input_events(const InputEvent *, LONG);
+extern ERR read_path(std::vector<PathCommand> &, CSTRING);
+extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
+extern ERR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
@@ -1101,35 +1101,35 @@ extern DOUBLE glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 extern void set_text_final_xy(extVectorText *);
 
 extern "C" void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern "C" ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
+extern "C" ERR vecApplyPath(class SimpleVector *, extVectorPath *);
 extern "C" DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
 extern "C" void  vecClosePath(class SimpleVector *);
 extern "C" void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
 extern "C" void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern "C" ERROR vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern "C" ERROR vecFlushMatrix(VectorMatrix *);
+extern "C" ERR vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern "C" ERR vecFlushMatrix(VectorMatrix *);
 extern "C" void  vecFreePath(APTR);
-extern "C" ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
-extern "C" ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
-extern "C" ERROR vecGeneratePath(CSTRING, APTR *);
-extern "C" ERROR vecGetFontHandle(CSTRING, CSTRING, LONG, LONG, APTR *);
-extern "C" ERROR vecGetFontMetrics(APTR, struct FontMetrics *);
+extern "C" ERR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
+extern "C" ERR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
+extern "C" ERR vecGeneratePath(CSTRING, APTR *);
+extern "C" ERR vecGetFontHandle(CSTRING, CSTRING, LONG, LONG, APTR *);
+extern "C" ERR vecGetFontMetrics(APTR, struct FontMetrics *);
 extern "C" LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
 extern "C" void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern "C" ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
-extern "C" ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern "C" ERROR vecReadPainter(objVectorScene *, CSTRING, VectorPainter *, CSTRING *);
-extern "C" ERROR vecResetMatrix(struct VectorMatrix *);
+extern "C" ERR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
+extern "C" ERR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
+extern "C" ERR vecReadPainter(objVectorScene *, CSTRING, VectorPainter *, CSTRING *);
+extern "C" ERR vecResetMatrix(struct VectorMatrix *);
 extern "C" void  vecRewindPath(class SimpleVector *);
-extern "C" ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-extern "C" ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" ERR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" ERR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern "C" DOUBLE vecStringWidth(APTR, CSTRING, LONG);
-extern "C" ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" ERR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 
 template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {

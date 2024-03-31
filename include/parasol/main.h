@@ -33,26 +33,28 @@
 
 namespace pf {
 
+DEFINE_ENUM_FLAG_OPERATORS(ERR)
+
 template <class T>
 class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
    public:
       LONG id;
       T *ptr;
-      ERROR error;
+      ERR error;
 
       ScopedAccessMemory(LONG ID, MEM Flags, LONG Milliseconds = 5000) {
          id = ID;
          error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
 
-      ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
+      ~ScopedAccessMemory() { if (error IS ERR::Okay) ReleaseMemory(ptr); }
 
-      bool granted() { return error == ERR_Okay; }
+      bool granted() { return error == ERR::Okay; }
 
       void release() {
-         if (!error) {
+         if (error IS ERR::Okay) {
             ReleaseMemory(ptr);
-            error = ERR_NotLocked;
+            error = ERR::NotLocked;
          }
       }
 };
@@ -104,7 +106,7 @@ template <class T = BaseClass> std::shared_ptr<T> make_shared_object(T *Object) 
 template <class T = BaseClass>
 class ScopedObjectLock { // C++ wrapper for automatically releasing an object
    public:
-      ERROR error;
+      ERR error;
       T *obj;
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
@@ -116,9 +118,9 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
          obj = (T *)Object;
       }
 
-      ScopedObjectLock() { obj = NULL; error = ERR_NotLocked; }
-      ~ScopedObjectLock() { if (!error) ReleaseObject((OBJECTPTR)obj); }
-      bool granted() { return error == ERR_Okay; }
+      ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
+      ~ScopedObjectLock() { if (error IS ERR::Okay) ReleaseObject((OBJECTPTR)obj); }
+      bool granted() { return error == ERR::Okay; }
 
       T * operator->() { return obj; }; // Promotes underlying methods and fields
       T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
@@ -229,7 +231,7 @@ class GuardedObject {
             object = Object;
             id     = Object->UID;
          }
-         else { pf::Log log(__FUNCTION__); log.warning(ERR_InUse); }
+         else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
 
       constexpr bool empty() { return !object; }

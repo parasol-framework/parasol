@@ -65,12 +65,12 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
 
       if (((Event->Mask & JTYPE::REPEATED) != JTYPE::NIL) and ((sub.Mask & JTYPE::REPEATED) IS JTYPE::NIL)) it++;
       else if ((sub.Mask & Event->Mask) != JTYPE::NIL) {
-         ERROR result = ERR_Terminate;
+         ERR result = ERR::Terminate;
          consumed = true;
 
          if (sub.Callback.isC()) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(objVector *, InputEvent *, APTR))sub.Callback.StdC.Routine;
+            auto callback = (ERR (*)(objVector *, InputEvent *, APTR))sub.Callback.StdC.Routine;
             result = callback(Vector, Event, sub.Callback.StdC.Meta);
          }
          else if (sub.Callback.isScript()) {
@@ -78,10 +78,10 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
                ScriptArg("Vector", Vector, FDF_OBJECT),
                ScriptArg("InputEvent:Events", Event, FDF_STRUCT)
             };
-            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, std::ssize(args), &result);
          }
 
-         if (result IS ERR_Terminate) it = Vector->InputSubscriptions->erase(it);
+         if (result IS ERR::Terminate) it = Vector->InputSubscriptions->erase(it);
          else it++;
       }
       else it++;
@@ -163,15 +163,15 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
 }
 
 //********************************************************************************************************************
-// Receiver for input events from the Surface that hosts the scene graph.  Events are distributed to input 
+// Receiver for input events from the Surface that hosts the scene graph.  Events are distributed to input
 // subscribers.
 
-ERROR scene_input_events(const InputEvent *Events, LONG Handle)
+ERR scene_input_events(const InputEvent *Events, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
    auto Self = (extVectorScene *)CurrentContext();
-   if (!Self->SurfaceID) return ERR_Okay; // Sanity check
+   if (!Self->SurfaceID) return ERR::Okay; // Sanity check
 
    auto cursor = PTC::NIL;
 
@@ -250,7 +250,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                   if (!lock.granted()) continue;
                   auto vector = lock.obj;
 
-                  if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
+                  if (vecPointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
 
                   if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
@@ -321,7 +321,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             // Additional bounds check to cater for transforms, clip masks etc.
 
             if (in_bounds) {
-               if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
+               if (vecPointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
             }
 
             if (Self->ActiveVector != bounds.vector_id) {
@@ -389,5 +389,5 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

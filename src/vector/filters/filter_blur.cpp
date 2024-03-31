@@ -89,10 +89,10 @@ class extBlurFX : public extFilterEffect {
 // Note that blurring is always performed with premultiplied colour values; otherwise the function will output pixels
 // that are darkly tinted.
 
-static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
+static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 {
    auto outBmp = Self->Target;
-   if (outBmp->BytesPerPixel != 4) return ERR_Failed;
+   if (outBmp->BytesPerPixel != 4) return ERR::Failed;
    
    DOUBLE scale = 1.0;
    if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
@@ -119,13 +119,13 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    objBitmap *inBmp;
    
    if ((rx < 1) and (ry < 1)) {
-      if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+      if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
       BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
       gfxCopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
    
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToLinear(inBmp);
 
@@ -384,7 +384,7 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
       bmpConvertToRGB(outBmp);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -398,16 +398,16 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_SX(extBlurFX *Self, DOUBLE *Value)
+static ERR BLURFX_GET_SX(extBlurFX *Self, DOUBLE *Value)
 {
    *Value = Self->SX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR BLURFX_SET_SX(extBlurFX *Self, DOUBLE Value)
+static ERR BLURFX_SET_SX(extBlurFX *Self, DOUBLE Value)
 {
    Self->SX = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -421,16 +421,16 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_SY(extBlurFX *Self, DOUBLE *Value)
+static ERR BLURFX_GET_SY(extBlurFX *Self, DOUBLE *Value)
 {
    *Value = Self->SY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR BLURFX_SET_SY(extBlurFX *Self, DOUBLE Value)
+static ERR BLURFX_SET_SY(extBlurFX *Self, DOUBLE Value)
 {
    Self->SY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -441,12 +441,12 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_XMLDef(extBlurFX *Self, STRING *Value)
+static ERR BLURFX_GET_XMLDef(extBlurFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feGaussianBlur stdDeviation=\"" << Self->SX << " " << Self->SY << "\"";
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -462,7 +462,7 @@ static const FieldArray clBlurFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_blurfx(void)
+ERR init_blurfx(void)
 {
    clBlurFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -474,5 +474,5 @@ ERROR init_blurfx(void)
       fl::Size(sizeof(extBlurFX)),
       fl::Path(MOD_PATH));
 
-   return clBlurFX ? ERR_Okay : ERR_AddClass;
+   return clBlurFX ? ERR::Okay : ERR::AddClass;
 }

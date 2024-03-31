@@ -35,7 +35,7 @@
     <method>
       <name>BlockingResolveAddress</name>
       <comment>Resolves an IP address to a host name.</comment>
-      <prototype>ERROR nlBlockingResolveAddress(OBJECTPTR Object, CSTRING Address)</prototype>
+      <prototype>ERR nlBlockingResolveAddress(OBJECTPTR Object, CSTRING Address)</prototype>
       <input>
         <param type="CSTRING" name="Address">IP address to be resolved, e.g. 123.111.94.82.</param>
       </input>
@@ -54,7 +54,7 @@
     <method>
       <name>BlockingResolveName</name>
       <comment>Resolves a domain name to an official host name and a list of IP addresses.</comment>
-      <prototype>ERROR nlBlockingResolveName(OBJECTPTR Object, CSTRING HostName)</prototype>
+      <prototype>ERR nlBlockingResolveName(OBJECTPTR Object, CSTRING HostName)</prototype>
       <input>
         <param type="CSTRING" name="HostName">The host name to be resolved.</param>
       </input>
@@ -73,7 +73,7 @@
     <method>
       <name>ResolveAddress</name>
       <comment>Resolves an IP address to a host name.</comment>
-      <prototype>ERROR nlResolveAddress(OBJECTPTR Object, CSTRING Address)</prototype>
+      <prototype>ERR nlResolveAddress(OBJECTPTR Object, CSTRING Address)</prototype>
       <input>
         <param type="CSTRING" name="Address">IP address to be resolved, e.g. "123.111.94.82".</param>
       </input>
@@ -92,7 +92,7 @@
     <method>
       <name>ResolveName</name>
       <comment>Resolves a domain name to an official host name and a list of IP addresses.</comment>
-      <prototype>ERROR nlResolveName(OBJECTPTR Object, CSTRING HostName)</prototype>
+      <prototype>ERR nlResolveName(OBJECTPTR Object, CSTRING HostName)</prototype>
       <input>
         <param type="CSTRING" name="HostName">The host name to be resolved.</param>
       </input>
@@ -127,7 +127,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype is <code>Function(*NetLookup, ERROR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)</code>.</p>
+<p>The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype is <code>Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)</code>.</p>
 <p>The Fluid prototype is as follows, with results readable from the <field>HostName</field> and <field>Addresses</field> fields: <code>function(NetLookup, Error)</code>.</p>
       </description>
     </field>

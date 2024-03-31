@@ -279,11 +279,11 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
+static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 {
    pf::Log log;
 
-   if (Self->Target->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
+   if (Self->Target->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
 
    auto lt = point3(Self->X, Self->Y, Self->Z); // Light source
    auto pt = point3(Self->PX, Self->PY, Self->PZ); // Target for the light source
@@ -335,7 +335,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    }
 
    objBitmap *bmp;
-   if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
    
    // Note! Linear conversion of the source bitmap is unnecessary because only the alpha channel is used.
 
@@ -511,23 +511,23 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR LIGHTINGFX_Free(extLightingFX *Self, APTR Void)
+static ERR LIGHTINGFX_Free(extLightingFX *Self, APTR Void)
 {
    Self->~extLightingFX();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR LIGHTINGFX_NewObject(extLightingFX *Self, APTR Void)
+static ERR LIGHTINGFX_NewObject(extLightingFX *Self, APTR Void)
 {
    new (Self) extLightingFX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -555,17 +555,17 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct ltSetDistantLight *Args)
+static ERR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct ltSetDistantLight *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    Self->Azimuth     = Args->Azimuth;
    Self->Elevation   = Args->Elevation;
    Self->LightSource = LS::DISTANT;
    Self->Direction   = point3(cos(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Elevation * DEG2RAD));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -594,11 +594,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLight *Args)
+static ERR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLight *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.function("Source: %.2fx%.2fx%.2f", Args->X, Args->Y, Args->Z);
 
@@ -608,7 +608,7 @@ static ERROR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLigh
    Self->Y = Args->Y;
    Self->Z = Args->Z;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -641,11 +641,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight *Args)
+static ERR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.function("Source: %.2fx%.2fx%.2f, Target: %.2fx%.2fx%.2f, Exp: %.2f, Cone Angle: %.2f", Args->X, Args->Y, Args->Z, Args->PX, Args->PY, Args->PZ, Args->Exponent, Args->ConeAngle);
 
@@ -661,7 +661,7 @@ static ERROR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight 
    Self->SpotExponent = Args->Exponent;
    Self->ConeAngle    = Args->ConeAngle;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -679,14 +679,14 @@ The default colour is pure white, `1.0,1.0,1.0,1.0`.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Colour(extLightingFX *Self, FLOAT **Value, LONG *Elements)
+static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->Colour;
    *Elements = 4;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, LONG Elements)
+static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Colour.Red   = Value[0];
@@ -700,7 +700,7 @@ static ERROR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, LONG Eleme
    Self->LinearColour = Self->Colour;
    glLinearRGB.convert(Self->LinearColour);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -712,19 +712,19 @@ In the Phong lighting model, this field specifies the kd value in diffuse mode, 
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Constant(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_Constant(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->Constant;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Constant(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_Constant(extLightingFX *Self, DOUBLE Value)
 {
    if (Value >= 0) {
       Self->Constant = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -737,19 +737,19 @@ shinier the end result.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Exponent(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_Exponent(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->SpecularExponent;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Exponent(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_Exponent(extLightingFX *Self, DOUBLE Value)
 {
    if ((Value >= 1.0) and (Value <= 128.0)) {
       Self->SpecularExponent = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
@@ -759,16 +759,16 @@ Scale: The maximum height of the input surface (bump map) when the alpha input i
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Scale(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_Scale(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->Scale;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Scale(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_Scale(extLightingFX *Self, DOUBLE Value)
 {
    Self->Scale = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -779,16 +779,16 @@ Lookup: LT
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Type(extLightingFX *Self, LT *Value)
+static ERR LIGHTINGFX_GET_Type(extLightingFX *Self, LT *Value)
 {
    *Value = Self->Type;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Type(extLightingFX *Self, LT Value)
+static ERR LIGHTINGFX_SET_Type(extLightingFX *Self, LT Value)
 {
    Self->Type = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -806,17 +806,17 @@ that a value be provided for at least one of ResX and #UnitX.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_UnitX(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_UnitX(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_UnitX(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_UnitX(extLightingFX *Self, DOUBLE Value)
 {
-   if (Value < 0) return ERR_InvalidValue;
+   if (Value < 0) return ERR::InvalidValue;
    Self->UnitX = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -834,17 +834,17 @@ that a value be provided for at least one of ResY and #UnitY.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_UnitY(extLightingFX *Self, DOUBLE *Value)
+static ERR LIGHTINGFX_GET_UnitY(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR LIGHTINGFX_SET_UnitY(extLightingFX *Self, DOUBLE Value)
+static ERR LIGHTINGFX_SET_UnitY(extLightingFX *Self, DOUBLE Value)
 {
-   if (Value < 0) return ERR_InvalidValue;
+   if (Value < 0) return ERR::InvalidValue;
    Self->UnitY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -855,7 +855,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
+static ERR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
 {
    std::stringstream stream;
    std::string type(Self->Type IS LT::DIFFUSE ? "feDiffuseLighting" : "feSpecularLighting");
@@ -864,7 +864,7 @@ static ERROR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
    stream << "<" << type << ">";
    stream << "</" << type << ">";
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -891,7 +891,7 @@ static const FieldArray clLightingFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_lightingfx(void)
+ERR init_lightingfx(void)
 {
    clLightingFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -904,5 +904,5 @@ ERROR init_lightingfx(void)
       fl::Size(sizeof(extLightingFX)),
       fl::Path(MOD_PATH));
 
-   return clLightingFX ? ERR_Okay : ERR_AddClass;
+   return clLightingFX ? ERR::Okay : ERR::AddClass;
 }

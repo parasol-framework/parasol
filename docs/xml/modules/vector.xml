@@ -47,7 +47,7 @@
   <function>
     <name>ApplyPath</name>
     <comment>Copy a pre-generated or custom path to a VectorPath object.</comment>
-    <prototype>ERROR vecApplyPath(APTR Path, OBJECTPTR VectorPath)</prototype>
+    <prototype>ERR vecApplyPath(APTR Path, OBJECTPTR VectorPath)</prototype>
     <input>
       <param type="APTR" name="Path">The source path to be copied.</param>
       <param type="OBJECTPTR" name="VectorPath">The target VectorPath object.</param>
@@ -56,7 +56,7 @@
 <p>Any path originating from <function module="Vector">GeneratePath</function>, <function module="Vector">GenerateEllipse</function> or <function module="Vector">GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with <function module="Vector">FreePath</function> if it is no longer required.</p>
 <p>This method is particularly useful when paths need to be generated or changed in real-time and the alternative of processing the path as a string is detrimental to performance.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -147,7 +147,7 @@
   <function>
     <name>DrawPath</name>
     <comment>Draws a vector path to a target bitmap.</comment>
-    <prototype>ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
+    <prototype>ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a target Bitmap object.</param>
       <param type="APTR" name="Path">The vector path to render.</param>
@@ -159,7 +159,7 @@
 <p>Use DrawPath() to draw a generated path to a Bitmap, using customised fill and stroke definitions.  This functionality provides an effective alternative to configuring vector scenes for situations where only simple vector shapes are required.  However, it is limited in that advanced rendering options and effects are not available to the client.</p>
 <p>A StrokeStyle and/or FillStyle will be required to render the path.  Valid styles are allocated and configured using recognised vector style objects, specifically from the classes <class name="VectorImage">VectorImage</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorGradient">VectorGradient</class>.  If a fill or stroke operation is not required, set the relevant parameter to NULL.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -168,7 +168,7 @@
   <function>
     <name>FlushMatrix</name>
     <comment>Flushes matrix changes to a vector.</comment>
-    <prototype>ERROR vecFlushMatrix(struct VectorMatrix * Matrix)</prototype>
+    <prototype>ERR vecFlushMatrix(struct VectorMatrix * Matrix)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The matrix to be flushed.</param>
     </input>
@@ -176,7 +176,7 @@
 <p>If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in order to have those changes reflected on the display.  This needs to be done before the next draw cycle.</p>
 <p>Note that if the client uses API functions to modify a VectorMatrix, a call to FlushMatrix() is unnecessary as the vector will have already been marked for an update.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -197,7 +197,7 @@
   <function>
     <name>GenerateEllipse</name>
     <comment>Generates an elliptical path.</comment>
-    <prototype>ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR * Path)</prototype>
+    <prototype>ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR * Path)</prototype>
     <input>
       <param type="DOUBLE" name="CX">Horizontal center point of the ellipse.</param>
       <param type="DOUBLE" name="CY">Vertical center point of the ellipse.</param>
@@ -209,7 +209,7 @@
     <description>
 <p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -219,7 +219,7 @@
   <function>
     <name>GeneratePath</name>
     <comment>Generates a path from an SVG path command sequence, or an empty path for custom configuration.</comment>
-    <prototype>ERROR vecGeneratePath(CSTRING Sequence, APTR * Path)</prototype>
+    <prototype>ERR vecGeneratePath(CSTRING Sequence, APTR * Path)</prototype>
     <input>
       <param type="CSTRING" name="Sequence">The command sequence to process.  If no sequence is specified then the path will be empty.</param>
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
@@ -242,7 +242,7 @@ Z: Close Path
 <p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
 <p>If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <function module="Vector">MoveTo</function> and <function module="Vector">LineTo</function> for custom path generation.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -252,7 +252,7 @@ Z: Close Path
   <function>
     <name>GenerateRectangle</name>
     <comment>Generate a rectangular path at (x,y) with size (width,height).</comment>
-    <prototype>ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR * Path)</prototype>
+    <prototype>ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR * Path)</prototype>
     <input>
       <param type="DOUBLE" name="X">The horizontal position of the rectangle.</param>
       <param type="DOUBLE" name="Y">The vertical position of the rectangle.</param>
@@ -263,7 +263,7 @@ Z: Close Path
     <description>
 <p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -273,7 +273,7 @@ Z: Close Path
   <function>
     <name>GetFontHandle</name>
     <comment>Returns a handle for a given font family.</comment>
-    <prototype>ERROR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR * Handle)</prototype>
+    <prototype>ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR * Handle)</prototype>
     <input>
       <param type="CSTRING" name="Family">The name of the font family to access.</param>
       <param type="CSTRING" name="Style">The preferred style to choose from the family.  Use "Regular" or NULL for the default.</param>
@@ -285,7 +285,7 @@ Z: Close Path
 <p>For a given font family and size, this function will return a handle that can be passed to font querying functions.</p>
 <p>The handle is deterministic and permanent, remaining valid for the lifetime of the program.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -295,7 +295,7 @@ Z: Close Path
   <function>
     <name>GetFontMetrics</name>
     <comment>Returns a set of display metric values for a font.</comment>
-    <prototype>ERROR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info)</prototype>
+    <prototype>ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info)</prototype>
     <input>
       <param type="APTR" name="Handle">A font handle obtained from GetFontHandle().</param>
       <param type="struct FontMetrics *" name="Info">The font metrics for the Handle will be stored here.</param>
@@ -303,7 +303,7 @@ Z: Close Path
     <description>
 <p>Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI) for a given font.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -356,7 +356,7 @@ Z: Close Path
   <function>
     <name>Multiply</name>
     <comment>Combines a matrix with a series of matrix values.</comment>
-    <prototype>ERROR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)</prototype>
+    <prototype>ERR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="ScaleX">Matrix value A.</param>
@@ -369,7 +369,7 @@ Z: Close Path
     <description>
 <p>This function uses matrix multiplication to combine a set of values with a VectorMatrix structure.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -378,7 +378,7 @@ Z: Close Path
   <function>
     <name>MultiplyMatrix</name>
     <comment>Combines a source matrix with a target.</comment>
-    <prototype>ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source)</prototype>
+    <prototype>ERR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Target">The target transformation matrix.</param>
       <param type="struct VectorMatrix *" name="Source">The source transformation matrix.</param>
@@ -386,7 +386,7 @@ Z: Close Path
     <description>
 <p>This function uses matrix multiplication to combine a Source matrix with a Target.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -395,7 +395,7 @@ Z: Close Path
   <function>
     <name>ParseTransform</name>
     <comment>Parse an SVG transformation string and apply the values to a matrix.</comment>
-    <prototype>ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform)</prototype>
+    <prototype>ERR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="CSTRING" name="Transform">The transform to apply, expressed as a string instruction.</param>
@@ -405,7 +405,7 @@ Z: Close Path
 <p>The string must be written using SVG guidelines for the transform attribute.  For example, <code>skewX(20) rotate(45 50 50)</code> would be valid.  Transform instructions are applied in reverse, as per the standard.</p>
 <p>Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function. If existing matrix values need to be retained, create a fresh matrix and use <function module="Vector">Multiply</function> to combine them.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -414,7 +414,7 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string to its colour, gradient, pattern or image value.</comment>
-    <prototype>ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
+    <prototype>ERR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
     <input>
       <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
@@ -427,7 +427,7 @@ Z: Close Path
 <p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
 <p>A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An optional Result string can store a reference to the character up to which the IRI was parsed.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -437,14 +437,14 @@ Z: Close Path
   <function>
     <name>ResetMatrix</name>
     <comment>Resets a transformation matrix to its default state.</comment>
-    <prototype>ERROR vecResetMatrix(struct VectorMatrix * Matrix)</prototype>
+    <prototype>ERR vecResetMatrix(struct VectorMatrix * Matrix)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
     </input>
     <description>
 <p>Call ResetMatrix() to reset a transformation matrix to its default state, undoing all former transform operations.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -466,7 +466,7 @@ Z: Close Path
   <function>
     <name>Rotate</name>
     <comment>Applies a rotation transformation to a matrix.</comment>
-    <prototype>ERROR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
+    <prototype>ERR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="Angle">Angle of rotation, in degrees.</param>
@@ -476,7 +476,7 @@ Z: Close Path
     <description>
 <p>This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point (0,0) unless CenterX and CenterY values are specified.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -485,7 +485,7 @@ Z: Close Path
   <function>
     <name>Scale</name>
     <comment>Scale the size of the vector by (x,y)</comment>
-    <prototype>ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">The scale factor on the x-axis.</param>
@@ -496,7 +496,7 @@ Z: Close Path
 <p>Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path should then be scaled before being transformed back to its original top-left coordinate.</p>
 <p>The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of -1.0 on the x axis would result in a 1:1 flip across the horizontal.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -505,7 +505,7 @@ Z: Close Path
   <function>
     <name>Skew</name>
     <comment>Skews the matrix along the horizontal and/or vertical axis.</comment>
-    <prototype>ERROR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">The angle to skew along the horizontal.</param>
@@ -514,7 +514,7 @@ Z: Close Path
     <description>
 <p>The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix. Valid X and Y values are in the range of -90 &lt; Angle &lt; 90.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="OutOfRange">A specified number is outside of the valid range.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -572,7 +572,7 @@ Z: Close Path
   <function>
     <name>Translate</name>
     <comment>Translates the vector by (X,Y).</comment>
-    <prototype>ERROR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">Translation along the x-axis.</param>
@@ -581,7 +581,7 @@ Z: Close Path
     <description>
 <p>This function will translate the matrix in the direction of the provided (X,Y) values.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>

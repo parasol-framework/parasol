@@ -197,14 +197,14 @@ enum {
 struct ptrSetWinCursor { PTC Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
 
-INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
+INLINE ERR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
    struct ptrSetWinCursor args = { Cursor };
    return Action(MT_PtrSetWinCursor, Ob, &args);
 }
 
 #define ptrUngrabX11Pointer(obj) Action(MT_PtrUngrabX11Pointer,(obj),0)
 
-INLINE ERROR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
+INLINE ERR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
    struct ptrGrabX11Pointer args = { SurfaceID };
    return Action(MT_PtrGrabX11Pointer, Ob, &args);
 }
@@ -418,43 +418,43 @@ class extDisplay : public objDisplay {
 };
 
 extern void clean_clipboard(void);
-extern ERROR create_bitmap_class(void);
-extern ERROR create_clipboard_class(void);
-extern ERROR create_display_class(void);
-extern ERROR create_pointer_class(void);
-extern ERROR create_surface_class(void);
-extern ERROR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
+extern ERR create_bitmap_class(void);
+extern ERR create_clipboard_class(void);
+extern ERR create_display_class(void);
+extern ERR create_pointer_class(void);
+extern ERR create_surface_class(void);
+extern ERR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
 extern void  input_event_loop(HOSTHANDLE, APTR);
-extern ERROR lock_surface(extBitmap *, WORD);
-extern ERROR unlock_surface(extBitmap *);
-extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
-extern void  resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
-extern void  forbidDrawing(void);
-extern void  forbidExpose(void);
-extern void  permitDrawing(void);
-extern void  permitExpose(void);
-extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
-extern ERROR load_styles(void);
-extern LONG  find_bitmap_owner(const SURFACELIST &, LONG);
-extern void  move_layer(extSurface *, LONG, LONG);
-extern void  move_layer_pos(SURFACELIST &, LONG, LONG);
-extern void  prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, BYTE);
-extern void  process_surface_callbacks(extSurface *, extBitmap *);
-extern void  refresh_pointer(extSurface *Self);
-extern ERROR track_layer(extSurface *);
-extern void  untrack_layer(OBJECTID);
-extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
-extern ERROR load_style_values(void);
-extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
-extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
-extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
-extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
-extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
-extern ERROR update_surface_copy(extSurface *);
-extern ERROR update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern ERR lock_surface(extBitmap *, WORD);
+extern ERR unlock_surface(extBitmap *);
+extern ERR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
+extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
+extern void forbidDrawing(void);
+extern void forbidExpose(void);
+extern void permitDrawing(void);
+extern void permitExpose(void);
+extern ERR  apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
+extern ERR  load_styles(void);
+extern LONG find_bitmap_owner(const SURFACELIST &, LONG);
+extern void move_layer(extSurface *, LONG, LONG);
+extern void move_layer_pos(SURFACELIST &, LONG, LONG);
+extern void prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, BYTE);
+extern void process_surface_callbacks(extSurface *, extBitmap *);
+extern void refresh_pointer(extSurface *Self);
+extern ERR  track_layer(extSurface *);
+extern void untrack_layer(OBJECTID);
+extern BYTE restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
+extern ERR  load_style_values(void);
+extern ERR  resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
+extern void redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
+extern ERR  _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
+extern ERR  _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
+extern void _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
+extern void check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
+extern ERR  update_surface_copy(extSurface *);
+extern ERR  update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 
-extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
+extern ERR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
 #ifdef DBG_LAYERS
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
@@ -507,7 +507,7 @@ extern const CSTRING glInputNames[LONG(JET::END)];
 #ifdef _GLES_ // OpenGL related prototypes
 GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);
 void refresh_display_from_egl(objDisplay *Self);
-ERROR init_egl(void);
+ERR init_egl(void);
 void free_egl(void);
 #endif
 
@@ -552,7 +552,7 @@ extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
 extern void init_xcursors(void);
 extern void free_xcursors(void);
-extern ERROR resize_pixmap(extDisplay *, LONG, LONG);
+extern ERR resize_pixmap(extDisplay *, LONG, LONG);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
@@ -642,7 +642,7 @@ inline LONG find_surface_list(OBJECTID SurfaceID, LONG Limit = -1)
 
 inline LONG find_parent_list(const SURFACELIST &list, extSurface *Self)
 {
-   if ((Self->ListIndex < LONG(list.size())) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
+   if ((Self->ListIndex < std::ssize(list)) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
       for (LONG i=Self->ListIndex-1; i >= 0; i--) {
          if (list[i].SurfaceID IS Self->ParentID) return i;
       }

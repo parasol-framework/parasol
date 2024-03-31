@@ -31,13 +31,13 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 
       if (!modal_id) {
          SURFACEINFO *info;
-         if (!gfxGetSurfaceInfo(pointer->OverObjectID, &info)) {
+         if (gfxGetSurfaceInfo(pointer->OverObjectID, &info) IS ERR::Okay) {
             pf::ScopedObjectLock display(info->DisplayID);
             if (display.granted()) {
                acDragDrop(pointer->OverObjectID, *display, -1, Datatypes);
             }
          }
-         else log.warning(ERR_GetSurfaceInfo);
+         else log.warning(ERR::GetSurfaceInfo);
       }
       else log.msg("Program is modal - drag/drop cancelled.");
 
@@ -49,7 +49,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 
 //********************************************************************************************************************
 
-ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -59,11 +59,11 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
          if (AbsY)   *AbsY = record.Top;
          if (Width)  *Width  = record.Width;
          if (Height) *Height = record.Height;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 //********************************************************************************************************************
@@ -136,7 +136,7 @@ LONG find_bitmap_owner(const SURFACELIST &List, LONG Index)
 //
 // Surface levels start at 1, which indicates the top-most level.
 
-ERROR track_layer(extSurface *Self)
+ERR track_layer(extSurface *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -173,7 +173,7 @@ ERROR track_layer(extSurface *Self)
       LONG parent;
       if ((parent = find_parent_list(glSurfaces, Self)) IS -1) {
          log.warning("Failed to find parent surface #%d.", Self->ParentID);
-         return ERR_Search;
+         return ERR::Search;
       }
 
       record.setArea(glSurfaces[parent].Left + Self->X, glSurfaces[parent].Top + Self->Y,
@@ -196,7 +196,7 @@ ERROR track_layer(extSurface *Self)
       else glSurfaces.push_back(record);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -230,10 +230,10 @@ void untrack_layer(OBJECTID ObjectID)
 
 //********************************************************************************************************************
 
-ERROR update_surface_copy(extSurface *Self)
+ERR update_surface_copy(extSurface *Self)
 {
-   if (!Self) return ERR_NullArgs;
-   if (!Self->initialised()) return ERR_Okay;
+   if (!Self) return ERR::NullArgs;
+   if (!Self->initialised()) return ERR::Okay;
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
@@ -301,7 +301,7 @@ ERROR update_surface_copy(extSurface *Self)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -331,7 +331,7 @@ void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
 //
 // This function is also useful for skipping the dimension limits normally imposed when resizing.
 
-ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
+ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
    LONG InsideHeight, LONG BPP, DOUBLE RefreshRate, LONG DeviceFlags)
 {
    if (!Width)  Width = Self->Width;
@@ -342,12 +342,12 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       Self->Y = Y;
       Self->Width  = Width;
       Self->Height = Height;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((Self->X IS X) and (Self->Y IS Y) and (Self->Width IS Width) and (Self->Height IS Height) and
        (Self->ParentID)) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    pf::Log log;
@@ -357,16 +357,16 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    if (Self->BitmapOwnerID IS Self->UID) {
       pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000);
       if (bitmap.granted()) {
-         if (!bitmap->resize(Width, Height, BPP)) {
+         if (bitmap->resize(Width, Height, BPP) IS ERR::Okay) {
             Self->LineWidth     = bitmap->LineWidth;
             Self->BytesPerPixel = bitmap->BytesPerPixel;
             Self->BitsPerPixel  = bitmap->BitsPerPixel;
             Self->Data          = bitmap->Data;
             UpdateSurfaceRecord(Self);
          }
-         else return log.warning(ERR_Resize);
+         else return log.warning(ERR::Resize);
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
 
    if (!Self->ParentID) {
@@ -376,17 +376,17 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       if (InsideHeight < Height) InsideHeight = Height;
 
       OBJECTPTR display;
-      if (!AccessObject(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
-         if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags)) {
+      if (AccessObject(Self->DisplayID, 5000, &display) IS ERR::Okay) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+         if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
             ReleaseObject(display);
-            return log.warning(ERR_Redimension);
+            return log.warning(ERR::Redimension);
          }
 
          Width = display->get<LONG>(FID_Width);
          Height = display->get<LONG>(FID_Height);
          ReleaseObject(display);
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
 
    auto oldx = Self->X;
@@ -400,7 +400,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    Self->Height = Height;
    UpdateSurfaceRecord(Self);
 
-   if (!Self->initialised()) return ERR_Okay;
+   if (!Self->initialised()) return ERR::Okay;
 
    // Send a Resize notification to our subscribers.  Basically, this informs our surface children to resize themselves
    // to the new dimensions.  Surface objects are not permitted to redraw themselves when they receive the Redimension
@@ -409,11 +409,11 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    forbidDrawing();
 
    struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
-   NotifySubscribers(Self, AC_Redimension, &redimension, ERR_Okay);
+   NotifySubscribers(Self, AC_Redimension, &redimension, ERR::Okay);
 
    permitDrawing();
 
-   if (Self->invisible()) return ERR_Okay;
+   if (Self->invisible()) return ERR::Okay;
 
    if (!tlNoDrawing) {
       // Post the drawing update.  This method is the only reliable way to generate updates when our surface may
@@ -424,7 +424,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
 
       LONG index;
       if ((index = find_surface_list(Self)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
-         return ERR_Search;
+         return ERR::Search;
       }
 
       pf::Log log;
@@ -463,7 +463,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    }
 
    refresh_pointer(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -489,7 +489,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
    if ((Bitmap->Flags & BMF::FIXED_DEPTH) != BMF::NIL) return;  // Don't change bitmaps marked as fixed-depth
 
    DISPLAYINFO *info;
-   if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
+   if (gfxGetDisplayInfo(Self->DisplayID, &info) IS ERR::Okay) {
       if (info->BitsPerPixel != Bitmap->BitsPerPixel) {
          log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->UID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
          acResize(Bitmap, Bitmap->Width, Bitmap->Height, info->BitsPerPixel);
@@ -535,7 +535,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
             { "Bitmap",  Bitmap, FD_OBJECTPTR }
          };
          auto script = cb.Script.Script;
-         scCallback(script, cb.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(script, cb.Script.ProcedureID, args, std::ssize(args), NULL);
       }
    }
 
@@ -620,7 +620,7 @@ void print_layer_list(STRING Function, LONG POI)
       // Error checks
 
       if (!list[i].SurfaceID) fprintf(stderr, " <---- ERROR");
-      else if (CheckObjectExists(list[i].SurfaceID) != ERR_True) fprintf(stderr, " <---- OBJECT MISSING");
+      else if (CheckObjectExists(list[i].SurfaceID) != ERR::True) fprintf(stderr, " <---- OBJECT MISSING");
 
       // Does the parent exist in the layer list?
 
@@ -642,7 +642,7 @@ void print_layer_list(STRING Function, LONG POI)
 CheckIfChild: Checks if a surface is a child of another particular surface.
 
 This function checks if a surface identified by the Child value is the child of the surface identified by the Parent
-value.  `ERR_True` is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent
+value.  `ERR::True` is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent
 values are equal.  All other return codes indicate false or failure.
 
 -INPUT-
@@ -657,13 +657,13 @@ AccessMemory: Failed to access the internal surface list.
 
 *********************************************************************************************************************/
 
-ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
+ERR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Parent: %d, Child: %d", ParentID, ChildID);
 
-   if ((!ParentID) or (!ChildID)) return ERR_NullArgs;
+   if ((!ParentID) or (!ChildID)) return ERR::NullArgs;
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -674,12 +674,12 @@ ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
       for (++i; (i < LONG(glSurfaces.size())) and (glSurfaces[i].Level > level); i++) {
          if (glSurfaces[i].SurfaceID IS ChildID) {
             log.trace("Child confirmed.");
-            return ERR_True;
+            return ERR::True;
          }
       }
    }
 
-   return ERR_False;
+   return ERR::False;
 }
 
 /*********************************************************************************************************************
@@ -710,12 +710,12 @@ AccessMemory: Failed to access the internal surfacelist memory structure
 
 *********************************************************************************************************************/
 
-ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
+ERR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
           LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
+   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("%dx%d,%dx%d TO %dx%d, Flags $%.8x", X, Y, Width, Height, XDest, YDest, LONG(Flags));
 
@@ -745,7 +745,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
 
          if (((Flags & BDF::DITHER) != BDF::NIL) or (!list_root.Data)) {
             extBitmap *src;
-            if (!AccessObject(list_root.BitmapID, 4000, &src)) {
+            if (AccessObject(list_root.BitmapID, 4000, &src) IS ERR::Okay) {
                src->XOffset     = list_i.Left - list_root.Left;
                src->YOffset     = list_i.Top - list_root.Top;
                src->Clip.Left   = 0;
@@ -761,9 +761,9 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
                else gfxCopyArea(src, Bitmap, ((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL, X, Y, Width, Height, XDest, YDest);
 
                ReleaseObject(src);
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else return log.warning(ERR_AccessObject);
+            else return log.warning(ERR::AccessObject);
          }
          else {
             surface.Data          = list_root.Data;
@@ -779,12 +779,12 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
             if (composite) gfxCopyRawBitmap(&surface, Bitmap, CSRF::DEFAULT_FORMAT|CSRF::OFFSET|CSRF::ALPHA, X, Y, Width, Height, XDest, YDest);
             else gfxCopyRawBitmap(&surface, Bitmap, CSRF::DEFAULT_FORMAT|CSRF::OFFSET, X, Y, Width, Height, XDest, YDest);
 
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -811,19 +811,19 @@ AccessMemory: The internal surfacelist could not be accessed
 
 *********************************************************************************************************************/
 
-ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)
+ERR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   if (tlNoDrawing) return ERR_Okay;
-   if (!SurfaceID) return ERR_NullArgs;
-   if ((Width < 1) or (Height < 1)) return ERR_Okay;
+   if (tlNoDrawing) return ERR::Okay;
+   if (!SurfaceID) return ERR::NullArgs;
+   if ((Width < 1) or (Height < 1)) return ERR::Okay;
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    LONG index;
    if ((index = find_surface_list(SurfaceID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
       log.traceWarning("Surface %d is not in the surfacelist.", SurfaceID);
-      return ERR_Search;
+      return ERR::Search;
    }
 
    return _expose_surface(SurfaceID, glSurfaces, index, X, Y, Width, Height, Flags);
@@ -844,7 +844,7 @@ oid: The UID of the modal surface, or zero.
 OBJECTID gfxGetModalSurface(void)
 {
    // Safety check: Confirm that the object still exists
-   if ((glModalID) and (CheckObjectExists(glModalID) != ERR_True)) {
+   if ((glModalID) and (CheckObjectExists(glModalID) != ERR::True)) {
       pf::Log log(__FUNCTION__);
       log.msg("Modal surface #%d no longer exists.", glModalID);
       glModalID = 0;
@@ -877,27 +877,27 @@ AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *********************************************************************************************************************/
 
-ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
    pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) {
       DISPLAYINFO *display;
-      if (!gfxGetDisplayInfo(0, &display)) {
+      if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
          if (X)      *X = 0;
          if (Y)      *Y = 0;
          if (AbsX)   *AbsX = 0;
          if (AbsY)   *AbsY = 0;
          if (Width)  *Width  = display->Width;
          if (Height) *Height = display->Height;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Failed;
+      else return ERR::Failed;
    }
 
    LONG i;
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-   if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
+   if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
    if (X)      *X      = glSurfaces[i].X;
    if (Y)      *Y      = glSurfaces[i].Y;
@@ -906,7 +906,7 @@ ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG
    if (AbsX)   *AbsX   = glSurfaces[i].Left;
    if (AbsY)   *AbsY   = glSurfaces[i].Top;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -931,21 +931,21 @@ AccessMemory
 
 *********************************************************************************************************************/
 
-ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, RNF *Flags)
+ERR gfxGetSurfaceFlags(OBJECTID SurfaceID, RNF *Flags)
 {
    pf::Log log(__FUNCTION__);
 
    if (Flags) *Flags = RNF::NIL;
-   else return log.warning(ERR_NullArgs);
+   else return log.warning(ERR::NullArgs);
 
-   if (!SurfaceID) return log.warning(ERR_NullArgs);
+   if (!SurfaceID) return log.warning(ERR::NullArgs);
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    LONG i;
-   if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
+   if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
    *Flags = glSurfaces[i].Flags;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -969,14 +969,14 @@ AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *********************************************************************************************************************/
 
-ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
+ERR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 {
    pf::Log log(__FUNCTION__);
    static THREADVAR SURFACEINFO info;
 
    // Note that a SurfaceID of zero is fine (returns the root surface).
 
-   if (!Info) return log.warning(ERR_NullArgs);
+   if (!Info) return log.warning(ERR::NullArgs);
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -986,7 +986,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
       root = 0;
    }
    else {
-      if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
+      if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
       root = find_bitmap_owner(glSurfaces, i);
    }
 
@@ -1007,7 +1007,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
    info.LineWidth     = glSurfaces[root].LineWidth;
    *Info = &info;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1057,28 +1057,28 @@ AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *********************************************************************************************************************/
 
-ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
    pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) {
       DISPLAYINFO *display;
-      if (!gfxGetDisplayInfo(0, &display)) {
+      if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
          if (X) *X = 0;
          if (Y) *Y = 0;
          if (Width)  *Width = display->Width;
          if (Height) *Height = display->Height;
          if (AbsX)   *AbsX = 0;
          if (AbsY)   *AbsY = 0;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Failed;
+      else return ERR::Failed;
    }
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    LONG i;
-   if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
+   if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
    auto clip = glSurfaces[i].area();
 
@@ -1091,7 +1091,7 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
    if (AbsX)   *AbsX   = clip.Left;
    if (AbsY)   *AbsY   = clip.Top;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1131,13 +1131,13 @@ AccessMemory: Failed to access the internal surface list.
 
 *********************************************************************************************************************/
 
-ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bottom, IRF Flags)
+ERR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bottom, IRF Flags)
 {
    pf::Log log(__FUNCTION__);
 
    if (tlNoDrawing) {
       log.trace("tlNoDrawing: %d", tlNoDrawing);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
@@ -1145,7 +1145,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
    LONG index;
    if ((index = find_surface_list(SurfaceID)) IS -1) {
       log.traceWarning("Unable to find surface #%d in surface list.", SurfaceID);
-      return ERR_Search;
+      return ERR::Search;
    }
 
    return _redraw_surface(SurfaceID, glSurfaces, index, Left, Top, Right, Bottom, Flags);
@@ -1153,7 +1153,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
 
 //********************************************************************************************************************
 
-ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
+ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, IRF Flags)
 {
    pf::Log log("redraw_surface");
@@ -1184,7 +1184,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
          _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Left, Top, Right, Bottom, Flags & (~IRF::IGNORE_CHILDREN));
       }
       else log.trace("Failed to find parent surface #%d", list[index].ParentID); // No big deal, this often happens when freeing a bunch of surfaces due to the parent/child relationships.
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Check if any of the parent surfaces are invisible
@@ -1192,7 +1192,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
    if ((Flags & IRF::FORCE_DRAW) IS IRF::NIL) {
       if (list[index].invisible() or (check_visibility(list, index) IS FALSE)) {
          log.trace("Surface is not visible.");
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -1221,17 +1221,16 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
       }
    }
 
-   if ((Left >= Right) or (Top >= Bottom)) return ERR_Okay;
+   if ((Left >= Right) or (Top >= Bottom)) return ERR::Okay;
 
    // Draw the surface graphics into the bitmap buffer
 
    extSurface *surface;
-   ERROR error;
-   if (!(error = AccessObject(list[index].SurfaceID, 5000, &surface))) {
+   if (auto error = AccessObject(list[index].SurfaceID, 5000, &surface); error IS ERR::Okay) {
       log.trace("Area: %dx%d,%dx%d", Left, Top, Right-Left, Bottom-Top);
 
       extBitmap *bitmap;
-      if (!AccessObject(list[index].BitmapID, 5000, &bitmap)) {
+      if (AccessObject(list[index].BitmapID, 5000, &bitmap) IS ERR::Okay) {
          // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
 
          check_bmp_buffer_depth(surface, bitmap);
@@ -1241,19 +1240,17 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
       }
       else {
          ReleaseObject(surface);
-         return log.warning(ERR_AccessObject);
+         return log.warning(ERR::AccessObject);
       }
 
       ReleaseObject(surface);
    }
-   else {
-      // If the object does not exist then its task has crashed and we need to remove it from the surface list.
-
-      if (error IS ERR_NoMatchingObject) {
+   else { // If the object does not exist then its task has crashed and we need to remove it from the surface list.
+      if (error IS ERR::NoMatchingObject) {
          log.warning("Removing references to surface object #%d (owner crashed).", list[index].SurfaceID);
          untrack_layer(list[index].SurfaceID);
       }
-      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, error);
+      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, LONG(error));
       return error;
    }
 
@@ -1287,7 +1284,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1501,7 +1498,7 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
    if (SurfaceID) {
       extSurface *surface;
       OBJECTID divert = 0;
-      if (!AccessObject(SurfaceID, 3000, &surface)) {
+      if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
          if (surface->invisible()) {
             divert = surface->PrevModalID;
             if (!divert) SurfaceID = 0;
@@ -1525,7 +1522,7 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
       // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
 
       RNF flags;
-      if ((!gfxGetSurfaceFlags(SurfaceID, &flags)) and ((flags & RNF::HAS_FOCUS) IS RNF::NIL)) {
+      if ((gfxGetSurfaceFlags(SurfaceID, &flags) IS ERR::Okay) and ((flags & RNF::HAS_FOCUS) IS RNF::NIL)) {
          acFocus(SurfaceID);
       }
       return old_modal;
@@ -1554,7 +1551,7 @@ Args
 
 *********************************************************************************************************************/
 
-ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
+ERR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
 {
    pf::Log log(__FUNCTION__);
 #if 0
@@ -1566,16 +1563,16 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
 
    if (Info) *Info = LVF::NIL;
 
-   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
+   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
    *Bitmap = 0;
 
    extSurface *surface;
    if (!AccessObject(SurfaceID, 5000, &surface)) {
       extBitmap *bitmap;
-      if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
+      if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR::Okay) {
          ReleaseObject(surface);
-         return log.warning(ERR_AccessObject);
+         return log.warning(ERR::AccessObject);
       }
 
       ReleaseObject(surface);
@@ -1585,7 +1582,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
       LONG i;
       if ((i = find_surface_list(SurfaceID)) IS -1) {
          ReleaseObject(bitmap);
-         return ERR_Search;
+         return ERR::Search;
       }
 
       LONG root = find_bitmap_owner(glSurfaces, i);
@@ -1609,7 +1606,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
          bitmap->Clip.Right = bitmap->Width - bitmap->XOffset;
          if (bitmap->Clip.Right < 0) {
             ReleaseObject(bitmap);
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
 
@@ -1617,20 +1614,20 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
          bitmap->Clip.Bottom = bitmap->Height - bitmap->YOffset;
          if (bitmap->ClipBottom < 0) {
             ReleaseObject(bitmap);
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
 
       *Bitmap = bitmap;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_AccessObject);
+   else return log.warning(ERR::AccessObject);
 
 #else
 
    if (Info) *Info = LVF::NIL;
 
-   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
+   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
    SurfaceRecord list_root, list_zero;
    OBJECTID bitmap_id;
@@ -1640,7 +1637,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       LONG i;
-      if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
+      if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
       LONG root = find_bitmap_owner(glSurfaces, i);
 
@@ -1652,16 +1649,16 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
 
       if (restrict_region_to_parents(glSurfaces, i, expose, true) IS -1) {
          // The surface is not within a visible area of the available bitmap space
-         return ERR_OutOfBounds;
+         return ERR::OutOfBounds;
       }
    }
 
-   if (!list_root.BitmapID) return log.warning(ERR_Failed);
+   if (!list_root.BitmapID) return log.warning(ERR::Failed);
 
    // Gain access to the bitmap buffer and set the clipping and offsets to the correct values.
 
    extBitmap *bmp;
-   if (!AccessObject(list_root.BitmapID, 5000, &bmp)) {
+   if (AccessObject(list_root.BitmapID, 5000, &bmp) IS ERR::Okay) {
       bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
       bmp->YOffset = expose.Top - list_root.Top;
 
@@ -1684,9 +1681,9 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
       }
 
       *Bitmap = bmp;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_AccessObject);
+   else return log.warning(ERR::AccessObject);
 
 #endif
 }
@@ -1708,11 +1705,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR gfxUnlockBitmap(OBJECTID SurfaceID, extBitmap *Bitmap)
+ERR gfxUnlockBitmap(OBJECTID SurfaceID, extBitmap *Bitmap)
 {
-   if ((!SurfaceID) or (!Bitmap)) return ERR_NullArgs;
+   if ((!SurfaceID) or (!Bitmap)) return ERR::NullArgs;
    ReleaseObject(Bitmap);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1735,12 +1732,12 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback)
+ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback)
 {
-   if ((!SurfaceID) or (Event IS WH::NIL) or (!Callback)) return ERR_NullArgs;
+   if ((!SurfaceID) or (Event IS WH::NIL) or (!Callback)) return ERR::NullArgs;
 
    const WindowHook hook(SurfaceID, Event);
    glWindowHooks[hook] = *Callback;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 

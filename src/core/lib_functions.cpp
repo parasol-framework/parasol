@@ -118,12 +118,12 @@ cstr: A human readable string for the error code is returned.  By default error 
 
 *********************************************************************************************************************/
 
-CSTRING GetErrorMsg(ERROR Code)
+CSTRING GetErrorMsg(ERR Code)
 {
-   if ((Code < glTotalMessages) and (Code > 0)) {
-      return glMessages[Code];
+   if ((LONG(Code) < glTotalMessages) and (LONG(Code) > 0)) {
+      return glMessages[LONG(Code)];
    }
-   else if (!Code) return "Operation successful.";
+   else if (Code IS ERR::Okay) return "Operation successful.";
    else return "Unknown error code.";
 }
 
@@ -618,9 +618,9 @@ NoSupport: The host platform does not support file descriptors.
 *********************************************************************************************************************/
 
 #ifdef _WIN32
-ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #else
-ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
    pf::Log log(__FUNCTION__);
@@ -628,15 +628,15 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
    // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
 #ifdef _WIN32
-   if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
-   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
+   if (FD IS (HOSTHANDLE)-1) return log.warning(ERR::Args);
+   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR::NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
 #else
-   if (FD IS -1) return log.warning(ERR_Args);
+   if (FD IS -1) return log.warning(ERR::Args);
 #endif
 
    if (glFDProtected) { // Cache the request while glFDTable is in use.
       glRegisterFD.emplace_back(FD, Routine, Data, Flags);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((Flags & RFD::REMOVE) != RFD::NIL) {
@@ -649,7 +649,7 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
          }
          else it++;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
@@ -659,7 +659,7 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
          fd.Routine = Routine;
          fd.Flags   = Flags;
          fd.Data    = Data;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -672,7 +672,7 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
 #endif
 
    glFDTable.emplace_back(FD, Routine, Data, Flags);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -694,7 +694,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR SetResourcePath(RP PathType, CSTRING Path)
+ERR SetResourcePath(RP PathType, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -712,7 +712,7 @@ ERROR SetResourcePath(RP PathType, CSTRING Path)
                #endif
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
 
       case RP::SYSTEM_PATH:
          if (Path) {
@@ -725,7 +725,7 @@ ERROR SetResourcePath(RP PathType, CSTRING Path)
                #endif
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
 
       case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
@@ -738,10 +738,10 @@ ERROR SetResourcePath(RP PathType, CSTRING Path)
                #endif
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
 
       default:
-         return ERR_Args;
+         return ERR::Args;
    }
 }
 
@@ -808,10 +808,10 @@ LARGE SetResource(RES Resource, LARGE Value)
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
-         if (glPrivileged) return ERR_Okay; // In privileged mode, the user is always an admin
+         if (glPrivileged) return ERR::Okay; // In privileged mode, the user is always an admin
 
          if (Value) { // Enable admin privileges
-            oldvalue = ERR_Okay;
+            oldvalue = ERR::Okay;
             if (!privileged) {
                if (glUID) {
                   if (glUID != glEUID) {
@@ -820,7 +820,7 @@ LARGE SetResource(RES Resource, LARGE Value)
                   }
                   else {
                      log.msg("Admin privileges not available.");
-                     oldvalue = ERR_Failed; // Admin privileges are not available
+                     oldvalue = ERR::Failed; // Admin privileges are not available
                   }
                }
                else privileged++;; // The user already has admin privileges
@@ -837,7 +837,7 @@ LARGE SetResource(RES Resource, LARGE Value)
             }
          }
 #else
-         return ERR_Okay;
+         return LARGE(ERR::Okay);
 #endif
          break;
 
@@ -855,12 +855,12 @@ SubscribeTimer: Subscribes an object or function to the timer service.
 
 This function creates a new timer subscription that will be called at regular intervals for the calling object.
 
-A callback function must be provided that follows this prototype: `ERROR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)`
+A callback function must be provided that follows this prototype: `ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)`
 
 The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime
 parameter is set to the ~PreciseTime() value just prior to the Callback being called.  The callback function
-can return `ERR_Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
-should call `check(ERR_Terminate)` to perform the equivalent of this behaviour.
+can return `ERR::Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
+should call `check(ERR::Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
 ~UpdateTimer() with the resulting SubscriptionID and an Interval of zero.
@@ -885,15 +885,15 @@ SystemLocked:
 
 *********************************************************************************************************************/
 
-ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
+ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Interval) or (!Callback)) return log.warning(ERR_NullArgs);
-   if (Interval < 0) return log.warning(ERR_Args);
+   if ((!Interval) or (!Callback)) return log.warning(ERR::NullArgs);
+   if (Interval < 0) return log.warning(ERR::Args);
 
    auto subscriber = tlContext->object();
-   if (subscriber->collecting()) return log.warning(ERR_InvalidState);
+   if (subscriber->collecting()) return log.warning(ERR::InvalidState);
 
    if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
@@ -923,9 +923,9 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 
       subscriber->Flags |= NF::TIMER_SUB;
       if (Subscription) *Subscription = &*it;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -948,11 +948,11 @@ Search:
 
 *********************************************************************************************************************/
 
-ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
+ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Subscription) return log.warning(ERR_NullArgs);
+   if (!Subscription) return log.warning(ERR::NullArgs);
 
    log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
@@ -962,20 +962,20 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
          auto usInterval = -(LARGE(Interval * 1000000.0));
          if (usInterval < timer->Interval) timer->Interval = usInterval;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (Interval > 0) {
          auto usInterval = LARGE(Interval * 1000000.0);
          timer->Interval = usInterval;
          timer->NextCall = PreciseTime() + usInterval;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          if (timer->Locked) {
             // A timer can't be removed during its execution, but we can nullify the function entry
             // and ProcessMessages() will automatically terminate it on the next cycle.
             timer->Routine.Type = 0;
-            return log.warning(ERR_AlreadyLocked);
+            return log.warning(ERR::AlreadyLocked);
          }
 
          lock.release();
@@ -991,10 +991,10 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
             }
          }
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -1006,7 +1006,7 @@ This function waits for a period of time as specified by the Seconds and MicroSe
 task will continue to process incoming messages in order to prevent the process' message queue from developing a
 back-log.
 
-WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR_Terminate`, or if a
+WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a
 `MSGID_QUIT` message is sent to the task's message queue.
 
 -INPUT-
@@ -1042,7 +1042,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
-         if (ProcessMessages(PMF::NIL, end - current) IS ERR_Terminate) break;
+         if (ProcessMessages(PMF::NIL, end - current) IS ERR::Terminate) break;
          current = (PreciseTime() / 1000LL);
       } while (current < end);
    }

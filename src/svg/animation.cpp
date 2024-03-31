@@ -1,9 +1,9 @@
 
 //********************************************************************************************************************
 
-static ERROR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
+static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
-   if (SVG->Animations.empty()) return ERR_Okay;
+   if (SVG->Animations.empty()) return ERR::Okay;
 
    for (auto &anim : SVG->Animations) {
       if (anim.Values.size() < 2) continue; // Skip animation if no From and To list is specified.
@@ -46,7 +46,7 @@ restart:
 
          if (anim.Transform) { // Animated transform
             objVector *vector;
-            if (!AccessObject(anim.TargetVector, 1000, &vector)) {
+            if (AccessObject(anim.TargetVector, 1000, &vector) IS ERR::Okay) {
                if (!anim.Matrix) {
                   vecNewMatrix(vector, &anim.Matrix);
                }
@@ -96,9 +96,9 @@ restart:
       }
       else if (SVG->FrameCallback.isScript()) {
          const ScriptArg args[] = { { "SVG", SVG, FD_OBJECTPTR } };
-         scCallback(SVG->FrameCallback.Script.Script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(SVG->FrameCallback.Script.Script, SVG->FrameCallback.Script.ProcedureID, args, std::ssize(args), NULL);
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

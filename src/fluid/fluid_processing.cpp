@@ -114,7 +114,7 @@ static int processing_sleep(lua_State *Lua)
    pf::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
-   ERROR error;
+   ERR error;
    LONG timeout;
 
    auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing");
@@ -158,10 +158,10 @@ static int processing_sleep(lua_State *Lua)
    else {
       std::scoped_lock lock(recursion);
       WaitTime(timeout / 1000, (timeout % 1000) * 1000);
-      error = ERR_Okay;
+      error = ERR::Okay;
    }
 
-   lua_pushinteger(Lua, error);
+   lua_pushinteger(Lua, LONG(error));
    return 1;
 }
 
@@ -181,31 +181,25 @@ static int processing_signal(lua_State *Lua)
 
 static int processing_get(lua_State *Lua)
 {
-   auto fp = (struct fprocessing *)lua_touserdata(Lua, 1);
-
-   if (fp) {
-      CSTRING fieldname;
-      if ((fieldname = luaL_checkstring(Lua, 2))) {
-         if (!StrCompare("sleep", fieldname, 0, STR::MATCH_CASE)) {
-            lua_pushvalue(Lua, 1);
-            lua_pushcclosure(Lua, &processing_sleep, 1);
-            return 1;
-         }
-         else if (!StrCompare("signal", fieldname, 0, STR::MATCH_CASE)) {
-            lua_pushvalue(Lua, 1);
-            lua_pushcclosure(Lua, &processing_signal, 1);
-            return 1;
-         }
-         else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
+   if (auto fieldname = luaL_checkstring(Lua, 2)) {
+      if (StrCompare("sleep", fieldname, 0, STR::MATCH_CASE) IS ERR::Okay) {
+         lua_pushvalue(Lua, 1);
+         lua_pushcclosure(Lua, &processing_sleep, 1);
+         return 1;
       }
+      else if (StrCompare("signal", fieldname, 0, STR::MATCH_CASE) IS ERR::Okay) {
+         lua_pushvalue(Lua, 1);
+         lua_pushcclosure(Lua, &processing_signal, 1);
+         return 1;
+      }
+      else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
    }
 
    return 0;
 }
 
-/*********************************************************************************************************************
-** Garbage collecter.
-*/
+//********************************************************************************************************************
+// Garbage collecter.
 
 static int processing_destruct(lua_State *Lua)
 {

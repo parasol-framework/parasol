@@ -7,7 +7,7 @@ static const char *glSliderHighlight = "rgb(245,175,155)";
 // Subscription to the slider's drag events.  Moving the page is all that is necessary; this
 // will result in downstream callbacks making the necessary updates.
 
-static ERROR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY, scroll_mgr *Scroll)
+static ERR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY, scroll_mgr *Scroll)
 {
    auto slider_height = Viewport->get<DOUBLE>(FID_Height);
    auto host_height = Scroll->m_vbar.m_slider_host->get<DOUBLE>(FID_Height);
@@ -16,7 +16,7 @@ static ERROR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE
 
    if (Y < 0) Y = 0;
    if (Y + slider_height > host_height) Y = host_height - slider_height;
-   if (Viewport->get<DOUBLE>(FID_Y) IS Y) return ERR_Okay;
+   if (Viewport->get<DOUBLE>(FID_Y) IS Y) return ERR::Okay;
 
    if ((Y != Scroll->m_vbar.m_slider_pos.offset) or (slider_height != Scroll->m_vbar.m_slider_pos.length)) {
       const DOUBLE pct_pos = Y / (host_height - slider_height);
@@ -24,13 +24,13 @@ static ERROR slider_drag(objVectorViewport *Viewport, DOUBLE X, DOUBLE Y, DOUBLE
    }
 
    Scroll->m_page->draw();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Hook for input events over the slider
 
-static ERROR slider_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
+static ERR slider_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
 {
    for (auto msg=Events; msg; msg=msg->Next) {
       if (msg->Type IS JET::CROSSED_IN) {
@@ -46,13 +46,13 @@ static ERROR slider_input(objVectorViewport *Viewport, const InputEvent *Events,
          }
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Hook for input events within the slider's background viewport.
 
-static ERROR bkgd_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
+static ERR bkgd_input(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
 {
    for (auto msg=Events; msg; msg=msg->Next) {
       if ((msg->Type IS JET::LMB) and (msg->Value > 0)) {
@@ -79,13 +79,13 @@ static ERROR bkgd_input(objVectorViewport *Viewport, const InputEvent *Events, s
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Viewing area has been modified
 
-static ERROR view_path_changed(objVectorViewport *Viewport, FM Event, APTR EventObject, scroll_mgr *Scroll)
+static ERR view_path_changed(objVectorViewport *Viewport, FM Event, APTR EventObject, scroll_mgr *Scroll)
 {
    auto p_x = Scroll->m_page->get<DOUBLE>(FID_X);
    auto p_y = Scroll->m_page->get<DOUBLE>(FID_Y);
@@ -124,21 +124,21 @@ static ERROR view_path_changed(objVectorViewport *Viewport, FM Event, APTR Event
    }
 
    Scroll->recalc_sliders_from_view();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Page area has been modified
 
-static ERROR page_path_changed(objVectorViewport *Viewport, FM Event, APTR EventObject, scroll_mgr *Scroll)
+static ERR page_path_changed(objVectorViewport *Viewport, FM Event, APTR EventObject, scroll_mgr *Scroll)
 {
    Scroll->recalc_sliders_from_view();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR page_movement(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
+static ERR page_movement(objVectorViewport *Viewport, const InputEvent *Events, scroll_mgr *Scroll)
 {
    for (auto ev = Events; ev; ev = ev->Next) {
       if (ev->Type IS JET::WHEEL) {
@@ -152,7 +152,7 @@ static ERROR page_movement(objVectorViewport *Viewport, const InputEvent *Events
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

@@ -38,13 +38,13 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
     <method>
       <name>ResolveSymbol</name>
       <comment>Resolves the symbol names in loaded link libraries to address pointers.</comment>
-      <prototype>ERROR modResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
+      <prototype>ERR modResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the symbol to resolve.</param>
         <param type="APTR *" name="Address">The address of the symbol will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method will convert symbol names to their respective address pointers.  The module code must have been successfully loaded into memory or an ERR_FieldNotSet error will be returned.  If the symbol was not found then ERR_NotFound is returned.</p>
+<p>This method will convert symbol names to their respective address pointers.  The module code must have been successfully loaded into memory or an ERR::FieldNotSet error will be returned.  If the symbol was not found then ERR::NotFound is returned.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

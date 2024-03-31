@@ -194,7 +194,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
 void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 {
    if (!m_clip->Viewport->Matrices) {
-      if (vecNewMatrix(m_clip->Viewport, NULL)) return;
+      if (vecNewMatrix(m_clip->Viewport, NULL) != ERR::Okay) return;
    }
    
    auto &matrix = m_clip->Viewport->Matrices;

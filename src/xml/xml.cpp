@@ -121,7 +121,7 @@ class extXML : public objXML {
       Modified++;
    }
 
-   ERROR findTag(CSTRING XPath, FUNCTION *pCallback = NULL) {
+   ERR findTag(CSTRING XPath, FUNCTION *pCallback = NULL) {
       this->Attrib.clear();
 
       if (pCallback) this->Callback = *pCallback;
@@ -134,7 +134,7 @@ class extXML : public objXML {
    }
 
    private:
-   ERROR find_tag(CSTRING XPath);
+   ERR find_tag(CSTRING XPath);
 
    void updateIDs(TAGS &List, LONG ParentID) {
       for (auto &tag : List) {
@@ -145,9 +145,9 @@ class extXML : public objXML {
    }
 };
 
-static ERROR add_xml_class(void);
-static ERROR SET_Statement(extXML *, CSTRING);
-static ERROR SET_Source(extXML *, OBJECTPTR);
+static ERR add_xml_class(void);
+static ERR SET_Statement(extXML *, CSTRING);
+static ERR SET_Source(extXML *, OBJECTPTR);
 
 #include "unescape.cpp"
 #include "xml_functions.cpp"
@@ -155,17 +155,17 @@ static ERROR SET_Source(extXML *, OBJECTPTR);
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
    return add_xml_class();
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
    if (clXML) { FreeResource(clXML); clXML = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -174,16 +174,16 @@ Clear: Clears all of the data held in an XML object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR XML_Clear(extXML *Self, APTR Void)
+static ERR XML_Clear(extXML *Self, APTR Void)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    Self->Tags.clear();
    Self->LineNo = 1;
    Self->Start  = 0;
-   Self->ParseError = ERR_Okay;
+   Self->ParseError = ERR::Okay;
    Self->modified();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -206,17 +206,17 @@ NullArgs
 
 static THREADVAR LONG tlXMLCounter;
 
-static ERROR xml_count(extXML *Self, XMLTag &Tag, CSTRING Attrib)
+static ERR xml_count(extXML *Self, XMLTag &Tag, CSTRING Attrib)
 {
    tlXMLCounter++;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
+static ERR XML_Count(extXML *Self, struct xmlCount *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->XPath)) return log.warning(ERR::NullArgs);
 
    tlXMLCounter = 0;
 
@@ -224,7 +224,7 @@ static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
    Self->findTag(Args->XPath, &call);
 
    Args->Result = tlXMLCounter;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -233,23 +233,23 @@ DataFeed: XML data can be added to an XML object through this action.
 -END-
 *********************************************************************************************************************/
 
-static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
+static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if ((Args->Datatype IS DATA::XML) or (Args->Datatype IS DATA::TEXT)) {
-      if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+      if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
       if (Self->Tags.empty()) {
-         if (auto error = txt_to_xml(Self, Self->Tags, (CSTRING)Args->Buffer)) {
+         if (auto error = txt_to_xml(Self, Self->Tags, (CSTRING)Args->Buffer); error != ERR::Okay) {
             return log.warning(error);
          }
       }
       else {
          TAGS tags;
-         if (auto error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer)) {
+         if (auto error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer); error != ERR::Okay) {
             return log.warning(error);
          }
 
@@ -259,7 +259,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
       Self->modified();
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -283,17 +283,17 @@ Search: A matching tag could not be found.
 
 *********************************************************************************************************************/
 
-static ERROR XML_Filter(extXML *Self, struct xmlFilter *Args)
+static ERR XML_Filter(extXML *Self, struct xmlFilter *Args)
 {
-   if ((!Args) or (!Args->XPath)) return ERR_NullArgs;
+   if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
 
-   if (!Self->findTag(Args->XPath)) {
+   if (Self->findTag(Args->XPath) IS ERR::Okay) {
       auto new_tags = TAGS(Self->Cursor, Self->Cursor);
       Self->Tags = std::move(new_tags);
       Self->modified();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -303,9 +303,9 @@ FindTag: Searches for a tag via XPath.
 
 This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses
 wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag
-that is discovered.  The prototype for the callback function is `ERROR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
+that is discovered.  The prototype for the callback function is `ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
 
-The Callback routine can terminate the search early by returning `ERR_Terminate`.  All other error codes are ignored.
+The Callback routine can terminate the search early by returning `ERR::Terminate`.  All other error codes are ignored.
 
 -INPUT-
 cstr XPath: An XPath string.
@@ -320,34 +320,34 @@ Search: A matching tag could not be found.
 
 *********************************************************************************************************************/
 
-static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
+static ERR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
-   if (Self->Tags.empty()) return ERR_NoData;
+   if (Self->Tags.empty()) return ERR::NoData;
 
-   if (!Self->findTag(Args->XPath, Args->Callback)) {
+   if (Self->findTag(Args->XPath, Args->Callback) IS ERR::Okay) {
       if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
       Args->Result = Self->Cursor->ID;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else if (Args->Callback) return ERR_Okay;
+   else if (Args->Callback) return ERR::Okay;
    else {
       if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Failed to find tag through XPath.");
-      return ERR_Search;
+      return ERR::Search;
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR XML_Free(extXML *Self, APTR Void)
+static ERR XML_Free(extXML *Self, APTR Void)
 {
    if (Self->Path)      { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
    Self->~extXML();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -372,30 +372,30 @@ NotFound: The attribute name was not found.
 
 *********************************************************************************************************************/
 
-static ERROR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
+static ERR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    auto tag = Self->getTag(Args->Index);
-   if (!tag) return log.warning(ERR_NotFound);
+   if (!tag) return log.warning(ERR::NotFound);
 
    if ((!Args->Attrib) or (!Args->Attrib[0])) {
       Args->Value = tag->Attribs[0].Name.c_str();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    for (auto &attrib : tag->Attribs) {
-      if (!StrMatch(Args->Attrib, attrib.Name)) {
+      if (StrMatch(Args->Attrib, attrib.Name) IS ERR::Okay) {
          Args->Value = attrib.Value.c_str();
          log.trace("Attrib %s = %s", Args->Attrib, Args->Value);
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
-   return ERR_NotFound;
+   return ERR::NotFound;
 }
 
 /*********************************************************************************************************************
@@ -427,34 +427,34 @@ used interchangeably for lookups and filtering clauses.
 
 *********************************************************************************************************************/
 
-static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
+static ERR XML_GetVar(extXML *Self, struct acGetVar *Args)
 {
    pf::Log log;
    LONG count;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR_NullArgs);
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    CSTRING field = Args->Field;
    Args->Buffer[0] = 0;
 
-   if (!StrCompare("count:", field, 6)) {
-      if (!xmlCount(Self, field+6, &count)) {
+   if (StrCompare("count:", field, 6) IS ERR::Okay) {
+      if (xmlCount(Self, field+6, &count) IS ERR::Okay) {
          Args->Buffer[IntToStr(count, Args->Buffer, Args->Size)] = 0;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Failed;
+      else return ERR::Failed;
    }
-   else if (!StrCompare("exists:", field, 7)) {
+   else if (StrCompare("exists:", field, 7) IS ERR::Okay) {
       Args->Buffer[0] = '0';
       Args->Buffer[1] = 0;
 
-      if (Self->findTag(field+7)) return ERR_Okay;
+      if (Self->findTag(field+7) != ERR::Okay) return ERR::Okay;
 
       if (!Self->Attrib.empty()) {
          for (auto &scan : Self->Cursor->Attribs) {
-            if (!StrMatch(scan.Name, Self->Attrib)) {
+            if (StrMatch(scan.Name, Self->Attrib) IS ERR::Okay) {
                Args->Buffer[0] = '1';
                break;
             }
@@ -462,13 +462,13 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
       }
       else Args->Buffer[0] = '1';
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else if (!StrCompare("contentexists:", field, 14)) {
+   else if (StrCompare("contentexists:", field, 14) IS ERR::Okay) {
       Args->Buffer[0] = '0';
       Args->Buffer[1] = 0;
 
-      if (Self->findTag(field+14)) return ERR_Okay;
+      if (Self->findTag(field+14) != ERR::Okay) return ERR::Okay;
 
       for (auto &scan : Self->Cursor->Children) {
          if (scan.Attribs[0].isContent()) {
@@ -476,44 +476,44 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
             while (*str) {
                if (*str > 0x20) {
                   Args->Buffer[0] = '1';
-                  return ERR_Okay;
+                  return ERR::Okay;
                }
                str++;
             }
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else if ((!StrCompare("xpath:", field, 6)) or
-            (!StrCompare("xml:", field, 4)) or
-            (!StrCompare("content:", field, 8)) or
-            (!StrCompare("extract:", field, 8)) or
+   else if ((StrCompare("xpath:", field, 6) IS ERR::Okay) or
+            (StrCompare("xml:", field, 4) IS ERR::Okay) or
+            (StrCompare("content:", field, 8) IS ERR::Okay) or
+            (StrCompare("extract:", field, 8) IS ERR::Okay) or
             (field[0] IS '/')) {
       LONG j;
       for (j=0; field[j] and (field[j] != '/'); j++) j++;
 
-      if (Self->findTag(field+j)) {
+      if (Self->findTag(field+j) != ERR::Okay) {
          log.msg("Failed to lookup tag '%s'", field+j);
-         return ERR_Search;
+         return ERR::Search;
       }
 
       if (!Self->Attrib.empty()) { // Extract attribute value
          for (auto &scan : Self->Cursor->Attribs) {
-            if (!StrMatch(scan.Name, Self->Attrib)) {
+            if (StrMatch(scan.Name, Self->Attrib) IS ERR::Okay) {
                StrCopy(scan.Value, Args->Buffer, Args->Size);
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
-         return ERR_Failed;
+         return ERR::Failed;
       }
       else {
          // Extract tag content
 
          UBYTE extract;
 
-         if (!StrCompare("content:", field, 8)) extract = 1; // 'In-Depth' content extract.
-         else if (!StrCompare("extract:", field, 8)) extract = 2;
+         if (StrCompare("content:", field, 8) IS ERR::Okay) extract = 1; // 'In-Depth' content extract.
+         else if (StrCompare("extract:", field, 8) IS ERR::Okay) extract = 2;
          else extract = 0;
 
          Args->Buffer[0] = 0;
@@ -522,8 +522,8 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
          }
          else if (extract IS 2) {
             STRING str;
-            ERROR error = xmlSerialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
-            if (!error) {
+            ERR error = xmlSerialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
+            if (error IS ERR::Okay) {
                StrCopy(str, Args->Buffer, Args->Size);
                FreeResource(str);
             }
@@ -536,16 +536,16 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
                for (auto &scan : Self->Cursor->Children) {
                   if (!scan.Attribs[0].isContent()) j += StrCopy(scan.Attribs[0].Value, Args->Buffer+j, Args->Size-j);
                }
-               if (j >= Args->Size-1) log.warning(ERR_BufferOverflow);
+               if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
             }
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.msg("Unsupported field \"%s\".", field);
-      return ERR_UnsupportedField;
+      return ERR::UnsupportedField;
    }
 }
 
@@ -581,17 +581,17 @@ BufferOverflow: The buffer was not large enough to hold the content (the resulti
 
 *********************************************************************************************************************/
 
-static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
+static ERR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (Args->Length < 1) return log.warning(ERR_Args);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   if (Args->Length < 1) return log.warning(ERR::Args);
 
    if (auto tag = Self->getTag(Args->Index)) {
       return get_content(Self, *tag, Args->Buffer, Args->Length);
    }
-   else return log.warning(ERR_NotFound);
+   else return log.warning(ERR::NotFound);
 }
 
 /*********************************************************************************************************************
@@ -617,19 +617,19 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 *********************************************************************************************************************/
 
-static ERROR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
+static ERR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
 {
    pf::Log log;
 
-   if (Self->Tags.empty()) return log.warning(ERR_NoData);
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (Self->Tags.empty()) return log.warning(ERR::NoData);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Tag: %d", Args->Index);
 
    std::ostringstream buffer;
 
    auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
-   if (!tag) return log.warning(ERR_NotFound);
+   if (!tag) return log.warning(ERR::NotFound);
 
    if ((Args->Flags & XMF::INCLUDE_SIBLINGS) != XMF::NIL) {
       if (auto parent = Self->getTag(tag->ParentID)) {
@@ -656,8 +656,8 @@ static ERROR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
    else serialise_xml(*tag, buffer, Args->Flags);
 
    pf::SwitchContext ctx(GetParentContext());
-   if ((Args->Result = StrClone(buffer.str().c_str()))) return ERR_Okay;
-   else return log.warning(ERR_AllocMemory);
+   if ((Args->Result = StrClone(buffer.str().c_str()))) return ERR::Okay;
+   else return log.warning(ERR::AllocMemory);
 }
 
 /*********************************************************************************************************************
@@ -666,7 +666,7 @@ static ERROR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
 GetTag: Returns a pointer to the XMLTag structure for a given tag index.
 
 This method will return the XMLTag structure for a given tag Index.  The Index is checked to ensure it is valid prior
-to retrieval, and an `ERR_OutOfRange` error will be returned if it is invalid.
+to retrieval, and an `ERR::OutOfRange` error will be returned if it is invalid.
 
 -INPUT-
 int Index:  The index of the tag that is being retrieved.
@@ -679,30 +679,30 @@ NotFound: The Index is not recognised.
 
 *********************************************************************************************************************/
 
-static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
+static ERR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   if ((Args->Result = Self->getTag(Args->Index))) return ERR_Okay;
-   else return ERR_NotFound;
+   if ((Args->Result = Self->getTag(Args->Index))) return ERR::Okay;
+   else return ERR::NotFound;
 }
 
 //********************************************************************************************************************
 
-static ERROR XML_Init(extXML *Self, APTR Void)
+static ERR XML_Init(extXML *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->isSubClass()) return ERR_Okay; // Break here for sub-classes to perform initialisation
+   if (Self->isSubClass()) return ERR::Okay; // Break here for sub-classes to perform initialisation
 
    if (Self->Statement) {
       Self->LineNo = 1;
-      if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement))) {
-         if ((Self->ParseError IS ERR_InvalidData) or (Self->ParseError IS ERR_NoData)) return ERR_NoSupport;
+      if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement)) != ERR::Okay) {
+         if ((Self->ParseError IS ERR::InvalidData) or (Self->ParseError IS ERR::NoData)) return ERR::NoSupport;
 
-         log.warning("XML parsing error #%d: %s", Self->ParseError, GetErrorMsg(Self->ParseError));
+         log.warning("XML parsing error #%d: %s", LONG(Self->ParseError), GetErrorMsg(Self->ParseError));
       }
 
       FreeResource(Self->Statement);
@@ -712,20 +712,20 @@ static ERROR XML_Init(extXML *Self, APTR Void)
    }
    else if ((Self->Path) or (Self->Source)) {
       if ((Self->Flags & XMF::NEW) != XMF::NIL) {
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else if (parse_source(Self)) {
+      else if (parse_source(Self) != ERR::Okay) {
          log.warning("XML parsing error: %s [File: %s]", GetErrorMsg(Self->ParseError), Self->Path ? Self->Path : "Object");
          return Self->ParseError;
       }
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
    else {
       // NOTE: We do not fail if no data has been loaded into the XML object, the developer may be creating an XML data
       // structure from scratch, or could intend to send us information later.
 
       if ((Self->Flags & XMF::NEW) IS XMF::NIL) log.msg("Warning: No content given.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -755,16 +755,16 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
+static ERR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, LONG(Args->Where));
 
    auto src = Self->getTag(Args->Index);
-   if (!src) return log.warning(ERR_NotFound);
+   if (!src) return log.warning(ERR::NotFound);
 
    std::ostringstream buffer;
    output_attribvalue(std::string(Args->Content), buffer);
@@ -773,7 +773,7 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
    if (Args->Where IS XMI::NEXT) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) tags->insert(it, content);
-      else return log.warning(ERR_NotFound);
+      else return log.warning(ERR::NotFound);
    }
    else if (Args->Where IS XMI::CHILD) {
       src->Children.insert(src->Children.begin(), content);
@@ -784,13 +784,13 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
         if (it IS tags->begin()) tags->insert(it, content);
         else tags->insert(it - 1, content);
       }
-      else return log.warning(ERR_NotFound);
+      else return log.warning(ERR::NotFound);
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 
    Args->Result = content.ID;
    Self->modified();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -819,27 +819,27 @@ ReadOnly: Changes to the XML data are not permitted.
 
 *********************************************************************************************************************/
 
-static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
+static ERR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, LONG(Args->Where), Args->XML);
 
    auto src = Self->getTag(Args->Index);
-   if (!src) return log.warning(ERR_NotFound);
+   if (!src) return log.warning(ERR::NotFound);
 
-   ERROR error;
+   ERR error;
    TAGS insert;
-   if ((error = txt_to_xml(Self, insert, Args->XML))) return log.warning(error);
-   if (insert.empty()) return ERR_NoData;
+   if ((error = txt_to_xml(Self, insert, Args->XML)) != ERR::Okay) return log.warning(error);
+   if (insert.empty()) return ERR::NoData;
    auto result = insert[0].ID;
 
    if (Args->Where IS XMI::NEXT) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) tags->insert(it, insert.begin(), insert.end());
-      else return log.warning(ERR_NotFound);
+      else return log.warning(ERR::NotFound);
    }
    else if (Args->Where IS XMI::PREV) {
       CURSOR it;
@@ -847,7 +847,7 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
         if (it IS tags->begin()) tags->insert(it, insert.begin(), insert.end());
         else tags->insert(it - 1, insert.begin(), insert.end());
       }
-      else return log.warning(ERR_NotFound);
+      else return log.warning(ERR::NotFound);
    }
    else if (Args->Where IS XMI::CHILD) {
       src->Children.insert(src->Children.begin(), insert.begin(), insert.end());
@@ -855,11 +855,11 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
    else if (Args->Where IS XMI::CHILD_END) {
       src->Children.insert(src->Children.end(), insert.begin(), insert.end());
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 
    Args->Result = result;
    Self->modified();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -886,25 +886,24 @@ Search: The XPath could not be resolved.
 
 *********************************************************************************************************************/
 
-ERROR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
+ERR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.branch("Insert: %d, XPath: %s", LONG(Args->Where), Args->XPath);
 
-   if (!Self->findTag(Args->XPath)) {
-      ERROR error;
+   if (Self->findTag(Args->XPath) IS ERR::Okay) {
       struct xmlInsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
-      if (!(error = XML_InsertXML(Self, &insert))) {
+      if (auto error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
          Args->Result = insert.Result;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else return error;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -935,20 +934,20 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
+static ERR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if (Args->Total < 1) return log.warning(ERR_Args);
-   if (Args->Index IS Args->DestIndex) return ERR_Okay;
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
+   if (Args->Total < 1) return log.warning(ERR::Args);
+   if (Args->Index IS Args->DestIndex) return ERR::Okay;
 
    // Extricate the source tag
 
    CURSOR it;
    auto src_tags = Self->getInsert(Args->Index, it);
-   if (!src_tags) return log.warning(ERR_NotFound);
+   if (!src_tags) return log.warning(ERR::NotFound);
 
    TAGS copy;
    unsigned s;
@@ -958,13 +957,13 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
       }
    }
 
-   if (copy.empty()) return log.warning(ERR_NotFound);
+   if (copy.empty()) return log.warning(ERR::NotFound);
 
    // Verify that the destination tag exists (if not, the destination is probably within the source
    // and therefore the move is impossible).
 
    auto dest = Self->getTag(Args->DestIndex);
-   if (!dest) return log.warning(ERR_NotFound);
+   if (!dest) return log.warning(ERR::NotFound);
 
    switch (Args->Where) {
       case XMI::PREV: {
@@ -972,7 +971,7 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
          if (auto target = Self->getInsert(dest, it)) {
             target->insert(it, copy.begin(), copy.end());
          }
-         else return log.warning(ERR_NotFound);
+         else return log.warning(ERR::NotFound);
          break;
       }
 
@@ -981,7 +980,7 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
          if (auto target = Self->getInsert(dest, it)) {
             target->insert(it + 1, copy.begin(), copy.end());
          }
-         else return log.warning(ERR_NotFound);
+         else return log.warning(ERR::NotFound);
          break;
       }
 
@@ -994,24 +993,24 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
          break;
 
       default:
-         return log.warning(ERR_Args);
+         return log.warning(ERR::Args);
    }
 
 
    Self->Tags.erase(Self->Tags.begin() + s, Self->Tags.begin() + s + Args->Total);
 
    Self->modified();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR XML_NewObject(extXML *Self, APTR Void)
+static ERR XML_NewObject(extXML *Self, APTR Void)
 {
    new (Self) extXML;
    Self->LineNo = 1;
-   Self->ParseError = ERR_Okay;
-   return ERR_Okay;
+   Self->ParseError = ERR::Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1041,13 +1040,13 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
+static ERR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR_ReadOnly);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
+   if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
 
    LONG count = Args->Total;
    if (count < 1) count = 1;
@@ -1059,7 +1058,7 @@ static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
                if (it->ID IS Args->Index) {
                   parent->Children.erase(it, it + count);
                   Self->modified();
-                  return ERR_Okay;
+                  return ERR::Okay;
                }
             }
          }
@@ -1069,13 +1068,13 @@ static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
             if (it->ID IS Args->Index) {
                Self->Tags.erase(it, it + count);
                Self->modified();
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
       }
    }
 
-   return log.warning(ERR_NotFound);
+   return log.warning(ERR::NotFound);
 }
 
 /*********************************************************************************************************************
@@ -1104,24 +1103,24 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
+static ERR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath)) return ERR_NullArgs;
+   if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
 
-   if (Self->Tags.empty()) return ERR_NoData;
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR_ReadOnly);
+   if (Self->Tags.empty()) return ERR::NoData;
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
+   if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
 
    auto limit = Args->Limit;
    if (limit < 0) limit = 0x7fffffff;
    while (limit > 0) {
-      if (Self->findTag(Args->XPath)) return ERR_Okay; // Assume tag already removed if no match
+      if (Self->findTag(Args->XPath) IS ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
 
       if (!Self->Attrib.empty()) { // Remove an attribute
          for (LONG a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
-            if (!StrMatch(Self->Attrib, Self->Cursor->Attribs[a].Name)) {
+            if (StrMatch(Self->Attrib, Self->Cursor->Attribs[a].Name) IS ERR::Okay) {
                Self->Cursor->Attribs.erase(Self->Cursor->Attribs.begin() + a);
                break;
             }
@@ -1150,7 +1149,7 @@ static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
    }
 
    Self->modified();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1159,7 +1158,7 @@ Reset: Clears the information held in an XML object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR XML_Reset(extXML *Self, APTR Void)
+static ERR XML_Reset(extXML *Self, APTR Void)
 {
    return acClear(Self);
 }
@@ -1170,20 +1169,20 @@ SaveToObject: Saves XML data to a storage object (e.g. file).
 -END-
 *********************************************************************************************************************/
 
-static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
+static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
-   if (Self->Tags.size() <= 0) return ERR_Okay;
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
+   if (Self->Tags.size() <= 0) return ERR::Okay;
 
    log.traceBranch("To: %d", Args->Dest->UID);
 
-   ERROR error;
+   ERR error;
    STRING str;
-   if (!(error = xmlSerialise(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str))) {
+   if ((error = xmlSerialise(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str)) IS ERR::Okay) {
       struct acWrite write = { str, StrLength(str) };
-      if (Action(AC_Write, Args->Dest, &write) != ERR_Okay) error = ERR_Write;
+      if (Action(AC_Write, Args->Dest, &write) != ERR::Okay) error = ERR::Write;
       FreeResource(str);
       return error;
    }
@@ -1222,51 +1221,51 @@ ReadOnly: The XML object is read-only.
 
 *********************************************************************************************************************/
 
-static ERROR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
+static ERR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.trace("Tag: %d, Attrib: $%.8x, %s = '%s'", Args->Index, Args->Attrib, Args->Name, Args->Value);
 
    auto tag = Self->getTag(Args->Index);
-   if (!tag) return log.warning(ERR_Search);
+   if (!tag) return log.warning(ERR::Search);
 
    LONG cmd = Args->Attrib;
    if ((cmd IS XMS_UPDATE) or (cmd IS XMS_UPDATE_ONLY)) {
       for (auto a = tag->Attribs.begin(); a != tag->Attribs.end(); a++) {
-         if (!StrMatch(Args->Name, a->Name)) {
+         if (StrMatch(Args->Name, a->Name) IS ERR::Okay) {
             if (Args->Value) {
                a->Name  = Args->Name;
                a->Value = Args->Value;
             }
             else tag->Attribs.erase(a);
             Self->Modified++;
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
 
       if (cmd IS XMS_UPDATE) {
-         if ((!Args->Value) or (!Args->Value[0])) return ERR_Okay; // User wants to remove a non-existing attribute, so return ERR_Okay
+         if ((!Args->Value) or (!Args->Value[0])) return ERR::Okay; // User wants to remove a non-existing attribute, so return ERR::Okay
          else { // Create new attribute if name wasn't found
             tag->Attribs.push_back({ Args->Name, Args->Value });
             Self->Modified++;
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
-      else return ERR_Search;
+      else return ERR::Search;
    }
    else if (cmd IS XMS_NEW) {
       tag->Attribs.push_back({ Args->Name, Args->Value });
       Self->Modified++;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Attribute indexing
 
-   if ((Args->Attrib < 0) or (Args->Attrib >= LONG(tag->Attribs.size()))) return log.warning(ERR_OutOfRange);
+   if ((Args->Attrib < 0) or (Args->Attrib >= LONG(tag->Attribs.size()))) return log.warning(ERR::OutOfRange);
 
    if (Args->Value) {
       if (Args->Name) tag->Attribs[Args->Attrib].Name = Args->Name;
@@ -1278,7 +1277,7 @@ static ERROR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
    }
 
    Self->Modified++;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1301,18 +1300,18 @@ Search: Failed to find the tag referenced by the XPath.
 
 *********************************************************************************************************************/
 
-static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
+static ERR XML_SetVar(extXML *Self, struct acSetVar *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Field)) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if ((!Args) or (!Args->Field)) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
-   if (!Self->findTag(Args->Field)) {
+   if (Self->findTag(Args->Field) IS ERR::Okay) {
       if (!Self->Attrib.empty()) { // Updating or adding an attribute
          unsigned i;
          for (i=0; i < Self->Cursor->Attribs.size(); i++) {
-            if (!StrMatch(Self->Attrib, Self->Cursor->Attribs[i].Name)) break;
+            if (StrMatch(Self->Attrib, Self->Cursor->Attribs[i].Name) IS ERR::Okay) break;
          }
 
          if (i < Self->Cursor->Attribs.size()) Self->Cursor->Attribs[i].Value = Args->Value; // Modify existing
@@ -1330,11 +1329,11 @@ static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
          Self->modified();
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.msg("Failed to find '%s'", Args->Field);
-      return ERR_Search;
+      return ERR::Search;
    }
 }
 
@@ -1367,26 +1366,26 @@ AllocMemory:
 
 *********************************************************************************************************************/
 
-static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
+static ERR XML_SortXML(extXML *Self, struct xmlSort *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Sort)) return log.warning(ERR_NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
+   if ((!Args) or (!Args->Sort)) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    CURSOR tag;
    TAGS *branch;
    if ((!Args->XPath) or (!Args->XPath[0])) {
       branch = &Self->Tags;
       tag = &Self->Tags[0];
-      if (!tag) return ERR_Okay;
+      if (!tag) return ERR::Okay;
    }
    else {
-      if (Self->findTag(Args->XPath)) return log.warning(ERR_Search);
+      if (Self->findTag(Args->XPath) != ERR::Okay) return log.warning(ERR::Search);
       branch = &Self->Cursor->Children;
    }
 
-   if (branch->size() < 2) return ERR_Okay;
+   if (branch->size() < 2) return ERR::Okay;
 
    log.traceBranch("Path: %s, Tag: %s", Args->XPath, Args->Sort);
 
@@ -1429,12 +1428,12 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
       for (auto &filter : filters) {
          XMLTag *tag = NULL;
          // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
-         if (!StrCompare(filter.first, scan.Attribs[0].Name, 0, STR::WILDCARD)) {
+         if (StrCompare(filter.first, scan.Attribs[0].Name, 0, STR::WILDCARD) IS ERR::Okay) {
             tag = &scan;
          }
          else {
             for (auto &child : scan.Children) {
-               if (!StrCompare(filter.first, child.Attribs[0].Name, 0, STR::WILDCARD)) {
+               if (StrCompare(filter.first, child.Attribs[0].Name, 0, STR::WILDCARD) IS ERR::Okay) {
                   tag = &child;
                   break;
                }
@@ -1446,7 +1445,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
          if ((Args->Flags & XSF::CHECK_SORT) != XSF::NIL) { // Give precedence for a 'sort' attribute in the XML tag
             auto attrib = tag->Attribs.begin()+1;
             for (; attrib != tag->Attribs.end(); attrib++) {
-               if (!StrMatch("sort", attrib->Name)) {
+               if (StrMatch("sort", attrib->Name) IS ERR::Okay) {
                   sortval.append(attrib->Value);
                   sortval.append("\x01");
                   break;
@@ -1462,7 +1461,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
          }
          else { // Extract the sort data from the specified tag attribute
             for (auto attrib=tag->Attribs.begin()+1; attrib != tag->Attribs.end(); attrib++) {
-               if (!StrCompare(filter.second, attrib->Name, 0, STR::WILDCARD)) {
+               if (StrCompare(filter.second, attrib->Name, 0, STR::WILDCARD) IS ERR::Okay) {
                   sortval += attrib->Value;
                   break;
                }
@@ -1495,7 +1494,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
    branch[0] = std::move(new_branch);
 
    Self->modified();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1514,19 +1513,19 @@ during a program's life cycle.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(extXML *Self, STRING *Value)
+static ERR GET_Path(extXML *Self, STRING *Value)
 {
-   if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
-   else return ERR_NoData;
+   if (Self->Path) { *Value = Self->Path; return ERR::Okay; }
+   else return ERR::NoData;
 }
 
-static ERROR SET_Path(extXML *Self, CSTRING Value)
+static ERR SET_Path(extXML *Self, CSTRING Value)
 {
    if (Self->Source) SET_Source(Self, NULL);
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
-   if (!StrCompare("string:", Value, 7)) {
+   if (StrCompare("string:", Value, 7) IS ERR::Okay) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
       // statement.
 
@@ -1539,10 +1538,10 @@ static ERROR SET_Path(extXML *Self, CSTRING Value)
             return Self->ParseError;
          }
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1564,16 +1563,16 @@ parsing where the same data is used across multiple XML objects.
 
 *********************************************************************************************************************/
 
-static ERROR GET_ReadOnly(extXML *Self, LONG *Value)
+static ERR GET_ReadOnly(extXML *Self, LONG *Value)
 {
    *Value = Self->ReadOnly;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_ReadOnly(extXML *Self, LONG Value)
+static ERR SET_ReadOnly(extXML *Self, LONG Value)
 {
    Self->ReadOnly = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1589,7 +1588,7 @@ automatically.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Source(extXML *Self, OBJECTPTR Value)
+static ERR SET_Source(extXML *Self, OBJECTPTR Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -1603,7 +1602,7 @@ static ERROR SET_Source(extXML *Self, OBJECTPTR Value)
    }
    else Self->Source = NULL;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1631,19 +1630,19 @@ must be freed.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Statement(extXML *Self, STRING *Value)
+static ERR GET_Statement(extXML *Self, STRING *Value)
 {
    pf::Log log;
 
    if (!Self->initialised()) {
       if (Self->Statement) {
          *Value = StrClone(Self->Statement);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_FieldNotSet;
+      else return ERR::FieldNotSet;
    }
 
-   if (Self->Tags.empty()) return ERR_FieldNotSet;
+   if (Self->Tags.empty()) return ERR::FieldNotSet;
 
    std::ostringstream buffer;
 
@@ -1655,17 +1654,17 @@ static ERROR GET_Statement(extXML *Self, STRING *Value)
             it++;
          }
       }
-      else return log.warning(ERR_NotFound);
+      else return log.warning(ERR::NotFound);
    }
-   else return log.warning(ERR_NotFound);
+   else return log.warning(ERR::NotFound);
 
    if ((*Value = StrClone(buffer.str().c_str()))) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
-static ERROR SET_Statement(extXML *Self, CSTRING Value)
+static ERR SET_Statement(extXML *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -1677,8 +1676,8 @@ static ERROR SET_Statement(extXML *Self, CSTRING Value)
          Self->ParseError = txt_to_xml(Self, Self->Tags, Value);
          return Self->ParseError;
       }
-      else if ((Self->Statement = StrClone(Value))) return ERR_Okay;
-      else return ERR_AllocMemory;
+      else if ((Self->Statement = StrClone(Value))) return ERR::Okay;
+      else return ERR::AllocMemory;
    }
    else {
       if (Self->initialised()) {
@@ -1687,7 +1686,7 @@ static ERROR SET_Statement(extXML *Self, CSTRING Value)
          acClear(Self);
          Self->ReadOnly = temp;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -1707,11 +1706,11 @@ available XML methods.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Tags(extXML *Self, XMLTag **Values, LONG *Elements)
+static ERR GET_Tags(extXML *Self, XMLTag **Values, LONG *Elements)
 {
    *Values = Self->Tags.data();
    *Elements = Self->Tags.size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1734,7 +1733,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-static ERROR add_xml_class(void)
+static ERR add_xml_class(void)
 {
    clXML = objMetaClass::create::global(
       fl::BaseClassID(ID_XML),
@@ -1750,7 +1749,7 @@ static ERROR add_xml_class(void)
       fl::Size(sizeof(extXML)),
       fl::Path(MOD_PATH));
 
-   return clXML ? ERR_Okay : ERR_AddClass;
+   return clXML ? ERR::Okay : ERR::AddClass;
 }
 
 //********************************************************************************************************************

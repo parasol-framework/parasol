@@ -56,7 +56,7 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>Setting Def to the name of a pre-registered scene definition will reference that object in <field>Source</field>.  If the name is not registered then <code>ERR_Search</code> is returned.  The named object must be derived from the <class name="Vector">Vector</class> class.</p>
+<p>Setting Def to the name of a pre-registered scene definition will reference that object in <field>Source</field>.  If the name is not registered then <code>ERR::Search</code> is returned.  The named object must be derived from the <class name="Vector">Vector</class> class.</p>
 <p>Vectors are registered via the <class name="VectorScene">VectorScene</class> AddDef() method.</p>
       </description>
     </field>
