@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status="stable", prefix="gfx" }, function()
+module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status="stable", prefix="gfx" }, function()
 
   restrict(function()
     loadFile(glPath .. 'common.fdl')
@@ -370,7 +370,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
       else {
          struct bmpGetColour args = { Red, Green, Blue, Alpha };
-         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
    }
@@ -379,7 +379,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
          struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
-         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
    }
@@ -425,7 +425,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
    inline ULONG packPixelWB(struct RGB8 &RGB) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
    }
-   
+
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
    }
@@ -571,10 +571,10 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
   [[
    // These coordinate fields are considered private but may be accessed by some internal classes, like Document
    LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
-   DOUBLE   XOffsetPercent;       // Relative horizontal offset
-   DOUBLE   YOffsetPercent;       // Relative vertical offset
-   DOUBLE   WidthPercent, HeightPercent; // Relative width and height
-   DOUBLE   XPercent, YPercent;   // Relative coordinate
+   DOUBLE   XOffsetPercent;       // Scaled horizontal offset
+   DOUBLE   YOffsetPercent;       // Scaled vertical offset
+   DOUBLE   WidthPercent, HeightPercent; // Scaled width and height
+   DOUBLE   XPercent, YPercent;   // Scaled coordinate
   ]],
   [[
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
@@ -648,24 +648,24 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
 // Stubs
 
-INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
+inline ERR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
    struct drwInvalidateRegion args = { X, Y, Width, Height };
    return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
 }
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
+inline ERR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return ActionMsg(MT_DrwExpose, ObjectID, &args);
 }
 
-INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
+inline ERR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
    struct drwSetOpacity args = { Value, Adjustment};
    return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
 }
 
-INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
+inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
-      auto call = make_function_stdc(Callback);
+      auto call = FUNCTION(Callback);
       struct drwAddCallback args = { &call };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
@@ -675,9 +675,9 @@ INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    }
 }
 
-INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
+inline ERR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
-      auto call = make_function_stdc(Callback);
+      auto call = FUNCTION(Callback);
       struct drwRemoveCallback args = { &call };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
@@ -686,5 +686,14 @@ INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
 }
+
+
+namespace fl {
+   using namespace pf;
+
+constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, LONG(Value)); }
+
+} // namespace
+
   ]])
 end)

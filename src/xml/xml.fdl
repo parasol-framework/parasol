@@ -1,7 +1,7 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, function()
-  cpp_include("<functional>")
+module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, function()
+  cpp_include("<functional>", "<sstream>")
 
   const("XMS", { comment="For SetAttrib()" }, {
     NEW         = "-1: Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.  Use XMS_DEFINE if this is undesirable.",
@@ -17,7 +17,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.",
     "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
     "STRIP_CONTENT: Strip all content from incoming XML data.",
-    "READABLE|INDENT: Indent the output of XML tags to improve readability.",
+    "READABLE|INDENT: Indent the output of serialised XML to improve readability.",
     "LOCK_REMOVE: Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.",
     "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
     "NEW: Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.",
@@ -78,16 +78,26 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Value;
+         if (StrMatch(Attribs[a].Name, Name) IS ERR::Okay) return &Attribs[a].Value;
       }
       return NULL;
    }
 
+   inline std::string getContent() const {
+      if (Children.empty()) return std::string("");
+
+      std::ostringstream str;
+      for (auto &scan : Children) {
+         if (scan.Attribs.empty()) continue; // Sanity check
+         if (scan.Attribs[0].isContent()) str << scan.Attribs[0].Value;
+      }
+      return str.str();
+   }
    ]])
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
-    { id=2,  name="GetString" },
+    { id=2,  name="Serialise" },
     { id=3,  name="InsertXML" },
     { id=4,  name="GetContent" },
     { id=5,  name="Sort" },
@@ -109,7 +119,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     int(XMF) Flags  # Optional user flags
     int Start       # Starting cursor position (tag index) used for certain operations
     int Modified    # Modification timestamp
-    int ParseError  # Private
+    error ParseError  # Private
     int LineNo      # Private
   ]],
   nil,
@@ -122,13 +132,13 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
   c_insert([[
 //********************************************************************************************************************
 
-template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
 }
 
-template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
@@ -137,7 +147,7 @@ template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Fl
 inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
-      if (!StrMatch(Name, a->Name)) {
+      if (StrMatch(Name, a->Name) IS ERR::Okay) {
          a->Name  = Name;
          a->Value = Value;
          return;
@@ -164,15 +174,16 @@ inline std::string xmlGetContent(const XMLTag &Tag) {
    return value;
 }
 
-template <class T> inline ERROR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
+template <class T> inline ERR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
-   auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
-   if (!error) {
+
+   if (auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert); error IS ERR::Okay) {
       struct xmlGetTag get = { insert.Result };
       error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &get);
       *Result = get.Result;
+      return error;
    }
-   return(error);
+   else return error;
 }
 
 //********************************************************************************************************************

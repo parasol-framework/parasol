@@ -1,8 +1,8 @@
 --$FLUID:Include
 
-module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
+module({ name="Core", copyright="Paul Manias 1996-2024" }, function()
   c_include("<stdarg.h>", "<inttypes.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -11,6 +11,10 @@ module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
   priority([[
+#if defined(_DEBUG) && defined(__linux__)
+ #include <signal.h>
+#endif
+
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
@@ -45,7 +49,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("MSF", { comment="Message flags." },
      "WAIT: Wait before inserting the message if the queue is at maximum capacity.",
      "UPDATE: If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.",
-     "NO_DUPLICATE: If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.",
+     "NO_DUPLICATE: If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR::Okay.",
      "ADD: The default behaviour - this will add the message to the end of the queue.",
      "ADDRESS: Internal flag that changes the behaviour of the input parameters so that queues can be processed by address rather than ID.",
      "MESSAGE_ID: The Type parameter refers to a unique message ID rather than a message type for this call.")
@@ -77,8 +81,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "PIPE: Enable the output pipe to the launched process so that it can read data.")
 
   hash("AHASH", "0x%s",
-    "ACTIVATE",     "ACCESSOBJECT",  "CLEAR",     "FREEWARNING", "COPYDATA",
-    "DATAFEED",     "DEACTIVATE",    "DRAW",      "FLUSH",       "FOCUS",        "FREE",         "RELEASEOBJECT",
+    "ACTIVATE",     "CLEAR",         "FREEWARNING", "COPYDATA",
+    "DATAFEED",     "DEACTIVATE",    "DRAW",      "FLUSH",       "FOCUS",        "FREE",
     "GETVAR",       "DRAGDROP",      "HIDE",      "INIT",        "LOCK",         "LOSTFOCUS",    "MOVE",
     "MOVETOBACK",   "MOVETOFRONT",   "NEWCHILD",  "NEWOWNER",    "NEWOBJECT",    "REDO",         "QUERY",
     "READ",         "RENAME",        "RESET",     "RESIZE",      "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",
@@ -95,7 +99,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
-  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
+  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "DETAIL", "TRACE", "FUNCTION")
 
   flags("MOF", { comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
@@ -130,7 +134,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("RSF", { comment="Flags for ResolvePath()"},
     "NO_FILE_CHECK: Do not test for the existence of the targeted file or folder during the resolution process.",
-    "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
+    "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR::VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
     "APPROXIMATE: Ignores file extensions for the purpose of file name matching.",
     "NO_DEEP_SCAN: Do not perform more than one iteration when resolving the source file path.",
     "PATH: Use the PATH environment variable to resolve the file name in the Path parameter.",
@@ -221,7 +225,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "FILE: The path refers to a file.")
 
   flags("LDF", { comment="Flags for LoadFile()" },
-    "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
+    "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR::Search is returned.")
 
   enum("FBK", { type="int", start=1, comment="Flags for file feedback." },
     "MOVE_FILE: A file is to be, or has been moved.",
@@ -279,7 +283,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
     "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
     "SIGNALLED: The object has been signalled and is awaiting processing.",
-    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
+    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR::ObjectExists.  This flag works in conjunction with the Name argument.",
       NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.",
       PRIVATE = 0
     }
@@ -527,6 +531,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #endif
 
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
+typedef std::map<std::string, std::string> KEYVALUE;
+typedef std::map<std::string_view, std::string_view> CONST_KEYVALUE;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
@@ -537,7 +543,7 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifdef PARASOL_STATIC
 __export void CloseCore(void);
-__export ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+__export ERR OpenCore(struct OpenInfo *, struct CoreBase **);
 #else
 __export struct ModHeader ModHeader;
 #endif
@@ -634,12 +640,12 @@ struct OpenInfo {
    CSTRING SystemPath;      // OPF::SYSTEM_PATH
    CSTRING ModulePath;      // OPF::MODULE_PATH
    CSTRING RootPath;        // OPF::ROOT_PATH
-   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OpenTag *Options;        // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
    OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
    LONG    MaxDepth;        // OPF::MAX_DEPTH
    LONG    Detail;          // OPF::DETAIL
    LONG    ArgCount;        // OPF::ARGS
-   ERROR   Error;           // OPF::ERROR
+   ERR     Error;           // OPF::ERROR
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -689,7 +695,7 @@ struct OpenInfo {
 #define FDF_INTEGRAL    (FD_POINTER|FD_INTEGRAL) // Field refers to an integral object
 #define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
 #define FDF_STR         (FDF_STRING)
-#define FDF_PERCENTAGE  FD_PERCENTAGE
+#define FDF_SCALED      FD_SCALED
 #define FDF_FLAGS       FD_FLAGS                // Field contains flags
 #define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
 #define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
@@ -719,13 +725,11 @@ struct OpenInfo {
 #define TLARGE    0x0400000000000000LL
 #define TFUNCTION 0x0200000000000000LL
 #define TSTR      0x0080000000000000LL
-#define TRELATIVE 0x0020000000000000LL
 #define TARRAY    0x0000100000000000LL
-#define TPERCENT  TRELATIVE
+#define TSCALE    0x0020000000000000LL
 #define TAGEND    0LL
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
-#define TREL      TRELATIVE
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -742,20 +746,34 @@ struct FieldValue {
       APTR    Pointer;
       CPTR    CPointer;
       DOUBLE  Double;
-      PERCENT Percent;
+      SCALE   Percent;
       LARGE   Large;
       LONG    Long;
    };
 
    //std::string not included as not compatible with constexpr
-   constexpr FieldValue(ULONG pFID, CSTRING pValue) : FieldID(pFID), Type(FD_STRING), String(pValue) { };
-   constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
-   constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
-   constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(ULONG pFID, PERCENT pValue) : FieldID(pFID), Type(FD_DOUBLE|FD_PERCENTAGE), Percent(pValue) { };
-   constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
-   constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
+   constexpr FieldValue(ULONG pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
+   constexpr FieldValue(ULONG pFID, LONG pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
+   constexpr FieldValue(ULONG pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(ULONG pFID, DOUBLE pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(ULONG pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
+   constexpr FieldValue(ULONG pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
+   constexpr FieldValue(ULONG pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
+   constexpr FieldValue(ULONG pFID, APTR pValue)      : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
+   constexpr FieldValue(ULONG pFID, CPTR pValue)      : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
+};
+
+
+class FloatRect {
+   public:
+   DOUBLE X;    // Left-most coordinate
+   DOUBLE Y;     // Top coordinate
+   DOUBLE Width;   // Right-most coordinate
+   DOUBLE Height;  // Bottom coordinate
+   FloatRect() { }
+   FloatRect(DOUBLE Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
+   FloatRect(DOUBLE pX, DOUBLE pY, DOUBLE pWidth, DOUBLE pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
 };
 
 }
@@ -814,10 +832,10 @@ struct FieldValue {
   [[
    STRUCTS *StructDefs;
    class RootModule *Root;
-   ModHeader(ERROR (*pInit)(OBJECTPTR, struct CoreBase *),
+   ModHeader(ERR (*pInit)(OBJECTPTR, struct CoreBase *),
       void  (*pClose)(OBJECTPTR),
-      ERROR (*pOpen)(OBJECTPTR),
-      ERROR (*pExpunge)(void),
+      ERR (*pOpen)(OBJECTPTR),
+      ERR (*pExpunge)(void),
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
@@ -836,7 +854,7 @@ struct FieldValue {
   struct("FieldArray", { comment="Used to construct class blueprints for the MetaClass." }, [[
     cstr   Name      # The name of the field, e.g. "Width"
     ptr    GetField  # void GetField(*Object, APTR Result);
-    ptr    SetField  # ERROR SetField(*Object, APTR Value);
+    ptr    SetField  # ERR SetField(*Object, APTR Value);
     maxint Arg       # Can be a pointer or an integer value
     uint   Flags     # Special flags that describe the field
   ]],
@@ -887,7 +905,7 @@ struct FieldValue {
 
   struct("MethodEntry", { restrict="c" }, [[
     int  MethodID   # Unique method identifier
-    ptr  Routine    # The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
+    ptr  Routine    # The method entry point, defined as ERR (*Routine)(OBJECTPTR, APTR);
     cstr Name       # Name of the method
     cstruct(*FunctionField) Args  # List of parameters accepted by the method
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
@@ -1178,7 +1196,7 @@ template <class T> inline MEMORYID GetMemoryID(T &&A) {
    return ((MEMORYID *)A)[-2];
 }
 
-inline ERROR DeregisterFD(HOSTHANDLE Handle) {
+inline ERR DeregisterFD(HOSTHANDLE Handle) {
    return RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL, 0, 0);
 }
 
@@ -1190,7 +1208,7 @@ inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
-template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
+template <class T, class U> inline ERR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
 }
 
@@ -1214,38 +1232,51 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 }
 
 #ifndef PRV_CORE_DATA
+// These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 
-inline ERROR ReleaseMemory(const void *Address) {
-   if (!Address) return ERR_NullArgs;
+inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION Callback) {
+   return SubscribeAction(Object,Action,&Callback);
+}
+
+inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR Handle) {
+   return SubscribeEvent(Event,&Callback,Custom,Handle);
+}
+
+inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR Subscription) {
+   return SubscribeTimer(Interval,&Callback,Subscription);
+}
+
+inline ERR ReleaseMemory(const void *Address) {
+   if (!Address) return ERR::NullArgs;
    return ReleaseMemory(((MEMORYID *)Address)[-2]);
 }
 
-inline ERROR FreeResource(const void *Address) {
-   if (!Address) return ERR_NullArgs;
+inline ERR FreeResource(const void *Address) {
+   if (!Address) return ERR::NullArgs;
    return FreeResource(((LONG *)Address)[-2]);
 }
 
-inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
+inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
-template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
+template<class T> inline ERR NewObject(LARGE ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
 }
 
-inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
+inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
    return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
 }
 
-inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
+inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
    return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
 }
 
-inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
+inline ERR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
-template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
+template <class T, class U> inline ERR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
@@ -1253,18 +1284,23 @@ inline ULONG StrHash(const std::string Value) {
    return StrHash(Value.c_str(), FALSE);
 }
 
-template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
+template <class T> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> &Array)
 {
    return SetArray(Object, FieldID, Array.data(), Array.size());
 }
 
-template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, std::vector<T> Array)
+template <class T> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, std::vector<T> &Array)
 {
    return SetArray(Object, FieldID, Array.data(), Array.size());
+}
+
+template <class T, std::size_t SIZE> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, std::array<T, SIZE> Array)
+{
+   return SetArray(Object, FieldID, Array.data(), SIZE);
 }
 #endif
 
-typedef std::map<std::string, std::string> ConfigKeys;
+typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
@@ -1305,7 +1341,7 @@ inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 
    auto len = LONG(strlen(String));
    STRING newstr;
-   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
+   if (AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }
@@ -1352,10 +1388,10 @@ inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    return len;
 }
 
-inline ERROR ClearMemory(APTR Memory, LONG Length) {
-   if (!Memory) return ERR_NullArgs;
+inline ERR ClearMemory(APTR Memory, LONG Length) {
+   if (!Memory) return ERR::NullArgs;
    memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 namespace pf {
@@ -1436,10 +1472,10 @@ class Log { // C++ wrapper for Parasol's log functionality
          if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
-      void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
+      void detail(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Detailed API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF::EXTAPI, header, Message, arg);
+         VLogF(VLF::DETAIL, header, Message, arg);
          va_end(arg);
       }
 
@@ -1464,13 +1500,6 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
-         va_list arg;
-         va_start(arg, Message);
-         VLogF(VLF::DEBUG, header, Message, arg);
-         va_end(arg);
-      }
-
       void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
@@ -1478,12 +1507,12 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      ERROR error(ERROR Code) { // Technically a warning
+      ERR error(ERR Code) { // Technically a warning
          FuncError(header, Code);
          return Code;
       }
 
-      ERROR warning(ERROR Code) {
+      ERR warning(ERR Code) {
          FuncError(header, Code);
          return Code;
       }
@@ -1505,9 +1534,43 @@ class Log { // C++ wrapper for Parasol's log functionality
             va_end(arg);
          #endif
       }
+
+      ERR traceWarning(ERR Code) {
+         #ifdef _DEBUG
+            FuncError(header, Code);
+         #endif
+         return Code;
+      }
+};
+
+class LogLevel {
+   private:
+      LONG level;
+   public:
+      LogLevel(LONG Level) : level(Level) {
+         AdjustLogLevel(Level);
+      }
+
+      ~LogLevel() {
+         AdjustLogLevel(-level);
+      }
 };
 
 } // namespace
+
+//********************************************************************************************************************
+// Refer to BaseClass->get() to see what this is about...
+
+template <class T> inline LARGE FIELD_TAG()     { return 0; }
+template <> inline LARGE FIELD_TAG<DOUBLE>()    { return TDOUBLE; }
+template <> inline LARGE FIELD_TAG<LONG>()      { return TLONG; }
+template <> inline LARGE FIELD_TAG<FLOAT>()     { return TFLOAT; }
+template <> inline LARGE FIELD_TAG<OBJECTPTR>() { return TPTR; }
+template <> inline LARGE FIELD_TAG<APTR>()      { return TPTR; }
+template <> inline LARGE FIELD_TAG<LARGE>()     { return TLARGE; }
+template <> inline LARGE FIELD_TAG<CSTRING>()   { return TSTRING; }
+template <> inline LARGE FIELD_TAG<STRING>()    { return TSTRING; }
+template <> inline LARGE FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 
 //********************************************************************************************************************
 // Header used for all objects.
@@ -1518,10 +1581,11 @@ struct BaseClass { // Must be 64-bit aligned
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
+   struct BaseClass *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
+   LONG     Dummy;               // For 64-bit alignment
    OBJECTID UID;                 // Unique object identifier
-   OBJECTID OwnerID;             // The owner of this object
    NF       Flags;               // Object flags
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
@@ -1534,13 +1598,13 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass();
-   inline OBJECTID ownerID() { return OwnerID; }
+   inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
    inline NF flags() { return Flags; }
 
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
+      return (Flags & (NF::FREE|NF::COLLECT|NF::FREE_ON_UNLOCK)) != NF::NIL;
    }
 
    inline bool terminating() { // Is object currently being freed?
@@ -1549,13 +1613,13 @@ struct BaseClass { // Must be 64-bit aligned
 
    // Use lock() to quickly obtain an object lock without a call to LockObject()
 
-   inline ERROR lock() {
+   inline ERR lock() {
       if (++Queue IS 1) {
          ThreadID = pf::_get_thread_id();
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
-         if (ThreadID IS pf::_get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+         if (ThreadID IS pf::_get_thread_id()) return ERR::Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
          --Queue; // Restore the lock count
          return LockObject(this, -1); // Can fail if object is marked for deletion.
       }
@@ -1568,54 +1632,64 @@ struct BaseClass { // Must be 64-bit aligned
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
-      auto oid = this->OwnerID;
-      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
-      return oid ? true : false;
+      auto obj = this->Owner;
+      while ((obj) and (obj->UID != ID)) obj = obj->Owner;
+      return obj ? true : false;
    }
 
-   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
-   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, const std::string &Value)   { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERROR set(ULONG FieldID, const Variable *Value)      { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERR set(ULONG FieldID, const std::string &Value)   { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERR set(ULONG FieldID, const Variable *Value)      { return SetField(this, (FIELD)FieldID|TVAR, Value); }
    // Works both for regular data pointers and function pointers if field is defined correctly.
-   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
 
-   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+   inline ERR setScale(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
 
-   inline ERROR get(ULONG FieldID, LONG *Value)     { return GetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR get(ULONG FieldID, LARGE *Value)    { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR get(ULONG FieldID, DOUBLE *Value)   { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR get(ULONG FieldID, STRING *Value)   { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, CSTRING *Value)  { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
-   inline ERROR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+   // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
+   // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   template <typename... Args> ERROR setFields(Args&&... pFields) {
+   inline ERR get(ULONG FieldID, LONG *Value)     { return GetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERR get(ULONG FieldID, LARGE *Value)    { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERR get(ULONG FieldID, DOUBLE *Value)   { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERR get(ULONG FieldID, STRING *Value)   { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERR get(ULONG FieldID, CSTRING *Value)  { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERR getScale(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
+
+   template <class T> inline T get(ULONG FieldID) { // Validity of the result is not guaranteed
+      T val;
+      GetField(this, (FIELD)FieldID|FIELD_TAG<T>(), &val);
+      return val;
+   };
+
+   template <typename... Args> ERR setFields(Args&&... pFields) {
       pf::Log log("setFields");
 
       lock();
 
       std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
+      auto ctx = CurrentContext();
       for (auto &f : Fields) {
          OBJECTPTR target;
          if (auto field = FindField(this, f.FieldID, &target)) {
-            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
-               log.warning("Field \"%s\" of class %s is not writeable.", field->Name, className());
+            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (ctx != target)) {
+               log.warning("%s.%s is immutable.", className(), field->Name);
             }
-            else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
-               log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
+            else if ((field->Flags & FD_INIT) and (target->initialised()) and (ctx != target)) {
+               log.warning("%s.%s is init-only.", className(), field->Name);
             }
             else {
                if (target != this) target->lock();
 
-               ERROR error;
+               ERR error;
                if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
                   error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
                }
@@ -1631,22 +1705,21 @@ struct BaseClass { // Must be 64-bit aligned
 
                // NB: NoSupport is considered a 'soft' error that does not warrant failure.
 
-               if ((error) and (error != ERR_NoSupport)) {
-                  log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
+               if ((error != ERR::Okay) and (error != ERR::NoSupport)) {
+                  log.warning("%s.%s: %s", target->className(), field->Name, GetErrorMsg(error));
                   unlock();
                   return error;
                }
             }
          }
          else {
-            log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
             unlock();
-            return ERR_UnsupportedField;
+            return log.warning(ERR::UnsupportedField);
          }
       }
 
       unlock();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 } __attribute__ ((aligned (8)));
@@ -1659,9 +1732,10 @@ class Create {
       T *obj;
 
    public:
-      ERROR error;
+      ERR error;
 
-      // Return an unscoped direct object pointer.  NB: Globals are still tracked
+      // Return an unscoped direct object pointer.  NB: Globals are still tracked to their owner; use untracked() if
+      // you don't want this.
 
       template <typename... Args> static T * global(Args&&... Fields) {
          pf::Create<T> object = { std::forward<Args>(Fields)... };
@@ -1673,10 +1747,27 @@ class Create {
          else return NULL;
       }
 
-      // Return an unscoped integral object (suitable for class allocations only).
+      inline static T * global(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields);
+         if (object.ok()) {
+            auto result = *object;
+            object.obj = NULL;
+            return result;
+         }
+         else return NULL;
+      }
+
+      // Return an unscoped integral object (suitable for class allocations only).  This marks the object as
+      // being 'hidden' from the client unless explicitly makes it available.
 
       template <typename... Args> static T * integral(Args&&... Fields) {
          pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+
+      inline static T * integral(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -1689,30 +1780,32 @@ class Create {
          else return NULL;
       }
 
+      inline static T * untracked(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields, NF::UNTRACKED);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+
       // Create a scoped object that is not initialised.
 
-      Create(NF Flags = NF::NIL) : obj(NULL), error(ERR_NewObject) {
-         if (!NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj)) {
-            error = ERR_Okay;
+      Create(NF Flags = NF::NIL) : obj(NULL), error(ERR::NewObject) {
+         if (NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj) IS ERR::Okay) {
+            error = ERR::Okay;
          }
       }
 
       // Create a scoped object that is fully initialised.
 
-      Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
+      Create(const std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR::Failed) {
          pf::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (!NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
+         if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj) IS ERR::Okay) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
-                  if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
-                     error = log.warning(ERR_NoFieldAccess);
-                     return;
-                  }
-                  else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
-                     error = log.warning(ERR_NoFieldAccess);
+                  if (!(field->Flags & (FD_WRITE|FD_INIT))) {
+                     error = log.warning(ERR::NoFieldAccess);
                      return;
                   }
                   else {
@@ -1727,30 +1820,28 @@ class Create {
                      else if (f.Type & FD_LARGE) {
                         error = field->WriteValue(target, field, f.Type, &f.Large, 1);
                      }
-                     else {
-                        error = field->WriteValue(target, field, f.Type, &f.Long, 1);
-                     }
+                     else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
 
                      target->unlock();
 
                      // NB: NoSupport is considered a 'soft' error that does not warrant failure.
 
-                     if ((error) and (error != ERR_NoSupport)) return;
+                     if ((error != ERR::Okay) and (error != ERR::NoSupport)) return;
                   }
                }
                else {
-                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
-                  error = log.warning(ERR_UnsupportedField);
+                  log.warning("%s.%s field not supported.", T::CLASS_NAME, FieldName(f.FieldID));
+                  error = log.warning(ERR::UnsupportedField);
                   return;
                }
             }
 
-            if ((error = InitObject(obj))) {
+            if ((error = InitObject(obj)) != ERR::Okay) {
                FreeResource(obj->UID);
                obj = NULL;
             }
          }
-         else error = ERR_NewObject;
+         else error = ERR::NewObject;
       }
 
       ~Create() {
@@ -1768,7 +1859,7 @@ class Create {
       T * operator->() { return obj; }; // Promotes underlying methods and fields
       T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 
-      inline bool ok() { return error == ERR_Okay; }
+      inline bool ok() { return error == ERR::Okay; }
 };
 }
 
@@ -1805,68 +1896,67 @@ struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
 
 // Action Macros
 
-inline ERROR acActivate(OBJECTPTR Object) { return Action(AC_Activate,Object,NULL); }
-inline ERROR acClear(OBJECTPTR Object) { return Action(AC_Clear,Object,NULL); }
-inline ERROR acDeactivate(OBJECTPTR Object) { return Action(AC_Deactivate,Object,NULL); }
-inline ERROR acDisable(OBJECTPTR Object) { return Action(AC_Disable,Object,NULL); }
-inline ERROR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
-inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
-inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
-inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
-inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
-inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
-inline ERROR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
-inline ERROR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
-inline ERROR acMoveToFront(OBJECTPTR Object) { return Action(AC_MoveToFront,Object,NULL); }
-inline ERROR acNext(OBJECTPTR Object) { return Action(AC_Next,Object,NULL); }
-inline ERROR acPrev(OBJECTPTR Object) { return Action(AC_Prev,Object,NULL); }
-inline ERROR acQuery(OBJECTPTR Object) { return Action(AC_Query,Object,NULL); }
-inline ERROR acRefresh(OBJECTPTR Object) { return Action(AC_Refresh, Object, NULL); }
-inline ERROR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
-inline ERROR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
-inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
-inline ERROR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
-inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
-inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
+inline ERR acActivate(OBJECTPTR Object) { return Action(AC_Activate,Object,NULL); }
+inline ERR acClear(OBJECTPTR Object) { return Action(AC_Clear,Object,NULL); }
+inline ERR acDeactivate(OBJECTPTR Object) { return Action(AC_Deactivate,Object,NULL); }
+inline ERR acDisable(OBJECTPTR Object) { return Action(AC_Disable,Object,NULL); }
+inline ERR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
+inline ERR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
+inline ERR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
+inline ERR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
+inline ERR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
+inline ERR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
+inline ERR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
+inline ERR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
+inline ERR acMoveToFront(OBJECTPTR Object) { return Action(AC_MoveToFront,Object,NULL); }
+inline ERR acNext(OBJECTPTR Object) { return Action(AC_Next,Object,NULL); }
+inline ERR acPrev(OBJECTPTR Object) { return Action(AC_Prev,Object,NULL); }
+inline ERR acQuery(OBJECTPTR Object) { return Action(AC_Query,Object,NULL); }
+inline ERR acRefresh(OBJECTPTR Object) { return Action(AC_Refresh, Object, NULL); }
+inline ERR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
+inline ERR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
+inline ERR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
+inline ERR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
+inline ERR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
+inline ERR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
+inline ERR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
 
-inline ERROR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+inline ERR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
    return Action(AC_DragDrop, Object, &args);
 }
 
-inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
+inline ERR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
    struct acDraw args = { X, Y, Width, Height };
    return Action(AC_Draw, Object, &args);
 }
 
-inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
+inline ERR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
 }
 
-inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
+inline ERR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
    struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, Object, &args);
-   if ((error) and (Buffer)) Buffer[0] = 0;
+   ERR error = Action(AC_GetVar, Object, &args);
+   if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
    return error;
 }
 
-inline ERROR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+inline ERR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acMove args = { X, Y, Z };
    return Action(AC_Move, Object, &args);
 }
 
-inline ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
-   ERROR error;
+inline ERR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Read, Object, &read))) {
+   if (auto error = Action(AC_Read, Object, &read); error IS ERR::Okay) {
       if (Read) *Read = read.Result;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       if (Read) *Read = 0;
@@ -1874,90 +1964,92 @@ inline ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    }
 }
 
-inline ERROR acRedo(OBJECTPTR Object, LONG Steps = 1) {
+inline ERR acRedo(OBJECTPTR Object, LONG Steps = 1) {
    struct acRedo args = { Steps };
    return Action(AC_Redo, Object, &args);
 }
 
-inline ERROR acRedimension(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+inline ERR acRedimension(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acRedimension args = { X, Y, Z, Width, Height, Depth };
    return Action(AC_Redimension, Object, &args);
 }
 
-inline ERROR acRename(OBJECTPTR Object, CSTRING Name) {
+inline ERR acRename(OBJECTPTR Object, CSTRING Name) {
    struct acRename args = { Name };
    return Action(AC_Rename, Object, &args);
 }
 
-inline ERROR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+inline ERR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize args = { Width, Height, Depth };
    return Action(AC_Resize, Object, &args);
 }
 
-inline ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+inline ERR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acScroll args = { X, Y, Z };
    return Action(AC_Scroll, Object, &args);
 }
 
-inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
+inline ERR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
    return Action(AC_ScrollToPoint, Object, &args);
 }
 
-inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
+inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
 }
 
-inline ERROR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
    struct acSaveImage args = { Dest, { ClassID } };
    return Action(AC_SaveImage, Object, &args);
 }
 
-inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
    struct acSaveToObject args = { Dest, { ClassID } };
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
+inline ERR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
 
-inline ERROR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
+inline ERR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
    struct acSetVar args;
    va_list list;
 
    va_start(list, tags);
    while ((args.Field = va_arg(list, STRING)) != TAGEND) {
       args.Value = va_arg(list, STRING);
-      if (Action(AC_SetVar, Object, &args) != ERR_Okay) {
+      if (Action(AC_SetVar, Object, &args) != ERR::Okay) {
          va_end(list);
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
    va_end(list);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-inline ERROR acUndo(OBJECTPTR Object, LONG Steps) {
+inline ERR acUndo(OBJECTPTR Object, LONG Steps) {
    struct acUndo args = { Steps };
    return Action(AC_Undo, Object, &args);
 }
 
-inline ERROR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
-   ERROR error;
+inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Write, Object, &write))) {
+   if (auto error = Action(AC_Write, Object, &write); error IS ERR::Okay) {
       if (Result) *Result = write.Result;
+      return error;
    }
-   else if (Result) *Result = 0;
-   return error;
+   else {
+      if (Result) *Result = 0;
+      return error;
+   }
 }
 
 inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!Action(AC_Write, Object, &write)) return write.Result;
+   if (Action(AC_Write, Object, &write) IS ERR::Okay) return write.Result;
    else return 0;
 }
 
@@ -1965,12 +2057,12 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
 #define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
 #define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
-inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+inline ERR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
    return Action(AC_SelectArea, Object, &area);
 }
 
-inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
+inline ERR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
    struct acSetVar args = { FieldName, Value };
    return Action(AC_SetVar, Object, &args);
 }
@@ -2056,64 +2148,64 @@ inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassI
 
    // For C++ only, these read variants avoid method calls for speed, but apply identical logic.
 
-   inline ERROR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
+   inline ERR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((pGroup) and (group.compare(pGroup))) continue;
          if (!pKey) {
             *pValue = strtod(keys.cbegin()->second.c_str(), NULL);
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else if (keys.contains(pKey)) {
             *pValue = strtod(keys[pKey].c_str(), NULL);
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
-      return ERR_Search;
+      return ERR::Search;
    }
 
-   inline ERROR read(CSTRING pGroup, CSTRING pKey, LONG *pValue) {
+   inline ERR read(CSTRING pGroup, CSTRING pKey, LONG *pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((pGroup) and (group.compare(pGroup))) continue;
          if (!pKey) {
             *pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else if (keys.contains(pKey)) {
             *pValue = strtol(keys[pKey].c_str(), NULL, 0);
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
-      return ERR_Search;
+      return ERR::Search;
    }
 
-   inline ERROR read(CSTRING pGroup, CSTRING pKey, std::string &pValue) {
+   inline ERR read(CSTRING pGroup, CSTRING pKey, std::string &pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((pGroup) and (group.compare(pGroup))) continue;
          if (!pKey) {
             pValue = keys.cbegin()->second;
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else if (keys.contains(pKey)) {
             pValue = keys[pKey];
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
-      return ERR_Search;
+      return ERR::Search;
    }
 
-   inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
+   inline ERR write(CSTRING Group, CSTRING Key, CSTRING Value) {
       struct cfgWriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);
    }
-   inline ERROR write(CSTRING Group, CSTRING Key, STRING Value) {
+   inline ERR write(CSTRING Group, CSTRING Key, STRING Value) {
       struct cfgWriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);
    }
-   inline ERROR write(CSTRING Group, CSTRING Key, std::string Value) {
+   inline ERR write(CSTRING Group, CSTRING Key, std::string Value) {
       struct cfgWriteValue write = { Group, Key, Value.c_str() };
       return Action(MT_CfgWriteValue, this, &write);
    }
-   template <class T> inline ERROR write(CSTRING Group, CSTRING Key, T Value) {
+   template <class T> inline ERR write(CSTRING Group, CSTRING Key, T Value) {
       auto str = std::to_string(Value);
       struct cfgWriteValue write = { Group, Key, str.c_str() };
       return Action(MT_CfgWriteValue, this, &write);
@@ -2121,24 +2213,22 @@ inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassI
   ]])
 
   c_insert([[
-inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {
-   ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
-   if (!(error = Action(MT_CfgReadValue, Self, &read))) {
+   if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
       *Value = strtod(read.Data, NULL);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else { *Value = 0; return error; }
 }
 
-inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 {
-   ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
-   if (!(error = Action(MT_CfgReadValue, Self, &read))) {
+   if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
       *Value = strtol(read.Data, NULL, 0);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else { *Value = 0; return error; }
 }
@@ -2160,7 +2250,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]],
   [[
    LARGE    ProcedureID;          // For callbacks
-   std::map<std::string, std::string> Vars; // Global parameters
+   KEYVALUE Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
    const ScriptArg *ProcArgs;     // Procedure args - applies during Exec
@@ -2217,23 +2307,23 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]],
   nil,
   [[
-   static ERROR load(std::string Name, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+   static ERR load(std::string Name, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef PARASOL_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = NULL;
-            return ERR_Okay;
+            return ERR::Okay;
          #else
             APTR functionbase;
-            if (!module->getPtr(FID_ModBase, &functionbase)) {
+            if (module->getPtr(FID_ModBase, &functionbase) IS ERR::Okay) {
                if (Module) *Module = module;
                if (Functions) ((APTR *)Functions)[0] = functionbase;
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else return ERR_GetField;
+            else return ERR::GetField;
          #endif
       }
-      else return ERR_CreateObject;
+      else return ERR::CreateObject;
    }
   ]])
 
@@ -2302,78 +2392,78 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
 
-inline ERROR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
+inline ERR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
    struct acCustom args = { Number, String };
    return ActionMsg(AC_Custom, ObjectID, &args);
 }
 
-inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
+inline ERR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
    struct acDataFeed channel = { Sender, Datatype, Data, Size };
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }
 
-inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+inline ERR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
    return ActionMsg(AC_DragDrop, ObjectID, &args);
 }
 
-inline ERROR acDrawArea(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
+inline ERR acDrawArea(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
    struct acDraw draw = { X, Y, Width, Height };
    return ActionMsg(AC_Draw, ObjectID, &draw);
 }
 
-inline ERROR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
+inline ERR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
    struct acMove move = { X, Y, Z };
    return ActionMsg(AC_Move, ObjectID, &move);
 }
 
-inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
+inline ERR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
 }
 
-inline ERROR acRedimension(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+inline ERR acRedimension(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acRedimension resize = { X, Y, Z, Width, Height, Depth };
    return ActionMsg(AC_Redimension, ObjectID, &resize);
 }
 
-inline ERROR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+inline ERR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize resize = { Width, Height, Depth };
    return ActionMsg(AC_Resize, ObjectID, &resize);
 }
 
-inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
+inline ERR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
    struct acScrollToPoint scroll = { X, Y, Z, Flags };
    return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
 }
 
-inline ERROR acScroll(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
+inline ERR acScroll(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
    struct acScroll scroll = { X, Y, Z };
    return ActionMsg(AC_Scroll, ObjectID, &scroll);
 }
 
-inline ERROR acSelectArea(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+inline ERR acSelectArea(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
    return ActionMsg(AC_SelectArea, ObjectID, &area);
 }
 
-inline ERROR acActivate(OBJECTID ObjectID) { return ActionMsg(AC_Activate, ObjectID, NULL); }
-inline ERROR acClear(OBJECTID ObjectID) { return ActionMsg(AC_Clear, ObjectID, NULL); }
-inline ERROR acDisable(OBJECTID ObjectID) { return ActionMsg(AC_Disable, ObjectID, NULL); }
-inline ERROR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NULL); }
-inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
-inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
-inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
-inline ERROR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
-inline ERROR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }
-inline ERROR acQuery(OBJECTID ObjectID) { return ActionMsg(AC_Query, ObjectID, NULL); }
-inline ERROR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectID, NULL); }
-inline ERROR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
-inline ERROR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
+inline ERR acActivate(OBJECTID ObjectID) { return ActionMsg(AC_Activate, ObjectID, NULL); }
+inline ERR acClear(OBJECTID ObjectID) { return ActionMsg(AC_Clear, ObjectID, NULL); }
+inline ERR acDisable(OBJECTID ObjectID) { return ActionMsg(AC_Disable, ObjectID, NULL); }
+inline ERR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NULL); }
+inline ERR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
+inline ERR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
+inline ERR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
+inline ERR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
+inline ERR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
+inline ERR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
+inline ERR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }
+inline ERR acQuery(OBJECTID ObjectID) { return ActionMsg(AC_Query, ObjectID, NULL); }
+inline ERR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectID, NULL); }
+inline ERR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
+inline ERR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
 
-inline ERROR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
+inline ERR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    return ActionMsg(AC_Write, ObjectID, &write);
 }
@@ -2478,17 +2568,17 @@ struct evHotplug {
 
 inline CSTRING flReadLine(OBJECTPTR Object) {
    struct flReadLine args;
-   if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
+   if (Action(MT_FlReadLine, Object, &args) IS ERR::Okay) return args.Result;
    else return NULL;
 }
 
 // Read endian values from files and objects.
 
-template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
+template<class T> ERR flReadLE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
-   if (!Action(AC_Read, Object, &read)) {
+   if (Action(AC_Read, Object, &read) IS ERR::Okay) {
       if (read.Result IS sizeof(T)) {
          if constexpr (std::endian::native == std::endian::little) {
             *Result = ((T *)data)[0];
@@ -2501,18 +2591,18 @@ template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
                default: *Result = ((T *)data)[0];
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Read;
+      else return ERR::Read;
    }
-   else return ERR_Read;
+   else return ERR::Read;
 }
 
-template<class T> ERROR flReadBE(OBJECTPTR Object, T *Result)
+template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
-   if (!Action(AC_Read, Object, &read)) {
+   if (Action(AC_Read, Object, &read) IS ERR::Okay) {
       if (read.Result IS sizeof(T)) {
          if constexpr (std::endian::native == std::endian::little) {
             switch(sizeof(T)) {
@@ -2525,23 +2615,34 @@ template<class T> ERROR flReadBE(OBJECTPTR Object, T *Result)
          else {
             *Result = ((T *)data)[0];
          }
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Read;
+      else return ERR::Read;
    }
-   else return ERR_Read;
+   else return ERR::Read;
 }
 
-template <class R>
-constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
-   FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
-   return func;
-}
+// Function construction (refer types.h)
 
-inline FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
-   FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
-   return func;
-}
+template <class T> FUNCTION::FUNCTION(T *pRoutine) {
+   Type = CALL_STDC;
+   StdC.Context = CurrentContext();
+   StdC.Routine = (APTR)pRoutine;
+};
+
+template <class T> FUNCTION::FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta) {
+   Type = CALL_STDC;
+   StdC.Context = pContext;
+   StdC.Routine = (APTR)pRoutine;
+   StdC.Meta    = pMeta;
+};
+
+template <class T> FUNCTION::FUNCTION(T *pRoutine, APTR pMeta) {
+   Type = CALL_STDC;
+   StdC.Context = CurrentContext();
+   StdC.Routine = (APTR)pRoutine;
+   StdC.Meta    = pMeta;
+};
 
 inline CSTRING BaseClass::className() { return Class->ClassName; }
   ]])

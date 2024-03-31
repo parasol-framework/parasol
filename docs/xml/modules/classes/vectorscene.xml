@@ -12,7 +12,7 @@
     <idstring>ID_VECTORSCENE</idstring>
     <category>Graphics</category>
     <include>modules/vectorscene.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its main purpose is to draw the scene to a target <class name="Bitmap">Bitmap</class> or <class name="Surface">Surface</class> provided by the client.</p>
 <p>Vector scenes are created by initialising multiple Vector objects such as <class name="VectorPath">VectorPath</class> and <class name="VectorViewport">VectorViewport</class> and positioning them within a vector tree.  The VectorScene must lie at the root.</p>
@@ -57,15 +57,16 @@
   <methods>
     <method>
       <name>AddDef</name>
-      <comment>Adds a new definition to a vector tree.</comment>
-      <prototype>ERROR scAddDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR Def)</prototype>
+      <comment>Registers a named definition object within a scene graph.</comment>
+      <prototype>ERR scAddDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR Def)</prototype>
       <input>
         <param type="CSTRING" name="Name">The unique name to associate with the definition.</param>
         <param type="OBJECTPTR" name="Def">Reference to the definition object.</param>
       </input>
       <description>
-<p>This method will add a new definition object to the root of a vector tree.  This feature is provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name with the definition object, the object can then be referenced in URL strings.</p>
-<p>For instance, if creating a gradient with a name of "redGradient" it would be possible to reference it with <code>url(#redGradient)</code> in common graphics attributes such as <code>fill</code> and <code>stroke</code>.</p>
+<p>This method will add a new definition object to the root of a vector tree and gives it a name.  This feature is provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name with the definition object, the object can then be referenced in URL strings.</p>
+<p>For example, if creating a gradient with a name of "redGradient" it would be possible to reference it with <code>url(#redGradient)</code> in common graphics attributes such as <code>fill</code> and <code>stroke</code>.</p>
+<p>At the time of writing, the provided object must belong to one of the following classes to be valid: <class name="Vector">Vector</class>, <class name="VectorScene">VectorScene</class>, <class name="VectorGradient">VectorGradient</class>, <class name="VectorImage">VectorImage</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPattern">VectorPattern</class>, <class name="VectorFilter">VectorFilter</class>, <class name="VectorTransition">VectorTransition</class>, <class name="VectorClip">VectorClip</class>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -79,9 +80,9 @@
     <method>
       <name>Debug</name>
       <comment>Internal functionality for debugging.</comment>
-      <prototype>ERROR scDebug(OBJECTPTR Object)</prototype>
+      <prototype>ERR scDebug(OBJECTPTR Object)</prototype>
       <description>
-<p>This internal method prints comprehensive debugging information to the log.</p>
+<p>This internal method prints comprehensive information that describes the scene graph to the log.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -91,7 +92,7 @@
     <method>
       <name>FindDef</name>
       <comment>Search for a vector definition by name.</comment>
-      <prototype>ERROR scFindDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR * Def)</prototype>
+      <prototype>ERR scFindDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR * Def)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the definition.</param>
         <param type="OBJECTPTR *" name="Def">A pointer to the definition object is returned here if discovered.</param>
@@ -110,7 +111,7 @@
     <method>
       <name>SearchByID</name>
       <comment>Search for a vector by numeric ID.</comment>
-      <prototype>ERROR scSearchByID(OBJECTPTR Object, LONG ID, OBJECTPTR * Result)</prototype>
+      <prototype>ERR scSearchByID(OBJECTPTR Object, LONG ID, OBJECTPTR * Result)</prototype>
       <input>
         <param type="LONG" name="ID">The ID to search for.</param>
         <param type="OBJECTPTR *" name="Result">This parameter will be updated with the discovered vector, or NULL if not found.</param>
@@ -218,8 +219,8 @@
       <access read="R">Read</access>
       <type class="VectorViewport">*VectorViewport</type>
       <description>
-<p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, because it will be used to define the size and location of the area rendered by the scene.</p>
-<p>The Viewport field must not be set by the client.  The VectorViewport object will configure its ownership to the VectorScene prior to initialisation.  The Viewport field value will then be set automatically when the VectorViewport object is initialised.</p>
+<p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, which will be used to define the size and location of the area rendered by the scene.</p>
+<p>The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport owned by the VectorScene is initialised.</p>
       </description>
     </field>
 

@@ -17,38 +17,26 @@
 #include <math.h>
 #include "agg_basics.h"
 
-namespace agg
-{
-
-    //------------------------------------------------------vertex_dist_epsilon
+namespace agg {
     // Coinciding points maximal distance (Epsilon)
     const double vertex_dist_epsilon = 1e-14;
 
-    //-----------------------------------------------------intersection_epsilon
     // See calc_intersection
     const double intersection_epsilon = 1.0e-30;
 
-    //------------------------------------------------------------cross_product
-    AGG_INLINE double cross_product(double x1, double y1, 
-                                    double x2, double y2, 
-                                    double x,  double y)
+    AGG_INLINE double cross_product(double x1, double y1, double x2, double y2, double x,  double y)
     {
         return (x - x2) * (y2 - y1) - (y - y2) * (x2 - x1);
     }
 
-    //--------------------------------------------------------point_in_triangle
-    AGG_INLINE bool point_in_triangle(double x1, double y1, 
-                                      double x2, double y2, 
-                                      double x3, double y3, 
-                                      double x,  double y)
+    AGG_INLINE bool point_in_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double x,  double y)
     {
         bool cp1 = cross_product(x1, y1, x2, y2, x, y) < 0.0;
         bool cp2 = cross_product(x2, y2, x3, y3, x, y) < 0.0;
         bool cp3 = cross_product(x3, y3, x1, y1, x, y) < 0.0;
-        return cp1 == cp2 && cp2 == cp3 && cp3 == cp1;
+        return cp1 == cp2 and cp2 == cp3 and cp3 == cp1;
     }
 
-    //-----------------------------------------------------------calc_distance
     AGG_INLINE double calc_distance(double x1, double y1, double x2, double y2)
     {
         double dx = x2-x1;
@@ -56,7 +44,6 @@ namespace agg
         return sqrt(dx * dx + dy * dy);
     }
 
-    //--------------------------------------------------------calc_sq_distance
     AGG_INLINE double calc_sq_distance(double x1, double y1, double x2, double y2)
     {
         double dx = x2-x1;
@@ -64,33 +51,21 @@ namespace agg
         return dx * dx + dy * dy;
     }
 
-    //------------------------------------------------calc_line_point_distance
-    AGG_INLINE double calc_line_point_distance(double x1, double y1, 
-                                               double x2, double y2, 
-                                               double x,  double y)
+    AGG_INLINE double calc_line_point_distance(double x1, double y1, double x2, double y2, double x,  double y)
     {
         double dx = x2-x1;
         double dy = y2-y1;
         double d = sqrt(dx * dx + dy * dy);
-        if(d < vertex_dist_epsilon)
-        {
-            return calc_distance(x1, y1, x, y);
-        }
+        if (d < vertex_dist_epsilon) return calc_distance(x1, y1, x, y);
         return ((x - x2) * dy - (y - y2) * dx) / d;
     }
 
-    //-------------------------------------------------------calc_line_point_u
-    AGG_INLINE double calc_segment_point_u(double x1, double y1, 
-                                           double x2, double y2, 
-                                           double x,  double y)
+    AGG_INLINE double calc_segment_point_u(double x1, double y1, double x2, double y2, double x,  double y)
     {
         double dx = x2 - x1;
         double dy = y2 - y1;
 
-        if(dx == 0 && dy == 0)
-        {
-	        return 0;
-        }
+        if(dx == 0 and dy == 0) return 0;
 
         double pdx = x - x1;
         double pdy = y - y1;
@@ -98,61 +73,41 @@ namespace agg
         return (pdx * dx + pdy * dy) / (dx * dx + dy * dy);
     }
 
-    //---------------------------------------------calc_line_point_sq_distance
-    AGG_INLINE double calc_segment_point_sq_distance(double x1, double y1, 
-                                                     double x2, double y2, 
-                                                     double x,  double y,
-                                                     double u)
+    AGG_INLINE double calc_segment_point_sq_distance(double x1, double y1, double x2, double y2, double x,  double y, double u)
     {
-        if(u <= 0)
-        {
-	        return calc_sq_distance(x, y, x1, y1);
-        }
-        else 
-        if(u >= 1)
-        {
-	        return calc_sq_distance(x, y, x2, y2);
-        }
+        if (u <= 0) return calc_sq_distance(x, y, x1, y1);
+        else if (u >= 1) return calc_sq_distance(x, y, x2, y2);
         return calc_sq_distance(x, y, x1 + u * (x2 - x1), y1 + u * (y2 - y1));
     }
 
-    //---------------------------------------------calc_line_point_sq_distance
-    AGG_INLINE double calc_segment_point_sq_distance(double x1, double y1, 
-                                                     double x2, double y2, 
-                                                     double x,  double y)
+    AGG_INLINE double calc_segment_point_sq_distance(double x1, double y1, double x2, double y2, double x,  double y)
     {
-        return 
-            calc_segment_point_sq_distance(
-                x1, y1, x2, y2, x, y,
-                calc_segment_point_u(x1, y1, x2, y2, x, y));
+        return calc_segment_point_sq_distance(x1, y1, x2, y2, x, y, calc_segment_point_u(x1, y1, x2, y2, x, y));
     }
 
-    //-------------------------------------------------------calc_intersection
     AGG_INLINE bool calc_intersection(double ax, double ay, double bx, double by,
                                       double cx, double cy, double dx, double dy,
                                       double* x, double* y)
     {
         double num = (ay-cy) * (dx-cx) - (ax-cx) * (dy-cy);
         double den = (bx-ax) * (dy-cy) - (by-ay) * (dx-cx);
-        if(fabs(den) < intersection_epsilon) return false;
+        if (fabs(den) < intersection_epsilon) return false;
         double r = num / den;
         *x = ax + r * (bx-ax);
         *y = ay + r * (by-ay);
         return true;
     }
 
-    //-----------------------------------------------------intersection_exists
     AGG_INLINE bool intersection_exists(double x1, double y1, double x2, double y2,
                                         double x3, double y3, double x4, double y4)
     {
-        // It's less expensive but you can't control the 
-        // boundary conditions: Less or LessEqual
+        // It's less expensive but you can't control the boundary conditions: Less or LessEqual
         double dx1 = x2 - x1;
         double dy1 = y2 - y1;
         double dx2 = x4 - x3;
         double dy2 = y4 - y3;
         return ((x3 - x2) * dy1 - (y3 - y2) * dx1 < 0.0) != 
-               ((x4 - x2) * dy1 - (y4 - y2) * dx1 < 0.0) &&
+               ((x4 - x2) * dy1 - (y4 - y2) * dx1 < 0.0) and
                ((x1 - x4) * dy2 - (y1 - y4) * dx2 < 0.0) !=
                ((x2 - x4) * dy2 - (y2 - y4) * dx2 < 0.0);
 
@@ -165,14 +120,10 @@ namespace agg
         //double nom2 = (x2-x1) * (y1-y3) - (y2-y1) * (x1-x3);
         //double ua = nom1 / den;
         //double ub = nom2 / den;
-        //return ua >= 0.0 && ua <= 1.0 && ub >= 0.0 && ub <= 1.0;
+        //return ua >= 0.0 and ua <= 1.0 and ub >= 0.0 and ub <= 1.0;
     }
 
-    //--------------------------------------------------------calc_orthogonal
-    AGG_INLINE void calc_orthogonal(double thickness,
-                                    double x1, double y1,
-                                    double x2, double y2,
-                                    double* x, double* y)
+    AGG_INLINE void calc_orthogonal(double thickness, double x1, double y1, double x2, double y2, double* x, double* y)
     {
         double dx = x2 - x1;
         double dy = y2 - y1;
@@ -181,12 +132,7 @@ namespace agg
         *y = -thickness * dx / d;
     }
 
-    //--------------------------------------------------------dilate_triangle
-    AGG_INLINE void dilate_triangle(double x1, double y1,
-                                    double x2, double y2,
-                                    double x3, double y3,
-                                    double *x, double* y,
-                                    double d)
+    AGG_INLINE void dilate_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double *x, double* y, double d)
     {
         double dx1=0.0;
         double dy1=0.0; 
@@ -195,12 +141,8 @@ namespace agg
         double dx3=0.0;
         double dy3=0.0; 
         double loc = cross_product(x1, y1, x2, y2, x3, y3);
-        if(fabs(loc) > intersection_epsilon)
-        {
-            if(cross_product(x1, y1, x2, y2, x3, y3) > 0.0) 
-            {
-                d = -d;
-            }
+        if (fabs(loc) > intersection_epsilon) {
+            if (cross_product(x1, y1, x2, y2, x3, y3) > 0.0) d = -d;
             calc_orthogonal(d, x1, y1, x2, y2, &dx1, &dy1);
             calc_orthogonal(d, x2, y2, x3, y3, &dx2, &dy2);
             calc_orthogonal(d, x3, y3, x1, y1, &dx3, &dy3);
@@ -213,15 +155,11 @@ namespace agg
         *x++ = x1 + dx3;  *y++ = y1 + dy3;
     }
 
-    //------------------------------------------------------calc_triangle_area
-    AGG_INLINE double calc_triangle_area(double x1, double y1,
-                                         double x2, double y2,
-                                         double x3, double y3)
+    AGG_INLINE double calc_triangle_area(double x1, double y1, double x2, double y2, double x3, double y3)
     {
         return (x1*y2 - x2*y1 + x2*y3 - x3*y2 + x3*y1 - x1*y3) * 0.5;
     }
 
-    //-------------------------------------------------------calc_polygon_area
     template<class Storage> double calc_polygon_area(const Storage& st)
     {
         unsigned i;
@@ -241,13 +179,10 @@ namespace agg
         return (sum + x * ys - y * xs) * 0.5;
     }
 
-    //------------------------------------------------------------------------
     // Tables for fast sqrt
     extern int16u g_sqrt_table[1024];
     extern int8   g_elder_bit_table[256];
 
-
-    //---------------------------------------------------------------fast_sqrt
     //Fast integer Sqrt - really fast: no cycles, divisions or multiplications
     #if defined(_MSC_VER)
     #pragma warning(push)
@@ -255,7 +190,7 @@ namespace agg
     #endif
     AGG_INLINE unsigned fast_sqrt(unsigned val)
     {
-    #if defined(_M_IX86) && defined(_MSC_VER) && !defined(AGG_NO_ASM)
+    #if defined(_M_IX86) and defined(_MSC_VER) and !defined(AGG_NO_ASM)
         //For Ix86 family processors this assembler code is used. 
         //The key command here is bsr - determination the number of the most 
         //significant bit of the value. For other processors
@@ -280,50 +215,36 @@ namespace agg
         }
     #else
 
-        //This code is actually pure C and portable to most 
-        //arcitectures including 64bit ones. 
+        // This code is portable to most arcitectures including 64bit ones.
+
         unsigned t = val;
         int bit=0;
         unsigned shift = 11;
 
-        //The following piece of code is just an emulation of the
-        //Ix86 assembler command "bsr" (see above). However on old
-        //Intels (like Intel MMX 233MHz) this code is about twice 
-        //faster (sic!) then just one "bsr". On PIII and PIV the
-        //bsr is optimized quite well.
+        // The following piece of code is just an emulation of the
+        // Ix86 assembler command "bsr" (see above). However on old
+        // Intels (like Intel MMX 233MHz) this code is about twice 
+        // faster (sic!) then just one "bsr". On PIII and PIV the
+        // bsr is optimized quite well.
+
         bit = t >> 24;
-        if(bit)
-        {
-            bit = g_elder_bit_table[bit] + 24;
-        }
-        else
-        {
-            bit = (t >> 16) & 0xFF;
-            if(bit)
-            {
-                bit = g_elder_bit_table[bit] + 16;
-            }
-            else
-            {
-                bit = (t >> 8) & 0xFF;
-                if(bit)
-                {
-                    bit = g_elder_bit_table[bit] + 8;
-                }
-                else
-                {
-                    bit = g_elder_bit_table[t];
-                }
-            }
+        if (bit) bit = g_elder_bit_table[bit] + 24;
+        else {
+           bit = (t >> 16) & 0xFF;
+           if (bit) bit = g_elder_bit_table[bit] + 16;
+           else {
+              bit = (t >> 8) & 0xFF;
+              if (bit) bit = g_elder_bit_table[bit] + 8;
+              else bit = g_elder_bit_table[t];
+           }
         }
 
-        //This code calculates the sqrt.
+        // This code calculates the sqrt.
         bit -= 9;
-        if(bit > 0)
-        {
-            bit = (bit >> 1) + (bit & 1);
-            shift -= bit;
-            val >>= (bit << 1);
+        if (bit > 0) {
+           bit = (bit >> 1) + (bit & 1);
+           shift -= bit;
+           val >>= (bit << 1);
         }
         return g_sqrt_table[val] >> shift;
     #endif
@@ -332,10 +253,6 @@ namespace agg
     #pragma warning(pop)
     #endif
 
-
-
-
-    //--------------------------------------------------------------------besj
     // Function BESJ calculates Bessel function of first kind of order n
     // Arguments:
     //     n - an integer (>=0), the order

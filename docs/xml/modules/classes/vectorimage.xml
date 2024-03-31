@@ -12,11 +12,12 @@
     <idstring>ID_VECTORIMAGE</idstring>
     <category>Graphics</category>
     <include>modules/vectorimage.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
 <p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p>
+<p>NOTE: For the rendering of vectors as flattened images, use <class name="VectorPattern">VectorPattern</class>.</p></description>
     <source>
       <file path="defs/">image.cpp</file>
     </source>
@@ -46,11 +47,11 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="DMF">INT</type>
       <description>
-<p>Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.</p>
+<p>Of the Dimension flags that are available, only <code>FIXED_X</code>, <code>FIXED_Y</code>, <code>SCALED_X</code> and <code>SCALED_Y</code> are applicable.</p>
 <types lookup="DMF"/>
       </description>
     </field>
@@ -67,11 +68,11 @@
 
     <field>
       <name>SpreadMethod</name>
-      <comment>Defines the drawing mode.</comment>
+      <comment>Defines image tiling behaviour, if desired.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
+<p>The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the available space.  It is secondary to the application of <field>AspectRatio</field>.  The default setting is <code>CLIP</code>, which prevents the image from being tiled.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -82,7 +83,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
+<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is <code>BOUNDING_BOX</code>.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -126,9 +127,9 @@
     </constants>
 
     <constants lookup="VUNIT">
-      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
       <const name="UNDEFINED"/>
-      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+      <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 
   </types>

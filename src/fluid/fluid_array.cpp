@@ -137,7 +137,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       if (!List) {
          Cache = false;
          alloc = true;
-         if (AllocMemory(array_size, MEM::DATA, &List) != ERR_Okay) {
+         if (AllocMemory(array_size, MEM::DATA, &List) != ERR::Okay) {
             lua_pushnil(Lua);
             return;
          }
@@ -222,7 +222,7 @@ static int array_new(lua_State *Lua)
       pf::Log log(__FUNCTION__);
 
       log.trace("");
-      if (!StrMatch("bytestring", type)) { // Represent a string as an array of bytes
+      if (StrMatch("bytestring", type) IS ERR::Okay) { // Represent a string as an array of bytes
          size_t len;
          if (auto str = lua_tolstring(Lua, 1, &len)) {
             log.trace("Generating byte array from string of length %d: %.30s", (int)len, str);
@@ -349,7 +349,7 @@ static int array_get(lua_State *Lua)
             case FD_STRUCT: {
                // Arrays of structs are presumed to be in sequence, as opposed to an array of pointers to structs.
                std::vector<lua_ref> ref;
-               if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrByte + (index * a->AlignedSize)) != ERR_Okay) {
+               if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrByte + (index * a->AlignedSize)) != ERR::Okay) {
                   lua_pushnil(Lua);
                }
                break;
@@ -373,14 +373,14 @@ static int array_get(lua_State *Lua)
       else if ((field = luaL_checkstring(Lua, 2))) {
          log.trace("Field: %s", field);
 
-         if (!StrMatch("table", field)) { // Convert the array to a standard Lua table.
+         if (StrMatch("table", field) IS ERR::Okay) { // Convert the array to a standard Lua table.
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
             switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
                   std::vector<lua_ref> ref;
                   for (LONG i=0; i < a->Total; i++) {
                      lua_pushinteger(Lua, i);
-                     if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrPointer[i]) != ERR_Okay) lua_pushnil(Lua);
+                     if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrPointer[i]) != ERR::Okay) lua_pushnil(Lua);
                      lua_settable(Lua, -3);
                   }
                   break;
@@ -397,12 +397,12 @@ static int array_get(lua_State *Lua)
 
             return 1;
          }
-         else if (!StrMatch("getstring", field)) {
+         else if (StrMatch("getstring", field) IS ERR::Okay) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
             return 1;
          }
-         else if (!StrMatch("copy", field)) {
+         else if (StrMatch("copy", field) IS ERR::Okay) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
             return 1;

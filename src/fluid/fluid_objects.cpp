@@ -40,7 +40,7 @@ static int object_method_call_args(lua_State *);
 static int object_action_call(lua_State *);
 static int object_method_call(lua_State *);
 static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
-static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
+static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
 static int object_children(lua_State *);
 static int object_delaycall(lua_State *);
@@ -71,14 +71,14 @@ static int object_get_large(lua_State *, const obj_read &, object *);
 static int object_get_ulong(lua_State *, const obj_read &, object *);
 static int object_get_long(lua_State *, const obj_read &, object *);
 
-static ERROR object_set_array(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_function(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_object(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_ptr(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_double(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_lookup(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_oid(lua_State *, OBJECTPTR, Field *, LONG);
-static ERROR object_set_number(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_array(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_function(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_object(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_ptr(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_double(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_lookup(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_oid(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_number(lua_State *, OBJECTPTR, Field *, LONG);
 
 //********************************************************************************************************************
 
@@ -141,7 +141,7 @@ inline READ_TABLE * get_read_table(object *Def)
 
          MethodEntry *methods;
          LONG total_methods;
-         if (!GetFieldArray(Def->Class, FID_Methods, &methods, &total_methods)) {
+         if (GetFieldArray(Def->Class, FID_Methods, &methods, &total_methods) IS ERR::Okay) {
             for (LONG i=1; i < total_methods; i++) {
                if (methods[i].MethodID) {
                   auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
@@ -152,7 +152,7 @@ inline READ_TABLE * get_read_table(object *Def)
 
          Field *dict;
          LONG total_dict;
-         if (!GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict)) {
+         if (GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict) IS ERR::Okay) {
             jmp.insert(obj_read(simple_hash("id"), object_get_id));
 
             for (LONG i=0; i < total_dict; i++) {
@@ -231,7 +231,7 @@ inline WRITE_TABLE * get_write_table(object *Def)
          WRITE_TABLE jmp;
          Field *dict;
          LONG total_dict;
-         if (!GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict)) {
+         if (GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict) IS ERR::Okay) {
             for (LONG i=0; i < total_dict; i++) {
                if (dict[i].Flags & (FD_W|FD_I)) {
                   char ch[2] = { dict[i].Name[0], 0 };
@@ -279,18 +279,25 @@ inline WRITE_TABLE * get_write_table(object *Def)
 
 static int object_index(lua_State *Lua)
 {
-   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       auto keyname = luaL_checkstring(Lua, 2);
       auto jt  = get_read_table(def);
+
+      if (!def->UID) { // Check if the object has been dereferenced by free() or similar
+         luaL_error(Lua, "Unable to read field %s", keyname);
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         prv->CaughtError = ERR::DoesNotExist;
+         return 0;
+      }
 
       if (auto func = jt->find(obj_read(simple_hash(keyname))); func != jt->end()) {
          return func->Call(Lua, *func, def);
       }
       else {
          pf::Log log(__FUNCTION__);
-         log.warning("Unable to read %s.%s", def->Class->ClassName, keyname);
+         log.warning("Unable to read %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-         prv->CaughtError = ERR_NoSupport;
+         prv->CaughtError = ERR::NoSupport;
          //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
       }
    }
@@ -320,9 +327,9 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       MethodEntry *table;
       LONG total_methods;
       ACTIONID action_id;
-      if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
+      if ((GetFieldArray(mc, FID_Methods, &table, &total_methods) IS ERR::Okay) and (table)) {
          for (LONG i=1; i < total_methods; i++) {
-            if ((table[i].Name) and (!StrMatch(action, table[i].Name))) {
+            if ((table[i].Name) and (StrMatch(action, table[i].Name) IS ERR::Okay)) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
                i = 0x7ffffff0;
@@ -332,13 +339,13 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       }
       else log.warning("No methods declared for class %s, cannot call %s()", mc->ClassName, action);
    }
-   else luaL_error(Lua, GetErrorMsg(ERR_Search));
+   else luaL_error(Lua, GetErrorMsg(ERR::Search));
 
    return 0;
 }
 
 /*********************************************************************************************************************
-** Usage: object = obj.new("Screen", { field1 = value1, field2 = value2, ...})
+** Usage: object = obj.new("Display", { field1 = value1, field2 = value2, ...})
 **
 ** If fields are provided in the second argument, the object will be initialised automatically.  If no field list is
 ** provided, InitObject() must be used to initialise the object.
@@ -375,14 +382,14 @@ static int object_new(lua_State *Lua)
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      prv->CaughtError = ERR_Mismatch;
-      luaL_error(Lua, GetErrorMsg(ERR_Mismatch));
+      prv->CaughtError = ERR::Mismatch;
+      luaL_error(Lua, GetErrorMsg(ERR::Mismatch));
       return 0;
    }
 
    OBJECTPTR obj;
-   ERROR error;
-   if (!(error = NewObject(class_id, objflags, &obj))) {
+   ERR error;
+   if ((error = NewObject(class_id, objflags, &obj)) IS ERR::Okay) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -398,18 +405,18 @@ static int object_new(lua_State *Lua)
          // Set fields against the object and initialise the object.  NOTE: Lua's table management code *does not*
          // preserve the order in which the fields were originally passed to the table.
 
-         ERROR field_error  = ERR_Okay;
+         ERR field_error  = ERR::Okay;
          CSTRING field_name = NULL;
          LONG failed_type   = LUA_TNONE;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
-               if (!StrMatch("owner", field_name)) field_error = ERR_UnsupportedOwner; // Setting the owner is not permitted.
+               if (StrMatch("owner", field_name) IS ERR::Okay) field_error = ERR::UnsupportedOwner; // Setting the owner is not permitted.
                else field_error = set_object_field(Lua, obj, field_name, -1);
             }
-            else field_error = ERR_UnsupportedField;
+            else field_error = ERR::UnsupportedField;
 
-            if (field_error) { // Break the loop early on error.
+            if (field_error != ERR::Okay) { // Break the loop early on error.
                failed_type = lua_type(Lua, -1);
                lua_pop(Lua, 2);
                break;
@@ -417,10 +424,10 @@ static int object_new(lua_State *Lua)
             else lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
 
-         if ((field_error) or ((error = InitObject(obj)) != ERR_Okay)) {
+         if ((field_error != ERR::Okay) or ((error = InitObject(obj)) != ERR::Okay)) {
             FreeResource(obj);
 
-            if (field_error) {
+            if (field_error != ERR::Okay) {
                prv->CaughtError = field_error;
                luaL_error(Lua, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
@@ -439,7 +446,7 @@ static int object_new(lua_State *Lua)
       return 1;
    }
    else {
-      prv->CaughtError = ERR_NewObject;
+      prv->CaughtError = ERR::NewObject;
       luaL_error(Lua, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
       return 0;
    }
@@ -514,14 +521,14 @@ static int object_newchild(lua_State *Lua)
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
-      prv->CaughtError = ERR_Mismatch;
-      luaL_error(Lua, GetErrorMsg(ERR_Mismatch));
+      prv->CaughtError = ERR::Mismatch;
+      luaL_error(Lua, GetErrorMsg(ERR::Mismatch));
       return 0;
    }
 
    OBJECTPTR obj;
-   ERROR error;
-   if (!(error = NewObject(class_id, objflags, &obj))) {
+   ERR error;
+   if ((error = NewObject(class_id, objflags, &obj)) IS ERR::Okay) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -542,34 +549,34 @@ static int object_newchild(lua_State *Lua)
          // Set fields against the object and initialise the object.  NOTE: Lua's table management code *does not*
          // preserve the order in which the fields were originally passed to the table.
 
-         ERROR field_error = ERR_Okay;
+         ERR field_error = ERR::Okay;
          CSTRING field_name = NULL;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
-               if (!StrMatch("owner", field_name)) field_error = ERR_UnsupportedOwner; // Setting the owner is not permitted.
+               if (StrMatch("owner", field_name) IS ERR::Okay) field_error = ERR::UnsupportedOwner; // Setting the owner is not permitted.
                else field_error = set_object_field(Lua, obj, field_name, -1);
             }
-            else field_error = ERR_UnsupportedField;
+            else field_error = ERR::UnsupportedField;
 
-            if (field_error) { // Break the loop early on error.
+            if (field_error != ERR::Okay) { // Break the loop early on error.
                lua_pop(Lua, 2);
                break;
             }
             else lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
 
-         if ((field_error) or ((error = InitObject(obj)) != ERR_Okay)) {
+         if ((field_error != ERR::Okay) or ((error = InitObject(obj)) != ERR::Okay)) {
             FreeResource(obj);
 
-            if (field_error) {
+            if (field_error != ERR::Okay) {
                prv->CaughtError = field_error;
                luaL_error(Lua, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
             }
             else {
                log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
-               prv->CaughtError = ERR_Init;
-               luaL_error(Lua, GetErrorMsg(ERR_Init));
+               prv->CaughtError = ERR::Init;
+               luaL_error(Lua, GetErrorMsg(ERR::Init));
             }
             return 0;
          }
@@ -582,8 +589,8 @@ static int object_newchild(lua_State *Lua)
       return 1;
    }
    else {
-      prv->CaughtError = ERR_NewObject;
-      luaL_error(Lua, GetErrorMsg(ERR_NewObject));
+      prv->CaughtError = ERR::NewObject;
+      luaL_error(Lua, GetErrorMsg(ERR::NewObject));
       return 0;
    }
 }
@@ -614,9 +621,9 @@ object * push_object(lua_State *Lua, OBJECTPTR Object)
 //********************************************************************************************************************
 // Guaranteed to not throw exceptions.
 
-ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
+ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 {
-   if (!ObjectID) { lua_pushnil(Lua); return ERR_Okay; }
+   if (!ObjectID) { lua_pushnil(Lua); return ERR::Okay; }
 
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
       ClearMemory(newobject, sizeof(object));
@@ -630,9 +637,9 @@ ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_NewObject;
+   else return ERR::NewObject;
 }
 
 /*********************************************************************************************************************
@@ -665,7 +672,6 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 static int object_find(lua_State *Lua)
 {
    pf::Log log("object.find");
-   OBJECTPTR obj;
    CSTRING object_name;
    CLASSID class_id;
    OBJECTID object_id;
@@ -683,27 +689,27 @@ static int object_find(lua_State *Lua)
 
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
-      if ((!StrMatch("self", object_name)) and (!class_id)) {
+      if ((StrMatch("self", object_name) IS ERR::Okay) and (!class_id)) {
          return object_find_ptr(Lua, Lua->Script);
       }
-      else if (!StrMatch("owner", object_name)) {
-         if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
+      else if (StrMatch("owner", object_name) IS ERR::Okay) {
+         if (auto obj = Lua->Script->Owner) {
             return object_find_ptr(Lua, obj);
          }
          else return 0;
       }
 
-      if (!FindObject(object_name, class_id, FOF::SMART_NAMES, &object_id)) {
+      if (FindObject(object_name, class_id, FOF::SMART_NAMES, &object_id) IS ERR::Okay) {
          return object_find_ptr(Lua, GetObjectPtr(object_id));
       }
-      else log.debug("Unable to find object '%s'", object_name);
+      else log.detail("Unable to find object '%s'", object_name);
    }
    else if ((type IS LUA_TNUMBER) and ((object_id = lua_tointeger(Lua, 1)))) {
       log.trace("obj.find(#%d)", object_id);
 
-      if (CheckObjectExists(object_id) != ERR_Okay) return 0;
+      if (CheckObjectExists(object_id) != ERR::Okay) return 0;
 
-      if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
+      if (auto obj = Lua->Script->Owner) {
          return object_find_ptr(Lua, obj);
       }
    }
@@ -764,7 +770,7 @@ static int object_children(lua_State *Lua)
    else class_id = 0;
 
    pf::vector<ChildEntry> list;
-   if (!ListChildren(def->UID, &list)) {
+   if (ListChildren(def->UID, &list) IS ERR::Okay) {
       LONG index = 0;
       auto id = std::make_unique<LONG[]>(list.size());
       for (auto &rec : list) {
@@ -892,15 +898,16 @@ static int object_subscribe(lua_State *Lua)
 
    OBJECTPTR obj;
    if (!(obj = access_object(def))) {
-      luaL_error(Lua, GetErrorMsg(ERR_AccessObject));
+      luaL_error(Lua, GetErrorMsg(ERR::AccessObject));
       return 0;
    }
 
    pf::Log log("obj.subscribe");
    log.trace("Object: %d, Action: %s (ID %d)", def->UID, action, action_id);
 
-   auto callback = make_function_stdc(notify_action, Lua->Script);
-   if (auto error = SubscribeAction(obj, action_id, &callback); !error) {
+   auto callback = FUNCTION(notify_action);
+   callback.StdC.Context = Lua->Script;
+   if (auto error = SubscribeAction(obj, action_id, &callback); error IS ERR::Okay) {
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       auto &acsub = prv->ActionList.emplace_back();
 
@@ -1000,7 +1007,7 @@ static int object_destruct(lua_State *Lua)
          // owned by a Database object).
 
          if (auto obj = GetObjectPtr(def->UID)) {
-            if ((obj->Class->BaseClassID IS ID_RECORDSET) or (obj->ownerID() IS Lua->Script->UID) or (obj->ownerID() IS Lua->Script->TargetID)) {
+            if ((obj->Class->BaseClassID IS ID_RECORDSET) or (obj->Owner IS Lua->Script) or (obj->ownerID() IS Lua->Script->TargetID)) {
                pf::Log log("obj.destruct");
                log.trace("Freeing Fluid-owned object #%d.", def->UID);
                FreeResource(obj); // We can't presume that the object pointer would be valid
@@ -1030,17 +1037,17 @@ static int object_init(lua_State *Lua)
 {
    if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       if (auto obj = access_object(def)) {
-         lua_pushinteger(Lua, InitObject(obj));
+         lua_pushinteger(Lua, LONG(InitObject(obj)));
          release_object(def);
          return 1;
       }
       else {
-         luaL_error(Lua, GetErrorMsg(ERR_AccessObject));
+         luaL_error(Lua, GetErrorMsg(ERR::AccessObject));
          return 0;
       }
    }
    else {
-      lua_pushinteger(Lua, ERR_SystemCorrupt);
+      lua_pushinteger(Lua, LONG(ERR::SystemCorrupt));
       return 1;
    }
 }
@@ -1085,7 +1092,7 @@ static int object_pairs(lua_State *Lua)
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       Field *fields;
       LONG total;
-      if (!GetFieldArray(def->Class, FID_Dictionary, &fields, &total)) {
+      if (GetFieldArray(def->Class, FID_Dictionary, &fields, &total) IS ERR::Okay) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushinteger(Lua, 0);
@@ -1120,7 +1127,7 @@ static int object_ipairs(lua_State *Lua)
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       Field *fields;
       LONG total;
-      if (!GetFieldArray(def->Class, FID_Dictionary, &fields, &total)) {
+      if (GetFieldArray(def->Class, FID_Dictionary, &fields, &total) IS ERR::Okay) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushcclosure(Lua, object_next_ipair, 2);

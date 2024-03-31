@@ -33,7 +33,7 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 #ifdef __linux__
 
-ERROR fs_watch_path(extFile *File)
+ERR fs_watch_path(extFile *File)
 {
    pf::Log log;
    STRING path;
@@ -57,33 +57,33 @@ ERROR fs_watch_path(extFile *File)
       if (handle IS -1) {
          log.warning("%s", strerror(errno));
          FreeResource(path);
-         return ERR_SystemCall;
+         return ERR::SystemCall;
       }
 
       File->prvWatch->Handle = handle;
 
       FreeResource(path);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   return ERR_AllocMemory;
+   return ERR::AllocMemory;
 }
 
 #elif _WIN32
 
-ERROR fs_watch_path(extFile *File)
+ERR fs_watch_path(extFile *File)
 {
    pf::Log log(__FUNCTION__);
    HOSTHANDLE handle;
    LONG winflags;
-   ERROR error;
+   ERR error;
 
    // The path_monitor() function will be called whenever the Path or its content is modified.
 
-   if (!(error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags))) {
+   if ((error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
       File->prvWatch->Handle   = handle;
       File->prvWatch->WinFlags = winflags;
-      if (!(error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File))) {
+      if ((error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File)) IS ERR::Okay) {
       }
       else log.warning("Failed to register folder handle.");
    }
@@ -94,9 +94,9 @@ ERROR fs_watch_path(extFile *File)
 
 #else
 
-ERROR fs_watch_path(extFile *File)
+ERR fs_watch_path(extFile *File)
 {
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 #endif
@@ -185,21 +185,15 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
          if (event->mask & IN_ISDIR) flags |= MFF::FOLDER;
          else flags |= MFF::FILE;
 
-         ERROR error;
+         ERR error;
          if (flags != MFF::NIL) {
-            if (glFileMonitor[i].Routine.Type IS CALL_STDC) {
-               ERROR (*routine)(extFile *File, CSTRING path, LARGE Custom, MFF Flags);
+            if (glFileMonitor[i].Routine.isC()) {
+               ERR (*routine)(extFile *, CSTRING path, LARGE Custom, MFF Flags, APTR);
                routine = glFileMonitor[i].Routine.StdC.Routine;
-
-               OBJECTPTR context;
-               if (glFileMonitor[i].Context) context = SetContext(glFileMonitor[i].Context);
-               else context = NULL;
-
-               error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags);
-
-               if (context) SetContext(context);
+               pf::SwitchContext context(glFileMonitor[i].Routine.StdC.Context);
+               error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags, glFileMonitor[i].Routine.StdC.Meta);
             }
-            else if (glFileMonitor[i].Routine.Type IS CALL_SCRIPT) {
+            else if (glFileMonitor[i].Routine.isScript()) {
                if (auto script = tlFeedback.Script.Script) {
                   const ScriptArg args[] = {
                      { "File",   glFileMonitor[i].File },
@@ -207,12 +201,12 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                      { "Custom", glFileMonitor[i].Custom },
                      { "Flags",  LONG(flags) }
                   };
-                  if (scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+                  if (scCallback(script, tlFeedback.Script.ProcedureID, args, std::ssize(args), &error)) error = ERR::Failed;
                }
-               else error = ERR_Terminate;
+               else error = ERR::Terminate;
             }
 
-            if (error IS ERR_Terminate) Action(MT_FlWatch, glFileMonitor[i].File, NULL);
+            if (error IS ERR::Terminate) Action(MT_FlWatch, glFileMonitor[i].File, NULL);
          }
          else log.warning("Flags $%.8x not recognised.", LONG(flags));
          break;
@@ -243,16 +237,15 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
    pf::Log log(__FUNCTION__);
 
-   static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
+   static THREADVAR bool recursion = false; // Recursion avoidance is essential for correct queuing
    if ((recursion) or (!File->prvWatch)) return;
-   recursion = TRUE;
+   recursion = true;
 
    AdjustLogLevel(2);
 
    log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->UID);
 
-   ERROR error;
-   ERROR (*routine)(extFile *, CSTRING path, LARGE Custom, LONG Flags);
+   ERR error;
    if (File->prvWatch->Handle) {
       char path[256];
       LONG status;
@@ -266,44 +259,35 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
             if (path[i] IS '\\') continue;
          }
 
-         if (File->prvWatch->Routine.StdC.Context) {
+
+         if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
-
-            if (File->prvWatch->Routine.Type IS CALL_STDC) {
-               routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
-               error = routine(File, path, File->prvWatch->Custom, status);
-            }
-            else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
-               if (auto script = File->prvWatch->Routine.Script.Script) {
-                  const ScriptArg args[] = {
-                     { "File",   File, FD_OBJECTPTR },
-                     { "Path",   path },
-                     { "Custom", File->prvWatch->Custom },
-                     { "Flags",  0 }
-                  };
-                  if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-               }
-               else error = ERR_Terminate;
-            }
-            else error = ERR_Terminate;
+            auto routine = (ERR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.StdC.Routine;
+            error = routine(File, path, File->prvWatch->Custom, status, File->prvWatch->Routine.StdC.Meta);
          }
-         else {
-            routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
-            error = routine(File, path, File->prvWatch->Custom, status);
+         else if (File->prvWatch->Routine.isScript()) {
+            if (auto script = File->prvWatch->Routine.Script.Script) {
+               const ScriptArg args[] = {
+                  { "File",   File, FD_OBJECTPTR },
+                  { "Path",   path },
+                  { "Custom", File->prvWatch->Custom },
+                  { "Flags",  0 }
+               };
+               if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+            }
+            else error = ERR::Terminate;
          }
+         else error = ERR::Terminate;
 
-         if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
+         if (error IS ERR::Terminate) Action(MT_FlWatch, File, NULL);
       }
    }
    else {
-      routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
-      if (File->prvWatch->Routine.StdC.Context) {
-         pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
-         error = routine(File, File->Path, File->prvWatch->Custom, 0);
-      }
-      else error = routine(File, File->Path, File->prvWatch->Custom, 0);
+      auto routine = (ERR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.StdC.Routine;
+      pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
+      error = routine(File, File->Path, File->prvWatch->Custom, 0, File->prvWatch->Routine.StdC.Meta);
 
-      if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
+      if (error IS ERR::Terminate) Action(MT_FlWatch, File, NULL);
    }
 
    winFindNextChangeNotification(Handle);

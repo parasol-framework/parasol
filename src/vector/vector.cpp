@@ -3,9 +3,13 @@
 The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
+This code utilises the work of the FreeType Project under the FreeType License.  For more information please refer to
+the FreeType home page at www.freetype.org.
+
 *********************************************************************************************************************/
 
 //#include "vector.h"
+//#include "font.h"
 #include "idl.h"
 
 JUMPTABLE_DISPLAY
@@ -23,74 +27,96 @@ OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplaceme
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
+OBJECTPTR glVectorModule = NULL;
+FT_Library glFTLibrary = NULL;
 
 std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
 
-static ERROR init_clip(void);
-static ERROR init_ellipse(void);
-static ERROR init_group(void);
-static ERROR init_path(void);
-static ERROR init_polygon(void);
-static ERROR init_rectangle(void);
-static ERROR init_spiral(void);
-static ERROR init_supershape(void);
-static ERROR init_text(void);
-static ERROR init_vector(void);
-static ERROR init_viewport(void);
-static ERROR init_wave(void);
+std::recursive_mutex glFontMutex;
+std::unordered_map<ULONG, bmp_font> glBitmapFonts;
+std::unordered_map<ULONG, freetype_font> glFreetypeFonts;
+
+static ERR init_clip(void);
+static ERR init_ellipse(void);
+static ERR init_group(void);
+static ERR init_path(void);
+static ERR init_polygon(void);
+static ERR init_rectangle(void);
+static ERR init_spiral(void);
+static ERR init_supershape(void);
+static ERR init_text(void);
+static ERR init_vector(void);
+static ERR init_viewport(void);
+static ERR init_wave(void);
 
 #include "utility.cpp"
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
+   pf::Log log;
+
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", &modDisplay, &DisplayBase)) return ERR_InitModule;
-   if (objModule::load("font", &modFont, &FontBase)) return ERR_InitModule;
+   argModule->getPtr(FID_Root, &glVectorModule);
 
-   ERROR error;
-   if ((error = init_vectorscene())) return error; // Base class
-   if ((error = init_vector())) return error;
-   if ((error = init_colour())) return error;
-   if ((error = init_clip())) return error;
-   if ((error = init_filter())) return error;
-   if ((error = init_gradient())) return error;
-   if ((error = init_group())) return error;
-   if ((error = init_image())) return error;
+   if (FT_Init_FreeType(&glFTLibrary)) {
+      log.warning("Failed to initialise the FreeType font library.");
+      return ERR::Failed;
+   }
+
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::InitModule;
+   if (objModule::load("font", &modFont, &FontBase) != ERR::Okay) return ERR::InitModule;
+
+   ERR error;
+   if ((error = init_vectorscene()) != ERR::Okay) return error; // Base class
+   if ((error = init_vector()) != ERR::Okay) return error;
+   if ((error = init_colour()) != ERR::Okay) return error;
+   if ((error = init_clip()) != ERR::Okay) return error;
+   if ((error = init_filter()) != ERR::Okay) return error;
+   if ((error = init_gradient()) != ERR::Okay) return error;
+   if ((error = init_group()) != ERR::Okay) return error;
+   if ((error = init_image()) != ERR::Okay) return error;
    // Shapes
-   if ((error = init_path())) return error;
-   if ((error = init_ellipse())) return error;
-   if ((error = init_spiral())) return error;
-   if ((error = init_supershape())) return error;
-   if ((error = init_pattern())) return error;
-   if ((error = init_polygon())) return error;
-   if ((error = init_text())) return error;
-   if ((error = init_rectangle())) return error;
-   if ((error = init_transition())) return error;
-   if ((error = init_viewport())) return error;
-   if ((error = init_wave())) return error;
+   if ((error = init_path()) != ERR::Okay) return error;
+   if ((error = init_ellipse()) != ERR::Okay) return error;
+   if ((error = init_spiral()) != ERR::Okay) return error;
+   if ((error = init_supershape()) != ERR::Okay) return error;
+   if ((error = init_pattern()) != ERR::Okay) return error;
+   if ((error = init_polygon()) != ERR::Okay) return error;
+   if ((error = init_text()) != ERR::Okay) return error;
+   if ((error = init_rectangle()) != ERR::Okay) return error;
+   if ((error = init_transition()) != ERR::Okay) return error;
+   if ((error = init_viewport()) != ERR::Okay) return error;
+   if ((error = init_wave()) != ERR::Okay) return error;
    // Effects
-   if ((error = init_filtereffect())) return error;
-   if ((error = init_imagefx())) return error;
-   if ((error = init_sourcefx())) return error;
-   if ((error = init_blurfx())) return error;
-   if ((error = init_colourfx())) return error;
-   if ((error = init_compositefx())) return error;
-   if ((error = init_convolvefx())) return error;
-   if ((error = init_floodfx())) return error;
-   if ((error = init_mergefx())) return error;
-   if ((error = init_morphfx())) return error;
-   if ((error = init_offsetfx())) return error;
-   if ((error = init_turbulencefx())) return error;
-   if ((error = init_remapfx())) return error;
-   if ((error = init_lightingfx())) return error;
-   if ((error = init_displacementfx())) return error;
+   if ((error = init_filtereffect()) != ERR::Okay) return error;
+   if ((error = init_imagefx()) != ERR::Okay) return error;
+   if ((error = init_sourcefx()) != ERR::Okay) return error;
+   if ((error = init_blurfx()) != ERR::Okay) return error;
+   if ((error = init_colourfx()) != ERR::Okay) return error;
+   if ((error = init_compositefx()) != ERR::Okay) return error;
+   if ((error = init_convolvefx()) != ERR::Okay) return error;
+   if ((error = init_floodfx()) != ERR::Okay) return error;
+   if ((error = init_mergefx()) != ERR::Okay) return error;
+   if ((error = init_morphfx()) != ERR::Okay) return error;
+   if ((error = init_offsetfx()) != ERR::Okay) return error;
+   if ((error = init_turbulencefx()) != ERR::Okay) return error;
+   if ((error = init_remapfx()) != ERR::Okay) return error;
+   if ((error = init_lightingfx()) != ERR::Okay) return error;
+   if ((error = init_displacementfx()) != ERR::Okay) return error;
+
+   update_dpi();
    return error;
 }
 
-static ERROR CMDExpunge(void)
+static ERR CMDExpunge(void)
 {
+   glBitmapFonts.clear();
+   glFreetypeFonts.clear();
+
+   if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
+
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modFont)    { FreeResource(modFont); modFont = NULL; }
 
@@ -128,7 +154,7 @@ static ERROR CMDExpunge(void)
    if (clRemapFX)          { FreeResource(clRemapFX);          clRemapFX = NULL; }
    if (clLightingFX)       { FreeResource(clLightingFX);       clLightingFX = NULL; }
    if (clDisplacementFX)   { FreeResource(clDisplacementFX);   clDisplacementFX = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -150,7 +176,7 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-extern ERROR CMDOpen(OBJECTPTR Module);
+extern ERR CMDOpen(OBJECTPTR Module);
 
 static STRUCTS glStructures = {
    { "GradientStop", sizeof(GradientStop) },

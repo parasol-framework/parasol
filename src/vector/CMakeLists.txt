@@ -42,7 +42,6 @@ target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_image_filters.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_line_aa_basics.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_line_profile_aa.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_rounded_rect.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_sqrt_tables.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_trans_affine.cpp"
    #${CMAKE_CURRENT_SOURCE_DIR}/agg/src/gpc/gpc.c
@@ -53,13 +52,12 @@ target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_vpgen_segmentator.cpp")
 
 target_include_directories (${MOD} PRIVATE
-   "${CMAKE_CURRENT_SOURCE_DIR}/agg/include"
-   "${CMAKE_CURRENT_SOURCE_DIR}/../font/freetype-2.10.2/include")
+   "${CMAKE_CURRENT_SOURCE_DIR}/agg/include")
 
 # Pre-compiling the main header speeds up compilation and eliminates the need to include it in source files.
 
 target_precompile_headers(${MOD} PRIVATE
-   vector.h)
+   "vector.h" "font.h")
 
 target_link_libraries (${MOD} PUBLIC linear_rgb)
-target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)

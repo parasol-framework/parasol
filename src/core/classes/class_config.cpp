@@ -56,11 +56,11 @@ class FilterConfig {
    std::list<std::string> values;
 };
 
-static ERROR GET_KeyFilter(extConfig *, CSTRING *);
-static ERROR GET_GroupFilter(extConfig *, CSTRING *);
-static ERROR GET_TotalGroups(extConfig *, LONG *);
+static ERR GET_KeyFilter(extConfig *, CSTRING *);
+static ERR GET_GroupFilter(extConfig *, CSTRING *);
+static ERR GET_TotalGroups(extConfig *, LONG *);
 
-static ERROR CONFIG_SaveSettings(extConfig *, APTR);
+static ERR CONFIG_SaveSettings(extConfig *, APTR);
 
 static const FieldDef clFlags[] = {
    { "AutoSave",    CNF::AUTO_SAVE },
@@ -76,7 +76,7 @@ static const FieldDef clFlags[] = {
 //********************************************************************************************************************
 
 static bool check_for_key(CSTRING);
-static ERROR parse_config(extConfig *, CSTRING);
+static ERR parse_config(extConfig *, CSTRING);
 static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group);
 static void apply_key_filter(extConfig *, CSTRING);
 static void apply_group_filter(extConfig *, CSTRING);
@@ -147,29 +147,28 @@ static ULONG calc_crc(extConfig *Self)
 // Note that multiple files can be specified by separating each file path with a pipe.  This allows you to merge
 // many configuration files into one object.
 
-static ERROR parse_file(extConfig *Self, CSTRING Path)
+static ERR parse_file(extConfig *Self, CSTRING Path)
 {
-   ERROR error = ERR_Okay;
-   while ((*Path) and (!error)) {
+   ERR error = ERR::Okay;
+   while ((*Path) and (error IS ERR::Okay)) {
       objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
-         LONG filesize;
-         file->get(FID_Size, &filesize);
+         auto filesize = file->get<LONG>(FID_Size);
 
          if (filesize > 0) {
             STRING data;
-            if (!AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL)) {
+            if (AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL) IS ERR::Okay) {
                file->read(data, filesize); // Read the entire file
                data[filesize++] = '\n';
                data[filesize] = 0;
                error = parse_config(Self, (CSTRING)data);
                FreeResource(data);
             }
-            else error = ERR_AllocMemory;
+            else error = ERR::AllocMemory;
          }
       }
-      else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR_Okay;
+      else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR::Okay;
 
       while ((*Path) and (*Path != ';') and (*Path != '|')) Path++;
       if (*Path) Path++; // Skip separator
@@ -184,12 +183,12 @@ Clear: Clears all configuration data.
 -END-
 *********************************************************************************************************************/
 
-static ERROR CONFIG_Clear(extConfig *Self, APTR Void)
+static ERR CONFIG_Clear(extConfig *Self, APTR Void)
 {
    if (Self->Groups) { Self->Groups->clear(); }
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
    if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -201,22 +200,22 @@ be overwritten with new values.
 -END-
 *********************************************************************************************************************/
 
-static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
+static ERR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (Args->Datatype IS DATA::TEXT) {
-      ERROR error = parse_config(Self, (CSTRING)Args->Buffer);
-      if (!error) {
+      ERR error = parse_config(Self, (CSTRING)Args->Buffer);
+      if (error IS ERR::Okay) {
          if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);
          if (Self->KeyFilter) apply_key_filter(Self, Self->KeyFilter);
       }
       return error;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -238,22 +237,22 @@ Search
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
+static ERR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Group) or (!Args->Key)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Group) or (!Args->Key)) return ERR::NullArgs;
 
    log.msg("Group: %s, Key: %s", Args->Group, Args->Key);
 
    for (auto& [group, keys] : Self->Groups[0]) {
       if (!group.compare(Args->Group)) {
          keys.erase(Args->Key);
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -273,18 +272,18 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_DeleteGroup(extConfig *Self, struct cfgDeleteGroup *Args)
+static ERR CONFIG_DeleteGroup(extConfig *Self, struct cfgDeleteGroup *Args)
 {
-   if ((!Args) or (!Args->Group)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Group)) return ERR::NullArgs;
 
    for (auto it = Self->Groups->begin(); it != Self->Groups->end(); it++) {
       if (!it->first.compare(Args->Group)) {
          Self->Groups->erase(it);
-         return(ERR_Okay);
+         return(ERR::Okay);
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -293,14 +292,14 @@ Flush: Diverts to #SaveSettings().
 -END-
 *********************************************************************************************************************/
 
-static ERROR CONFIG_Flush(extConfig *Self, APTR Void)
+static ERR CONFIG_Flush(extConfig *Self, APTR Void)
 {
    return CONFIG_SaveSettings(Self, NULL);
 }
 
 //********************************************************************************************************************
 
-static ERROR CONFIG_Free(extConfig *Self, APTR Void)
+static ERR CONFIG_Free(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
@@ -322,7 +321,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = 0; }
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = 0; }
    if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = 0; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -344,31 +343,31 @@ NoData: There is no data loaded into the config object.
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex *Args)
+static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (Args->Index < 0)) return log.warning(ERR_Args);
+   if ((!Args) or (Args->Index < 0)) return log.warning(ERR::Args);
 
    if ((Args->Index >= 0) and (Args->Index < (LONG)Self->Groups->size())) {
       Args->Group = Self->Groups[0][Args->Index].first.c_str();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }
 
 //********************************************************************************************************************
 
-static ERROR CONFIG_Init(extConfig *Self, APTR Void)
+static ERR CONFIG_Init(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->Flags & CNF::NEW) != CNF::NIL) return ERR_Okay; // Do not load any data even if the path is defined.
+   if ((Self->Flags & CNF::NEW) != CNF::NIL) return ERR::Okay; // Do not load any data even if the path is defined.
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if (Self->Path) {
       error = parse_file(Self, Self->Path);
-      if (!error) {
+      if (error IS ERR::Okay) {
          if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);
          if (Self->KeyFilter) apply_key_filter(Self, Self->KeyFilter);
       }
@@ -387,7 +386,7 @@ The Merge method is used to merge configuration data from one config object prov
 Existing data in the target will be overwritten by the source in cases where there matching set of group keys.
 
 -INPUT-
-obj Source: The ID of the config object to be merged.
+obj Source: The config object to be merged.
 
 -ERRORS-
 Okay
@@ -397,20 +396,20 @@ AccessObject: The source configuration object could not be accessed.
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
+static ERR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
-   if ((!Args) or (!Args->Source)) return ERR_NullArgs;
-   if (Args->Source->Class->ClassID != ID_CONFIG) return ERR_Args;
+   if ((!Args) or (!Args->Source)) return ERR::NullArgs;
+   if (Args->Source->Class->ClassID != ID_CONFIG) return ERR::Args;
 
    auto src = (extConfig *)Args->Source;
    merge_groups(Self->Groups[0], src->Groups[0]);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -METHOD-
-MergeFile: Merges a foreign configuration file into existing configuration data.
+MergeFile: Merges a configuration file into existing configuration data.
 
 The MergeFile method is used to pull configuration data from a file and merge it into the target config object.
 The path to the configuration file is all that is required.  Existing data in the target will be overwritten by the
@@ -427,11 +426,11 @@ File: Failed to load the source file.
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
+static ERR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
 
    log.branch("%s", Args->Path);
 
@@ -439,17 +438,17 @@ static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 
    if (src.ok()) {
       merge_groups(Self->Groups[0], src->Groups[0]);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_File;
+   else return ERR::File;
 }
 
 //********************************************************************************************************************
 
-static ERROR CONFIG_NewObject(extConfig *Self, APTR Void)
+static ERR CONFIG_NewObject(extConfig *Self, APTR Void)
 {
-   Self->Groups = new ConfigGroups;
-   return ERR_Okay;
+   if (!(Self->Groups = new (std::nothrow) ConfigGroups)) return ERR::Memory;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -479,28 +478,28 @@ Search: The requested configuration entry does not exist.
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
+static ERR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    for (auto & [group, keys] : Self->Groups[0]) {
       if ((Args->Group) and (group.compare(Args->Group))) continue;
 
       if (!Args->Key) {
          Args->Data = keys.cbegin()->second.c_str();
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (keys.contains(Args->Key)) {
          Args->Data = keys[Args->Key].c_str();
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
    log.trace("Could not find key %s : %s.", Args->Group, Args->Key);
    Args->Data = NULL;
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -512,13 +511,13 @@ This action will save the configuration data back to its original file source (a
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
+static ERR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 {
    pf::Log log;
    log.branch();
 
    ULONG crc = calc_crc(Self);
-   if (((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) and (crc IS Self->CRC)) return ERR_Okay;
+   if (((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) and (crc IS Self->CRC)) return ERR::Okay;
 
    if (Self->Path) {
       objFile::create file = {
@@ -526,12 +525,12 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
       };
 
       if (file.ok()) {
-         if (!Self->saveToObject(*file)) Self->CRC = crc;
-         return ERR_Okay;
+         if (Self->saveToObject(*file) IS ERR::Okay) Self->CRC = crc;
+         return ERR::Okay;
       }
-      else return ERR_File;
+      else return ERR::File;
    }
-   else return ERR_MissingPath;
+   else return ERR::MissingPath;
 }
 
 /*********************************************************************************************************************
@@ -540,7 +539,7 @@ SaveToObject: Saves configuration data to an object, using standard config text 
 -END-
 *********************************************************************************************************************/
 
-static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
+static ERR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
@@ -557,7 +556,7 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -566,7 +565,7 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 Set: Sets keys in existing config groups (aborts if the group does not exist).
 
 This method is identical to #WriteValue() except it will abort if the name of the referred group does not exist in the
-config object.  The error code ERR_Search is returned if this is the case.  Please refer to #WriteValue() for further
+config object.  The error code ERR::Search is returned if this is the case.  Please refer to #WriteValue() for further
 information on the behaviour of this function.
 
 -INPUT-
@@ -584,15 +583,15 @@ GetField: The Entries field could not be retrieved.
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
+static ERR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
 {
-   if (!Args) return ERR_NullArgs;
-   if ((!Args->Group) or (!Args->Group[0])) return ERR_NullArgs;
-   if ((!Args->Key) or (!Args->Key[0])) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
+   if ((!Args->Group) or (!Args->Group[0])) return ERR::NullArgs;
+   if ((!Args->Key) or (!Args->Key[0])) return ERR::NullArgs;
 
    auto group = find_group_wild(Self, Args->Group);
    if (group) return Action(MT_CfgWriteValue, Self, Args);
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -601,7 +600,7 @@ Sort: Sorts config groups into alphabetical order.
 -END-
 *********************************************************************************************************************/
 
-static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
+static ERR CONFIG_Sort(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
@@ -612,7 +611,7 @@ static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
       return a.first < b.first;
    });
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -633,7 +632,7 @@ NoData
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
+static ERR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 {
    if ((!Args) or (!Args->Key)) return CONFIG_Sort(Self, NULL);  // If no args are provided then use the default Sort action instead
 
@@ -656,7 +655,7 @@ static ERROR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
       });
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -685,12 +684,12 @@ GetField: The Entries field could not be retrieved.
 
 *********************************************************************************************************************/
 
-static ERROR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
+static ERR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Group) or (!Args->Key)) return log.warning(ERR_NullArgs);
-   if ((!Args->Group[0]) or (!Args->Key[0])) return log.warning(ERR_EmptyString);
+   if ((!Args) or (!Args->Group) or (!Args->Key)) return log.warning(ERR::NullArgs);
+   if ((!Args->Group[0]) or (!Args->Key[0])) return log.warning(ERR::EmptyString);
 
    log.trace("%s.%s = %s", Args->Group, Args->Key, Args->Data);
 
@@ -700,14 +699,14 @@ static ERROR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
    for (auto& [group, keys] : groups) {
       if (!group.compare(Args->Group)) {
          keys[Args->Key] = Args->Data;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
    auto &new_group = Self->Groups->emplace_back();
    new_group.first.assign(Args->Group);
    new_group.second[Args->Key].assign(Args->Data);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -720,10 +719,10 @@ that is included with the standard framework.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Data(extConfig *Self, ConfigGroups **Value)
+static ERR GET_Data(extConfig *Self, ConfigGroups **Value)
 {
    *Value = Self->Groups;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -761,29 +760,29 @@ To create a filter based on group names, refer to the #GroupFilter field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_KeyFilter(extConfig *Self, CSTRING *Value)
+static ERR GET_KeyFilter(extConfig *Self, CSTRING *Value)
 {
    if (Self->KeyFilter) {
       *Value = Self->KeyFilter;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_KeyFilter(extConfig *Self, CSTRING Value)
+static ERR SET_KeyFilter(extConfig *Self, CSTRING Value)
 {
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->KeyFilter = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->KeyFilter = StrClone(Value))) return ERR::AllocMemory;
    }
 
    if (Self->initialised()) apply_key_filter(Self, Self->KeyFilter);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -815,29 +814,29 @@ To create a filter based on key names, refer to the #KeyFilter field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_GroupFilter(extConfig *Self, CSTRING *Value)
+static ERR GET_GroupFilter(extConfig *Self, CSTRING *Value)
 {
    if (Self->GroupFilter) {
       *Value = Self->GroupFilter;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_GroupFilter(extConfig *Self, CSTRING Value)
+static ERR SET_GroupFilter(extConfig *Self, CSTRING Value)
 {
    if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->GroupFilter = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->GroupFilter = StrClone(Value))) return ERR::AllocMemory;
    }
 
    if (Self->initialised()) apply_group_filter(Self, Self->GroupFilter);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -846,15 +845,15 @@ Path: Set this field to the location of the source configuration file.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Path(extConfig *Self, CSTRING Value)
+static ERR SET_Path(extConfig *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -863,10 +862,10 @@ TotalGroups: Returns the total number of groups in a config object.
 
 *********************************************************************************************************************/
 
-static ERROR GET_TotalGroups(extConfig *Self, LONG *Value)
+static ERR GET_TotalGroups(extConfig *Self, LONG *Value)
 {
    *Value = Self->Groups->size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -877,14 +876,14 @@ TotalKeys: The total number of key values loaded into the config object.
 
 *********************************************************************************************************************/
 
-static ERROR GET_TotalKeys(extConfig *Self, LONG *Value)
+static ERR GET_TotalKeys(extConfig *Self, LONG *Value)
 {
    LONG total = 0;
    for (const auto& [group, keys] : Self->Groups[0]) {
       total += keys.size();
    }
    *Value = total;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -973,11 +972,11 @@ static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
 
 //********************************************************************************************************************
 
-static ERROR parse_config(extConfig *Self, CSTRING Buffer)
+static ERR parse_config(extConfig *Self, CSTRING Buffer)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Buffer) return ERR_NoData;
+   if (!Buffer) return ERR::NoData;
 
    log.traceBranch("%.20s", Buffer);
 
@@ -1034,7 +1033,7 @@ static ERROR parse_config(extConfig *Self, CSTRING Buffer)
       data = next_group(data, group_name);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1051,9 +1050,9 @@ static void apply_key_filter(extConfig *Self, CSTRING Filter)
    for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
       bool matched = (f.reverse) ? true : false;
       for (auto & [k, v] : group->second) {
-         if (!StrMatch(f.name.c_str(), k.c_str())) {
+         if (StrMatch(f.name.c_str(), k.c_str()) IS ERR::Okay) {
             for (auto const &cmp : f.values) {
-               if (!StrMatch(cmp.c_str(), v.c_str())) {
+               if (StrMatch(cmp.c_str(), v.c_str()) IS ERR::Okay) {
                   matched = f.reverse ? false : true;
                   break;
                }
@@ -1100,7 +1099,7 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
    if ((!Group) or (!*Group)) return NULL;
 
    for (auto & [group, keys] : Self->Groups[0]) {
-      if (!StrCompare(Group, group.c_str(), 0, STR::WILDCARD)) return &keys;
+      if (StrCompare(Group, group.c_str(), 0, STR::WILDCARD) IS ERR::Okay) return &keys;
    }
 
    return NULL;
@@ -1124,7 +1123,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_config_class(void)
+extern "C" ERR add_config_class(void)
 {
    glConfigClass = extMetaClass::create::global(
       fl::BaseClassID(ID_CONFIG),
@@ -1139,6 +1138,6 @@ extern "C" ERROR add_config_class(void)
       fl::Size(sizeof(extConfig)),
       fl::Path("modules:core"));
 
-   return glConfigClass ? ERR_Okay : ERR_AddClass;
+   return glConfigClass ? ERR::Okay : ERR::AddClass;
 }
 

@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Network", copyright="Paul Manias © 2005-2023", version=1.0, prefix="net", status="stable" }, function()
+module({ name="Network", copyright="Paul Manias © 2005-2024", version=1.0, prefix="net", status="stable" }, function()
   restrict(function()
     loadFile(glPath .. 'common.fdl')
   end)
@@ -198,9 +198,9 @@ typedef LONG SOCKET_HANDLE;
   })
 
   c_insert([[
-inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
-   else return ERR_CreateObject;
+inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR::Okay;
+   else return ERR::CreateObject;
 }
   ]])
 

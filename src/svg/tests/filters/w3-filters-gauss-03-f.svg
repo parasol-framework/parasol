@@ -1,0 +1,19 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+Test that when 'stdDeviation' is zero the result is a non-blurred image.
+
+The test is passed if there's a green rectangle visible, and no red.
+-->
+  <g id="test-body-content" font-family="SVGFreeSansASCII,sans-serif" font-size="18">
+    <defs>
+      <rect id="rect" x="0" y="0" width="90" height="90"/>
+      <filter id="identity" filterUnits="objectBoundingBox" x="-10%" y="-10%" width="150%" height="150%">
+        <feGaussianBlur stdDeviation="0"/>
+      </filter>
+    </defs>
+    <g transform="translate(190,120)">
+      <use xlink:href="#rect" fill="red"/>
+      <use xlink:href="#rect" fill="lime" stroke="lime" stroke-width="2" filter="url(#identity)"/>
+    </g>
+  </g>
+</svg>

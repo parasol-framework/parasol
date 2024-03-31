@@ -564,7 +564,7 @@ gui.dialog.colour = function(Options)
                end
             end
          end
-      elseif (Msg.type == JET_ABS_X) or (Msg.type == JET_ABS_Y) then
+      elseif (Msg.type == JET_ABS_XY) then
          if (self._rainbowClick) then selectPalette(self, Msg.x - self._rainbow.winX, Msg.y - self._rainbow.winY) end
       end
    end

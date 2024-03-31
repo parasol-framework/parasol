@@ -35,37 +35,37 @@ class extCompressedStream : public objCompressedStream {
    gz_header Header;
 };
 
-static ERROR CSTREAM_Reset(extCompressedStream *, APTR);
+static ERR CSTREAM_Reset(extCompressedStream *, APTR);
 
 //********************************************************************************************************************
 
-static ERROR CSTREAM_Free(extCompressedStream *Self, APTR Void)
+static ERR CSTREAM_Free(extCompressedStream *Self, APTR Void)
 {
    CSTREAM_Reset(Self, NULL);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
+static ERR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((!Self->Input) and (!Self->Output)) return log.warning(ERR_FieldNotSet);
+   if ((!Self->Input) and (!Self->Output)) return log.warning(ERR::FieldNotSet);
 
    if ((Self->Input) and (Self->Output)) {
       log.warning("A CompressedStream can operate in either read or write mode, not both.");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
+static ERR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
    Self->Format = CF::GZIP;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -76,41 +76,41 @@ Read: Decompress data from the input stream and write it to the supplied buffer.
 
 #define MIN_OUTPUT_SIZE ((32 * 1024) + 2048)
 
-static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
+static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    Args->Result = 0;
-   if (Args->Length <= 0) return ERR_Okay;
+   if (Args->Length <= 0) return ERR::Okay;
 
    UBYTE inputstream[2048];
    LONG length;
 
-   if (acRead(Self->Input, inputstream, sizeof(inputstream), &length)) return ERR_Read;
+   if (acRead(Self->Input, inputstream, sizeof(inputstream), &length) != ERR::Okay) return ERR::Read;
 
-   if (length <= 0) return ERR_Okay;
+   if (length <= 0) return ERR::Okay;
 
    if (!Self->Inflating) {
       log.trace("Initialising decompression of the stream.");
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
          case CF::ZLIB:
-            if (inflateInit2(&Self->Stream, MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
+            if (inflateInit2(&Self->Stream, MAX_WBITS) != Z_OK) return log.warning(ERR::Decompression);
             break;
 
          case CF::DEFLATE:
-            if (inflateInit2(&Self->Stream, -MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
+            if (inflateInit2(&Self->Stream, -MAX_WBITS) != Z_OK) return log.warning(ERR::Decompression);
             break;
 
          case CF::GZIP:
          default:
-            if (inflateInit2(&Self->Stream, 15 + 32) != ERR_Okay) return log.warning(ERR_Decompression);
+            if (inflateInit2(&Self->Stream, 15 + 32) != Z_OK) return log.warning(ERR::Decompression);
             // Read the uncompressed size from the gzip header
             if (inflateGetHeader(&Self->Stream, &Self->Header) != Z_OK) {
-               return log.warning(ERR_InvalidData);
+               return log.warning(ERR::InvalidData);
             }
       }
 
@@ -123,7 +123,7 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
       // An internal buffer will need to be allocated if the one supplied to Read() is not large enough.
       outputsize = MIN_OUTPUT_SIZE;
       if (!(output = Self->OutputBuffer)) {
-         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL)) return ERR_AllocMemory;
+         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) return ERR::AllocMemory;
          output = Self->OutputBuffer;
       }
    }
@@ -131,7 +131,7 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    Self->Stream.next_in  = inputstream;
    Self->Stream.avail_in = length;
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    LONG result = Z_OK;
    while ((result IS Z_OK) and (Self->Stream.avail_in > 0) and (outputsize > 0)) {
       Self->Stream.next_out  = (Bytef *)output;
@@ -143,7 +143,7 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
          break;
       }
 
-      if (error) break;
+      if (error != ERR::Okay) break;
 
       Args->Result += outputsize - Self->Stream.avail_out;
       output = (Bytef *)output + outputsize - Self->Stream.avail_out;
@@ -151,7 +151,7 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
       if (result IS Z_STREAM_END) { // Decompression is complete
          Self->Inflating = FALSE;
          Self->TotalOutput = Self->Stream.total_out;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -168,7 +168,7 @@ referenced objects separately.
 
 *********************************************************************************************************************/
 
-static ERROR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
+static ERR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
 {
    Self->TotalOutput = 0;
 
@@ -184,7 +184,7 @@ static ERROR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
 
    if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -193,17 +193,17 @@ Seek: For use in decompressing streams only.  Seeks to a position within the str
 -END-
 *********************************************************************************************************************/
 
-static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
+static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (Self->Output) { // Seeking in write mode isn't possible (violates the streaming process).
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
 
-   if (!Self->Input) return log.warning(ERR_FieldNotSet);
+   if (!Self->Input) return log.warning(ERR::FieldNotSet);
 
    // Seeking results in a reset of the compression object's state.  It then needs to decompress the stream up to the
    // position requested by the client.
@@ -213,19 +213,19 @@ static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    LARGE pos = 0;
    if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
    else if (Args->Position IS SEEK::CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 
-   if (pos < 0) return log.warning(ERR_OutOfRange);
+   if (pos < 0) return log.warning(ERR::OutOfRange);
 
    UBYTE buffer[1024];
    while (pos > 0) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, Self, &read)) return ERR_Decompression;
+      if (Action(AC_Read, Self, &read) != ERR::Okay) return ERR::Decompression;
       pos -= read.Result;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -234,12 +234,12 @@ Write: Compress raw data in a buffer and write it to the Output object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
+static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    if (!Self->Deflating) {
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
@@ -247,20 +247,20 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
       switch (Self->Format) {
          case CF::ZLIB:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
-               return log.warning(ERR_Compression);
+               return log.warning(ERR::Compression);
             }
             break;
 
          case CF::DEFLATE:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
-               return log.warning(ERR_Compression);
+               return log.warning(ERR::Compression);
             }
             break;
 
          case CF::GZIP:
          default:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, 15 + 32, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
-               return log.warning(ERR_Compression);
+               return log.warning(ERR::Compression);
             }
       }
 
@@ -269,7 +269,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    }
 
    if (!Self->OutputBuffer) {
-      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL)) return ERR_AllocMemory;
+      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) return ERR::AllocMemory;
    }
 
    Args->Result = 0;
@@ -296,7 +296,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
       if ((deflate(&Self->Stream, mode))) {
          deflateEnd(&Self->Stream);
          Self->Deflating = FALSE;
-         return ERR_BufferOverflow;
+         return ERR::BufferOverflow;
       }
 
       const LONG len = MIN_OUTPUT_SIZE - Self->Stream.avail_out; // Get number of compressed bytes that were output
@@ -307,7 +307,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
          acWrite(Self->Output, Self->OutputBuffer, len, NULL);
       }
       else {
-         // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR_Okay
+         // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR::Okay
          // and wait for more data, or for the developer to end the stream.
 
          //log.trace("No data output on this cycle.");
@@ -320,7 +320,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
       Self->Deflating = FALSE;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -356,7 +356,7 @@ If the size is unknown, a value of -1 is returned.
 
 *********************************************************************************************************************/
 
-static ERROR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
+static ERR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
 {
    *Value = -1;
    if (Self->Input) {
@@ -364,9 +364,9 @@ static ERROR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
          if (Self->Header.extra) *Value = Self->Header.extra_len;
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Failed;
+   else return ERR::Failed;
 }
 
 /*********************************************************************************************************************
@@ -400,7 +400,7 @@ static const ActionArray clStreamActions[] = {
    { 0, NULL }
 };
 
-extern "C" ERROR add_compressed_stream_class(void)
+extern "C" ERR add_compressed_stream_class(void)
 {
    glCompressedStreamClass = extMetaClass::create::global(
       fl::BaseClassID(ID_COMPRESSEDSTREAM),
@@ -413,5 +413,5 @@ extern "C" ERROR add_compressed_stream_class(void)
       fl::Size(sizeof(extCompressedStream)),
       fl::Path("modules:core"));
 
-   return glCompressedStreamClass ? ERR_Okay : ERR_AddClass;
+   return glCompressedStreamClass ? ERR::Okay : ERR::AddClass;
 }

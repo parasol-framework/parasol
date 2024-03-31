@@ -27,8 +27,8 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
-static ERROR thread_script_entry(objThread *);
-static ERROR thread_script_callback(OBJECTID);
+static ERR thread_script_entry(objThread *);
+static ERR thread_script_callback(OBJECTID);
 
 struct thread_callback {
    objScript *threadScript;
@@ -65,7 +65,7 @@ static int thread_script(lua_State *Lua)
             thread->set(FID_Callback, (CPTR)&thread_script_callback);
          }
 
-         if (thread->activate()) {
+         if (thread->activate() != ERR::Okay) {
             luaL_error(Lua, "Failed to execute thread");
          }
 
@@ -81,25 +81,25 @@ static int thread_script(lua_State *Lua)
 //********************************************************************************************************************
 // Execute the script statement within the context of the child thread.
 
-static ERROR thread_script_entry(objThread *Thread)
+static ERR thread_script_entry(objThread *Thread)
 {
    if (auto it = glThreadCB.find(Thread->UID); it != glThreadCB.end()) {
       thread_callback &cb = it->second;
       acActivate(cb.threadScript);
       FreeResource(cb.threadScript);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Callback following execution (executed by the main thread, not the child)
 
-static ERROR thread_script_callback(OBJECTID ThreadID)
+static ERR thread_script_callback(OBJECTID ThreadID)
 {
    if (auto it = glThreadCB.find(ThreadID); it != glThreadCB.end()) {
       thread_callback &cb = it->second;
       objScript *script;
-      if (!AccessObject(cb.mainScriptID, 4000, &script)) {
+      if (AccessObject(cb.mainScriptID, 4000, &script) IS ERR::Okay) {
          auto prv = (prvFluid *)script->ChildPrivate;
          scCallback(script, cb.callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
@@ -108,7 +108,7 @@ static ERROR thread_script_callback(OBJECTID ThreadID)
       glThreadCB.erase(it);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -146,17 +146,16 @@ static int thread_action(lua_State *Lua)
    LONG type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
-      callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, 3);
-      callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
-   else callback.Type = 0;
 
    LONG argsize = 0;
    const FunctionField *args = NULL;
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
       argsize = glActions[action_id].Size;
@@ -169,7 +168,7 @@ static int thread_action(lua_State *Lua)
       auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
       LONG resultcount;
 
-      if (!(error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount))) {
+      if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
          if (object->ObjectPtr) {
             error = ActionThread(action_id, object->ObjectPtr, argbuffer.get(), &callback, key);
          }
@@ -198,11 +197,11 @@ static int thread_action(lua_State *Lua)
          error = ActionThread(action_id, obj, NULL, &callback, key);
          release_object(object);
       }
-      else error = log.warning(ERR_AccessObject);
+      else error = log.warning(ERR::AccessObject);
    }
 
-   if ((error) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
-   lua_pushinteger(Lua, error);
+   if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+   lua_pushinteger(Lua, LONG(error));
    return 1;
 }
 
@@ -220,10 +219,10 @@ static int thread_method(lua_State *Lua)
          MethodEntry *table;
          LONG total_methods, i;
 
-         if ((!GetFieldArray(object->Class, FID_Methods, &table, &total_methods)) and (table)) {
+         if ((GetFieldArray(object->Class, FID_Methods, &table, &total_methods) IS ERR::Okay) and (table)) {
             bool found = false;
             for (i=1; i < total_methods; i++) {
-               if ((table[i].Name) and (!StrMatch(table[i].Name, method))) { found = true; break; }
+               if ((table[i].Name) and (StrMatch(table[i].Name, method) IS ERR::Okay)) { found = true; break; }
             }
 
             if (found) {
@@ -233,7 +232,7 @@ static int thread_method(lua_State *Lua)
                auto args = table[i].Args;
                LONG argsize = table[i].Size;
                LONG action_id = table[i].MethodID;
-               ERROR error;
+               ERR error;
                OBJECTPTR obj;
                FUNCTION callback;
                LONG key = lua_tointeger(Lua, 4);
@@ -241,11 +240,11 @@ static int thread_method(lua_State *Lua)
                LONG type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
                   lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
-                  callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else if (type IS LUA_TFUNCTION) {
                   lua_pushvalue(Lua, 3);
-                  callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = 0;
 
@@ -257,7 +256,7 @@ static int thread_method(lua_State *Lua)
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
-                  if (!(error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount))) {
+                  if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
                      if (object->ObjectPtr) {
                         error = ActionThread(action_id, object->ObjectPtr, argbuffer.get(), &callback, key);
                      }
@@ -285,11 +284,11 @@ static int thread_method(lua_State *Lua)
                      error = ActionThread(action_id, obj, NULL, &callback, key);
                      release_object(object);
                   }
-                  else error = log.warning(ERR_AccessObject);
+                  else error = log.warning(ERR::AccessObject);
                }
 
-               if ((error) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
-               lua_pushinteger(Lua, error);
+               if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+               lua_pushinteger(Lua, LONG(error));
                return 1;
             }
          }

@@ -13,7 +13,7 @@ glTypes = {
    cstr       = { fd='FD_STR',                c_type='CSTRING' },
    double     = { fd='FD_DOUBLE',             c_type='DOUBLE' },
    eid        = { fd='FD_LONG',               c_type='EVENTID' },
-   error      = { fd='FD_LONG|FD_ERROR',      c_type='ERROR' },
+   error      = { fd='FD_LONG|FD_ERROR',      c_type='ERR' },
    ext        = { fd='FD_OBJECTPTR',          c_type='OBJECTPTR' },
    fid        = { fd='FD_LARGE',              c_type='FIELD' },
    flags      = { fd='FD_LONG',               c_type='LONG' },
@@ -21,6 +21,7 @@ glTypes = {
    func       = { fd='FD_FUNCTION',           c_type='FUNCTION' },
    hhandle    = { fd='FD_PTR',                c_type='HOSTHANDLE' },
    int        = { fd='FD_LONG',               c_type='LONG' },
+   int32      = { fd='FD_LONG',               c_type='int32_t' },
    large      = { fd='FD_LARGE',              c_type='LARGE' },
    maxint     = { fd='FD_LARGE',              c_type='MAXINT' },
    mem        = { fd='FD_LONG',               c_type='MEMORYID' },
@@ -323,50 +324,6 @@ function cType(Field, Origin)
       end
    end
 
-   do -- Char type reference
-      local prefix = Field.type:match("^char%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = "BYTE"
-         Field.fullType = glTypes.char
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix]) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
-               Field.type = prefix
-            end
-         else
-            print('Unknown custom type "' .. prefix .. '"')
-         end
-         goto finalise
-      end
-   end
-
-   do -- Short type reference
-      local unsigned, prefix = Field.type:match("^(u-)short%((%a+)%)")
-      if (prefix != nil) then
-         if nz(unsigned) then
-            Field.type = "UWORD"
-         else
-            Field.type = "WORD"
-         end
-         Field.fullType = glTypes.int
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix]) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
-               Field.type = prefix
-            end
-         else
-            print('Unknown custom type "' .. prefix .. '"')
-         end
-         goto finalise
-      end
-   end
-
    do -- Integer flags type reference, can be used for strongly typed enum flags
       local prefix = Field.type:match("^flags%((%a+)%)")
       if (prefix != nil) then
@@ -384,33 +341,30 @@ function cType(Field, Origin)
       end
    end
 
-   do -- Integer type reference
-      local prefix = Field.type:match("^int%((%a+)%)")
+   do -- Integer/Char/Large type reference
+      local type, prefix = Field.type:match("^([intlargecharuso]+)%((%a+)%)")
       if (prefix != nil) then
-         Field.type     = "LONG"
-         Field.fullType = glTypes.int
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix] != nil) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
-               Field.type = prefix
-            end
+         if (type == 'char') then
+            Field.type     = 'char'
+            Field.fullType = glTypes.char
+         elseif (type == 'int') then
+            Field.type     = 'LONG'
+            Field.fullType = glTypes.int
+         elseif (type == 'large') then
+            Field.type     = 'LARGE'
+            Field.fullType = glTypes.large
+         elseif (type == 'short') then
+            Field.type = 'WORD'
+            Field.fullType = glTypes.short
+         elseif (type == 'ushort') then
+            Field.type = 'UWORD'
+            Field.fullType = glTypes.ushort
          else
-            print('Unknown custom type "' .. prefix .. '"')
+            error('Invalid type "' .. type .. '"')
          end
-         goto finalise
-      end
-   end
 
-   do -- Large type reference
-      local prefix = Field.type:match("^large%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = "LARGE"
-         Field.fullType = glTypes.large
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
+         Field.ref    = glCustomTypes[prefix]
+         Field.lookup = prefix
 
          if (glCustomTypes[prefix] != nil) then
             glActiveRefs['TYPE:' .. prefix] = 1

@@ -12,7 +12,7 @@
     <idstring>ID_DISPLACEMENTFX</idstring>
     <category>Graphics</category>
     <include>modules/displacementfx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>This filter effect uses the pixel values from the image from Mix to spatially displace the image from Input. This is the transformation to be performed:</p>
 <pre>P'(x,y) &lt;- P(x + Scale * (XC(x,y) - 0.5), y + Scale * (YC(x,y) - 0.5))

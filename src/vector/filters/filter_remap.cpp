@@ -156,12 +156,12 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
+static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
 {
-   if (Self->Target->BytesPerPixel != 4) return ERR_InvalidState;
+   if (Self->Target->BytesPerPixel != 4) return ERR::InvalidState;
 
    objBitmap *bmp;
-   if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
    LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
    LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
@@ -212,23 +212,23 @@ static ERROR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
       in   += bmp->LineWidth;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR REMAPFX_Free(extRemapFX *Self, APTR Void)
+static ERR REMAPFX_Free(extRemapFX *Self, APTR Void)
 {
    Self->~extRemapFX();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR REMAPFX_NewObject(extRemapFX *Self, APTR Void)
+static ERR REMAPFX_NewObject(extRemapFX *Self, APTR Void)
 {
    new (Self) extRemapFX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -250,19 +250,19 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rfSelectDiscrete *Args)
+static ERR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rfSelectDiscrete *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Values)) return log.warning(ERR_NullArgs);
-   if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR_Args);
+   if ((!Args) or (!Args->Values)) return log.warning(ERR::NullArgs);
+   if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR::Args);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_discrete(Args->Values, Args->Size);
-      log.extmsg("%s Values: %d", cmp->Name.c_str(), Args->Size);
-      return ERR_Okay;
+      log.detail("%s Values: %d", cmp->Name.c_str(), Args->Size);
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -282,18 +282,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectIdentity(extRemapFX *Self, struct rfSelectIdentity *Args)
+static ERR REMAPFX_SelectIdentity(extRemapFX *Self, struct rfSelectIdentity *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_identity();
-      log.extmsg("%s", cmp->Name.c_str());
-      return ERR_Okay;
+      log.detail("%s", cmp->Name.c_str());
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -316,18 +316,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectGamma(extRemapFX *Self, struct rfSelectGamma *Args)
+static ERR REMAPFX_SelectGamma(extRemapFX *Self, struct rfSelectGamma *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_gamma(Args->Amplitude, Args->Exponent, Args->Offset);
-      log.extmsg("%s Amplitude: %.2f, Exponent: %.2f, Offset: %.2f", cmp->Name.c_str(), cmp->Amplitude, cmp->Exponent, cmp->Offset);
-      return ERR_Okay;
+      log.detail("%s Amplitude: %.2f, Exponent: %.2f, Offset: %.2f", cmp->Name.c_str(), cmp->Amplitude, cmp->Exponent, cmp->Offset);
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -350,18 +350,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectInvert(extRemapFX *Self, struct rfSelectInvert *Args)
+static ERR REMAPFX_SelectInvert(extRemapFX *Self, struct rfSelectInvert *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_invert();
-      log.extmsg("%s", cmp->Name.c_str());
-      return ERR_Okay;
+      log.detail("%s", cmp->Name.c_str());
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -384,19 +384,19 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectLinear(extRemapFX *Self, struct rfSelectLinear *Args)
+static ERR REMAPFX_SelectLinear(extRemapFX *Self, struct rfSelectLinear *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (Args->Slope < 0) return log.warning(ERR_Args);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Args->Slope < 0) return log.warning(ERR::Args);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_linear(Args->Slope, Args->Intercept);
-      log.extmsg("%s Slope: %.2f, Intercept: %.2f", cmp->Name.c_str(), cmp->Slope, Args->Intercept);
-      return ERR_Okay;
+      log.detail("%s Slope: %.2f, Intercept: %.2f", cmp->Name.c_str(), cmp->Slope, Args->Intercept);
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -421,18 +421,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectMask(extRemapFX *Self, struct rfSelectMask *Args)
+static ERR REMAPFX_SelectMask(extRemapFX *Self, struct rfSelectMask *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_mask(Args->Mask);
-      log.extmsg("%s, Mask: $%.2x", cmp->Name.c_str(), Args->Mask);
-      return ERR_Okay;
+      log.detail("%s, Mask: $%.2x", cmp->Name.c_str(), Args->Mask);
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -457,19 +457,19 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectTable(extRemapFX *Self, struct rfSelectTable *Args)
+static ERR REMAPFX_SelectTable(extRemapFX *Self, struct rfSelectTable *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Values)) return log.warning(ERR_NullArgs);
-   if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR_Args);
+   if ((!Args) or (!Args->Values)) return log.warning(ERR::NullArgs);
+   if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR::Args);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
       cmp->select_table(Args->Values, Args->Size);
-      log.extmsg("%s Values: %d", cmp->Name.c_str(), Args->Size);
-      return ERR_Okay;
+      log.detail("%s Values: %d", cmp->Name.c_str(), Args->Size);
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -480,7 +480,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_GET_XMLDef(extRemapFX *Self, STRING *Value)
+static ERR REMAPFX_GET_XMLDef(extRemapFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -492,7 +492,7 @@ static ERROR REMAPFX_GET_XMLDef(extRemapFX *Self, STRING *Value)
    stream << "<feFuncA/>";
    stream << "</feComponentTransfer>";
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -506,7 +506,7 @@ static const FieldArray clRemapFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_remapfx(void)
+ERR init_remapfx(void)
 {
    clRemapFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -519,5 +519,5 @@ ERROR init_remapfx(void)
       fl::Size(sizeof(extRemapFX)),
       fl::Path(MOD_PATH));
 
-   return clRemapFX ? ERR_Okay : ERR_AddClass;
+   return clRemapFX ? ERR::Okay : ERR::AddClass;
 }

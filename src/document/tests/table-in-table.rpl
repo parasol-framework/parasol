@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<body/>
+
+<page>
+  <p>This paragraph is followed by a table that contains a table.</p>
+
+  <p><table width="100%" stroke="rgb(255,0,0)">
+    <row>
+      <cell>
+        <p>A table counting from 1 to 4 in two separate columns follows this paragraph.</p>
+        <table width="50%" stroke="rgb(0,255,0)">
+          <row>
+            <cell>1<br/>2<br/>3<br/>4</cell>
+            <cell>4<br/>3<br/>2<br/>1</cell>
+          </row>
+        </table>
+      </cell>
+    </row>
+  </table></p>
+
+  <p>Final paragraph</p>
+</page>

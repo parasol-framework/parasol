@@ -12,7 +12,7 @@
     <idstring>ID_SCRIPT</idstring>
     <category>Data</category>
     <include>modules/script.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does not include a default parser or execution process of any kind.</p>
 <p>To execute a script file, choose a sub-class that matches the language and create the script object.  Set the <field>Path</field> field and then <action>Activate</action> the script.  Global input parameters for the script can be defined via the <action>SetVar</action> action.</p>
@@ -49,12 +49,12 @@
     <method>
       <name>Callback</name>
       <comment>An internal method for managing callbacks.</comment>
-      <prototype>ERROR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error)</prototype>
+      <prototype>ERR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error)</prototype>
       <input>
         <param type="LARGE" name="ProcedureID">An identifier for the target procedure.</param>
         <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure.</param>
         <param type="LONG" name="TotalArgs">The total number of arguments in the Args parameter.</param>
-        <param type="LONG *" name="Error">The error code returned from the script, if any.</param>
+        <param type="ERR *" name="Error">The error code returned from the script, if any.</param>
       </input>
       <description>
 <p>Private</p>
@@ -68,7 +68,7 @@
     <method>
       <name>DerefProcedure</name>
       <comment>Dereferences a function.</comment>
-      <prototype>ERROR scDerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
+      <prototype>ERR scDerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
       <input>
         <param type="FUNCTION *" name="Procedure">The function to be dereferenced.</param>
       </input>
@@ -85,7 +85,7 @@
     <method>
       <name>Exec</name>
       <comment>Executes a procedure in the script.</comment>
-      <prototype>ERROR scExec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
+      <prototype>ERR scExec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure to execute, or NULL for the default entry point.</param>
         <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure (applies to script-based Exec only).</param>
@@ -129,7 +129,7 @@ struct ScriptArg {
     <method>
       <name>GetProcedureID</name>
       <comment>Converts a procedure name to an ID.</comment>
-      <prototype>ERROR scGetProcedureID(OBJECTPTR Object, CSTRING Procedure, LARGE * ProcedureID)</prototype>
+      <prototype>ERR scGetProcedureID(OBJECTPTR Object, CSTRING Procedure, LARGE * ProcedureID)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure.</param>
         <param type="LARGE *" name="ProcedureID">The computed ID will be returned in this parameter.</param>
@@ -176,9 +176,9 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <name>Error</name>
       <comment>If a script fails during execution, an error code may be readable here.</comment>
       <access read="R">Read</access>
-      <type>ERROR</type>
+      <type>ERR</type>
       <description>
-<p>On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful that if a script is likely to be executed recursively then the first thrown error will have priority and be propagated through the call stack.</p>
+<p>On execution of a script, the Error value is reset to ERR::Okay and will be updated if the script fails.  Be mindful that if a script is likely to be executed recursively then the first thrown error will have priority and be propagated through the call stack.</p>
       </description>
     </field>
 
@@ -221,12 +221,12 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 
     <field>
       <name>Path</name>
-      <comment>The location of the file that is to be processed as a script.</comment>
+      <comment>The location of a script file to be loaded.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Script files can be loaded by a script object by setting the Path field to the path of the source file.  The source must be provided prior to the initialisation process or the script object will fail (as an alternative, the <field>Statement</field> field can also be set).</p>
-<p>Special parameters can also be passed to the script when setting the location.  The name of an executable procedure may be passed by following the location with a semicolon, then the name of the procedure to execute.  Arguments can also be passed to the script by following this with a second semicolon, then a sequence of arguments, each separated with a comma.  The following string illustrates the format used:</p>
+<p>A script file can be loaded by setting the Path to its location.  The path must be defined prior to the initialisation process, or alternatively the client can define the <field>Statement</field> field.</p>
+<p>Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first, surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following string illustrates the format used:</p>
 <pre>dir:location;procedure;arg1=val1,arg2,arg3=val2</pre>
 <p>A target for the script may be specified by using the 'target' argument in the parameter list (value must refer to a valid existing object).</p>
       </description>
@@ -234,11 +234,11 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 
     <field>
       <name>Procedure</name>
-      <comment>Allows you to specify a procedure to be executed from within a script.</comment>
+      <comment>Specifies a procedure to be executed from within a script.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a script that you have loaded contains procedures, you can set the Procedure field to execute a specific routine whenever the script is activated with the Activate action.</p>
+<p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a specific routine whenever the script is activated with the Activate action.</p>
 <p>If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is executed by default.</p>
       </description>
     </field>
@@ -280,7 +280,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected in the value of this field.  If you have not set any arguments then the field value will be zero.</p>
+<p>The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected in the value of this field.</p>
       </description>
     </field>
 
@@ -292,7 +292,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <description>
 <p>The working path for a script is defined here.  By default this is defined as the location from which the script was loaded, without the file name.  If this cannot be determined then the working path for the parent process is used (this is usually set to the location of the program).</p>
 <p>The working path is always fully qualified with a slash or colon at the end of the string.</p>
-<p>You can manually change the working path by setting this field with a custom string.</p>
+<p>A client can manually change the working path by setting this field with a custom string.</p>
       </description>
     </field>
 

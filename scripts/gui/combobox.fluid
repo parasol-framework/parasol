@@ -267,6 +267,7 @@ gui.combobox = function(Options)
       lineLimit = 8,
       feedback = function(Menu, Item)
          self.text.string = Item.item
+         reportFeedback(self)
          self.viewport.acDraw()
       end
    })

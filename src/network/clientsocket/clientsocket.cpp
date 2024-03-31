@@ -29,30 +29,29 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
    log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
 
-   ERROR error = ERR_Okay;
-   if (Socket->Incoming.Type) {
-      if (Socket->Incoming.Type IS CALL_STDC) {
+   ERR error = ERR::Okay;
+   if (Socket->Incoming.defined()) {
+      if (Socket->Incoming.isC()) {
          pf::SwitchContext context(Socket->Incoming.StdC.Context);
-         auto routine = (ERROR (*)(extNetSocket *, extClientSocket *))Socket->Incoming.StdC.Routine;
-         if (routine) error = routine(Socket, ClientSocket);
+         auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.StdC.Routine;
+         error = routine(Socket, ClientSocket, Socket->Incoming.StdC.Meta);
       }
-      else if (Socket->Incoming.Type IS CALL_SCRIPT) {
+      else if (Socket->Incoming.isScript()) {
          const ScriptArg args[] = {
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR }
          };
 
-         auto script = Socket->Incoming.Script.Script;
-         if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+         if (scCallback(Socket->Incoming.Script.Script, Socket->Incoming.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
       }
-      else error = ERR_InvalidValue;
+      else error = ERR::InvalidValue;
 
-      if (error) {
-         log.msg("Received error %d, incoming callback will be terminated.", error);
-         Socket->Incoming.Type = CALL_NONE;
+      if (error != ERR::Okay) {
+         log.msg("Received error %d, incoming callback will be terminated.", LONG(error));
+         Socket->Incoming.clear();
       }
 
-      if (error IS ERR_Terminate) {
+      if (error IS ERR::Terminate) {
          log.trace("Termination request received.");
          free_client_socket(Socket, ClientSocket, TRUE);
          Socket->InUse--;
@@ -66,7 +65,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
       log.warning("Subscriber did not call Read(), cleaning buffer.");
       LONG result;
       do { error = RECEIVE(Socket, ClientSocket->Handle, &buffer, sizeof(buffer), 0, &result); } while (result > 0);
-      if (error) free_client_socket(Socket, ClientSocket, TRUE);
+      if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, TRUE);
    }
 
    Socket->InUse--;
@@ -107,7 +106,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    ClientSocket->InUse++;
    ClientSocket->OutgoingRecursion++;
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    // Send out remaining queued data before getting new data to send
 
@@ -122,7 +121,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
          if (len > 0) {
             error = SEND(Socket, ClientSocket->SocketHandle, (BYTE *)ClientSocket->WriteQueue.Buffer + ClientSocket->WriteQueue.Index, &len, 0);
-            if ((error) or (!len)) break;
+            if ((error != ERR::Okay) or (!len)) break;
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->UID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
             ClientSocket->WriteQueue.Index += len;
          }
@@ -141,29 +140,27 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    // Before feeding new data into the queue, the current buffer must be empty.
 
    if ((!ClientSocket->WriteQueue.Buffer) or (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
-      if (ClientSocket->Outgoing.Type) {
-         if (ClientSocket->Outgoing.Type IS CALL_STDC) {
-            ERROR (*routine)(extNetSocket *, extClientSocket *);
-            if ((routine = reinterpret_cast<ERROR (*)(extNetSocket *, extClientSocket *)>(ClientSocket->Outgoing.StdC.Routine))) {
-               pf::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
-               error = routine(Socket, ClientSocket);
-            }
+      if (ClientSocket->Outgoing.defined()) {
+         if (ClientSocket->Outgoing.isC()) {
+            auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(ClientSocket->Outgoing.StdC.Routine);
+            pf::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
+            error = routine(Socket, ClientSocket, ClientSocket->Outgoing.StdC.Meta);
          }
-         else if (ClientSocket->Outgoing.Type IS CALL_SCRIPT) {
+         else if (ClientSocket->Outgoing.isScript()) {
             const ScriptArg args[] = {
                { "NetSocket", Socket, FD_OBJECTPTR },
                { "ClientSocket", ClientSocket, FD_OBJECTPTR }
             };
-            if (scCallback(ClientSocket->Outgoing.Script.Script, ClientSocket->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+            if (scCallback(ClientSocket->Outgoing.Script.Script, ClientSocket->Outgoing.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error) ClientSocket->Outgoing.Type = CALL_NONE;
+         if (error != ERR::Okay) ClientSocket->Outgoing.clear();
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((ClientSocket->Outgoing.Type IS CALL_NONE) and (!ClientSocket->WriteQueue.Buffer)) {
+      if ((!ClientSocket->Outgoing.defined()) and (!ClientSocket->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);
@@ -179,7 +176,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
 //********************************************************************************************************************
 
-static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
+static ERR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
 {
    pf::Log log;
 
@@ -210,12 +207,12 @@ static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
       free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
+static ERR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
 {
 #ifdef __linux__
    LONG non_blocking = 1;
@@ -239,7 +236,7 @@ static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
    win_socket_reference(Self->Handle, Self);
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -259,13 +256,13 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 *********************************************************************************************************************/
 
-static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
+static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
    pf::Log log;
-   if ((!Args) or (!Args->Buffer)) return log.error(ERR_NullArgs);
-   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
+   if ((!Args) or (!Args->Buffer)) return log.error(ERR::NullArgs);
+   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
    Self->ReadCalled = TRUE;
-   if (!Args->Length) { Args->Result = 0; return ERR_Okay; }
+   if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
    return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 }
 
@@ -297,11 +294,11 @@ AllocMemory: A message buffer could not be allocated.
 
 *********************************************************************************************************************/
 
-static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
+static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.error(ERR_NullArgs);
+   if (!Args) return log.error(ERR::NullArgs);
 
    log.traceBranch("Reading message.");
 
@@ -314,21 +311,21 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR_Okay) {
-         return ERR_AllocMemory;
+      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR::Okay) {
+         return ERR::AllocMemory;
       }
    }
 
    LONG msglen, result, magic;
    ULONG total_length;
-   ERROR error;
+   ERR error;
 
    if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
       msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
       total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
-      if (!(error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result))) {
+      if ((error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result)) IS ERR::Okay) {
          queue->Index += result;
 
          if (queue->Index >= sizeof(NetMsg)) {
@@ -339,12 +336,12 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
             if (magic != NETMSG_MAGIC) {
                log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
                queue->Index = 0;
-               return ERR_InvalidData;
+               return ERR::InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
                log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
                queue->Index = 0;
-               return ERR_InvalidData;
+               return ERR::InvalidData;
             }
 
             total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
@@ -354,7 +351,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
             if (total_length > queue->Length) {
                log.trace("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
+               if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
@@ -362,17 +359,17 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
                   queue->Buffer = buffer;
                   queue->Length = total_length;
                }
-               else return log.error(ERR_AllocMemory);
+               else return log.error(ERR::AllocMemory);
             }
          }
          else {
             log.trace("Succeeded in reading partial message header only (%d bytes).", result);
-            return ERR_LimitedSuccess;
+            return ERR::LimitedSuccess;
          }
       }
       else {
          log.trace("Read() failed, error '%s'", GetErrorMsg(error));
-         return ERR_LimitedSuccess;
+         return ERR::LimitedSuccess;
       }
    }
 
@@ -382,7 +379,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
 
    //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
 
-   if (!(error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result))) {
+   if ((error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR::Okay) {
       queue->Index += result;
       Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
@@ -400,15 +397,15 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
 
          if (NETMSG_MAGIC_TAIL != magic) {
             log.warning("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            return ERR_InvalidData;
+            return ERR::InvalidData;
          }
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_LimitedSuccess;
+      else return ERR::LimitedSuccess;
    }
    else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, error);
+      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, LONG(error));
       queue->Index = 0;
       return error;
    }
@@ -425,21 +422,21 @@ software queue are governed by the #MsgLimit field setting.
 
 *********************************************************************************************************************/
 
-static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
+static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
    Args->Result = 0;
-   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
+   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
 
    LONG len = Args->Length;
-   ERROR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
+   ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
 
-   if ((error) or (len < Args->Length)) {
-      if (error) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
+   if ((error != ERR::Okay) or (len < Args->Length)) {
+      if (error != ERR::Okay) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
-      if ((error IS ERR_DataSize) or (error IS ERR_BufferOverflow) or (len > 0))  {
+      if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
          write_queue((extNetSocket *)(Self->Client->NetSocket), &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
@@ -451,7 +448,7 @@ static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -474,12 +471,12 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
+static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.error(ERR_Args);
-   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);
+   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.error(ERR::Args);
+   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR::OutOfRange);
 
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
@@ -494,7 +491,7 @@ static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteCl
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -517,7 +514,7 @@ static const FieldArray clClientSocketFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR init_clientsocket(void)
+static ERR init_clientsocket(void)
 {
    clClientSocket = objMetaClass::create::global(
       fl::BaseClassID(ID_CLIENTSOCKET),
@@ -529,5 +526,5 @@ static ERROR init_clientsocket(void)
       fl::Size(sizeof(extClientSocket)),
       fl::Path(MOD_PATH));
 
-   return clClientSocket ? ERR_Okay : ERR_AddClass;
+   return clClientSocket ? ERR::Okay : ERR::AddClass;
 }

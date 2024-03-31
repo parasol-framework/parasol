@@ -12,7 +12,7 @@
     <idstring>ID_SCINTILLA</idstring>
     <category>Tool</category>
     <include>modules/scintilla.h</include>
-    <copyright>Paul Manias © 2005-2023</copyright>
+    <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The Scintilla class provides advanced text editing capabilities that are suitable for modifying text files of any kind, as well as simple user input features for text input boxes.  The code is based on the Scintilla project at http://scintilla.org and it may be useful to study the official Scintilla documentation for further insight into its capabilities.</p></description>
     <source>
@@ -87,7 +87,7 @@
     <method>
       <name>DeleteLine</name>
       <comment>Deletes a line.</comment>
-      <prototype>ERROR sciDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
+      <prototype>ERR sciDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
       <input>
         <param type="LONG" name="Line">The number of the line to delete.  Indexing starts from 0.</param>
       </input>
@@ -99,7 +99,7 @@
     <method>
       <name>GetLine</name>
       <comment>Copies the text content of any line to a user-supplied buffer.</comment>
-      <prototype>ERROR sciGetLine(OBJECTPTR Object, LONG Line, STRING Buffer, LONG Length)</prototype>
+      <prototype>ERR sciGetLine(OBJECTPTR Object, LONG Line, STRING Buffer, LONG Length)</prototype>
       <input>
         <param type="LONG" name="Line">The index of the line to retrieve.</param>
         <param type="STRING" name="Buffer">The destination buffer.</param>
@@ -113,7 +113,7 @@
     <method>
       <name>GetPos</name>
       <comment>Returns the byte position of a given line and column number.</comment>
-      <prototype>ERROR sciGetPos(OBJECTPTR Object, LONG Line, LONG Column, LONG * Pos)</prototype>
+      <prototype>ERR sciGetPos(OBJECTPTR Object, LONG Line, LONG Column, LONG * Pos)</prototype>
       <input>
         <param type="LONG" name="Line">Line index</param>
         <param type="LONG" name="Column">Column index</param>
@@ -127,7 +127,7 @@
     <method>
       <name>GotoLine</name>
       <comment>Moves the cursor to any line in the document.</comment>
-      <prototype>ERROR sciGotoLine(OBJECTPTR Object, LONG Line)</prototype>
+      <prototype>ERR sciGotoLine(OBJECTPTR Object, LONG Line)</prototype>
       <input>
         <param type="LONG" name="Line">The line index to move to.</param>
       </input>
@@ -139,7 +139,7 @@
     <method>
       <name>InsertText</name>
       <comment>Inserts text into a document.</comment>
-      <prototype>ERROR sciInsertText(OBJECTPTR Object, CSTRING String, LONG Pos)</prototype>
+      <prototype>ERR sciInsertText(OBJECTPTR Object, CSTRING String, LONG Pos)</prototype>
       <input>
         <param type="CSTRING" name="String">A text string to add.</param>
         <param type="LONG" name="Pos">-1 inserts at the current cursor position, -2 replaces currently selected text, zero or above inserts at the character index indicated.</param>
@@ -153,7 +153,7 @@
     <method>
       <name>ReplaceLine</name>
       <comment>Replaces a line with new text content.</comment>
-      <prototype>ERROR sciReplaceLine(OBJECTPTR Object, LONG Line, CSTRING String, LONG Length)</prototype>
+      <prototype>ERR sciReplaceLine(OBJECTPTR Object, LONG Line, CSTRING String, LONG Length)</prototype>
       <input>
         <param type="LONG" name="Line">Index of the line being targeted.</param>
         <param type="CSTRING" name="String">The new string that will replace the line.</param>
@@ -167,7 +167,7 @@
     <method>
       <name>ReplaceText</name>
       <comment>Replaces all text within an entire document or limited range.</comment>
-      <prototype>ERROR sciReplaceText(OBJECTPTR Object, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End)</prototype>
+      <prototype>ERR sciReplaceText(OBJECTPTR Object, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End)</prototype>
       <input>
         <param type="CSTRING" name="Find">The keyword string to find.</param>
         <param type="CSTRING" name="Replace">The string that will replace the keyword.</param>
@@ -183,7 +183,7 @@
     <method>
       <name>SelectRange</name>
       <comment>Selects a range of text, can also deselect all text.</comment>
-      <prototype>ERROR sciSelectRange(OBJECTPTR Object, LONG Start, LONG End)</prototype>
+      <prototype>ERR sciSelectRange(OBJECTPTR Object, LONG Start, LONG End)</prototype>
       <input>
         <param type="LONG" name="Start">The character at which the selection will start.</param>
         <param type="LONG" name="End">The character at which the selection will end.  If negative, the last character in the document will be targeted.</param>
@@ -196,7 +196,7 @@
     <method>
       <name>SetFont</name>
       <comment>Changes the font that is used for text display.</comment>
-      <prototype>ERROR sciSetFont(OBJECTPTR Object, CSTRING Face)</prototype>
+      <prototype>ERR sciSetFont(OBJECTPTR Object, CSTRING Face)</prototype>
       <input>
         <param type="CSTRING" name="Face">The name of the new font face.</param>
       </input>
@@ -209,7 +209,7 @@
     <method>
       <name>TrimWhitespace</name>
       <comment>Strips trailing white-space from the document.</comment>
-      <prototype>ERROR sciTrimWhitespace(OBJECTPTR Object)</prototype>
+      <prototype>ERR sciTrimWhitespace(OBJECTPTR Object)</prototype>
       <description>
 <p>The TrimWhitespace method will remove trailing white-space from every line in the document.  Both tabs and spaces are considered white-space - all other characters shall be treated as content.</p>
 <p>The position of the cursor is reset to the left margin as a result of calling this method.</p>
@@ -296,7 +296,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set this field with a reference to a callback function to receive notifications when the user drops a file onto the Scintilla object's surface.  The synopsis for the callback function is <code>ERROR Function(*Scintilla, CSTRING Path)</code></p>
+<p>Set this field with a reference to a callback function to receive notifications when the user drops a file onto the Scintilla object's surface.  The synopsis for the callback function is <code>ERR Function(*Scintilla, CSTRING Path)</code></p>
 <p>If multiple files are dropped, the callback will be repeatedly called until all of the file paths have been reported.</p>
       </description>
     </field>

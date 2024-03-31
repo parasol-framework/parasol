@@ -12,7 +12,7 @@
     <idstring>ID_FLOODFX</idstring>
     <category>Graphics</category>
     <include>modules/floodfx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The FloodFX class is an output-only effect that fills its target area with a single colour value.</p></description>
     <source>

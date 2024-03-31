@@ -96,10 +96,10 @@ static void free_module(MODHANDLE handle);
 
 //********************************************************************************************************************
 
-static ERROR GET_Name(extModule *, CSTRING *);
+static ERR GET_Name(extModule *, CSTRING *);
 
-static ERROR SET_Header(extModule *, struct ModHeader *);
-static ERROR SET_Name(extModule *, CSTRING);
+static ERR SET_Header(extModule *, struct ModHeader *);
+static ERR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
    { "LinkLibrary", MOF::LINK_LIBRARY },
@@ -118,8 +118,8 @@ static const FieldArray glModuleFields[] = {
    END_FIELD
 };
 
-static ERROR MODULE_Init(extModule *, APTR);
-static ERROR MODULE_Free(extModule *, APTR);
+static ERR MODULE_Init(extModule *, APTR);
+static ERR MODULE_Free(extModule *, APTR);
 
 static const ActionArray glModuleActions[] = {
    { AC_Free, MODULE_Free },
@@ -130,7 +130,7 @@ static const ActionArray glModuleActions[] = {
 //********************************************************************************************************************
 
 #ifndef PARASOL_STATIC
-static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
+static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
    pf::Log log(__FUNCTION__);
    std::string path;
@@ -143,13 +143,13 @@ static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Tabl
       path.assign(Self->Name);
 
       STRING volume;
-      if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
+      if (ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume) IS ERR::Okay) {
          path.assign(volume);
          FreeResource(volume);
       }
       else {
          log.warning("Failed to resolve the path of module '%s'", Self->Name);
-         return ERR_ResolvePath;
+         return ERR::ResolvePath;
       }
    }
 
@@ -225,13 +225,13 @@ static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Tabl
          if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
             if (!(*Table = (struct ModHeader *)dlsym(Root->LibraryBase, "ModHeader"))) {
                log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
-               return ERR_NotFound;
+               return ERR::NotFound;
             }
          }
       }
       else {
          log.warning("%s: %s", Self->Name, (CSTRING)dlerror());
-         return ERR_NoSupport;
+         return ERR::NoSupport;
       }
 
    #elif _WIN32
@@ -241,7 +241,7 @@ static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Tabl
             if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "ModHeader"))) {
                if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "_ModHeader"))) {
                   log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
-                  return ERR_NotFound;
+                  return ERR::NotFound;
                }
             }
          }
@@ -249,20 +249,20 @@ static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Tabl
       else {
          char msg[100];
          log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path.c_str(), winFormatMessage(0, msg, sizeof(msg)));
-         return ERR_Read;
+         return ERR::Read;
       }
 
    #else
       #error This system needs support for the loading of module/exe files.
    #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 #endif
 
 //********************************************************************************************************************
 
-ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
+ERR ROOTMODULE_Free(RootModule *Self, APTR Void)
 {
    if (Self->Table) Self->Table->Root = NULL; // Remove the DLL's reference to the master.
 
@@ -285,13 +285,13 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
       if (Self->Next) Self->Next->Prev = Self->Prev;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
+static ERR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 {
    *Value = Self->Header;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -299,7 +299,7 @@ static ERROR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 // module code will be left resident in memory as it belongs to the RootModule, not the Module.  See Expunge()
 // in the Core for further details.
 
-static ERROR MODULE_Free(extModule *Self, APTR Void)
+static ERR MODULE_Free(extModule *Self, APTR Void)
 {
    // Call the Module's Close procedure
 
@@ -310,20 +310,20 @@ static ERROR MODULE_Free(extModule *Self, APTR Void)
    }
 
    if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MODULE_Init(extModule *Self, APTR Void)
+static ERR MODULE_Init(extModule *Self, APTR Void)
 {
    pf::Log log;
-   ERROR error = ERR_Failed;
+   ERR error = ERR::Failed;
    LONG i;
    bool root_mod = false;
    char name[60];
 
-   if (!Self->Name[0]) return log.warning(ERR_FieldNotSet);
+   if (!Self->Name[0]) return log.warning(ERR::FieldNotSet);
 
    // Check if the module is resident.  If not, we need to load and prepare the module for a shared environment.
 
@@ -340,7 +340,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    if ((master = check_resident(Self, name))) {
       Self->Root = master;
    }
-   else if (!NewObject(ID_ROOTMODULE, NF::UNTRACKED, (OBJECTPTR *)&master)) {
+   else if (NewObject(ID_ROOTMODULE, NF::UNTRACKED, (OBJECTPTR *)&master) IS ERR::Okay) {
       master->Next = glModuleList; // Insert the RootModule at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
       glModuleList = master;
@@ -362,11 +362,11 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          if (it != glStaticModules.end()) table = it->second;
          else {
             log.warning("Unable to find module '%s' from %d static modules.", Self->Name, LONG(glStaticModules.size()));
-            error = ERR_NotFound;
+            error = ERR::NotFound;
             goto exit;
          }
          #else
-         if ((error = load_mod(Self, master, &table))) goto exit;
+         if ((error = load_mod(Self, master, &table)) != ERR::Okay) goto exit;
          #endif
       }
 
@@ -375,8 +375,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
       Self->Root = master;
 
       if (table) {
-         if (!table->Init) { log.warning(ERR_ModuleMissingInit); goto exit; }
-         if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
+         if (!table->Init) { log.warning(ERR::ModuleMissingInit); goto exit; }
+         if (!table->Name) { log.warning(ERR::ModuleMissingName); goto exit; }
 
          master->Header     = table;
          master->Table      = table;
@@ -400,13 +400,13 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                error = master->Init(Self, modkb);
             }
          #endif
-         if (error) goto exit;
+         if (error != ERR::Okay) goto exit;
       }
       else if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) {
          log.msg("Loaded link library '%s'", Self->Name);
       }
       else {
-         log.warning(ERR_ModuleMissingInit);
+         log.warning(ERR::ModuleMissingInit);
          goto exit;
       }
 
@@ -414,7 +414,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
       context = NULL;
    }
    else {
-      error = log.warning(ERR_NewObject);
+      error = log.warning(ERR::NewObject);
       goto exit;
    }
 
@@ -430,8 +430,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
    if (master->Open) {
       log.trace("Opening %s module.", Self->Name);
-      if (master->Open(Self) != ERR_Okay) {
-         log.warning(ERR_ModuleOpenFailed);
+      if (master->Open(Self) != ERR::Okay) {
+         log.warning(ERR::ModuleOpenFailed);
          goto exit;
       }
    }
@@ -458,13 +458,13 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    #endif
 
    log.trace("Module has been successfully initialised.");
-   error = ERR_Okay;
+   error = ERR::Okay;
 
 exit:
-   if (error) { // Free allocations if an error occurred
+   if (error != ERR::Okay) { // Free allocations if an error occurred
 
-      if (!(error & ERF_Notified)) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
-      error &= ~(ERF_Notified|ERF_Delay);
+      if ((error & ERR::Notified) IS ERR::Okay) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
+      error &= ~(ERR::Notified);
 
       if (root_mod) {
          if (master->Expunge) master->Expunge();
@@ -483,7 +483,7 @@ exit:
 ResolveSymbol: Resolves the symbol names in loaded link libraries to address pointers.
 
 This method will convert symbol names to their respective address pointers.  The module code must have been successfully
-loaded into memory or an ERR_FieldNotSet error will be returned.  If the symbol was not found then ERR_NotFound is
+loaded into memory or an ERR::FieldNotSet error will be returned.  If the symbol was not found then ERR::NotFound is
 returned.
 
 -INPUT-
@@ -499,41 +499,41 @@ NoSupport: The host platform does not support this method.
 
 **********************************************************************************************************************/
 
-static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args)
+static ERR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
    #ifdef PARASOL_STATIC
    if ((Args->Address = winGetProcAddress(NULL, Args->Name))) {
    #else
-   if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR::FieldNotSet;
    if ((Args->Address = winGetProcAddress(Self->Root->LibraryBase, Args->Name))) {
    #endif
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
-      return ERR_NotFound;
+      return ERR::NotFound;
    }
 #elif __unix__
    #ifdef PARASOL_STATIC
    if ((Args->Address = dlsym(RTLD_DEFAULT, Args->Name))) {
    #else
-   if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR::FieldNotSet;
    if ((Args->Address = dlsym(Self->Root->LibraryBase, Args->Name))) {
    #endif
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
-      return ERR_NotFound;
+      return ERR::NotFound;
    }
 #else
    #warning Platform not supported.
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 #endif
 }
 
@@ -566,11 +566,11 @@ than on disk.
 
 **********************************************************************************************************************/
 
-static ERROR SET_Header(extModule *Self, struct ModHeader *Value)
+static ERR SET_Header(extModule *Self, struct ModHeader *Value)
 {
-   if (!Value) return ERR_Failed;
+   if (!Value) return ERR::Failed;
    Self->Header = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -603,15 +603,15 @@ may use a `.dll` extension.
 
 **********************************************************************************************************************/
 
-static ERROR GET_Name(extModule *Self, CSTRING *Value)
+static ERR GET_Name(extModule *Self, CSTRING *Value)
 {
    *Value = Self->Name;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Name(extModule *Self, CSTRING Name)
+static ERR SET_Name(extModule *Self, CSTRING Name)
 {
-   if (!Name) return ERR_Okay;
+   if (!Name) return ERR::Okay;
 
    LONG i;
    for (i=0; (Name[i]) and ((size_t)i < sizeof(Self->Name)-1); i++) {
@@ -620,7 +620,7 @@ static ERROR SET_Name(extModule *Self, CSTRING Name)
    }
    Self->Name[i] = 0;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -639,12 +639,12 @@ APTR build_jump_table(const Function *FList)
    log.trace("%d functions have been detected in the function list.", size);
 
    void **functions;
-   if (!AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, NULL)) {
+   if (AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, NULL) IS ERR::Okay) {
       for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
       functions[size] = NULL;
       return functions;
    }
-   else log.warning(ERR_AllocMemory);
+   else log.warning(ERR::AllocMemory);
    return NULL;
 }
 #endif
@@ -710,7 +710,7 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
 
    log.traceBranch("Module Name: %s", ModuleName);
 
-   if (!StrMatch("core", ModuleName)) {
+   if (StrMatch("core", ModuleName) IS ERR::Okay) {
       log.msg("Self-reference to the Core detected.");
       if (!kminit) {
          kminit = true;
@@ -784,7 +784,7 @@ static const ActionArray glRootModuleActions[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_module_class(void)
+extern "C" ERR add_module_class(void)
 {
    if (!(glModuleClass = extMetaClass::create::global(
       fl::BaseClassID(ID_MODULE),
@@ -797,7 +797,7 @@ extern "C" ERROR add_module_class(void)
       fl::Methods(glModuleMethods),
       fl::Fields(glModuleFields),
       fl::Size(sizeof(extModule)),
-      fl::Path("modules:core")))) return ERR_AddClass;
+      fl::Path("modules:core")))) return ERR::AddClass;
 
    if (!(glRootModuleClass = extMetaClass::create::global(
       fl::BaseClassID(ID_ROOTMODULE),
@@ -808,8 +808,8 @@ extern "C" ERROR add_module_class(void)
       fl::Actions(glRootModuleActions),
       fl::Fields(glRootModuleFields),
       fl::Size(sizeof(RootModule)),
-      fl::Path("modules:core")))) return ERR_AddClass;
+      fl::Path("modules:core")))) return ERR::AddClass;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 

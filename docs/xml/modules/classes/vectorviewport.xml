@@ -12,7 +12,7 @@
     <idstring>ID_VECTORVIEWPORT</idstring>
     <category>Graphics</category>
     <include>modules/vectorviewport.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
 <p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields will determine the position and clipping of the displayed content (the 'target area').  The <field>ViewX</field>, <field>ViewY</field>, <field>ViewWidth</field> and <field>ViewHeight</field> fields declare the viewbox ('source area') that will be sampled for the target.</p>
@@ -84,7 +84,7 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="G" write="S">Get/Set</access>
       <type lookup="DMF">INT</type>
       <description>
@@ -113,7 +113,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for full coverage.</p>
 <p>The fixed value is always returned when retrieving the height.</p>
       </description>
     </field>
@@ -197,7 +197,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for full coverage.</p>
       </description>
     </field>
 
@@ -207,7 +207,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
@@ -218,7 +218,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
@@ -229,7 +229,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
@@ -240,7 +240,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
@@ -266,6 +266,13 @@
 
   </types>
   <structs>
+    <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
+      <field name="Height" type="LONG">Capitalised font height</field>
+      <field name="LineSpacing" type="LONG">Vertical advance from one line to the next</field>
+      <field name="Ascent" type="LONG">Height from the baseline to the top of the font, including accents.</field>
+      <field name="Descent" type="LONG">Height from the baseline to the bottom of the font</field>
+    </struct>
+
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
       <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
       <field name="Vector" type="objVector *">The vector associated with the transform.</field>
@@ -275,6 +282,13 @@
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
+    <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">
+      <field name="Pattern" type="objVectorPattern *">A VectorPattern object, suitable for pattern based fills.</field>
+      <field name="Image" type="objVectorImage *">A VectorImage object, suitable for image fills.</field>
+      <field name="Gradient" type="objVectorGradient *">A VectorGradient object, suitable for gradient fills.</field>
+      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.</field>
     </struct>
 
   </structs>

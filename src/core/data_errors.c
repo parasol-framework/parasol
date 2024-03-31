@@ -1,5 +1,5 @@
 
-const CSTRING glMessages[ERR_END+1] = {
+const CSTRING glMessages[LONG(ERR::END)+1] = {
  "Operation successful.",
  "The result is false.",
  "Limited success.",

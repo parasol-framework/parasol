@@ -25,7 +25,7 @@ static const char * GetIntegrityLevelString(IntegrityLevel integrity_level);
 
 #ifdef __GNUC__
 static LONG str_copy(const char *String, char *Dest, int Length) __attribute__((unused));
-static ERROR set_low_file(LPCWSTR pwszFileName) __attribute__((unused));
+static ERR set_low_file(LPCWSTR pwszFileName) __attribute__((unused));
 #endif
 
 static LONG str_copy(const char *String, char *Dest, int Length)
@@ -142,9 +142,9 @@ IntegrityLevel get_integrity_level(void)
 //********************************************************************************************************************
 // Execute a process at low priority.
 
-ERROR create_low_process(const char *ExePath, BYTE SharedOutput)
+ERR create_low_process(const char *ExePath, BYTE SharedOutput)
 {
-   ERROR result = ERR_Failed;
+   ERR result = ERR::Failed;
    HANDLE hToken = NULL;
    HANDLE hNewToken = NULL;
    PSID pIntegritySid = NULL;
@@ -198,7 +198,7 @@ ERROR create_low_process(const char *ExePath, BYTE SharedOutput)
       DWORD rc, exitCode;
       rc = GetExitCodeProcess(proc_info.hProcess, &exitCode);
 
-      result = ERR_Okay;
+      result = ERR::Okay;
    }
 
 exit:
@@ -216,7 +216,7 @@ exit:
 // This code could potentially target a file or directory, network share, registry key, semaphore, event, mutex, file mapping
 // or timer (refer SetNamedSecurityInfo()).
 
-static ERROR set_low_file(LPCWSTR pwszFileName)
+static ERR set_low_file(LPCWSTR pwszFileName)
 {
    PSECURITY_DESCRIPTOR pSD = NULL;
    if (ConvertStringSecurityDescriptorToSecurityDescriptorW(L"S:(ML;;NW;;;LW)", SDDL_REVISION_1, &pSD, NULL)) {
@@ -228,7 +228,7 @@ static ERROR set_low_file(LPCWSTR pwszFileName)
          SetNamedSecurityInfoW((LPWSTR) pwszFileName, SE_FILE_OBJECT, LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, pSacl);
       }
       LocalFree(pSD);
-      return(ERR_Okay);
+      return(ERR::Okay);
    }
-   else return(ERR_Failed);
+   else return(ERR::Failed);
 }

@@ -1,0 +1,23 @@
+<svg version="1.1" baseProfile="basic" id="svg-root" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+This test exercises basic user-specified clip paths, using a text string (i.e., content of a 'text' element) as the
+clip path.
+
+There is a rectangular image of a swirly blue pattern with large yellow text, "Clip Test" superimposed.  The image
+is a PNG file, imported into the picture via the 'image' element.
+
+The test uses the 'rect' element, as well as basic fill (solid primary colors), stroke (black 1-pixel lines),
+font-family (Arial and Impact) and font-size properties.
+-->
+  <defs>
+    <clipPath id="sample" clipPathUnits="userSpaceOnUse">
+      <text x="45" y="270" font-size="100" font-family="Impact">Clip Test</text>
+    </clipPath>
+  </defs>
+
+  <image xlink:href="bluesquidj.png" preserveAspectRatio="none" x="30" y="20" width="410" height="140"/>
+  <text x="55" y="130" font-size="100" font-family="Impact" fill="yellow">Clip Test</text>
+
+  <image xlink:href="bluesquidj.png" preserveAspectRatio="none" x="20" y="170" width="410" height="160" clip-path="url(#sample)"/>
+</svg>

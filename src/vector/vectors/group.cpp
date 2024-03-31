@@ -10,9 +10,12 @@ If there is a need to adjust the container dimensions, use a @VectorViewport ins
 
 -END-
 
+NOTE: Groups can export a boundary if they have child paths, in which case all the paths are accummulated to form a
+single bounds area.  The calc_full_boundary() function can be used to do this.
+
 *********************************************************************************************************************/
 
-static ERROR init_group(void)
+static ERR init_group(void)
 {
    clVectorGroup = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
@@ -22,5 +25,5 @@ static ERROR init_group(void)
       fl::Size(sizeof(extVector)),
       fl::Path(MOD_PATH));
 
-   return clVectorGroup ? ERR_Okay : ERR_AddClass;
+   return clVectorGroup ? ERR::Okay : ERR::AddClass;
 }

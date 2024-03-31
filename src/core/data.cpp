@@ -194,7 +194,10 @@ THREADVAR WORD tlPreventSleep = 0;
 THREADVAR WORD tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 
-struct BaseClass glDummyObject;
+struct BaseClass glDummyObject = {
+   .Class = NULL, .ChildPrivate = NULL, .CreatorMeta = NULL, .Owner = NULL, .NotifyFlags = 0, .UID = 0, .Flags = NF::NIL,
+   .ThreadID = 0, .Name = "", .ThreadPending = 0, .Queue = 0, .SleepQueue = 0, .Locked = 0, .ActionDepth = 0
+};
 class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
 THREADVAR ObjectContext *tlContext = &glTopContext;
 
@@ -204,7 +207,7 @@ objTime *glTime = NULL;
 THREADVAR WORD tlMsgRecursion = 0;
 THREADVAR TaskMessage *tlCurrentMsg = NULL;
 
-ERROR (*glMessageHandler)(struct Message *) = NULL;
+ERR (*glMessageHandler)(struct Message *) = NULL;
 void (*glVideoRecovery)(void) = NULL;
 void (*glKeyboardRecovery)(void) = NULL;
 void (*glNetProcessMessages)(LONG, APTR) = NULL;

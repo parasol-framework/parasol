@@ -39,6 +39,7 @@ terminated arrays, use [0].
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>
+#include <sstream>
 
 extern "C" {
  #include "lua.h"
@@ -58,23 +59,48 @@ static const LONG MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100
 //
 // NOTE: In the event of an error code being returned, no value is pushed to the stack.
 
-ERROR named_struct_to_table(lua_State *Lua, const std::string StructName, CPTR Address)
+ERR named_struct_to_table(lua_State *Lua, const std::string StructName, CPTR Address)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   auto def = prv->Structs.find(StructName);
+   auto def = prv->Structs.find(StructName); // NB: Custom comparator will stop if a colon is encountered in StructName
    if (def != prv->Structs.end()) {
       std::vector<lua_ref> ref;
       return struct_to_table(Lua, ref, def->second, Address);
    }
+   else if (StructName.starts_with("KeyValue")) {
+      // A struct name of 'KeyValue' allows the KEYVALUE type to be used for building structures dynamically.
+      // std::map<std::string, std::string>
+
+      return keyvalue_to_table(Lua, (const KEYVALUE *)Address);
+   }
    else {
       pf::Log log(__FUNCTION__);
       log.warning("Unknown struct name '%s'", StructName.c_str());
-      return ERR_Search;
+      return ERR::Search;
    }
 }
 
-ERROR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
+//********************************************************************************************************************
+
+ERR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
+{
+   if (!Map) { lua_pushnil(Lua); return ERR::Okay; }
+
+   lua_createtable(Lua, 0, Map->size()); // Create a new table on the stack.
+
+   for (auto & [ key, val ] : *Map) {
+      lua_pushlstring(Lua, key.c_str(), key.size());
+      lua_pushlstring(Lua, val.c_str(), val.size());
+      lua_settable(Lua, -3);
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
 {
    pf::Log log(__FUNCTION__);
 
@@ -82,7 +108,7 @@ ERROR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_r
 
    // Do not push a Lua value in the event of an error.
 
-   if (!Address) { lua_pushnil(Lua); return ERR_Okay; }
+   if (!Address) { lua_pushnil(Lua); return ERR::Okay; }
 
    // Check if there is an existing struct table already associated with this address.  If so, return it
    // rather than creating another table.
@@ -90,7 +116,7 @@ ERROR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_r
    for (auto &rec : References) {
       if (Address IS rec.Address) {
          lua_rawgeti(Lua, LUA_REGISTRYINDEX, rec.Ref);
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -148,11 +174,11 @@ ERROR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_r
          if (def != prv->Structs.end()) {
             if (type & FD_PTR) {
                if (((APTR *)address)[0]) {
-                  if (struct_to_table(Lua, References, def->second, ((APTR *)address)[0]) != ERR_Okay) lua_pushnil(Lua);
+                  if (struct_to_table(Lua, References, def->second, ((APTR *)address)[0]) != ERR::Okay) lua_pushnil(Lua);
                }
                else lua_pushnil(Lua);
             }
-            else if (struct_to_table(Lua, References, def->second, address) != ERR_Okay) lua_pushnil(Lua);
+            else if (struct_to_table(Lua, References, def->second, address) != ERR::Okay) lua_pushnil(Lua);
          }
       }
       else if (type & FD_STRING) {
@@ -175,7 +201,7 @@ ERROR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_r
       lua_settable(Lua, -3);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -272,7 +298,7 @@ static void make_camel_case(std::string &String)
 //********************************************************************************************************************
 // The TypeName is optional and usually refers to the name of a struct.  The list is sorted by name for fast lookups.
 
-static ERROR generate_structdef(objScript *Self, const std::string StructName, const std::string Sequence,
+static ERR generate_structdef(objScript *Self, const std::string_view StructName, const std::string Sequence,
    struct_record &Record, LONG *StructSize)
 {
    pf::Log log(__FUNCTION__);
@@ -329,10 +355,10 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
                }
                else {
                   log.warning("Failed to find referenced struct '%s'", name.c_str());
-                  return ERR_NotFound;
+                  return ERR::NotFound;
                }
             }
-            else return ERR_Syntax;
+            else return ERR::Syntax;
          }
 
          case 'm': // MAXINT
@@ -341,7 +367,7 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
             break;
 
          default:
-            return ERR_Syntax;
+            return ERR::Syntax;
       }
 
       pos++;
@@ -374,7 +400,7 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
          if (type & FD_CPP) { // In the case of std::vector, fixed array sizes are meaningless
             field_size = sizeof(std::vector<int>);
          }
-         else {
+         else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
             array_size = StrToInt(Sequence.c_str() + pos);
          }
          pos = Sequence.find_first_of("],", pos);
@@ -385,7 +411,11 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
       // Alignment and offset management
 
       if ((field_size >= 8) and (type != FD_STRUCT)) {
-         if (offset & 7) log.msg("Warning: %s.%s (%d bytes) is mis-aligned.", StructName.c_str(), field.Name.c_str(), field_size);
+         if (offset & 7) {
+            std::ostringstream msg;
+            msg << "Warning: " << StructName << "." << field.Name << " (" << field_size << " bytes) is mis-aligned.";
+            log.msg("%s", msg.str().c_str());
+         }
          offset = ALIGN64(offset); // 64-bit alignment
       }
       else if (field_size IS 4) offset = ALIGN32(offset);
@@ -408,24 +438,24 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
    }
 
    *StructSize = offset;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Parse a struct definition and permanently store it in the Structs dictionary.
 
-ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
+ERR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
 {
    if (!Sequence) {
       luaL_error(Lua, "Missing struct name and/or definition.");
-      return ERR_NullArgs;
+      return ERR::NullArgs;
    }
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (prv->Structs.contains(StructName)) {
       luaL_error(Lua, "Structure '%s' is already registered.", StructName.c_str());
-      return ERR_Exists;
+      return ERR::Exists;
    }
 
    pf::Log log(__FUNCTION__);
@@ -434,9 +464,9 @@ ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequenc
    prv->Structs[StructName] = struct_record(StructName);
 
    LONG computed_size = 0;
-   if (auto error = generate_structdef(Lua->Script, StructName, Sequence, prv->Structs[StructName], &computed_size)) {
-      if (error IS ERR_BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
-      else if (error IS ERR_Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
+   if (auto error = generate_structdef(Lua->Script, StructName, Sequence, prv->Structs[StructName], &computed_size); error != ERR::Okay) {
+      if (error IS ERR::BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
+      else if (error IS ERR::Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
       else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName.c_str(), GetErrorMsg(error));
       return error;
    }
@@ -444,7 +474,7 @@ ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequenc
    if (glStructSizes.contains(StructName)) prv->Structs[StructName].Size = glStructSizes[StructName];
    else prv->Structs[StructName].Size = computed_size;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -515,7 +545,7 @@ static int struct_new(lua_State *Lua)
          if (lua_istable(Lua, 2)) {
             pf::Log log(__FUNCTION__);
             log.trace("struct.new(%p, fields: %d)", record, record.Fields.size());
-            ERROR field_error = ERR_Okay;
+            ERR field_error = ERR::Okay;
             lua_pushnil(Lua);  // Access first key for lua_next()
             while (lua_next(Lua, 2) != 0) {
                if (auto field_name = luaL_checkstring(Lua, -2)) {
@@ -535,11 +565,11 @@ static int struct_new(lua_State *Lua)
                      else if (field->Type & FD_FLOAT)  ((FLOAT *)address)[0]  = lua_tonumber(Lua, 3);
                      else log.warning("Cannot set unsupported field type for %s", field_name);
                   }
-                  else field_error = ERR_UnsupportedField;
+                  else field_error = ERR::UnsupportedField;
                }
-               else field_error = ERR_UnsupportedField;
+               else field_error = ERR::UnsupportedField;
 
-               if (field_error) { // Break the loop early on error.
+               if (field_error != ERR::Okay) { // Break the loop early on error.
                   lua_pop(Lua, 2);
                   break;
                }
@@ -595,7 +625,7 @@ static int struct_get(lua_State *Lua)
 {
    if (auto fs = (struct fstruct *)lua_touserdata(Lua, 1)) {
       if (auto fieldname = luaL_checkstring(Lua, 2)) {
-         if (!StrCompare("structsize", fieldname, 0, STR::MATCH_CASE)) {
+         if (StrCompare("structsize", fieldname, 0, STR::MATCH_CASE) IS ERR::Okay) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &struct_structsize, 1);
             return 1;
@@ -678,9 +708,9 @@ static int struct_get(lua_State *Lua)
                else lua_pushinteger(Lua, ((UBYTE *)address)[0]);
             }
             else {
-               char buffer[80];
-               snprintf(buffer, sizeof(buffer), "Field '%s' does not use a supported type ($%.8x).", fieldname, field->Type);
-               luaL_error(Lua, buffer);
+               std::ostringstream buf;
+               buf << "Field '" << fieldname << "' does not use a supported type of " << std::hex << field->Type;
+               luaL_error(Lua, buf.str().c_str());
                return 0;
             }
             return 1;

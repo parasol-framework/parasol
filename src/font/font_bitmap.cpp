@@ -76,7 +76,7 @@ public:
    std::string Path;
    WORD OpenCount;
    FTF StyleFlags;
-   ERROR Result;
+   ERR Result;
 
    BitmapCache(winfnt_header_fields &pFace, CSTRING pStyle, CSTRING pPath, objFile *pFile, winFont &pWinFont) {
       pf::Log log(__FUNCTION__);
@@ -86,12 +86,12 @@ public:
       mData     = NULL;
       mOutline  = NULL;
       OpenCount = 0;
-      Result    = ERR_Okay;
+      Result    = ERR::Okay;
       Header    = pFace;
 
-      if (!StrMatch("Bold", pStyle)) StyleFlags = FTF::BOLD;
-      else if (!StrMatch("Italic", pStyle)) StyleFlags = FTF::ITALIC;
-      else if (!StrMatch("Bold Italic", pStyle)) StyleFlags = FTF::BOLD|FTF::ITALIC;
+      if (StrMatch("Bold", pStyle) IS ERR::Okay) StyleFlags = FTF::BOLD;
+      else if (StrMatch("Italic", pStyle) IS ERR::Okay) StyleFlags = FTF::ITALIC;
+      else if (StrMatch("Bold Italic", pStyle) IS ERR::Okay) StyleFlags = FTF::BOLD|FTF::ITALIC;
       else StyleFlags = FTF::NIL;
 
       Path = pPath;
@@ -107,8 +107,8 @@ public:
             UWORD width;
             ULONG offset;
 
-            if (flReadLE(pFile, &width)) break;
-            if (flReadLE(pFile, &offset)) break;
+            if (flReadLE(pFile, &width) != ERR::Okay) break;
+            if (flReadLE(pFile, &offset) != ERR::Okay) break;
 
             Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
@@ -120,8 +120,8 @@ public:
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
             UWORD width, offset;
-            if (flReadLE(pFile, &width)) break;
-            if (flReadLE(pFile, &offset)) break;
+            if (flReadLE(pFile, &width) != ERR::Okay) break;
+            if (flReadLE(pFile, &offset) != ERR::Okay) break;
             Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
             Chars[j].Offset  = offset - pFace.bits_offset;
@@ -131,11 +131,11 @@ public:
 
       LONG size = pFace.file_size - pFace.bits_offset;
 
-      if (!AllocMemory(size, MEM::UNTRACKED, &mData)) {
+      if (AllocMemory(size, MEM::UNTRACKED, &mData) IS ERR::Okay) {
          LONG result;
          pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK::START);
 
-         if ((!pFile->read(mData, size, &result)) and (result IS size)) {
+         if ((pFile->read(mData, size, &result) IS ERR::Okay) and (result IS size)) {
             // Convert the graphics format for wide characters from column-first format to row-first format.
 
             for (WORD i=0; i < 256; i++) {
@@ -159,9 +159,9 @@ public:
                }
             }
          }
-         else Result = log.warning(ERR_Read);
+         else Result = log.warning(ERR::Read);
       }
-      else Result = log.warning(ERR_AllocMemory);
+      else Result = log.warning(ERR::AllocMemory);
 
       if (((StyleFlags & FTF::BOLD) != FTF::NIL) and (Header.weight < 600)) {
          log.msg("Converting base font graphics data to bold.");
@@ -172,7 +172,7 @@ public:
          }
 
          UBYTE *buffer;
-         if (!AllocMemory(size, MEM::UNTRACKED, &buffer)) {
+         if (AllocMemory(size, MEM::UNTRACKED, &buffer) IS ERR::Okay) {
             LONG pos = 0;
             for (LONG i=0; i < 256; i++) {
                if (Chars[i].Width) {
@@ -201,7 +201,7 @@ public:
             FreeResource(mData);
             mData = buffer;
          }
-         else Result = log.warning(ERR_AllocMemory);
+         else Result = log.warning(ERR::AllocMemory);
       }
 
       if (((StyleFlags & FTF::ITALIC) != FTF::NIL) and (!Header.italic)) {
@@ -215,7 +215,7 @@ public:
          }
 
          UBYTE *buffer;
-         if (!AllocMemory(size, MEM::UNTRACKED, &buffer)) {
+         if (AllocMemory(size, MEM::UNTRACKED, &buffer) IS ERR::Okay) {
             LONG pos = 0;
             for (LONG i=0; i < 256; i++) {
                if (Chars[i].Width) {
@@ -248,7 +248,7 @@ public:
             FreeResource(mData);
             mData = buffer;
          }
-         else Result = log.warning(ERR_AllocMemory);
+         else Result = log.warning(ERR::AllocMemory);
       }
    }
 
@@ -262,7 +262,7 @@ public:
       }
 
       UBYTE *buffer;
-      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR_Okay) return NULL;
+      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return NULL;
 
       LONG pos = 0;
       for (WORD i=0; i < 256; i++) {
@@ -321,9 +321,9 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
    pf::Log log(__FUNCTION__);
 
    for (auto & cache : glBitmapCache) {
-      if (cache.Result != ERR_Okay) continue;
+      if (cache.Result != ERR::Okay) continue;
 
-      if (!StrMatch(cache.Path.c_str(), Self->Path)) {
+      if (StrMatch(cache.Path.c_str(), Self->Path) IS ERR::Okay) {
          if (cache.StyleFlags IS Style) {
             if (Self->Point IS cache.Header.nominal_point_size) {
                log.trace("Exists in cache (count %d) %s : %s", cache.OpenCount, cache.Path.c_str(), Self->prvStyle);
@@ -340,7 +340,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
 
 //********************************************************************************************************************
 
-ERROR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
+ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
@@ -352,5 +352,5 @@ ERROR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTim
       else it++;
    }
    glCacheTimer = NULL;
-   return ERR_Terminate;
+   return ERR::Terminate;
 }

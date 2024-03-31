@@ -12,41 +12,33 @@ name through the @Vector.Fill and @Vector.Stroke fields.  For instance 'url(#log
 
 It is strongly recommended that the VectorImage is owned by the @VectorScene that is handling the
 definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.
+
+NOTE: For the rendering of vectors as flattened images, use @VectorPattern.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
+static ERR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
-      log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
-      return log.warning(ERR_OutOfRange);
-   }
-
-   if ((LONG(Self->Units) != LONG(VUNIT::BOUNDING_BOX)) and (LONG(Self->Units) != LONG(VUNIT::USERSPACE))) {
-      log.traceWarning("Invalid Units value of %d", Self->Units);
-      return log.warning(ERR_OutOfRange);
-   }
-
-   if (!Self->Bitmap) return log.warning(ERR_FieldNotSet);
+   if (!Self->Bitmap) return log.warning(ERR::FieldNotSet);
 
    if ((Self->Bitmap->BitsPerPixel != 24) and (Self->Bitmap->BitsPerPixel != 32)) {
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
+static ERR IMAGE_NewObject(objVectorImage *Self, APTR Void)
 {
    Self->Units        = VUNIT::BOUNDING_BOX;
-   Self->SpreadMethod = VSPREAD::PAD;
+   Self->SpreadMethod = VSPREAD::CLIP;
    Self->AspectRatio  = ARF::X_MID|ARF::Y_MID|ARF::MEET; // SVG defaults
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -67,19 +59,19 @@ algorithm.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
+static ERR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
 {
    Self->Bitmap = Value;
    Self->Picture = NULL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or scaled values.
 
-Of the Dimension flags that are available, only FIXED_X, FIXED_Y, RELATIVE_X and RELATIVE_Y are applicable.
+Of the Dimension flags that are available, only `FIXED_X`, `FIXED_Y`, `SCALED_X` and `SCALED_Y` are applicable.
 
 -FIELD-
 Picture: Refers to a @Picture from which the source #Bitmap is acquired.
@@ -89,24 +81,26 @@ will not be used directly by the VectorImage, as only the bitmap is of interest.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
+static ERR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
 {
    Self->Picture = Value;
    if (Value) Self->Bitmap = Value->Bitmap;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-SpreadMethod: Defines the drawing mode.
+SpreadMethod: Defines image tiling behaviour, if desired.
 
-The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.
+The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the 
+available space.  It is secondary to the application of #AspectRatio.  The default setting is `CLIP`, which prevents
+the image from being tiled.
 
 -FIELD-
 Units: Declares the coordinate system to use for the #X and #Y values.
 
-This field declares the coordinate system that is used for values in the #X and #Y fields.  The default is BOUNDING_BOX.
+This field declares the coordinate system that is used for values in the #X and #Y fields.  The default is `BOUNDING_BOX`.
 
 -FIELD-
 X: Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
@@ -139,10 +133,10 @@ static const FieldDef clImageUnits[] = {
 };
 
 static const FieldDef clImageDimensions[] = {
-   { "FixedX",    DMF_FIXED_X },
-   { "FixedY",    DMF_FIXED_Y },
-   { "RelativeX", DMF_RELATIVE_X },
-   { "RelativeY", DMF_RELATIVE_Y },
+   { "FixedX",  DMF_FIXED_X },
+   { "FixedY",  DMF_FIXED_Y },
+   { "ScaledX", DMF_SCALED_X },
+   { "ScaledY", DMF_SCALED_Y },
    { NULL, 0 }
 };
 
@@ -155,13 +149,12 @@ static const FieldArray clImageFields[] = {
    { "Dimensions",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clImageDimensions },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageSpread },
    { "AspectRatio",  FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clAspectRatio },
- //{ "Src",          FDF_STRING|FDF_W, NULL, IMAGE_SET_Src },
    END_FIELD
 };
 
 //********************************************************************************************************************
 
-ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
+ERR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    clVectorImage = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORIMAGE),
@@ -172,6 +165,6 @@ ERROR init_image(void) // The gradient is a definition type for creating gradien
       fl::Size(sizeof(objVectorImage)),
       fl::Path(MOD_PATH));
 
-   return clVectorImage ? ERR_Okay : ERR_AddClass;
+   return clVectorImage ? ERR::Okay : ERR::AddClass;
 }
 

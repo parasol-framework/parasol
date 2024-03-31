@@ -143,6 +143,7 @@ void CloseCore(void)
          pf::Log log("Shutdown");
          log.branch("Freeing the task object and its resources.");
          FreeResource(glCurrentTask);
+         glCurrentTask = NULL;
       }
 
       // Remove locks on any private objects that have not been unlocked yet
@@ -150,7 +151,7 @@ void CloseCore(void)
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
             if (auto obj = mem.Object) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->Owner ? obj->Owner->UID : 0, mem.AccessCount);
                for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
@@ -306,9 +307,9 @@ __export void Expunge(WORD Force)
                if (mod_master->Expunge) {
                   pf::Log log(__FUNCTION__);
                   log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
-                  if (!mod_master->Expunge()) {
+                  if (mod_master->Expunge() IS ERR::Okay) {
                      ccount++;
-                     if (FreeResource(mod_master)) {
+                     if (FreeResource(mod_master) != ERR::Okay) {
                         log.warning("RootModule data is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
@@ -318,7 +319,7 @@ __export void Expunge(WORD Force)
                }
                else {
                   ccount++;
-                  if (FreeResource(mod_master)) {
+                  if (FreeResource(mod_master) != ERR::Okay) {
                      log.warning("RootModule data is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;

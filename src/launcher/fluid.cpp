@@ -282,10 +282,10 @@ int main(int argc, CSTRING *argv)
 
          glScriptReceivedMsg = AllocateID(IDTYPE_MESSAGE);
 
-         auto call = make_function_stdc(msg_script_received);
+         auto call = FUNCTION(msg_script_received);
          AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
 
-         CurrentTask()->setInputCallback(make_function_stdc(read_stdin));
+         CurrentTask()->setInputCallback(FUNCTION(read_stdin));
 
          ProcessMessages(0, -1);
 

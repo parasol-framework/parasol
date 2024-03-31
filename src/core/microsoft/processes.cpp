@@ -360,15 +360,15 @@ extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir,
 
 //********************************************************************************************************************
 
-extern "C" LONG winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
+extern "C" ERR winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
 {
    if (Process) {
       GetExitCodeProcess(Process->Handle, Code);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Code = 0;
-      return ERR_Failed;
+      return ERR::Failed;
    }
 }
 

@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
@@ -11,9 +11,17 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "LARGE",
     "SWEEP")
 
+  flags("VCLF", { comment="Options for VectorClip." },
+    "APPLY_FILLS: Apply fill instructions when drawing the clipping path(s).",
+    "APPLY_STROKES: Apply stroke instructions when drawing the clipping path(s).")
+
   flags("VF", { comment="Optional flags and indicators for the Vector class." },
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.")
+
+  enum("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
+     "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
+     "NONE: Scale X/Y values on a 1:1 basis, in relation to the diagonal of the parent viewport.")
 
   enum("LS", { type="int", comment="Light source identifiers." },
     "DISTANT: Distant light source.",
@@ -26,8 +34,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 
   enum("VUNIT", { type="int", start=0 },
     "UNDEFINED",
-    "BOUNDING_BOX: Coordinates are relative to the object's bounding box.",
-    "USERSPACE: Coordinates are relative to the current viewport.",
+    "BOUNDING_BOX: Coordinates are scaled to the object's bounding box.",
+    "USERSPACE: Coordinates are scaled to the current viewport.",
     "END: Private")
 
   enum("VSPREAD", { type="int", start=0, comment="Spread method options define the method to use for tiling filled graphics." },
@@ -155,6 +163,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "AREA_SELECTED: Automatically set if a region of text has been selected.",
     "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
     "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).",
+    "SECRET: Hide all characters from the UI by using generic symbols in place of glyphs.",
     "RASTER: Rasterise glyphs to a texture cache for very fast rendering.  This feature is not compatible with scalable graphics conventions.")
 
   flags("VMF", { comment="Morph flags" },
@@ -206,15 +215,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "COLOURISE: Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.")
 
   flags("VGF", { comment="Gradient flags" },
-    "RELATIVE_X1: X1 is relative",
-    "RELATIVE_Y1: Y1 is relative",
-    "RELATIVE_X2: X2 is relative",
-    "RELATIVE_Y2: Y2 is relative",
-    "RELATIVE_CX: CX is relative",
-    "RELATIVE_CY: CY is relative",
-    "RELATIVE_FX: FX is relative",
-    "RELATIVE_FY: FY is relative",
-    "RELATIVE_RADIUS: Radius is relative",
+    "SCALED_X1: X1 is scaled",
+    "SCALED_Y1: Y1 is scaled",
+    "SCALED_X2: X2 is scaled",
+    "SCALED_Y2: Y2 is scaled",
+    "SCALED_CX: CX is scaled",
+    "SCALED_CY: CY is scaled",
+    "SCALED_FX: FX is scaled",
+    "SCALED_FY: FY is scaled",
+    "SCALED_RADIUS: Radius is scaled",
     "FIXED_X1: X1 is fixed",
     "FIXED_Y1: Y1 is fixed",
     "FIXED_X2: X2 is fixed",
@@ -261,7 +270,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "BEST: Use the best quality renderer available and without concerns for computational time taken.")
 
   flags("RC", { bits=8, comments="Internal flags for signalling the need to recompute paths." },
-    "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.",
+    "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
     { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
@@ -300,18 +309,24 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
   struct("VectorPoint", { comment="Structure for the VectorPolygon PointsArray field." }, [[
     double X   # The X coordinate of this point.
     double Y   # The Y coordinate of this point.
-    bit(uchar) XRelative # TRUE if the X value is relative to its viewport (between 0 and 1.0).
-    bit(uchar) YRelative # TRUE if the Y value is relative to its viewport (between 0 and 1.0).
+    bit(uchar) XScaled # TRUE if the X value is scaled to its viewport (between 0 and 1.0).
+    bit(uchar) YScaled # TRUE if the Y value is scaled to its viewport (between 0 and 1.0).
+  ]])
+
+  struct("VectorPainter", { comment="Deserialised painter information; compliant with SVG painter definitions." }, [[
+    obj(VectorPattern)  Pattern   # A VectorPattern object, suitable for pattern based fills.
+    obj(VectorImage)    Image     # A VectorImage object, suitable for image fills.
+    obj(VectorGradient) Gradient  # A VectorGradient object, suitable for gradient fills.
+    struct(FRGB) Colour           # A single RGB colour definition, suitable for block colour fills.
   ]])
 
   struct("PathCommand", { comment="Base structure for path commands." }, [[
     int(PE) Type         # The command type (PE value)
-    uchar   Curved       # Private
     uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
     uchar   Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
     uchar   Pad1         # Private
-    double  X            # The targeted X coordinate (absolute or relative) for the command
-    double  Y            # The targeted Y coordinate (absolute or relative) for the command
+    double  X            # The targeted X coordinate (absolute or scaled) for the command
+    double  Y            # The targeted Y coordinate (absolute or scaled) for the command
     double  AbsX         # Private
     double  AbsY         # Private
     double  X2           # The X2 coordinate for curve commands, or RX for arcs
@@ -330,6 +345,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     double ScaleY               # Matrix value D
     double TranslateX           # Matrix value E
     double TranslateY           # Matrix value F
+  ]])
+
+  struct("FontMetrics", { comment="Font metrics, measured in pixels relative to the display" }, [[
+    int Height       # Capitalised font height
+    int LineSpacing  # Vertical advance from one line to the next
+    int Ascent       # Height from the baseline to the top of the font, including accents.
+    int Descent      # Height from the baseline to the bottom of the font
   ]])
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
@@ -472,6 +494,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 
   class("TurbulenceFX",   { base='FilterEffect', src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
 
+  class('VectorClip', { src='vectors/clip.cpp', output='vectors/clip_def.cpp' }, [[
+    obj(VectorViewport) Viewport # Hosts the Vector objects that will contribute to the clip path.
+    int(VUNIT) Units             # Defines the coordinate system for fields X, Y, Width and Height.
+    int(VCLF) Flags              # Optional flags.
+  ]])
+
   class("VectorFilter",   { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
     double X                  # Left-most position of filter area
     double Y                  # Top-most position of filter area
@@ -485,6 +513,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     int(VUNIT) PrimitiveUnits # VUNIT constant
     int Dimensions            # Flags for detailing area values
     int(VCS) ColourSpace      # Operating colour space for RGB values
+    int(VFA) AspectRatio      # Aspect ratio to use when scaling X/Y values
   ]])
 
   methods("vector", "Vec", {
@@ -538,7 +567,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     { id=30, name="DeleteLine" }
   })
 
-  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp", references={ 'VTXF', 'VTS' }  })
+  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp", references={ 'VTXF', 'VTS' } })
+
+  class('VectorGroup', { base='Vector', src='vectors/group.cpp' })
 
   class('VectorWave', { base='Vector', src='vectors/wave.cpp' })
 
@@ -552,10 +583,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 
   class('VectorEllipse', { base='Vector', src='vectors/ellipse.cpp' })
 
-  class('VectorClip', { base='Vector', references={ 'VUNIT' }, src='vectors/clip.cpp', output='vectors/clip_def.cpp' })
-
   class('VectorViewport', { base='Vector', references={ 'VOF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
-   
+
   functionNames("vec",
     "DrawPath",
     "FreePath",
@@ -582,12 +611,33 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "MultiplyMatrix",
     "Scale",
     "ParseTransform",
-    "ResetMatrix")
+    "ResetMatrix",
+    "GetFontHandle",
+    "GetFontMetrics",
+    "CharWidth",
+    "StringWidth",
+    "FlushMatrix")
 
   c_insert([[
+
 //********************************************************************************************************************
 
-INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
+inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
+{
+   DOUBLE t0 = This.ScaleX * Other.ScaleX + This.ShearY * Other.ShearX;
+   DOUBLE t2 = This.ShearX * Other.ScaleX + This.ScaleY * Other.ShearX;
+   DOUBLE t4 = This.TranslateX * Other.ScaleX + This.TranslateY * Other.ShearX + Other.TranslateX;
+   This.ShearY     = This.ScaleX * Other.ShearY + This.ShearY * Other.ScaleY;
+   This.ScaleY     = This.ShearX * Other.ShearY + This.ScaleY * Other.ScaleY;
+   This.TranslateY = This.TranslateX  * Other.ShearY + This.TranslateY * Other.ScaleY + Other.TranslateY;
+   This.ScaleX     = t0;
+   This.ShearX     = t2;
+   This.TranslateX = t4;
+}
+
+//********************************************************************************************************************
+
+inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->Class->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
@@ -601,6 +651,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "ACHROMATOMALY",
     "ACHROMATOPSIA",
     "ALIGN",
+    "ALT-FILL",
     "AMPLITUDE",
     "ANIMATEMOTION",
     "ANIMATETRANSFORM",
@@ -665,6 +716,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "FEDIFFUSELIGHTING",
     "FEDISPLACEMENTMAP",
     "FEDISTANTLIGHT",
+    "FEDROPSHADOW",
     "FEFLOOD",
     "FEGAUSSIANBLUR",
     "FEIMAGE",
@@ -826,6 +878,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "X",
     "X1",
     "X2",
+    "XOFFSET",
     "XLINK:HREF",
     "XML:SPACE",
     "XMLNS",
@@ -833,6 +886,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "Y",
     "Y1",
     "Y2",
+    "YOFFSET",
     "Z")
 
   hash("SVF", "0x%s",
@@ -1057,6 +1111,9 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "LIGHTING-COLOR",
     "LIGHTING-COLOUR",
     "LIMITINGCONEANGLE",
+    "LOOP-LIMIT",
+    "MASKCONTENTUNITS",
+    "MASKUNITS",
     "POINTSATX",
     "POINTSATY",
     "POINTSATZ",
@@ -1082,4 +1139,52 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "EXTRA-EXPANDED",
     "ULTRA-EXPANDED"
     )
+
+    c_insert([[
+
+INLINE ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
+   struct vecSubscribeInput args = { Mask, &Callback };
+   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERR vecSubscribeKeyboard(APTR Ob, FUNCTION Callback) {
+   struct vecSubscribeKeyboard args = { &Callback };
+   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
+   struct vecSubscribeFeedback args = { Mask, &Callback };
+   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
+}
+
+namespace fl {
+   using namespace pf;
+
+constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, LONG(Value)); }
+
+constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
+constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }
+
+constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
+constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }
+
+constexpr FieldValue Sequence(CSTRING Value) { return FieldValue(FID_Sequence, Value); }
+inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence, Value.c_str()); }
+
+constexpr FieldValue FontStyle(CSTRING Value) { return FieldValue(FID_FontStyle, Value); }
+inline FieldValue FontStyle(std::string &Value) { return FieldValue(FID_FontStyle, Value.c_str()); }
+
+template <class T> FieldValue RoundX(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundX value must be numeric");
+   return FieldValue(FID_RoundX, Value);
+}
+
+template <class T> FieldValue RoundY(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundY value must be numeric");
+   return FieldValue(FID_RoundY, Value);
+}
+
+}
+]])
+
 end)

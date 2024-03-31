@@ -2,8 +2,7 @@
 //
 // The 'id' member of the Window class references the Parasol Scintilla object.
 //
-// The Window class is not the application window, but the target surface
-// for scintilla draw operations.
+// The Window class is not the application window, but the target surface for scintilla draw operations.
 
 inline OBJECTID getSurfaceID(Scintilla::Window* win)
 {
@@ -39,7 +38,7 @@ bool Scintilla::Window::HasFocus()
 
    log.branch();
 
-   if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
+   if (gfxGetSurfaceInfo(getSurfaceID(this), &info) IS ERR::Okay) {
       if (info->hasFocus()) return 1;
    }
 
@@ -57,7 +56,7 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
    // Before any size allocated pretend its 1000 wide so not scrolled
    Scintilla::PRectangle rc(0, 0, 1000, 1000);
 
-   if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
+   if (gfxGetSurfaceInfo(getSurfaceID(this), &info) IS ERR::Okay) {
       rc.left   = info->AbsX;
       rc.top    = info->AbsY;
       rc.right  = info->AbsX + info->Width;
@@ -94,7 +93,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
    // Get the position of the other window
 
-   if (!gfxGetSurfaceInfo(getSurfaceID(&relativeTo), &info)) {
+   if (gfxGetSurfaceInfo(getSurfaceID(&relativeTo), &info) IS ERR::Okay) {
       rc.left -= info->X;
       rc.top  -= info->Y;
    }
@@ -118,7 +117,7 @@ Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
 {
    DISPLAYINFO *info;
-   if (!gfxGetDisplayInfo(0, &info)) {
+   if (gfxGetDisplayInfo(0, &info) IS ERR::Okay) {
       return Scintilla::PRectangle(0, 0, info->Width, info->Height);
    }
    else return 0;
@@ -200,7 +199,7 @@ void Scintilla::Window::SetCursor(Cursor curs)
    }
 
    if (wid) {
-      if (!AccessObject(getSurfaceID(this), 500, &surface)) {
+      if (AccessObject(getSurfaceID(this), 500, &surface) IS ERR::Okay) {
          surface->setCursor(cursorid);
          cursorLast = curs;
          ReleaseObject(surface);

@@ -10,8 +10,8 @@ static inline OBJECTID get_display(Window Window)
 
    if (!XDisplay) return 0;
 
-   if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1,
-         False, AnyPropertyType, &atom, &format, &nitems, &nbytes, (UBYTE **)&data) IS Success) {
+   if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1, False, AnyPropertyType, &atom, &format, &nitems,
+         &nbytes, (UBYTE **)&data) IS Success) {
       display_id = data[0];
       XFree(data);
       return display_id;
@@ -44,7 +44,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          case ButtonRelease:    handle_button_release(&xevent); break;
          case ConfigureNotify:  handle_configure_notify(&xevent.xconfigure); break;
          case EnterNotify:      handle_enter_notify(&xevent.xcrossing); break;
-         case Expose:           handle_exposure(&xevent.xexpose); break;
+         //case Expose:           handle_exposure(&xevent.xexpose); break;
          case KeyPress:         handle_key_press(&xevent); break;
          case KeyRelease:       handle_key_release(&xevent); break;
          case CirculateNotify:  handle_stack_change(&xevent.xcirculate); break;
@@ -74,7 +74,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
                std::vector<OBJECTID> list;
                { // Make a local copy of the focus list
-                  const std::lock_guard<std::mutex> lock(glFocusLock);
+                  const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
                   list = glFocusList;
                }
 
@@ -101,16 +101,16 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                      auto func = &glWindowHooks[hook];
                      ERROR result;
 
-                     if (func->Type IS CALL_STDC) {
+                     if (func->isC()) {
                         pf::SwitchContext ctx(func->StdC.Context);
-                        auto callback = (ERROR (*)(OBJECTID))func->StdC.Routine;
-                        result = callback(surface_id);
+                        auto callback = (ERROR (*)(OBJECTID, APTR))func->StdC.Routine;
+                        result = callback(surface_id, func->StdC.Meta);
                      }
-                     else if (func->Type IS CALL_SCRIPT) {
+                     else if (func->isScript()) {
                         ScriptArg args[] = {
                            { "SurfaceID", surface_id, FDF_OBJECTID }
                         };
-                        scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
+                        scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
                      }
                      else result = ERR_Okay;
 
@@ -196,7 +196,7 @@ void handle_button_press(XEvent *xevent)
 
       input.Type      = JET::WHEEL;
       input.Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL;
-      input.Value     = value;
+      input.Values[0] = value;
       input.Timestamp = PreciseTime();
 
       feed.Object   = NULL;
@@ -212,15 +212,15 @@ void handle_button_press(XEvent *xevent)
    if ((pointer = gfxAccessPointer())) {
       if (xevent->xbutton.button IS 1) {
          input.Type  = JET::BUTTON_1;
-         input.Value = 1;
+         input.Values[0] = 1;
       }
       else if (xevent->xbutton.button IS 2) {
          input.Type  = JET::BUTTON_3;
-         input.Value = 1;
+         input.Values[0] = 1;
       }
       else if (xevent->xbutton.button IS 3) {
          input.Type  = JET::BUTTON_2;
-         input.Value = 1;
+         input.Values[0] = 1;
       }
       ReleaseObject(pointer);
    }
@@ -261,22 +261,22 @@ void handle_button_release(XEvent *xevent)
    feed.Size     = sizeof(input);
    input.Type  = JET::NIL;
    input.Flags = JTYPE::NIL;
-   input.Value = 0;
+   input.Values[0] = 0;
    input.Timestamp = PreciseTime();
 
    objPointer *pointer;
    if ((pointer = gfxAccessPointer())) {
       if (xevent->xbutton.button IS 1) {
          input.Type  = JET::BUTTON_1;
-         input.Value = 0;
+         input.Values[0] = 0;
       }
       else if (xevent->xbutton.button IS 2) {
          input.Type  = JET::BUTTON_3;
-         input.Value = 0;
+         input.Values[0] = 0;
       }
       else if (xevent->xbutton.button IS 3) {
          input.Type  = JET::BUTTON_2;
-         input.Value = 0;
+         input.Values[0] = 0;
       }
       ReleaseObject(pointer);
    }
@@ -299,12 +299,11 @@ void handle_stack_change(XCirculateEvent *xevent)
 }
 
 //********************************************************************************************************************
+// Event handler for window resizing and movement
 
 void handle_configure_notify(XConfigureEvent *xevent)
 {
    pf::Log log(__FUNCTION__);
-   extDisplay *display;
-   OBJECTID display_id;
 
    LONG x = xevent->x;
    LONG y = xevent->y;
@@ -321,33 +320,27 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
    log.traceBranch("Win: %d, Pos: %dx%d,%dx%d", (int)xevent->window, x, y, width, height);
 
-   if ((display_id = get_display(xevent->window))) {
-      // Delete expose events that were generated by X11 during the resize
-
-      // REMOVED: Sometimes ConfigureNotify is called during a window mapping and by deleting expose events,
-      // we may accidentally kill an expose that we actually need.
-      //
-      //while (XCheckTypedWindowEvent(XDisplay, xevent->window, Expose, &event) IS True);
-
-      // Update the display dimensions
-
+   if (auto display_id = get_display(xevent->window)) {
+      extDisplay *display;
       if (!AccessObject(display_id, 3000, &display)) {
          Window childwin;
          LONG absx, absy;
 
-         XTranslateCoordinates(XDisplay, (Window)display->WindowHandle, DefaultRootWindow(XDisplay), 0, 0, &absx, &absy, &childwin);
+         XTranslateCoordinates(XDisplay, (Window)display->WindowHandle, DefaultRootWindow(XDisplay),
+            0, 0, &absx, &absy, &childwin);
 
          display->X = absx;
          display->Y = absy;
          display->Width  = width;
          display->Height = height;
+         resize_pixmap(display, width, height);
          acResize(display->Bitmap, width, height, 0.0);
 
          FUNCTION feedback = display->ResizeFeedback;
 
          ReleaseObject(display);
 
-         // Notification occurs with the display and surface released so as to reduce the potential for dead-locking.
+         // Notify with the display and surface unlocked, this reduces the potential for dead-locking.
 
          log.trace("Sending redimension notification: %dx%d,%dx%d", absx, absy, width, height);
 
@@ -355,7 +348,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
       }
       else log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
    }
-   else log.warning("Failed to get display ID.");
+   else log.warning("Failed to retrieve Display from X window.");
 }
 
 //********************************************************************************************************************
@@ -723,22 +716,19 @@ void process_movement(Window Window, LONG X, LONG Y)
          pointer->set(FID_Surface, GetOwnerID(display_id)); // Alter the surface of the pointer so that it refers to the correct root window
       }
 
-      // Refer to the handler code in the Screen class to see how the HostX and HostY fields are updated from afar.
+      // Refer to the handler code in the Display class to see how the HostX and HostY fields are updated from afar.
 
       struct acDataFeed feed;
-      struct dcDeviceInput input[2];
+      struct dcDeviceInput input;
       feed.Object   = NULL;
       feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
-      input[0].Type      = JET::ABS_X;
-      input[0].Flags     = JTYPE::NIL;
-      input[0].Value     = X;
-      input[0].Timestamp = PreciseTime();
-      input[1].Type      = JET::ABS_Y;
-      input[1].Flags     = JTYPE::NIL;
-      input[1].Value     = Y;
-      input[1].Timestamp = input[0].Timestamp;
+      input.Type      = JET::ABS_XY;
+      input.Flags     = JTYPE::NIL;
+      input.Values[0] = X;
+      input.Values[1] = Y;
+      input.Timestamp = PreciseTime();
       Action(AC_DataFeed, pointer, &feed);
 
       ReleaseObject(pointer);

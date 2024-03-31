@@ -12,7 +12,7 @@
     <idstring>ID_BITMAP</idstring>
     <category>Graphics</category>
     <include>modules/bitmap.h</include>
-    <copyright>Paul Manias 2003-2023</copyright>
+    <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
 <p>To create a new bitmap object, you need to specify its <field>Width</field> and <field>Height</field> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
@@ -89,8 +89,8 @@
       <name>Resize</name>
       <comment>Resizes a bitmap object's dimensions.</comment>
       <description>
-<p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained after this process.</p>
-<p>The image data is cleared with <field>BkgdRGB</field> if the CLEAR flag is defined in <field>Flags</field>.</p>
+<p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained by this process.</p>
+<p>The image data is cleared with <field>BkgdRGB</field> if the <code>CLEAR</code> flag is defined in <field>Flags</field>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -126,7 +126,7 @@
     <method>
       <name>Compress</name>
       <comment>Compresses bitmap data to save memory.</comment>
-      <prototype>ERROR bmpCompress(OBJECTPTR Object, LONG Level)</prototype>
+      <prototype>ERR bmpCompress(OBJECTPTR Object, LONG Level)</prototype>
       <input>
         <param type="LONG" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
       </input>
@@ -147,7 +147,7 @@
     <method>
       <name>ConvertToLinear</name>
       <comment>Convert a bitmap's colour space to linear RGB.</comment>
-      <prototype>ERROR bmpConvertToLinear(OBJECTPTR Object)</prototype>
+      <prototype>ERR bmpConvertToLinear(OBJECTPTR Object)</prototype>
       <description>
 <p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <field>ColourSpace</field> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>LINEAR_RGB</code>.</p>
@@ -164,7 +164,7 @@
     <method>
       <name>ConvertToRGB</name>
       <comment>Convert a bitmap's colour space to standard RGB.</comment>
-      <prototype>ERROR bmpConvertToRGB(OBJECTPTR Object)</prototype>
+      <prototype>ERR bmpConvertToRGB(OBJECTPTR Object)</prototype>
       <description>
 <p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <field>ColourSpace</field> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>SRGB</code>.</p>
@@ -181,7 +181,7 @@
     <method>
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
-      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+      <prototype>ERR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
       <input>
         <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
         <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
@@ -205,7 +205,7 @@
     <method>
       <name>Decompress</name>
       <comment>Decompresses a compressed bitmap.</comment>
-      <prototype>ERROR bmpDecompress(OBJECTPTR Object, LONG RetainData)</prototype>
+      <prototype>ERR bmpDecompress(OBJECTPTR Object, LONG RetainData)</prototype>
       <input>
         <param type="LONG" name="RetainData">Retains the compression data if TRUE.</param>
       </input>
@@ -222,9 +222,9 @@
     <method>
       <name>Demultiply</name>
       <comment>Reverses the conversion process performed by Premultiply().</comment>
-      <prototype>ERROR bmpDemultiply(OBJECTPTR Object)</prototype>
+      <prototype>ERR bmpDemultiply(OBJECTPTR Object)</prototype>
       <description>
-<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised.</p>
+<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <field>Flags</field>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -237,7 +237,7 @@
     <method>
       <name>DrawRectangle</name>
       <comment>Draws rectangles, both filled and unfilled.</comment>
-      <prototype>ERROR bmpDrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
+      <prototype>ERR bmpDrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
       <input>
         <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
         <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
@@ -258,7 +258,7 @@
     <method>
       <name>Flip</name>
       <comment>Flips a bitmap around the horizontal or vertical axis.</comment>
-      <prototype>ERROR bmpFlip(OBJECTPTR Object, FLIP Orientation)</prototype>
+      <prototype>ERR bmpFlip(OBJECTPTR Object, FLIP Orientation)</prototype>
       <input>
         <param type="FLIP" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.</param>
       </input>
@@ -275,7 +275,7 @@
     <method>
       <name>GetColour</name>
       <comment>Converts Red, Green, Blue components into a single colour value.</comment>
-      <prototype>ERROR bmpGetColour(OBJECTPTR Object, LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour)</prototype>
+      <prototype>ERR bmpGetColour(OBJECTPTR Object, LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour)</prototype>
       <input>
         <param type="LONG" name="Red">Red component from 0 - 255.</param>
         <param type="LONG" name="Green">Green component from 0 - 255.</param>
@@ -295,7 +295,7 @@
     <method>
       <name>Premultiply</name>
       <comment>Premultiplies RGB channel values by the alpha channel.</comment>
-      <prototype>ERROR bmpPremultiply(OBJECTPTR Object)</prototype>
+      <prototype>ERR bmpPremultiply(OBJECTPTR Object)</prototype>
       <description>
 <p>Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The exact formula applied per channel is <code>(Colour * Alpha + 0xff)&gt;&gt;8</code>.  The alpha channel is not affected.</p>
 <p>This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are already pre-multiplied, the method returns immediately.</p>
@@ -312,7 +312,7 @@
     <method>
       <name>SetClipRegion</name>
       <comment>Sets a clipping region for a bitmap object.</comment>
-      <prototype>ERROR bmpSetClipRegion(OBJECTPTR Object, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+      <prototype>ERR bmpSetClipRegion(OBJECTPTR Object, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
       <input>
         <param type="LONG" name="Number">The number of the clip region to set.</param>
         <param type="LONG" name="Left">The horizontal start of the clip region.</param>

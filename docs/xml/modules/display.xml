@@ -8,7 +8,7 @@
     <version>1</version>
     <status>stable</status>
     <prefix>gfx</prefix>
-    <copyright>Paul Manias 2003-2023</copyright>
+    <copyright>Paul Manias 2003-2024</copyright>
     <classes>
       <class>Bitmap</class>
       <class>Clipboard</class>
@@ -41,15 +41,15 @@
     <name>CheckIfChild</name>
     <category>Surfaces</category>
     <comment>Checks if a surface is a child of another particular surface.</comment>
-    <prototype>ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
+    <prototype>ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
     <input>
       <param type="OBJECTID" name="Parent">The surface that is assumed to be the parent.</param>
       <param type="OBJECTID" name="Child">The child surface to check.</param>
     </input>
     <description>
-<p>This function checks if a surface identified by the Child value is the child of the surface identified by the Parent value.  <code>ERR_True</code> is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent values are equal.  All other return codes indicate false or failure.</p>
+<p>This function checks if a surface identified by the Child value is the child of the surface identified by the Parent value.  <code>ERR::True</code> is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent values are equal.  All other return codes indicate false or failure.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -61,7 +61,7 @@
     <name>CopyArea</name>
     <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
       <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
@@ -77,9 +77,9 @@
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
 <p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
 <p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF::ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
-<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF::LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
+<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF::LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR::InvalidState</code> will be returned if that is the case).</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
       <error code="InvalidState">Object was in an incorrect state for the operation.</error>
@@ -91,7 +91,7 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
       <param type="objBitmap *" name="Bitmap">Destination bitmap.</param>
@@ -107,7 +107,7 @@
 <p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a <code>BitmapSurface</code> structure.</p>
 <p>The X, Y, Width and Height parameters define the area from the source that you wish to copy.  The XDest and YDest parameters define the top left corner that you will blit the graphics to in the destination.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -118,7 +118,7 @@
     <name>CopySurface</name>
     <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
       <param type="objBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
@@ -133,7 +133,7 @@
     <description>
 <p>This function will copy the graphics data from any surface object to a target <class name="Bitmap">Bitmap</class>.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -196,7 +196,7 @@
     <name>ExposeSurface</name>
     <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
-    <prototype>ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+    <prototype>ERR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
       <param type="LONG" name="X">The horizontal coordinate of the area to expose.</param>
@@ -208,7 +208,7 @@
     <description>
 <p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF::CHILDREN</code> flag.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -276,7 +276,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetCursorInfo</name>
     <category>Cursor</category>
     <comment>Retrieves graphics information from the active mouse cursor.</comment>
-    <prototype>ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
+    <prototype>ERR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
     <input>
       <param type="struct CursorInfo *" name="Info">Pointer to a CursorInfo structure.</param>
       <param type="LONG" name="Size">The byte-size of the Info structure.</param>
@@ -286,7 +286,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>If there is no cursor (e.g. this is likely on touch-screen devices) then all field values will be set to zero.</p>
 <p>Note: If the hardware cursor is monochrome, the bits-per-pixel setting will be set to 2 on return.  This does not indicate a 4 colour cursor image; rather colour 0 is the mask, 1 is the foreground colour (black), 2 is the background colour (white) and 3 is an XOR pixel.  When creating the bitmap, always set the palette to the RGB values that are wanted.  The mask colour for the bitmap must refer to colour index 0.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NoSupport">This request is not supported.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -297,15 +297,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetCursorPos</name>
     <category>Cursor</category>
     <comment>Returns the coordinates of the UI pointer.</comment>
-    <prototype>ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
+    <prototype>ERR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
-      <param type="DOUBLE *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
-      <param type="DOUBLE *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+      <param type="DOUBLE *" name="X">Variable that will store the pointer's horizontal coordinate.</param>
+      <param type="DOUBLE *" name="Y">Variable that will store the pointer's vertical coordinate.</param>
     </input>
     <description>
-<p>This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen based then the coordinates will reflect the last position that a touch event occurred.</p>
+<p>This function will return the current coordinates of the mouse cursor.  If the device is touch-screen based then the coordinates will reflect the last position that a touch event occurred.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
     </result>
@@ -315,7 +315,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetDisplayInfo</name>
     <category>Display</category>
     <comment>Retrieves display information.</comment>
-    <prototype>ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
+    <prototype>ERR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
     <input>
       <param type="OBJECTID" name="Display">Object ID of the display to be analysed.</param>
       <param type="struct DisplayInfoV3 **" name="Info">This reference will receive a pointer to a DISPLAYINFO structure.</param>
@@ -324,7 +324,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to retrieve information about the default monitor by using a Display of zero.</p>
 <p>The resulting <code>DISPLAYINFO</code> structure values remain good until the next call to this function, at which point they will be overwritten.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -352,7 +352,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="JET" name="Type" lookup="JET">JET type integer.</param>
     </input>
     <description>
-<p>This function converts JET integer constants to their string equivalent.</p>
+<p>This function converts <code>JET</code> integer constants to their string equivalent.</p>
     </description>
     <result type="CSTRING">A string describing the input type is returned or NULL if the Type is invalid.</result>
   </function>
@@ -372,17 +372,17 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetRelativeCursorPos</name>
     <category>Cursor</category>
     <comment>Returns the coordinates of the pointer cursor, relative to a surface object.</comment>
-    <prototype>ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
+    <prototype>ERR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Unique ID of the surface that the coordinates need to be relative to.</param>
-      <param type="DOUBLE *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
-      <param type="DOUBLE *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+      <param type="DOUBLE *" name="X">Variable that will store the pointer's horizontal coordinate.</param>
+      <param type="DOUBLE *" name="Y">Variable that will store the pointer's vertical coordinate.</param>
     </input>
     <description>
 <p>This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the surface object that is specified in the Surface argument.</p>
 <p>The X and Y parameters will not be set if a failure occurs.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
     </result>
@@ -392,7 +392,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceCoords</name>
     <category>Surfaces</category>
     <comment>Returns the dimensions of a surface.</comment>
-    <prototype>ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display is queried.</param>
       <param type="LONG *" name="X">The X coordinate of the surface is returned here.</param>
@@ -405,7 +405,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>GetSurfaceCoords() retrieves the dimensions that describe a surface object's area as X, Y, Width and Height.  This is the fastest way to retrieve surface dimensions when access to the object structure is not already available.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -416,7 +416,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceFlags</name>
     <category>Surfaces</category>
     <comment>Retrieves the Flags field from a surface.</comment>
-    <prototype>ERROR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
+    <prototype>ERR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level surface is queried.</param>
       <param type="RNF *" name="Flags" lookup="RNF">The flags value is returned here.</param>
@@ -425,7 +425,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>This function returns the current Flags field from a surface.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
 <p>For information on the available flags, please refer to the Flags field of the <class name="Surface">Surface</class> class.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -436,7 +436,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceInfo</name>
     <category>Surfaces</category>
     <comment>Retrieves display information for any surface object without having to access it directly.</comment>
-    <prototype>ERROR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
+    <prototype>ERR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The unique ID of a surface to query.  If zero, the root surface is returned.</param>
       <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a SurfaceInfo pointer that describes the Surface object.</param>
@@ -444,7 +444,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the AccessObject() function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -467,7 +467,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetVisibleArea</name>
     <category>Surfaces</category>
     <comment>Returns the visible region of a surface.</comment>
-    <prototype>ERROR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display will be queried.</param>
       <param type="LONG *" name="X">The X coordinate of the visible area.</param>
@@ -480,7 +480,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent surfaces. The resulting coordinates are relative to point <code>0,0</code> of the queried surface. If the surface is not obscured, then the resulting coordinates will be <code>(0,0),(Width,Height)</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -491,7 +491,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>LockBitmap</name>
     <category>Surfaces</category>
     <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
+    <prototype>ERR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
       <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
@@ -501,7 +501,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
 <p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function module="Display">UnlockBitmap</function> function.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
@@ -511,7 +511,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>LockCursor</name>
     <category>Cursor</category>
     <comment>Anchors the cursor so that it cannot move without explicit movement signals.</comment>
-    <prototype>ERROR gfxLockCursor(OBJECTID Surface)</prototype>
+    <prototype>ERR gfxLockCursor(OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should send movement signals to.</param>
     </input>
@@ -519,7 +519,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface referenced in the Surface parameter.  The pointer will not move unless the <function module="Display">SetCursorPos</function> function is called. The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200 microseconds.</p>
 <p>The anchor can be released at any time by calling the <function module="Display">UnlockCursor</function> function.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NoSupport">This request is not supported.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
@@ -564,7 +564,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>Resample</name>
     <category>Bitmap</category>
     <comment>Resamples a bitmap by dithering it to a new set of colour masks.</comment>
-    <prototype>ERROR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
+    <prototype>ERR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The bitmap object to be resampled.</param>
       <param type="struct ColourFormat *" name="ColourFormat">The new colour format to be applied to the bitmap.</param>
@@ -573,7 +573,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The Resample() function provides a means for resampling a bitmap to a new colour format without changing the actual bit depth of the image. It uses dithering so as to retain the quality of the image when down-sampling.  This function is generally used to 'pre-dither' true colour bitmaps in preparation for copying to bitmaps with lower colour quality.</p>
 <p>You are required to supply a ColourFormat structure that describes the colour format that you would like to apply to the bitmap's image data.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -583,7 +583,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>RestoreCursor</name>
     <category>Cursor</category>
     <comment>Returns the pointer image to its original state.</comment>
-    <prototype>ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner)</prototype>
+    <prototype>ERR gfxRestoreCursor(PTC Cursor, OBJECTID Owner)</prototype>
     <input>
       <param type="PTC" name="Cursor" lookup="PTC">The cursor image that the pointer will be restored to (0 for the default).</param>
       <param type="OBJECTID" name="Owner">The ownership ID that was given in the initial call to SetCursor().</param>
@@ -592,7 +592,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Use the RestoreCursor() function to undo an earlier call to <function module="Display">SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function module="Display">SetCursor</function>.</p>
 <p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTC::NOCHANGE</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
@@ -638,7 +638,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
-    <prototype>ERROR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <prototype>ERR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
@@ -653,7 +653,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <types lookup="CRF"/>
 <p>The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <function module="Display">RestoreCursor</function> is called.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoSupport">This request is not supported.</error>
@@ -666,7 +666,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursorPos</name>
     <category>Cursor</category>
     <comment>Changes the position of the pointer cursor.</comment>
-    <prototype>ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="DOUBLE" name="X">The new horizontal coordinate for the pointer.</param>
       <param type="DOUBLE" name="Y">The new vertical coordinate for the pointer.</param>
@@ -674,7 +674,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>Changes the position of the pointer cursor using coordinates relative to the entire display.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
     </result>
@@ -684,7 +684,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCustomCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
@@ -716,7 +716,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 }
 </pre>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoSupport">This request is not supported.</error>
@@ -728,7 +728,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetHostOption</name>
     <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
-    <prototype>ERROR gfxSetHostOption(HOST Option, LARGE Value)</prototype>
+    <prototype>ERR gfxSetHostOption(HOST Option, LARGE Value)</prototype>
     <input>
       <param type="HOST" name="Option" lookup="HOST">One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</param>
       <param type="LARGE" name="Value">The value to be applied to the option.</param>
@@ -736,7 +736,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>For internal usage only.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
     </result>
   </function>
@@ -761,7 +761,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>StartCursorDrag</name>
     <category>Cursor</category>
     <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
-    <prototype>ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
+    <prototype>ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Source">Refers to an object that is managing the source data.</param>
       <param type="LONG" name="Item">A custom number that represents the item being dragged from the source.</param>
@@ -775,7 +775,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The Surface argument allows for a composite surface to be dragged by the mouse cursor as a graphical representation of the source item.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The Surface will be hidden on completion of the drag and drop operation.</p>
 <p>If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement and UserClickRelease actions normally reported from the SystemPointer will now include the <code>JD_DRAGITEM</code> flag in the ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="InUse">Resource is in use.</error>
       <error code="Failed">General failure.</error>
@@ -788,7 +788,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SubscribeInput</name>
     <category>Input</category>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
-    <prototype>ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
+    <prototype>ERR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given surface ID will be received.</param>
@@ -801,7 +801,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The client is required to remove the subscription with <function module="Display">UnsubscribeInput</function> once tracking is no longer required.</p>
 <p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.</p>
 <p>A callback is required for receiving the input events.  The following C++ code illustrates a method for processing events in the callback:</p>
-<pre>ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+<pre>ERR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    for (auto e=Events; e; e=e-&gt;Next) {
       if (((e-&gt;Flags &amp; JTYPE::BUTTON) != JTYPE::NIL) and (e-&gt;Value &gt; 0)) {
@@ -809,16 +809,17 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 </pre>
 <p>All processable events are referenced in the InputEvent structure in the Events parameter.</p>
-<p>JET constants are as follows and take note of <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> which are software generated and not a device event:</p>
+<p>
+<code>JET</code> constants are as follows and take note of <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> which are software generated and not a device event:</p>
 <types lookup="JET"/>
-<p>The JTYPE values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the original subscription call.</p>
+<p>The <code>JTYPE</code> values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate <code>JTYPE</code> flag must have been set in the original subscription call.</p>
 <types lookup="JTYPE"/>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -841,7 +842,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnlockBitmap</name>
     <category>Surfaces</category>
     <comment>Unlocks any earlier call to gfxLockBitmap().</comment>
-    <prototype>ERROR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
+    <prototype>ERR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
       <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
@@ -849,7 +850,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function module="Display">LockBitmap</function>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -859,14 +860,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnlockCursor</name>
     <category>Cursor</category>
     <comment>Undoes an earlier call to LockCursor()</comment>
-    <prototype>ERROR gfxUnlockCursor(OBJECTID Surface)</prototype>
+    <prototype>ERR gfxUnlockCursor(OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object used for calling LockCursor().</param>
     </input>
     <description>
 <p>Call this function to undo any earlier calls to LockCursor() and return the mouse pointer to its regular state.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NotLocked">There is no exclusive lock on this object.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
@@ -878,14 +879,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnsubscribeInput</name>
     <category>Input</category>
     <comment>Removes an input subscription.</comment>
-    <prototype>ERROR gfxUnsubscribeInput(LONG Handle)</prototype>
+    <prototype>ERR gfxUnsubscribeInput(LONG Handle)</prototype>
     <input>
       <param type="LONG" name="Handle">Reference to a handle returned by SubscribeInput().</param>
     </input>
     <description>
 <p>This function removes an input subscription that has been created with <function module="Display">SubscribeInput</function>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NotFound">A search routine in this function failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -896,7 +897,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>WindowHook</name>
     <category>Surfaces</category>
     <comment>Adds a function hook for receiving window messages from a host desktop.</comment>
-    <prototype>ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback)</prototype>
+    <prototype>ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTID" name="SurfaceID">A hosted surface to be monitored.</param>
       <param type="WH" name="Event" lookup="WH">A window hook event.</param>
@@ -905,7 +906,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>Adds a function hook for receiving window events from a host desktop.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>

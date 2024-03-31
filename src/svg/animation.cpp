@@ -1,9 +1,9 @@
 
 //********************************************************************************************************************
 
-static ERROR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
+static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
-   if (SVG->Animations.empty()) return ERR_Okay;
+   if (SVG->Animations.empty()) return ERR::Okay;
 
    for (auto &anim : SVG->Animations) {
       if (anim.Values.size() < 2) continue; // Skip animation if no From and To list is specified.
@@ -46,7 +46,7 @@ restart:
 
          if (anim.Transform) { // Animated transform
             objVector *vector;
-            if (!AccessObject(anim.TargetVector, 1000, &vector)) {
+            if (AccessObject(anim.TargetVector, 1000, &vector) IS ERR::Okay) {
                if (!anim.Matrix) {
                   vecNewMatrix(vector, &anim.Matrix);
                }
@@ -55,9 +55,9 @@ restart:
                   case AT_TRANSLATE: break;
                   case AT_SCALE: break;
                   case AT_ROTATE: {
-                     DOUBLE from_angle, from_cx, from_cy, to_angle, to_cx, to_cy;
-                     read_numseq(anim.Values[vi], &from_angle, &from_cx, &from_cy, TAGEND);
-                     read_numseq(anim.Values[vi+1], &to_angle, &to_cx, &to_cy, TAGEND);
+                     DOUBLE from_angle = 0, from_cx = 0, from_cy = 0, to_angle = 0, to_cx = 0, to_cy = 0;
+                     read_numseq(anim.Values[vi], { &from_angle, &from_cx, &from_cy });
+                     read_numseq(anim.Values[vi+1], { &to_angle, &to_cx, &to_cy } );
 
                      DOUBLE mod = 1.0 / (DOUBLE)(anim.Values.size() - 1);
                      DOUBLE ratio;
@@ -86,18 +86,19 @@ restart:
       }
    }
 
-   if (SVG->FrameCallback.Type != CALL_NONE) {
-      if (SVG->FrameCallback.Type IS CALL_STDC) {
+   SVG->Scene->Viewport->draw();
+
+   if (SVG->FrameCallback.defined()) {
+      if (SVG->FrameCallback.isC()) {
          pf::SwitchContext context(SVG->FrameCallback.StdC.Context);
-         auto routine = (void (*)(extSVG *))SVG->FrameCallback.StdC.Routine;
-         routine(SVG);
+         auto routine = (void (*)(extSVG *, APTR))SVG->FrameCallback.StdC.Routine;
+         routine(SVG, SVG->FrameCallback.StdC.Meta);
       }
-      else if (SVG->FrameCallback.Type IS CALL_SCRIPT) {
-         auto script = SVG->FrameCallback.Script.Script;
+      else if (SVG->FrameCallback.isScript()) {
          const ScriptArg args[] = { { "SVG", SVG, FD_OBJECTPTR } };
-         scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         scCallback(SVG->FrameCallback.Script.Script, SVG->FrameCallback.Script.ProcedureID, args, std::ssize(args), NULL);
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

@@ -1,0 +1,35 @@
+<svg version="1.1" baseProfile="full" id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+The rules are different regarding the geometry of a shape when clipping and masking.
+For example, a clip-path does not take into account the stroke of the shape used for clipping.
+It is however, used when masking.
+
+The test is passed if there are two identical darkblue circles at the top of the illustration, and
+below those two circles, two more circles should appear. They are of lighter appearance,
+the one on the left has a darker and thick stroke.
+-->
+
+  <g font-family="SVGFreeSansASCII,sans-serif" font-size="12">
+    <text font-size="18" x="240" y="35" text-anchor="middle">Testing stroke inclusion for 'clip-path' and 'mask'</text>
+
+    <defs>
+      <clipPath id="one" clipPathUnits="objectBoundingBox">
+        <circle cx="0.3" cy="0.5" r="0.2" stroke-width="0.15" fill="none" stroke="red"/>
+        <circle cx="0.7" cy="0.5" r="0.2" stroke-width="0.15" fill="none" stroke="none"/>
+      </clipPath>
+    </defs>
+
+    <rect x="150" y="0" width="200" height="200" fill="darkblue" clip-path="url(#one)"/>
+    <text x="50" y="110">With a 'clip-path':</text>
+
+    <defs>
+      <mask id="two" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox" color-interpolation="linearRGB">
+        <circle cx="0.3" cy="0.5" r="0.2" stroke-width="0.15" fill="blue" stroke="red"/>
+        <circle cx="0.7" cy="0.5" r="0.2" stroke-width="0.15" fill="blue" stroke="none"/>
+      </mask>
+    </defs>
+
+    <rect x="150" y="150" width="200" height="200" fill="darkblue" mask="url(#two)"/>
+    <text x="50" y="260">With a 'mask':</text>
+  </g>
+</svg>

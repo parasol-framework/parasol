@@ -33,26 +33,28 @@
 
 namespace pf {
 
+DEFINE_ENUM_FLAG_OPERATORS(ERR)
+
 template <class T>
 class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
    public:
       LONG id;
       T *ptr;
-      ERROR error;
+      ERR error;
 
       ScopedAccessMemory(LONG ID, MEM Flags, LONG Milliseconds = 5000) {
          id = ID;
          error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
 
-      ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
+      ~ScopedAccessMemory() { if (error IS ERR::Okay) ReleaseMemory(ptr); }
 
-      bool granted() { return error == ERR_Okay; }
+      bool granted() { return error == ERR::Okay; }
 
       void release() {
-         if (!error) {
+         if (error IS ERR::Okay) {
             ReleaseMemory(ptr);
-            error = ERR_NotLocked;
+            error = ERR::NotLocked;
          }
       }
 };
@@ -77,12 +79,34 @@ template <typename F> deferred_call<F> Defer(F&& f) {
 }
 
 //********************************************************************************************************************
+// Deleter for use with std::unique_ptr to free objects correctly on destruction.  Note that these always assume that
+// the object pointer remains safe (cannot be deleted by external factors).
+//
+// E.g. std::unique_ptr<objVectorViewport, DeleteObject<objVectorViewport>> viewport;
+
+template <class T = BaseClass> struct DeleteObject {
+  void operator()(T *Object) const { if (Object) FreeResource(Object->UID); }
+};
+
+// Simplify the creation of unique pointers with the destructor
+
+template <class T = BaseClass> std::unique_ptr<T> make_unique_object(T *Object) {
+   return std::unique_ptr<T>(Object, DeleteObject{});
+}
+
+// Variant for std::shared_ptr
+
+template <class T = BaseClass> std::shared_ptr<T> make_shared_object(T *Object) {
+   return std::shared_ptr<T>(Object, DeleteObject{});
+}
+
+//********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = BaseClass>
 class ScopedObjectLock { // C++ wrapper for automatically releasing an object
    public:
-      ERROR error;
+      ERR error;
       T *obj;
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
@@ -94,26 +118,126 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
          obj = (T *)Object;
       }
 
-      ScopedObjectLock() { obj = NULL; error = ERR_NotLocked; }
-      ~ScopedObjectLock() { if (!error) ReleaseObject((OBJECTPTR)obj); }
-      bool granted() { return error == ERR_Okay; }
+      ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
+      ~ScopedObjectLock() { if (error IS ERR::Okay) ReleaseObject((OBJECTPTR)obj); }
+      bool granted() { return error == ERR::Okay; }
 
       T * operator->() { return obj; }; // Promotes underlying methods and fields
       T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 };
 
 //********************************************************************************************************************
-// Resource guard for any allocation that can be freed with FreeResource()
+// Resource guard for any allocation that can be freed with FreeResource().  Retains the resource ID rather than the
+// pointer to ensure that termination is safe even if the original resource gets terminated elsewhere.
 //
 // Usage: pf::GuardedResource resource(thing)
 
 template <class T>
-class GuardedResource { // C++ wrapper for terminating resources when scope is lost
+class GuardedResource {
    private:
-      T *resource;
+      MEMORYID id;
    public:
-      GuardedResource(T Resource) { resource = Resource; }
-      ~GuardedResource() { FreeResource(resource); }
+      GuardedResource(T Resource) {
+         static_assert(std::is_pointer<T>::value, "The resource value must be a pointer");
+         id = ((LONG *)Resource)[-2];
+      }
+      ~GuardedResource() { FreeResource(id); }
+};
+
+//********************************************************************************************************************
+// The object equivalent of GuardedResource.  Also guarantees safety for object termination.
+
+template <class T = BaseClass, class C = std::atomic_int>
+class GuardedObject {
+   private:
+      C * count;  // Count of GuardedObjects accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
+      T * object;
+
+   public:
+      OBJECTID id; // Object UID
+
+      // Constructors
+
+      GuardedObject() : count(new C(1)), object(NULL), id(0) { }
+
+      GuardedObject(T *Object) : count(new C(1)), object(Object), id(Object->UID) {
+         static_assert(std::is_base_of_v<BaseClass, T>, "The resource value must belong to BaseClass");
+      }
+
+      GuardedObject(const GuardedObject &other) { // Copy constructor
+         if (other.object) {
+            object = other.object;
+            count  = other.count;
+            count[0]++;
+         }
+         else { // If the other object is undefined then use a default state
+            object = NULL;
+            id     = 0;
+            count  = new C(1);
+         }
+      }
+
+      GuardedObject(GuardedObject &&other) { // Move constructor
+         id     = other.id;
+         object = other.object;
+         count  = other.count;
+         other.count = NULL;
+      }
+
+      // Destructor
+
+      ~GuardedObject() {
+         if (!count) return; // The count can be empty if this GuardedObject was moved
+
+         if (!--count[0]) {
+            if (id) FreeResource(id);
+            delete count;
+         }
+      }
+
+      // Assignments
+
+      GuardedObject & operator = (const GuardedObject &other) { // Copy assignment
+         if (this == &other) return *this;
+         if (!--count[0]) delete count;
+         if (other.object) {
+            object = other.object;
+            count  = other.count;
+            count[0]++;
+         }
+         else { // If the other object is undefined then we reset our state with no count inheritance.
+            object   = NULL;
+            id       = 0;
+            count[0] = 1;
+         }
+         return *this;
+      }
+
+      GuardedObject & operator = (GuardedObject &&other) { // Move assignment
+         if (this == &other) return *this;
+         if (!--count[0]) delete count;
+         id     = other.id;
+         object = other.object;
+         count  = other.count;
+         other.count = NULL;
+         return *this;
+      }
+
+      // Public methods
+
+      inline void set(T *Object) { // set() requires caution as the object reference is modified without adjusting the counter
+         if (!Object) return;
+         else if (count[0] IS 1) {
+            object = Object;
+            id     = Object->UID;
+         }
+         else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
+      }
+
+      constexpr bool empty() { return !object; }
+
+      T * operator->() { return object; }; // Promotes underlying methods and fields
+      T * & operator*() { return object; }; // To allow object pointer referencing when calling functions
 };
 
 //********************************************************************************************************************
@@ -152,6 +276,9 @@ inline FieldValue Location(const std::string &Value) { return FieldValue(FID_Loc
 constexpr FieldValue Args(CSTRING Value) { return FieldValue(FID_Args, Value); }
 inline FieldValue Args(const std::string &Value) { return FieldValue(FID_Args, Value.c_str()); }
 
+constexpr FieldValue Fill(CSTRING Value) { return FieldValue(FID_Fill, Value); }
+inline FieldValue Fill(const std::string &Value) { return FieldValue(FID_Fill, Value.c_str()); }
+
 constexpr FieldValue Statement(CSTRING Value) { return FieldValue(FID_Statement, Value); }
 inline FieldValue Statement(const std::string &Value) { return FieldValue(FID_Statement, Value.c_str()); }
 
@@ -182,6 +309,11 @@ inline FieldValue FileDescription(const std::string &Value) { return FieldValue(
 constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
 inline FieldValue FileHeader(const std::string &Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
 
+constexpr FieldValue FontSize(DOUBLE Value) { return FieldValue(FID_FontSize, Value); }
+constexpr FieldValue FontSize(LONG Value) { return FieldValue(FID_FontSize, Value); }
+constexpr FieldValue FontSize(CSTRING Value) { return FieldValue(FID_FontSize, Value); }
+inline FieldValue FontSize(const std::string &Value) { return FieldValue(FID_FontSize, Value.c_str()); }
+
 constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
 inline FieldValue ArchiveName(const std::string &Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
 
@@ -205,6 +337,12 @@ constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(const std::string &Value) { return FieldValue(FID_Point, Value.c_str()); }
 
+constexpr FieldValue Points(CSTRING Value) { return FieldValue(FID_Points, Value); }
+inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Points, Value.c_str()); }
+
+constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
+inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pretext, Value.c_str()); }
+
 constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
@@ -216,14 +354,17 @@ constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(
 constexpr FieldValue ClassID(LONG Value) { return FieldValue(FID_ClassID, Value); }
 constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
+constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, LONG(Value)); }
 constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, LONG(Value)); }
 constexpr FieldValue DoubleClick(DOUBLE Value) { return FieldValue(FID_DoubleClick, Value); }
 constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
+constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
 constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+constexpr FieldValue LineLimit(LONG Value) { return FieldValue(FID_LineLimit, Value); }
 constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
 constexpr FieldValue MatrixColumns(LONG Value) { return FieldValue(FID_MatrixColumns, Value); }
 constexpr FieldValue MatrixRows(LONG Value) { return FieldValue(FID_MatrixRows, Value); }
@@ -242,9 +383,13 @@ constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value)
 constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
+constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
+constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
 constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
+constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
 constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
@@ -297,27 +442,27 @@ template <class T> FieldValue PageHeight(T Value) {
 }
 
 template <class T> FieldValue Radius(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Radius value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Radius value must be numeric");
    return FieldValue(FID_Radius, Value);
 }
 
 template <class T> FieldValue CenterX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "CenterX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterX value must be numeric");
    return FieldValue(FID_CenterX, Value);
 }
 
 template <class T> FieldValue CenterY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "CenterY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterY value must be numeric");
    return FieldValue(FID_CenterY, Value);
 }
 
 template <class T> FieldValue FX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "FX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FX value must be numeric");
    return FieldValue(FID_FX, Value);
 }
 
 template <class T> FieldValue FY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "FY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FY value must be numeric");
    return FieldValue(FID_FY, Value);
 }
 
@@ -352,42 +497,52 @@ template <class T> FieldValue ViewHeight(T Value) {
 }
 
 template <class T> FieldValue Width(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Width value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Width value must be numeric");
    return FieldValue(FID_Width, Value);
 }
 
 template <class T> FieldValue Height(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Height value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Height value must be numeric");
    return FieldValue(FID_Height, Value);
 }
 
 template <class T> FieldValue X(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X value must be numeric");
    return FieldValue(FID_X, Value);
 }
 
+template <class T> FieldValue XOffset(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "XOffset value must be numeric");
+   return FieldValue(FID_XOffset, Value);
+}
+
 template <class T> FieldValue Y(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
 }
 
+template <class T> FieldValue YOffset(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "YOffset value must be numeric");
+   return FieldValue(FID_YOffset, Value);
+}
+
 template <class T> FieldValue X1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X1 value must be numeric");
    return FieldValue(FID_X1, Value);
 }
 
 template <class T> FieldValue Y1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y1 value must be numeric");
    return FieldValue(FID_Y1, Value);
 }
 
 template <class T> FieldValue X2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X2 value must be numeric");
    return FieldValue(FID_X2, Value);
 }
 
 template <class T> FieldValue Y2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y2 value must be numeric");
    return FieldValue(FID_Y2, Value);
 }
 

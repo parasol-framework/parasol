@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      audio.h
-// Copyright: Paul Manias © 2002-2023
+// Copyright: Paul Manias © 2002-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -178,48 +178,48 @@ struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
-INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
+INLINE ERR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) noexcept {
    struct sndOpenChannels args = { Total, (LONG)0 };
-   ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) {
+INLINE ERR sndCloseChannels(APTR Ob, LONG Handle) noexcept {
    struct sndCloseChannels args = { Handle };
    return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+INLINE ERR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
    struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
-   ERROR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
+INLINE ERR sndRemoveSample(APTR Ob, LONG Handle) noexcept {
    struct sndRemoveSample args = { Handle };
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
+INLINE ERR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) noexcept {
    struct sndSetSampleLength args = { Sample, Length };
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+INLINE ERR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
    struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
-   ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
+   ERR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-INLINE ERROR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) {
+INLINE ERR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) noexcept {
    struct sndBeep args = { Pitch, Duration, Volume };
    return(Action(MT_SndBeep, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) {
+INLINE ERR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
    struct sndSetVolume args = { Index, Name, Flags, Channel, Volume };
    return(Action(MT_SndSetVolume, (OBJECTPTR)Ob, &args));
 }
@@ -242,78 +242,78 @@ class objAudio : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
 
    // Customised field setting
 
-   inline ERROR setOutputRate(const LONG Value) {
+   inline ERR setOutputRate(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setInputRate(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setInputRate(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->InputRate = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setQuality(const LONG Value) {
+   inline ERR setQuality(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const ADF Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setFlags(const ADF Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Flags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setBitDepth(const LONG Value) {
+   inline ERR setBitDepth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPeriods(const LONG Value) {
+   inline ERR setPeriods(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPeriodSize(const LONG Value) {
+   inline ERR setPeriodSize(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setDevice(T && Value) {
+   template <class T> inline ERR setDevice(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setMasterVolume(const DOUBLE Value) {
+   inline ERR setMasterVolume(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setMute(const LONG Value) {
+   inline ERR setMute(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setStereo(const LONG Value) {
+   inline ERR setStereo(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -353,154 +353,155 @@ class objSound : public BaseClass {
 
    // Action stubs
 
-   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
       struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
+      auto error = Action(AC_GetVar, this, &args);
+      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return InitObject(this); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERR init() noexcept { return InitObject(this); }
+   template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      ERROR error;
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
-      else *Result = 0;
-      return error;
+      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+         *Result = static_cast<U>(read.Result);
+         return ERR::Okay;
+      }
+      else { *Result = 0; return error; }
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
+   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
 
    // Customised field setting
 
-   inline ERROR setVolume(const DOUBLE Value) {
+   inline ERR setVolume(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setPan(const DOUBLE Value) {
+   inline ERR setPan(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setPosition(const LARGE Value) {
+   inline ERR setPosition(const LARGE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERROR setPriority(const LONG Value) {
+   inline ERR setPriority(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLength(const LONG Value) {
+   inline ERR setLength(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOctave(const LONG Value) {
+   inline ERR setOctave(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const SDF Value) {
+   inline ERR setFlags(const SDF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFrequency(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setFrequency(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Frequency = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setPlayback(const LONG Value) {
+   inline ERR setPlayback(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setCompression(const LONG Value) {
+   inline ERR setCompression(const LONG Value) noexcept {
       this->Compression = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setBytesPerSecond(const LONG Value) {
+   inline ERR setBytesPerSecond(const LONG Value) noexcept {
       this->BytesPerSecond = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setBitsPerSample(const LONG Value) {
+   inline ERR setBitsPerSample(const LONG Value) noexcept {
       this->BitsPerSample = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setAudio(const OBJECTID Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setAudio(OBJECTID Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->AudioID = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setLoopStart(const LONG Value) {
+   inline ERR setLoopStart(const LONG Value) noexcept {
       this->LoopStart = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setLoopEnd(const LONG Value) {
+   inline ERR setLoopEnd(const LONG Value) noexcept {
       this->LoopEnd = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setStream(const STREAM Value) {
+   inline ERR setStream(const STREAM Value) noexcept {
       this->Stream = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setOnStop(FUNCTION Value) {
+   inline ERR setOnStop(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setNote(T && Value) {
+   template <class T> inline ERR setNote(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
@@ -516,50 +517,50 @@ class objSound : public BaseClass {
 
 struct AudioBase {
 #ifndef PARASOL_STATIC
-   ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
-   ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
-   ERROR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
-   ERROR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Position);
-   ERROR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
-   ERROR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
-   ERROR (*_MixStop)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixStopLoop)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
-   ERROR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
+   ERR (*_MixContinue)(objAudio * Audio, LONG Handle);
+   ERR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
+   ERR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
+   ERR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
+   ERR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Position);
+   ERR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
+   ERR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
+   ERR (*_MixStop)(objAudio * Audio, LONG Handle);
+   ERR (*_MixStopLoop)(objAudio * Audio, LONG Handle);
+   ERR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
+   ERR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
+   ERR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_AUDIO_MODULE
 #ifndef PARASOL_STATIC
 extern struct AudioBase *AudioBase;
-inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
-inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
-inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
-inline ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
-inline ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
-inline ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
-inline ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
-inline ERROR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
-inline ERROR sndMixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
-inline ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
-inline ERROR sndMixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
-inline ERROR sndMixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
+inline ERR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
+inline ERR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
+inline ERR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
+inline ERR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
+inline ERR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
+inline ERR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
+inline ERR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
+inline ERR sndMixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
+inline ERR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERR sndMixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
+inline ERR sndMixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
 #else
 extern "C" {
-extern ERROR sndMixContinue(objAudio * Audio, LONG Handle);
-extern ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
-extern ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute);
-extern ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
-extern ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position);
-extern ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate);
-extern ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample);
-extern ERROR sndMixStop(objAudio * Audio, LONG Handle);
-extern ERROR sndMixStopLoop(objAudio * Audio, LONG Handle);
-extern ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume);
-extern ERROR sndMixStartSequence(objAudio * Audio, LONG Handle);
-extern ERROR sndMixEndSequence(objAudio * Audio, LONG Handle);
+extern ERR sndMixContinue(objAudio * Audio, LONG Handle);
+extern ERR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
+extern ERR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute);
+extern ERR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
+extern ERR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position);
+extern ERR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate);
+extern ERR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample);
+extern ERR sndMixStop(objAudio * Audio, LONG Handle);
+extern ERR sndMixStopLoop(objAudio * Audio, LONG Handle);
+extern ERR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume);
+extern ERR sndMixStartSequence(objAudio * Audio, LONG Handle);
+extern ERR sndMixEndSequence(objAudio * Audio, LONG Handle);
 }
 #endif // PARASOL_STATIC
 #endif

@@ -5,7 +5,7 @@
   <info>
     <name>Core</name>
     <type>module</type>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <classes>
       <class>CompressedStream</class>
       <class>Compression</class>
@@ -36,7 +36,7 @@
     <name>AccessMemory</name>
     <category>Memory</category>
     <comment>Grants access to memory blocks by identifier.</comment>
-    <prototype>ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result)</prototype>
+    <prototype>ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
       <param type="MEM" name="Flags" lookup="MEM">Set to READ, WRITE or READ_WRITE according to requirements.</param>
@@ -47,7 +47,7 @@
 <p>Call AccessMemory() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other threads.</p>
 <p>Memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function module="Core">ReleaseMemory</function> within the same code block.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
@@ -61,7 +61,7 @@
     <name>AccessObject</name>
     <category>Objects</category>
     <comment>Grants exclusive access to objects via unique ID.</comment>
-    <prototype>ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
+    <prototype>ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The unique ID of the target object.</param>
       <param type="LONG" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is 60000, and 100 is recommended.</param>
@@ -69,7 +69,7 @@
     </input>
     <description>
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use it simultaneously.</p>
-<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR_TimeOut</code> error code.  If successful, <code>ERR_Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
+<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR::TimeOut</code> error code.  If successful, <code>ERR::Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
 <p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
 <p>It is recommended that C++ developers use the <code>ScopedObjectLock</code> class to acquire object locks rather than making direct calls to AccessObject().  The following example illustrates lock acquisition within a 1 second time limit:</p>
 <pre>{
@@ -81,7 +81,7 @@
 </OBJECTPTR>
 </pre>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
@@ -94,7 +94,7 @@
     <name>Action</name>
     <category>Objects</category>
     <comment>This function is responsible for executing action routines.</comment>
-    <prototype>ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters)</prototype>
+    <prototype>ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters)</prototype>
     <input>
       <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here (e.g. AC_Query).</param>
       <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
@@ -115,10 +115,10 @@
 
 2b. Window-&gt;move(30, 15, 0);
 </pre>
-<p>If the class of an object does not support the action ID, an error code of <code>ERR_NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function module="Core">CheckAction</function> function.</p>
+<p>If the class of an object does not support the action ID, an error code of <code>ERR::NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function module="Core">CheckAction</function> function.</p>
 <p>In circumstances where an object ID is known without its pointer, the use of <function module="Core">ActionMsg</function> or <function module="Core">QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NoAction">The object does not support this operation.</error>
       <error code="IllegalActionID">Illegal action ID (number outside of valid range).</error>
@@ -169,7 +169,7 @@ struct FunctionField argsResize[] = {
     <name>ActionMsg</name>
     <category>Objects</category>
     <comment>Execute an action or method by way of object ID.</comment>
-    <prototype>ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args)</prototype>
+    <prototype>ERR ActionMsg(LONG Action, OBJECTID Object, APTR Args)</prototype>
     <input>
       <param type="LONG" name="Action">The ID of the action or method to be executed.</param>
       <param type="OBJECTID" name="Object">The target object.</param>
@@ -178,7 +178,7 @@ struct FunctionField argsResize[] = {
     <description>
 <p>Use ActionMsg() to execute an action when only the object ID is known.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="OutOfRange">A specified number is outside of the valid range.</error>
@@ -190,7 +190,7 @@ struct FunctionField argsResize[] = {
     <name>ActionThread</name>
     <category>Objects</category>
     <comment>Execute an action in parallel, via a separate thread.</comment>
-    <prototype>ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key)</prototype>
+    <prototype>ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key)</prototype>
     <input>
       <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here.</param>
       <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
@@ -200,12 +200,12 @@ struct FunctionField argsResize[] = {
     </input>
     <description>
 <p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function module="Core">Action</function> function for general information on action execution.</p>
-<p>To receive feedback of the action's completion, use the Callback parameter and supply a function.  The function prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERROR Error, LONG Key)</code></p>
+<p>To receive feedback of the action's completion, use the Callback parameter and supply a function.  The function prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)</code></p>
 <p>It is crucial that the target object is not destroyed while the thread is executing.  Use the Callback routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function module="Core">ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
 <p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if ActionThread() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
 <p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Init">Error in Init()ialising an object.</error>
       <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
@@ -219,7 +219,7 @@ struct FunctionField argsResize[] = {
     <name>AddInfoTag</name>
     <category>Files</category>
     <comment>Adds new tags to FileInfo structures.</comment>
-    <prototype>ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value)</prototype>
+    <prototype>ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value)</prototype>
     <input>
       <param type="struct FileInfo *" name="Info">Pointer to a valid FileInfo structure.</param>
       <param type="CSTRING" name="Name">The name of the tag.</param>
@@ -228,7 +228,7 @@ struct FunctionField argsResize[] = {
     <description>
 <p>This function adds file tags to FileInfo structures.  It is intended for use by the FileSystem module and related drivers only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio in an MP3 file.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -238,7 +238,7 @@ struct FunctionField argsResize[] = {
     <name>AddMsgHandler</name>
     <category>Messages</category>
     <comment>Adds a new message handler for processing incoming messages.</comment>
-    <prototype>ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
+    <prototype>ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
     <input>
       <param type="APTR" name="Custom">A custom pointer that will be passed to the message handler when messages are received.</param>
       <param type="LONG" name="MsgType">The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.</param>
@@ -249,11 +249,11 @@ struct FunctionField argsResize[] = {
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
 <p>During a call to <function module="Core">ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The Routine parameter must point to the function handler, which will follow this definition:</p>
-<pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
-<p>The handler must return <code>ERR_Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR_NothingDone</code> if the message has been ignored or <code>ERR_Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR_Terminate</code> to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
+<pre>ERR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
+<p>The handler must return <code>ERR::Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR::NothingDone</code> if the message has been ignored or <code>ERR::Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR::Terminate</code> to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
 <p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -280,7 +280,7 @@ struct FunctionField argsResize[] = {
     <name>AllocMemory</name>
     <category>Memory</category>
     <comment>Allocates a new memory block on the heap.</comment>
-    <prototype>ERROR AllocMemory(LONG Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
+    <prototype>ERR AllocMemory(LONG Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="LONG" name="Size">The size of the memory block.</param>
       <param type="MEM" name="Flags" lookup="MEM">Optional flags.</param>
@@ -302,7 +302,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block.  This means that before freeing the memory block the client must call <function module="Core">ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
 <p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM::NO_CLEAR</code> flag.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -330,7 +330,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>AnalysePath</name>
     <category>Files</category>
     <comment>Analyses paths to determine their type (file, folder or volume).</comment>
-    <prototype>ERROR AnalysePath(CSTRING Path, LOC * Type)</prototype>
+    <prototype>ERR AnalysePath(CSTRING Path, LOC * Type)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path to analyse.</param>
       <param type="LOC *" name="Type" lookup="LOC">The result will be stored in the LONG variable referred to by this argument.  The return types are DIRECTORY, FILE and VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.</param>
@@ -342,7 +342,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>To check if a volume name is valid, call <function module="Core">ResolvePath</function> first and then pass the resulting path to this function.</p>
 <p>If the queried path does not exist, a fail code is returned.  This behaviour makes the AnalysePath() function a good candidate for testing the validity of a path string.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="DoesNotExist">Resource does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -353,7 +353,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>Base64Decode</name>
     <category>Strings</category>
     <comment>Decodes a base 64 string to its binary form.</comment>
-    <prototype>ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
+    <prototype>ERR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
     <input>
       <param type="struct pfBase64Decode *" name="State">Pointer to an pfBase64Decode structure, initialised to zero.</param>
       <param type="CSTRING" name="Input">A base 64 input string.  The pointer will be updated when the function returns.</param>
@@ -365,7 +365,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>This function will decode a base 64 string to its binary form.  It is designed to support streaming from the source Input and gracefully handles buffer over-runs by forwarding data to the next call.</p>
 <p>To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -395,7 +395,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>BroadcastEvent</name>
     <category>Events</category>
     <comment>Broadcast an event to all event listeners in the system.</comment>
-    <prototype>ERROR BroadcastEvent(APTR Event, LONG EventSize)</prototype>
+    <prototype>ERR BroadcastEvent(APTR Event, LONG EventSize)</prototype>
     <input>
       <param type="APTR" name="Event">Pointer to an event structure.</param>
       <param type="LONG" name="EventSize">The size of the Event structure, in bytes.</param>
@@ -409,7 +409,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 </pre>
 <p>This document does not describe the available system events.  For more information about them, please refer to the System Events Reference manual.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -419,7 +419,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CheckAction</name>
     <category>Objects</category>
     <comment>Checks objects to see whether or not they support certain actions.</comment>
-    <prototype>ERROR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="LONG" name="Action">A registered action ID.</param>
@@ -431,7 +431,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 }
 </pre>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="LostClass">The object has lost its class reference.</error>
@@ -443,14 +443,14 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CheckMemoryExists</name>
     <category>Memory</category>
     <comment>Checks if a memory block still exists.</comment>
-    <prototype>ERROR CheckMemoryExists(MEMORYID ID)</prototype>
+    <prototype>ERR CheckMemoryExists(MEMORYID ID)</prototype>
     <input>
       <param type="MEMORYID" name="ID">The ID of the memory block that will be checked.</param>
     </input>
     <description>
 <p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its ID.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="False">The result is false.</error>
     </result>
@@ -460,14 +460,14 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CheckObjectExists</name>
     <category>Objects</category>
     <comment>Checks if a particular object is still available in the system.</comment>
-    <prototype>ERROR CheckObjectExists(OBJECTID Object)</prototype>
+    <prototype>ERR CheckObjectExists(OBJECTID Object)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The object identity to verify.</param>
     </input>
     <description>
 <p>The CheckObjectExists() function verifies the presence of any object created by <function module="Core">NewObject</function>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
@@ -478,16 +478,16 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CompareFilePaths</name>
     <category>Files</category>
     <comment>Checks if two file paths refer to the same physical file.</comment>
-    <prototype>ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)</prototype>
+    <prototype>ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)</prototype>
     <input>
       <param type="CSTRING" name="PathA">File location 1.</param>
       <param type="CSTRING" name="PathB">File location 2.</param>
     </input>
     <description>
-<p>This function will test two file paths, checking if they refer to the same file in a storage device.  It uses a string comparison on the resolved path names, then attempts a second test based on an in-depth analysis of file attributes if the string comparison fails.  In the event of a match, <code>ERR_Okay</code> is returned.  All other error codes indicate a mis-match or internal failure.</p>
+<p>This function will test two file paths, checking if they refer to the same file in a storage device.  It uses a string comparison on the resolved path names, then attempts a second test based on an in-depth analysis of file attributes if the string comparison fails.  In the event of a match, <code>ERR::Okay</code> is returned.  All other error codes indicate a mis-match or internal failure.</p>
 <p>The targeted paths do not have to refer to an existing file or folder in order to match (i.e. match on string comparison succeeds).</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -498,7 +498,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CopyFile</name>
     <category>Files</category>
     <comment>Makes copies of folders and files.</comment>
-    <prototype>ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback)</prototype>
+    <prototype>ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback)</prototype>
     <input>
       <param type="CSTRING" name="Source">The source location.</param>
       <param type="CSTRING" name="Dest">The destination location.</param>
@@ -516,9 +516,9 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -529,7 +529,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CreateFolder</name>
     <category>Files</category>
     <comment>Makes new folders.</comment>
-    <prototype>ERROR CreateFolder(CSTRING Path, PERMIT Permissions)</prototype>
+    <prototype>ERR CreateFolder(CSTRING Path, PERMIT Permissions)</prototype>
     <input>
       <param type="CSTRING" name="Path">The location of the folder.</param>
       <param type="PERMIT" name="Permissions" lookup="PERMIT">Security permissions to apply to the created Dir(s).  Set to NULL if only the current user should have access.</param>
@@ -538,7 +538,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>This function creates new folders.  You are required to specify the full path of the new folder.  Standard permission flags can be passed to determine the new permissions to set against the newly created Dir(s).  If no permission flags are passed, only the current user will have access to the new folder (assuming that the file system supports security settings on the given media).  This function will create multiple folders if the complete path does not exist at the time of the call.</p>
 <p>On Unix systems you can define the owner and group ID's for the new folder by calling the <function module="Core">SetDefaultPermissions</function> function prior to CreateFolder().</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="NoSupport">This request is not supported.</error>
@@ -551,17 +551,17 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>CreateLink</name>
     <category>Files</category>
     <comment>Creates symbolic links on Unix file systems.</comment>
-    <prototype>ERROR CreateLink(CSTRING From, CSTRING To)</prototype>
+    <prototype>ERR CreateLink(CSTRING From, CSTRING To)</prototype>
     <input>
       <param type="CSTRING" name="From">The symbolic link will be created at the location specified here.</param>
       <param type="CSTRING" name="To">The file that you are linking to is specified here.</param>
     </input>
     <description>
 <p>Use the CreateLink() function to create symbolic links on Unix file systems. The link connects a new file created at From to an existing file referenced at To. The To link is allowed to be relative to the From location - for instance, you can link <code>documents:myfiles/newlink.txt</code> to <code>../readme.txt</code> or <code>folder/readme.txt</code>. The <code>..</code> path component must be used when making references to parent folders.</p>
-<p>The permission flags for the link are inherited from the file that you are linking to.  If the file location referenced at From already exists as a file or folder, the function will fail with an ERR_FileExists error code.</p>
+<p>The permission flags for the link are inherited from the file that you are linking to.  If the file location referenced at From already exists as a file or folder, the function will fail with an ERR::FileExists error code.</p>
 <p>This function does not automatically create folders in circumstances where new folders are required to complete the From link.  You will need to call <function module="Core">CreateFolder</function> to ensure that the necessary paths exist beforehand.  If the file referenced at To does not exist, the link will be created without error, but any attempts to open the link will fail until the target file or folder exists.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NoSupport">This request is not supported.</error>
       <error code="Memory">General memory error.</error>
@@ -602,7 +602,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>DeleteFile</name>
     <category>Files</category>
     <comment>Deletes files and folders.</comment>
-    <prototype>ERROR DeleteFile(CSTRING Path, FUNCTION * Callback)</prototype>
+    <prototype>ERR DeleteFile(CSTRING Path, FUNCTION * Callback)</prototype>
     <input>
       <param type="CSTRING" name="Path">String referring to the file or folder to be deleted.  Folders must be denoted with a trailing slash.</param>
       <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
@@ -613,9 +613,9 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="File">File error, e.g. file not found.</error>
       <error code="FileNotFound">File not found.</error>
@@ -628,14 +628,14 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>DeleteVolume</name>
     <category>Files</category>
     <comment>Deletes volumes from the system.</comment>
-    <prototype>ERROR DeleteVolume(CSTRING Name)</prototype>
+    <prototype>ERR DeleteVolume(CSTRING Name)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of the volume.</param>
     </input>
     <description>
 <p>This function deletes volume names from the system.  Once a volume is deleted, any further references to it will result in errors unless the volume is recreated.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NoPermission">General security violation.</error>
@@ -685,7 +685,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     </input>
     <description>
 <p>The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID. If a matching field is declared, its descriptor is returned.  For example:</p>
-<pre>if (auto field = FindField(Screen, FID_Width, NULL)) {
+<pre>if (auto field = FindField(Display, FID_Width, NULL)) {
    log.msg("The field name is \"%s\".", field-&gt;Name);
 }
 </pre>
@@ -699,7 +699,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>FindObject</name>
     <category>Objects</category>
     <comment>Searches for objects by name.</comment>
-    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID)</prototype>
+    <prototype>ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of an object to search for.</param>
       <param type="CLASSID" name="ClassID">Optional.  Set to a class ID to filter the results down to a specific class type.</param>
@@ -714,7 +714,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -728,7 +728,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <name>FreeResource</name>
     <category>Memory</category>
     <comment>Frees resources originating from AllocMemory().</comment>
-    <prototype>ERROR FreeResource(MEMORYID ID)</prototype>
+    <prototype>ERR FreeResource(MEMORYID ID)</prototype>
     <input>
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
@@ -737,7 +737,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 <p>In some circumstances the termination of the block will not take place immediately.  If the block is locked then it will be marked for deletion and not be collected until the lock count reaches zero.</p>
 <p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that code has over-written the memory boundaries.  All caught errors are reported to the application log and warrant priority attention.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="InvalidData">There is an error in the provided data.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
@@ -792,9 +792,9 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <name>GetErrorMsg</name>
     <category>Logging</category>
     <comment>Translates error codes into human readable strings.</comment>
-    <prototype>CSTRING GetErrorMsg(ERROR Error)</prototype>
+    <prototype>CSTRING GetErrorMsg(ERR Error)</prototype>
     <input>
-      <param type="ERROR" name="Error">The error code to lookup.</param>
+      <param type="ERR" name="Error">The error code to lookup.</param>
     </input>
     <description>
 <p>The GetErrorMsg() function converts error codes into human readable strings.  If the Code is invalid, a string of "Unknown error code" is returned.</p>
@@ -825,7 +825,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <name>GetField</name>
     <category>Fields</category>
     <comment>Retrieves single field values from objects.</comment>
-    <prototype>ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result)</prototype>
+    <prototype>ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="FIELD" name="Field">The ID of the field to read, OR'd with a type indicator.</param>
@@ -848,7 +848,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <type name="TSTR">A 32-bit pointer that refers to a string.</type>
 </types>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoFieldAccess">Access to a field was denied.</error>
@@ -860,7 +860,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetFieldArray</name>
     <category>Fields</category>
     <comment>Retrieves array field values from objects.</comment>
-    <prototype>ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements)</prototype>
+    <prototype>ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="FIELD" name="Field">The ID of the field that will be read.</param>
@@ -872,7 +872,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it is standard practice not to count the null terminator in the total returned by Elements.</p>
 <p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TLONG</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NoFieldAccess">Access to a field was denied.</error>
       <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
@@ -885,7 +885,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetFieldVariable</name>
     <category>Fields</category>
     <comment>Retrieves field values by converting them into strings.</comment>
-    <prototype>ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size)</prototype>
+    <prototype>ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="CSTRING" name="Field">The name of the field that is to be retrieved.</param>
@@ -900,7 +900,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>If the field name refers to an array, it is possible to index specific values within that array by specifying a dot after the field name, then the index number to lookup.</p>
 <p>To check if a string is defined (rather than retrieving the entire string content which can be time consuming), prefix the Field name with a question mark.  A value of 1 will be returned in the Buffer if the string has a minimum length of 1 character, otherwise a value of 0 is returned in the Buffer.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoFieldAccess">Access to a field was denied.</error>
@@ -913,7 +913,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetMessage</name>
     <category>Messages</category>
     <comment>Reads messages from message queues.</comment>
-    <prototype>ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
     <input>
       <param type="LONG" name="Type">Filter down to this message type or set to zero to receive the next message on the queue.</param>
       <param type="MSF" name="Flags" lookup="MSF">This argument is reserved for future use.  Set it to zero.</param>
@@ -921,11 +921,11 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
     </input>
     <description>
-<p>The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR_Okay</code> is returned.</p>
+<p>The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR::Okay</code> is returned.</p>
 <p>Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your messages.  If the buffer is too small, the message data will be cut off to fit inside the buffer.</p>
 <p>Message data is written to the supplied buffer with a Message structure, which is immediately followed up with the actual message data.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -992,7 +992,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>IdentifyFile</name>
     <category>Files</category>
     <comment>Analyse a file and identify a class that can process it.</comment>
-    <prototype>ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass)</prototype>
+    <prototype>ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass)</prototype>
     <input>
       <param type="CSTRING" name="Path">The location of the object data.</param>
       <param type="CLASSID *" name="Class">Must refer to a CLASSID variable that will store the resulting class ID.</param>
@@ -1001,9 +1001,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <description>
 <p>This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file to be identified as a datatype of the <class name="Picture">Picture</class> class, or an MP3 file to be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
 <p>The method involves analysing the Path's file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
-<p>This function returns an error code of <code>ERR_Search</code> in the event that a suitable class is not available to match against the given file.</p>
+<p>This function returns an error code of <code>ERR::Search</code> in the event that a suitable class is not available to match against the given file.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="FileNotFound">File not found.</error>
@@ -1016,16 +1016,16 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>InitObject</name>
     <category>Objects</category>
     <comment>Initialises an object so that it is ready for use.</comment>
-    <prototype>ERROR InitObject(OBJECTPTR Object)</prototype>
+    <prototype>ERR InitObject(OBJECTPTR Object)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The object to initialise.</param>
     </input>
     <description>
 <p>This function initialises objects so that they can be used for their intended purpose. The process of initialisation is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to this rule only apply to the GetVar() and SetVar() actions.</p>
 <p>If the initialisation of an object fails due to a support problem (for example, if a PNG <class name="Picture">Picture</class> object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can provide ample support exists, a partial transfer of ownership will occur and the object's  management will be shared between both the base class and the sub-class.</p>
-<p>If an object does not support the data or its configuration, an error code of <code>ERR_NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
+<p>If an object does not support the data or its configuration, an error code of <code>ERR::NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="LostClass">The object has lost its class reference.</error>
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
@@ -1036,7 +1036,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>ListChildren</name>
     <category>Objects</category>
     <comment>Returns a list of all children belonging to an object.</comment>
-    <prototype>ERROR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
+    <prototype>ERR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
     <input>
       <param type="OBJECTID" name="Object">An object to query.</param>
       <param type="pf::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of ChildEntry structures.</param>
@@ -1045,7 +1045,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.</p>
 <p>Note that any child objects marked with the <code>INTEGRAL</code> flag will be excluded because they are private members of the targeted object.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1056,7 +1056,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>LoadFile</name>
     <category>Files</category>
     <comment>Loads files into a local cache for fast file processing.</comment>
-    <prototype>ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache)</prototype>
+    <prototype>ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache)</prototype>
     <input>
       <param type="CSTRING" name="Path">The location of the file to be cached.</param>
       <param type="LDF" name="Flags" lookup="LDF">Optional flags are specified here.</param>
@@ -1068,7 +1068,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>File content will be loaded into a readable memory buffer that is referenced by the Data field of the <struct>CacheFile</struct> structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the <struct>CacheFile</struct> meta data.</p>
 <p>Calls to LoadFile() must be matched with a call to <function module="Core">UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
@@ -1080,7 +1080,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>LockObject</name>
     <category>Objects</category>
     <comment>Lock an object to prevent contention between threads.</comment>
-    <prototype>ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
+    <prototype>ERR LockObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The address of the object to lock.</param>
       <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
@@ -1090,7 +1090,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>Be aware that while this function is faster than <function module="Core">AccessObject</function>, it is unsafe if other threads could terminate the object without a suitable barrier in place.</p>
 <p>If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
@@ -1103,7 +1103,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>MemoryIDInfo</name>
     <category>Memory</category>
     <comment>Returns information on memory ID's.</comment>
-    <prototype>ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size)</prototype>
+    <prototype>ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size)</prototype>
     <input>
       <param type="MEMORYID" name="ID">Pointer to a valid memory ID.</param>
       <param type="struct MemInfo *" name="MemInfo">Pointer to a MemInfo structure.</param>
@@ -1118,7 +1118,7 @@ if (!MemoryIDInfo(memid, &amp;info)) {
 </pre>
 <p>If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
@@ -1131,7 +1131,7 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     <name>MemoryPtrInfo</name>
     <category>Memory</category>
     <comment>Returns information on memory addresses.</comment>
-    <prototype>ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size)</prototype>
+    <prototype>ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size)</prototype>
     <input>
       <param type="APTR" name="Address">Pointer to a valid memory area.</param>
       <param type="struct MemInfo *" name="MemInfo">Pointer to a MemInfo structure to be filled out.</param>
@@ -1147,7 +1147,7 @@ if (!MemoryPtrInfo(ptr, &amp;info)) {
 <p>If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
 <p>Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search routine.  We recommend that calls to this function are avoided unless circumstances absolutely require it.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1158,7 +1158,7 @@ if (!MemoryPtrInfo(ptr, &amp;info)) {
     <name>MoveFile</name>
     <category>Files</category>
     <comment>Moves folders and files to new locations.</comment>
-    <prototype>ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback)</prototype>
+    <prototype>ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback)</prototype>
     <input>
       <param type="CSTRING" name="Source">The source path.</param>
       <param type="CSTRING" name="Dest">The destination path.</param>
@@ -1179,9 +1179,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1192,7 +1192,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>NewObject</name>
     <category>Objects</category>
     <comment>Creates new objects.</comment>
-    <prototype>ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object)</prototype>
+    <prototype>ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object)</prototype>
     <input>
       <param type="LARGE" name="ClassID">A class ID from "system/register.h" or generated by <function module="Core">ResolveClassName</function>.</param>
       <param type="NF" name="Flags" lookup="NF">Optional flags.</param>
@@ -1204,7 +1204,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function module="Core">SetOwner</function> function.</p>
 <p>To destroy an object, call <function module="Core">FreeResource</function>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="MissingClass">The class could not be found in the system.</error>
@@ -1217,16 +1217,16 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>NotifySubscribers</name>
     <category>Objects</category>
     <comment>Used to send notification messages to action subscribers.</comment>
-    <prototype>void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error)</prototype>
+    <prototype>void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that is to receive the notification message.</param>
       <param type="LONG" name="Action" lookup="AC">The action ID for notification.</param>
       <param type="APTR" name="Args">Pointer to an action parameter structure that is relevant to the ActionID.</param>
-      <param type="ERROR" name="Error">The error code that is associated with the action result.</param>
+      <param type="ERR" name="Error">The error code that is associated with the action result.</param>
     </input>
     <description>
 <p>This function can be used by classes that need total control over notification management.  The system default for notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of the original values.</p>
-<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this the client must logical-or the return code of the action function with <code>ERF_Notified</code>, e.g. <code>ERR_Okay|ERF_Notified</code>.</p>
+<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
     </description>
   </function>
 
@@ -1234,7 +1234,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>OpenDir</name>
     <category>Files</category>
     <comment>Opens a folder for content scanning.</comment>
-    <prototype>ERROR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info)</prototype>
+    <prototype>ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info)</prototype>
     <input>
       <param type="CSTRING" name="Path">The folder location to be scanned.  Using an empty string will scan for volume names.</param>
       <param type="RDF" name="Flags" lookup="RDF">Optional flags.</param>
@@ -1244,7 +1244,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The OpenDir() function is used to open a folder for scanning via the <function module="Core">ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function module="Core">ScanDir</function>.  Once the scanning process is complete, call the <function module="Core">FreeResource</function> function.</p>
 <p>When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined, the scanner will return file and folder names only.  Only a subset of the available <code>RDF</code> flags may be used, namely <code>SIZE</code>, <code>DATE</code>, <code>PERMISSIONS</code>, <code>FILE</code>, <code>FOLDER</code>, <code>QUALIFY</code>, <code>TAGS</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="DirEmpty">The folder is empty.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -1268,7 +1268,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ProcessMessages</name>
     <category>Messages</category>
     <comment>Processes system messages that are queued in the task's message buffer.</comment>
-    <prototype>ERROR ProcessMessages(PMF Flags, LONG TimeOut)</prototype>
+    <prototype>ERR ProcessMessages(PMF Flags, LONG TimeOut)</prototype>
     <input>
       <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here (clients should set a value of zero).</param>
       <param type="LONG" name="TimeOut">A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.</param>
@@ -1276,10 +1276,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>The ProcessMessages() function is used to process the task's message queue.  Messages are dispatched to message handlers in the order in which they arrived and the queue is emptied so that space is available for more messages.</p>
 <p>Responding to incoming messages is a vital process - the queue is the standard means of communication between your task and the rest of the system and other tasks within it.  Failing to call the ProcessMessages() function on a regular basis may cause a back-log of messages to be generated, as well as causing problems with areas such as the graphical interface. If an area of your program is likely to loop continuously for a measurable period of time without returning, consider calling ProcessMessages() at a rate of 50 times per second to ensure that incoming messages are processed.</p>
-<p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function module="Core">AddMsgHandler</function> function.  If a message handler returns the error code <code>ERR_Terminate</code>, then ProcessMessages() will stop processing the queue and returns immediately with <code>ERR_Okay</code>.</p>
-<p>If a message with a <code>MSGID_QUIT</code> ID is found on the queue, then the function returns immediately with the error code ERR_Terminate.  The program must respond to the terminate request by exiting immediately.</p>
+<p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function module="Core">AddMsgHandler</function> function.  If a message handler returns the error code <code>ERR::Terminate</code>, then ProcessMessages() will stop processing the queue and returns immediately with <code>ERR::Okay</code>.</p>
+<p>If a message with a <code>MSGID_QUIT</code> ID is found on the queue, then the function returns immediately with the error code ERR::Terminate.  The program must respond to the terminate request by exiting immediately.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Terminate">Please terminate future calls.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
@@ -1290,7 +1290,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>QueueAction</name>
     <category>Objects</category>
     <comment>Delay the execution of an action by adding the call to the message queue.</comment>
-    <prototype>ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args)</prototype>
+    <prototype>ERR QueueAction(LONG Action, OBJECTID Object, APTR Args)</prototype>
     <input>
       <param type="LONG" name="Action">The ID of an action or method to execute.</param>
       <param type="OBJECTID" name="Object">The target object.</param>
@@ -1300,7 +1300,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.</p>
 <p>The action will be executed on the next cycle of <function module="Core">ProcessMessages</function> in line with the FIFO order of queued messages.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="OutOfRange">A specified number is outside of the valid range.</error>
@@ -1315,7 +1315,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReadFileToBuffer</name>
     <category>Files</category>
     <comment>Reads a file into a buffer.</comment>
-    <prototype>ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
+    <prototype>ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path of the file.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that will receive the file content.</param>
@@ -1326,7 +1326,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function provides a simple method for reading file content into a buffer.  In some cases this procedure may be optimised for the host platform, which makes it the fastest way to read file content in simple cases.</p>
 <p>File path approximation is supported if the Path is prefixed with a <code>~</code> character (e.g. <code>~pictures:photo</code> could be matched to <code>photo.jpg</code> in the same folder).</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="File">File error, e.g. file not found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -1341,16 +1341,16 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReadInfoTag</name>
     <category>Files</category>
     <comment>Read a named tag from a FileInfo structure.</comment>
-    <prototype>ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value)</prototype>
+    <prototype>ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value)</prototype>
     <input>
       <param type="struct FileInfo *" name="Info">Pointer to a valid FileInfo structure.</param>
       <param type="CSTRING" name="Name">The name of the tag.</param>
       <param type="CSTRING *" name="Value">The discovered string value is returned here if found.</param>
     </input>
     <description>
-<p>Call ReadInfoTag() to retrieve the string value associated with a named tag in a FileInfo structure.  The tag must have been added with AddInfoTag() or <code>ERR_NotFound</code> will be returned.</p>
+<p>Call ReadInfoTag() to retrieve the string value associated with a named tag in a FileInfo structure.  The tag must have been added with AddInfoTag() or <code>ERR::NotFound</code> will be returned.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NotFound">A search routine in this function failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1361,7 +1361,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReallocMemory</name>
     <category>Memory</category>
     <comment>Reallocates memory blocks.</comment>
-    <prototype>ERROR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID)</prototype>
+    <prototype>ERR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="APTR" name="Memory">Pointer to a memory block obtained from AllocMemory().</param>
       <param type="ULONG" name="Size">The size of the new memory block.</param>
@@ -1372,7 +1372,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you wish. The data of your original memory block will be copied over to the new block.  If the new block is of a larger size, the left-over bytes will be filled with zero-byte values. If the new block is smaller, you will lose some of the original data.</p>
 <p>The original block will be destroyed as a result of calling this function unless the reallocation process fails, in which case your existing memory block will remain valid.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="Memory">General memory error.</error>
@@ -1385,7 +1385,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>RegisterFD</name>
     <category>System</category>
     <comment>Registers a file descriptor for monitoring when the task is asleep.</comment>
-    <prototype>ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data)</prototype>
+    <prototype>ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data)</prototype>
     <input>
       <param type="HOSTHANDLE" name="FD">The file descriptor that is to be watched.</param>
       <param type="RFD" name="Flags" lookup="RFD">Set to at least one of READ, WRITE, EXCEPT, REMOVE.</param>
@@ -1399,7 +1399,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
 <p>Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoSupport">This request is not supported.</error>
@@ -1410,14 +1410,14 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReleaseMemory</name>
     <category>Memory</category>
     <comment>Releases a lock from a memory based resource.</comment>
-    <prototype>ERROR ReleaseMemory(MEMORYID MemoryID)</prototype>
+    <prototype>ERR ReleaseMemory(MEMORYID MemoryID)</prototype>
     <input>
       <param type="MEMORYID" name="MemoryID">A reference to a memory resource for release.</param>
     </input>
     <description>
 <p>Successful calls to <function module="Core">AccessMemory</function> must be paired with a call to ReleaseMemory() so that the memory can be made available to other processes.  By releasing the resource, the access count will decrease, and if applicable a thread that is in the queue for access may then be able to acquire a lock.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
@@ -1485,7 +1485,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ResolvePath</name>
     <category>Files</category>
     <comment>Converts volume-based paths into absolute paths applicable to the host platform.</comment>
-    <prototype>ERROR ResolvePath(CSTRING Path, RSF Flags, STRING * Result)</prototype>
+    <prototype>ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path to be resolved.</param>
       <param type="RSF" name="Flags" lookup="RSF">Optional flags.</param>
@@ -1501,7 +1501,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <types lookup="RSF"/>
 <p>If the path resolves to a virtual drive, it may not be possible to confirm whether the target file exists if the virtual driver does not support this check.  This is common when working with network drives.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="FileNotFound">File not found.</error>
@@ -1530,7 +1530,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ScanDir</name>
     <category>Files</category>
     <comment>Scans the content of a folder, by item.</comment>
-    <prototype>ERROR ScanDir(struct DirInfo * Info)</prototype>
+    <prototype>ERR ScanDir(struct DirInfo * Info)</prototype>
     <input>
       <param type="struct DirInfo *" name="Info">Pointer to a DirInfo structure for storing scan results.</param>
     </input>
@@ -1548,7 +1548,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 <struct lookup="FileInfo"/>
 <p>The <code>RDF</code> flags that may be returned in the Flags field are <code>VOLUME</code>, <code>FOLDER</code>, <code>FILE</code>, <code>LINK</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="DirEmpty">The folder is empty.</error>
       <error code="Args">Invalid arguments passed to function.</error>
@@ -1559,7 +1559,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>ScanMessages</name>
     <category>Messages</category>
     <comment>Scans a message queue for multiple occurrences of a message type.</comment>
-    <prototype>ERROR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size)</prototype>
     <input>
       <param type="LONG *" name="Handle">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
       <param type="LONG" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
@@ -1567,7 +1567,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
       <param type="LONG" name="Size">The byte-size of the supplied Buffer.</param>
     </input>
     <description>
-<p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.</p>
+<p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR::Okay</code>.</p>
 <p>The following example illustrates a scan for <code>MSGID_QUIT</code> messages:</p>
 <pre>while (!ScanMessages(&amp;handle, MSGID_QUIT, NULL, NULL)) {
    ...
@@ -1575,7 +1575,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 </pre>
 <p>Messages will often (but not always) carry data that is relevant to the message type.  To retrieve this data a buffer must be supplied.  If the buffer is too small as indicated by the Size, the message data will be trimmed to fit without any further indication.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1586,7 +1586,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>SendMessage</name>
     <category>Messages</category>
     <comment>Add a message to the local message queue.</comment>
-    <prototype>ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
+    <prototype>ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
     <input>
       <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
       <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
@@ -1596,7 +1596,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <description>
 <p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function module="Core">AllocateID</function>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
@@ -1606,7 +1606,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>SetArray</name>
     <category>Fields</category>
     <comment>Used to set array fields in objects.</comment>
-    <prototype>ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements)</prototype>
+    <prototype>ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
       <param type="FIELD" name="Field">The universal ID of the field you wish to write to, OR'd with a type indicator.</param>
@@ -1621,7 +1621,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
 </pre>
 <p>An indicator of the type of the elements in the Array must be OR'd into the Field parameter.  Available field types are listed in <function module="Core">SetField</function>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NoFieldAccess">Access to a field was denied.</error>
       <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
@@ -1687,7 +1687,7 @@ FreeResource(memory);  // Reference is no longer valid
     <name>SetField</name>
     <category>Fields</category>
     <comment>Used to set field values of objects.</comment>
-    <prototype>ERROR SetField(OBJECTPTR Object, FIELD Field, ...)</prototype>
+    <prototype>ERR SetField(OBJECTPTR Object, FIELD Field, ...)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
       <param type="FIELD" name="Field">The universal ID of the field to update, OR'd with a type indicator.</param>
@@ -1699,20 +1699,23 @@ FreeResource(memory);  // Reference is no longer valid
 <pre>SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
-<p>Fields are referenced by unique ID's that reflect their names.  On occasion you may find that there is no reserved ID for the field that you wish to access.  To convert field names into their relevant IDs, call the <function module="Core">StrHash</function> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
-<p>The type of the Value parameter must be OR'd into the Field parameter. When writing a field you must give consideration to the type of the target, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
+<p>Fields are referenced as hashed UID's calculated from the <function module="Core">StrHash</function> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
+<p>The type of the Value parameter must be OR'd into the Field parameter.  If the provided type does not match that of the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be converted to a numeric value automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
 <types>
 <type name="TLONG">A 32-bit integer value.</type>
 <type name="TDOUBLE">A 64-bit floating point value.</type>
+<type name="TSCALE">A 64-bit floating point value that represents a scaled multiplier or percentage (1.0 is equivalent to 100%).</type>
 <type name="TLARGE">A 64-bit integer value.</type>
-<type name="TPTR">A standard 32-bit address space pointer.</type>
-<type name="TSTR">A 32-bit pointer that refers to a string.</type>
+<type name="TPTR">A standard address space pointer.</type>
+<type name="TSTR">A pointer that refers to a string.</type>
+<type name="TFUNCTION">A pointer to a FUNCTION structure.</type>
+<type name="TVAR">A pointer to a Variable structure.</type>
 </types>
-<p>There is no requirement for you to have a working knowledge of the target object's field configuration in order to write information to it.</p>
+<p>There is no requirement for the client to have a working knowledge of the target object's field configuration in order to write information to it.</p>
 <p>To set a field with a fixed-size array, please use the <function module="Core">SetArray</function> function.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoFieldAccess">Access to a field was denied.</error>
@@ -1724,7 +1727,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetName</name>
     <category>Objects</category>
     <comment>Sets the name of an object.</comment>
-    <prototype>ERROR SetName(OBJECTPTR Object, CSTRING Name)</prototype>
+    <prototype>ERR SetName(OBJECTPTR Object, CSTRING Name)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="CSTRING" name="Name">The new name for the object.</param>
@@ -1733,7 +1736,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>This function sets the name of an object.  This enhances log messages and allows the object to be found in searches. Please note that the length of the Name will be limited to the value indicated in the core header file, under the <code>MAX_NAME_LEN</code> definition.  Names exceeding the allowed length are trimmed to fit.</p>
 <p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with an underscore.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
@@ -1745,7 +1748,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetOwner</name>
     <category>Objects</category>
     <comment>Changes object ownership dynamically.</comment>
-    <prototype>ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)</prototype>
+    <prototype>ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object to modify.</param>
       <param type="OBJECTPTR" name="Owner">Pointer to the new owner for the object.</param>
@@ -1759,7 +1762,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 </list>
 <p>If the Object does not support the NewOwner action, or the Owner does not support the NewChild action, then the process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1790,7 +1793,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetResourcePath</name>
     <category>System</category>
     <comment>Redefines the location of a system resource path.</comment>
-    <prototype>ERROR SetResourcePath(RP PathType, CSTRING Path)</prototype>
+    <prototype>ERR SetResourcePath(RP PathType, CSTRING Path)</prototype>
     <input>
       <param type="RP" name="PathType" lookup="RP">The ID of the resource path to set.</param>
       <param type="CSTRING" name="Path">The new location to set for the resource path.</param>
@@ -1799,7 +1802,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>The SetResourcePath() function changes the default locations of the Core's resource paths.</p>
 <p>To read a resource path, use the <function module="Core">GetSystemState</function> function.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1809,7 +1812,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetVolume</name>
     <category>Files</category>
     <comment>Adds a new volume name to the system.</comment>
-    <prototype>ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)</prototype>
+    <prototype>ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)</prototype>
     <input>
       <param type="CSTRING" name="Name">Required.  The name of the volume.</param>
       <param type="CSTRING" name="Path">Required.  The path to be associated with the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.</param>
@@ -1823,7 +1826,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>Flags that may be passed are as follows:</p>
 <types lookup="VOLUME"/>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1834,7 +1837,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrCompare</name>
     <category>Strings</category>
     <comment>Compares strings to see if they are identical.</comment>
-    <prototype>ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)</prototype>
+    <prototype>ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)</prototype>
     <input>
       <param type="CSTRING" name="String1">Pointer to the first string.</param>
       <param type="CSTRING" name="String2">Pointer to the second string.</param>
@@ -1842,13 +1845,13 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="STR" name="Flags" lookup="STR">Optional flags.</param>
     </input>
     <description>
-<p>This function compares two strings against each other.  If the strings match then it returns <code>ERR_Okay</code>, otherwise it returns <code>ERR_False</code>.  By default the function is not case sensitive, but you can turn on case sensitivity by specifying the <code>STR::CASE</code> flag.</p>
-<p>If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, <code>ERR_Okay</code> will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
-<p>If the Length is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, <code>ERR_False</code> will be returned.</p>
-<p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an <code>ERR_Okay</code> code only on the condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has been set to 0.</p>
+<p>This function compares two strings against each other.  If the strings match then it returns <code>ERR::Okay</code>, otherwise it returns <code>ERR::False</code>.  By default the function is not case sensitive, but you can turn on case sensitivity by specifying the <code>STR::CASE</code> flag.</p>
+<p>If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, <code>ERR::Okay</code> will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
+<p>If the Length is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, <code>ERR::False</code> will be returned.</p>
+<p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an <code>ERR::Okay</code> code only on the condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has been set to 0.</p>
 <p>If the <code>STR::WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1890,7 +1893,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrReadLocale</name>
     <category>Strings</category>
     <comment>Read system locale information.</comment>
-    <prototype>ERROR StrReadLocale(CSTRING Key, CSTRING * Value)</prototype>
+    <prototype>ERR StrReadLocale(CSTRING Key, CSTRING * Value)</prototype>
     <input>
       <param type="CSTRING" name="Key">The name of a locale value to read.</param>
       <param type="CSTRING *" name="Value">A pointer to the retrieved string value will be returned in this parameter.</param>
@@ -1911,7 +1914,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <type name="Negative">Negative symbol, e.g. '-'</type>
 </types>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="NoData">No data is available for use.</error>
@@ -1923,7 +1926,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Monitor action calls made against an object.</comment>
-    <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback)</prototype>
+    <prototype>ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="LONG" name="Action">The ID of the action that will be monitored.  Methods are not supported.</param>
@@ -1933,24 +1936,23 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a Surface object's Redimension action and respond to resize events:</p>
-<pre>auto callback = make_function_stdc(notify_resize);
-SubscribeAction(surface, AC_Redimension, &amp;callback);
+<pre>SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize, meta_ptr));
 </pre>
 <p>The template below illustrates how the Callback function should be constructed:</p>
-<pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)
+<pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameters, APTR CallbackMeta)
 {
    auto Self = (objClassType *)CurrentContext();
 
    // Code here...
-   if ((Result == ERR_Okay) and (Parameters)) {
+   if ((Result == ERR::Okay) and (Parameters)) {
       auto resize = (struct acRedimension *)Parameters;
    }
 }
 </pre>
-<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR_Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, we can use <function module="Core">CurrentContext</function> to get a reference to the object that initiated the subscription.</p>
+<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR::Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, <function module="Core">CurrentContext</function> can be used to get a reference to the object that initiated the subscription.</p>
 <p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.  Subscriptions are not resource tracked, so it is critical to match the original call with an unsubscription.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="OutOfRange">A specified number is outside of the valid range.</error>
@@ -1962,7 +1964,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>SubscribeEvent</name>
     <category>Events</category>
     <comment>Subscribe to a system event.</comment>
-    <prototype>ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle)</prototype>
+    <prototype>ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle)</prototype>
     <input>
       <param type="LARGE" name="Event">An event identifier.</param>
       <param type="FUNCTION *" name="Callback">The function that will be subscribed to the event.</param>
@@ -1974,7 +1976,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 <p>An event handle will be returned in the Handle parameter to identify the subscription.  This must be retained to later unsubscribe from the event with the <function module="Core">UnsubscribeEvent</function> function.</p>
 <p>The format for the Callback function is <code>Function(APTR Custom, APTR Event, LONG Size)</code>, where 'Event' is the event structure that matches to the subscribed EventID.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1985,7 +1987,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>SubscribeTimer</name>
     <category>System</category>
     <comment>Subscribes an object or function to the timer service.</comment>
-    <prototype>ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription)</prototype>
+    <prototype>ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription)</prototype>
     <input>
       <param type="DOUBLE" name="Interval">The total number of seconds to wait between timer calls.</param>
       <param type="FUNCTION *" name="Callback">A callback function is required that will be called on each time cycle.</param>
@@ -1993,12 +1995,12 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </input>
     <description>
 <p>This function creates a new timer subscription that will be called at regular intervals for the calling object.</p>
-<p>A callback function must be provided that follows this prototype: <code>ERROR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)</code></p>
-<p>The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime parameter is set to the <function module="Core">PreciseTime</function> value just prior to the Callback being called.  The callback function can return <code>ERR_Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR_Terminate)</code> to perform the equivalent of this behaviour.</p>
+<p>A callback function must be provided that follows this prototype: <code>ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)</code></p>
+<p>The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime parameter is set to the <function module="Core">PreciseTime</function> value just prior to the Callback being called.  The callback function can return <code>ERR::Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR::Terminate)</code> to perform the equivalent of this behaviour.</p>
 <p>To change the interval, call <function module="Core">UpdateTimer</function> with the new value.  To release a timer subscription, call <function module="Core">UpdateTimer</function> with the resulting SubscriptionID and an Interval of zero.</p>
 <p>Timer management is provisioned by the <function module="Core">ProcessMessages</function> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
@@ -2183,7 +2185,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>UnsubscribeAction</name>
     <category>Objects</category>
     <comment>Terminates action subscriptions.</comment>
-    <prototype>ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERR UnsubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The object that you are unsubscribing from.</param>
       <param type="LONG" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
@@ -2192,7 +2194,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 <p>The UnsubscribeAction() function will terminate subscriptions made by <function module="Core">SubscribeAction</function>.</p>
 <p>To terminate multiple subscriptions in a single call, set the Action parameter to zero.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -2216,7 +2218,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>UpdateMessage</name>
     <category>Messages</category>
     <comment>Updates the data of any message that is queued.</comment>
-    <prototype>ERROR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size)</prototype>
+    <prototype>ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size)</prototype>
     <input>
       <param type="LONG" name="Message">The ID of the message that will be updated.</param>
       <param type="LONG" name="Type">Defines the type of the message.  If set to -1, the message will be deleted.</param>
@@ -2228,7 +2230,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 <p>Messages can be deleted from the queue by setting the Type to -1.  There is no need to provide buffer information when deleting a message.</p>
 <p>If Data is defined, its size should equal that of the data already set against the message.  The size will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -2240,7 +2242,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>UpdateTimer</name>
     <category>System</category>
     <comment>Modify or remove a subscription created by SubscribeTimer().</comment>
-    <prototype>ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)</prototype>
+    <prototype>ERR UpdateTimer(APTR Subscription, DOUBLE Interval)</prototype>
     <input>
       <param type="APTR" name="Subscription">The timer subscription to modify.</param>
       <param type="DOUBLE" name="Interval">The new interval for the timer (measured in seconds), or zero to remove.</param>
@@ -2248,7 +2250,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <description>
 <p>This function complements <function module="Core">SubscribeTimer</function>.  It can change the interval for an existing timer subscription, or remove it if the Interval is set to zero.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
@@ -2260,7 +2262,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>WaitForObjects</name>
     <category>Messages</category>
     <comment>Process incoming messages while waiting on objects to complete their activities.</comment>
-    <prototype>ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
+    <prototype>ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
     <input>
       <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here (clients should set a value of zero).</param>
       <param type="LONG" name="TimeOut">A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.</param>
@@ -2270,7 +2272,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 <p>The WaitForObjects() function acts as a front-end to <function module="Core">ProcessMessages</function>, with the capability of being able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action. Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are signalled or a time-out occurs.</p>
 <p>Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the object will not be monitored.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -2290,7 +2292,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </input>
     <description>
 <p>This function waits for a period of time as specified by the Seconds and MicroSeconds arguments.  While waiting, your task will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
-<p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR_Terminate</code>, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
+<p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
     </description>
   </function>
 
@@ -2462,32 +2464,32 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
       <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
       <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
-      <const name="HEIGHT">Synonym for FIXED_HEIGHT | RELATIVE_HEIGHT</const>
-      <const name="HEIGHT_FLAGS">Synonym for FIXED_HEIGHT | RELATIVE_HEIGHT | FIXED_Y_OFFSET | RELATIVE_Y_OFFSET</const>
-      <const name="HORIZONTAL_FLAGS">Synonym for FIXED_WIDTH | RELATIVE_WIDTH | FIXED_X_OFFSET | RELATIVE_X_OFFSET | FIXED_X | RELATIVE_X</const>
-      <const name="RELATIVE_CENTER_X">The CenterX field is a relative size to this object's parent.</const>
-      <const name="RELATIVE_CENTER_Y">The CenterY field is a relative size to this object's parent.</const>
-      <const name="RELATIVE_DEPTH">The Depth field is a relative size to this object's parent.</const>
-      <const name="RELATIVE_HEIGHT">The Height field is relative to this object's parent.</const>
-      <const name="RELATIVE_RADIUS">Synonym for RELATIVE_RADIUS_X | RELATIVE_RADIUS_Y</const>
-      <const name="RELATIVE_RADIUS_X">The RadiusX field is a relative size to this object's parent.</const>
-      <const name="RELATIVE_RADIUS_Y">The RadiusY field is a relative size to this object's parent.</const>
-      <const name="RELATIVE_WIDTH">The Width field is relative to this object's parent.</const>
-      <const name="RELATIVE_X">The X field is relative to this object's parent.</const>
-      <const name="RELATIVE_X_OFFSET">The XOffset field is relative to this object's parent.</const>
-      <const name="RELATIVE_Y">The Y field is relative to this object's parent.</const>
-      <const name="RELATIVE_Y_OFFSET">The YOffset field is relative to this object's parent.</const>
-      <const name="RELATIVE_Z">The Z field is a relative coordinate to this object's parent.</const>
+      <const name="HEIGHT">Synonym for FIXED_HEIGHT | SCALED_HEIGHT</const>
+      <const name="HEIGHT_FLAGS">Synonym for FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</const>
+      <const name="HORIZONTAL_FLAGS">Synonym for FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS">Synonym for SCALED_RADIUS_X | SCALED_RADIUS_Y</const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
       <const name="STATUS_CHANGE">Synonym for STATUS_CHANGE_H | STATUS_CHANGE_V</const>
       <const name="STATUS_CHANGE_H"/>
       <const name="STATUS_CHANGE_V"/>
-      <const name="VERTICAL_FLAGS">Synonym for FIXED_HEIGHT | RELATIVE_HEIGHT | FIXED_Y_OFFSET | RELATIVE_Y_OFFSET | FIXED_Y | RELATIVE_Y</const>
-      <const name="WIDTH">Synonym for FIXED_WIDTH | RELATIVE_WIDTH</const>
-      <const name="WIDTH_FLAGS">Synonym for FIXED_WIDTH | RELATIVE_WIDTH | FIXED_X_OFFSET | RELATIVE_X_OFFSET</const>
-      <const name="X">Synonym for FIXED_X | RELATIVE_X</const>
-      <const name="X_OFFSET">Synonym for FIXED_X_OFFSET | RELATIVE_X_OFFSET</const>
-      <const name="Y">Synonym for FIXED_Y | RELATIVE_Y</const>
-      <const name="Y_OFFSET">Synonym for FIXED_Y_OFFSET | RELATIVE_Y_OFFSET</const>
+      <const name="VERTICAL_FLAGS">Synonym for FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</const>
+      <const name="WIDTH">Synonym for FIXED_WIDTH | SCALED_WIDTH</const>
+      <const name="WIDTH_FLAGS">Synonym for FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</const>
+      <const name="X">Synonym for FIXED_X | SCALED_X</const>
+      <const name="X_OFFSET">Synonym for FIXED_X_OFFSET | SCALED_X_OFFSET</const>
+      <const name="Y">Synonym for FIXED_Y | SCALED_Y</const>
+      <const name="Y_OFFSET">Synonym for FIXED_Y_OFFSET | SCALED_Y_OFFSET</const>
     </constants>
 
     <constants lookup="DRL" comment="Compass directions.">
@@ -2562,7 +2564,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="OBJECT">Supplementary, can be used with longs (for IDs) or pointers</const>
       <const name="OBJECTID">Synonym for LONG | OBJECT</const>
       <const name="OBJECTPTR">Synonym for PTR | OBJECT</const>
-      <const name="PERCENTAGE">Supplementary, indicates integer or float value is a percentage.</const>
       <const name="POINTER">Pointer (32 or 64 bit).</const>
       <const name="PRIVATE">Synonym for SYSTEM</const>
       <const name="PTR">Synonym for POINTER</const>
@@ -2580,6 +2581,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="RGB">Supplementary, if a long type then format is 0xAARRGGBB, if pointer then refers to an RGB structure.</const>
       <const name="RI">Synonym for READ | INIT</const>
       <const name="RW">Synonym for READ | WRITE</const>
+      <const name="SCALED">Supplementary, indicates a float value for multiplicative scaling.</const>
       <const name="STR">Synonym for STRING</const>
       <const name="STRING">Pointer to a string.</const>
       <const name="STRRESULT">Synonym for STR | RESULT</const>
@@ -2651,13 +2653,10 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </constants>
 
     <constants lookup="JET" comment="JET constants are documented in GetInputEvent()">
-      <const name="ABS_X">Value is an absolute horizontal coordinate that corresponds to a page area (usually the display or touchpad).</const>
-      <const name="ABS_Y">Value is an absolute vertical coordinate that corresponds to a page area (usually the display or touchpad).</const>
-      <const name="ANALOG2_X">As for ANALOG_X, this type covers a second analog stick if present.</const>
-      <const name="ANALOG2_Y">As for ANALOG_Y, this type covers a second analog stick if present.</const>
+      <const name="ABS_XY">The X, Y values are defined as absolute coordinates, relative to the top-left of the display.</const>
+      <const name="ANALOG2_XY">As for ANALOG_XY, this type covers a second analog stick if present.</const>
       <const name="ANALOG2_Z">As for ANALOG_Z, this type covers a second analog stick if present.</const>
-      <const name="ANALOG_X">Horizontal position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
-      <const name="ANALOG_Y">Vertical position for the default analog control.</const>
+      <const name="ANALOG_XY">Position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
       <const name="ANALOG_Z">3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.</const>
       <const name="BUTTON_1">Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
       <const name="BUTTON_10">Non-specific button assignment.</const>
@@ -2671,18 +2670,15 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="BUTTON_9">Non-specific button assignment.</const>
       <const name="BUTTON_SELECT">Gamepad select button - value is 0 or 1.</const>
       <const name="BUTTON_START">Gamepad start button - value is 0 or 1.</const>
-      <const name="DEVICE_TILT_X">Controller tilted on the X axis (left/right).  Value indicates angle, -ve = left, +ve = right</const>
-      <const name="DEVICE_TILT_Y">Controller tilted on the Y axis (up/down).  Value indicates angle -ve = pull/up, +ve = push/down</const>
+      <const name="CROSSED_IN">This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.</const>
+      <const name="CROSSED_OUT">This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.</const>
+      <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
       <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
-      <const name="DIGITAL_X">Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
-      <const name="DIGITAL_Y">Vertical digital movement from a relative location.</const>
+      <const name="DIGITAL_XY">Digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="ENTERED_SURFACE">This message is sent by the input system when the mouse pointer enters a surface for the first time.  The message value refers to the surface ID, which will be the same as the recipient.</const>
       <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
       <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="LEFT_SURFACE">This message is sent by the input system when the mouse pointer leaves a surface.  The message value refers to the ID of the surface that has been left, which will be the same as the recipient.</const>
-      <const name="PEN_TILT_HORIZONTAL">For pen-based input, this type indicates the horizontal tilt of the pen device.</const>
-      <const name="PEN_TILT_VERTICAL">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
+      <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
       <const name="RIGHT_BUMPER_1">Gamepad right-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
       <const name="RIGHT_BUMPER_2">Gamepad right-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
@@ -2696,12 +2692,12 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="ANALOG">Analog movement (ranging from -1.0 to 1.0)</const>
       <const name="ANCHORED">Cursor has been anchored with LockCursor()</const>
       <const name="BUTTON">Input is a physical button or switch</const>
+      <const name="CROSSING">Crossing events manage the entering and leaving of an area.</const>
       <const name="DBL_CLICK">Set by the input system if the Type is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
       <const name="DIGITAL">D-Pad or digital joystick source (restricted to +/- 1)</const>
       <const name="DRAGGED">Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).</const>
       <const name="DRAG_ITEM">This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.</const>
-      <const name="EXT_MOVEMENT">Extended movement information.  This covers all types of movement that are unconnected to coordinate positioning -  mouse wheel movement and pen tilt are two such examples.</const>
-      <const name="FEEDBACK">Device feedback - e.g. vibration, tilt</const>
+      <const name="EXT_MOVEMENT">Extended or indirect movement information.  This covers all types of movement that are unconnected to coordinate positioning -  mouse wheel movement and pen tilt are two such examples.</const>
       <const name="MOVEMENT">X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.</const>
       <const name="REPEATED">Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)</const>
       <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
@@ -2909,7 +2905,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
+      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR::Search is returned.</const>
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">
@@ -2985,7 +2981,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <constants lookup="MSF" comment="Message flags.">
       <const name="ADD">The default behaviour - this will add the message to the end of the queue.</const>
       <const name="MESSAGE_ID">The Type parameter refers to a unique message ID rather than a message type for this call.</const>
-      <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.</const>
+      <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR::Okay.</const>
       <const name="UPDATE">If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
       <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
     </constants>
@@ -3030,7 +3026,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
-      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR::ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.</const>
     </constants>
 
@@ -3184,7 +3180,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <constants lookup="RSF" comment="Flags for ResolvePath()">
       <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
       <const name="CASE_SENSITIVE">For use on host systems that use case-insensitive file systems such as Windows; this option checks that the discovered file is a case-sensitive match to the Path.</const>
-      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
+      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR::VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
@@ -3280,9 +3276,8 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="API"/>
       <const name="BRANCH"/>
       <const name="CRITICAL"/>
-      <const name="DEBUG"/>
+      <const name="DETAIL"/>
       <const name="ERROR"/>
-      <const name="EXTAPI"/>
       <const name="FUNCTION"/>
       <const name="INFO"/>
       <const name="TRACE"/>
@@ -3369,13 +3364,13 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </struct>
 
     <struct name="DateTime" comment="Generic structure for date-time management.">
-      <field name="Year" type="LONG">Year</field>
-      <field name="Month" type="LONG">Month 1 to 12</field>
-      <field name="Day" type="LONG">Day 1 to 31</field>
-      <field name="Hour" type="LONG">Hour 0 to 23</field>
-      <field name="Minute" type="LONG">Minute 0 to 59</field>
-      <field name="Second" type="LONG">Second 0 to 59</field>
-      <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
+      <field name="Year" type="WORD">Year</field>
+      <field name="Month" type="BYTE">Month 1 to 12</field>
+      <field name="Day" type="BYTE">Day 1 to 31</field>
+      <field name="Hour" type="BYTE">Hour 0 to 23</field>
+      <field name="Minute" type="BYTE">Minute 0 to 59</field>
+      <field name="Second" type="BYTE">Second 0 to 59</field>
+      <field name="TimeZone" type="BYTE">TimeZone -13 to +13</field>
     </struct>
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
@@ -3398,9 +3393,9 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 
     <struct name="Field" comment="Used to describe the public fields of a class.">
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
-      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
       <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
@@ -3411,7 +3406,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+      <field name="SetField" type="APTR">ERR SetField(*Object, APTR Value);</field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
@@ -3542,7 +3537,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </struct>
 
     <struct name="dcDeviceInput">
-      <field name="Value" type="DOUBLE">The value associated with the Type</field>
+      <field name="Values" type="DOUBLE" size="2">The value(s) associated with the Type</field>
       <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
       <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object</field>

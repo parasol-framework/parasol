@@ -12,7 +12,7 @@
     <idstring>ID_SCINTILLASEARCH</idstring>
     <category>Tool</category>
     <include>modules/scintillasearch.h</include>
-    <copyright>Paul Manias © 2005-2023</copyright>
+    <copyright>Paul Manias © 2005-2024</copyright>
     <source>
       <file>class_scintilla_search.cxx</file>
     </source>
@@ -22,7 +22,7 @@
     <method>
       <name>Find</name>
       <comment>Searches for a specific text string.</comment>
-      <prototype>ERROR ssFind(OBJECTPTR Object, LONG * Pos, STF Flags)</prototype>
+      <prototype>ERR ssFind(OBJECTPTR Object, LONG * Pos, STF Flags)</prototype>
       <input>
         <param type="LONG *" name="Pos">The position to start searching from.  Set to -1 to start from the cursor position.  This parameter is updated with the byte position of the discovered string sequence.</param>
         <param type="STF" name="Flags" lookup="STF">Optional flags.</param>
@@ -36,19 +36,19 @@
     <method>
       <name>Next</name>
       <comment>Continues a text search.</comment>
-      <prototype>ERROR ssNext(OBJECTPTR Object, LONG * Pos)</prototype>
+      <prototype>ERR ssNext(OBJECTPTR Object, LONG * Pos)</prototype>
       <input>
         <param type="LONG *" name="Pos">The byte-position of the discovered string sequence is returned here.</param>
       </input>
       <description>
-<p>Use Next to continue a search after calling the <method>Find</method> method.  If a string sequence matching that of <field>Text</field> is discovered, its byte position will be returned in the Pos parameter.  If a new match is not discovered then ERR_Search is returned to indicate an end to the search.</p>
+<p>Use Next to continue a search after calling the <method>Find</method> method.  If a string sequence matching that of <field>Text</field> is discovered, its byte position will be returned in the Pos parameter.  If a new match is not discovered then ERR::Search is returned to indicate an end to the search.</p>
       </description>
     </method>
 
     <method>
       <name>Prev</name>
       <comment>Continues a text search in reverse.</comment>
-      <prototype>ERROR ssPrev(OBJECTPTR Object, LONG * Pos)</prototype>
+      <prototype>ERR ssPrev(OBJECTPTR Object, LONG * Pos)</prototype>
       <input>
         <param type="LONG *" name="Pos">The byte-position of the discovered string is returned here.</param>
       </input>

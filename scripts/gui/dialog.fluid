@@ -52,7 +52,7 @@ Example usage:
 
    gui.dialog.message({
       modal     = true,
-      image     = 'icons:items/warning',
+      image     = 'items/warning',
       title     = 'Hamlet has a question',
       message   = 'To be or not to be?',
       userInput = 'That is the question',
@@ -67,6 +67,7 @@ Example usage:
 --]]
 
    require 'common'
+   require 'gui/window'
 
    if (gui == nil) then gui = { } end
    if (gui.dialog == nil) then gui.dialog = { } end
@@ -85,10 +86,10 @@ local function defaultIcon(self)
          info      = 'info'
       }
       for k,v in pairs(icons) do
-         if self.type == k then return 'icons:items/' .. v end
+         if self.type == k then return 'items/' .. v end
       end
    end
-   return 'icons:items/question'
+   return 'items/question'
 end
 
 gui.dialog.message = function(Options)
@@ -99,7 +100,7 @@ gui.dialog.message = function(Options)
       feedback = Options.feedback,
       inputRequired = Options.inputRequired,
       message    = Options.message,
-      fmtMessage = nz(Options.message, Options.fmtMessage)
+      fmtMessage = Options.fmtMessage
    }
 
    -- Change the message in the dialog
@@ -122,22 +123,22 @@ gui.dialog.message = function(Options)
       processMessages(-1)
    end
 
-   local function matchWindowToDocSize(Window, Document)
+   local function matchWindowToDocSize(self, Document)
       local page_width  = Document.pageWidth
       local page_height = Document.pageHeight
 
-      Window.surface.maxHeight    = page_height
-      Window.surface.minHeight    = page_height
-      Window.surface.insideHeight = page_height
-      Window.surface.maxWidth     = page_width
-      Window.surface.minWidth     = page_width
-      Window.surface.insideWidth  = page_width
+      if (page_width < 100) then page_width = 100 end
+      if (page_height < 100) then page_height = 100 end
+
+      self.window:sizeHints(page_width, page_height, page_width, page_height, false)
+      self.window.surface.insideWidth  = page_width
+      self.window.surface.insideHeight = page_height
    end
 
    local function docEvent(Document, EventFlag, Parameters)
       if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
          if self.feedback then
-            local responseIndex = tonumber(mSys.VarGetString(Parameters.parameters, 'response'))
+            local responseIndex = tonumber(Parameters.response)
             local response = self.options[responseIndex]
             local state = { }
 
@@ -167,10 +168,32 @@ gui.dialog.message = function(Options)
    end
 
    local function buildDocument()
+      local option_icons = ''
+
+      // At minimum, there must be an OK option.
+
+      if not ((type(self.options) == 'table') and (#self.options > 0)) then
+         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+      end
+
+      for i, option in ipairs(self.options) do
+         if option['icon'] then
+            if nz(option_icons) then option_icons = option_icons .. '\n' end
+            option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="16" height="16"/>\n'
+         end
+      end
+
       local doc = [[
 <?xml version="1.0"?>
-<body leftmargin="10" topmargin="10" bottommargin="18" rightmargin="10" face="Open Sans" fontsize="10" link="70,70,120"
-  colour="240,240,250" fontcolour="0,0,0" selectcolour="80,160,80"/>
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="48" height="48"/>]]
+    .. option_icons .. [[
+  </defs>
+</svg>
+
+<body margins="10 10 18 10"/>
 ]]
 
       if Options.envTemplate then
@@ -184,22 +207,21 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      image = nz(Options.image, defaultIcon(self))
-      if image:startsWith('icons:') then
-         image = image:gsub('^icons:(%w+)/(%w+)', 'icons:%1/%2(48)')
-      else
-         image = image:gsub('^(%w+)/(%w+)', 'icons:%1/%2(48)')
+      icon = nz(Options.image, defaultIcon(self))
+      icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
+      local msg = self.fmtMessage
+      if not nz(msg) then
+         msg = string.escXML(nz(self.message, ''))
+         msg = string.gsub(msg, '\n', '<br/>')
       end
 
       doc = doc .. [[
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
+      <cell><image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/></cell>
       <cell>
-        <image src="]] .. image .. [[" align="left" eastgap="18"/>
-      </cell>
-      <cell>
-        <p>]] .. nz(self.fmtMessage, string.escXML(nz(self.message,''))) .. [[</p>
+        <p>]] .. msg .. [[</p>
 ]]
 
       if Options.userInput then
@@ -215,7 +237,7 @@ gui.dialog.message = function(Options)
             msg = ''
          end
 
-         doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" string="' .. msg .. '"/></p>\n'
+         doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then
@@ -228,17 +250,10 @@ gui.dialog.message = function(Options)
          doc = doc .. Options.inject
       end
 
-      // Build the clickable options/buttons.  At minimum, there must be an OK option.
-
-      if not ((type(self.options) == 'table') and (#self.options > 0)) then
-         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
-      end
-
-      doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
-
+      doc = doc .. '<p no-wrap>'
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
+            doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
          doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
@@ -247,7 +262,6 @@ gui.dialog.message = function(Options)
             doc = doc .. '<advance x="30"/>'
          end
       end
-
       doc = doc .. '</p>'
 
       doc = doc .. [[
@@ -310,7 +324,7 @@ gui.dialog.message = function(Options)
       eventCallback = docEvent,
       path          = '#Index',
       flags         = 'Unrestricted|NoScrollbars',
-      defaultScript = obj.find('self')
+      clientScript  = obj.find('self')
    })
 
    lDoc.acDataFeed(0, DATA_XML, buildDocument())
@@ -322,13 +336,10 @@ gui.dialog.message = function(Options)
       self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
    end
 
-   matchWindowToDocSize(self.window, lDoc)
-
-   self.window.userFocus = lDocSurface.id
+   matchWindowToDocSize(self, lDoc)
 
    self.window:moveToFront()
    self.window:show()
-   lDocSurface.acFocus()
 
    self.document = lDoc
 

@@ -48,28 +48,24 @@ void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value));
 
 //********************************************************************************************************************
 
-void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
+void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY, bool NonClient)
 {
    if (auto pointer = gfxAccessPointer(); pointer) {
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
       gfxReleasePointer(pointer);
 
-      struct dcDeviceInput joy[2];
-      joy[0].Type  = JET::ABS_X;
-      joy[0].Flags = JTYPE::NIL;
-      joy[0].Value = AbsX;
+      struct dcDeviceInput joy[1];
+      joy[0].Type  = JET::ABS_XY;
+      joy[0].Flags = NonClient ? JTYPE::SECONDARY : JTYPE::NIL;
+      joy[0].Values[0] = AbsX;
+      joy[0].Values[1] = AbsY;
       joy[0].Timestamp = PreciseTime();
-
-      joy[1].Type  = JET::ABS_Y;
-      joy[1].Flags = JTYPE::NIL;
-      joy[1].Value = AbsY;
-      joy[1].Timestamp = joy[0].Timestamp;
 
       struct acDataFeed feed = {
          .Object   = NULL,
          .Datatype = DATA::DEVICE_INPUT,
          .Buffer   = &joy,
-         .Size     = sizeof(struct dcDeviceInput) * 2
+         .Size     = sizeof(struct dcDeviceInput)
       };
       ActionMsg(AC_DataFeed, glPointerID, &feed);
    }
@@ -80,13 +76,13 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
    if (!glPointerID) {
-      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
 
    struct dcDeviceInput joy;
    joy.Type      = JET::WHEEL;
    joy.Flags     = JTYPE::NIL;
-   joy.Value     = Wheel;
+   joy.Values[0] = Wheel;
    joy.Timestamp = PreciseTime();
 
    struct acDataFeed feed;
@@ -111,6 +107,8 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 }
 
 //********************************************************************************************************************
+// If a button press is incoming from the non-client area (e.g. titlebar, resize edge) then the SECONDARY flag is
+// applied.
 
 void MsgButtonPress(LONG button, LONG State)
 {
@@ -122,24 +120,24 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (button & 0x0001) {
          joy[i].Type  = JET::BUTTON_1;
-         joy[i].Flags = JTYPE::NIL;
-         joy[i].Value = State;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
+         joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
 
       if (button & 0x0002) {
          joy[i].Type  = JET::BUTTON_2;
-         joy[i].Flags = JTYPE::NIL;
-         joy[i].Value = State;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
+         joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
 
       if (button & 0x0004) {
          joy[i].Type  = JET::BUTTON_3;
-         joy[i].Flags = JTYPE::NIL;
-         joy[i].Value = State;
+         joy[i].Flags = (button & 0x4000) ? JTYPE::SECONDARY : JTYPE::NIL;
+         joy[i].Values[0] = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
@@ -152,7 +150,7 @@ void MsgButtonPress(LONG button, LONG State)
          feed.Datatype = DATA::DEVICE_INPUT;
          feed.Buffer   = &joy;
          feed.Size     = sizeof(struct dcDeviceInput) * i;
-         if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
+         if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
             glPointerID = 0;
          }
       }
@@ -170,10 +168,10 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
       extDisplay *display;
       OBJECTID display_id = surface->DisplayID;
-      if (!AccessObject(display_id, 3000, &display)) {
+      if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
          FUNCTION feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
@@ -204,7 +202,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
 {
    pf::Log log;
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
@@ -222,17 +220,15 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
-      LONG minwidth, minheight, maxwidth, maxheight;
-      LONG left, right, top, bottom;
-      surface->get(FID_MinWidth, &minwidth);
-      surface->get(FID_MinHeight, &minheight);
-      surface->get(FID_MaxWidth, &maxwidth);
-      surface->get(FID_MaxHeight, &maxheight);
-      surface->get(FID_LeftMargin, &left);
-      surface->get(FID_TopMargin, &top);
-      surface->get(FID_BottomMargin, &bottom);
-      surface->get(FID_RightMargin, &right);
+   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
+      auto minwidth  = surface->get<LONG>(FID_MinWidth);
+      auto minheight = surface->get<LONG>(FID_MinHeight);
+      auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
+      auto maxheight = surface->get<LONG>(FID_MaxHeight);
+      auto left      = surface->get<LONG>(FID_LeftMargin);
+      auto top       = surface->get<LONG>(FID_TopMargin);
+      auto bottom    = surface->get<LONG>(FID_BottomMargin);
+      auto right     = surface->get<LONG>(FID_RightMargin);
 
       if (*Width < minwidth + left + right)   *Width  = minwidth + left + right;
       if (*Height < minheight + top + bottom) *Height = minheight + top + bottom;
@@ -283,27 +279,27 @@ void MsgWindowClose(OBJECTID SurfaceID)
 
       if (glWindowHooks.contains(hook)) {
          auto func = &glWindowHooks[hook];
-         ERROR result;
+         ERR result;
 
-         if (func->Type IS CALL_STDC) {
+         if (func->isC()) {
             pf::SwitchContext ctx(func->StdC.Context);
-            auto callback = (ERROR (*)(OBJECTID SurfaceID))func->StdC.Routine;
-            result = callback(SurfaceID);
+            auto callback = (ERR (*)(OBJECTID SurfaceID, APTR))func->StdC.Routine;
+            result = callback(SurfaceID, func->StdC.Meta);
          }
-         else if (func->Type IS CALL_SCRIPT) {
+         else if (func->isScript()) {
             ScriptArg args[] = { { "SurfaceID", SurfaceID, FDF_OBJECTID } };
-            scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
          }
-         else result = ERR_Okay;
+         else result = ERR::Okay;
 
-         if (result IS ERR_Terminate) glWindowHooks.erase(hook);
-         else if (result IS ERR_Cancelled) {
+         if (result IS ERR::Terminate) glWindowHooks.erase(hook);
+         else if (result IS ERR::Cancelled) {
             log.msg("Window closure cancelled by client.");
             return;
          }
       }
 
-      if (!CheckMemoryExists(SurfaceID)) FreeResource(SurfaceID);
+      if (CheckMemoryExists(SurfaceID) IS ERR::Okay) FreeResource(SurfaceID);
    }
 }
 

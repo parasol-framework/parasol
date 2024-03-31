@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/fields.h
-// Copyright: Paul Manias © 1996-2023
+// Copyright: Paul Manias © 1996-2024
 // Generator: idl-c
 
 #define FID_Category 0x19ee1863LL
@@ -216,7 +216,7 @@
 #define FID_ActionScript 0xab19ce38LL
 #define FID_LabelWidth 0xe1c93545LL
 #define FID_Template 0xeeaba201LL
-#define FID_FocusFrame 0xf362fb10LL
+#define FID_FontStyle 0xf6bc116dLL
 #define FID_Bottom 0xf492ca7aLL
 #define FID_IgnoreFocus 0xf730cb69LL
 #define FID_Header 0x01d218aeLL
@@ -532,17 +532,14 @@
 #define FID_Tabs 0x7c9e552fLL
 #define FID_Outline 0x7d9ba745LL
 #define FID_WrapEdge 0x80248354LL
-#define FID_WrapCallback 0x878b8aecLL
 #define FID_StrWidth 0x913a3abeLL
 #define FID_FixedWidth 0xa86c5cd5LL
-#define FID_EscapeChar 0xb6a3bf14LL
 #define FID_Underline 0xb8ea5b4bLL
 #define FID_LineSpacing 0xbb0bc1d2LL
 #define FID_TotalChars 0xc8396dbaLL
 #define FID_GlyphSpacing 0xc896c32eLL
 #define FID_AlignWidth 0xcb1970d0LL
 #define FID_TabSize 0xce95c997LL
-#define FID_EscapeCallback 0xd07112a3LL
 #define FID_Ascent 0xf27c7183LL
 #define FID_InputFile 0x044358d5LL
 #define FID_Datatype 0x05eed661LL
@@ -854,6 +851,7 @@
 #define FID_Degree 0xf880fbf1LL
 #define FID_DestBitmap 0xae246132LL
 #define FID_DeviceID 0x3f093642LL
+#define FID_DragCallback 0xcd1ba3b0LL
 #define FID_EffectXML 0xa7fe50e3LL
 #define FID_EnableBkgd 0xdb56fba4LL
 #define FID_FX 0x005977e3LL
@@ -935,19 +933,25 @@
 #define FID_Weight 0x24d3ea4dLL
 
 #define FID_Bias 0x7c949844LL
+#define FID_ClipFlags 0x4959653aLL
 #define FID_Constant 0x42a2b30fLL
 #define FID_Def 0x0b8869b4LL
 #define FID_Dictionary 0xccb60b7bLL
 #define FID_Divisor 0x12ffda05LL
 #define FID_EdgeMode 0xbb10b09fLL
+#define FID_EventCallback 0xfc356c74LL
+#define FID_EventMask 0x354f38b3LL
 #define FID_Exponent 0xd4513596LL
+#define FID_LoopLimit 0xf4c76a9eLL
 #define FID_MatrixRows 0x64419145LL
 #define FID_MatrixColumns 0x54dc215bLL
 #define FID_Matrix 0x0d3e291aLL
 #define FID_PreserveAlpha 0xf9b49d57LL
+#define FID_Pretext 0xc28b4df1LL
 #define FID_ResX 0x7c9d4fa7LL
 #define FID_ResY 0x7c9d4fa8LL
 #define FID_RootModule 0xdc9a16cfLL
+#define FID_Rounding 0x2a6f2a0bLL
 #define FID_SourceName 0xb837c737LL
 #define FID_Structs 0xaf10175dLL
 #define FID_TargetX 0xcfb0ab64LL
@@ -978,4 +982,5 @@
 #define FID_Numeric 0x301f0df8LL
 #define FID_ResizeEvent 0xc404ebf9LL
 #define FID_TabOrder 0xa10b2cb8LL
+#define FID_TextFlags 0x1bce45f7LL
 

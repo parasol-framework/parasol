@@ -12,12 +12,12 @@
     <idstring>ID_THREAD</idstring>
     <category>System</category>
     <include>modules/thread.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Thread class provides the means to execute and manage threads within an application.</p>
 <p>The following code illustrates how to create a temporary thread that is automatically destroyed after the thread_entry() function has completed:</p>
-<pre>static ERROR thread_entry(objThread *Thread) {
-   return ERR_Okay;
+<pre>static ERR thread_entry(objThread *Thread) {
+   return ERR::Okay;
 }
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
@@ -58,7 +58,7 @@ if (thread.ok()) thread-&gt;activate(thread);
     <method>
       <name>SetData</name>
       <comment>Attaches data to the thread.</comment>
-      <prototype>ERROR thSetData(OBJECTPTR Object, APTR Data, LONG Size)</prototype>
+      <prototype>ERR thSetData(OBJECTPTR Object, APTR Data, LONG Size)</prototype>
       <input>
         <param type="APTR" name="Data">Pointer to the data buffer.</param>
         <param type="LONG" name="Size">Size of the data buffer.  If zero, the pointer is stored directly, with no copy operation taking place.</param>
@@ -110,7 +110,7 @@ if (thread.ok()) thread-&gt;activate(thread);
       <name>Error</name>
       <comment>Reflects the error code returned by the thread routine.</comment>
       <access read="R">Read</access>
-      <type>ERROR</type>
+      <type>ERR</type>
     </field>
 
     <field>
@@ -129,7 +129,7 @@ if (thread.ok()) thread-&gt;activate(thread);
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The routine that will be executed when the thread is activated must be specified here.  The function synopsis is <code>ERROR routine(objThread *Thread)</code>.</p>
+<p>The routine that will be executed when the thread is activated must be specified here.  The function synopsis is <code>ERR routine(objThread *Thread)</code>.</p>
 <p>When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has finished processing, the resulting error code will be stored in the thread object's <field>Error</field> field.</p>
       </description>
     </field>

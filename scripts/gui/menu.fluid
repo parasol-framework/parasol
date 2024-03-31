@@ -30,13 +30,13 @@ Valid options to use when creating the menu are as follows:
    require 'gui'
    include 'display'
 
-   if (not mFont) then mFont = mod.load('font') end
    if (not mGfx)  then mGfx = mod.load('display') end
 
-local FONT_FACE = 'Open Sans'
+local FONT_FACE = 'Noto Sans'
 local FONT_SIZE = 11
 local MARGIN    = 6
 local RIGHT_MARGIN = MARGIN
+local ITEM_SPACING = 1.2
 
 local function applyFill(Vector, Fill)
    while (Vector != nil) do
@@ -88,7 +88,7 @@ gui.menu = function(Options)
 
       -- To use the clip, set the 'mask' field of any drawable vector.
       self.clip = self.scene.new('VectorClip', { units='BoundingBox' })
-      local clipRect = self.clip.new('VectorRectangle', {
+      local clipRect = self.clip.viewport.new('VectorRectangle', {
          x      = 1.5,
          y      = 1.5,
          roundX = 3,
@@ -158,13 +158,14 @@ gui.menu = function(Options)
                string   = item['item']
             })
 
+            local err, bx, by, bw, bh = vText.mtGetBoundary(0)
+
             mi.text = vText
-            mi.textY = y + vText.font.height + ((vText.font.maxHeight - vText.font.height)/2)
+            mi.textY = y + ((vText.lineSpacing + vText.displaySize) * 0.5)
 
-            itemWidth = mFont.StringWidth(vText.font, item['item'], -1)
-            if (itemWidth > widestItem) then widestItem = itemWidth end
+            if (bw > widestItem) then widestItem = bw end
 
-            local icon_size = vText.font.maxHeight
+            local icon_size = vText.displayHeight + vText.descent
 
             if showIcons and item['icon'] then
                catch(function()
@@ -191,15 +192,18 @@ gui.menu = function(Options)
                   align    = 'right',
                   string   = key
                })
-               vKey.y = y + vKey.font.height + ((vKey.font.maxHeight - vKey.font.height)/2)
 
-               keyWidth = mFont.StringWidth(vKey.font, key, -1)
+               local err, bx, by, bw, bh = vKey.mtGetBoundary(0)
+
+               vKey.y = y + ((vKey.lineSpacing + vKey.displaySize) * 0.5)
+
+               keyWidth = bw
                if (keyWidth > widestKey) then widestKey = keyWidth end
                mi.keyText = vKey
             end
 
             vText.y = mi.textY
-            mi.height = vText.font.maxHeight * 1.4
+            mi.height = vText.lineSpacing * ITEM_SPACING
             y = y + mi.height
 
             table.insert(self.items, mi)
@@ -497,7 +501,7 @@ gui.menu = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
       local ev = Events
       while ev do
          if (ev.type == JET_BUTTON_1) then
@@ -512,18 +516,16 @@ gui.menu = function(Options)
                   self.surface.acHide()
                end
             end
-         elseif (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+         elseif (ev.type == JET_ABS_XY) then
             local highlightFound = false
-            if (ev.overID == self.surface.id) then
-               for _, item in pairs(self.items) do
-                  if not item.lineBreak then
-                     if (ev.y >= item.y) and (ev.y < item.y + item.height) then
-                        if (self.hItem != item) then
-                           highlightItem(item)
-                        end
-                        highlightFound = true
-                        break
+            for _, item in pairs(self.items) do
+               if not item.lineBreak then
+                  if (ev.y >= item.y) and (ev.y < item.y + item.height) then
+                     if (self.hItem != item) then
+                        highlightItem(item)
                      end
+                     highlightFound = true
+                     break
                   end
                end
             end

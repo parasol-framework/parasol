@@ -226,11 +226,11 @@ gui.input = function(Options)
    end)
 
    if self.events.cursorEntry or self.events.cursorExit then
-      self.inputViewport.mtSubscribeInput(JTYPE_FEEDBACK, function(Viewport, Msg)
+      self.inputViewport.mtSubscribeInput(JTYPE_CROSSING, function(Viewport, Msg)
          repeat
-            if (Msg.type == JET_ENTERED_SURFACE) then
+            if (Msg.type == JET_CROSSED_IN) then
                if self.events.cursorEntry then self.events.cursorEntry(self) end
-            elseif (Msg.type == JET_LEFT_SURFACE) then
+            elseif (Msg.type == JET_CROSSED_OUT) then
                if self.events.cursorExit then self.events.cursorExit(self) end
             end
             Msg = Msg.next

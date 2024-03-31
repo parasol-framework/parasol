@@ -12,7 +12,7 @@
     <idstring>ID_CLIPBOARD</idstring>
     <category>IO</category>
     <include>modules/clipboard.h</include>
-    <copyright>Paul Manias 2003-2023</copyright>
+    <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system, behaviour between platforms can vary.</p>
 <p>On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to. If historical buffering is enabled with the <code>CPF::HISTORY_BUFFER</code> option then the clipboard API will actively monitor the clipboard and store copied data in the local <code>clipboard:</code> file cache.  This results in additional overhead to clipboard management.</p>
@@ -44,7 +44,7 @@
     <method>
       <name>AddFile</name>
       <comment>Add files to the clipboard.</comment>
-      <prototype>ERROR clipAddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
+      <prototype>ERR clipAddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">Set this argument to indicate the type of data you are copying to the clipboard.</param>
         <param type="CSTRING" name="Path">The path of the file to add.</param>
@@ -67,7 +67,7 @@
     <method>
       <name>AddObjects</name>
       <comment>Extract data from objects and add it all to the clipboard.</comment>
-      <prototype>ERROR clipAddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
+      <prototype>ERR clipAddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The type of data representing the objects, or NULL for automatic recognition.</param>
         <param type="OBJECTID *" name="Objects">Array of object ID's to add to the clipboard.</param>
@@ -88,7 +88,7 @@
     <method>
       <name>AddText</name>
       <comment>Adds a block of text to the clipboard.</comment>
-      <prototype>ERROR clipAddText(OBJECTPTR Object, CSTRING String)</prototype>
+      <prototype>ERR clipAddText(OBJECTPTR Object, CSTRING String)</prototype>
       <input>
         <param type="CSTRING" name="String">The text to add to the clipboard.</param>
       </input>
@@ -105,7 +105,7 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERROR clipGetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
+      <prototype>ERR clipGetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
         <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
         <param type="LONG" name="Index">If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.</param>
@@ -114,7 +114,7 @@
       </input>
       <description>
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
-<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange is returned.</p>
+<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR::OutOfRange is returned.</p>
 <p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
 <p>If this method returns the <code>CEF::DELETE</code> flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>
@@ -129,7 +129,7 @@
     <method>
       <name>Remove</name>
       <comment>Remove items from the clipboard.</comment>
-      <prototype>ERROR clipRemove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
+      <prototype>ERR clipRemove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
       </input>
@@ -164,8 +164,8 @@
       <description>
 <p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a <code>DATA::REQUEST</code> to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
 <p>
-<code>ERROR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
-<p>The function will be expected to send a <code>DATA::RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR_NoSupport</code> should be returned by the function.</p>
+<code>ERR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
+<p>The function will be expected to send a <code>DATA::RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR::NoSupport</code> should be returned by the function.</p>
       </description>
     </field>
 

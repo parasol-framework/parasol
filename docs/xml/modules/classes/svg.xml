@@ -12,10 +12,11 @@
     <idstring>ID_SVG</idstring>
     <category>GUI</category>
     <include>modules/svg.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The SVG class provides support for parsing SVG statements into native <class name="Vector">Vector</class> objects and related definitions. For low-level vector programming, consider using the <class name="Vector">Vector</class> class directly, or use the SVG class to parse an SVG script and then access the <field>Viewport</field> field to perform transforms and manipulation of the vector group.</p>
-<p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.</p></description>
+<p>The SVG class provides support for parsing SVG statements into a scene graph that consists of <class name="Vector">Vector</class> objects and related constructs.  The generated scene graph is accessible via the <field>Scene</field> and <field>Viewport</field> fields.</p>
+<p>It is possible to parse SVG documents directly to the UI.  Set the <field>Target</field> field with a vector to contain the SVG content and it will be structured in the existing scene graph.</p>
+<p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.</p></description>
     <source>
       <file>class_svg.cpp</file>
     </source>
@@ -26,7 +27,8 @@
       <name>Activate</name>
       <comment>Initiates playback of SVG animations.</comment>
       <description>
-<p>SVG documents that use animation features will remain static until they are activated with this action.  The animation code will be processed in the background at the pre-defined <field>FrameRate</field>.  The client may hook into the animation cycle by setting the <field>FrameCallback</field> with a suitable function.</p>
+<p>SVG documents that use animation features will remain static until they are activated with this action.  The animation code will be processed in the background at the pre-defined <field>FrameRate</field>.  The <field>Scene</field> will be redrawn automatically as each frame is processed.</p>
+<p>The client can hook into the animation cycle by setting the <field>FrameCallback</field> with a suitable function.</p>
       </description>
     </action>
 
@@ -61,9 +63,23 @@
 
   <methods>
     <method>
+      <name>ParseSymbol</name>
+      <comment>Generate a vector scene graph from an SVG symbol, targeting a viewport.</comment>
+      <prototype>ERR svgParseSymbol(OBJECTPTR Object, CSTRING ID, objVectorViewport * Viewport)</prototype>
+      <input>
+        <param type="CSTRING" name="ID">Name of the symbol to parse.</param>
+        <param type="objVectorViewport *" name="Viewport">The target viewport.</param>
+      </input>
+      <description>
+<p>ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for utilising symbols in a way that is akin to running macros as required by the program.</p>
+<p>The Name must refer to a symbol that has been declared in the loaded document.  A <class name="VectorViewport">VectorViewport</class> must be provided for the symbol's generated content to target.</p>
+      </description>
+    </method>
+
+    <method>
       <name>Render</name>
       <comment>Render the scene to a target Bitamp.</comment>
-      <prototype>ERROR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <prototype>ERR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
       <input>
         <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
         <param type="LONG" name="X">Target X coordinate.</param>
@@ -79,6 +95,16 @@
   </methods>
 
   <fields>
+    <field>
+      <name>Colour</name>
+      <comment>Defines the default fill to use for 'currentColor' references.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Set the Colour value to alter the default fill that is used for <code>currentColor</code> references.  Typically a standard RGB painter fill reference should be used for this purpose, e.g. <code>rgb(255,255,255)</code>.  It is however, also acceptable to use URL references to named definitions such as gradients and images.  This will work as long as the named definition is registered in the top-level <class name="VectorScene">VectorScene</class> object.</p>
+      </description>
+    </field>
+
     <field>
       <name>Flags</name>
       <comment>Optional flags.</comment>
@@ -124,7 +150,7 @@
 
     <field>
       <name>Path</name>
-      <comment>The location of the source SVG data.</comment>
+      <comment>A path referring to an SVG file.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
@@ -143,14 +169,25 @@
     </field>
 
     <field>
+      <name>Statement</name>
+      <comment>A string containing SVG data.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>SVG data can be loaded from a string by specifying it here prior to initialisation.  If the <field>Path</field> field has been defined, it will take precedent and the Statement is ignored.</p>
+<p>Alternatively the <action>DataFeed</action> action can be used to parse data on-the-fly after the SVG object is initialised.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Target</name>
-      <comment>The root Viewport that is generated during SVG initialisation can be created as a child of this target object.</comment>
+      <comment>The container object for new SVG content can be declared here.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>OBJECTPTR</type>
       <description>
-<p>During the initialisation of an SVG object, a VectorViewport will be created that hosts the SVG's vector objects.  The target of this VectorViewport can be specified here, conditional on that object residing within a <class name="VectorScene">VectorScene</class>, or is a VectorScene itself.</p>
-<p>An attempt will be made to find the new target's parent VectorScene.  If none is identified, an error will be returned and no further action is taken.</p>
-<p>If a SVG object is initialised with no Target being defined, a <class name="VectorScene">VectorScene</class> will be created automatically and referenced by the Target field.</p>
+<p>During the normal initialisation process, a new <class name="VectorViewport">VectorViewport</class> is created to host the SVG scene graph.  By default, the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene graph elsewhere.</p>
+<p>The provided Target can be any object class, as long as it forms part of a scene graph owned by a <class name="VectorScene">VectorScene</class> object.  It is recommended that the chosen target is a <class name="VectorViewport">VectorViewport</class>.</p>
+<p>The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible to terminate the SVG object without impacting the resources it created.</p>
       </description>
     </field>
 

@@ -17,8 +17,7 @@ Log levels are:
 3  Application log message, level 1
 4  INFO Application log message, level 2
 5  API Top-level API messages, e.g. function entry points (default)
-6  EXTAPI Extended API messages.  For messages within functions, and entry-points for minor functions.
-7  DEBUG More detailed API messages.
+6  DETAIL Detailed API messages.  For messages within functions, and entry-points for minor functions.
 8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
@@ -134,10 +133,10 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
       VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
       VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
+      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
    };
 
    if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level
@@ -213,7 +212,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       // If no header is provided, make one to match the current context
 
       auto ctx = tlContext;
-      auto obj = tlContext->object();
+      auto obj = ctx->object();
       if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
       else if (ctx->Action < 0) {
          if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
@@ -265,8 +264,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
 
          if (obj->Class) {
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->ClassName;
+            name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
             if (glLogLevel > 5) {
                if (ctx->Field) {
@@ -309,7 +307,7 @@ FuncError: Sends basic error messages to the application log.
 Status: Internal
 
 This function outputs a message to the application log.  It uses the codes listed in the system/errors.h file to
-display the correct string to the user.  The following example `FuncError(ERR_Write)` would produce input such
+display the correct string to the user.  The following example `FuncError(ERR::Write)` would produce input such
 as the following: `WriteFile: Error writing data to file.`.
 
 Notice that the Header parameter is not provided in the example.  It is not necessary to supply this parameter in
@@ -324,7 +322,7 @@ error: Returns the same code that was specified in the Error parameter.
 
 *********************************************************************************************************************/
 
-ERROR FuncError(CSTRING Header, ERROR Code)
+ERR FuncError(CSTRING Header, ERR Code)
 {
    if (tlLogStatus <= 0) return Code;
    if (glLogLevel < 2) return Code;
@@ -372,11 +370,11 @@ ERROR FuncError(CSTRING Header, ERROR Code)
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
          if (ctx->Field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[Code], hiend);
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[LONG(Code)], hiend);
          }
-         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[Code], hiend);
+         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[LONG(Code)], hiend);
       }
-      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
+      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[LONG(Code)], hiend);
 
       #if defined(__unix__) && !defined(__ANDROID__)
          if (glSync) { fflush(0); fsync(STDERR_FILENO); }

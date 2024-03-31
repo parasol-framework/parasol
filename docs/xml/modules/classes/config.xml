@@ -14,7 +14,7 @@
     <idstring>ID_CONFIG</idstring>
     <category>Data</category>
     <include>modules/config.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Config class is provided for reading text based key-values in a simple structured format.  Although basic and lacking support for trees and types, they are reliable, easy to support and use minimal resources.</p>
 <p>The following segment of a config file illustrates:</p>
@@ -85,7 +85,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>DeleteGroup</name>
       <comment>Deletes entire groups of configuration data.</comment>
-      <prototype>ERROR cfgDeleteGroup(OBJECTPTR Object, CSTRING Group)</prototype>
+      <prototype>ERR cfgDeleteGroup(OBJECTPTR Object, CSTRING Group)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the group that will be deleted.</param>
       </input>
@@ -101,7 +101,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>DeleteKey</name>
       <comment>Deletes single key entries.</comment>
-      <prototype>ERROR cfgDeleteKey(OBJECTPTR Object, CSTRING Group, CSTRING Key)</prototype>
+      <prototype>ERR cfgDeleteKey(OBJECTPTR Object, CSTRING Group, CSTRING Key)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the targeted group.</param>
         <param type="CSTRING" name="Key">The name of the targeted key.</param>
@@ -119,7 +119,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>GetGroupFromIndex</name>
       <comment>Converts an index number into its matching group string.</comment>
-      <prototype>ERROR cfgGetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
+      <prototype>ERR cfgGetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
       <input>
         <param type="LONG" name="Index">The group index that you want to identify.</param>
         <param type="CSTRING *" name="Group">Points to the group string that matches the index number.</param>
@@ -138,9 +138,9 @@ print('The Action class is located at ' .. str)
     <method>
       <name>Merge</name>
       <comment>Merges two config objects together.</comment>
-      <prototype>ERROR cfgMerge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
+      <prototype>ERR cfgMerge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
       <input>
-        <param type="OBJECTPTR" name="Source">The ID of the config object to be merged.</param>
+        <param type="OBJECTPTR" name="Source">The config object to be merged.</param>
       </input>
       <description>
 <p>The Merge method is used to merge configuration data from one config object provided as a source, into the target object. Existing data in the target will be overwritten by the source in cases where there matching set of group keys.</p>
@@ -154,8 +154,8 @@ print('The Action class is located at ' .. str)
 
     <method>
       <name>MergeFile</name>
-      <comment>Merges a foreign configuration file into existing configuration data.</comment>
-      <prototype>ERROR cfgMergeFile(OBJECTPTR Object, CSTRING Path)</prototype>
+      <comment>Merges a configuration file into existing configuration data.</comment>
+      <prototype>ERR cfgMergeFile(OBJECTPTR Object, CSTRING Path)</prototype>
       <input>
         <param type="CSTRING" name="Path">The location of the configuration file that you want to merge.</param>
       </input>
@@ -172,7 +172,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>ReadValue</name>
       <comment>Reads a key-value string.</comment>
-      <prototype>ERROR cfgReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
+      <prototype>ERR cfgReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of a group to examine for a key.  If NULL, all groups are scanned.</param>
         <param type="CSTRING" name="Key">The name of a key to retrieve (case sensitive).</param>
@@ -192,14 +192,14 @@ print('The Action class is located at ' .. str)
     <method>
       <name>Set</name>
       <comment>Sets keys in existing config groups (aborts if the group does not exist).</comment>
-      <prototype>ERROR cfgSet(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
+      <prototype>ERR cfgSet(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the group.  Wildcards are supported.</param>
         <param type="CSTRING" name="Key">The name of the key.</param>
         <param type="CSTRING" name="Data">The data that will be added to the given group/key.</param>
       </input>
       <description>
-<p>This method is identical to <method>WriteValue</method> except it will abort if the name of the referred group does not exist in the config object.  The error code ERR_Search is returned if this is the case.  Please refer to <method>WriteValue</method> for further information on the behaviour of this function.</p>
+<p>This method is identical to <method>WriteValue</method> except it will abort if the name of the referred group does not exist in the config object.  The error code ERR::Search is returned if this is the case.  Please refer to <method>WriteValue</method> for further information on the behaviour of this function.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -213,7 +213,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>SortByKey</name>
       <comment>Sorts config data using a sequence of sort instructions.</comment>
-      <prototype>ERROR cfgSortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
+      <prototype>ERR cfgSortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of the key to sort on.</param>
         <param type="LONG" name="Descending">Set to TRUE if a descending sort is required.</param>
@@ -230,7 +230,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>WriteValue</name>
       <comment>Adds new entries to config objects.</comment>
-      <prototype>ERROR cfgWriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
+      <prototype>ERR cfgWriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the group.</param>
         <param type="CSTRING" name="Key">The name of the key.</param>

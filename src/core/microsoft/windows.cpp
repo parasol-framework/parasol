@@ -77,7 +77,7 @@ WINBASEAPI VOID WINAPI WakeAllConditionVariable(PCONDITION_VARIABLE ConditionVar
 WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 #endif
 
-extern "C" LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue);
+extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue);
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore);
 extern "C" long long winGetTickCount(void);
 
@@ -145,13 +145,13 @@ typedef unsigned char UBYTE;
 
 
 typedef struct DateTime {
-   LONG Year;
-   LONG Month;
-   LONG Day;
-   LONG Hour;
-   LONG Minute;
-   LONG Second;
-   LONG TimeZone;
+   WORD Year;
+   BYTE Month;
+   BYTE Day;
+   BYTE Hour;
+   BYTE Minute;
+   BYTE Second;
+   BYTE TimeZone;
 } DateTime;
 
 #define IS ==
@@ -236,7 +236,7 @@ struct FileFeedback {
 };
 
 extern "C" LONG CALL_FEEDBACK(struct FileFeedback *);
-extern "C" LONG convert_errno(LONG Error, LONG Default);
+extern "C" ERR convert_errno(LONG Error, ERR Default);
 extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
 //********************************************************************************************************************
@@ -394,7 +394,7 @@ static const char *glMsgClass = "RKLMessageClass";
 
 using BREAK_HANDLER = void (*)();
 
-extern "C" LONG winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
+extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 {
    MEMORY_BASIC_INFORMATION mbiInfo;
    char path[255];
@@ -442,7 +442,7 @@ extern "C" LONG winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler
 
    // Register a blocking (message style) semaphore for signalling that process validation is required.
 
-   if (plAllocPrivateSemaphore(&glValidationSemaphore, 1)) return ERR_Failed;
+   if (plAllocPrivateSemaphore(&glValidationSemaphore, 1) != ERR::Okay) return ERR::Failed;
 
    glDeadProcessMsg = RegisterWindowMessage("RKL_DeadProcess");
 
@@ -462,21 +462,21 @@ extern "C" LONG winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler
          HWND_MESSAGE, (HMENU)NULL, glInstance, NULL);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Platform specific semaphore handling functions.
 
-extern "C" LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
+extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
 {
    SECURITY_ATTRIBUTES security = {
       .nLength = sizeof(SECURITY_ATTRIBUTES),
       .lpSecurityDescriptor = NULL,
       .bInheritHandle = FALSE
    };
-   if (!(*Semaphore = CreateSemaphore(&security, 0, InitialValue, NULL))) return ERR_Failed;
-   else return ERR_Okay;
+   if (!(*Semaphore = CreateSemaphore(&security, 0, InitialValue, NULL))) return ERR::Failed;
+   else return ERR::Okay;
 }
 
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
@@ -569,7 +569,7 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 //********************************************************************************************************************
 // The SysLock() function uses these publicly accessible handles for synchronising Core processes.
 
-extern "C" int alloc_public_waitlock(HANDLE *Lock, const char *Name)
+extern "C" ERR alloc_public_waitlock(HANDLE *Lock, const char *Name)
 {
 #ifdef WAITLOCK_EVENTS
    HANDLE event;
@@ -577,7 +577,7 @@ extern "C" int alloc_public_waitlock(HANDLE *Lock, const char *Name)
    if (Name) {
       if ((event = OpenEvent(SYNCHRONIZE|EVENT_MODIFY_STATE, FALSE, Name))) {
          *Lock = event;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -588,17 +588,17 @@ extern "C" int alloc_public_waitlock(HANDLE *Lock, const char *Name)
 
    if ((event = CreateEvent(&sa, FALSE, FALSE, Name))) {
       *Lock = event;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_SystemCall;
+   else return ERR::SystemCall;
 #else
    SECURITY_ATTRIBUTES security;
 
    security.nLength = sizeof(SECURITY_ATTRIBUTES);
    security.lpSecurityDescriptor = NULL;
    security.bInheritHandle = FALSE;
-   if ((*Lock = CreateSemaphore(&security, 0, 1, Name))) return ERR_Okay;
-   else return ERR_SystemCall;
+   if ((*Lock = CreateSemaphore(&security, 0, 1, Name))) return ERR::Okay;
+   else return ERR::SystemCall;
 #endif
 }
 
@@ -607,24 +607,24 @@ extern "C" void free_public_waitlock(HANDLE Lock)
    CloseHandle(Lock);
 }
 
-extern "C" LONG wake_waitlock(HANDLE Lock, LONG TotalSleepers)
+extern "C" ERR wake_waitlock(HANDLE Lock, LONG TotalSleepers)
 {
-   if (!Lock) return ERR_NullArgs;
+   if (!Lock) return ERR::NullArgs;
 
-   LONG error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    #ifdef WAITLOCK_EVENTS
       while (TotalSleepers-- > 0) {
          if (!SetEvent(Lock)) {
             char msg[100];
             fprintf(stderr, "SetEvent() failed: %s\n", winFormatMessage(GetLastError(), msg, sizeof(msg)));
-            error = ERR_SystemCall;
+            error = ERR::SystemCall;
             break;
          }
       }
    #else
       LONG prev;
-      if (!ReleaseSemaphore(Lock, 1, &prev)) error = ERR_SystemCall;
+      if (!ReleaseSemaphore(Lock, 1, &prev)) error = ERR::SystemCall;
    #endif
 
    return error;
@@ -990,7 +990,7 @@ extern "C" LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
 //********************************************************************************************************************
 // Used by class_thread.c only.
 
-extern "C" LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
+extern "C" ERR winCreatePipe(HANDLE *Read, HANDLE *Write)
 {
    SECURITY_ATTRIBUTES sa;
 
@@ -999,9 +999,9 @@ extern "C" LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
    sa.bInheritHandle = FALSE;
 
    if (CreatePipe(Read, Write, &sa, 0)) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Failed;
+   else return ERR::Failed;
 }
 
 //********************************************************************************************************************
@@ -1087,10 +1087,10 @@ extern "C" void winTerminateThread(HANDLE Handle)
 
 //********************************************************************************************************************
 
-extern "C" LONG winWaitThread(HANDLE Handle, LONG TimeOut)
+extern "C" ERR winWaitThread(HANDLE Handle, LONG TimeOut)
 {
-   if (WaitForSingleObject(Handle, TimeOut) IS WAIT_TIMEOUT) return ERR_TimeOut;
-   else return ERR_Okay;
+   if (WaitForSingleObject(Handle, TimeOut) IS WAIT_TIMEOUT) return ERR::TimeOut;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1185,16 +1185,16 @@ extern "C" void winSelect(int FD, char *Read, char *Write)
 
 static BOOL CALLBACK TerminateAppEnum( HWND hwnd, LPARAM lParam ) ;
 
-extern "C" int winTerminateApp(int dwPID, int dwTimeout)
+extern "C" ERR winTerminateApp(int dwPID, int dwTimeout)
 {
    HANDLE hProc ;
-   int dwRet ;
+   ERR dwRet;
 
    // If we can't open the process with PROCESS_TERMINATE rights, then we give up immediately.
 
    hProc = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwPID);
 
-   if (hProc IS NULL) return ERR_Failed;
+   if (hProc IS NULL) return ERR::Failed;
 
    // TerminateAppEnum() posts WM_CLOSE to all windows whose PID matches your process's.
 
@@ -1203,9 +1203,9 @@ extern "C" int winTerminateApp(int dwPID, int dwTimeout)
    // Wait on the handle. If it signals, great. If it times out, then you kill it.
 
    if (WaitForSingleObject(hProc, dwTimeout) != WAIT_OBJECT_0) {
-      dwRet = (TerminateProcess(hProc,0) ? ERR_Okay : ERR_Failed);
+      dwRet = (TerminateProcess(hProc,0) ? ERR::Okay : ERR::Failed);
    }
-   else dwRet = ERR_Okay;
+   else dwRet = ERR::Okay;
 
    CloseHandle(hProc);
    return dwRet;
@@ -1347,12 +1347,12 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
 
 //********************************************************************************************************************
 
-extern "C" int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
+extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
 
-   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &info)) return ERR_Failed;
+   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &info)) return ERR::Failed;
 
    if (info.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) *Hidden = TRUE;
    else *Hidden = FALSE;
@@ -1376,19 +1376,19 @@ extern "C" int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *Read
    if (LastAccess) convert_time(&info.ftLastWriteTime, LastAccess);
    if (LastCreate) convert_time(&info.ftLastWriteTime, LastCreate);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-extern "C" int winCreateDir(const char *Path)
+extern "C" ERR winCreateDir(const char *Path)
 {
-   if (auto result = CreateDirectory(Path, NULL)) return ERR_Okay;
+   if (auto result = CreateDirectory(Path, NULL)) return ERR::Okay;
    else {
        result = GetLastError();
-       if (result IS ERROR_ALREADY_EXISTS) return ERR_FileExists;
-       else if (result IS ERROR_PATH_NOT_FOUND) return ERR_FileNotFound;
-       else return ERR_Failed;
+       if (result IS ERROR_ALREADY_EXISTS) return ERR::FileExists;
+       else if (result IS ERROR_PATH_NOT_FOUND) return ERR::FileNotFound;
+       else return ERR::Failed;
    }
 }
 
@@ -1462,9 +1462,9 @@ extern "C" void winSetDllDirectory(LPCSTR Path)
 
 //********************************************************************************************************************
 
-extern "C" LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LONG *WinFlags)
+extern "C" ERR winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LONG *WinFlags)
 {
-   if ((!Path) or (!Path[0])) return ERR_Args;
+   if ((!Path) or (!Path[0])) return ERR::Args;
 
    LONG nflags = 0;
    if (Flags & MFF_READ) nflags |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
@@ -1498,19 +1498,19 @@ extern "C" LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE 
 
             CloseHandle(*Handle);
             *Handle = NULL;
-            return ERR_SystemCall;
+            return ERR::SystemCall;
          }
       }
 
       *WinFlags = nflags;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_NoSupport;
+   else return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
 
-extern "C" LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *PathOutput, LONG PathSize, LONG *Status)
+extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *PathOutput, LONG PathSize, LONG *Status)
 {
    DWORD bytes_out;
    auto ovlap = (OVERLAPPED *)WatchBuffer;
@@ -1535,11 +1535,11 @@ extern "C" LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags
          DWORD empty;
          ReadDirectoryChangesW(Handle, fni, sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, TRUE, NotifyFlags, &empty, ovlap, NULL);
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_NothingDone;
+      else return ERR::NothingDone;
    }
-   else return ERR_NothingDone;
+   else return ERR::NothingDone;
 }
 
 //********************************************************************************************************************
@@ -1783,7 +1783,7 @@ extern "C" LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 
 //********************************************************************************************************************
 
-extern "C" LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
+extern "C" ERR delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
 {
    LONG len, cont, i;
    WIN32_FIND_DATA find;
@@ -1792,8 +1792,8 @@ extern "C" LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback
    if (Feedback) {
       Feedback->Path = Path;
       i = CALL_FEEDBACK(Feedback);
-      if (i IS FFR_ABORT) return ERR_Cancelled;
-      else if (i IS FFR_SKIP) return ERR_Okay;
+      if (i IS FFR_ABORT) return ERR::Cancelled;
+      else if (i IS FFR_SKIP) return ERR::Okay;
    }
 
    for (len=0; Path[len]; len++);
@@ -1842,17 +1842,17 @@ extern "C" LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback
    }
 
    if (attrib & FILE_ATTRIBUTE_DIRECTORY) {
-      if (RemoveDirectory(Path)) return ERR_Okay;
-      else return ERR_Failed;
+      if (RemoveDirectory(Path)) return ERR::Okay;
+      else return ERR::Failed;
    }
    else if (!unlink(Path)) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       #ifdef __CYGWIN__
-      return convert_errno(*__errno(), ERR_Failed);
+      return convert_errno(*__errno(), ERR::Failed);
       #else
-      return convert_errno(errno, ERR_Failed);
+      return convert_errno(errno, ERR::Failed);
       #endif
    }
 }

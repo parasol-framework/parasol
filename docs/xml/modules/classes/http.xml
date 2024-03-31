@@ -12,7 +12,7 @@
     <idstring>ID_HTTP</idstring>
     <category>Network</category>
     <include>modules/http.h</include>
-    <copyright>Paul Manias © 2005-2023</copyright>
+    <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The HTTP class provides a way of interacting with servers that support the HTTP protocol.  Supported HTTP methods include GET, POST, PUT, DELETE, COPY, MOVE, MKCOL and more.  The following features are included:</p>
 <list type="unsorted">
@@ -127,7 +127,7 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>DOUBLE</type>
       <description>
-<p>The timeout for connect operations is specified here.  In the event of a timeout, the HTTP object will be deactivated and the <field>Error</field> field will be updated to a value of ERR_TimeOut.</p>
+<p>The timeout for connect operations is specified here.  In the event of a timeout, the HTTP object will be deactivated and the <field>Error</field> field will be updated to a value of ERR::TimeOut.</p>
 <p>The timeout value is measured in seconds.</p>
       </description>
     </field>
@@ -172,7 +172,7 @@ http.acActivate()
       <type>DOUBLE</type>
       <description>
 <p>A timeout for send and receive operations is required to prevent prolonged waiting during data transfer operations. This is essential when interacting with servers that stream data with indeterminate content lengths.  It should be noted that a timeout does not necessarily indicate failure if the content is being streamed from the server (<field>ContentLength</field> is set to -1).</p>
-<p>In the event of a timeout, the HTTP object will be deactivated and the <field>Error</field> field will be updated to a value of <code>ERR_TimeOut</code>.</p>
+<p>In the event of a timeout, the HTTP object will be deactivated and the <field>Error</field> field will be updated to a value of <code>ERR::TimeOut</code>.</p>
 <p>The timeout value is measured in seconds.</p>
       </description>
     </field>
@@ -193,9 +193,9 @@ http.acActivate()
       <name>Error</name>
       <comment>The error code received for the most recently executed HTTP command.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>ERROR</type>
+      <type>ERR</type>
       <description>
-<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (ERR_Okay). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR_TimeOut</code> error may be received on termination of streamed content.  For genuine HTML error codes, see the <field>Status</field> field.</p>
+<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (ERR::Okay). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content.  For genuine HTML error codes, see the <field>Status</field> field.</p>
       </description>
     </field>
 
@@ -225,8 +225,8 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERROR Function(*HTTP, APTR Data, LONG Length)</code>.</p>
-<p>If an error code of <code>ERR_Terminate</code> is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
+<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, LONG Length)</code>.</p>
+<p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>
 
@@ -301,9 +301,9 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
+<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
 <p>Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.</p>
-<p>If an error code of <code>ERR_Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR_TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR_Okay</code> indicate failure.</p>
+<p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR::TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR::Okay</code> indicate failure.</p>
       </description>
     </field>
 
@@ -417,8 +417,8 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an HTTP object.  The format for the routine is <code>ERROR Function(*HTTP, HGS State)</code>.</p>
-<p>If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
+<p>Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an HTTP object.  The format for the routine is <code>ERR Function(*HTTP, HGS State)</code>.</p>
+<p>If an error code of ERR::Terminate is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>
 
@@ -469,7 +469,7 @@ http.acActivate()
       <const name="READING_CONTENT">The client will remain in this state when the server is sending data to the client.</const>
       <const name="READING_HEADER">The default state - this value will be indicated when no data is being written to the server and the client is waiting for a complete header from the server.</const>
       <const name="SENDING_CONTENT">During the uploading of data to the server (e.g. POST), the HTTP object will remain in this state.</const>
-      <const name="SEND_COMPLETE">On successful completion of the send phase, the state changes to SEND_COMPLETE.  Successful completion requires either that the number of bytes indicated in ContentLength have been sent, or ERR_Terminate has been returned by the callback functions.</const>
+      <const name="SEND_COMPLETE">On successful completion of the send phase, the state changes to SEND_COMPLETE.  Successful completion requires either that the number of bytes indicated in ContentLength have been sent, or ERR::Terminate has been returned by the callback functions.</const>
       <const name="TERMINATED">If an HTTP command failes to complete normally - for instance if the connection is broken before completion - then the state is set to TERMINATED.</const>
     </constants>
 

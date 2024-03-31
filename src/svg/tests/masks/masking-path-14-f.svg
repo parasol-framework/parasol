@@ -1,0 +1,34 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+The 'clipPath' element itself and its children elements do not inherit clipping paths from ancestors of the 'clipPath'
+element.
+
+Overlay a red 'rect' with a black 'rect' of a larger size. Define a 'clipPath' with a 'rect' of the same size as the
+red 'rect', but different 'x' and 'y' offsets. Reference that 'clipPath' from a 'g' element containing another
+'clipPath' element. In this latter 'clipPath', specify a 'rect' of the same size and same 'x' and 'y' offsets as the
+red 'rect', and reference it from the black 'rect' element. Reference the same 'clipPath' elements, but this time
+with a black 'rect' which overlays a red 'rect' of a larger size. If there is no red on the page, the first
+'clipPath' was not inherited by the second 'clipPath'.
+-->
+
+  <clipPath id="testClipPathAncestor">
+    <rect x="50" y="50" width="50" height="50" />
+  </clipPath>
+
+  <g clip-path="url(#testClipPathAncestor)">
+    <clipPath id="testClipPath">
+      <rect x="0" y="0" width="50" height="50" />
+    </clipPath>
+  </g>
+
+  <svg x="0" y="0" width="200" height="200">
+    <rect x="0" y="0" width="50" height="50" fill="red" />
+    <rect x="0" y="0" width="200" height="200" fill="black" clip-path="url(#testClipPath)"/>
+  </svg>
+
+  <svg x="200" y="0" width="200" height="200">
+    <rect x="0" y="0" width="200" height="200" fill="red" clip-path="url(#testClipPath)"/>
+    <rect x="0" y="0" width="50" height="50" fill="black" />
+  </svg>
+</svg>

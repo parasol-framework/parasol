@@ -180,16 +180,16 @@ gui.button = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_FEEDBACK, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Msg)
+   self.viewport.mtSubscribeInput(bit.bor(JTYPE_CROSSING, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Msg)
       repeat
-         if (Msg.type == JET_ENTERED_SURFACE) then
+         if (Msg.type == JET_CROSSED_IN) then
             local highlight = gui.strToRGB(gui.colours.rgb('widgetBkgd'))
             highlight.a = highlight.a * 0.5
             self.bkgd.fill = gui.rgbToSVG(highlight)
             if self.events.cursorEntry then
                self.events.cursorEntry(self)
             end
-         elseif (Msg.type == JET_LEFT_SURFACE) then
+         elseif (Msg.type == JET_CROSSED_OUT) then
             self.bkgd.fill = gui.colours.rgb('widgetBkgd')
             if self.events.cursorExit then
                self.events.cursorExit(self)

@@ -4,6 +4,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewbox="0 0 1000 1000" width="1000" height="1000">
   <defs>
     <rect id="r" width="30" height="15" fill="#bb085f" stroke-width="2.5" stroke="#7a054d"/>
+
     <g id="p">
       <use xlink:href="#r"/>
       <use y="15" xlink:href="#r"/>
@@ -16,7 +17,7 @@
       <use xlink:href="#p" transform="translate(30 0) skewY(-40)"/>
     </pattern>
   </defs>
-  <rect width="100%" height="100%" fill="url(#Pattern)"  />
 
+  <rect width="100%" height="100%" fill="url(#Pattern)"  />
 </svg>
 

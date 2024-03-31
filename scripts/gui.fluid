@@ -128,11 +128,13 @@ end
 
 gui.getFontHeight = function(Font)
    if not Font.height then
-      local fnt = obj.new('font', { face=Font.face, point=Font.size })
-      Font.height = fnt.height
-      Font.maxHeight = fnt.maxHeight
+      local err, handle = mVec.getFontHandle(Font.face, 'Regular', 0, Font.size)
+      local metrics = struct.new('FontMetrics')
+      mVec.getFontMetrics(handle, metrics)
+      Font.height  = metrics.height
+      Font.spacing = metrics.lineSpacing
    end
-   return Font.maxHeight, Font.height
+   return Font.spacing, Font.height
 end
 
 ------------------------------------------------------------------------------

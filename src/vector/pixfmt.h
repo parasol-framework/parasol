@@ -692,6 +692,114 @@ private:
       }
    }
 
+   // Generic 8-bit grey-scale routines
+
+   static void blendHLine8(agg::pixfmt_psl *Self, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept
+   {
+      if (c.a) {
+         UBYTE grey = F2T((c.r * 0.2126) + (c.g * 0.7152) + (c.b * 0.0722));
+         UBYTE *p = Self->mData + (y * Self->mStride) + x;
+         ULONG alpha = (ULONG(c.a) * (cover + 1)) >> 8;
+         if (alpha == 0xff) {
+            do {
+               *p = grey;
+               p++;
+            } while(--len);
+         }
+         else {
+            do {
+               Self->fBlendPix(Self, p, c.r, c.g, c.b, alpha);
+               p++;
+            } while(--len);
+         }
+      }
+   }
+
+   static void blendSolidHSpan8(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 &c, const UBYTE *covers) noexcept
+   {
+      if (c.a) {
+         UBYTE grey = F2T((c.r * 0.2126) + (c.g * 0.7152) + (c.b * 0.0722));
+         UBYTE *p = Self->mData + (y * Self->mStride) + x;
+         do {
+            ULONG alpha = (ULONG(c.a) * (ULONG(*covers) + 1)) >> 8;
+            if (alpha == 0xff) p[0] = grey;
+            else Self->fBlendPix(Self, p, c.r, c.g, c.b, alpha);
+            p++;
+            ++covers;
+         } while(--len);
+      }
+   }
+
+   static void blendColorHSpan8(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors, const UBYTE *covers, UBYTE cover) noexcept
+   {
+      UBYTE *p = Self->mData + (y * Self->mStride) + x;
+      if (covers) {
+         do {
+            Self->fCoverPix(Self, p, colors->r, colors->g, colors->b, colors->a, *covers++);
+            p++;
+            ++colors;
+         } while(--len);
+      }
+      else if (cover == 255) {
+         do {
+            Self->fCopyPix(Self, p, colors->r, colors->g, colors->b, colors->a);
+            p++;
+            ++colors;
+         } while(--len);
+      }
+      else {
+         do {
+            Self->fCoverPix(Self, p, colors->r, colors->g, colors->b, colors->a, cover);
+            p++;
+            ++colors;
+         } while(--len);
+      }
+   }
+   
+   static void copyColorHSpan8(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors) noexcept
+   {
+      UBYTE *p = Self->mData + (y * Self->mStride) + x;
+      do {
+          p[0] = F2T((colors->r * 0.2126) + (colors->g * 0.7152) + (colors->b * 0.0722));
+          ++colors;
+          p++;
+      } while(--len);
+   }
+
+   // Standard 8-bit routines
+
+   static void blend8(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      UBYTE grey = F2T((cr * 0.2126) + (cg * 0.7152) + (cb * 0.0722));
+      p[0] = ((p[0] * (0xff-alpha)) + (grey * alpha) + 0xff)>>8;
+   }
+
+   inline static void copy8(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (alpha) {
+         UBYTE grey = F2T((cr * 0.2126) + (cg * 0.7152) + (cb * 0.0722));
+         if (alpha == 0xff) p[0] = grey;
+         else p[0] = ((p[0] * (0xff-alpha)) + (grey * alpha) + 0xff)>>8;
+      }
+   }
+
+   static void cover8(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
+   {
+      if (cover == 255) {
+         if (alpha) {
+            UBYTE grey = F2T((cr * 0.2126) + (cg * 0.7152) + (cb * 0.0722));
+            if (alpha == 0xff) p[0] = grey;
+            else p[0] = ((p[0] * (0xff-alpha)) + (grey * alpha) + 0xff)>>8;
+         }
+      }
+      else if (alpha) {
+         UBYTE grey = F2T((cr * 0.2126) + (cg * 0.7152) + (cb * 0.0722));
+         alpha = (alpha * (cover + 1)) >> 8;
+         if (alpha == 0xff) p[0] = grey;
+         else p[0] = ((p[0] * (0xff-alpha)) + (grey * alpha) + 0xff)>>8;         
+      }
+   }
+
 public:
 
    inline void blend_hline(int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept

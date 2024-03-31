@@ -1,10 +1,10 @@
 // Action jump table implementation.  Actions will call the generic object_action_call() unless they have a direct
 // implementation written for them.
 
-inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING Action, ERROR Error)
+inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING Action, ERR Error)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   if ((Error >= ERR_ExceptionThreshold) and (prv->Catch)) {
+   if ((Error >= ERR::ExceptionThreshold) and (prv->Catch)) {
       char msg[180];
       prv->CaughtError = Error;
       snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));
@@ -17,7 +17,7 @@ inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING A
 static int action_activate(lua_State *Lua)
 {
    auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    bool release = false;
 
    if (object->DelayCall) {
@@ -30,7 +30,7 @@ static int action_activate(lua_State *Lua)
       release = true;
    }
 
-   lua_pushinteger(Lua, error);
+   lua_pushinteger(Lua, LONG(error));
    if (release) release_object(object);
    report_action_error(Lua, object, "Activate", error);
    return 1;
@@ -40,10 +40,10 @@ static int action_draw(lua_State *Lua)
 {
    auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    BYTE argbuffer[sizeof(struct acDraw)+8]; // +8 for overflow protection in build_args()
 
-   if ((error = build_args(Lua, glActions[AC_Draw].Args, glActions[AC_Draw].Size, argbuffer, NULL))) {
+   if ((error = build_args(Lua, glActions[AC_Draw].Args, glActions[AC_Draw].Size, argbuffer, NULL)) != ERR::Okay) {
       luaL_error(Lua, "Argument build failed for Draw().");
       return 0;
    }
@@ -59,7 +59,7 @@ static int action_draw(lua_State *Lua)
       release = true;
    }
 
-   lua_pushinteger(Lua, error);
+   lua_pushinteger(Lua, LONG(error));
    if (release) release_object(object);
    report_action_error(Lua, object, "Draw", error);
    return 1;

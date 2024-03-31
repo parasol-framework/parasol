@@ -14,10 +14,10 @@
     <idstring>ID_TASK</idstring>
     <category>System</category>
     <include>modules/task.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
-<p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR_Okay then the executable program was run successfully.</p>
+<p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR::Okay then the executable program was run successfully.</p>
 <p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p></description>
     <source>
       <file path="../classes/">class_task.cpp</file>
@@ -68,7 +68,7 @@
     <method>
       <name>AddArgument</name>
       <comment>Adds a new argument to the Parameters field.</comment>
-      <prototype>ERROR taskAddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
+      <prototype>ERR taskAddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
       <input>
         <param type="CSTRING" name="Argument">The new argument string.</param>
       </input>
@@ -84,7 +84,7 @@
     <method>
       <name>Expunge</name>
       <comment>Forces a Task to expunge unused code.</comment>
-      <prototype>ERROR taskExpunge(OBJECTPTR Object)</prototype>
+      <prototype>ERR taskExpunge(OBJECTPTR Object)</prototype>
       <description>
 <p>The Expunge method releases all loaded libraries that are no longer in use by the active process.</p>
       </description>
@@ -96,13 +96,13 @@
     <method>
       <name>GetEnv</name>
       <comment>Retrieves environment variables for the active process.</comment>
-      <prototype>ERROR taskGetEnv(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <prototype>ERR taskGetEnv(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the environment variable to retrieve.</param>
         <param type="CSTRING *" name="Value">The value of the environment variable is returned in this parameter.</param>
       </input>
       <description>
-<p>On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the Name string.  If there is no matching variable, <code>ERR_DoesNotExist</code> is returned.</p>
+<p>On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the Name string.  If there is no matching variable, <code>ERR::DoesNotExist</code> is returned.</p>
 <p>In Windows, it is possible to look up registry keys if the string starts with one of the following (in all other cases, the system's environment variables are queried):</p>
 <pre>\HKEY_LOCAL_MACHINE\
 \HKEY_CURRENT_USER\
@@ -123,7 +123,7 @@
     <method>
       <name>Quit</name>
       <comment>Sends a quit message to a task.</comment>
-      <prototype>ERROR taskQuit(OBJECTPTR Object)</prototype>
+      <prototype>ERR taskQuit(OBJECTPTR Object)</prototype>
       <description>
 <p>The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task can be killed outright with the Free action.</p>
       </description>
@@ -135,7 +135,7 @@
     <method>
       <name>SetEnv</name>
       <comment>Sets environment variables for the active process.</comment>
-      <prototype>ERROR taskSetEnv(OBJECTPTR Object, CSTRING Name, CSTRING Value)</prototype>
+      <prototype>ERR taskSetEnv(OBJECTPTR Object, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the environment variable to set.</param>
         <param type="CSTRING" name="Value">The value to assign to the environment variable.</param>
@@ -226,9 +226,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The InputCallback field is available for use only when the Task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size, ERROR Status)</code></p>
+<p>The InputCallback field is available for use only when the Task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size, ERR Status)</code></p>
 <p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
-<p>A status of ERR_Finished is sent if the stdinput handle has been closed.</p>
+<p>A status of ERR::Finished is sent if the stdinput handle has been closed.</p>
       </description>
     </field>
 
@@ -342,7 +342,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Once a process has completed execution then its return code can be read from this field.  If process is still running, the error code ERR_TaskStillExists will be returned.</p>
+<p>Once a process has completed execution then its return code can be read from this field.  If process is still running, the error code ERR::TaskStillExists will be returned.</p>
       </description>
     </field>
 

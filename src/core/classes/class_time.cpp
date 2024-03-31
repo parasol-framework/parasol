@@ -8,11 +8,7 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Time: Simplifies the management of date/time information.
 
-The Time class is available for programs that require time and date recording.  In future, support will also be
-provided for the addition and subtraction of date values.
-
-Please note that the Time class uses strict metric interpretations of "millisecond" and "microsecond" terminology. That
-is, a millisecond is 1/1000th (one thousandth) of a second, a microsecond is 1/1000000th (one millionth) of a second.
+The Time class is available for programs that require time and date management in a multi-platform manner.
 
 To get the current system time, use the #Query() action.
 -END-
@@ -33,10 +29,10 @@ To get the current system time, use the #Query() action.
 #include <unistd.h>
 #endif
 
-static ERROR GET_TimeStamp(objTime *, LARGE *);
+static ERR GET_TimeStamp(objTime *, LARGE *);
 
-static ERROR TIME_Query(objTime *, APTR);
-static ERROR TIME_SetTime(objTime *, APTR);
+static ERR TIME_Query(objTime *, APTR);
+static ERR TIME_SetTime(objTime *, APTR);
 
 /*********************************************************************************************************************
 -ACTION-
@@ -44,7 +40,7 @@ Query: Updates the values in a time object with the current system date and time
 -END-
 *********************************************************************************************************************/
 
-static ERROR TIME_Query(objTime *Self, APTR Void)
+static ERR TIME_Query(objTime *Self, APTR Void)
 {
    #ifdef __unix__
 
@@ -92,7 +88,7 @@ static ERROR TIME_Query(objTime *Self, APTR Void)
    LONG m = Self->Month + 12 * a - 2;
    Self->DayOfWeek = (Self->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -106,7 +102,7 @@ work if the user is logged in as the administrator.
 
 *********************************************************************************************************************/
 
-static ERROR TIME_SetTime(objTime *Self, APTR Void)
+static ERR TIME_SetTime(objTime *Self, APTR Void)
 {
 #ifdef __unix__
    pf::Log log;
@@ -157,9 +153,9 @@ static ERROR TIME_SetTime(objTime *Self, APTR Void)
    }
    else log.warning("mktime() failed [%d/%d/%d, %d:%d:%d]", Self->Day, Self->Month, Self->Year, Self->Hour, Self->Minute, Self->Second);
 
-   return ERR_Okay;
+   return ERR::Okay;
 #else
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 #endif
 }
 
@@ -175,10 +171,10 @@ DayOfWeek: Day of week (0 - 6) starting from Sunday.
 Hour: Hour (0 - 23)
 
 -FIELD-
-MicroSecond: Microsecond (0 - 999999)
+MicroSecond: A microsecond is one millionth of a second (0 - 999999)
 
 -FIELD-
-MilliSecond: Millisecond (0 - 999)
+MilliSecond: A millisecond is one thousandth of a second (0 - 999)
 
 -FIELD-
 Minute: Minute (0 - 59)
@@ -206,24 +202,24 @@ The TimeStamp field is a 64-bit integer that represents the time object as an ap
 milliseconds represented in the time object (approximately the total amount of time passed since Zero-AD).  This is
 convenient for summarising a time value for comparison with other time stamps, or for storing time in a 64-bit space.
 
-The TimeStamp is dynamically calculated when you read this field.
+The TimeStamp value is dynamically calculated when reading this field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
+static ERR GET_TimeStamp(objTime *Self, LARGE *Value)
 {
    *Value = Self->Second +
-            ((LARGE)Self->Minute * 60) +
-            ((LARGE)Self->Hour * 60 * 60) +
-            ((LARGE)Self->Day * 60 * 60 * 24) +
-            ((LARGE)Self->Month * 60 * 60 * 24 * 31) +
-            ((LARGE)Self->Year * 60 * 60 * 24 * 12);
+            (LARGE(Self->Minute) * 60) +
+            (LARGE(Self->Hour) * 60 * 60) +
+            (LARGE(Self->Day) * 60 * 60 * 24) +
+            (LARGE(Self->Month) * 60 * 60 * 24 * 31) +
+            (LARGE(Self->Year) * 60 * 60 * 24 * 31 * 12);
 
    *Value = *Value * 1000000LL;
 
    *Value += Self->MilliSecond;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -262,7 +258,7 @@ static const MethodEntry clMethods[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_time_class(void)
+extern "C" ERR add_time_class(void)
 {
    glTimeClass = objMetaClass::create::global(
       fl::BaseClassID(ID_TIME),
@@ -275,5 +271,5 @@ extern "C" ERROR add_time_class(void)
       fl::Size(sizeof(objTime)),
       fl::Path("modules:core"));
 
-   return glTimeClass ? ERR_Okay : ERR_AddClass;
+   return glTimeClass ? ERR::Okay : ERR::AddClass;
 }

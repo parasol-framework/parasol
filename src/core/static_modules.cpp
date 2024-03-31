@@ -3,6 +3,7 @@
 
 extern "C" ModHeader * register_audio_module();
 extern "C" ModHeader * register_display_module();
+extern "C" ModHeader * register_document_module();
 extern "C" ModHeader * register_fluid_module();
 extern "C" ModHeader * register_font_module();
 extern "C" ModHeader * register_http_module();
@@ -28,6 +29,10 @@ static void register_static_modules(void)
 
    #ifdef INC_MOD_DISPLAY
    glStaticModules["display"] = register_display_module();
+   #endif
+
+   #ifdef INC_MOD_DOCUMENT
+   glStaticModules["document"] = register_document_module();
    #endif
 
    #ifdef INC_MOD_FLUID

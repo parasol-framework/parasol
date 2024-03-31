@@ -164,13 +164,9 @@
         <chapter title="Display Module" src="modules/viewmodule.rpl?xml=display.xml"/>
         <chapter title="Fluid Module" src="modules/viewmodule.rpl?xml=fluid.xml"/>
         <chapter title="Font Module" src="modules/viewmodule.rpl?xml=font.xml"/>
-        <chapter title="Keyboard Module" src="modules/viewmodule.rpl?xml=keyboard.xml"/>
         <chapter title="Network Module" src="modules/viewmodule.rpl?xml=network.xml"/>
-        <chapter title="Object Kernel" src="modules/viewmodule.rpl?xml=kernel.xml"/>
-        <!--<chapter title="Serial Module" src="modules/viewmodule.rpl?xml=serial.xml"/>-->
-        <!--<chapter title="Smartcard Module" src="modules/viewmodule.rpl?xml=smartcard.xml"/>-->
+        <chapter title="Core" src="modules/viewmodule.rpl?xml=core.xml"/>
         <chapter title="Surface Module" src="modules/viewmodule.rpl?xml=surface.xml"/>
-        <!--<chapter title="USB Module" src="modules/viewmodule.rpl?xml=usb.xml"/>-->
         <chapter title="Vector Module" src="modules/viewmodule.rpl?xml=vector.xml"/>
       </chapter>
     </chapter>

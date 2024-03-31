@@ -12,7 +12,7 @@
     <idstring>ID_VECTORTEXT</idstring>
     <category>Graphics</category>
     <include>modules/vectortext.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>To create text along a path, set the #Morph field with a reference to any <class name="Vector">Vector</class> object that generates a path.  The following extract illustrates the SVG equivalent of this feature:</p>
 <pre>&lt;defs&gt;
@@ -36,7 +36,7 @@
     <method>
       <name>DeleteLine</name>
       <comment>Deletes any line number.</comment>
-      <prototype>ERROR vtDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
+      <prototype>ERR vtDeleteLine(OBJECTPTR Object, LONG Line)</prototype>
       <input>
         <param type="LONG" name="Line">The line number that you want to delete.  If negative, the last line will be deleted.</param>
       </input>
@@ -111,15 +111,50 @@
     </field>
 
     <field>
+      <name>Descent</name>
+      <comment>The font descent measured in pixels, after DPI conversion.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Use Descent to retrieve the height of the font descent region in actual display pixels, after DPI conversion has been taken into account.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplayHeight</name>
+      <comment>The font height measured in pixels, after DPI conversion.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Use DisplayHeight to retrieve the font height in actual display pixels, after DPI conversion has been taken into account.  The height includes the top region reserved for accents, but excludes the descent value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplaySize</name>
+      <comment>The FontSize measured in pixels, after DPI conversion.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Use DisplaySize to retrieve the <field>FontSize</field> in actual display pixels, after DPI conversion has been taken into account. For example, if <field>FontSize</field> is set to <code>16</code> in a 96 DPI environment, the resulting value is <code>12</code> after performing the calculation <code>16 * 72 / 96</code>.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Face</name>
       <comment>Defines the font face/family to use in rendering the text string.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The face/family of the desired font for rendering the text is specified here.  It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, <code>Arial,Open Sans</code> would load the Open Sans font if Arial was unavailable.</p>
-<p>If none of the listed fonts are available, the default system font will be used.</p>
-<p>Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.</p>
+<p>The family name of the principal font for rendering text is specified here.</p>
+<p>It is possible to list multiple fonts in CSV format in case the first-choice font is unavailable.  For instance, <code>Arial,Noto Sans</code> would select the Noto Sans font if Arial was unavailable in the font database.  The name of the closest matching font will be stored as the Face value.</p>
       </description>
+    </field>
+
+    <field>
+      <name>Fill</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
     </field>
 
     <field>
@@ -135,11 +170,11 @@
 
     <field>
       <name>Font</name>
-      <comment>The primary Font object that is used to source glyphs for the text string.</comment>
-      <access read="G">Get</access>
+      <comment>Copies key meta information from a Font or other VectorText to create a matching text object.</comment>
+      <access write="S">Set</access>
       <type>OBJECTPTR</type>
       <description>
-<p>Returns the <class name="Font">Font</class> object that is used for drawing the text.  The object may be queried but must remain unmodified. Any modification by the client that happens to work in the present code release may fail in future releases.</p>
+<p>To create a VectorText object that uses a matching typeset from another <class name="Font">Font</class> or VectorText object, set this field with a reference to that object.  This can only be done prior to initialisation and the other object must have been initialised.</p>
       </description>
     </field>
 
@@ -149,8 +184,10 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The FontSize refers to the height of the font from baseline to baseline.  By default, the value corresponds to the current user coordinate system in pixels.  To define the point size, append 'pt' to the number.</p>
-<p>If retrieving the font size, the string must be freed by the client when no longer in use.</p>
+<p>The FontSize is equivalent to the SVG <code>font-size</code> attribute and refers to the height of the font from the dominant baseline to the hanging baseline.  This would mean that a capitalised letter without accents should fill the entire vertical space defined by FontSize.</p>
+<p>The default unit value of FontSize is in pixels at a resolution of 72 DPI.  This means that if the display is configured to a more common 96 DPI for instance, the actual pixel size on the display will be <code>FontSize * 72 / 96</code>. Point sizes are also measured at a constant ratio of <code>1/72</code> irrespective of display settings, and this may need to factor into precise size calculations.</p>
+<p>Standard unit measurements such as <code>px</code>, <code>em</code> and <code>pt</code> are supported by appending them after the numeric value. 1em is equivalent to the 'default font size', which is typically 16px unless modified.</p>
+<p>When retrieving the font size, the resulting string must be freed by the client when no longer in use.</p>
       </description>
     </field>
 
@@ -182,6 +219,26 @@
       <type>INT</type>
       <description>
 <p>Set the LineLimit field to restrict the maximum number of lines permitted in a text object.  It is common to set this field to a value of 1 for input boxes that have a limited amount of space available.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LineSpacing</name>
+      <comment>The number of pixels from one line to the next.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>This field can be queried for the amount of space between each line, measured in display pixels.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Point</name>
+      <comment>Returns the point-size of the font.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Reading the Point value will return the point-size of the font, calculated as <code>FontSize * 72 / DisplayDPI</code>.</p>
       </description>
     </field>
 
@@ -266,9 +323,12 @@
 
     <field>
       <name>TextWidth</name>
-      <comment>The raw pixel width of the widest line in the <field>String</field> value.</comment>
+      <comment>The pixel width of the widest line in the <field>String</field> field.</comment>
       <access read="G">Get</access>
       <type>INT</type>
+      <description>
+<p>This field will return the pixel width of the widest line in the <field>String</field> field.  The result is not modified by transforms.</p>
+      </description>
     </field>
 
     <field>
@@ -295,7 +355,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The x-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.</p>
+<p>The x-axis coordinate of the text is specified here as a fixed value.  Scaled coordinates are not supported.</p>
       </description>
     </field>
 
@@ -305,7 +365,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Y-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.</p>
+<p>The Y-axis coordinate of the text is specified here as a fixed value.  Scaled coordinates are not supported.</p>
 <p>Unlike other vector shapes, the Y coordinate positions the text from its base line rather than the top of the shape.</p>
       </description>
     </field>

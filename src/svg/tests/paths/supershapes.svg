@@ -3,7 +3,7 @@
 
 <svg viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet" version = "1.1" xmlns="http://www.w3.org/2000/svg"  xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
-    <image id="chain" xlink:href="../stroking/chain.png"/>
+    <image id="chain" xlink:href="../brushes/chain.png"/>
   </defs>
 
   <rect fill="#ffffff" width="100%" height="100%"/>

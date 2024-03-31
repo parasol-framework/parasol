@@ -14,7 +14,7 @@
     <idstring>ID_COMPRESSION</idstring>
     <category>Data</category>
     <include>modules/compression.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Compression class provides the necessary means to compress and decompress data.  It provides support for file based compression as well as memory based compression routines.  The base class uses zip algorithms to support pkzip files, while other forms of compressed data can be supported by installing additional compression sub-classes.</p>
 <p>The following examples demonstrate basic usage of compression objects in Fluid:</p>
@@ -52,7 +52,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>CompressBuffer</name>
       <comment>Compresses a plain memory area into an empty buffer.</comment>
-      <prototype>ERROR cmpCompressBuffer(OBJECTPTR Object, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result)</prototype>
+      <prototype>ERR cmpCompressBuffer(OBJECTPTR Object, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to the source data.</param>
         <param type="LONG" name="InputSize">Byte length of the source data.</param>
@@ -61,7 +61,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <param type="LONG *" name="Result">The size of the compressed data will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of <code>ERR_BufferOverflow</code> will be returned.  The size of the compressed data will be returned in the Result parameter.</p>
+<p>This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of <code>ERR::BufferOverflow</code> will be returned.  The size of the compressed data will be returned in the Result parameter.</p>
 <p>To decompress the data that is output by this function, use the <method>DecompressBuffer</method> method.</p>
 <p>The compression method used to compress the data will be identified in the first 32 bits of output, for example, <code>ZLIB</code>.  The following 32 bits will indicate the length of the compressed data section, followed by the data itself.</p>
       </description>
@@ -77,7 +77,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>CompressFile</name>
       <comment>Add files to a compression object.</comment>
-      <prototype>ERROR cmpCompressFile(OBJECTPTR Object, CSTRING Location, CSTRING Path)</prototype>
+      <prototype>ERR cmpCompressFile(OBJECTPTR Object, CSTRING Location, CSTRING Path)</prototype>
       <input>
         <param type="CSTRING" name="Location">The location of the file(s) to add.</param>
         <param type="CSTRING" name="Path">The path that is prefixed to the file name when added to the compression object.  May be NULL for no path.</param>
@@ -99,7 +99,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>CompressStream</name>
       <comment>Compresses streamed data into a buffer.</comment>
-      <prototype>ERROR cmpCompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <prototype>ERR cmpCompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to the source data.</param>
         <param type="LONG" name="Length">Amount of data to compress, in bytes.</param>
@@ -112,7 +112,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>A compression object can manage only one compression stream at any given time.  If it is necessary to compress multiple streams at once, create a compression object for each individual stream.</p>
 <p>No meta-information is written to the stream, so the client will need a way to record the total number of bytes that have been output during the compression process. This value must be stored somewhere in order to decompress the stream correctly.  There is also no header information recorded to identify the type of algorithm used to compress the stream.  We recommend that the compression object's sub-class ID is stored for future reference.</p>
 <p>The following C code illustrates a simple means of compressing a file to another file using a stream:</p>
-<pre>ERROR error = mtCompressStreamStart(compress);
+<pre>ERR error = mtCompressStreamStart(compress);
 
 if (!error) {
    LONG len;
@@ -153,7 +153,7 @@ if (!error) {
     <method>
       <name>CompressStreamEnd</name>
       <comment>Ends the compression of an open stream.</comment>
-      <prototype>ERROR cmpCompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <prototype>ERR cmpCompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each compressed block of data.</param>
         <param type="APTR" name="Output">Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.</param>
@@ -173,7 +173,7 @@ if (!error) {
     <method>
       <name>CompressStreamStart</name>
       <comment>Initialises a new compression stream.</comment>
-      <prototype>ERROR cmpCompressStreamStart(OBJECTPTR Object)</prototype>
+      <prototype>ERR cmpCompressStreamStart(OBJECTPTR Object)</prototype>
       <description>
 <p>The level of compression is determined by the <field>CompressionLevel</field> field value.</p>
       </description>
@@ -186,7 +186,7 @@ if (!error) {
     <method>
       <name>DecompressBuffer</name>
       <comment>Decompresses data originating from the CompressBuffer method.</comment>
-      <prototype>ERROR cmpDecompressBuffer(OBJECTPTR Object, APTR Input, APTR Output, LONG OutputSize, LONG * Result)</prototype>
+      <prototype>ERR cmpDecompressBuffer(OBJECTPTR Object, APTR Input, APTR Output, LONG OutputSize, LONG * Result)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to the compressed data.</param>
         <param type="APTR" name="Output">Pointer to the decompression buffer.</param>
@@ -194,7 +194,7 @@ if (!error) {
         <param type="LONG *" name="Result">The amount of bytes decompressed will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of <code>ERR_BufferOverflow</code>.</p>
+<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of <code>ERR::BufferOverflow</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -206,7 +206,7 @@ if (!error) {
     <method>
       <name>DecompressFile</name>
       <comment>Extracts one or more files from a compression object.</comment>
-      <prototype>ERROR cmpDecompressFile(OBJECTPTR Object, CSTRING Path, CSTRING Dest, LONG Flags)</prototype>
+      <prototype>ERR cmpDecompressFile(OBJECTPTR Object, CSTRING Path, CSTRING Dest, LONG Flags)</prototype>
       <input>
         <param type="CSTRING" name="Path">The full path name of the file to extract from the archive.</param>
         <param type="CSTRING" name="Dest">The destination to extract the file to.</param>
@@ -234,7 +234,7 @@ if (!error) {
     <method>
       <name>DecompressObject</name>
       <comment>Decompresses one file to a target object.</comment>
-      <prototype>ERROR cmpDecompressObject(OBJECTPTR Object, CSTRING Path, OBJECTPTR Object)</prototype>
+      <prototype>ERR cmpDecompressObject(OBJECTPTR Object, CSTRING Path, OBJECTPTR Object)</prototype>
       <input>
         <param type="CSTRING" name="Path">The location of the source file within the archive.  If a wildcard is used, the first matching file is extracted.</param>
         <param type="OBJECTPTR" name="Object">The target object for the decompressed source data.</param>
@@ -257,7 +257,7 @@ if (!error) {
     <method>
       <name>DecompressStream</name>
       <comment>Decompresses streamed data to an output buffer.</comment>
-      <prototype>ERROR cmpDecompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <prototype>ERR cmpDecompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to data to decompress.</param>
         <param type="LONG" name="Length">Amount of data to decompress from the Input parameter.</param>
@@ -267,7 +267,7 @@ if (!error) {
       </input>
       <description>
 <p>Call DecompressStream repeatedly to decompress a data stream and process the results in a callback routine.  The client will need to provide a pointer to the data in the Input parameter and indicate its size in Length.  The decompression routine will call the routine that was specified in Callback for each block that is decompressed.</p>
-<p>The format of the Callback routine is <code>ERROR Function(*Compression, APTR Buffer, LONG Length)</code></p>
+<p>The format of the Callback routine is <code>ERR Function(*Compression, APTR Buffer, LONG Length)</code></p>
 <p>The Buffer will refer to the start of the decompressed data and its size will be indicated in Length.  If the Callback routine returns an error of any kind, the decompression process will be stopped and the error code will be immediately returned by the method.</p>
 <p>Optionally, the client can specify an output buffer in the Output parameter.  This can be a valuable optimisation technique, as it will eliminate the need to copy data out of the compression object's internal buffer.</p>
 <p>When there is no more data in the decompression stream or if an error has occurred, the client must call <method>DecompressStreamEnd</method>.</p>
@@ -283,7 +283,7 @@ if (!error) {
     <method>
       <name>DecompressStreamEnd</name>
       <comment>Must be called at the end of the decompression process.</comment>
-      <prototype>ERROR cmpDecompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR cmpDecompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each decompressed block of information.</param>
       </input>
@@ -299,7 +299,7 @@ if (!error) {
     <method>
       <name>DecompressStreamStart</name>
       <comment>Initialises a new decompression stream.</comment>
-      <prototype>ERROR cmpDecompressStreamStart(OBJECTPTR Object)</prototype>
+      <prototype>ERR cmpDecompressStreamStart(OBJECTPTR Object)</prototype>
       <description>
 <p>Use the DecompressStreamStart method to initialise a new decompression stream.  No parameters are required.</p>
 <p>If a decompression stream is already active at the time that this method is called, all resources associated with that stream will be deallocated so that the new stream can be initiated.</p>
@@ -314,7 +314,7 @@ if (!error) {
     <method>
       <name>Find</name>
       <comment>Find the first item that matches a given filter.</comment>
-      <prototype>ERROR cmpFind(OBJECTPTR Object, CSTRING Path, STR Flags, struct CompressedItem ** Item)</prototype>
+      <prototype>ERR cmpFind(OBJECTPTR Object, CSTRING Path, STR Flags, struct CompressedItem ** Item)</prototype>
       <input>
         <param type="CSTRING" name="Path">Search for a specific item or items, using wildcards.</param>
         <param type="STR" name="Flags" lookup="STR">String comparison flags used by StrCompare().</param>
@@ -335,7 +335,7 @@ if (!error) {
     <method>
       <name>RemoveFile</name>
       <comment>Deletes one or more files from a compression object.</comment>
-      <prototype>ERROR cmpRemoveFile(OBJECTPTR Object, CSTRING Path)</prototype>
+      <prototype>ERR cmpRemoveFile(OBJECTPTR Object, CSTRING Path)</prototype>
       <input>
         <param type="CSTRING" name="Path">The full path name of the file to delete from the archive.</param>
       </input>
@@ -353,14 +353,14 @@ if (!error) {
     <method>
       <name>Scan</name>
       <comment>Scan the archive's index of compressed data.</comment>
-      <prototype>ERROR cmpScan(OBJECTPTR Object, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)</prototype>
+      <prototype>ERR cmpScan(OBJECTPTR Object, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)</prototype>
       <input>
         <param type="CSTRING" name="Folder">If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.</param>
         <param type="CSTRING" name="Filter">Search for a specific item or items by name, using wildcards.  If NULL or an empty string, all items will be scanned.</param>
         <param type="FUNCTION *" name="Callback">This callback function will be called with a pointer to a CompressedItem structure.</param>
       </input>
       <description>
-<p>Use the Scan method to search an archive's list of items.  Optional filtering can be applied using the Folder parameter to limit results to those within a folder, and Filter parameter to apply wildcard matching to item names.  Each item that is discovered during the scan will be passed to the function referenced in the Callback parameter.  If the Callback function returns ERR_Terminate, the scan will stop immediately.  The synopsis of the callback function is <code>ERROR Function(*Compression, *CompressedItem)</code>.</p>
+<p>Use the Scan method to search an archive's list of items.  Optional filtering can be applied using the Folder parameter to limit results to those within a folder, and Filter parameter to apply wildcard matching to item names.  Each item that is discovered during the scan will be passed to the function referenced in the Callback parameter.  If the Callback function returns ERR::Terminate, the scan will stop immediately.  The synopsis of the callback function is <code>ERR Function(*Compression, *CompressedItem)</code>.</p>
 <p>The <struct>CompressedItem</struct> structure consists of the following fields:</p>
 <struct lookup="CompressedItem"/>
 <p>To search for a single item with a path and name already known, please use the <method>Find</method> method instead.</p>
@@ -401,9 +401,9 @@ if (!error) {
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>To receive feedback during any de/compression process, set a callback routine in this field. The format for the callback routine is <code>ERROR Function(*Compression, *CompressionFeedback)</code>.</p>
+<p>To receive feedback during any de/compression process, set a callback routine in this field. The format for the callback routine is <code>ERR Function(*Compression, *CompressionFeedback)</code>.</p>
 <p>For object classes, the object that initiated the de/compression process can be learned by calling the Core's <function module="Core">CurrentContext</function> function.</p>
-<p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR_Skip</code> and the entire process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.</p>
+<p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR::Skip</code> and the entire process can be cancelled by returning ERR::Terminate.  All other error codes are ignored.</p>
 <p>The <struct>CompressionFeedback</struct> structure consists of the following fields:</p>
 <struct lookup="CompressionFeedback"/>
       </description>

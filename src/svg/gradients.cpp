@@ -1,18 +1,20 @@
 
-static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, const std::string Value)
+static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, const std::string Value)
 {
    switch (Attrib) {
       case SVF_COLOR_INTERPOLATION:
-         if (!StrMatch("auto", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
-         else if (!StrMatch("sRGB", Value)) Gradient->setColourSpace(VCS::SRGB);
-         else if (!StrMatch("linearRGB", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
-         else if (!StrMatch("inherit", Value)) Gradient->setColourSpace(VCS::INHERIT);
-         return ERR_Okay;
+         if (StrMatch("auto", Value) IS ERR::Okay) Gradient->setColourSpace(VCS::LINEAR_RGB);
+         else if (StrMatch("sRGB", Value) IS ERR::Okay) Gradient->setColourSpace(VCS::SRGB);
+         else if (StrMatch("linearRGB", Value) IS ERR::Okay) Gradient->setColourSpace(VCS::LINEAR_RGB);
+         else if (StrMatch("inherit", Value) IS ERR::Okay) Gradient->setColourSpace(VCS::INHERIT);
+         return ERR::Okay;
 
-      case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); break;
+      case SVF_HREF:
+      case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); 
+         return ERR::Okay;
    }
 
-   return ERR_Failed;
+   return ERR::Failed;
 }
 
 //********************************************************************************************************************
@@ -26,7 +28,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
    std::vector<GradientStop> stops;
    for (auto &scan : Tag.Children) {
-      if (!StrMatch("stop", scan.name())) {
+      if (StrMatch("stop", scan.name()) IS ERR::Okay) {
          GradientStop stop;
          DOUBLE stop_opacity = 1.0;
          stop.Offset = 0;
@@ -40,7 +42,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
             auto &value = scan.Attribs[a].Value;
             if (value.empty()) continue;
 
-            if (!StrMatch("offset", name)) {
+            if (StrMatch("offset", name) IS ERR::Okay) {
                stop.Offset = StrToFloat(value);
                for (LONG j=0; value[j]; j++) {
                   if (value[j] IS '%') {
@@ -52,13 +54,15 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
                if (stop.Offset < 0.0) stop.Offset = 0;
                else if (stop.Offset > 1.0) stop.Offset = 1.0;
             }
-            else if (!StrMatch("stop-color", name)) {
-               vecReadPainter(Self->Scene, value.c_str(), &stop.RGB, NULL, NULL, NULL);
+            else if (StrMatch("stop-color", name) IS ERR::Okay) {
+               VectorPainter painter;
+               vecReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+               stop.RGB = painter.Colour;
             }
-            else if (!StrMatch("stop-opacity", name)) {
+            else if (StrMatch("stop-opacity", name) IS ERR::Okay) {
                stop_opacity = StrToFloat(value);
             }
-            else if (!StrMatch("id", name)) {
+            else if (StrMatch("id", name) IS ERR::Okay) {
                log.trace("Use of id attribute in <stop/> ignored.");
             }
             else log.warning("Unable to process stop attribute '%s'", name.c_str());
@@ -76,29 +80,29 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
 //********************************************************************************************************************
 
-static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    std::string id;
 
-   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
+   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
       gradient->setFields(
          fl::Name("SVGLinearGrad"),
          fl::Type(VGT::LINEAR),
          fl::X1(0.0),
          fl::Y1(0.0),
-         fl::X2(PERCENT(1.0)),
+         fl::X2(SCALE(1.0)),
          fl::Y2(0.0));
 
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
-         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
+         if (StrMatch("gradientUnits", Tag.Attribs[a].Name) IS ERR::Okay) {
+            if (StrMatch("userSpaceOnUse", Tag.Attribs[a].Value) IS ERR::Okay) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -117,22 +121,22 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
             case SVF_Y2: set_double_units(gradient, FID_Y2, val, gradient->Units); break;
 
             case SVF_COLOR_INTERPOLATION:
-               if (!StrMatch("auto", val)) gradient->setColourSpace(VCS::LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) gradient->setColourSpace(VCS::SRGB);
-               else if (!StrMatch("linearRGB", val)) gradient->setColourSpace(VCS::LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) gradient->setColourSpace(VCS::INHERIT);
+               if (StrMatch("auto", val) IS ERR::Okay) gradient->setColourSpace(VCS::LINEAR_RGB);
+               else if (StrMatch("sRGB", val) IS ERR::Okay) gradient->setColourSpace(VCS::SRGB);
+               else if (StrMatch("linearRGB", val) IS ERR::Okay) gradient->setColourSpace(VCS::LINEAR_RGB);
+               else if (StrMatch("inherit", val) IS ERR::Okay) gradient->setColourSpace(VCS::INHERIT);
                break;
 
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
+               if (StrMatch("pad", val) IS ERR::Okay)          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (StrMatch("reflect", val) IS ERR::Okay) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (StrMatch("repeat", val) IS ERR::Okay)  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
 
             default: {
-               if (gradient_defaults(Self, gradient, attrib, val)) {
+               if (gradient_defaults(Self, gradient, attrib, val) != ERR::Okay) {
                   if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
                   log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
@@ -144,35 +148,39 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
       auto stops = process_gradient_stops(Self, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
-      if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+      if (InitObject(gradient) IS ERR::Okay) {
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR::Okay;
       }
-      else return ERR_Init;
+      else return ERR::Init;
    }
-   else return ERR_NewObject;
+   else return ERR::NewObject;
 }
 
 //********************************************************************************************************************
 
-static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
 
-   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
+   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT::RADIAL),
-         fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
+         fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
-         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
+         if (StrMatch("gradientUnits", Tag.Attribs[a].Name) IS ERR::Okay) {
+            if (StrMatch("userSpaceOnUse", Tag.Attribs[a].Value) IS ERR::Okay) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -193,13 +201,13 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
             case SVF_ID: id = val; break;
             case SVF_SPREADMETHOD:
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
+               if (StrMatch("pad", val) IS ERR::Okay)          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (StrMatch("reflect", val) IS ERR::Okay) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (StrMatch("repeat", val) IS ERR::Okay)  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
 
             default: {
-               if (gradient_defaults(Self, gradient, attrib, val)) {
+               if (gradient_defaults(Self, gradient, attrib, val) != ERR::Okay) {
                   if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
                   log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
@@ -210,40 +218,44 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
       auto stops = process_gradient_stops(Self, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
-      if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+      if (InitObject(gradient) IS ERR::Okay) {
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR::Okay;
       }
-      else return ERR_Init;
+      else return ERR::Init;
    }
-   else return ERR_NewObject;
+   else return ERR::NewObject;
 }
 
 //********************************************************************************************************************
 
-static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
 
-   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
+   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGDiamondGrad"), fl::Type(VGT::DIAMOND),
-         fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
+         fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
-         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+         if (StrMatch("gradientUnits", Tag.Attribs[a].Name) IS ERR::Okay) {
+            if (StrMatch("userSpaceOnUse", Tag.Attribs[a].Value) IS ERR::Okay) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -257,14 +269,14 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
+               if (StrMatch("pad", val) IS ERR::Okay)          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (StrMatch("reflect", val) IS ERR::Okay) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (StrMatch("repeat", val) IS ERR::Okay)  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
             default: {
-               if (gradient_defaults(Self, gradient, attrib, val)) {
+               if (gradient_defaults(Self, gradient, attrib, val) != ERR::Okay) {
                   if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
                   log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
@@ -275,25 +287,29 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
       auto stops = process_gradient_stops(Self, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
-      if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+      if (InitObject(gradient) IS ERR::Okay) {
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR::Okay;
       }
-      else return ERR_Init;
+      else return ERR::Init;
    }
-   else return ERR_NewObject;
+   else return ERR::NewObject;
 }
 
 //********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
 
-   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
+   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
       gradient->setFields(fl::Name("SVGContourGrad"), fl::Type(VGT::CONTOUR));
 
@@ -301,8 +317,8 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 
       gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
-         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
+         if (StrMatch("gradientUnits", Tag.Attribs[a].Name) IS ERR::Okay) {
+            if (StrMatch("userSpaceOnUse", Tag.Attribs[a].Value) IS ERR::Okay) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -320,14 +336,14 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
             case SVF_X2: set_double_units(gradient, FID_X2, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
+               if (StrMatch("pad", val) IS ERR::Okay)          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (StrMatch("reflect", val) IS ERR::Okay) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (StrMatch("repeat", val) IS ERR::Okay)  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
             default: {
-               if (gradient_defaults(Self, gradient, attrib, val)) {
+               if (gradient_defaults(Self, gradient, attrib, val) != ERR::Okay) {
                   if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
                   log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
@@ -338,41 +354,45 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
       auto stops = process_gradient_stops(Self, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
-      if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+      if (InitObject(gradient) IS ERR::Okay) {
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR::Okay;
       }
-      else return ERR_Init;
+      else return ERR::Init;
    }
-   else return ERR_NewObject;
+   else return ERR::NewObject;
 }
 
 //********************************************************************************************************************
 
-static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
-   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
+   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGConicGrad"), fl::Type(VGT::CONIC),
-         fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
+         fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
       std::string id;
 
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
-         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+         if (StrMatch("gradientUnits", Tag.Attribs[a].Name) IS ERR::Okay) {
+            if (StrMatch("userSpaceOnUse", Tag.Attribs[a].Value) IS ERR::Okay) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -381,22 +401,22 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) gradient->setUnits(VUNIT::USERSPACE);
-               else if (!StrMatch("objectBoundingBox", val)) gradient->setUnits(VUNIT::BOUNDING_BOX);
+               if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) gradient->setUnits(VUNIT::USERSPACE);
+               else if (StrMatch("objectBoundingBox", val) IS ERR::Okay) gradient->setUnits(VUNIT::BOUNDING_BOX);
                break;
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
+               if (StrMatch("pad", val) IS ERR::Okay)          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (StrMatch("reflect", val) IS ERR::Okay) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (StrMatch("repeat", val) IS ERR::Okay)  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
             default: {
-               if (gradient_defaults(Self, gradient, attrib, val)) {
+               if (gradient_defaults(Self, gradient, attrib, val) != ERR::Okay) {
                   if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
                   log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
@@ -407,11 +427,15 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
       auto stops = process_gradient_stops(Self, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
-      if (!InitObject(gradient)) {
-         if (!id.empty()) SetName(gradient, id.c_str());
-         return scAddDef(Self->Scene, id.c_str(), gradient);
+      if (InitObject(gradient) IS ERR::Okay) {
+         if (!id.empty()) {
+            SetName(gradient, id.c_str());
+            add_id(Self, Tag, id);
+            return scAddDef(Self->Scene, id.c_str(), gradient);
+         }
+         else return ERR::Okay;
       }
-      else return ERR_Init;
+      else return ERR::Init;
    }
-   else return ERR_NewObject;
+   else return ERR::NewObject;
 }

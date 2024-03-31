@@ -195,8 +195,14 @@ void sndStop(PlatformData *Sound)
 //********************************************************************************************************************
 // Used by the Sound class to play WAV or raw audio samples that are independent of our custom mixer.
 
-int sndPlay(PlatformData *Sound, bool Loop, int Offset)
+__declspec(no_sanitize_address) int sndPlay(PlatformData *Sound, bool Loop, int Offset)
 {
+#ifdef __SANITIZE_ADDRESS__
+   // There is an issue with the address sanitizer being tripped in calls to DirectSound under no client fault.
+   // The no_sanitize_address option doesn't seem to work as expected, so for the time being DirectSound
+   // is disabled if the sanitizer is enabled.
+   return -1;
+#else
    if ((!Sound) or (!Sound->SoundBuffer)) return -1;
 
    if (Offset < 0) Offset = 0;
@@ -240,6 +246,7 @@ int sndPlay(PlatformData *Sound, bool Loop, int Offset)
    else IDirectSoundBuffer_Play(Sound->SoundBuffer, 0, 0, 0);
 
    return 0;
+#endif
 }
 
 //********************************************************************************************************************

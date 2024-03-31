@@ -173,7 +173,6 @@
                   <li><a href="audio.html">Audio</a></li>
                   <li><a href="core.html">Core</a></li>
                   <li><a href="display.html">Display</a></li>
-                  <li><a href="document.html">Document</a></li>
                   <li><a href="fluid.html">Fluid</a></li>
                   <li><a href="font.html">Font</a></li>
                   <li><a href="network.html">Network</a></li>

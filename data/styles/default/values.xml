@@ -4,16 +4,16 @@
 <fonts>
   <!-- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize" -->
 
-  <font name="default"  face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/>
-  <font name="window"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- For text that is not inside a widget -->
-  <font name="button"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- Text inside buttons -->
-  <font name="icon"     face="Open Sans,Source Sans Pro" size="100%" colour="255,255,255"/> <!-- Text at the bottom of icons -->
-  <font name="menu"     face="Open Sans,Source Sans Pro" size="100%" colour="255,255,255" highlight="255,255,255"/> <!-- Menu item text -->
-  <font name="titlebar" face="Open Sans" size="100%" colour="255,255,255"/> <!-- Title bar text (in standalone OS mode) -->
+  <font name="default"  face="Noto Sans,Source Sans 3" size="100%" colour="0,0,0"/>
+  <font name="window"   face="Noto Sans,Source Sans 3" size="100%" colour="0,0,0"/> <!-- For text that is not inside a widget -->
+  <font name="button"   face="Noto Sans,Source Sans 3" size="100%" colour="0,0,0"/> <!-- Text inside buttons -->
+  <font name="icon"     face="Noto Sans,Source Sans 3" size="100%" colour="255,255,255"/> <!-- Text at the bottom of icons -->
+  <font name="menu"     face="Noto Sans,Source Sans 3" size="100%" colour="255,255,255" highlight="255,255,255"/> <!-- Menu item text -->
+  <font name="titlebar" face="Noto Sans" size="100%" colour="255,255,255"/> <!-- Title bar text (in standalone OS mode) -->
   <font name="small"    face="Tiny" size="6"/> <!-- Recommended text for small sizes -->
-  <font name="large"    face="Open Sans,Source Sans Pro" size="130%"/> <!-- Recommended text for headers -->
-  <font name="widget"   face="Open Sans,Source Sans Pro" size="11" colour="255,255,255"/> <!-- Text inside widgets (e.g. combobox) -->
-  <font name="label"    face="Open Sans,Source Sans Pro:11:bold" size="11" colour="0,0,0"/> <!-- Text for labels and outside widgets -->
+  <font name="large"    face="Noto Sans,Source Sans 3" size="130%"/> <!-- Recommended text for headers -->
+  <font name="widget"   face="Noto Sans,Source Sans 3" size="11" colour="255,255,255"/> <!-- Text inside widgets (e.g. combobox) -->
+  <font name="label"    face="Noto Sans,Source Sans 3:11:bold" size="11" colour="0,0,0"/> <!-- Text for labels and outside widgets -->
 </fonts>
 
 <colours
@@ -26,7 +26,6 @@
   menubar="190,190,190" menu="240,240,240"
   border="#909090" menuborder="200,200,200"
   desktop="160,160,160" recess="160,160,160"
-  white="255,255,255" red="255,0,0" green="0,255,0" blue="0,0,255"
   background="255,255,255"
   texthighlight="#e0e0f0"
   boxedText="255,255,255"

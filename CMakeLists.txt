@@ -14,7 +14,7 @@
 #          [MSVC] cd visual-studio; ctest -V -C Release
 #
 # A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
-# This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds
+# This may be useful if you intend to use a limited feature-set, like the vector graphics API.  Static builds
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
 
@@ -34,7 +34,7 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
 
-project (Parasol VERSION 2023.6.12 LANGUAGES C CXX)
+project (Parasol VERSION 2024.2.27 LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
@@ -58,12 +58,12 @@ option (DISABLE_DOCUMENT  "Disable document API" OFF)
 option (DISABLE_FONT      "Disable font API" OFF)
 option (DISABLE_HTTP      "Disable HTTP API" OFF)
 option (DISABLE_MP3       "Disable MP3 support" OFF)
-option (DISABLE_NETWORK   "Disable Network API" OFF)
-option (DISABLE_PICTURE   "Disable Picture API" OFF)
+option (DISABLE_NETWORK   "Disable network API" OFF)
+option (DISABLE_PICTURE   "Disable picture API" OFF)
 option (DISABLE_JPEG      "Disable JPEG support" OFF)
 option (DISABLE_SCINTILLA "Disable Scintilla API" OFF)
 option (DISABLE_SVG       "Disable SVG support" OFF)
-option (DISABLE_VECTOR    "Disable Vector API" OFF)
+option (DISABLE_VECTOR    "Disable vector API" OFF)
 option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling a distribution" OFF)
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
 option (INSTALL_TESTS     "Install the test programs." OFF)
@@ -401,12 +401,27 @@ endif ()
 
 if (MSVC)
    # Turn off ugly warnings
-   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS" )
+   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS")
    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
    # These options override sub-projects linking to incorrect standard libraries.
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
    add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
    # add_link_options ("/VERBOSE:LIB")
+   if (ENABLE_ANALYSIS)
+      # Note that this option is not compatible with /ZI (edit-and-continue).  To rectify complaints about the asan DLL, you may also need a line like this one added to each entry in launch.vs.json:
+      # "env": { "Path": "${env:Path};C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64" }
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+   endif ()
+
+   # We don't use exceptions, so get the compiler to disable this functionality.  This results in noticeably smaller binaries and more optimised code.
+   if (CMAKE_BUILD_TYPE STREQUAL "Release")
+      add_compile_definitions ("_HAS_EXCEPTIONS=0")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
+   endif ()
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       add_compile_definitions ("_DARWIN_C_SOURCE")
@@ -437,6 +452,10 @@ else ()
       # In addition, gdb breakpoints are unlikely to work with these features enabled.
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+      set (DISABLE_AUDIO ON)
+      if (NOT PARASOL_STATIC)
+         message (FATAL_ERROR "Address analysis requires the build to be compiled with PARASOL_STATIC on.")
+      endif ()
    endif ()
 
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
@@ -469,63 +488,80 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
+add_subdirectory (3rdparty/freetype-2.13.2)
+
+if (NOT DISABLE_AUDIO)
+   add_subdirectory (src/audio)
+   list (APPEND LIB_LIST audio)
+endif ()
+
+if (NOT DISABLE_DISPLAY)
+   add_subdirectory (src/display)
+   list (APPEND LIB_LIST display)
+endif ()
+
+if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
+   add_subdirectory (src/document)
+   list (APPEND LIB_LIST document)
+endif ()
+
+if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
+   add_subdirectory (src/font)
+   list (APPEND LIB_LIST font)
+endif ()
+
+if (NOT DISABLE_HTTP AND NOT DISABLE_NETWORK)
+   add_subdirectory (src/http)
+   list (APPEND LIB_LIST http)
+endif ()
+
+if (NOT DISABLE_MP3 AND NOT DISABLE_AUDIO)
+   add_subdirectory (src/mp3)
+   list (APPEND LIB_LIST mp3)
+endif ()
+
+if (NOT DISABLE_NETWORK)
+   add_subdirectory (src/network)
+   list (APPEND LIB_LIST network)
+endif ()
+
+if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
+   add_subdirectory (src/picture)
+   list (APPEND LIB_LIST picture)
+endif ()
+
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+   add_subdirectory (src/picture_jpeg)
+   list (APPEND LIB_LIST jpeg)
+endif ()
+
+if (NOT DISABLE_SCINTILLA AND NOT DISABLE_DISPLAY AND NOT DISABLE_VECTOR AND NOT DISABLE_FONT)
+   add_subdirectory (src/scintilla)
+   list (APPEND LIB_LIST scintilla)
+endif ()
+
+if (NOT DISABLE_SVG AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
+   add_subdirectory (src/svg)
+   list (APPEND LIB_LIST svg)
+endif ()
+
+if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
+   add_subdirectory (src/vector)
+   list (APPEND LIB_LIST vector)
+endif ()
+
+if (X11_Xrandr_FOUND)
+   add_subdirectory (src/xrandr)
+   list (APPEND LIB_LIST xrandr)
+endif ()
+
+list (APPEND LIB_LIST fluid json jpeg xml)
+
 add_subdirectory (src/link)
 add_subdirectory (src/core)
 add_subdirectory (src/fluid)
 add_subdirectory (src/xml)
 add_subdirectory (src/json)
-
-if (NOT DISABLE_AUDIO)
-   add_subdirectory (src/audio)
-endif ()
-
-if (NOT DISABLE_DISPLAY)
-   add_subdirectory (src/display)
-endif ()
-
-if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
-   #add_subdirectory (src/document)
-endif ()
-
-if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
-   add_subdirectory (src/font)
-endif ()
-
-if (NOT DISABLE_HTTP AND NOT DISABLE_NETWORK)
-   add_subdirectory (src/http)
-endif ()
-
-if (NOT DISABLE_MP3 AND NOT DISABLE_AUDIO)
-   add_subdirectory (src/mp3)
-endif ()
-
-if (NOT DISABLE_NETWORK)
-   add_subdirectory (src/network)
-endif ()
-
-if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
-   add_subdirectory (src/picture)
-endif ()
-
-if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
-   add_subdirectory (src/picture_jpeg)
-endif ()
-
-if (NOT DISABLE_SCINTILLA AND NOT DISABLE_DISPLAY AND NOT DISABLE_VECTOR AND NOT DISABLE_FONT)
-   add_subdirectory (src/scintilla)
-endif ()
-
-if (NOT DISABLE_SVG AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
-   add_subdirectory (src/svg)
-endif ()
-
-if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
-   add_subdirectory (src/vector)
-endif ()
-
-if (X11_Xrandr_FOUND)
-   add_subdirectory (src/xrandr)
-endif ()
 
 add_subdirectory (src/launcher)
 

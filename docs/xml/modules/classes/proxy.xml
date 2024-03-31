@@ -12,7 +12,7 @@
     <idstring>ID_PROXY</idstring>
     <category>Network</category>
     <include>modules/proxy.h</include>
-    <copyright>Paul Manias © 2005-2023</copyright>
+    <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The proxy server class provides a global management service for a user's proxy servers.  You can alter proxy settings manually or present the user with a dialog box to edit and create new proxies.  Scanning functions are also provided with filtering, allowing you to scan for proxies that should be used with the user's network connection.</p>
 <p>Proxy objects are designed to work similarly to database recordsets. Creating a new proxy object will allow you to create a new proxy record if all required fields are set and the object is saved.</p>
@@ -55,7 +55,7 @@
     <method>
       <name>Delete</name>
       <comment>Removes a proxy from the database.</comment>
-      <prototype>ERROR prxDelete(OBJECTPTR Object)</prototype>
+      <prototype>ERR prxDelete(OBJECTPTR Object)</prototype>
       <description>
 <p>Call the Delete method to remove a proxy from the system.  The proxy will be permanently removed from the proxy database on the success of this function.</p>
       </description>
@@ -67,7 +67,7 @@
     <method>
       <name>Find</name>
       <comment>Search for a proxy that matches a set of filters.</comment>
-      <prototype>ERROR prxFind(OBJECTPTR Object, LONG Port, LONG Enabled)</prototype>
+      <prototype>ERR prxFind(OBJECTPTR Object, LONG Port, LONG Enabled)</prototype>
       <input>
         <param type="LONG" name="Port">The port number  to access.  If zero, all proxies will be returned if you perform a looped search.</param>
         <param type="LONG" name="Enabled">Set to TRUE to return only enabled proxies, FALSE for disabled proxies or -1 for all proxies.</param>
@@ -93,9 +93,9 @@ if (proxy.ok()) {
     <method>
       <name>FindNext</name>
       <comment>Continues an initiated search.</comment>
-      <prototype>ERROR prxFindNext(OBJECTPTR Object)</prototype>
+      <prototype>ERR prxFindNext(OBJECTPTR Object)</prototype>
       <description>
-<p>This method continues searches that have been initiated by the <method>Find</method> method. If a proxy is found that matches the filter, ERR_Okay is returned and the details of the proxy object will reflect the data of the discovered record. ERR_NoSearchResult is returned if there are no more matching proxies.</p>
+<p>This method continues searches that have been initiated by the <method>Find</method> method. If a proxy is found that matches the filter, ERR::Okay is returned and the details of the proxy object will reflect the data of the discovered record. ERR::NoSearchResult is returned if there are no more matching proxies.</p>
       </description>
       <result>
         <error code="Okay">A proxy was discovered.</error>
@@ -184,7 +184,7 @@ if (proxy.ok()) {
       <type>INT</type>
       <description>
 <p>The Record is set to the unique ID of the current proxy record.  If no record is indexed then the Record is set to zero.</p>
-<p>If you set the Record manually, the proxy object will attempt to lookup that record.  ERR_Okay will be returned if the record is found and all record fields will be updated to reflect the data of that proxy.</p>
+<p>If you set the Record manually, the proxy object will attempt to lookup that record.  ERR::Okay will be returned if the record is found and all record fields will be updated to reflect the data of that proxy.</p>
       </description>
     </field>
 

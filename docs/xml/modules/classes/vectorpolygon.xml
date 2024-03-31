@@ -12,7 +12,7 @@
     <idstring>ID_VECTORPOLYGON</idstring>
     <category>Graphics</category>
     <include>modules/vectorpolygon.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
 <p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>
@@ -81,7 +81,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the X coordinate of the first point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -92,7 +92,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the X coordinate of the second point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -103,7 +103,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the Y coordinate of the first point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -114,7 +114,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the Y coordinate of the second point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -123,8 +123,8 @@
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
-      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UBYTE">TRUE if the X value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UBYTE">TRUE if the Y value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

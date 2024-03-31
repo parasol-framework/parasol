@@ -4,213 +4,149 @@
 VectorClip: Clips are used to define complex clipping regions for vectors.
 
 The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by
-creating Vector shapes that are initialised to the VectorClip as child objects.
+creating Vector shapes that are initialised to the VectorClip's #Viewport as child objects.
 
-Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
+Vector shapes can utilise a VectorClip by referring to it via the Vector's @Vector.Mask field.
 
-VectorClip objects must always be owned by their relevant @VectorScene or @VectorViewport.  It is valid for a VectorClip
-to be shared by multiple vector objects within the same scene.
+VectorClip objects must be owned by a @VectorScene.  It is valid for a VectorClip to be shared amongst multiple vector
+objects within the same scene.  If optimum drawing efficiency is required, we recommend that each VectorClip is
+referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping
+path.
+
+The SVG standard makes a distinction between clipping paths and masks.  Consequently, this distinction also exists 
+in the VectorClip design, and by default VectorClip objects will operate in path clipping mode.  This means that 
+the clipping path is constructed as a solid filled area, and stroke instructions are completely ignored.  To create 
+more complex masks, such as one with a filled gradient, use the `VCLF::APPLY_FILLS` option in #Flags.  If stroking 
+operations are required, define `VCLF::APPLY_STROKES`.
+
+Finally, for the purposes of UI development it may often be beneficial to set #Units to `VUNIT::BOUNDING_BOX` so that
+the clipping path is sized to match the target vector.  A viewbox size of `0 0 1 1` is applied by default, but if a
+1:1 match to the target vector is preferred, set the #Viewport @VectorViewport.ViewWidth and 
+@VectorViewport.ViewHeight to match the target vector's dimensions.
 
 -END-
 
 *********************************************************************************************************************/
 
-//********************************************************************************************************************
-// NB: Considered a shape (can be transformed)
-
-static void draw_clips(extVectorClip *Self, extVector *Branch,
-   agg::rasterizer_scanline_aa<> &Rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
+static ERR CLIP_Free(extVectorClip *Self, APTR Void)
 {
-   agg::scanline_p8 sl;
-   for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
-      if (scan->Class->BaseClassID IS ID_VECTOR) {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
-         Rasterizer.reset();
-         Rasterizer.add_path(final_path);
-         agg::render_scanlines(Rasterizer, sl, Solid);
-      }
-
-      if (scan->Child) draw_clips(Self, (extVector *)scan->Child, Rasterizer, Solid);
-   }
+   Self->~extVectorClip();
+   if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = NULL; }
+   return ERR::Okay;
 }
 
-/*********************************************************************************************************************
--ACTION-
-Name:  Draw
-Short: Renders the vector clipping shape(s) to an internal buffer.
--END-
-*********************************************************************************************************************/
+//********************************************************************************************************************
 
-static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
+static ERR CLIP_Init(extVectorClip *Self, APTR Void)
 {
    pf::Log log;
 
-   // Calculate the bounds of all the paths defined and contained by the clip object
-
-   std::array<DOUBLE, 4> bounds = { 1000000, 1000000, -1000000, -1000000 };
-
-   if (Self->ClipPath) {
-      // The ClipPath is internal and can be used by the likes of VectorViewport.
-      bounding_rect_single(*Self->ClipPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+      log.traceWarning("Invalid Units value of %d", Self->Units);
+      return ERR::OutOfRange;
    }
 
-   if (Self->Child) calc_full_boundary((extVector *)Self->Child, bounds);
+   // A viewport hosts the shapes for determining the clipping path.
 
-   if (bounds[0] >= 1000000) return ERR_Okay; // Return if there are no valid paths.
+   if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORSCENE)) {
+      if ((Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
+            fl::Owner(Self->ownerID()),
+            fl::Visibility(VIS::HIDDEN),
+            fl::AspectRatio(ARF::NONE),
+            fl::X(0), fl::Y(0), fl::Width(1), fl::Height(1) // Target dimensions are defined when drawing
+         ))) {
 
-   LONG width = bounds[2] + 1; // Vector->BX2 - Vector->BX1 + 1;
-   LONG height = bounds[3] + 1; // Vector->BY2 - Vector->BY1 + 1;
+         Self->ViewportID = Self->Viewport->UID;
 
-   if ((width <= 0) or (height <= 0)) {
-      log.warning("Invalid mask size of %dx%d detected.", width, height);
-      DEBUG_BREAK
-   }
+         if (Self->Units IS VUNIT::BOUNDING_BOX) {
+            // In BOUNDING_BOX mode the clip paths will be sized within a viewbox of (0 0 1 1) as required by SVG
+            Self->Viewport->setFields(fl::ViewWidth(1.0), fl::ViewHeight(1.0));
+         }
 
-   if (width < 0) width = -width;
-   else if (!width) width = 1;
-
-   if (height < 0) height = -height;
-   else if (!height) height = 1;
-
-   if ((width > 4096) or (height > 4096)) {
-      log.warning("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
-      if (width > 4096)  width = 4096;
-      if (height > 4096) height = 4096;
-   }
-
-   #ifdef DBG_DRAW
-      log.trace("Drawing clipping mask with bounds %.2f %.2f %.2f %.2f (%dx%d)", bounds[0], bounds[1], bounds[2], bounds[3], width, height);
-   #endif
-
-   LONG size = width * height;
-   if ((Self->ClipData) and (size > Self->ClipSize)) {
-      FreeResource(Self->ClipData);
-      Self->ClipData = NULL;
-      Self->ClipSize = 0;
-   }
-
-   if (!Self->ClipData) {
-      if (!AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &Self->ClipData)) {
-         Self->ClipSize = size;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::CreateObject;
    }
-
-   Self->ClipRenderer.attach(Self->ClipData, width-1, height-1, width);
-   agg::pixfmt_gray8 pixf(Self->ClipRenderer);
-   agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
-   agg::rasterizer_scanline_aa<> rasterizer;
-
-   ClearMemory(Self->ClipData, Self->ClipSize);
-
-   solid.color(agg::gray8(0xff, 0xff));
-
-   // Every child vector of the VectorClip that exports a path will be rendered to the mask.
-
-   if (Self->Child) draw_clips(Self, (extVector *)Self->Child, rasterizer, solid);
-
-   // Internal paths can only be set by other vector classes, such as VectorViewport.
-
-   if (Self->ClipPath) {
-      agg::rasterizer_scanline_aa<> rasterizer;
-      agg::scanline_p8 sl;
-      agg::path_storage final_path(*Self->ClipPath);
-      rasterizer.reset();
-      rasterizer.add_path(final_path);
-      agg::render_scanlines(rasterizer, sl, solid);
-   }
-
-   return ERR_Okay;
+   else return ERR::UnsupportedOwner;
 }
 
 //********************************************************************************************************************
 
-static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
+static ERR CLIP_NewChild(extVectorClip *Self, struct acNewChild *Args)
 {
-   if (Self->ClipData) { FreeResource(Self->ClipData); Self->ClipData = NULL; }
-   if (Self->ClipPath) { delete Self->ClipPath; Self->ClipPath = NULL; }
-
-   using agg::rendering_buffer;
-   Self->ClipRenderer.~rendering_buffer();
-   return ERR_Okay;
+   if (Self->initialised()) {
+      pf::Log log;
+      log.warning("Child objects not supported - assign this %s to Viewport instead.", Args->Object->className());
+      return ERR::NoSupport;
+   }
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
+static ERR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
-   pf::Log log;
+   new (Self) extVectorClip;
 
-   if ((LONG(Self->ClipUnits) <= 0) or (LONG(Self->ClipUnits) >= LONG(VUNIT::END))) {
-      log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
-      return ERR_OutOfRange;
-   }
-
-   if ((!Self->Parent) or ((Self->Parent->Class->ClassID != ID_VECTORSCENE) and (Self->Parent->Class->ClassID != ID_VECTORVIEWPORT))) {
-      log.warning("This VectorClip object must be a child of a Scene or Viewport object.");
-      return ERR_Failed;
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
-{
-   Self->ClipUnits  = VUNIT::BOUNDING_BOX;
-   Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
-   new (&Self->ClipRenderer) agg::rendering_buffer;
-   return ERR_Okay;
+   Self->Units  = VUNIT::USERSPACE; // SVG default is userSpaceOnUse
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -FIELD-
-Transform: Applies a transform to the paths in the clipping mask.
+Flags: Optional flags.
+Lookup: VCLF
 
-A transform can be applied to the paths in the clipping mask by setting this field with an SVG compliant transform
-string.
-
+-END-
 *********************************************************************************************************************/
 
-static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
+static ERR CLIP_GET_Flags(extVectorClip *Self, VCLF *Value)
 {
-   pf::Log log;
+   *Value = Self->Flags;
+   return ERR::Okay;
+}
 
-   if (!Commands) return log.warning(ERR_InvalidValue);
-
-   if (!Self->Matrices) {
-      VectorMatrix *matrix;
-      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
-      else return ERR_CreateResource;
-   }
-   else {
-      vecResetMatrix(Self->Matrices);
-      return vecParseTransform(Self->Matrices, Commands);
-   }
+static ERR CLIP_SET_Flags(extVectorClip *Self, VCLF Value)
+{
+   Self->Flags = Value;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region against the vector
-that references it.  The alternative is `USERSPACE`, which positions the path relative to the current viewport.
+The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region relative to the
+vector that references it.  The alternative is `USERSPACE`, which positions the path relative to the vector's parent
+viewport.
 -END-
 *********************************************************************************************************************/
 
-static ERROR CLIP_GET_Units(extVectorClip *Self, VUNIT *Value)
+static ERR CLIP_GET_Units(extVectorClip *Self, VUNIT *Value)
 {
-   *Value = Self->ClipUnits;
-   return ERR_Okay;
+   *Value = Self->Units;
+   return ERR::Okay;
 }
 
-static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
+static ERR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 {
-   Self->ClipUnits = Value;
-   return ERR_Okay;
+   Self->Units = Value;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+Viewport: This viewport hosts the Vector objects that will contribute to the clip path.
+
+To define the path(s) that will be used to build the clipping mask, add at least one @Vector object to the viewport
+declared here.
+-END-
+*********************************************************************************************************************/
+
+static ERR CLIP_GET_Viewport(extVectorClip *Self, objVectorViewport **Value)
+{
+   *Value = Self->Viewport;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -218,24 +154,24 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 #include "clip_def.cpp"
 
 static const ActionArray clClipActions[] = {
-   { AC_Draw,      CLIP_Draw },
    { AC_Free,      CLIP_Free },
    { AC_Init,      CLIP_Init },
+   { AC_NewChild,  CLIP_NewChild },
    { AC_NewObject, CLIP_NewObject },
    { 0, NULL }
 };
 
 static const FieldArray clClipFields[] = {
-   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
-   { "Transform", FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, CLIP_SET_Transform },
+   { "Viewport",  FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
+   { "Units",     FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
+   { "Flags", FDF_LONGFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
    END_FIELD
 };
 
-static ERROR init_clip(void)
+static ERR init_clip(void)
 {
    clVectorClip = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORCLIP),
+      fl::BaseClassID(ID_VECTORCLIP),
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),
@@ -243,6 +179,6 @@ static ERROR init_clip(void)
       fl::Size(sizeof(extVectorClip)),
       fl::Path(MOD_PATH));
 
-   return clVectorClip ? ERR_Okay : ERR_AddClass;
+   return clVectorClip ? ERR::Okay : ERR::AddClass;
 }
 

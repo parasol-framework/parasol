@@ -16,6 +16,7 @@ functions for creating paths and rendering them to bitmaps.
 *********************************************************************************************************************/
 
 //#include "vector.h"
+//#include "font.h"
 #include "colours.cpp"
 
 inline char read_nibble(CSTRING Str)
@@ -28,8 +29,8 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-ERROR simplevector_free(APTR Address) {
-   return ERR_Okay;
+ERR simplevector_free(APTR Address) {
+   return ERR::Okay;
 }
 
 static ResourceManager glResourceSimpleVector = {
@@ -46,7 +47,7 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR_Okay) return NULL;
+   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return NULL;
    set_memory_manager(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
@@ -58,10 +59,10 @@ static SimpleVector * new_simplevector(void)
 
 //********************************************************************************************************************
 
-ERROR CMDOpen(OBJECTPTR Module)
+ERR CMDOpen(OBJECTPTR Module)
 {
    ((objModule *)Module)->setFunctionList(glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -85,16 +86,13 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
+ERR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
-   if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
+   if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
+   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR::Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
-
-   if (VectorPath->CustomPath) { delete VectorPath->CustomPath; VectorPath->CustomPath = NULL; }
-   VectorPath->CustomPath = new (std::nothrow) agg::path_storage(Vector->mPath);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -215,21 +213,52 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
+ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Bitmap) or (!Path)) return log.warning(ERR_NullArgs);
+   if ((!Bitmap) or (!Path)) return log.warning(ERR::NullArgs);
    if (StrokeWidth < 0.001) StrokeStyle = NULL;
 
    if ((!StrokeStyle) and (!FillStyle)) {
       log.traceWarning("No Stroke or Fill parameter provided.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    Path->DrawPath(Bitmap, StrokeWidth, StrokeStyle, FillStyle);
-   return ERR_Okay;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+FlushMatrix: Flushes matrix changes to a vector.
+
+If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in 
+order to have those changes reflected on the display.  This needs to be done before the next draw cycle.
+
+Note that if the client uses API functions to modify a VectorMatrix, a call to FlushMatrix() is unnecessary as the
+vector will have already been marked for an update.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The matrix to be flushed.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+ERR vecFlushMatrix(VectorMatrix *Matrix)
+{
+   if (!Matrix) {
+      pf::Log log(__FUNCTION__);
+      return log.warning(ERR::NullArgs);
+   }
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -297,14 +326,14 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
+ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    auto vector = new_simplevector();
-   if (!vector) return log.warning(ERR_CreateResource);
+   if (!vector) return log.warning(ERR::CreateResource);
 
 #if 0
    // Bezier curves can produce a reasonable approximation of an ellipse, but in practice there is
@@ -345,7 +374,7 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
 #endif
 
    *Path = vector;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -370,14 +399,14 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
+ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    auto vector = new_simplevector();
-   if (!vector) return log.warning(ERR_CreateResource);
+   if (!vector) return log.warning(ERR::CreateResource);
 
    vector->mPath.move_to(X, Y);
    vector->mPath.line_to(X+Width, Y);
@@ -385,7 +414,7 @@ ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR
    vector->mPath.line_to(X, Y+Height);
    vector->mPath.close_polygon();
    *Path = vector;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -433,26 +462,26 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
+ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   if (!Path) return ERR::NullArgs;
 
-   ERROR error;
+   ERR error = ERR::Okay;
 
    if (!Sequence) {
       auto vector = new_simplevector();
       if (vector) *Path = vector;
-      else error = ERR_AllocMemory;
+      else error = ERR::AllocMemory;
    }
    else {
       std::vector<PathCommand> paths;
-      if (!(error = read_path(paths, Sequence))) {
+      if ((error = read_path(paths, Sequence)) IS ERR::Okay) {
          auto vector = new_simplevector();
          if (vector) {
-            convert_to_aggpath(paths, &vector->mPath);
+            convert_to_aggpath(NULL, paths, &vector->mPath);
             *Path = vector;
          }
-         else error = ERR_AllocMemory;
+         else error = ERR::AllocMemory;
       }
    }
 
@@ -524,12 +553,12 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
+ERR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
    DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    auto &d = *Matrix;
@@ -544,7 +573,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    d.TranslateX = t4;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -565,11 +594,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
+ERR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    auto &d = *Target;
@@ -585,7 +614,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    d.TranslateX = t4;
 
    if (Target->Vector) mark_dirty(Target->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -612,11 +641,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
+ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
@@ -633,39 +662,50 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    auto str = Commands;
    while (*str) {
       if ((*str >= 'a') and (*str <= 'z')) {
-         if (!StrCompare(str, "matrix", 6)) {
+         if (StrCompare(str, "matrix", 6) IS ERR::Okay) {
             cmd m(M_MUL);
-            str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
+            str += 6;
+            read_numseq(str, { &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "translate", 9)) {
+         else if (StrCompare(str, "translate", 9) IS ERR::Okay) {
             cmd m(M_TRANSLATE);
-            str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
+            str += 9;
+            bool scaled_x, scaled_y;
+            next_value(str);
+            m.tx = read_unit(str, scaled_x);
+            next_value(str);
+            m.ty = read_unit(str, scaled_y);
+            read_numseq(str, { &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "rotate", 6)) {
+         else if (StrCompare(str, "rotate", 6) IS ERR::Okay) {
             cmd m(M_ROTATE);
-            str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
+            str += 6;
+            read_numseq(str, { &m.angle, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "scale", 5)) {
+         else if (StrCompare(str, "scale", 5) IS ERR::Okay) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
-            str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.tx, &m.ty });
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewX", 5)) {
+         else if (StrCompare(str, "skewX", 5) IS ERR::Okay) {
             cmd m(M_SKEW);
             m.ty = 0;
-            str = read_numseq(str+5, &m.tx, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.tx });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewY", 5)) {
+         else if (StrCompare(str, "skewY", 5) IS ERR::Okay) {
             cmd m(M_SKEW);
             m.tx = 0;
-            str = read_numseq(str+5, &m.ty, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.ty });
             list.push_back(std::move(m));
          }
          else str++;
@@ -723,32 +763,34 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    });
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReadPainter: Parses a painter string into its colour, gradient and image values.
+ReadPainter: Parses a painter string to its colour, gradient, pattern or image value.
 
-This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be
-processed for rendering a stroke or fill operation in the chosen style.
+This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for
+rendering a stroke or fill operation in the chosen style.
 
 Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
-component values range between 0.0 and 1.0.
+component values range between 0.0 and 255.0.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
 been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.
 Any failure to lookup a reference will be silently discarded.
 
+A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
+that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
+optional Result string can store a reference to the character up to which the IRI was parsed.
+
 -INPUT-
 obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
 cstr IRI: The IRI string to be translated.
-struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
-&obj(VectorGradient) Gradient: A VectorGradient will be returned here if specified in the IRI.
-&obj(VectorImage) Image: A VectorImage will be returned here if specified in the IRI.
-&obj(VectorPattern) Pattern: A VectorPattern will be returned here if specified in the IRI.
+struct(*VectorPainter) Painter: This VectorPainter structure will store the deserialised result.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.  NULL is returned if there is no further content to parse.
 
 -ERRORS-
 Okay:
@@ -757,35 +799,29 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
-   objVectorImage **Image, objVectorPattern **Pattern)
+ERR vecReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
    ULONG i;
 
-   if (!IRI) return ERR_NullArgs;
+   if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
-   if (RGB)      RGB->Alpha = 0; // Nullify the colour
-   if (Gradient) *Gradient = NULL;
-   if (Image)    *Image    = NULL;
-   if (Pattern)  *Pattern  = NULL;
+   Painter->Colour.Alpha = 0; // Nullify the colour
+   Painter->Gradient = NULL;
+   Painter->Image    = NULL;
+   Painter->Pattern  = NULL;
 
    log.trace("IRI: %s", IRI);
 
 next:
+   if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
-   if (!StrCompare("url(", IRI, 4)) {
-      if (!Scene) {
-         log.trace("No Scene specified to enable URL() reference.");
-         return ERR_Failed;
-      }
+   if (StrCompare("url(", IRI, 4) IS ERR::Okay) {
+      if (!Scene) return log.warning(ERR::NullArgs);
 
       if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->Class->ClassID != ID_VECTORSCENE) {
-         log.warning("The Scene is invalid.");
-         return ERR_Failed;
-      }
+      else if (Scene->Class->ClassID != ID_VECTORSCENE) return log.warning(ERR::InvalidObject);
 
       if (Scene->HostScene) Scene = Scene->HostScene;
 
@@ -799,127 +835,136 @@ next:
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
             if (def->Class->ClassID IS ID_VECTORGRADIENT) {
-               if (Gradient) *Gradient = (objVectorGradient *)def;
+               Painter->Gradient = (objVectorGradient *)def;
             }
             else if (def->Class->ClassID IS ID_VECTORIMAGE) {
-               if (Image) *Image = (objVectorImage *)def;
+               Painter->Image = (objVectorImage *)def;
             }
             else if (def->Class->ClassID IS ID_VECTORPATTERN) {
-               if (Pattern) *Pattern = (objVectorPattern *)def;
+               Painter->Pattern = (objVectorPattern *)def;
             }
             else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->Class->ClassID);
 
-            // Check for combinations
-            if (IRI[i++] IS ')') {
-               while ((IRI[i]) and (IRI[i] <= 0x20)) i++;
-               if (IRI[i++] IS '+') {
-                  IRI += i;
-                  goto next;
-               }
+            // Check for combinations like url(#this)+url(#that)
+
+            IRI += i;
+            if (*IRI IS ')') {
+               while ((*IRI) and (*IRI <= 0x20)) IRI++;
+               if (*IRI++ IS '+') goto next;
             }
 
-            return ERR_Okay;
+            if (Result) *Result = IRI[0] ? IRI : NULL;
+            return ERR::Okay;
          }
 
          log.warning("Failed to lookup IRI '%s' in scene #%d", IRI, Scene->UID);
+         return ERR::NotFound;
       }
-      else log.warning("Invalid IRI: %s", IRI);
-
-      return ERR_Failed;
+      else {
+         log.warning("Invalid IRI: %s", IRI);
+         return ERR::Syntax;
+      }
    }
-   else if (!StrCompare("rgb(", IRI, 4)) {
+   else if (StrCompare("rgb(", IRI, 4) IS ERR::Okay) {
+      auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
-      RGB->Red = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Red = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Red = RGB->Red * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      RGB->Green = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Green = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Green = RGB->Green * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      RGB->Blue = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Blue = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Blue = RGB->Blue * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) {
          IRI++;
-         RGB->Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
          while (*IRI) {
-            if (*IRI IS '%') RGB->Alpha = RGB->Alpha * (255.0 / 100.0);
+            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
             IRI++;
          }
-         if (RGB->Alpha > 1) RGB->Alpha = 1;
-         else if (RGB->Alpha < 0) RGB->Alpha = 0;
+         if (rgb.Alpha > 1) rgb.Alpha = 1;
+         else if (rgb.Alpha < 0) rgb.Alpha = 0;
       }
-      else if (RGB->Alpha <= 0) RGB->Alpha = 1.0; // Only set the alpha if it hasn't been set already (example: stroke-opacity)
+      else if (rgb.Alpha <= 0) rgb.Alpha = 1.0; // Only set the alpha if it hasn't been set already (example: stroke-opacity)
 
-      if (RGB->Red > 1) RGB->Red = 1;
-      else if (RGB->Red < 0) RGB->Red = 0;
+      if (rgb.Red > 1) rgb.Red = 1;
+      else if (rgb.Red < 0) rgb.Red = 0;
 
-      if (RGB->Green > 1) RGB->Green = 1;
-      else if (RGB->Green < 0) RGB->Green = 0;
+      if (rgb.Green > 1) rgb.Green = 1;
+      else if (rgb.Green < 0) rgb.Green = 0;
 
-      if (RGB->Blue > 1) RGB->Blue = 1;
-      else if (RGB->Blue < 0) RGB->Blue = 0;
+      if (rgb.Blue > 1) rgb.Blue = 1;
+      else if (rgb.Blue < 0) rgb.Blue = 0;
 
-      return ERR_Okay;
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
    }
    else if (*IRI IS '#') {
+      auto &rgb = Painter->Colour;
       IRI++;
       char nibbles[8];
       UBYTE n = 0;
       while ((*IRI) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(IRI++);
+      while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {
-         RGB->Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
-         RGB->Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
-         RGB->Alpha = 1.0;
-         return ERR_Okay;
+         rgb.Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
+         rgb.Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
+         rgb.Alpha = 1.0;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
+         return ERR::Okay;
       }
       else if (n IS 6) {
-         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         RGB->Alpha = 1.0;
-         return ERR_Okay;
+         rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = 1.0;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
+         return ERR::Okay;
       }
       else if (n IS 8) {
-         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         RGB->Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
-         return ERR_Okay;
+         rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         if (Result) *Result = IRI[0] ? IRI : NULL;
+         return ERR::Okay;
       }
-      else return ERR_Syntax;
-   }
-   else if ((!StrMatch("currentColor", IRI)) or (!StrMatch("currentColour", IRI))) {
-      // This SVG feature derivess the colour from first parent that defines a fill value.  Since this
-      // function doesn't support a vector reference, we have to throw an error.
-
-      log.warning("Parser needs to add support for %s.", IRI);
-      return ERR_Failed;
+      else return ERR::Syntax;
    }
    else {
-      auto hash = StrHash(IRI, FALSE);
-      for (WORD i=0; i < ARRAYSIZE(glNamedColours); i++) {
-         if (glNamedColours[i].Hash IS hash) {
-            RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
-            RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
-            RGB->Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
-            RGB->Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
-            return ERR_Okay;
+      if (auto it = glNamedColours.find(StrHash(IRI)); it != glNamedColours.end()) {
+         auto &src = it->second;
+         auto &rgb = Painter->Colour;
+         rgb.Red   = (FLOAT)src.Red   * (1.0 / 255.0);
+         rgb.Green = (FLOAT)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (FLOAT)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (FLOAT)src.Alpha * (1.0 / 255.0);
+         if (Result) {
+            while ((*IRI) and (*IRI != ';')) IRI++;
+            *Result = IRI[0] ? IRI : NULL;
          }
+         return ERR::Okay;
       }
 
-      log.warning("Failed to interpret colour: %s", IRI);
-      return ERR_Failed;
+      // Note: Resolving 'currentColour' is handled in the SVG parser and not the Vector API.
+      log.warning("Failed to interpret colour \"%s\"", IRI);
+      return ERR::Syntax;
    }
 }
 
@@ -939,11 +984,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecResetMatrix(VectorMatrix *Matrix)
+ERR vecResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->ScaleX     = 1.0;
@@ -954,7 +999,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    Matrix->TranslateY = 0;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -997,11 +1042,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
+ERR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->TranslateX -= CenterX;
@@ -1023,7 +1068,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    Matrix->TranslateY += CenterY;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1052,11 +1097,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->ScaleX     *= X;
@@ -1067,7 +1112,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->TranslateY *= Y;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1091,11 +1136,11 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 *********************************************************************************************************************/
 
-ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Matrix) return log.warning(ERR_NullArgs);
+   if (!Matrix) return log.warning(ERR::NullArgs);
 
    if ((X > -90) and (X < 90)) {
       VectorMatrix skew = {
@@ -1105,7 +1150,7 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 
       vecMultiplyMatrix(Matrix, &skew);
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 
    if ((Y > -90) and (Y < 90)) {
       VectorMatrix skew = {
@@ -1115,9 +1160,9 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 
       vecMultiplyMatrix(Matrix, &skew);
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1172,6 +1217,201 @@ void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUB
 /*********************************************************************************************************************
 
 -FUNCTION-
+CharWidth: Returns the width of a character.
+
+This function will return the pixel width of a font character.  The character is specified as a unicode value in the
+Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
+The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.
+If kerning information is not required, set the KChar and Kerning parameters to zero.
+
+The font's GlyphSpacing value is not used in calculating the character width.
+
+-INPUT-
+ptr FontHandle: The font to use for calculating the character width.
+uint Char: A 32-bit unicode character.
+uint KChar: A unicode character to use for calculating the font kerning (optional).
+&double Kerning: The resulting kerning value (optional).
+
+-RESULT-
+double: The pixel width of the character will be returned.
+
+*********************************************************************************************************************/
+
+DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning)
+{
+   if (!Handle) return 0;
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      auto &cache = pt->get_glyph(Char);
+      if (Kerning) {
+         if (KChar) {
+            FT_Vector delta;
+            FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
+            *Kerning = int26p6_to_dbl(delta.x);
+         }
+         else *Kerning = 0;
+      }
+      return cache.adv_x;
+   }
+   else {
+      if (Kerning) *Kerning = 0;
+      return fntCharWidth(((bmp_font *)Handle)->font, Char);
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+StringWidth: Calculate the pixel width of a UTF-8 string, for a given font.
+
+This function calculates the pixel width of a string, in relation to a known font.  The function takes into account
+any line-feeds that are encountered, so if the String contains multiple lines, then the width of the longest line will
+be returned.
+
+The font's kerning specifications will be taken into account when computing the distance between glyphs.
+
+-INPUT-
+ptr FontHandle: A font handle obtained from GetFontHandle().
+cstr String: Pointer to a null-terminated string.
+int Chars: The maximum number of unicode characters to process in calculating the string width.  Set to -1 for all chars.
+
+-RESULT-
+double: The pixel width of the string is returned.
+-END-
+
+*********************************************************************************************************************/
+
+DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Handle) or (!String)) { log.warning(ERR::NullArgs); return 0; }
+
+   const std::lock_guard lock(glFontMutex);
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      if (Chars IS -1) Chars = 0x7fffffff;
+
+      LONG len        = 0;
+      LONG widest     = 0;
+      LONG prev_glyph = 0;
+      LONG i = 0;
+      while ((i < Chars) and (String[i])) {
+         if (String[i] IS '\n') {
+            if (widest < len) widest = len;
+            len = 0;
+            i++;
+         }
+         else {
+            ULONG unicode;
+            auto charlen = get_utf8(String, unicode, i);
+            auto &glyph  = pt->get_glyph(unicode);
+            len += glyph.adv_x;
+            if (prev_glyph) {;
+               FT_Vector delta;
+               FT_Get_Kerning(pt->ft_size->face, prev_glyph, glyph.glyph_index, FT_KERNING_DEFAULT, &delta);
+               len += int26p6_to_dbl(delta.x);
+            }
+            prev_glyph = glyph.glyph_index;
+            i += charlen;
+         }
+      }
+
+      if (widest > len) return widest;
+      else return len;
+   }
+   else return fntStringWidth(((bmp_font *)Handle)->font, String, Chars);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontHandle: Returns a handle for a given font family.
+
+For a given font family and size, this function will return a handle that can be passed to font querying functions.
+
+The handle is deterministic and permanent, remaining valid for the lifetime of the program.
+
+-INPUT-
+cstr Family: The name of the font family to access.
+cstr Style: The preferred style to choose from the family.  Use "Regular" or NULL for the default.
+int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
+int Size: The font-size, measured in pixels @ 72 DPI.
+&ptr Handle: The resulting font handle is returned here.
+
+-ERRORS-
+Okay:
+Args:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Size < 1) return log.warning(ERR::Args);
+
+   if (!Style) Style = "Regular";
+   common_font *handle;
+   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); error IS ERR::Okay) {
+      *Handle = handle;
+      return ERR::Okay;
+   }
+   else return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontMetrics: Returns a set of display metric values for a font.
+
+Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI)
+for a given font.
+
+-INPUT-
+ptr Handle: A font handle obtained from GetFontHandle().
+struct(*FontMetrics) Info: The font metrics for the Handle will be stored here.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
+{
+   if ((!Handle) or (!Metrics)) return ERR::NullArgs;
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      Metrics->Height      = pt->height;
+      Metrics->LineSpacing = pt->line_spacing;
+      Metrics->Ascent      = pt->ascent;
+      Metrics->Descent     = pt->descent;
+      return ERR::Okay;
+   }
+   else {
+      auto font = ((bmp_font *)Handle)->font;
+      Metrics->Height      = font->Ascent;
+      Metrics->LineSpacing = font->LineSpacing;
+      Metrics->Ascent      = font->Height;
+      Metrics->Descent     = font->Gutter;
+      return ERR::Okay;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 Translate: Translates the vector by (X,Y).
 
 This function will translate the matrix in the direction of the provided (X,Y) values.
@@ -1188,18 +1428,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->TranslateX += X;
    Matrix->TranslateY += Y;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

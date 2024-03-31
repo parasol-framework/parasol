@@ -36,7 +36,8 @@ struct eventsub {
    struct eventsub *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void     (*Callback)(APTR Custom, APTR Info, LONG Size);
+   void     (*Callback)(APTR Custom, APTR Info, LONG Size, APTR Meta);
+   APTR     CallbackMeta;
    EVG      Group;
    UBYTE    Called;
    OBJECTID ContextID;
@@ -101,11 +102,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR BroadcastEvent(APTR Event, LONG EventSize)
+ERR BroadcastEvent(APTR Event, LONG EventSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
+   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR::NullArgs;
 
    LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
 
@@ -116,7 +117,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
       SendMessage(MSGID_EVENT, MSF::NIL, Event, EventSize);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -196,29 +197,29 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
+ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Callback) or (!EventID) or (!Handle)) return ERR_NullArgs;
+   if ((!Callback) or (!EventID) or (!Handle)) return ERR::NullArgs;
 
-   if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
+   if (!Callback->isC()) return ERR::Args; // Currently only StdC callbacks are accepted.
 
    auto gid = EVG(UBYTE(EventID>>56));
 
    if ((LONG(gid) < 1) or (LONG(gid) >= LONG(EVG::END))) {
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
-   struct eventsub *event;
-   if ((event = (struct eventsub *)malloc(sizeof(struct eventsub)))) {
+   if (auto event = (struct eventsub *)malloc(sizeof(struct eventsub))) {
       LARGE mask = 0xff00000000000000LL;
       if (EventID & 0x00ffffff00000000LL) mask |= 0x00ffffff00000000LL;
       if (EventID & 0x00000000ffffffffLL) mask |= 0x00000000ffffffffLL;
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
+      event->Callback  = (void (*)(APTR, APTR, LONG, APTR))Callback->StdC.Routine;
+      event->CallbackMeta = Callback->StdC.Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
@@ -241,9 +242,9 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 
       *Handle = event;
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -299,15 +300,15 @@ void UnsubscribeEvent(APTR Handle)
 ** ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
 */
 
-ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
+   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR::Okay;
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   log.msg(VLF::EXTAPI|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;
@@ -326,7 +327,7 @@ restart:
          pf::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
             pf::SwitchContext ctx(lock.obj);
-            event->Callback(event->Custom, Message, MsgSize);
+            event->Callback(event->Custom, Message, MsgSize, event->CallbackMeta);
          }
 
          if (glEventListAltered) goto restart;
@@ -335,5 +336,5 @@ restart:
       event = event->Next;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

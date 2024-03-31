@@ -125,10 +125,10 @@ end
    end)
 
    local text = viewport.new('vectortext', {
-      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
-   text.y = y + text.font.height
-   y = y + text.font.height + 14
+   text.y = y + text.fontSize
+   y = y + text.fontSize + 14
 
    local msgButton = gui.button({
       target = viewport,
@@ -140,7 +140,7 @@ end
          activate = function(Widget)
             gui.dialog.message({
                modal         = true,
-               image         = 'icons:items/warning',
+               image         = 'items/warning',
                title         = 'Hamlet has a question',
                message       = 'To be or not to be?',
                userInput     = 'That is the question',
@@ -211,7 +211,7 @@ end
                   if (not Accepted) then
                      print('Dialog was cancelled.')
                   else
-                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.pointSize .. ", style '" .. Dialog.style .. "'")
                      print("This can be compacted to '" .. Dialog.compactFace .. "'")
                   end
                end

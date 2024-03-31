@@ -14,7 +14,7 @@
     <idstring>ID_XML</idstring>
     <category>Data</category>
     <include>modules/xml.h</include>
-    <copyright>Paul Manias © 2001-2023</copyright>
+    <copyright>Paul Manias © 2001-2024</copyright>
     <description>
 <p>The XML class provides functionality to create and maintain XML data files.  It is capable of parsing and validating XML files with or without correct structure, and can perform optional parsing behaviours such as stripping comments during processing.</p>
 <p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>
@@ -82,7 +82,7 @@
     <method>
       <name>Count</name>
       <comment>Count all tags that match a given XPath.</comment>
-      <prototype>ERROR xmlCount(OBJECTPTR Object, CSTRING XPath, LONG * Result)</prototype>
+      <prototype>ERR xmlCount(OBJECTPTR Object, CSTRING XPath, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">The XPath on which to perform the count.</param>
         <param type="LONG *" name="Result">The total number of matching tags is returned here.</param>
@@ -99,7 +99,7 @@
     <method>
       <name>Filter</name>
       <comment>Filters the XML data down to a single tag and its children.</comment>
-      <prototype>ERROR xmlFilter(OBJECTPTR Object, CSTRING XPath)</prototype>
+      <prototype>ERR xmlFilter(OBJECTPTR Object, CSTRING XPath)</prototype>
       <input>
         <param type="CSTRING" name="XPath">Refers to a valid XPath string.</param>
       </input>
@@ -117,15 +117,15 @@
     <method>
       <name>FindTag</name>
       <comment>Searches for a tag via XPath.</comment>
-      <prototype>ERROR xmlFindTag(OBJECTPTR Object, CSTRING XPath, FUNCTION * Callback, LONG * Result)</prototype>
+      <prototype>ERR xmlFindTag(OBJECTPTR Object, CSTRING XPath, FUNCTION * Callback, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XPath string.</param>
         <param type="FUNCTION *" name="Callback">Optional reference to a function that should be called for each matching tag.</param>
         <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
       </input>
       <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The prototype for the callback function is <code>ERROR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
-<p>The Callback routine can terminate the search early by returning <code>ERR_Terminate</code>.  All other error codes are ignored.</p>
+<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The prototype for the callback function is <code>ERR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
+<p>The Callback routine can terminate the search early by returning <code>ERR::Terminate</code>.  All other error codes are ignored.</p>
       </description>
       <result>
         <error code="Okay">A matching tag was found.</error>
@@ -138,7 +138,7 @@
     <method>
       <name>GetAttrib</name>
       <comment>Retrieves the value of an XML attribute.</comment>
-      <prototype>ERROR xmlGetAttrib(OBJECTPTR Object, LONG Index, CSTRING Attrib, CSTRING * Value)</prototype>
+      <prototype>ERR xmlGetAttrib(OBJECTPTR Object, LONG Index, CSTRING Attrib, CSTRING * Value)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the XML tag to search.</param>
         <param type="CSTRING" name="Attrib">The name of the attribute to search for (case insensitive).  If NULL or an empty string, the tag name is returned as the result.</param>
@@ -157,15 +157,15 @@
 
     <method>
       <name>GetContent</name>
-      <comment>Extracts the content embedded inside an XML tag.</comment>
-      <prototype>ERROR xmlGetContent(OBJECTPTR Object, LONG Index, STRING Buffer, LONG Length)</prototype>
+      <comment>Extracts the content of an XML tag.</comment>
+      <prototype>ERR xmlGetContent(OBJECTPTR Object, LONG Index, STRING Buffer, LONG Length)</prototype>
       <input>
         <param type="LONG" name="Index">Index of a tag that contains content.</param>
         <param type="STRING" name="Buffer">Pointer to a buffer that will receive the string data.</param>
         <param type="LONG" name="Length">The length of the Buffer in bytes.</param>
       </input>
       <description>
-<p>The GetContent method is used to extract the string content from an XML tag.  It will extract content that is immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to <method>GetString</method> for deep extraction).  Consider the following structure:</p>
+<p>The GetContent method is used to extract the string content from an XML tag.  It will extract content that is immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to <method>Serialise</method> for deep extraction).  Consider the following structure:</p>
 <pre>&lt;body&gt;
   Hello
   &lt;bold&gt;my&lt;/bold&gt;
@@ -183,36 +183,15 @@
     </method>
 
     <method>
-      <name>GetString</name>
-      <comment>Retrieves data from an XML object in standard XML string format.</comment>
-      <prototype>ERROR xmlGetString(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
-      <input>
-        <param type="LONG" name="Index">Index to a source tag for pulling data out of the XML object.  Zero will always refer to the first tag.</param>
-        <param type="XMF" name="Flags" lookup="XMF">Special flags that affect the construction of the XML string.</param>
-        <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
-      </input>
-      <description>
-<p>The GetString method builds XML strings from data that has been loaded into an XML object.  The string is created from the entire XML object or from a specific area of the XML tree by setting the Index parameter.</p>
-<p>The XML string that is built by this method will be stored in the Result parameter.  The memory block must be freed once the content is no longer required.</p>
-      </description>
-      <result>
-        <error code="Okay">The XML string was retrieved.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NoData">No information has been loaded into the XML object.</error>
-        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
-      </result>
-    </method>
-
-    <method>
       <name>GetTag</name>
       <comment>Returns a pointer to the XMLTag structure for a given tag index.</comment>
-      <prototype>ERROR xmlGetTag(OBJECTPTR Object, LONG Index, struct XMLTag ** Result)</prototype>
+      <prototype>ERR xmlGetTag(OBJECTPTR Object, LONG Index, struct XMLTag ** Result)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the tag that is being retrieved.</param>
         <param type="struct XMLTag **" name="Result">The XMLTag is returned in this parameter.</param>
       </input>
       <description>
-<p>This method will return the XMLTag structure for a given tag Index.  The Index is checked to ensure it is valid prior to retrieval, and an <code>ERR_OutOfRange</code> error will be returned if it is invalid.</p>
+<p>This method will return the XMLTag structure for a given tag Index.  The Index is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -224,7 +203,7 @@
     <method>
       <name>InsertContent</name>
       <comment>Inserts XML content into the XML tree.</comment>
-      <prototype>ERROR xmlInsertContent(OBJECTPTR Object, LONG Index, XMI Where, CSTRING Content, LONG * Result)</prototype>
+      <prototype>ERR xmlInsertContent(OBJECTPTR Object, LONG Index, XMI Where, CSTRING Content, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the target XML tag.</param>
         <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
@@ -244,8 +223,8 @@
 
     <method>
       <name>InsertXML</name>
-      <comment>Inserts an XML statement in the XML tree.</comment>
-      <prototype>ERROR xmlInsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
+      <comment>Parse an XML string and insert it in the XML tree.</comment>
+      <prototype>ERR xmlInsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">The new data will target the tag specified here.</param>
         <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD or CHILD_END for a child insert.</param>
@@ -267,7 +246,7 @@
     <method>
       <name>InsertXPath</name>
       <comment>Inserts an XML statement in an XML tree.</comment>
-      <prototype>ERROR xmlInsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result)</prototype>
+      <prototype>ERR xmlInsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XPath string that refers to the target insertion point.</param>
         <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
@@ -287,7 +266,7 @@
     <method>
       <name>MoveTags</name>
       <comment>Move an XML tag group to a new position in the XML tree.</comment>
-      <prototype>ERROR xmlMoveTags(OBJECTPTR Object, LONG Index, LONG Total, LONG DestIndex, XMI Where)</prototype>
+      <prototype>ERR xmlMoveTags(OBJECTPTR Object, LONG Index, LONG Total, LONG DestIndex, XMI Where)</prototype>
       <input>
         <param type="LONG" name="Index">Index of the source tag to be moved.</param>
         <param type="LONG" name="Total">The total number of sibling tags to be moved from the source index.  Minimum value of 1.</param>
@@ -309,7 +288,7 @@
     <method>
       <name>RemoveTag</name>
       <comment>Removes tag(s) from the XML structure.</comment>
-      <prototype>ERROR xmlRemoveTag(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
+      <prototype>ERR xmlRemoveTag(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
       <input>
         <param type="LONG" name="Index">Reference to the tag that will be removed.</param>
         <param type="LONG" name="Total">The total number of sibling (neighbouring) tags that should also be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all tags up to the end of the branch will be affected.</param>
@@ -330,7 +309,7 @@
     <method>
       <name>RemoveXPath</name>
       <comment>Removes tag(s) from the XML structure, using an xpath lookup.</comment>
-      <prototype>ERROR xmlRemoveXPath(OBJECTPTR Object, CSTRING XPath, LONG Limit)</prototype>
+      <prototype>ERR xmlRemoveXPath(OBJECTPTR Object, CSTRING XPath, LONG Limit)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XML path string.</param>
         <param type="LONG" name="Limit">The maximum number of matching tags that should be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all matching tags up to the end of the tree will be affected.</param>
@@ -349,9 +328,30 @@
     </method>
 
     <method>
+      <name>Serialise</name>
+      <comment>Serialise part of the XML tree to an XML string.</comment>
+      <prototype>ERR xmlSerialise(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
+      <input>
+        <param type="LONG" name="Index">Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</param>
+        <param type="XMF" name="Flags" lookup="XMF">Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.</param>
+        <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
+      </input>
+      <description>
+<p>The Serialise method will serialise all or part of the XML data tree to a string.</p>
+<p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
+      </description>
+      <result>
+        <error code="Okay">The XML string was retrieved.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">No information has been loaded into the XML object.</error>
+        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
+      </result>
+    </method>
+
+    <method>
       <name>SetAttrib</name>
       <comment>Adds, updates and removes XML attributes.</comment>
-      <prototype>ERROR xmlSetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
+      <prototype>ERR xmlSetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the tag that is to be updated.</param>
         <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.</param>
@@ -376,7 +376,7 @@
     <method>
       <name>Sort</name>
       <comment>Sorts XML tags to your specifications.</comment>
-      <prototype>ERROR xmlSort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
+      <prototype>ERR xmlSort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
       <input>
         <param type="CSTRING" name="XPath">Sort everything under the specified tag, or NULL to sort the entire top level.</param>
         <param type="CSTRING" name="Sort">Pointer to a sorting instruction string.</param>
@@ -491,14 +491,14 @@
       <const name="ALL_CONTENT">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
       <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
-      <const name="INDENT">Indent the output of XML tags to improve readability.</const>
+      <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
-      <const name="READABLE">Indent the output of XML tags to improve readability.</const>
+      <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
       <const name="STRIP_CDATA">Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>

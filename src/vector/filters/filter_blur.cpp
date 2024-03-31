@@ -8,16 +8,16 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 BlurFX: Applies a Gaussian blur effect to an input source.
 
-The BlurFX class performs a Gaussian blur on the input source.  The Gaussian blur kernel is an approximation of the
-normalized convolution `G(x,y) = H(x)I(y)` where `H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)` and
-`I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)` with 's' being the standard deviation in the x direction and 't' being the
-standard deviation in the y direction, as specified by #SX and #SY.
+The BlurFX class performs a Gaussian blur, or approximation thereof, on the input source.  The Gaussian blur kernel 
+is an approximation of the normalized convolution `G(x,y) = H(x)I(y)` where `H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)` 
+and `I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)` with 's' being the standard deviation in the x direction and 't' being 
+the standard deviation in the y direction, as specified by #SX and #SY.
 
 At least one of #SX or #SY should be greater than 0, otherwise no rendering is performed.
 
 -END-
 
-Frequently this operation will take place on alpha-only images, such as that produced by the built-in input,
+W3C: Frequently this operation will take place on alpha-only images, such as that produced by the built-in input,
 SourceAlpha.  The implementation may notice this and optimize the single channel case. If the input has infinite
 extent and is constant (e.g  FillPaint where the fill is a solid color), this operation has no effect. If the input
 has infinite extent and the filter result is the input to an feTile, the filter is evaluated with periodic boundary
@@ -85,40 +85,67 @@ class extBlurFX : public extFilterEffect {
 //********************************************************************************************************************
 // This is the stack blur algorithm originally implemented in AGG.  It is intended to produce a near identical output
 // to that of a standard gaussian blur algorithm.
+//
+// Note that blurring is always performed with premultiplied colour values; otherwise the function will output pixels
+// that are darkly tinted.
 
-static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
+static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 {
-   auto bmp = Self->Target;
-   if (bmp->BytesPerPixel != 4) return ERR_Failed;
+   auto outBmp = Self->Target;
+   if (outBmp->BytesPerPixel != 4) return ERR::Failed;
+   
+   DOUBLE scale = 1.0;
+   if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
+   
+   LONG rx, ry;
+   if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
+      if (Self->Filter->AspectRatio IS VFA::NONE) {
+         // Scaling is applied evenly on both axis.  Uses the same formula as a scaled stroke-width.
+         DOUBLE diag = dist(0, 0, Self->Filter->BoundWidth, Self->Filter->BoundHeight) * INV_SQRT2;
+         rx = F2T(Self->SX * diag * 2 * scale);
+         ry = F2T(Self->SY * diag * 2 * scale);
+      }
+      else {
+         // Scaling is stretched independently of each axis
+         rx = F2T(Self->SX * Self->Filter->BoundWidth * 2 * scale);
+         ry = F2T(Self->SY * Self->Filter->BoundHeight * 2 * scale);
+      }
+   }
+   else {
+      rx = F2T(Self->SX * 2 * scale);
+      ry = F2T(Self->SY * 2 * scale);
+   }
+   
+   objBitmap *inBmp;
+   
+   if ((rx < 1) and (ry < 1)) {
+      if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
+      BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
+      gfxCopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
+      return ERR::Okay;
+   }
+   
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
+   
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToLinear(inBmp);
 
-   LONG rx = F2T(Self->SX * 2);
-   LONG ry = F2T(Self->SY * 2);
+   bmpPremultiply(inBmp);
+   
+   UBYTE *dst_pix_ptr;
+   agg::rgba8 *stack_pix_ptr;
 
-   if ((rx < 1) and (ry < 1)) return ERR_Okay;
+   const LONG w = (outBmp->Clip.Right - outBmp->Clip.Left);
+   const LONG h = (outBmp->Clip.Bottom - outBmp->Clip.Top);
+   const LONG wm = w - 1;
+   const LONG hm = h - 1;
 
-   const UBYTE * src_pix_ptr;
-   UBYTE * dst_pix_ptr;
-   agg::rgba8 *  stack_pix_ptr;
+   UBYTE A = inBmp->ColourFormat->AlphaPos>>3;
+   UBYTE R = inBmp->ColourFormat->RedPos>>3;
+   UBYTE G = inBmp->ColourFormat->GreenPos>>3;
+   UBYTE B = inBmp->ColourFormat->BluePos>>3;
 
-   const LONG w = (bmp->Clip.Right - bmp->Clip.Left);
-   const LONG h = (bmp->Clip.Bottom - bmp->Clip.Top);
-   const LONG wm  = w - 1;
-   const LONG hm  = h - 1;
-
-   agg::pod_vector<agg::rgba8> stack;
-
-   UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   UBYTE R = bmp->ColourFormat->RedPos>>3;
-   UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-   UBYTE *data = bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth);
-
-   // Premultiply all the pixels.  This process is required to prevent the blur from picking up colour values in pixels
-   // where the alpha = 0.  If there's no alpha channel present then a pre-multiply isn't required.  NB: Demultiply
-   // takes place at the end of the routine.
-
-   bmpPremultiply(bmp);
+   UBYTE *in_data  = inBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
+   UBYTE *out_data = outBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
 
    ULONG sum_r, sum_g, sum_b, sum_a;
    ULONG sum_in_r, sum_in_g, sum_in_b, sum_in_a;
@@ -129,28 +156,30 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    ULONG div;
    ULONG mul_sum;
    ULONG shr_sum;
+   
+   std::vector<agg::rgba8> stack;
 
    if (rx > 0) {
       if (rx > 254) rx = 254;
       div = rx * 2 + 1;
       mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[rx];
       shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[rx];
-      stack.allocate(div);
+      stack.resize(div);
 
       for (y=0; y < h; y++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
-
-         src_pix_ptr = data + (bmp->LineWidth * y);
+         
+         const UBYTE * src_pix_ptr = in_data + (outBmp->LineWidth * y);
          for (LONG i=0; i <= rx; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
              stack_pix_ptr->g = src_pix_ptr[G];
              stack_pix_ptr->b = src_pix_ptr[B];
              stack_pix_ptr->a = src_pix_ptr[A];
-             sum_r += src_pix_ptr[R] * (i + 1);
-             sum_g += src_pix_ptr[G] * (i + 1);
-             sum_b += src_pix_ptr[B] * (i + 1);
-             sum_a += src_pix_ptr[A] * (i + 1);
+             sum_r     += src_pix_ptr[R] * (i + 1);
+             sum_g     += src_pix_ptr[G] * (i + 1);
+             sum_b     += src_pix_ptr[B] * (i + 1);
+             sum_a     += src_pix_ptr[A] * (i + 1);
              sum_out_r += src_pix_ptr[R];
              sum_out_g += src_pix_ptr[G];
              sum_out_b += src_pix_ptr[B];
@@ -177,8 +206,8 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          stack_ptr = rx;
          xp = rx;
          if (xp > wm) xp = wm;
-         src_pix_ptr = data + (bmp->LineWidth * y) + (xp<<2);
-         dst_pix_ptr = data + (bmp->LineWidth * y);
+         src_pix_ptr = in_data + (outBmp->LineWidth * y) + (xp<<2);
+         dst_pix_ptr = out_data + (outBmp->LineWidth * y);
          for (LONG x=0; x < w; x++) {
             dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
             dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
@@ -236,17 +265,21 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    }
 
    if (ry > 0) {
+      if (rx > 0) {
+         in_data = out_data; // If rx was already processed, the dest becomes the source
+      }
+
       if (ry > 254) ry = 254;
       div = ry * 2 + 1;
       mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[ry];
       shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[ry];
-      stack.allocate(div);
+      stack.resize(div);
 
-      int stride = bmp->LineWidth;
+      int stride = outBmp->LineWidth;
       for (x = 0; x < w; x++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
 
-         src_pix_ptr = data + (x<<2);
+         const UBYTE * src_pix_ptr = in_data + (x<<2);
          for (LONG i = 0; i <= ry; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
@@ -283,8 +316,8 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          stack_ptr = ry;
          yp = ry;
          if (yp > hm) yp = hm;
-         src_pix_ptr = data + (x<<2) + (bmp->LineWidth * yp);
-         dst_pix_ptr = data + (x<<2);
+         src_pix_ptr = in_data + (x<<2) + (outBmp->LineWidth * yp);
+         dst_pix_ptr = out_data + (x<<2);
          for (LONG y = 0; y < h; y++) {
             dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
             dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
@@ -340,9 +373,18 @@ static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          }
       }
    }
+   
+   //bmpDemultiply(inBmp);
 
-   bmpDemultiply(bmp);
-   return ERR_Okay;
+   outBmp->Flags |= BMF::PREMUL; // Need to tell the bitmap it has premultiplied output before Demultiply()
+   bmpDemultiply(outBmp);
+   
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
+      outBmp->ColourSpace = CS::LINEAR_RGB;
+      bmpConvertToRGB(outBmp);
+   }
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -356,16 +398,16 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_SX(extBlurFX *Self, DOUBLE *Value)
+static ERR BLURFX_GET_SX(extBlurFX *Self, DOUBLE *Value)
 {
    *Value = Self->SX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR BLURFX_SET_SX(extBlurFX *Self, DOUBLE Value)
+static ERR BLURFX_SET_SX(extBlurFX *Self, DOUBLE Value)
 {
    Self->SX = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -379,16 +421,16 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_SY(extBlurFX *Self, DOUBLE *Value)
+static ERR BLURFX_GET_SY(extBlurFX *Self, DOUBLE *Value)
 {
    *Value = Self->SY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR BLURFX_SET_SY(extBlurFX *Self, DOUBLE Value)
+static ERR BLURFX_SET_SY(extBlurFX *Self, DOUBLE Value)
 {
    Self->SY = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -399,12 +441,12 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_XMLDef(extBlurFX *Self, STRING *Value)
+static ERR BLURFX_GET_XMLDef(extBlurFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feGaussianBlur stdDeviation=\"" << Self->SX << " " << Self->SY << "\"";
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -420,7 +462,7 @@ static const FieldArray clBlurFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_blurfx(void)
+ERR init_blurfx(void)
 {
    clBlurFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
@@ -432,5 +474,5 @@ ERROR init_blurfx(void)
       fl::Size(sizeof(extBlurFX)),
       fl::Path(MOD_PATH));
 
-   return clBlurFX ? ERR_Okay : ERR_AddClass;
+   return clBlurFX ? ERR::Okay : ERR::AddClass;
 }

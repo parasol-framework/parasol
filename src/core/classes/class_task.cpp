@@ -15,7 +15,7 @@ To execute a compiled program, set the #Location field to point to the executabl
 task.  Arguments can be passed to the executable by setting the #Parameters field.  Once the task object is
 successfully initialised, use the #Activate() action to run the executable.  If the file executes successfully,
 a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object
-immediately afterwards).  If the #Activate() action returns with ERR_Okay then the executable program was run
+immediately afterwards).  If the #Activate() action returns with ERR::Okay then the executable program was run
 successfully.
 
 To find the task object that represents the active process, use the ~CurrentTask() function to quickly retrieve it.
@@ -94,21 +94,21 @@ extern "C" DLLCALL LONG WINAPI RegSetValueExA(APTR hKey, CSTRING lpValueName, LO
 static LONG glProcessBreak = 0;
 #endif
 
-static ERROR GET_LaunchPath(extTask *, STRING *);
+static ERR GET_LaunchPath(extTask *, STRING *);
 
-static ERROR TASK_Activate(extTask *, APTR);
-static ERROR TASK_Free(extTask *, APTR);
-static ERROR TASK_GetEnv(extTask *, struct taskGetEnv *);
-static ERROR TASK_GetVar(extTask *, struct acGetVar *);
-static ERROR TASK_Init(extTask *, APTR);
-static ERROR TASK_NewObject(extTask *, APTR);
-static ERROR TASK_SetEnv(extTask *, struct taskSetEnv *);
-static ERROR TASK_SetVar(extTask *, struct acSetVar *);
-static ERROR TASK_Write(extTask *, struct acWrite *);
+static ERR TASK_Activate(extTask *, APTR);
+static ERR TASK_Free(extTask *, APTR);
+static ERR TASK_GetEnv(extTask *, struct taskGetEnv *);
+static ERR TASK_GetVar(extTask *, struct acGetVar *);
+static ERR TASK_Init(extTask *, APTR);
+static ERR TASK_NewObject(extTask *, APTR);
+static ERR TASK_SetEnv(extTask *, struct taskSetEnv *);
+static ERR TASK_SetVar(extTask *, struct acSetVar *);
+static ERR TASK_Write(extTask *, struct acWrite *);
 
-static ERROR TASK_AddArgument(extTask *, struct taskAddArgument *);
-static ERROR TASK_Expunge(extTask *, APTR);
-static ERROR TASK_Quit(extTask *, APTR);
+static ERR TASK_AddArgument(extTask *, struct taskAddArgument *);
+static ERR TASK_Expunge(extTask *, APTR);
+static ERR TASK_Quit(extTask *, APTR);
 
 static const FieldDef clFlags[] = {
    { "Foreign",    TSF::FOREIGN },
@@ -143,46 +143,38 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 {
    auto Self = (extTask *)Task;
    char buffer[4096];
-   ERROR error;
+   ERR error;
 
 #ifdef _WIN32
    LONG bytes_read;
-   LONG result = winReadStdInput(FD, buffer, sizeof(buffer)-1, &bytes_read);
-   if (!result) {
-      error = ERR_Okay;
-   }
-   else if (result IS 1) {
-      return;
-   }
+   auto result = winReadStdInput(FD, buffer, sizeof(buffer)-1, &bytes_read);
+   if (!result) error = ERR::Okay;
+   else if (result IS 1) return;
    else if (result IS -2) {
-      error = ERR_Finished;
+      error = ERR::Finished;
       RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
    }
-   else {
-      error = ERR_Failed;
-      return;
-   }
+   else return;
 #else
    LONG bytes_read = read(fileno(stdin), buffer, sizeof(buffer)-1);
-   if (bytes_read >= 0) error = ERR_Okay;
-   else error = ERR_Finished;
+   if (bytes_read >= 0) error = ERR::Okay;
+   else error = ERR::Finished;
 #endif
 
    buffer[bytes_read] = 0;
 
-   if (Self->InputCallback.Type IS CALL_STDC) {
-      auto routine = (void (*)(extTask *, APTR, LONG, ERROR))Self->InputCallback.StdC.Routine;
-      routine(Self, buffer, bytes_read, error);
+   if (Self->InputCallback.isC()) {
+      auto routine = (void (*)(extTask *, APTR, LONG, ERR, APTR))Self->InputCallback.StdC.Routine;
+      routine(Self, buffer, bytes_read, error, Self->InputCallback.StdC.Meta);
    }
-   else if (Self->InputCallback.Type IS CALL_SCRIPT) {
-      auto script = Self->InputCallback.Script.Script;
+   else if (Self->InputCallback.isScript()) {
       const ScriptArg args[] = {
          { "Task",       Self },
          { "Buffer",     buffer, FD_PTRBUFFER },
          { "BufferSize", bytes_read, FD_LONG|FD_BUFSIZE },
-         { "Status",     error, FD_ERROR }
+         { "Status",     LONG(error), FD_ERROR }
       };
-      scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      scCallback(Self->InputCallback.Script.Script, Self->InputCallback.Script.ProcedureID, args, std::ssize(args), NULL);
    }
 }
 
@@ -228,20 +220,17 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
       buffer[len] = 0;
 
       auto task = (extTask *)Task;
-      if (task->OutputCallback.Type IS CALL_STDC) {
-         auto routine = (void (*)(extTask *, APTR, LONG))task->OutputCallback.StdC.Routine;
-         routine(task, buffer, len);
+      if (task->OutputCallback.isC()) {
+         auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->OutputCallback.StdC.Routine;
+         routine(task, buffer, len, task->OutputCallback.StdC.Meta);
       }
-      else if (task->OutputCallback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = task->OutputCallback.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Task",       Task,   FD_OBJECTPTR },
-               { "Buffer",     buffer, FD_PTRBUFFER },
-               { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
-            };
-            scCallback(script, task->OutputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+      else if (task->OutputCallback.isScript()) {
+         const ScriptArg args[] = {
+            { "Task",       Task,   FD_OBJECTPTR },
+            { "Buffer",     buffer, FD_PTRBUFFER },
+            { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
+         };
+         scCallback(task->OutputCallback.Script.Script, task->OutputCallback.Script.ProcedureID, args, std::ssize(args), NULL);
       }
    }
    recursive--;
@@ -261,19 +250,18 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 
       auto task = (extTask *)Task;
       if (task->ErrorCallback.Type) {
-         if (task->ErrorCallback.Type IS CALL_STDC) {
-            auto routine = (void (*)(extTask *, APTR, LONG))task->ErrorCallback.StdC.Routine;
-            routine(task, buffer, len);
+         if (task->ErrorCallback.isC()) {
+            auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->ErrorCallback.StdC.Routine;
+            routine(task, buffer, len, task->ErrorCallback.StdC.Meta);
          }
-         else if (task->ErrorCallback.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = task->ErrorCallback.Script.Script)) {
+         else if (task->ErrorCallback.isScript()) {
+            if (auto script = task->ErrorCallback.Script.Script) {
                const ScriptArg args[] = {
                   { "Task", Task, FD_OBJECTPTR },
                   { "Data", buffer, FD_PTRBUFFER },
                   { "Size", len, FD_LONG|FD_BUFSIZE }
                };
-               scCallback(script, task->ErrorCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+               scCallback(script, task->ErrorCallback.Script.ProcedureID, args, std::ssize(args), NULL);
             }
          }
       }
@@ -289,18 +277,18 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 #ifdef _WIN32
 static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG Size)
 {
-   if (Callback->Type IS CALL_STDC) {
-      auto routine = (void (*)(extTask *, APTR, LONG))Callback->StdC.Routine;
-      routine(Task, Buffer, Size);
+   if (Callback->isC()) {
+      auto routine = (void (*)(extTask *, APTR, LONG, APTR))Callback->StdC.Routine;
+      routine(Task, Buffer, Size, Callback->StdC.Meta);
    }
-   else if (Callback->Type IS CALL_SCRIPT) {
+   else if (Callback->isScript()) {
       auto script = Callback->Script.Script;
       const ScriptArg args[] = {
          { "Task", Task, FD_OBJECTPTR },
          { "Data", Buffer, FD_PTRBUFFER },
          { "Size", Size, FD_LONG|FD_BUFSIZE }
       };
-      scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      scCallback(script, Callback->Script.ProcedureID, args, std::ssize(args), NULL);
    }
 }
 
@@ -375,9 +363,9 @@ extern "C" void task_deregister_incoming(WINHANDLE Handle)
 
 //********************************************************************************************************************
 
-static ERROR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   return ERR_Terminate;
+   return ERR::Terminate;
 }
 
 //********************************************************************************************************************
@@ -396,14 +384,14 @@ static CSTRING action_id_name(LONG ActionID)
 
 //********************************************************************************************************************
 
-static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log("ProcessMessages");
    ActionMessage *action;
 
    if (!(action = (ActionMessage *)Message)) {
       log.warning("No data attached to MSGID_ACTION message.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    #ifdef DBG_INCOMING
@@ -412,8 +400,8 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
    if ((action->ObjectID) and (action->ActionID)) {
       OBJECTPTR obj;
-      ERROR error;
-      if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
+      ERR error;
+      if ((error = AccessObject(action->ObjectID, 5000, &obj)) IS ERR::Okay) {
          if (action->SendArgs IS false) {
             obj->Flags |= NF::MESSAGE;
             Action(action->ActionID, obj, NULL);
@@ -432,7 +420,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             // Use resolve_args() to process the args structure back into something readable
 
             if (fields) {
-               if (!resolve_args(action+1, fields)) {
+               if (resolve_args(action+1, fields) IS ERR::Okay) {
                   obj->Flags |= NF::MESSAGE;
                   Action(action->ActionID, obj, action+1);
                   obj->Flags = obj->Flags & (~NF::MESSAGE);
@@ -448,7 +436,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
          }
       }
       else {
-         if ((error != ERR_NoMatchingObject) and (error != ERR_MarkedForDeletion)) {
+         if ((error != ERR::NoMatchingObject) and (error != ERR::MarkedForDeletion)) {
             if (action->ActionID > 0) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
             else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
          }
@@ -456,42 +444,42 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
    }
    else log.warning("Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
    log.function("Processing quit message");
    glTaskState = TSTATE::STOPPING;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Determine whether or not a process is alive
 
-extern "C" ERROR validate_process(LONG ProcessID)
+extern "C" ERR validate_process(LONG ProcessID)
 {
    pf::Log log(__FUNCTION__);
    static LONG glValidating = 0;
 
    log.function("PID: %d", ProcessID);
 
-   if (glValidating) return ERR_Okay;
+   if (glValidating) return ERR::Okay;
    if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
-   if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR_Okay;
+   if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR::Okay;
 
    #ifdef _WIN32
       // On Windows we don't check if the process is alive because validation can often occur during the final shutdown
       // phase of the other process.
    #elif __unix__
       if ((kill(ProcessID, 0) IS -1) and (errno IS ESRCH));
-      else return ERR_Okay;
+      else return ERR::Okay;
    #else
       log.error("This platform does not support validate_process()");
-      return ERR_Okay;
+      return ERR::Okay;
    #endif
 
    OBJECTID task_id = 0;
@@ -503,13 +491,13 @@ extern "C" ERROR validate_process(LONG ProcessID)
       }
    }
 
-   if (!task_id) return ERR_False;
+   if (!task_id) return ERR::False;
 
    evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
 
    glValidating = 0;
-   return ERR_False; // Return ERR_False to indicate that the task was not healthy
+   return ERR::False; // Return ERR::False to indicate that the task was not healthy
 }
 
 //********************************************************************************************************************
@@ -560,14 +548,14 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    // Call ExitCallback, if specified
 
-   if (Task->ExitCallback.Type IS CALL_STDC) {
-      auto routine = (void (*)(extTask *))Task->ExitCallback.StdC.Routine;
-      routine(Task);
+   if (Task->ExitCallback.isC()) {
+      auto routine = (void (*)(extTask *, APTR))Task->ExitCallback.StdC.Routine;
+      routine(Task, Task->ExitCallback.StdC.Meta);
    }
-   else if (Task->ExitCallback.Type IS CALL_SCRIPT) {
+   else if (Task->ExitCallback.isScript()) {
       auto script = Task->ExitCallback.Script.Script;
       const ScriptArg args[] = { { "Task", Task, FD_OBJECTPTR } };
-      scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);      
+      scCallback(script, Task->ExitCallback.Script.ProcedureID, args, std::ssize(args), NULL);
    }
 
    // Post an event for the task's closure
@@ -632,13 +620,13 @@ TimeOut:     Can be returned if the WAIT flag is used.  Indicates that the proce
 
 *********************************************************************************************************************/
 
-static ERROR TASK_Activate(extTask *Self, APTR Void)
+static ERR TASK_Activate(extTask *Self, APTR Void)
 {
    pf::Log log;
    LONG i, j, k;
    char buffer[1000];
    STRING path;
-   ERROR error;
+   ERR error;
    #ifdef _WIN32
       char launchdir[500];
       STRING redirect_stdout, redirect_stderr;
@@ -654,11 +642,11 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if ((Self->Flags & TSF::FOREIGN) != TSF::NIL) Self->Flags |= TSF::SHELL;
 
-   if (!Self->Location) return log.warning(ERR_MissingPath);
+   if (!Self->Location) return log.warning(ERR::MissingPath);
 
    if (!glJanitorActive) {
       pf::SwitchContext ctx(glCurrentTask);
-      auto call = make_function_stdc(process_janitor);
+      auto call = FUNCTION(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
       glJanitorActive = true;
    }
@@ -667,8 +655,8 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    // Determine the launch folder
 
    launchdir[0] = 0;
-   if ((!GET_LaunchPath(Self, &path)) and (path)) {
-      if (!ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path)) {
+   if ((GET_LaunchPath(Self, &path) IS ERR::Okay) and (path)) {
+      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
          FreeResource(path);
@@ -679,7 +667,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
    }
    else if ((Self->Flags & TSF::RESET_PATH) != TSF::NIL) {
-      if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
+      if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          FreeResource(path);
       }
@@ -693,7 +681,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    i = 0;
    buffer[i++] = '"';
-   if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
+   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
       for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (path[j] IS '/') buffer[i] = '\\';
          else buffer[i] = path[j];
@@ -718,7 +706,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       if (param[0] IS '>') {
          // Redirection argument detected
 
-         if (!ResolvePath(param.c_str() + 1, RSF::NO_FILE_CHECK, &redirect_stdout)) {
+         if (ResolvePath(param.c_str() + 1, RSF::NO_FILE_CHECK, &redirect_stdout) IS ERR::Okay) {
             redirect_stderr = redirect_stdout;
          }
 
@@ -813,7 +801,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    if (!(winerror = winLaunchProcess(Self, buffer, (launchdir[0] != 0) ? launchdir : 0, group,
          internal_redirect, &Self->Platform, hide_output, redirect_stdout, redirect_stderr, &Self->ProcessID))) {
 
-      error = ERR_Okay;
+      error = ERR::Okay;
       if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
          log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
@@ -830,7 +818,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       char msg[300];
       winFormatMessage(winerror, msg, sizeof(msg));
       log.warning("Launch Error: %s", msg);
-      error = ERR_Failed;
+      error = ERR::Failed;
    }
 
    if (redirect_stderr IS redirect_stdout) redirect_stderr = NULL;
@@ -950,7 +938,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
 
@@ -969,7 +957,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
 
@@ -991,7 +979,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       if (in_fd != -1)     close(in_fd);
       if (in_errfd != -1)  close(in_errfd);
       log.warning("Failed in an attempt to fork().");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if (pid) {
@@ -1022,7 +1010,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          input_fd = -1;
       }
 
-      error = ERR_Okay;
+      error = ERR::Okay;
       if ((Self->Flags & TSF::WAIT) != TSF::NIL) {
          log.branch("Waiting for process to turn into a zombie in %.2fs.", Self->TimeOut);
 
@@ -1036,7 +1024,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
             auto remaining = ticks - PreciseTime();
             if (remaining <= 0) {
-               error = log.warning(ERR_TimeOut);
+               error = log.warning(ERR::TimeOut);
                break;
             }
          }
@@ -1130,9 +1118,9 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
+static ERR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 {
-   if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return ERR::NullArgs;
 
    auto src = Args->Argument;
    if ((*src IS '"') or (*src IS '\'')) {
@@ -1143,7 +1131,7 @@ static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
    }
    else Self->Parameters.emplace_back(Args->Argument);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1158,15 +1146,15 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERROR TASK_Expunge(extTask *Self, APTR Void)
+static ERR TASK_Expunge(extTask *Self, APTR Void)
 {
    Expunge(false);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TASK_Free(extTask *Self, APTR Void)
+static ERR TASK_Free(extTask *Self, APTR Void)
 {
    pf::Log log;
 
@@ -1212,7 +1200,7 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->MsgThreadAction)   { FreeResource(Self->MsgThreadAction);   Self->MsgThreadAction    = NULL; }
 
    Self->~extTask();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1221,7 +1209,7 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
 GetEnv: Retrieves environment variables for the active process.
 
 On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the
-Name string.  If there is no matching variable, `ERR_DoesNotExist` is returned.
+Name string.  If there is no matching variable, `ERR::DoesNotExist` is returned.
 
 In Windows, it is possible to look up registry keys if the string starts with one of the following (in all other
 cases, the system's environment variables are queried):
@@ -1251,11 +1239,11 @@ NoSupport: The platform does not support environment variables.
 
 *********************************************************************************************************************/
 
-static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
+static ERR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
 
@@ -1264,11 +1252,11 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 
    Args->Value = NULL;
 
-   if (glCurrentTask != Self) return ERR_Failed;
+   if (glCurrentTask != Self) return ERR::Failed;
 
    if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, NULL) != ERR_Okay) {
-         return ERR_AllocMemory;
+      if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, NULL) != ERR::Okay) {
+         return ERR::AllocMemory;
       }
    }
 
@@ -1284,8 +1272,8 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
          { 0, 0 }
       };
 
-      for (LONG ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (!StrCompare(keys[ki].HKey, Args->Name)) {
+      for (LONG ki=0; ki < std::ssize(keys); ki++) {
+         if (StrCompare(keys[ki].HKey, Args->Name) IS ERR::Okay) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
             len = StrLength(str); // End of string
 
@@ -1327,29 +1315,29 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
                   winCloseHandle(keyhandle);
                }
 
-               if (Args->Value) return ERR_Okay;
-               else return ERR_DoesNotExist;
+               if (Args->Value) return ERR::Okay;
+               else return ERR::DoesNotExist;
             }
-            else return log.warning(ERR_Syntax);
+            else return log.warning(ERR::Syntax);
          }
       }
    }
 
    len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
-   if (!len) return ERR_DoesNotExist;
-   if (len >= ENV_SIZE) return log.warning(ERR_BufferOverflow);
+   if (!len) return ERR::DoesNotExist;
+   if (len >= ENV_SIZE) return log.warning(ERR::BufferOverflow);
 
    Args->Value = Self->Env;
-   return ERR_Okay;
+   return ERR::Okay;
 
 #elif __unix__
    if ((Args->Value = getenv(Args->Name))) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_DoesNotExist;
+   else return ERR::DoesNotExist;
 #else
    #warn Write support for GetEnv()
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 #endif
 }
 
@@ -1359,30 +1347,30 @@ GetVar: Retrieves variable field values.
 -END-
 *********************************************************************************************************************/
 
-static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
+static ERR TASK_GetVar(extTask *Self, struct acGetVar *Args)
 {
    pf::Log log;
    LONG j;
 
-   if ((!Args) or (!Args->Buffer) or (Args->Size <= 0)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer) or (Args->Size <= 0)) return log.warning(ERR::NullArgs);
 
    auto it = Self->Fields.find(Args->Field);
    if (it != Self->Fields.end()) {
       for (j=0; (it->second[j]) and (j < Args->Size-1); j++) Args->Buffer[j] = it->second[j];
       Args->Buffer[j++] = 0;
 
-      if (j >= Args->Size) return ERR_BufferOverflow;
-      else return ERR_Okay;
+      if (j >= Args->Size) return ERR::BufferOverflow;
+      else return ERR::Okay;
    }
 
    log.warning("The variable \"%s\" does not exist.", Args->Field);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TASK_Init(extTask *Self, APTR Void)
+static ERR TASK_Init(extTask *Self, APTR Void)
 {
    pf::Log log;
    LONG len;
@@ -1398,7 +1386,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          LONG len = StrLength(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
+         if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
          }
@@ -1406,7 +1394,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
          if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-         if (!AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL)) {
+         if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
             Self->Path[i] = 0;
@@ -1484,12 +1472,12 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
    }
    else if (Self->ProcessID) Self->Flags |= TSF::FOREIGN;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TASK_NewObject(extTask *Self, APTR Void)
+static ERR TASK_NewObject(extTask *Self, APTR Void)
 {
    new (Self) extTask;
 #ifdef __unix__
@@ -1497,7 +1485,7 @@ static ERROR TASK_NewObject(extTask *Self, APTR Void)
    Self->ErrFD = -1;
 #endif
    Self->TimeOut = 60 * 60 * 24;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1516,7 +1504,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERROR TASK_Quit(extTask *Self, APTR Void)
+static ERR TASK_Quit(extTask *Self, APTR Void)
 {
    pf::Log log;
 
@@ -1536,7 +1524,7 @@ static ERROR TASK_Quit(extTask *Self, APTR Void)
       SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1573,11 +1561,11 @@ NoSupport: The platform does not support environment variables.
 
 *********************************************************************************************************************/
 
-static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
+static ERR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
 
@@ -1597,7 +1585,7 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
       log.msg("Registry: %s = %s", Args->Name, Args->Value);
 
       for (ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (!StrCompare(keys[ki].HKey, Args->Name)) {
+         if (StrCompare(keys[ki].HKey, Args->Name) IS ERR::Okay) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
 
             for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);
@@ -1633,29 +1621,29 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
                   winCloseHandle(keyhandle);
                }
 
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else return log.warning(ERR_Syntax);
+            else return log.warning(ERR::Syntax);
          }
       }
 
-      return log.warning(ERR_Failed);
+      return log.warning(ERR::Failed);
    }
    else {
       winSetEnv(Args->Name, Args->Value);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 #elif __unix__
 
    if (Args->Value) setenv(Args->Name, Args->Value, 1);
    else unsetenv(Args->Name);
-   return ERR_Okay;
+   return ERR::Okay;
 
 #else
 
    #warn Write support for SetEnv()
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 
 #endif
 }
@@ -1666,12 +1654,12 @@ SetVar: Variable fields are supported for the general storage of program variabl
 -END-
 *********************************************************************************************************************/
 
-static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
+static ERR TASK_SetVar(extTask *Self, struct acSetVar *Args)
 {
-   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR::NullArgs;
 
    Self->Fields[Args->Field] = Args->Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1685,23 +1673,22 @@ process that no more data is incoming).
 
 *********************************************************************************************************************/
 
-static ERROR TASK_Write(extTask *Task, struct acWrite *Args)
+static ERR TASK_Write(extTask *Task, struct acWrite *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
-   LONG winerror;
    if (Task->Platform) {
-      if (!(winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length))) {
-         return ERR_Okay;
+      if (auto winerror = winWriteStd(Task->Platform, Args->Buffer, Args->Length); !winerror) {
+         return ERR::Okay;
       }
-      else return log.warning(ERR_Write);
+      else return log.warning(ERR::Write);
    }
-   else return log.warning(ERR_Failed);
+   else return log.warning(ERR::Failed);
 #else
-   return log.warning(ERR_NoSupport);
+   return log.warning(ERR::NoSupport);
 #endif
 }
 
@@ -1728,10 +1715,10 @@ if (!AccessObject(CurrentTask(), 5000, &task)) {
 
 *********************************************************************************************************************/
 
-static ERROR GET_Actions(extTask *Self, struct ActionEntry **Value)
+static ERR GET_Actions(extTask *Self, struct ActionEntry **Value)
 {
    *Value = Self->Actions;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1746,9 +1733,9 @@ If an argument needs to include whitespace, use double-quotes to encapsulate the
 
 *********************************************************************************************************************/
 
-static ERROR SET_Args(extTask *Self, CSTRING Value)
+static ERR SET_Args(extTask *Self, CSTRING Value)
 {
-   if ((!Value) or (!*Value)) return ERR_Okay;
+   if ((!Value) or (!*Value)) return ERR::Okay;
 
    while (*Value) {
       while (*Value <= 0x20) Value++; // Skip whitespace
@@ -1775,7 +1762,7 @@ static ERROR SET_Args(extTask *Self, CSTRING Value)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1791,20 +1778,20 @@ called on termination because the Task object no longer exists for the control o
 
 *********************************************************************************************************************/
 
-static ERROR GET_ExitCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_ExitCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->ExitCallback.Type != CALL_NONE) {
+   if (Self->ExitCallback.defined()) {
       *Value = &Self->ExitCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_ExitCallback(extTask *Self, FUNCTION *Value)
+static ERR SET_ExitCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->ExitCallback = *Value;
-   else Self->ExitCallback.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->ExitCallback.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1820,20 +1807,20 @@ indicated by the Size.  The data pointer is temporary and will be invalid once t
 
 *********************************************************************************************************************/
 
-static ERROR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->ErrorCallback.Type != CALL_NONE) {
+   if (Self->ErrorCallback.defined()) {
       *Value = &Self->ErrorCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_ErrorCallback(extTask *Self, FUNCTION *Value)
+static ERR SET_ErrorCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->ErrorCallback = *Value;
-   else Self->ErrorCallback.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->ErrorCallback.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1843,35 +1830,34 @@ InputCallback: This callback returns incoming data from STDIN.
 
 The InputCallback field is available for use only when the Task object represents the current process.
 The referenced function will be called when process receives data from STDIN.  The callback must follow the
-synopsis `Function(*Task, APTR Data, LONG Size, ERROR Status)`
+synopsis `Function(*Task, APTR Data, LONG Size, ERR Status)`
 
 The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
 by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.
 
-A status of ERR_Finished is sent if the stdinput handle has been closed.
+A status of ERR::Finished is sent if the stdinput handle has been closed.
 
 *********************************************************************************************************************/
 
-static ERROR GET_InputCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_InputCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->InputCallback.Type != CALL_NONE) {
+   if (Self->InputCallback.defined()) {
       *Value = &Self->InputCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
+static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
 {
-   if (Self != glCurrentTask) return ERR_Failed;
+   if (Self != glCurrentTask) return ERR::Failed;
 
    if (Value) {
-      ERROR error;
       #ifdef __unix__
       fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
-      if (!(error = RegisterFD(fileno(stdin), RFD::READ, &task_stdinput_callback, Self))) {
+      if (auto error = RegisterFD(fileno(stdin), RFD::READ, &task_stdinput_callback, Self); error IS ERR::Okay) {
       #elif _WIN32
-      if (!(error = RegisterFD(winGetStdInput(), RFD::READ, &task_stdinput_callback, Self))) {
+      if (auto error = RegisterFD(winGetStdInput(), RFD::READ, &task_stdinput_callback, Self); error IS ERR::Okay) {
       #endif
          Self->InputCallback = *Value;
       }
@@ -1883,10 +1869,10 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
       #else
       if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #endif
-      Self->InputCallback.Type = CALL_NONE;
+      Self->InputCallback.clear();
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1902,20 +1888,20 @@ by the Size.  The data pointer is temporary and will be invalid once the callbac
 
 *********************************************************************************************************************/
 
-static ERROR GET_OutputCallback(extTask *Self, FUNCTION **Value)
+static ERR GET_OutputCallback(extTask *Self, FUNCTION **Value)
 {
-   if (Self->OutputCallback.Type != CALL_NONE) {
+   if (Self->OutputCallback.defined()) {
       *Value = &Self->OutputCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_OutputCallback(extTask *Self, FUNCTION *Value)
+static ERR SET_OutputCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->OutputCallback = *Value;
-   else Self->OutputCallback.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->OutputCallback.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1932,13 +1918,13 @@ activated.  This will override all other path options, such as the RESET_PATH fl
 
 *********************************************************************************************************************/
 
-static ERROR GET_LaunchPath(extTask *Self, STRING *Value)
+static ERR GET_LaunchPath(extTask *Self, STRING *Value)
 {
    *Value = Self->LaunchPath;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
+static ERR SET_LaunchPath(extTask *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1947,12 +1933,12 @@ static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, NULL)) {
+      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, NULL) IS ERR::Okay) {
          CopyMemory(Value, Self->LaunchPath, i+1);
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1969,13 +1955,13 @@ only the quoted portion of the string will be used as the source path.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Location(extTask *Self, STRING *Value)
+static ERR GET_Location(extTask *Self, STRING *Value)
 {
    *Value = Self->Location;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Location(extTask *Self, CSTRING Value)
+static ERR SET_Location(extTask *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1984,7 +1970,7 @@ static ERROR SET_Location(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Location, NULL)) {
+      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Location, NULL) IS ERR::Okay) {
          while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
@@ -1994,9 +1980,9 @@ static ERROR SET_Location(extTask *Self, CSTRING Value)
          else for (i=0; *Value; i++) Self->Location[i] = *Value++;
          Self->Location[i] = 0;
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2010,16 +1996,16 @@ assign a randomly generated name.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Name(extTask *Self, STRING *Value)
+static ERR GET_Name(extTask *Self, STRING *Value)
 {
    *Value = Self->Name;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Name(extTask *Self, CSTRING Value)
+static ERR SET_Name(extTask *Self, CSTRING Value)
 {
    StrCopy(Value, Self->Name, sizeof(Self->Name));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2045,18 +2031,18 @@ pf::vector&lt;std::string&gt; Args = {
 
 *********************************************************************************************************************/
 
-static ERROR GET_Parameters(extTask *Self, pf::vector<std::string> **Value, LONG *Elements)
+static ERR GET_Parameters(extTask *Self, pf::vector<std::string> **Value, LONG *Elements)
 {
    *Value = &Self->Parameters;
    *Elements = Self->Parameters.size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Parameters(extTask *Self, const pf::vector<std::string> *Value, LONG Elements)
+static ERR SET_Parameters(extTask *Self, const pf::vector<std::string> *Value, LONG Elements)
 {
    if (Value) Self->Parameters = Value[0];
    else Self->Parameters.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2079,13 +2065,13 @@ new folder fails for any reason, the working folder will remain unchanged and th
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(extTask *Self, STRING *Value)
+static ERR GET_Path(extTask *Self, STRING *Value)
 {
    *Value = Self->Path;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Path(extTask *Self, CSTRING Value)
+static ERR SET_Path(extTask *Self, CSTRING Value)
 {
    STRING new_path = NULL;
 
@@ -2093,11 +2079,11 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
 
    log.trace("ChDir: %s", Value);
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
-      if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL)) {
+      if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL) IS ERR::Okay) {
          CopyMemory(Value, new_path, len);
          new_path[len] = 0;
 
@@ -2105,31 +2091,31 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
          STRING path;
          if (!ResolvePath(new_path, RSF::NO_FILE_CHECK, &path)) {
             if (chdir(path)) {
-               error = ERR_InvalidPath;
+               error = ERR::InvalidPath;
                log.msg("Failed to switch current path to: %s", path);
             }
             FreeResource(path);
          }
-         else error = log.warning(ERR_ResolvePath);
+         else error = log.warning(ERR::ResolvePath);
 #elif _WIN32
          STRING path;
-         if (!ResolvePath(new_path, RSF::NO_FILE_CHECK|RSF::PATH, &path)) {
+         if (ResolvePath(new_path, RSF::NO_FILE_CHECK|RSF::PATH, &path) IS ERR::Okay) {
             if (chdir(path)) {
-               error = ERR_InvalidPath;
+               error = ERR::InvalidPath;
                log.msg("Failed to switch current path to: %s", path);
             }
             FreeResource(path);
          }
-         else error = log.warning(ERR_ResolvePath);
+         else error = log.warning(ERR::ResolvePath);
 #else
 #warn Support required for changing the current path.
 #endif
       }
-      else error = log.warning(ERR_AllocMemory);
+      else error = log.warning(ERR::AllocMemory);
    }
-   else error = ERR_EmptyString;
+   else error = ERR::EmptyString;
 
-   if (!error) {
+   if (error IS ERR::Okay) {
       if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
       Self->Path = new_path;
    }
@@ -2151,10 +2137,10 @@ ProcessPath is set to the working folder in use at the time the process was laun
 
 *********************************************************************************************************************/
 
-static ERROR GET_ProcessPath(extTask *Self, CSTRING *Value)
+static ERR GET_ProcessPath(extTask *Self, CSTRING *Value)
 {
    *Value = Self->ProcessPath;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2172,14 +2158,14 @@ effect of prioritisation.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Priority(extTask *Self, LONG Value)
+static ERR SET_Priority(extTask *Self, LONG Value)
 {
 #ifdef __unix__
    LONG priority, unused;
    priority = -getpriority(PRIO_PROCESS, 0);
    unused = nice(-(Value - priority));
 #endif
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2188,7 +2174,7 @@ static ERROR SET_Priority(extTask *Self, LONG Value)
 ReturnCode: The task's return code can be retrieved following execution.
 
 Once a process has completed execution then its return code can be read from this field.  If process is still running,
-the error code ERR_TaskStillExists will be returned.
+the error code ERR::TaskStillExists will be returned.
 
 -ERRORS-
 Okay
@@ -2197,18 +2183,18 @@ DoesNotExist: The task is yet to be successfully launched with the Activate acti
 
 *********************************************************************************************************************/
 
-static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
+static ERR GET_ReturnCode(extTask *Self, LONG *Value)
 {
    pf::Log log;
 
    if (Self->ReturnCodeSet) {
       *Value = Self->ReturnCode;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (!Self->ProcessID) {
       log.msg("Task hasn't been launched yet.");
-      return ERR_DoesNotExist;
+      return ERR::DoesNotExist;
    }
 
 #ifdef __unix__
@@ -2228,32 +2214,32 @@ static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
       }
 
       *Value = Self->ReturnCode;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_TaskStillExists;
+   else return ERR::TaskStillExists;
 
 #elif _WIN32
 
    winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
-   if (Self->ReturnCode IS 259) return ERR_TaskStillExists;
+   if (Self->ReturnCode IS 259) return ERR::TaskStillExists;
    else {
       Self->ReturnCodeSet = true;
       *Value = Self->ReturnCode;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 #else
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 
 #endif
 }
 
-static ERROR SET_ReturnCode(extTask *Self, LONG Value)
+static ERR SET_ReturnCode(extTask *Self, LONG Value)
 {
    Self->ReturnCodeSet = true;
    Self->ReturnCode = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2292,7 +2278,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_task_class(void)
+extern "C" ERR add_task_class(void)
 {
    glTaskClass = objMetaClass::create::global(
       fl::ClassVersion(VER_TASK),
@@ -2307,5 +2293,5 @@ extern "C" ERROR add_task_class(void)
       fl::Size(sizeof(extTask)),
       fl::Path("modules:core"));
 
-   return glTaskClass ? ERR_Okay : ERR_AddClass;
+   return glTaskClass ? ERR::Okay : ERR::AddClass;
 }

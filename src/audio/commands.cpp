@@ -36,9 +36,9 @@ static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
 //********************************************************************************************************************
 // It is a requirement that VOL_RAMPING or OVER_SAMPLING flags have been set in the target Audio object.
 
-static ERROR fade_in(extAudio *Audio, AudioChannel *channel)
+static ERR fade_in(extAudio *Audio, AudioChannel *channel)
 {
-   if (((Audio->Flags & ADF::VOL_RAMPING) IS ADF::NIL) or ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL)) return ERR_Okay;
+   if (((Audio->Flags & ADF::VOL_RAMPING) IS ADF::NIL) or ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL)) return ERR::Okay;
 
    channel->LVolume = 0;
    channel->RVolume = 0;
@@ -48,23 +48,23 @@ static ERROR fade_in(extAudio *Audio, AudioChannel *channel)
 //********************************************************************************************************************
 // In oversampling mode, active samples are faded-out on a shadow channel rather than stopped abruptly.
 
-static ERROR fade_out(extAudio *Audio, LONG Handle)
+static ERR fade_out(extAudio *Audio, LONG Handle)
 {
-   if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) return ERR_Okay;
+   if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) return ERR::Okay;
 
    auto channel = Audio->GetChannel(Handle);
    auto shadow  = Audio->GetShadow(Handle);
 
    if (channel->isStopped() or
        (shadow->State IS CHS::FADE_OUT) or
-       ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR_Okay;
+       ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR::Okay;
 
    *shadow = *channel;
    shadow->Volume = 0;
    shadow->State  = CHS::FADE_OUT;
    set_channel_volume(Audio, shadow);
    shadow->Flags |= CHF::VOL_RAMP;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -89,17 +89,17 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixStartSequence(objAudio *Audio, LONG Handle)
+static ERR sndMixStartSequence(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
    channel->Buffering = true;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -120,11 +120,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
+static ERR sndMixEndSequence(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -135,7 +135,7 @@ static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
 
    add_mix_cmd(Audio, CMD::END_SEQUENCE, Handle);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -156,29 +156,29 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
+static ERR sndMixContinue(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::CONTINUE, Handle);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   if (channel->State IS CHS::PLAYING) return ERR_Okay;
+   if (channel->State IS CHS::PLAYING) return ERR::Okay;
 
    // Check if the read position is already at the end of the sample
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
-   if ((sample.Stream) and (sample.PlayPos >= sample.StreamLength)) return ERR_Okay;
-   else if (channel->Position >= sample.SampleLength) return ERR_Okay;
+   if ((sample.Stream) and (sample.PlayPos >= sample.StreamLength)) return ERR::Okay;
+   else if (channel->Position >= sample.SampleLength) return ERR::Okay;
 
    fade_out((extAudio *)Audio, Handle);
 
@@ -192,12 +192,9 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
    pf::SwitchContext context(Audio);
 
    if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
-   else {
-      auto call = make_function_stdc(audio_timer);
-      SubscribeTimer(MIX_INTERVAL, &call, &((extAudio *)Audio)->Timer);
-   }
+   else SubscribeTimer(MIX_INTERVAL, FUNCTION(audio_timer), &((extAudio *)Audio)->Timer);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -219,11 +216,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
+static ERR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x, Mute: %c", Audio->UID, Handle, Mute ? 'Y' : 'N');
 
@@ -231,13 +228,13 @@ static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::MUTE, Handle, Mute);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (Mute != 0) channel->Flags |= CHF::MUTE;
    else channel->Flags &= ~CHF::MUTE;
    set_channel_volume((extAudio *)Audio, channel);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -259,11 +256,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
+static ERR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x, Frequency: %d", Audio->UID, Handle, Frequency);
 
@@ -271,11 +268,11 @@ static ERROR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::FREQUENCY, Handle, Frequency);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    channel->Frequency = Frequency;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -297,11 +294,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
+static ERR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x, Pan: %.2f", Audio->UID, Handle, Pan);
 
@@ -309,7 +306,7 @@ static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::PAN, Handle, Pan);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (Pan < -1.0) channel->Pan = -1.0;
@@ -317,7 +314,7 @@ static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
    else channel->Pan = Pan;
 
    set_channel_volume((extAudio *)Audio, channel);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -340,13 +337,13 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
+static ERR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
-   if (Position < 0) return log.warning(ERR_OutOfRange);
+   if (Position < 0) return log.warning(ERR::OutOfRange);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
@@ -354,12 +351,12 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::PLAY, Position);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (!channel->SampleHandle) { // A sample must be defined for the channel.
       log.warning("Channel not associated with a sample.");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
@@ -372,15 +369,15 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 
    if (!sample.Data) { // The sample reference must be valid and not stale.
       log.warning("On channel %d, referenced sample %d is unconfigured.", Handle, channel->SampleHandle);
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if (sample.Stream) {
-      if (Position > sample.StreamLength) return log.warning(ERR_OutOfRange);
+      if (Position > sample.StreamLength) return log.warning(ERR::OutOfRange);
       sample.PlayPos = BYTELEN(Position) + fill_stream_buffer(Handle, sample, Position);
       Position = 0; // Internally we want to start from byte position zero in our stream buffer
    }
-   else if (bitpos > sample.SampleLength) return log.warning(ERR_OutOfRange);
+   else if (bitpos > sample.SampleLength) return log.warning(ERR::OutOfRange);
 
    fade_out((extAudio *)Audio, Handle);
 
@@ -393,7 +390,7 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 
       if ((sample.LoopMode != LOOP::SINGLE_RELEASE) and (sample.LoopMode != LOOP::DOUBLE) and (channel->State IS CHS::RELEASED)) {
          ((extAudio *)Audio)->finish(*channel, true);
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -505,13 +502,10 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
    if (channel->State IS CHS::PLAYING) {
       pf::SwitchContext context(Audio);
       if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
-      else {
-         auto call = make_function_stdc(audio_timer);
-         SubscribeTimer(MIX_INTERVAL, &call, &((extAudio *)Audio)->Timer);
-      }
+      else SubscribeTimer(MIX_INTERVAL, FUNCTION(audio_timer), &((extAudio *)Audio)->Timer);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -534,29 +528,29 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
+static ERR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if ((Rate < 1) or (Rate > 100000)) return log.warning(ERR_OutOfRange);
+   if ((Rate < 1) or (Rate > 100000)) return log.warning(ERR::OutOfRange);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::RATE, Handle, Rate);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    WORD index = Handle>>16;
    if ((index >= 0) and (index < (LONG)((extAudio *)Audio)->Sets.size())) {
       ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }
 
 /*********************************************************************************************************************
@@ -582,36 +576,36 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
+ERR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    LONG idx = SampleIndex;
 
    log.traceBranch("Audio: #%d, Channel: $%.8x, Sample: %d", Audio->UID, Handle, idx);
 
    if ((idx <= 0) or (idx >= (LONG)((extAudio *)Audio)->Samples.size())) {
-      return log.warning(ERR_OutOfRange);
+      return log.warning(ERR::OutOfRange);
    }
    else if (!((extAudio *)Audio)->Samples[idx].Data) {
       log.warning("Sample #%d refers to a dead sample.", idx);
-      return ERR_Failed;
+      return ERR::Failed;
    }
    else if (((extAudio *)Audio)->Samples[idx].SampleLength <= 0) {
       log.warning("Sample #%d has invalid sample length %d", idx, ((extAudio *)Audio)->Samples[idx].SampleLength);
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::SAMPLE, Handle, SampleIndex);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   if (channel->SampleHandle IS idx) return ERR_Okay; // Already associated?
+   if (channel->SampleHandle IS idx) return ERR::Okay; // Already associated?
 
    channel->SampleHandle = idx;     // Set new sample number to channel
    channel->Flags |= CHF::CHANGED;  // Sample has been changed
@@ -629,7 +623,7 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -650,19 +644,19 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR sndMixStop(objAudio *Audio, LONG Handle)
+ERR sndMixStop(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::STOP, Handle);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    ((extAudio *)Audio)->finish(*channel, true);
@@ -673,7 +667,7 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
       shadow->State = CHS::STOPPED;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -695,22 +689,22 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
+static ERR sndMixStopLoop(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::STOP_LOOPING, Handle);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   if (channel->State != CHS::PLAYING) return ERR_Okay;
+   if (channel->State != CHS::PLAYING) return ERR::Okay;
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
@@ -718,7 +712,7 @@ static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
       channel->State = CHS::RELEASED;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -741,19 +735,19 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
+static ERR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Audio) or (!Handle)) return log.warning(ERR::NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
       add_mix_cmd(Audio, CMD::VOLUME, Volume);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (Volume > 1.0) channel->Volume = 1.0;
@@ -761,5 +755,5 @@ static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
    else channel->Volume = Volume;
 
    set_channel_volume((extAudio *)Audio, channel);
-   return ERR_Okay;
+   return ERR::Okay;
 }

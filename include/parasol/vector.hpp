@@ -129,13 +129,19 @@ public:
    }
 
    void erase(iterator Start, iterator Stop) {
-      size_t count = 0;
-      for (auto it=Stop, st=Start; it != end(); it++, st++) {
-         *st = std::move(*it);
-         count++;
+      if (Stop IS end()) {
+         for (auto it = Start; it != Stop; it++) {
+            (*it).~T();
+            length--;
+         }
       }
-
-      length -= count;
+      else {
+         for (auto it=Stop, start=Start; it != end(); it++, start++) {
+            *start = std::move(*it);
+         }
+         auto total_removed = Stop - Start;
+         length -= total_removed;
+      }
    }
 
    iterator insert(const_iterator pTarget, T &pValue) {
