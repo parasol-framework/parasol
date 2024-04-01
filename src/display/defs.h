@@ -418,16 +418,16 @@ class extDisplay : public objDisplay {
 };
 
 extern void clean_clipboard(void);
-extern ERR create_bitmap_class(void);
-extern ERR create_clipboard_class(void);
-extern ERR create_display_class(void);
-extern ERR create_pointer_class(void);
-extern ERR create_surface_class(void);
-extern ERR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-extern void  input_event_loop(HOSTHANDLE, APTR);
-extern ERR lock_surface(extBitmap *, WORD);
-extern ERR unlock_surface(extBitmap *);
-extern ERR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
+extern ERR  create_bitmap_class(void);
+extern ERR  create_clipboard_class(void);
+extern ERR  create_display_class(void);
+extern ERR  create_pointer_class(void);
+extern ERR  create_surface_class(void);
+extern ERR  get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
+extern void input_event_loop(HOSTHANDLE, APTR);
+extern ERR  lock_surface(extBitmap *, WORD);
+extern ERR  unlock_surface(extBitmap *);
+extern ERR  get_display_info(OBJECTID, DISPLAYINFO *, LONG);
 extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
 extern void forbidDrawing(void);
 extern void forbidExpose(void);
@@ -453,6 +453,7 @@ extern void _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRect
 extern void check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
 extern ERR  update_surface_copy(extSurface *);
 extern ERR  update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern void get_resolutions(extDisplay *);
 
 extern ERR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
@@ -553,7 +554,6 @@ extern void handle_stack_change(XCirculateEvent *);
 extern void init_xcursors(void);
 extern void free_xcursors(void);
 extern ERR resize_pixmap(extDisplay *, LONG, LONG);
-extern void get_resolutions(extDisplay *);
 extern ERR xr_set_display_mode(LONG *, LONG *);
 
 extern WORD glDGAAvailable;
