@@ -54,10 +54,6 @@ APTR glDGAVideo = NULL;
 
 #ifdef XRANDR_ENABLED
 bool glXRRAvailable = false;
-static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
-static XRRScreenSize *glSizes = glCustomSizes;
-static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
-static LONG glActualCount = 0;
 #endif
 
 #endif
@@ -196,6 +192,13 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
+#ifdef XRANDR_ENABLED
+static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
+static XRRScreenSize *glSizes = glCustomSizes;
+static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
+static LONG glActualCount = 0;
+#endif
+
 std::recursive_mutex glInputLock;
 
 OBJECTPTR glCompress = NULL;
@@ -236,6 +239,107 @@ inline UBYTE clipByte(LONG value)
    value = (255 & (-(WORD)(value > 255))) | (value & (-(WORD)!(value > 255)));
    return value;
 }
+
+//********************************************************************************************************************
+// Build a list of valid resolutions.
+
+void get_resolutions(extDisplay *Self)
+{
+#if defined(__xwindows__) && defined(XRANDR_ENABLED)
+   pf::Log log(__FUNCTION__);
+
+   if (glXRRAvailable) {
+      if (!Self->Resolutions.empty()) return;
+
+      if (!glActualCount) {
+         for (LONG i=0; i < glSizeCount; i++) {
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               glActualCount++;
+            }
+         }
+      }
+
+      auto get_mode = [&Self, &log](LONG Index) {
+         for (LONG i=0; i < glSizeCount; i++) {
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               if (!Index) {
+                  Self->Resolutions.emplace_back(glSizes[i].width, glSizes[i].height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
+                  return;
+               }
+               Index--;
+            }
+         }
+      };
+
+      for (LONG i=0; i < glActualCount; i++) {
+         get_mode(i);
+      }
+   }
+   else {
+      log.msg("RandR extension not available.");
+      Self->Resolutions.emplace_back(glRootWindow.width, glRootWindow.height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
+   }
+#else
+   Self->Resolutions = {
+      { 640, 480, 32 },
+      { 800, 600, 32 },
+      { 1024, 768, 32 },
+      { 1152, 864, 32 },
+      { 1280, 960, 32 },
+      { 0, 0, 0 }
+   };
+#endif
+}
+
+//********************************************************************************************************************
+
+#ifdef XRANDR_ENABLED
+ERR xr_set_display_mode(LONG *Width, LONG *Height)
+{
+   pf::Log log(__FUNCTION__);
+   LONG count;
+   WORD i;
+   WORD width = *Width;
+   WORD height = *Height;
+
+   XRRScreenSize *sizes;
+   if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
+      WORD index    = -1;
+      LONG bestweight = 0x7fffffff;
+
+      for (i=0; i < count; i++) {
+         LONG weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
+         if (weight < bestweight) {
+            index = i;
+            bestweight = weight;
+         }
+      }
+
+      if (index IS -1) {
+         log.warning("No support for requested screen mode %dx%d", width, height);
+         return ERR::NoSupport;
+      }
+
+      if (auto scrconfig = XRRGetScreenInfo(XDisplay, DefaultRootWindow(XDisplay))) {
+         if (!XRRSetScreenConfig(XDisplay, scrconfig, DefaultRootWindow(XDisplay), index, RR_Rotate_0, CurrentTime)) {
+            *Width = sizes[index].width;
+            *Height = sizes[index].height;
+
+            log.msg("New mode: %dx%d (index %d/%d) from request %dx%d", sizes[index].width, sizes[index].height, index, count, width, height);
+
+            XRRFreeScreenConfigInfo(scrconfig);
+            return ERR::Okay;
+         }
+         else {
+            XRRFreeScreenConfigInfo(scrconfig);
+            return log.warning(ERR::SystemCall);
+         }
+      }
+      else return log.warning(ERR::SystemCall);
+   }
+   else return log.warning(ERR::SystemCall);
+}
+#endif // XRANDR_ENABLED
 
 //********************************************************************************************************************
 // GLES specific functions

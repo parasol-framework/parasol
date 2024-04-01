@@ -106,109 +106,6 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 #endif
 
 //********************************************************************************************************************
-// Build a list of valid resolutions.
-
-static void get_resolutions(extDisplay *Self)
-{
-#if defined(__xwindows__) && defined(XRANDR_ENABLED)
-   pf::Log log(__FUNCTION__);
-
-   if (glXRRAvailable) {
-      if (!Self->Resolutions.empty()) return;
-
-      if (!glActualCount) {
-         for (LONG i=0; i < glSizeCount; i++) {
-            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
-               glActualCount++;
-            }
-         }
-      }
-
-      auto get_mode = [&log](LONG Index) {
-         for (LONG i=0; i < glSizeCount; i++) {
-            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
-               if (!Index) {
-                  Self->Resolutions.emplace_back(glSizes[i].width, glSizes[i].height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
-                  return;
-               }
-               Index--;
-            }
-         }
-      };
-
-      for (LONG i=0; i < glActualCount; i++) {
-         if (auto mode = (xrMode *)get_mode(i)) {
-            Self->Resolutions.emplace_back(mode->Width, mode->Height, mode->Depth);
-         }
-      }
-   }
-   else {
-      log.msg("RandR extension not available.");
-      Self->Resolutions.emplace_back(glRootWindow.width, glRootWindow.height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
-   }
-#else
-   Self->Resolutions = {
-      { 640, 480, 32 },
-      { 800, 600, 32 },
-      { 1024, 768, 32 },
-      { 1152, 864, 32 },
-      { 1280, 960, 32 },
-      { 0, 0, 0 }
-   };
-#endif
-}
-
-//********************************************************************************************************************
-
-#ifdef XRANDR_ENABLED
-static ERR xrSetDisplayMode(LONG *Width, LONG *Height)
-{
-   pf::Log log(__FUNCTION__);
-   LONG count;
-   WORD i;
-   WORD width = *Width;
-   WORD height = *Height;
-
-   XRRScreenSize *sizes;
-   if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
-      WORD index    = -1;
-      LONG bestweight = 0x7fffffff;
-
-      for (i=0; i < count; i++) {
-         LONG weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
-         if (weight < bestweight) {
-            index = i;
-            bestweight = weight;
-         }
-      }
-
-      if (index IS -1) {
-         log.warning("No support for requested screen mode %dx%d", width, height);
-         return ERR::NoSupport;
-      }
-
-      if (auto scrconfig = XRRGetScreenInfo(XDisplay, DefaultRootWindow(XDisplay))) {
-         if (!XRRSetScreenConfig(XDisplay, scrconfig, DefaultRootWindow(XDisplay), index, RR_Rotate_0, CurrentTime)) {
-            *Width = sizes[index].width;
-            *Height = sizes[index].height;
-
-            log.msg("New mode: %dx%d (index %d/%d) from request %dx%d", sizes[index].width, sizes[index].height, index, count, width, height);
-
-            XRRFreeScreenConfigInfo(scrconfig);
-            return ERR::Okay;
-         }
-         else {
-            XRRFreeScreenConfigInfo(scrconfig);
-            return log.warning(ERR::SystemCall);
-         }
-      }
-      else return log.warning(ERR::SystemCall);
-   }
-   else return log.warning(ERR::SystemCall);
-}
-#endif // XRANDR_ENABLED
-
-//********************************************************************************************************************
 
 static void update_displayinfo(extDisplay *Self)
 {
@@ -1594,7 +1491,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 
    if (glX11.Manager) { // The video mode can only be changed with the XRandR extension
 #ifdef XRANDR_ENABLED
-      if ((glXRRAvailable) and (xrSetDisplayMode(&width, &height) IS ERR::Okay)) {
+      if ((glXRRAvailable) and (xr_set_display_mode(&width, &height) IS ERR::Okay)) {
          Self->RefreshRate = 0;
          Self->Width  = width;
          Self->Height = height;
