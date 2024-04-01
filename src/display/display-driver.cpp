@@ -1471,7 +1471,6 @@ ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Wid
 
 #ifdef __xwindows__
 #include "x11/handlers.cpp"
-#include "x11/xrandr.cpp"
 #endif
 
 #ifdef _WIN32
