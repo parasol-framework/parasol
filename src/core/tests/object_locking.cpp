@@ -32,7 +32,7 @@ struct thread_info{
 static void * thread_entry(void *Arg)
 {
    pf::Log log(__FUNCTION__);
-   ERROR error;
+   ERR error;
 
    auto info = (thread_info *)Arg;
 
@@ -43,7 +43,7 @@ static void * thread_entry(void *Arg)
       if (!glConfig) break;
       //log.branch("Attempt %d.%d: Acquiring the object.", info->index, i);
       #ifdef QUICKLOCK
-      if (!(error = glConfig->lock())) {
+      if ((error = glConfig->lock()) IS ERR::Okay) {
       #else
       if (!(error = LockObject(glConfig, 30000))) {
       #endif
@@ -98,21 +98,21 @@ int main(int argc, CSTRING *argv)
       return -1;
    }
 
-   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
+   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
-         if (!StrMatch(args[0][i], "-threads")) {
+         if (StrMatch(args[0][i], "-threads") IS ERR::Okay) {
             if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-attempts")) {
+         else if (StrMatch(args[0][i], "-attempts") IS ERR::Okay) {
             if (++i < args->size()) glLockAttempts = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-gap")) {
+         else if (StrMatch(args[0][i], "-gap") IS ERR::Okay) {
             if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-terminate")) glTerminateObject = TRUE;
+         else if (StrMatch(args[0][i], "-terminate") IS ERR::Okay) glTerminateObject = TRUE;
       }
    }
 

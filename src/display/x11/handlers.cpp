@@ -99,11 +99,11 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
                   if (glWindowHooks.contains(hook)) {
                      auto func = &glWindowHooks[hook];
-                     ERROR result;
+                     ERR result;
 
                      if (func->isC()) {
                         pf::SwitchContext ctx(func->StdC.Context);
-                        auto callback = (ERROR (*)(OBJECTID, APTR))func->StdC.Routine;
+                        auto callback = (ERR (*)(OBJECTID, APTR))func->StdC.Routine;
                         result = callback(surface_id, func->StdC.Meta);
                      }
                      else if (func->isScript()) {
@@ -112,10 +112,10 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                         };
                         scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
                      }
-                     else result = ERR_Okay;
+                     else result = ERR::Okay;
 
-                     if (result IS ERR_Terminate) glWindowHooks.erase(hook);
-                     else if (result IS ERR_Cancelled) {
+                     if (result IS ERR::Terminate) glWindowHooks.erase(hook);
+                     else if (result IS ERR::Cancelled) {
                         log.msg("Window closure cancelled by client.");
                         break;
                      }
@@ -142,7 +142,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
       }
 
       #ifdef XRANDR_ENABLED
-      if ((XRandRBase) and (xrNotify(&xevent))) {
+      if ((glXRRAvailable) and (xrNotify(&xevent))) {
          // If randr indicates that the display has been resized, we must adjust the system display to match.  Refer to
          // SetDisplay() for more information.
 
@@ -151,12 +151,12 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          if (auto display_id = get_display(xevent.xany.window)) {
             auto surface_id = GetOwnerID(display_id);
             objSurface *surface;
-            if (!AccessObject(surface_id, 5000, &surface)) {
+            if (AccessObject(surface_id, 5000, &surface) IS ERR::Okay) {
                // Update the display width/height so that we don't recursively post further display mode updates to the
                // X server.
 
              extDisplay *display;
-              if (!AccessObject(display_id, 5000, &display)) {
+              if (AccessObject(display_id, 5000, &display) IS ERR::Okay) {
                   display->Width  = notify->width;
                   display->Height = notify->height;
                   acResize(surface, notify->width, notify->height, 0);
@@ -233,7 +233,7 @@ void handle_button_press(XEvent *xevent)
       feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
-      if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
+      if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
          glPointerID = 0;
       }
    }
@@ -250,7 +250,7 @@ void handle_button_release(XEvent *xevent)
    log.traceBranch("Button: %d", xevent->xbutton.button);
 
    if (!glPointerID) {
-      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
 
    struct dcDeviceInput input;
@@ -281,7 +281,7 @@ void handle_button_release(XEvent *xevent)
       ReleaseObject(pointer);
    }
 
-   if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
+   if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
       glPointerID = 0;
    }
 
@@ -322,7 +322,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
    if (auto display_id = get_display(xevent->window)) {
       extDisplay *display;
-      if (!AccessObject(display_id, 3000, &display)) {
+      if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
          Window childwin;
          LONG absx, absy;
 

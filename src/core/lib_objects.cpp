@@ -401,10 +401,6 @@ ERR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
 
-#ifdef _DEBUG
-   auto log_depth = tlDepth;
-#endif
-
    ERR error;
    if (ActionID >= 0) {
       if (cl->ActionTable[ActionID].PerformAction) { // Can be a base-class or sub-class call

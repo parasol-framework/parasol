@@ -141,7 +141,7 @@ static ERR FILE_Activate(extFile *Self, APTR Void)
    if ((Self->Flags & FL::DEVICE) != FL::NIL) {
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
    }
-   else if (!StrCompare("/dev/", path, 0)) {
+   else if (StrCompare("/dev/", path, 0) IS ERR::Okay) {
       log.warning("Opening devices not permitted without the DEVICE flag.");
       return ERR::NoPermission;
    }
@@ -1374,7 +1374,7 @@ static ERR FILE_SetDate(extFile *Self, struct flSetDate *Args)
    #elif __unix__
 
       CSTRING path;
-      if (!GET_ResolvedPath(Self, &path)) {
+      if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          struct tm time;
          time.tm_year  = Args->Year - 1900;
          time.tm_mon   = Args->Month - 1;
@@ -1546,7 +1546,7 @@ static ERR FILE_Watch(extFile *Self, struct flWatch *Args)
       }
       else error = log.warning(ERR::SystemCall);
 
-      if (error) return error;
+      if (error != ERR::Okay) return error;
    }
 #endif
 
@@ -1559,7 +1559,7 @@ static ERR FILE_Watch(extFile *Self, struct flWatch *Args)
          #ifdef _WIN32
          if (AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM::DATA, (APTR *)&Self->prvWatch, NULL) IS ERR::Okay) {
          #else
-         if (!AllocMemory(sizeof(rkWatchPath), MEM::DATA, (APTR *)&Self->prvWatch, NULL)) {
+         if (AllocMemory(sizeof(rkWatchPath), MEM::DATA, (APTR *)&Self->prvWatch, NULL) IS ERR::Okay) {
          #endif
             Self->prvWatch->VirtualID = vd->VirtualID;
             Self->prvWatch->Routine   = *Args->Callback;
@@ -1886,7 +1886,7 @@ ERR SET_Date(extFile *Self, DateTime *Date)
    CSTRING path;
    time_t datetime;
    struct utimbuf utm;
-   if (!GET_ResolvedPath(Self, &path)) {
+   if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
       struct tm time;
       time.tm_year  = Date->Year - 1900;
       time.tm_mon   = Date->Month - 1;
@@ -2152,7 +2152,7 @@ static ERR GET_Link(extFile *Self, STRING *Value)
 
    *Value = NULL;
    if ((Self->Flags & FL::LINK) != FL::NIL) {
-      if (!ResolvePath(Self->Path, RSF::NIL, &path)) {
+      if (ResolvePath(Self->Path, RSF::NIL, &path) IS ERR::Okay) {
          LONG i = StrLength(path);
          if (path[i-1] IS '/') path[i-1] = 0;
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
@@ -2320,7 +2320,7 @@ static ERR GET_Permissions(extFile *Self, PERMIT *Value)
    // process could always have changed the permission flags.
 
    CSTRING path;
-   if (!GET_ResolvedPath(Self, &path)) {
+   if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
       LONG i = StrLength(path);
       while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
       if (path[i+1] IS '.') Self->Permissions = PERMIT::HIDDEN;
@@ -2408,7 +2408,7 @@ static ERR set_permissions(extFile *Self, PERMIT Permissions)
       // File represents a folder
 
       CSTRING path;
-      if (!GET_ResolvedPath(Self, &path)) {
+      if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          LONG flags = 0;
          if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
          if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
@@ -2609,7 +2609,7 @@ static ERR SET_Size(extFile *Self, LARGE Size)
          // Seek past the file boundary and write a single byte to expand the file.  Yes, it's legal and works.
 
          ERR error;
-         if (!(error = GET_ResolvedPath(Self, &path))) {
+         if ((error = GET_ResolvedPath(Self, &path)) IS ERR::Okay) {
             struct statfs fstat;
             if (statfs(path, &fstat) != -1) {
                if (Size < (LARGE)fstat.f_bavail * (LARGE)fstat.f_bsize) {

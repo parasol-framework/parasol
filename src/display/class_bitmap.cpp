@@ -1190,14 +1190,14 @@ static ERR BITMAP_Init(extBitmap *Self, APTR Void)
          if (!Self->Size) return log.warning(ERR::FieldNotSet);
 
          if (glHeadless) {
-            if (!AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data)) {
+            if (AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data) IS ERR::Okay) {
                Self->prvAFlags |= BF_DATA;
             }
             else return log.warning(ERR::AllocMemory);
          }
          else if (!Self->x11.XShmImage) {
             log.detail("Allocating a memory based XImage.");
-            if (!alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid)) {
+            if (alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid) IS ERR::Okay) {
                Self->prvAFlags |= BF_DATA;
 
                WORD alignment;
@@ -1287,7 +1287,7 @@ static ERR BITMAP_Init(extBitmap *Self, APTR Void)
             log.warning("Support for MEM::TEXTURE not included yet.");
             return ERR::NoSupport;
          }
-         else if (!AllocMemory(Self->Size, Self->DataFlags|MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR, &Self->Data)) {
+         else if (AllocMemory(Self->Size, Self->DataFlags|MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR, &Self->Data) IS ERR::Okay) {
             Self->prvAFlags |= BF_DATA;
          }
          else return ERR::AllocMemory;

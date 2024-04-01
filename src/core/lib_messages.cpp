@@ -787,7 +787,7 @@ ERR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
 #else
    LARGE end_time = (PreciseTime() / 1000LL) + 10000LL;
    error = write_nonblock(Handle, &msg, sizeof(msg), end_time);
-   if ((!error) and (Data) and (Size > 0)) { // Write the main message.
+   if ((error IS ERR::Okay) and (Data) and (Size > 0)) { // Write the main message.
       error = write_nonblock(Handle, Data, Size, end_time);
    }
 #endif
@@ -806,7 +806,7 @@ ERR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
    LONG offset = 0;
    ERR error = ERR::Okay;
 
-   while ((offset < Size) and (!error)) {
+   while ((offset < Size) and (error IS ERR::Okay)) {
       LONG write_size = Size;
       if (write_size > 1024) write_size = 1024;  // Limiting the size will make the chance of an EWOULDBLOCK error less likely.
       LONG len = write(Handle, (char *)Data+offset, write_size - offset);
@@ -817,7 +817,7 @@ ERR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
          if ((errno IS EAGAIN) or (errno IS EWOULDBLOCK)) { // The write() failed because it would have blocked.  Try again!
             fd_set wfds;
             struct timeval tv;
-            while (((PreciseTime() / 1000LL) < EndTime) and (!error)) {
+            while (((PreciseTime() / 1000LL) < EndTime) and (error IS ERR::Okay)) {
                FD_ZERO(&wfds);
                FD_SET(Handle, &wfds);
                tv.tv_sec = (EndTime - (PreciseTime() / 1000LL)) / 1000LL;

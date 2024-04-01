@@ -550,11 +550,6 @@ if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
    list (APPEND LIB_LIST vector)
 endif ()
 
-if (X11_Xrandr_FOUND)
-   add_subdirectory (src/xrandr)
-   list (APPEND LIB_LIST xrandr)
-endif ()
-
 list (APPEND LIB_LIST fluid json jpeg xml)
 
 add_subdirectory (src/link)

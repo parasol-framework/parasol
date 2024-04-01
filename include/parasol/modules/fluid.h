@@ -16,17 +16,17 @@
 
 struct FluidBase {
 #ifndef PARASOL_STATIC
-   ERROR (*_SetVariable)(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
+   ERR (*_SetVariable)(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_FLUID_MODULE
 #ifndef PARASOL_STATIC
 extern struct FluidBase *FluidBase;
-template<class... Args> ERROR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
+template<class... Args> ERR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
 #else
 extern "C" {
-extern ERROR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
+extern ERR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
 }
 #endif // PARASOL_STATIC
 #endif

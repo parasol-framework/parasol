@@ -450,16 +450,16 @@ LARGE GetResource(RES Resource)
          char str[2048];
          LONG result;
          LARGE freemem = 0;
-         if (!ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result)) {
+         if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
             LONG i = 0;
             while (i < result) {
-               if (!StrCompare("Cached", str+i, sizeof("Cached")-1)) {
+               if (StrCompare("Cached", str+i, sizeof("Cached")-1) IS ERR::Okay) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1)) {
+               else if (StrCompare("Buffers", str+i, sizeof("Buffers")-1) IS ERR::Okay) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1)) {
+               else if (StrCompare("MemFree", str+i, sizeof("MemFree")-1) IS ERR::Okay) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
 
@@ -494,7 +494,7 @@ LARGE GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
-               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1)) {
+               if (StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1) IS ERR::Okay) {
                   cpu_mhz = StrToInt(line);
                }
             }
@@ -808,10 +808,10 @@ LARGE SetResource(RES Resource, LARGE Value)
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
-         if (glPrivileged) return ERR::Okay; // In privileged mode, the user is always an admin
+         if (glPrivileged) return LARGE(ERR::Okay); // In privileged mode, the user is always an admin
 
          if (Value) { // Enable admin privileges
-            oldvalue = ERR::Okay;
+            oldvalue = LARGE(ERR::Okay);
             if (!privileged) {
                if (glUID) {
                   if (glUID != glEUID) {
@@ -820,7 +820,7 @@ LARGE SetResource(RES Resource, LARGE Value)
                   }
                   else {
                      log.msg("Admin privileges not available.");
-                     oldvalue = ERR::Failed; // Admin privileges are not available
+                     oldvalue = LARGE(ERR::Failed); // Admin privileges are not available
                   }
                }
                else privileged++;; // The user already has admin privileges

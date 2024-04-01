@@ -259,6 +259,12 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     int AbsY   # Absolute Y
   ]])
 
+  struct("xrMode", { comment="Display mode." }, [[
+    int Width    # Horizontal
+    int Height   # Vertical
+    int Depth    # bit depth
+  ]])
+
   -- PixelFormat duplicates the Core module's ColourFormat structure.
 
   struct("PixelFormat", { type="pixelformat", comment="Carries instructions to pack or unpack RGBA colours." }, [[

@@ -535,7 +535,7 @@ ERR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y, L
             dest->Clip.Right  = DestX + Width - dest->XOffset;
             dest->Clip.Top    = DestY - dest->YOffset;
             dest->Clip.Bottom = DestY + Height - dest->YOffset;
-            if (!lock_surface(dest, SURFACE_READ|SURFACE_WRITE)) {
+            if (lock_surface(dest, SURFACE_READ|SURFACE_WRITE) IS ERR::Okay) {
                auto srcdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
 
                while (Height > 0) {

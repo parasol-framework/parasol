@@ -1238,5 +1238,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
     </struct>
 
+    <struct name="xrMode" comment="Display mode.">
+      <field name="Width" type="LONG">Horizontal</field>
+      <field name="Height" type="LONG">Vertical</field>
+      <field name="Depth" type="LONG">bit depth</field>
+    </struct>
+
   </structs>
 </book>

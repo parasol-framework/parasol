@@ -15,7 +15,7 @@
   <function>
     <name>SetVariable</name>
     <comment>Sets any variable in a loaded Fluid script.</comment>
-    <prototype>ERROR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...)</prototype>
+    <prototype>ERR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...)</prototype>
     <input>
       <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
       <param type="CSTRING" name="Name">The name of the variable to set.</param>
@@ -25,7 +25,7 @@
     <description>
 <p>The SetVariable() function provides a method for setting global variables in a Fluid script prior to execution of that script.  If the script is cached, the variable settings will be available on the next activation.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>

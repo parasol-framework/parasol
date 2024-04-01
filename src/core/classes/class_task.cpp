@@ -843,7 +843,7 @@ static ERR TASK_Activate(extTask *Self, APTR Void)
       buffer[i++] = ' ';
 
       if (!path) path = Self->Location;
-      if (!ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path)) {
+      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
          for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
          FreeResource(path);
       }
@@ -860,7 +860,7 @@ static ERR TASK_Activate(extTask *Self, APTR Void)
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
-   if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
+   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
       for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       buffer[i] = 0;
       FreeResource(path);
@@ -1423,7 +1423,7 @@ static ERR TASK_Init(extTask *Self, APTR Void)
 
             for (len=0; buffer[len]; len++);
             while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
+            if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL) IS ERR::Okay) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
             }
@@ -1433,7 +1433,7 @@ static ERR TASK_Init(extTask *Self, APTR Void)
             if (getcwd(buffer, sizeof(buffer))) {
                if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
                for (len=0; buffer[len]; len++);
-               if (!AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL)) {
+               if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL) IS ERR::Okay) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
                   Self->Path[i++] = '/';
                   Self->Path[i] = 0;
@@ -2089,7 +2089,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 
 #ifdef __unix__
          STRING path;
-         if (!ResolvePath(new_path, RSF::NO_FILE_CHECK, &path)) {
+         if (ResolvePath(new_path, RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
             if (chdir(path)) {
                error = ERR::InvalidPath;
                log.msg("Failed to switch current path to: %s", path);

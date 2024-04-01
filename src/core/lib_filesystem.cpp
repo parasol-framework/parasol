@@ -674,8 +674,8 @@ ERR CreateLink(CSTRING From, CSTRING To)
    log.branch("From: %.40s, To: %s", From, To);
 
    STRING src, dest;
-   if (!ResolvePath(From, RSF::NO_FILE_CHECK, &src)) {
-      if (!ResolvePath(To, RSF::NO_FILE_CHECK, &dest)) {
+   if (ResolvePath(From, RSF::NO_FILE_CHECK, &src) IS ERR::Okay) {
+      if (ResolvePath(To, RSF::NO_FILE_CHECK, &dest) IS ERR::Okay) {
          auto err = symlink(dest, src);
          FreeResource(dest);
          FreeResource(src);
@@ -1157,7 +1157,7 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
    else error = ERR::FileNotFound;
 
    #ifdef _DEBUG
-      if (error) log.warning(error);
+      if (error != ERR::Okay) log.warning(error);
    #endif
    return error;
 
@@ -1380,7 +1380,7 @@ ERR findfile(STRING Path)
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((!StrCompare(Path+len, entry->d_name)) and
+         if ((StrCompare(Path+len, entry->d_name) IS ERR::Okay) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len);
 
@@ -1835,7 +1835,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
         error = ERR::Read;
       }
 
-      if ((Move) and (!error)) { // Delete the source
+      if ((Move) and (error IS ERR::Okay)) { // Delete the source
          error = DeleteFile(src, NULL);
       }
 
@@ -2084,7 +2084,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          // If the sticky bits were set, we need to set them again because Linux sneakily turns off those bits when a
          // file is written (for security reasons).
 
-         if ((!error) and (permissions & (S_ISUID|S_ISGID))) {
+         if ((error IS ERR::Okay) and (permissions & (S_ISUID|S_ISGID))) {
             fchmod(dhandle, permissions);
          }
 #endif
@@ -2831,7 +2831,7 @@ restart:
       }
       else error = ERR::Okay;
 
-      if (!error) {
+      if (error IS ERR::Okay) {
          struct statfs fstat;
          LONG result = statfs(location, &fstat);
          FreeResource(location);
@@ -3102,7 +3102,7 @@ ERR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feedba
 
       Path[len] = 0;
 
-      if ((!error) and (rmdir(Path))) {
+      if ((error IS ERR::Okay) and (rmdir(Path))) {
          log.error("rmdir(%s) error: %s", Path, strerror(errno));
          return convert_errno(errno, ERR::SystemCall);
       }

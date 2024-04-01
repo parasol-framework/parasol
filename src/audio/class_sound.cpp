@@ -472,10 +472,10 @@ static ERR SOUND_Activate(extSound *Self, APTR Void)
       sndMixStop(*audio, Self->ChannelIndex);
 
       if (sndMixSample(*audio, Self->ChannelIndex, Self->Handle) IS ERR::Okay) {
-         if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR::Failed);
-         if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR::Failed);
-         if (sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR::Failed);
-         if (sndMixPlay(*audio, Self->ChannelIndex, Self->Position)) return log.warning(ERR::Failed);
+         if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume) != ERR::Okay) return log.warning(ERR::Failed);
+         if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan) != ERR::Okay) return log.warning(ERR::Failed);
+         if (sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback) != ERR::Okay) return log.warning(ERR::Failed);
+         if (sndMixPlay(*audio, Self->ChannelIndex, Self->Position) != ERR::Okay) return log.warning(ERR::Failed);
 
          return ERR::Okay;
       }
@@ -774,7 +774,7 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
    ERR error;
 
    if (!Self->AudioID) {
-      if ((error = snd_init_audio(Self))) return error;
+      if ((error = snd_init_audio(Self)) != ERR::Okay) return error;
    }
 
    // Open channels for sound sample playback.
@@ -782,7 +782,7 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
+         if (sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -825,11 +825,11 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
    // Read the FMT header
 
    Self->File->seek(12, SEEK::START);
-   if (flReadLE(Self->File, &id)) return ERR::Read; // Contains the characters "fmt "
-   if (flReadLE(Self->File, &len)) return ERR::Read; // Length of data in this chunk
+   if (flReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
+   if (flReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
 
    WAVEFormat WAVE;
-   if (Self->File->read(&WAVE, len, &result) or (result < len)) {
+   if ((Self->File->read(&WAVE, len, &result) != ERR::Okay) or (result < len)) {
       log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
       return ERR::Read;
    }

@@ -65,7 +65,7 @@ static ERR init_audio(extAudio *Self)
                cardid = (STRING)snd_ctl_card_info_get_id(info);
                cardname = (STRING)snd_ctl_card_info_get_name(info);
 
-               if (!StrMatch(cardid, pcm_name.c_str())) {
+               if (StrMatch(cardid, pcm_name.c_str()) IS ERR::Okay) {
                   pcm_name = name;
                   snd_ctl_close(ctlhandle);
                   break;
@@ -81,7 +81,7 @@ static ERR init_audio(extAudio *Self)
    // Check if the default ALSA device is a real sound card.  We don't want to use it if it's a modem or other
    // unexpected device.
 
-   if (!StrMatch("default", pcm_name.c_str())) {
+   if (StrMatch("default", pcm_name.c_str()) IS ERR::Okay) {
       // If there are no sound devices in the system, abort
 
       LONG card = -1;
@@ -106,7 +106,7 @@ static ERR init_audio(extAudio *Self)
 
                log.msg("Identified card %s, name %s", cardid, cardname);
 
-               if (!StrMatch("modem", cardid)) goto next_card;
+               if (StrMatch("modem", cardid) IS ERR::Okay) goto next_card;
 
                snd_mixer_t *mixhandle;
                if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {
@@ -410,7 +410,7 @@ next_card:
 
    if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 
-   if (!AllocMemory(Self->AudioBufferSize, MEM::DATA, &Self->AudioBuffer)) {
+   if (AllocMemory(Self->AudioBufferSize, MEM::DATA, &Self->AudioBuffer) IS ERR::Okay) {
       #ifdef _DEBUG
          snd_pcm_hw_params_dump(hwparams, log);
       #endif

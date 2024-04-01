@@ -139,10 +139,6 @@ target_link_libraries (core PRIVATE zlib)
 
 if (PARASOL_STATIC)
    target_link_libraries (core PRIVATE ${LIB_LIST})
-
-   if (X11_Xrandr_FOUND)
-      target_link_libraries (core PRIVATE xrandr)
-   endif ()
 endif ()
 
 if (WIN32)

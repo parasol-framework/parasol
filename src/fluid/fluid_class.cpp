@@ -1023,7 +1023,7 @@ static ERR run_script(objScript *Self)
          #ifdef _DEBUG
             pf::vector<std::string> *list;
             LONG total_procedures;
-            if (!GET_Procedures(Self, &list, &total_procedures)) {
+            if (GET_Procedures(Self, &list, &total_procedures) IS ERR::Okay) {
                for (LONG i=0; i < total_procedures; i++) log.trace("%s", list[0][i]);
             }
          #endif

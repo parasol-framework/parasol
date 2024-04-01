@@ -1268,7 +1268,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       if (size < 1) size = 8192;
 
       STRING buffer;
-      if (!AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
+      if (AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
          size = read(file, buffer, size);
          buffer[size] = 0;
 

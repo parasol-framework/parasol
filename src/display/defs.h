@@ -14,6 +14,8 @@
 //#define DBG_LAYERS
 #define FOCUSMSG(...) //LogF(NULL, __VA_ARGS__)
 
+#include <parasol/system/errors.h>
+
 #ifdef DBG_LAYERS
 #include <stdio.h>
 #endif
@@ -61,8 +63,6 @@
  #ifdef XRANDR_ENABLED
   #include <X11/extensions/Xrandr.h> // Requires libxrandr-dev
  #endif
-
- #include <parasol/modules/xrandr.h>
 #endif
 
 #ifdef _GLES_
@@ -559,7 +559,6 @@ extern APTR glDGAMemory;
 extern XVisualInfo glXInfoAlpha;
 extern X11Globals glX11;
 extern _XDisplay *XDisplay;
-extern struct XRandRBase *XRandRBase;
 extern bool glX11ShmImage;
 extern bool glXCompositeSupported;
 extern UBYTE KeyHeld[LONG(KEY::LIST_END)];
@@ -574,6 +573,13 @@ extern Cursor C_Default;
 extern OBJECTPTR modXRR;
 extern WORD glPlugin;
 extern APTR glDGAVideo;
+extern bool glXRRAvailable;
+
+extern LONG  xrNotify(XEvent *);
+extern ERR xrSetDisplayMode(LONG *, LONG *);
+extern void  xrSelectInput(Window);
+extern LONG  xrGetDisplayTotal(void);
+extern struct xrMode * xrGetDisplayMode(LONG);
 
 #endif
 

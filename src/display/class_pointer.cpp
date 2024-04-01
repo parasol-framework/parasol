@@ -34,6 +34,8 @@ static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { NULL, 0 } }
 #endif
 
 #ifdef __xwindows__
+#undef True
+#undef False
 static ERR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
 static ERR PTR_UngrabX11Pointer(extPointer *, APTR);
 static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 } };
@@ -92,11 +94,11 @@ static ERR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
    APTR xwin;
    OBJECTPTR surface;
 
-   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+   if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
       surface->getPtr(FID_WindowHandle, &xwin);
       ReleaseObject(surface);
 
-      if (xwin) XGrabPointer(XDisplay, (Window)xwin, True, 0, GrabModeAsync, GrabModeAsync, (Window)xwin, None, CurrentTime);
+      if (xwin) XGrabPointer(XDisplay, (Window)xwin, 1, 0, GrabModeAsync, GrabModeAsync, (Window)xwin, None, CurrentTime);
    }
 
    return ERR::Okay;
@@ -641,10 +643,10 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #ifdef __xwindows__
    OBJECTPTR surface;
 
-   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
+   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR::Okay) {
       APTR xwin;
 
-      if (!surface->getPtr(FID_WindowHandle, &xwin)) {
+      if (surface->getPtr(FID_WindowHandle, &xwin) IS ERR::Okay) {
          if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = Args->X;
          if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = Args->Y;
          if (Self->X < 0) Self->X = 0;

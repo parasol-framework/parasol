@@ -36,7 +36,6 @@ void handle_stack_change(XCirculateEvent *);
 
 X11Globals glX11;
 _XDisplay *XDisplay = 0;
-struct XRandRBase *XRandRBase = 0;
 XVisualInfo glXInfoAlpha;
 bool glX11ShmImage = false;
 bool glXCompositeSupported = false;
@@ -52,6 +51,15 @@ Cursor C_Default;
 OBJECTPTR modXRR = NULL;
 WORD glPlugin = FALSE;
 APTR glDGAVideo = NULL;
+
+#ifdef XRANDR_ENABLED
+bool glXRRAvailable = false;
+static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
+static XRRScreenSize *glSizes = glCustomSizes;
+static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
+static LONG glActualCount = 0;
+#endif
+
 #endif
 
 #ifdef _WIN32
@@ -803,25 +811,12 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (!getenv("PARASOL_XDISPLAY")) setenv("PARASOL_XDISPLAY", strdisplay, FALSE);
 
-         XSync(XDisplay, False);
+         XSync(XDisplay, 0);
 
          XSetErrorHandler((XErrorHandler)CatchXError);
          XSetIOErrorHandler(CatchXIOError);
       }
       else return ERR::Failed;
-
-      // Try to load XRandR if we are the display manager, but it's okay if not available
-
-      if ((glX11.Manager) and (!NewObject(ID_MODULE, &modXRR))) {
-         char buffer[32];
-         IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
-         acSetVar(modXRR, "XDisplay", buffer);
-         modXRR->set(FID_Name, "xrandr");
-         if (!InitObject(modXRR)) {
-            if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR::Okay) XRandRBase = NULL;
-         }
-      }
-      else XRandRBase = NULL;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
       // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already
@@ -882,7 +877,97 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       // Set the DISPLAY variable for clients to :10, which is the default X11 display for the rootless X Server.
 
       if (glX11.Manager) setenv("DISPLAY", ":10", TRUE);
+
+#ifdef XRANDR_ENABLED
+      WORD i;
+      XRRScreenSize *sizes;
+      XPixmapFormatValues *list;
+      LONG errors, count;
+      char buffer[512];
+
+      LONG events;
+      if ((glX11.Manager) and (XRRQueryExtension(XDisplay, &events, &errors))) {
+         glXRRAvailable = true;
+         if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
+            glSizes = sizes;
+            glSizeCount = count;
+         }
+         else log.msg("XRRSizes() failed.");
+
+         // Build the screen.xml file if this is the first task to initialise the RandR extension.
+
+         auto file = objFile::create { fl::Path("user:config/screen.xml"), fl::Flags(FL::NEW|FL::WRITE) };
+
+         if (file.ok()) {
+            auto write_string = [](objFile *File, CSTRING String) {
+               struct acWrite write = { .Buffer = String, .Length = StrLength(String) };
+               Action(AC_Write, File, &write);
+            };
+
+            write_string(*file, "<?xml version=\"1.0\"?>\n\n");
+            write_string(*file, "<displayinfo>\n");
+            write_string(*file, "  <manufacturer value=\"XFree86\"/>\n");
+            write_string(*file, "  <chipset value=\"X11\"/>\n");
+            write_string(*file, "  <dac value=\"N/A\"/>\n");
+            write_string(*file, "  <clock value=\"N/A\"/>\n");
+            write_string(*file, "  <version value=\"1.00\"/>\n");
+            write_string(*file, "  <certified value=\"February 2023\"/>\n");
+            write_string(*file, "  <monitor_mfr value=\"Unknown\"/>\n");
+            write_string(*file, "  <monitor_model value=\"Unknown\"/>\n");
+            write_string(*file, "  <scanrates minhscan=\"0\" maxhscan=\"0\" minvscan=\"0\" maxvscan=\"0\"/>\n");
+            write_string(*file, "  <gfx_output unknown/>\n");
+            write_string(*file, "</displayinfo>\n\n");
+
+            WORD xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+            WORD xbytes;
+            if (xbpp <= 8) xbytes = 1;
+            else if (xbpp <= 16) xbytes = 2;
+            else if (xbpp <= 24) xbytes = 3;
+            else xbytes = 4;
+
+            if ((list = XListPixmapFormats(XDisplay, &count))) {
+               for (i=0; i < count; i++) {
+                  if (list[i].depth IS xbpp) {
+                     xbytes = list[i].bits_per_pixel;
+                     if (list[i].bits_per_pixel <= 8) xbytes = 1;
+                     else if (list[i].bits_per_pixel <= 16) xbytes = 2;
+                     else if (list[i].bits_per_pixel <= 24) xbytes = 3;
+                     else xbytes = 4;
+                  }
+               }
+            }
+
+            if (xbytes IS 4) xbpp = 32;
+
+            LONG xcolours;
+            switch(xbpp) {
+               case 1:  xcolours = 2; break;
+               case 8:  xcolours = 256; break;
+               case 15: xcolours = 32768; break;
+               case 16: xcolours = 65536; break;
+               default: xcolours = 16777216; break;
+            }
+
+            for (i=0; i < glSizeCount; i++) {
+               if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+                  snprintf(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
+                     glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
+                  write_string(*file, buffer);
+
+                  snprintf(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
+                  write_string(*file, buffer);
+
+                  write_string(*file, "</screen>\n\n");
+               }
+            }
+         }
+      }
+      else log.msg("XRRQueryExtension() failed.");
+#endif // XRANDR_ENABLED
+
    }
+
 #elif _WIN32
 
    if ((glInstance = winGetModuleHandle())) {
@@ -1386,6 +1471,7 @@ ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Wid
 
 #ifdef __xwindows__
 #include "x11/handlers.cpp"
+#include "x11/xrandr.cpp"
 #endif
 
 #ifdef _WIN32

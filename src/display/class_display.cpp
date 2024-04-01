@@ -110,8 +110,8 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 
 static void get_resolutions(extDisplay *Self)
 {
-#ifdef __xwindows__
-   if (XRandRBase) {
+#if defined(__xwindows__) && defined(XRANDR_ENABLED)
+   if (glXRRAvailable) {
       struct xrMode *mode;
 
       if (!Self->Resolutions.empty()) return;
@@ -607,10 +607,12 @@ static ERR DISPLAY_Init(extDisplay *Self, APTR Void)
          XFree(list);
       }
 
-      if (XRandRBase) {
+      #ifdef XRANDR_ENABLED
+      if (glXRRAvailable) {
          // Set the refresh rate to zero to indicate that we have some control of the display (the default is -1 if there is no control).
          Self->RefreshRate = 0;
       }
+      #endif
    #endif
 
    // Set defaults
@@ -778,7 +780,7 @@ static ERR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
 
          CSTRING name;
-         if ((!CurrentTask()->getPtr(FID_Name, &name)) and (name)) {
+         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -814,7 +816,9 @@ static ERR DISPLAY_Init(extDisplay *Self, APTR Void)
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
          XChangeWindowAttributes(XDisplay, Self->XWindowHandle, CWEventMask|CWCursor, &swa);
 
-         if (XRandRBase) xrSelectInput(Self->XWindowHandle);
+         #ifdef XRANDR_ENABLED
+         if (glXRRAvailable) xrSelectInput(Self->XWindowHandle);
+         #endif
 
          XWindowAttributes winattrib;
          XGetWindowAttributes(XDisplay, Self->XWindowHandle, &winattrib);
@@ -1521,7 +1525,8 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
    LONG height = Args->Height;
 
    if (glX11.Manager) { // The video mode can only be changed with the XRandR extension
-      if ((XRandRBase) and (xrSetDisplayMode(&width, &height) IS ERR::Okay)) {
+#ifdef XRANDR_ENABLED
+      if ((glXRRAvailable) and (xrSetDisplayMode(&width, &height) IS ERR::Okay)) {
          Self->RefreshRate = 0;
          Self->Width  = width;
          Self->Height = height;
@@ -1533,6 +1538,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
          return ERR::Okay;
       }
       else return ERR::Failed;
+#endif      
    }
    else {
       XResizeWindow(XDisplay, Self->XWindowHandle, width, height);
@@ -2385,7 +2391,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          }
 
          STRING name;
-         if ((!CurrentTask()->getPtr(FID_Name, &name)) and (name)) {
+         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -2631,7 +2637,7 @@ static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
          Self->PopOverID = 0;
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
-      else if (!AccessObject(Value, 2000, &popover)) {
+      else if (AccessObject(Value, 2000, &popover) IS ERR::Okay) {
          if (popover->Class->BaseClassID IS ID_DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);

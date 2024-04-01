@@ -14,6 +14,9 @@ using namespace display;
 
 #ifdef __xwindows__
 
+#undef True // X11 name clash
+#undef False // X11 name clash
+
 struct XCursor {
    Cursor XCursor;
    PTC CursorID;
@@ -71,7 +74,7 @@ static Cursor create_blank_cursor(void)
    XFreePixmap(XDisplay, data_pixmap); // According to XFree documentation, it is OK to free the pixmaps
    XFreePixmap(XDisplay, mask_pixmap);
 
-   XSync(XDisplay, False);
+   XSync(XDisplay, 0);
    return cursor;
 }
 
@@ -498,8 +501,8 @@ ERR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJEC
             objDisplay *display;
             Cursor xcursor;
 
-            if ((pointer->SurfaceID) and (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
-               if ((surface->DisplayID) and (!AccessObject(surface->DisplayID, 1000, &display))) {
+            if ((pointer->SurfaceID) and (AccessObject(pointer->SurfaceID, 1000, &surface) IS ERR::Okay)) {
+               if ((surface->DisplayID) and (AccessObject(surface->DisplayID, 1000, &display) IS ERR::Okay)) {
                   if ((display->getPtr(FID_WindowHandle, &xwin) IS ERR::Okay) and (xwin)) {
                      xcursor = get_x11_cursor(CursorID);
                      XDefineCursor(XDisplay, (Window)xwin, xcursor);

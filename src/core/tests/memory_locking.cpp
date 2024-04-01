@@ -40,7 +40,7 @@ static void * test_locking(void *Arg)
       //log.branch("Attempt %d.%d: Acquiring the memory.", info->index, i);
 
       BYTE *memory;
-      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory); !error) {
+      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory); error IS ERR::Okay) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
@@ -112,22 +112,22 @@ int main(int argc, CSTRING *argv)
    }
 
    pf::vector<std::string> *args;
-   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
+   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
-         if (!StrMatch(args[0][i], "-threads")) {
+         if (StrMatch(args[0][i], "-threads") IS ERR::Okay) {
             if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-attempts")) {
+         else if (StrMatch(args[0][i], "-attempts") IS ERR::Okay) {
             if (++i < args->size()) glLockAttempts = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-gap")) {
+         else if (StrMatch(args[0][i], "-gap") IS ERR::Okay) {
             if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-terminate")) glTerminateMemory = true;
-         else if (!StrMatch(args[0][i], "-alloc")) glTestAllocation = true;
+         else if (StrMatch(args[0][i], "-terminate") IS ERR::Okay) glTerminateMemory = true;
+         else if (StrMatch(args[0][i], "-alloc") IS ERR::Okay) glTestAllocation = true;
       }
    }
 

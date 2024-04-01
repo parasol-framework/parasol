@@ -850,7 +850,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (Args->Name) {
       for (index=0; index < std::ssize(Self->Volumes); index++) {
-         if (!StrMatch(Args->Name, Self->Volumes[index].Name.c_str())) break;
+         if (StrMatch(Args->Name, Self->Volumes[index].Name.c_str()) IS ERR::Okay) break;
       }
 
       if (index IS (LONG)Self->Volumes.size()) return ERR::Search;

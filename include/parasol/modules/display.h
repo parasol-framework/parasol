@@ -417,6 +417,12 @@ struct SurfaceCoords {
    LONG AbsY;     // Absolute Y
 };
 
+struct xrMode {
+   LONG Width;    // Horizontal
+   LONG Height;   // Vertical
+   LONG Depth;    // bit depth
+};
+
 typedef struct PixelFormat {
    UBYTE RedShift;    // Right shift value
    UBYTE GreenShift;  // Green shift value
