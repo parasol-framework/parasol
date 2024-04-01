@@ -220,7 +220,7 @@ Full documentation for developers is available online from our [main website](ht
 
 ## 7. Source Code Licensing
 
-Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2023.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
+Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2024.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
 The Parasol Framework is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 

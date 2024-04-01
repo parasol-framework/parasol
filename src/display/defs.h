@@ -553,6 +553,8 @@ extern void handle_stack_change(XCirculateEvent *);
 extern void init_xcursors(void);
 extern void free_xcursors(void);
 extern ERR resize_pixmap(extDisplay *, LONG, LONG);
+extern void get_resolutions(extDisplay *);
+extern ERR xr_set_display_mode(LONG *, LONG *);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
@@ -574,12 +576,6 @@ extern OBJECTPTR modXRR;
 extern WORD glPlugin;
 extern APTR glDGAVideo;
 extern bool glXRRAvailable;
-
-extern LONG  xrNotify(XEvent *);
-extern ERR xrSetDisplayMode(LONG *, LONG *);
-extern void  xrSelectInput(Window);
-extern LONG  xrGetDisplayTotal(void);
-extern struct xrMode * xrGetDisplayMode(LONG);
 
 #endif
 

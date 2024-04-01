@@ -106,41 +106,6 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 #endif
 
 //********************************************************************************************************************
-// Build a list of valid resolutions.
-
-static void get_resolutions(extDisplay *Self)
-{
-#if defined(__xwindows__) && defined(XRANDR_ENABLED)
-   if (glXRRAvailable) {
-      struct xrMode *mode;
-
-      if (!Self->Resolutions.empty()) return;
-
-      auto total = xrGetDisplayTotal();
-      for (LONG i=0; i < total; i++) {
-         if ((mode = (xrMode *)xrGetDisplayMode(i))) {
-            Self->Resolutions.emplace_back(mode->Width, mode->Height, mode->Depth);
-         }
-      }
-   }
-   else {
-      pf::Log log(__FUNCTION__);
-      log.msg("RandR extension not available.");
-      Self->Resolutions.emplace_back(glRootWindow.width, glRootWindow.height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
-   }
-#else
-   Self->Resolutions = {
-      { 640, 480, 32 },
-      { 800, 600, 32 },
-      { 1024, 768, 32 },
-      { 1152, 864, 32 },
-      { 1280, 960, 32 },
-      { 0, 0, 0 }
-   };
-#endif
-}
-
-//*****************************************************************************
 
 static void update_displayinfo(extDisplay *Self)
 {
@@ -405,16 +370,16 @@ static ERR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = 0;
 
-   if (Self->XPixmap) { 
-      XFreePixmap(XDisplay, Self->XPixmap); 
-      Self->XPixmap = 0; 
+   if (Self->XPixmap) {
+      XFreePixmap(XDisplay, Self->XPixmap);
+      Self->XPixmap = 0;
       ((extBitmap *)Self->Bitmap)->x11.drawable = 0;
    }
 
    // Kill all expose events associated with the X Window owned by the display
 
    if (XDisplay) {
-      while (XCheckWindowEvent(XDisplay, Self->XWindowHandle, 
+      while (XCheckWindowEvent(XDisplay, Self->XWindowHandle,
          ExposureMask|FocusChangeMask|StructureNotifyMask, &xevent) IS True);
 
       if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
@@ -817,7 +782,7 @@ static ERR DISPLAY_Init(extDisplay *Self, APTR Void)
          XChangeWindowAttributes(XDisplay, Self->XWindowHandle, CWEventMask|CWCursor, &swa);
 
          #ifdef XRANDR_ENABLED
-         if (glXRRAvailable) xrSelectInput(Self->XWindowHandle);
+         if (glXRRAvailable) XRRSelectInput(XDisplay, DefaultRootWindow(XDisplay), RRScreenChangeNotifyMask);
          #endif
 
          XWindowAttributes winattrib;
@@ -1261,7 +1226,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       resize_pixmap(Self, Args->Width, Args->Height);
       XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
    }
-   
+
    Action(AC_Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
@@ -1526,7 +1491,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 
    if (glX11.Manager) { // The video mode can only be changed with the XRandR extension
 #ifdef XRANDR_ENABLED
-      if ((glXRRAvailable) and (xrSetDisplayMode(&width, &height) IS ERR::Okay)) {
+      if ((glXRRAvailable) and (xr_set_display_mode(&width, &height) IS ERR::Okay)) {
          Self->RefreshRate = 0;
          Self->Width  = width;
          Self->Height = height;
@@ -1538,7 +1503,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
          return ERR::Okay;
       }
       else return ERR::Failed;
-#endif      
+#endif
    }
    else {
       XResizeWindow(XDisplay, Self->XWindowHandle, width, height);
