@@ -575,12 +575,6 @@ extern WORD glPlugin;
 extern APTR glDGAVideo;
 extern bool glXRRAvailable;
 
-extern LONG  xrNotify(XEvent *);
-extern ERR xrSetDisplayMode(LONG *, LONG *);
-extern void  xrSelectInput(Window);
-extern LONG  xrGetDisplayTotal(void);
-extern struct xrMode * xrGetDisplayMode(LONG);
-
 #endif
 
 #include "prototypes.h"

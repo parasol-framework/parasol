@@ -111,20 +111,38 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 static void get_resolutions(extDisplay *Self)
 {
 #if defined(__xwindows__) && defined(XRANDR_ENABLED)
-   if (glXRRAvailable) {
-      struct xrMode *mode;
+   pf::Log log(__FUNCTION__);
 
+   if (glXRRAvailable) {
       if (!Self->Resolutions.empty()) return;
 
-      auto total = xrGetDisplayTotal();
-      for (LONG i=0; i < total; i++) {
-         if ((mode = (xrMode *)xrGetDisplayMode(i))) {
+      if (!glActualCount) {
+         for (LONG i=0; i < glSizeCount; i++) {
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               glActualCount++;
+            }
+         }
+      }
+
+      auto get_mode = [&log](LONG Index) {
+         for (LONG i=0; i < glSizeCount; i++) {
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               if (!Index) {
+                  Self->Resolutions.emplace_back(glSizes[i].width, glSizes[i].height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
+                  return;
+               }
+               Index--;
+            }
+         }
+      };
+
+      for (LONG i=0; i < glActualCount; i++) {
+         if (auto mode = (xrMode *)get_mode(i)) {
             Self->Resolutions.emplace_back(mode->Width, mode->Height, mode->Depth);
          }
       }
    }
    else {
-      pf::Log log(__FUNCTION__);
       log.msg("RandR extension not available.");
       Self->Resolutions.emplace_back(glRootWindow.width, glRootWindow.height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
    }
@@ -140,7 +158,57 @@ static void get_resolutions(extDisplay *Self)
 #endif
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
+
+#ifdef XRANDR_ENABLED
+static ERR xrSetDisplayMode(LONG *Width, LONG *Height)
+{
+   pf::Log log(__FUNCTION__);
+   LONG count;
+   WORD i;
+   WORD width = *Width;
+   WORD height = *Height;
+
+   XRRScreenSize *sizes;
+   if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
+      WORD index    = -1;
+      LONG bestweight = 0x7fffffff;
+
+      for (i=0; i < count; i++) {
+         LONG weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
+         if (weight < bestweight) {
+            index = i;
+            bestweight = weight;
+         }
+      }
+
+      if (index IS -1) {
+         log.warning("No support for requested screen mode %dx%d", width, height);
+         return ERR::NoSupport;
+      }
+
+      if (auto scrconfig = XRRGetScreenInfo(XDisplay, DefaultRootWindow(XDisplay))) {
+         if (!XRRSetScreenConfig(XDisplay, scrconfig, DefaultRootWindow(XDisplay), index, RR_Rotate_0, CurrentTime)) {
+            *Width = sizes[index].width;
+            *Height = sizes[index].height;
+
+            log.msg("New mode: %dx%d (index %d/%d) from request %dx%d", sizes[index].width, sizes[index].height, index, count, width, height);
+
+            XRRFreeScreenConfigInfo(scrconfig);
+            return ERR::Okay;
+         }
+         else {
+            XRRFreeScreenConfigInfo(scrconfig);
+            return log.warning(ERR::SystemCall);
+         }
+      }
+      else return log.warning(ERR::SystemCall);
+   }
+   else return log.warning(ERR::SystemCall);
+}
+#endif // XRANDR_ENABLED
+
+//********************************************************************************************************************
 
 static void update_displayinfo(extDisplay *Self)
 {
@@ -405,16 +473,16 @@ static ERR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = 0;
 
-   if (Self->XPixmap) { 
-      XFreePixmap(XDisplay, Self->XPixmap); 
-      Self->XPixmap = 0; 
+   if (Self->XPixmap) {
+      XFreePixmap(XDisplay, Self->XPixmap);
+      Self->XPixmap = 0;
       ((extBitmap *)Self->Bitmap)->x11.drawable = 0;
    }
 
    // Kill all expose events associated with the X Window owned by the display
 
    if (XDisplay) {
-      while (XCheckWindowEvent(XDisplay, Self->XWindowHandle, 
+      while (XCheckWindowEvent(XDisplay, Self->XWindowHandle,
          ExposureMask|FocusChangeMask|StructureNotifyMask, &xevent) IS True);
 
       if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
@@ -817,7 +885,7 @@ static ERR DISPLAY_Init(extDisplay *Self, APTR Void)
          XChangeWindowAttributes(XDisplay, Self->XWindowHandle, CWEventMask|CWCursor, &swa);
 
          #ifdef XRANDR_ENABLED
-         if (glXRRAvailable) xrSelectInput(Self->XWindowHandle);
+         if (glXRRAvailable) XRRSelectInput(XDisplay, DefaultRootWindow(XDisplay), RRScreenChangeNotifyMask);
          #endif
 
          XWindowAttributes winattrib;
@@ -1261,7 +1329,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       resize_pixmap(Self, Args->Width, Args->Height);
       XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
    }
-   
+
    Action(AC_Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
@@ -1538,7 +1606,7 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
          return ERR::Okay;
       }
       else return ERR::Failed;
-#endif      
+#endif
    }
    else {
       XResizeWindow(XDisplay, Self->XWindowHandle, width, height);

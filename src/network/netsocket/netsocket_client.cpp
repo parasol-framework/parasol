@@ -28,7 +28,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       log.traceBranch("Attempting SSL handshake.");
 
       sslConnect(Self);
-      if (Self->Error) return;
+      if (Self->Error != ERR::Okay) return;
 
       if (Self->State IS NTC::CONNECTING_SSL) {
          RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
