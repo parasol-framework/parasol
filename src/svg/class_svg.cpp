@@ -94,7 +94,7 @@ static ERR SVG_Free(extSVG *Self, APTR Void)
    }
 
    if (Self->FrameCallback.isScript()) {
-      UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
       Self->FrameCallback.clear();
    }
 
@@ -442,10 +442,10 @@ static ERR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 static ERR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
       Self->FrameCallback = *Value;
       if (Self->FrameCallback.isScript()) {
-         SubscribeAction(Self->FrameCallback.Script.Script, AC_Free, FUNCTION(notify_free_frame_callback));
+         SubscribeAction(Self->FrameCallback.Context, AC_Free, FUNCTION(notify_free_frame_callback));
       }
    }
    else Self->FrameCallback.clear();

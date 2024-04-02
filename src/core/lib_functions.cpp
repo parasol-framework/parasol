@@ -896,7 +896,7 @@ ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if (subscriber->collecting()) return log.warning(ERR::InvalidState);
 
    if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
-   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
+   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->Routine, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto usInterval = LARGE(Interval * 1000000.0); // Scale the interval to microseconds
@@ -981,7 +981,7 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
          lock.release();
 
          if (timer->Routine.isScript()) {
-            scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
+            scDerefProcedure(timer->Routine.Context, &timer->Routine);
          }
 
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {

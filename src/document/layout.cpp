@@ -1311,12 +1311,12 @@ static void layout_doc(extDocument *Self)
                { "PageWidth",  Self->CalcWidth },
                { "PageHeight", Self->PageHeight }
             };
-            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, std::ssize(args), NULL);
+            scCallback(trigger.Context, trigger.ProcedureID, args, std::ssize(args), NULL);
          }
          else if (trigger.isC()) {
-            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG, APTR))trigger.StdC.Routine;
-            pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight, Self->CalcWidth, Self->PageHeight, trigger.StdC.Meta);
+            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG, APTR))trigger.Routine;
+            pf::SwitchContext context(trigger.Context);
+            routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, Self->CalcWidth, Self->PageHeight, trigger.Meta);
          }
       }
    }

@@ -102,15 +102,15 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                      ERR result;
 
                      if (func->isC()) {
-                        pf::SwitchContext ctx(func->StdC.Context);
-                        auto callback = (ERR (*)(OBJECTID, APTR))func->StdC.Routine;
+                        pf::SwitchContext ctx(func->Context);
+                        auto callback = (ERR (*)(OBJECTID, APTR))func->Routine;
                         result = callback(surface_id, func->StdC.Meta);
                      }
                      else if (func->isScript()) {
                         ScriptArg args[] = {
                            { "SurfaceID", surface_id, FDF_OBJECTID }
                         };
-                        scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
+                        scCallback(func->Context, func->ProcedureID, args, std::ssize(args), &result);
                      }
                      else result = ERR::Okay;
 

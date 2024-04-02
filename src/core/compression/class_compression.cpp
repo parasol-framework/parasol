@@ -533,9 +533,9 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressSt
          log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
 
          if (Args->Callback->isC()) {
-            pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->StdC.Routine;
-            error = routine(Self, output, len, Args->Callback->StdC.Meta);
+            pf::SwitchContext context(Args->Callback->Context);
+            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->Routine;
+            error = routine(Self, output, len, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
             const ScriptArg args[] = {
@@ -543,8 +543,8 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressSt
                ScriptArg("Output",       output, FD_BUFFER),
                ScriptArg("OutputLength", LONG(len), FD_LONG|FD_BUFSIZE)
             };
-            auto script = Args->Callback->Script.Script;
-            if (scCallback(script, Args->Callback->Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+            auto script = Args->Callback->Context;
+            if (scCallback(script, Args->Callback->ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
          }
          else {
             log.warning("Callback function structure does not specify a recognised Type.");
@@ -624,9 +624,9 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompres
       Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
 
       if (Args->Callback->isC()) {
-         pf::SwitchContext context(Args->Callback->StdC.Context);
-         auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR Meta))Args->Callback->StdC.Routine;
-         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->StdC.Meta);
+         pf::SwitchContext context(Args->Callback->Context);
+         auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR Meta))Args->Callback->Routine;
+         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->Meta);
       }
       else if (Args->Callback->isScript()) {
          const ScriptArg args[] = {
@@ -634,8 +634,8 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompres
             { "Output",       output, FD_BUFFER },
             { "OutputLength", LONG(outputsize - Self->DeflateStream.avail_out), FD_LONG|FD_BUFSIZE }
          };
-         auto script = Args->Callback->Script.Script;
-         if (scCallback(script, Args->Callback->Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+         auto script = Args->Callback->Context;
+         if (scCallback(script, Args->Callback->ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
       }
       else error = ERR::Okay;
    }
@@ -777,9 +777,9 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompre
       LONG len = outputsize - Self->InflateStream.avail_out;
       if (len > 0) {
          if (Args->Callback->isC()) {
-            pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->StdC.Routine;
-            error = routine(Self, output, len, Args->Callback->StdC.Meta);
+            pf::SwitchContext context(Args->Callback->Context);
+            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->Routine;
+            error = routine(Self, output, len, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
             const ScriptArg args[] = {
@@ -787,8 +787,8 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompre
                { "Output",       output, FD_BUFFER },
                { "OutputLength", len,    FD_LONG|FD_BUFSIZE }
             };
-            auto script = Args->Callback->Script.Script;
-            if (scCallback(script, Args->Callback->Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+            auto script = Args->Callback->Context;
+            if (scCallback(script, Args->Callback->ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
          }
          else {
             log.warning("Callback function structure does not specify a recognised Type.");
@@ -1745,7 +1745,7 @@ static ERR COMPRESSION_Free(extCompression *Self, APTR Void)
    }
 
    if (Self->Feedback.isScript()) {
-      UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      UnsubscribeAction(Self->Feedback.Context, AC_Free);
       Self->Feedback.clear();
    }
 
@@ -2017,16 +2017,16 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 
       {
          if (Args->Callback->isC()) {
-            pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERR (*)(extCompression *, CompressedItem *, APTR))Args->Callback->StdC.Routine;
-            error = routine(Self, &meta, Args->Callback->StdC.Meta);
+            pf::SwitchContext context(Args->Callback->Context);
+            auto routine = (ERR (*)(extCompression *, CompressedItem *, APTR))Args->Callback->Routine;
+            error = routine(Self, &meta, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
             const ScriptArg args[] = {
                { "Compression", Self, FD_OBJECTPTR },
                { "CompressedItem:Item", &meta, FD_STRUCT|FD_PTR }
             };
-            if (scCallback(Args->Callback->Script.Script, Args->Callback->Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+            if (scCallback(Args->Callback->Context, Args->Callback->ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
          }
          else error = log.warning(ERR::WrongType);
 

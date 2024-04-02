@@ -113,14 +113,14 @@ restart:
    ERR error = ERR::Okay;
    if (Self->Incoming.defined()) {
       if (Self->Incoming.isC()) {
-         auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.StdC.Routine;
-         pf::SwitchContext context(Self->Incoming.StdC.Context);
-         error = routine(Self, Self->Incoming.StdC.Meta);
+         auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.Routine;
+         pf::SwitchContext context(Self->Incoming.Context);
+         error = routine(Self, Self->Incoming.Meta);
       }
       else if (Self->Incoming.isScript()) {
          const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
-         auto script = Self->Incoming.Script.Script;
-         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         auto script = Self->Incoming.Context;
+         if (scCallback(script, Self->Incoming.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
       }
 
       if (error IS ERR::Terminate) log.trace("Termination of socket requested by channel subscriber.");
@@ -231,14 +231,14 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
       if (Self->Outgoing.defined()) {
          if (Self->Outgoing.isC()) {
-            auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.StdC.Routine;
-            pf::SwitchContext context(Self->Outgoing.StdC.Context);
-            error = routine(Self, Self->Outgoing.StdC.Meta);
+            auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.Routine;
+            pf::SwitchContext context(Self->Outgoing.Context);
+            error = routine(Self, Self->Outgoing.Meta);
          }
          else if (Self->Outgoing.isScript()) {
             const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
-            auto script = Self->Outgoing.Script.Script;
-            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+            auto script = Self->Outgoing.Context;
+            if (scCallback(script, Self->Outgoing.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
          }
 
          if (error != ERR::Okay) Self->Outgoing.clear();

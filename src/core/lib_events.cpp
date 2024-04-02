@@ -218,8 +218,8 @@ ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, APTR, LONG, APTR))Callback->StdC.Routine;
-      event->CallbackMeta = Callback->StdC.Meta;
+      event->Callback  = (void (*)(APTR, APTR, LONG, APTR))Callback->Routine;
+      event->CallbackMeta = Callback->Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;

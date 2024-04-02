@@ -47,20 +47,19 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
             DOUBLE y = glDragOriginY + (event->AbsY - glAnchorY);
 
             if (Viewport->vpDragCallback.isC()) {
-               pf::SwitchContext context(Viewport->vpDragCallback.StdC.Context);
-               auto routine = (void (*)(extVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR Meta))Viewport->vpDragCallback.StdC.Routine;
-               routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.StdC.Meta);
+               pf::SwitchContext context(Viewport->vpDragCallback.Context);
+               auto routine = (void (*)(extVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR Meta))Viewport->vpDragCallback.Routine;
+               routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.Meta);
             }
             else if (Viewport->vpDragCallback.isScript()) {
-               if (auto script = Viewport->vpDragCallback.Script.Script) {
-                  const ScriptArg args[] = {
-                     ScriptArg("Viewport", Viewport, FD_OBJECTPTR),
-                     ScriptArg("X", x),
-                     ScriptArg("Y", y),
-                     ScriptArg("OriginX", glDragOriginX),
-                     ScriptArg("OriginY", glDragOriginY)
-                  };
-                  scCallback(script, Viewport->vpDragCallback.Script.ProcedureID, args, std::ssize(args), NULL);
+               if (auto script = Viewport->vpDragCallback.Context) {
+                  scCall(Viewport->vpDragCallback, std::to_array<ScriptArg>({
+                     { "Viewport", Viewport, FD_OBJECTPTR },
+                     { "X", x },
+                     { "Y", y },
+                     { "OriginX", glDragOriginX },
+                     { "OriginY", glDragOriginY }
+                  }));
                }
             }
          }

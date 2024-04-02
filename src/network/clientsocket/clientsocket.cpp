@@ -32,9 +32,9 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    ERR error = ERR::Okay;
    if (Socket->Incoming.defined()) {
       if (Socket->Incoming.isC()) {
-         pf::SwitchContext context(Socket->Incoming.StdC.Context);
-         auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.StdC.Routine;
-         error = routine(Socket, ClientSocket, Socket->Incoming.StdC.Meta);
+         pf::SwitchContext context(Socket->Incoming.Context);
+         auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.Routine;
+         error = routine(Socket, ClientSocket, Socket->Incoming.Meta);
       }
       else if (Socket->Incoming.isScript()) {
          const ScriptArg args[] = {
@@ -42,7 +42,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
             { "ClientSocket", ClientSocket, FD_OBJECTPTR }
          };
 
-         if (scCallback(Socket->Incoming.Script.Script, Socket->Incoming.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         if (scCallback(Socket->Incoming.Context, Socket->Incoming.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::InvalidValue;
 
@@ -142,16 +142,16 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if ((!ClientSocket->WriteQueue.Buffer) or (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
       if (ClientSocket->Outgoing.defined()) {
          if (ClientSocket->Outgoing.isC()) {
-            auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(ClientSocket->Outgoing.StdC.Routine);
-            pf::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
-            error = routine(Socket, ClientSocket, ClientSocket->Outgoing.StdC.Meta);
+            auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(ClientSocket->Outgoing.Routine);
+            pf::SwitchContext context(ClientSocket->Outgoing.Context);
+            error = routine(Socket, ClientSocket, ClientSocket->Outgoing.Meta);
          }
          else if (ClientSocket->Outgoing.isScript()) {
             const ScriptArg args[] = {
                { "NetSocket", Socket, FD_OBJECTPTR },
                { "ClientSocket", ClientSocket, FD_OBJECTPTR }
             };
-            if (scCallback(ClientSocket->Outgoing.Script.Script, ClientSocket->Outgoing.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+            if (scCallback(ClientSocket->Outgoing.Context, ClientSocket->Outgoing.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
          }
 
          if (error != ERR::Okay) ClientSocket->Outgoing.clear();

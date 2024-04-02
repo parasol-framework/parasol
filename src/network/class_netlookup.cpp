@@ -246,7 +246,7 @@ static ERR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
 
    if (Self->Callback.isScript()) {
-      UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
+      UnsubscribeAction(Self->Callback.Context, AC_Free);
       Self->Callback.Type = 0;
    }
 
@@ -459,10 +459,10 @@ static ERR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 static ERR SET_Callback(extNetLookup *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
+      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC_Free);
       Self->Callback = *Value;
       if (Self->Callback.isScript()) {
-         SubscribeAction(Self->Callback.Script.Script, AC_Free, FUNCTION(notify_free_callback));
+         SubscribeAction(Self->Callback.Context, AC_Free, FUNCTION(notify_free_callback));
       }
    }
    else Self->Callback.clear();
@@ -675,16 +675,16 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
    log.traceBranch("Host: %s", HostName.c_str());
 
    if (Self->Callback.isC()) {
-      pf::SwitchContext context(Self->Callback.StdC.Context);
-      auto routine = (ERR (*)(extNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &, APTR))(Self->Callback.StdC.Routine);
-      routine(Self, Error, HostName, Addresses, Self->Callback.StdC.Meta);
+      pf::SwitchContext context(Self->Callback.Context);
+      auto routine = (ERR (*)(extNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &, APTR))(Self->Callback.Routine);
+      routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
    else if (Self->Callback.isScript()) {
       const ScriptArg args[] = {
          { "NetLookup", Self, FDF_OBJECT },
          { "Error",     LONG(Error) }
       };
-      scCallback(Self->Callback.Script.Script, Self->Callback.Script.ProcedureID, args, std::ssize(args), NULL);
+      scCallback(Self->Callback.Context, Self->Callback.ProcedureID, args, std::ssize(args), NULL);
    }
 }
 

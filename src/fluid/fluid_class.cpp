@@ -592,15 +592,15 @@ static ERR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
    if (!Args) return ERR::NullArgs;
 
    if ((Args->Procedure) and (Args->Procedure->isScript())) {
-      if (Args->Procedure->Script.Script IS Self) { // Verification of ownership
+      if (Args->Procedure->Context IS Self) { // Verification of ownership
          auto prv = (prvFluid *)Self->ChildPrivate;
          if (!prv) return log.warning(ERR::ObjectCorrupt);
 
-         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->Script.ProcedureID);
+         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->ProcedureID);
 
-         if (Args->Procedure->Script.ProcedureID) {
-            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->Script.ProcedureID);
-            Args->Procedure->Script.ProcedureID = 0;
+         if (Args->Procedure->ProcedureID) {
+            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->ProcedureID);
+            Args->Procedure->ProcedureID = 0;
          }
          return ERR::Okay;
       }

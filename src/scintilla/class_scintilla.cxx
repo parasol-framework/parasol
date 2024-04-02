@@ -476,9 +476,9 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                for (auto &a : tag.Attribs) {
                   if (StrMatch("path", a.Name) IS ERR::Okay) {
                      if (Self->FileDrop.isC()) {
-                        pf::SwitchContext ctx(Self->FileDrop.StdC.Context);
-                        auto routine = (void (*)(extScintilla *, CSTRING, APTR))Self->FileDrop.StdC.Routine;
-                        routine(Self, a.Value.c_str(), Self->FileDrop.StdC.Meta);
+                        pf::SwitchContext ctx(Self->FileDrop.Context);
+                        auto routine = (void (*)(extScintilla *, CSTRING, APTR))Self->FileDrop.Routine;
+                        routine(Self, a.Value.c_str(), Self->FileDrop.Meta);
                      }
                      else if (Self->FileDrop.isScript()) {
                         ScriptArg args[] = {
@@ -487,10 +487,10 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                         };
 
                         struct scCallback exec;
-                        exec.ProcedureID = Self->FileDrop.Script.ProcedureID;
+                        exec.ProcedureID = Self->FileDrop.ProcedureID;
                         exec.Args      = args;
                         exec.TotalArgs = ARRAYSIZE(args);
-                        auto script = Self->FileDrop.Script.Script;
+                        auto script = Self->FileDrop.Context;
                         Action(MT_ScCallback, script, &exec);
                      }
                      break;
@@ -1875,10 +1875,10 @@ static ERR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 static ERR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC_Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.isScript()) {
-         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, FUNCTION(notify_free_event));
+         SubscribeAction(Self->EventCallback.Context, AC_Free, FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.clear();
@@ -2358,9 +2358,9 @@ static void report_event(extScintilla *Self, SEF Event)
 {
    if ((Event & Self->EventFlags) != SEF::NIL) {
        if (Self->EventCallback.isC()) {
-         pf::SwitchContext ctx(Self->EventCallback.StdC.Context);
-         auto routine = (void (*)(extScintilla *, SEF, APTR)) Self->EventCallback.StdC.Routine;
-         routine(Self, Event, Self->EventCallback.StdC.Meta);
+         pf::SwitchContext ctx(Self->EventCallback.Context);
+         auto routine = (void (*)(extScintilla *, SEF, APTR)) Self->EventCallback.Routine;
+         routine(Self, Event, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {
          ScriptArg args[] = {
@@ -2368,7 +2368,7 @@ static void report_event(extScintilla *Self, SEF Event)
             ScriptArg("EventFlags", LARGE(Event))
          };
 
-         scCallback(Self->EventCallback.Script.Script, Self->EventCallback.Script.ProcedureID, args, std::ssize(args), NULL);
+         scCallback(Self->EventCallback.Context, Self->EventCallback.ProcedureID, args, std::ssize(args), NULL);
       }
    }
 }

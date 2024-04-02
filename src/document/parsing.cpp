@@ -266,12 +266,12 @@ void parser::process_page(objXML *pXML)
    if (!Self->PageProcessed) {
       for (auto &trigger : Self->Triggers[LONG(DRT::PAGE_PROCESSED)]) {
          if (trigger.isScript()) {
-            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, NULL);
+            scCallback(trigger.Context, trigger.ProcedureID, NULL, 0, NULL);
          }
          else if (trigger.isC()) {
-            auto routine = (void (*)(APTR, extDocument *, APTR))trigger.StdC.Routine;
-            pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, trigger.StdC.Meta);
+            auto routine = (void (*)(APTR, extDocument *, APTR))trigger.Routine;
+            pf::SwitchContext context(trigger.Context);
+            routine(trigger.Context, Self, trigger.Meta);
          }
       }
    }

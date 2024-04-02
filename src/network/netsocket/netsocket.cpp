@@ -969,10 +969,10 @@ static ERR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 static ERR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC_Free);
       Self->Feedback = *Value;
       if (Self->Feedback.isScript()) {
-         SubscribeAction(Self->Feedback.Script.Script, AC_Free, FUNCTION(notify_free_feedback));
+         SubscribeAction(Self->Feedback.Context, AC_Free, FUNCTION(notify_free_feedback));
       }
    }
    else Self->Feedback.clear();
@@ -1012,10 +1012,10 @@ static ERR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
+      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC_Free);
       Self->Incoming = *Value;
       if (Self->Incoming.isScript()) {
-         SubscribeAction(Self->Incoming.Script.Script, AC_Free, FUNCTION(notify_free_incoming));
+         SubscribeAction(Self->Incoming.Context, AC_Free, FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.clear();
@@ -1057,9 +1057,9 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       return log.warning(ERR::NoSupport);
    }
    else {
-      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
+      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Script.Script, AC_Free, FUNCTION(notify_free_outgoing));
+      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC_Free, FUNCTION(notify_free_outgoing));
 
       if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
@@ -1155,12 +1155,12 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       Self->State = Value;
 
       if (Self->Feedback.defined()) {
-         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", LONG(Self->State), Self->Feedback.StdC.Context);
+         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", LONG(Self->State), Self->Feedback.Context);
 
          if (Self->Feedback.isC()) {
-            pf::SwitchContext context(Self->Feedback.StdC.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.StdC.Routine;
-            if (routine) routine(Self, NULL, Self->State, Self->Feedback.StdC.Meta);
+            pf::SwitchContext context(Self->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+            if (routine) routine(Self, NULL, Self->State, Self->Feedback.Meta);
          }
          else if (Self->Feedback.isScript()) {
             const ScriptArg args[] = {
@@ -1168,7 +1168,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
                { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
                { "State",        LONG(Self->State) }
             };
-            scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, std::ssize(args), NULL);
+            scCallback(Self->Feedback.Context, Self->Feedback.ProcedureID, args, std::ssize(args), NULL);
          }
       }
 

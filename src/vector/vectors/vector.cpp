@@ -140,7 +140,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
    if (Self->FeedbackSubscriptions) {
       for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
          auto &sub = *it;
-         if ((sub.Callback.isScript()) and (sub.Callback.Script.Script->UID IS Object->UID)) {
+         if ((sub.Callback.isScript()) and (sub.Callback.Context->UID IS Object->UID)) {
             it = Self->FeedbackSubscriptions->erase(it);
          }
          else it++;
@@ -1011,27 +1011,26 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
    LONG cmd = -1;
 
   if (Args->Callback->isC()) {
-      auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->StdC.Routine));
+      auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(GetParentContext());
 
       LONG index = 0;
       do {
         cmd = Self->BasePath.vertex(&x, &y);
-        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y, Args->Callback->StdC.Meta);
+        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y, Args->Callback->Meta);
       } while (cmd != agg::path_cmd_stop);
    }
    else if (Args->Callback->isScript()) {
-      ScriptArg args[] = {
+      std::array<ScriptArg, 5> args {{
          { "Vector",  Self->UID, FD_OBJECTID },
          { "Index",   LONG(0) },
          { "Command", LONG(0) },
          { "X",       DOUBLE(0) },
          { "Y",       DOUBLE(0) }
-      };
+      }};
       args[0].Long = Self->UID;
 
-      auto script = Args->Callback->Script.Script;
       LONG index = 0;
       do {
          cmd = Self->BasePath.vertex(&x, &y);
@@ -1040,7 +1039,7 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
             args[2].Long = cmd;
             args[3].Double = x;
             args[4].Double = y;
-            scCallback(script, Args->Callback->Script.ProcedureID, args, std::ssize(args), NULL);
+            scCall(*Args->Callback, args);
          }
       } while (cmd != agg::path_cmd_stop);
    }
@@ -1901,7 +1900,7 @@ static ERR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
          auto scene = (extVectorScene *)Self->Scene;
          scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
 
-         SubscribeAction(Value->StdC.Context, AC_Free, FUNCTION(notify_free_resize_event));
+         SubscribeAction(Value->Context, AC_Free, FUNCTION(notify_free_resize_event));
       }
       else {
          const std::lock_guard<std::mutex> lock(glResizeLock);
@@ -2261,9 +2260,9 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
          if (sub.Callback.isC()) {
-            pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERR (*)(extVector *, FM, APTR, APTR))sub.Callback.StdC.Routine;
-            result = callback(Vector, Event, EventObject, sub.Callback.StdC.Meta);
+            pf::SwitchContext ctx(sub.Callback.Context);
+            auto callback = (ERR (*)(extVector *, FM, APTR, APTR))sub.Callback.Routine;
+            result = callback(Vector, Event, EventObject, sub.Callback.Meta);
          }
          else if (sub.Callback.isScript()) {
             // In this implementation the script function will receive all the events chained via the Next field
@@ -2272,7 +2271,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
                { "Event",  LONG(Event) },
                { "EventObject", EventObject, FDF_OBJECT }
             };
-            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, std::ssize(args), &result);
+            scCallback(sub.Callback.Context, sub.Callback.ProcedureID, args, std::ssize(args), &result);
          }
 
          sub.Mask |= Event;

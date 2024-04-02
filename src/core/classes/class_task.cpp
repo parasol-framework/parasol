@@ -164,17 +164,16 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
    buffer[bytes_read] = 0;
 
    if (Self->InputCallback.isC()) {
-      auto routine = (void (*)(extTask *, APTR, LONG, ERR, APTR))Self->InputCallback.StdC.Routine;
-      routine(Self, buffer, bytes_read, error, Self->InputCallback.StdC.Meta);
+      auto routine = (void (*)(extTask *, APTR, LONG, ERR, APTR))Self->InputCallback.Routine;
+      routine(Self, buffer, bytes_read, error, Self->InputCallback.Meta);
    }
    else if (Self->InputCallback.isScript()) {
-      const ScriptArg args[] = {
+      scCall(Self->InputCallback, std::to_array<ScriptArg>({
          { "Task",       Self },
          { "Buffer",     buffer, FD_PTRBUFFER },
          { "BufferSize", bytes_read, FD_LONG|FD_BUFSIZE },
          { "Status",     LONG(error), FD_ERROR }
-      };
-      scCallback(Self->InputCallback.Script.Script, Self->InputCallback.Script.ProcedureID, args, std::ssize(args), NULL);
+      }));
    }
 }
 
@@ -221,16 +220,15 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
 
       auto task = (extTask *)Task;
       if (task->OutputCallback.isC()) {
-         auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->OutputCallback.StdC.Routine;
-         routine(task, buffer, len, task->OutputCallback.StdC.Meta);
+         auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->OutputCallback.Routine;
+         routine(task, buffer, len, task->OutputCallback.Meta);
       }
       else if (task->OutputCallback.isScript()) {
-         const ScriptArg args[] = {
+         scCallback(task->OutputCallback, std::to_array<ScriptArg>({
             { "Task",       Task,   FD_OBJECTPTR },
             { "Buffer",     buffer, FD_PTRBUFFER },
             { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
-         };
-         scCallback(task->OutputCallback.Script.Script, task->OutputCallback.Script.ProcedureID, args, std::ssize(args), NULL);
+         }));
       }
    }
    recursive--;
@@ -249,21 +247,16 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
       buffer[len] = 0;
 
       auto task = (extTask *)Task;
-      if (task->ErrorCallback.Type) {
-         if (task->ErrorCallback.isC()) {
-            auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->ErrorCallback.StdC.Routine;
-            routine(task, buffer, len, task->ErrorCallback.StdC.Meta);
-         }
-         else if (task->ErrorCallback.isScript()) {
-            if (auto script = task->ErrorCallback.Script.Script) {
-               const ScriptArg args[] = {
-                  { "Task", Task, FD_OBJECTPTR },
-                  { "Data", buffer, FD_PTRBUFFER },
-                  { "Size", len, FD_LONG|FD_BUFSIZE }
-               };
-               scCallback(script, task->ErrorCallback.Script.ProcedureID, args, std::ssize(args), NULL);
-            }
-         }
+      if (task->ErrorCallback.isC()) {
+         auto routine = (void (*)(extTask *, APTR, LONG, APTR))task->ErrorCallback.Routine;
+         routine(task, buffer, len, task->ErrorCallback.Meta);
+      }
+      else if (task->ErrorCallback.isScript()) {
+         scCall(task->ErrorCallback, std::to_array<ScriptArg>({
+            { "Task", Task, FD_OBJECTPTR },
+            { "Data", buffer, FD_PTRBUFFER },
+            { "Size", len, FD_LONG|FD_BUFSIZE }
+         }));
       }
    }
    recursive--;
@@ -278,17 +271,17 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG Size)
 {
    if (Callback->isC()) {
-      auto routine = (void (*)(extTask *, APTR, LONG, APTR))Callback->StdC.Routine;
-      routine(Task, Buffer, Size, Callback->StdC.Meta);
+      auto routine = (void (*)(extTask *, APTR, LONG, APTR))Callback->Routine;
+      routine(Task, Buffer, Size, Callback->Meta);
    }
    else if (Callback->isScript()) {
-      auto script = Callback->Script.Script;
+      auto script = Callback->Context;
       const ScriptArg args[] = {
          { "Task", Task, FD_OBJECTPTR },
          { "Data", Buffer, FD_PTRBUFFER },
          { "Size", Size, FD_LONG|FD_BUFSIZE }
       };
-      scCallback(script, Callback->Script.ProcedureID, args, std::ssize(args), NULL);
+      scCallback(script, Callback->ProcedureID, args, std::ssize(args), NULL);
    }
 }
 
@@ -549,13 +542,11 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
    // Call ExitCallback, if specified
 
    if (Task->ExitCallback.isC()) {
-      auto routine = (void (*)(extTask *, APTR))Task->ExitCallback.StdC.Routine;
-      routine(Task, Task->ExitCallback.StdC.Meta);
+      auto routine = (void (*)(extTask *, APTR))Task->ExitCallback.Routine;
+      routine(Task, Task->ExitCallback.Meta);
    }
    else if (Task->ExitCallback.isScript()) {
-      auto script = Task->ExitCallback.Script.Script;
-      const ScriptArg args[] = { { "Task", Task, FD_OBJECTPTR } };
-      scCallback(script, Task->ExitCallback.Script.ProcedureID, args, std::ssize(args), NULL);
+      scCall(Task->ExitCallback, std::to_array<ScriptArg>({ { "Task", Task, FD_OBJECTPTR } }));
    }
 
    // Post an event for the task's closure
@@ -1446,25 +1437,25 @@ static ERR TASK_Init(extTask *Self, APTR Void)
 
       FUNCTION call;
       call.Type = CALL_STDC;
-      call.StdC.Routine = (APTR)msg_action;
+      call.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
 
-      call.StdC.Routine = (APTR)msg_free;
+      call.Routine = (APTR)msg_free;
       AddMsgHandler(NULL, MSGID_FREE, &call, &Self->MsgFree);
 
-      call.StdC.Routine = (APTR)msg_quit;
+      call.Routine = (APTR)msg_quit;
       AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);
 
-      call.StdC.Routine = (APTR)msg_waitforobjects;
+      call.Routine = (APTR)msg_waitforobjects;
       AddMsgHandler(NULL, MSGID_WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
 
-      call.StdC.Routine = (APTR)msg_event; // lib_events.c
+      call.Routine = (APTR)msg_event; // lib_events.c
       AddMsgHandler(NULL, MSGID_EVENT, &call, &Self->MsgEvent);
 
-      call.StdC.Routine = (APTR)msg_threadcallback; // class_thread.c
+      call.Routine = (APTR)msg_threadcallback; // class_thread.c
       AddMsgHandler(NULL, MSGID_THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
 
-      call.StdC.Routine = (APTR)msg_threadaction; // class_thread.c
+      call.Routine = (APTR)msg_threadaction; // class_thread.c
       AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, &Self->MsgThreadAction);
 
       log.msg("Process Path: %s", Self->ProcessPath);

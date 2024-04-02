@@ -189,8 +189,8 @@ redo_upload:
    LONG len = 0;
    if (Self->Outgoing.defined()) {
       if (Self->Outgoing.isC()) {
-         auto routine = (ERR (*)(extHTTP *, APTR, LONG, LONG *, APTR))Self->Outgoing.StdC.Routine;
-         error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len, Self->Outgoing.StdC.Meta);
+         auto routine = (ERR (*)(extHTTP *, APTR, LONG, LONG *, APTR))Self->Outgoing.Routine;
+         error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len, Self->Outgoing.Meta);
       }
       else if (Self->Outgoing.isScript()) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
@@ -198,10 +198,10 @@ redo_upload:
             { "HTTP",       Self, FD_OBJECTPTR },
             { "BufferSize", Self->WriteSize }
          };
-         auto script = Self->Outgoing.Script.Script;
-         if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+         auto script = Self->Outgoing.Context;
+         if (scCallback(script, Self->Outgoing.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
          if (error > ERR::ExceptionThreshold) {
-            log.warning("Procedure %" PF64 " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
+            log.warning("Procedure %" PF64 " failed, aborting HTTP call.", Self->Outgoing.ProcedureID);
          }
          else len = Self->WriteOffset;
       }
@@ -1009,13 +1009,13 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
       ERR error;
       if (Self->Incoming.isC()) {
-         auto routine = (ERR (*)(extHTTP *, APTR, LONG, APTR))Self->Incoming.StdC.Routine;
-         error = routine(Self, Buffer, Length, Self->Incoming.StdC.Meta);
+         auto routine = (ERR (*)(extHTTP *, APTR, LONG, APTR))Self->Incoming.Routine;
+         error = routine(Self, Buffer, Length, Self->Incoming.Meta);
       }
       else if (Self->Incoming.isScript()) {
          // For speed, the client will receive a direct pointer to the buffer memory via the 'mem' interface.
 
-         log.trace("Calling script procedure %" PF64, Self->Incoming.Script.ProcedureID);
+         log.trace("Calling script procedure %" PF64, Self->Incoming.ProcedureID);
 
          const ScriptArg args[] = {
             { "HTTP",       Self, FD_OBJECTPTR },
@@ -1023,7 +1023,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
             { "BufferSize", Length, FD_LONG|FD_BUFSIZE }
          };
 
-         if (scCallback(Self->Incoming.Script.Script, Self->Incoming.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         if (scCallback(Self->Incoming.Context, Self->Incoming.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::InvalidValue;
 

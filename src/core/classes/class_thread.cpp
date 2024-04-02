@@ -170,11 +170,11 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
    if (!msg) return ERR::Okay;
 
    if (msg->Callback.isC()) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, LONG, APTR))msg->Callback.StdC.Routine;
-      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.StdC.Meta);
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, LONG, APTR))msg->Callback.Routine;
+      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
-      auto script = msg->Callback.Script.Script;
+      auto script = msg->Callback.Context;
       if (LockObject(script, 5000) IS ERR::Okay) {
          const ScriptArg args[] = {
             { "ActionID", msg->ActionID },
@@ -182,7 +182,7 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
             { "Error",    LONG(msg->Error) },
             { "Key",      msg->Key }
          };
-         scCallback(script, msg->Callback.Script.ProcedureID, args, std::ssize(args), NULL);
+         scCallback(script, msg->Callback.ProcedureID, args, std::ssize(args), NULL);
          ReleaseObject(script);
       }
    }
@@ -203,14 +203,14 @@ ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    log.branch("Executing completion callback for thread #%d", uid);
 
    if (msg->Callback.isC()) {
-      auto callback = (void (*)(OBJECTID, APTR))msg->Callback.StdC.Routine;
-      callback(uid, msg->Callback.StdC.Meta);
+      auto callback = (void (*)(OBJECTID, APTR))msg->Callback.Routine;
+      callback(uid, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
-      if (auto script = msg->Callback.Script.Script) {
+      if (auto script = msg->Callback.Context) {
          if (LockObject(script, 5000) IS ERR::Okay) {
             const ScriptArg args[] = { { "Thread", uid, FD_OBJECTID } };
-            scCallback(script, msg->Callback.Script.ProcedureID, args, std::ssize(args), NULL);
+            scCallback(script, msg->Callback.ProcedureID, args, std::ssize(args), NULL);
             ReleaseObject(script);
          }
       }
@@ -266,14 +266,14 @@ static void * thread_entry(extThread *Self)
       ObjectContext thread_ctx(Self, 0);
 
       if (Self->Routine.isC()) {
-         auto routine = (ERR (*)(extThread *, APTR))Self->Routine.StdC.Routine;
-         Self->Error = routine(Self, Self->Routine.StdC.Meta);
+         auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;
+         Self->Error = routine(Self, Self->Routine.Meta);
       }
       else if (Self->Routine.isScript()) {
-         ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
+         ScopedObjectLock<objScript> script(Self->Routine.Context, 5000);
          if (script.granted()) {
             const ScriptArg args[] = { { "Thread", Self, FD_OBJECTPTR } };
-            scCallback(*script, Self->Routine.Script.ProcedureID, args, std::ssize(args), NULL);
+            scCallback(*script, Self->Routine.ProcedureID, args, std::ssize(args), NULL);
          }
       }
    }

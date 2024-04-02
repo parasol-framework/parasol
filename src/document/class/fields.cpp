@@ -70,10 +70,10 @@ static ERR GET_EventCallback(extDocument *Self, FUNCTION **Value)
 static ERR SET_EventCallback(extDocument *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC_Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.isScript()) {
-         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, FUNCTION(notify_free_event));
+         SubscribeAction(Self->EventCallback.Context, AC_Free, FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.clear();
@@ -184,17 +184,17 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    recursion++;
    for (auto &trigger : Self->Triggers[LONG(DRT::LEAVING_PAGE)]) {
       if (trigger.isScript()) {
-         auto script = trigger.Script.Script;
+         auto script = trigger.Context;
          ScriptArg args[] = {
             { "OldURI", Self->Path },
             { "NewURI", newpath },
          };
-         scCallback(script, trigger.Script.ProcedureID, args, std::ssize(args), NULL);
+         scCallback(script, trigger.ProcedureID, args, std::ssize(args), NULL);
       }
       else if (trigger.isC()) {
-         auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING, APTR))trigger.StdC.Routine;
-         pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self, Self->Path.c_str(), newpath.c_str(), trigger.StdC.Meta);
+         auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING, APTR))trigger.Routine;
+         pf::SwitchContext context(trigger.Context);
+         routine(trigger.Context, Self, Self->Path.c_str(), newpath.c_str(), trigger.Meta);
       }
    }
    recursion--;

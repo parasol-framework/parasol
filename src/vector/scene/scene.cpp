@@ -785,9 +785,9 @@ static void process_resize_msgs(extVectorScene *Self)
             auto vector = sub.first;
             auto func   = sub.second;
             if (func.isC()) {
-               pf::SwitchContext ctx(func.StdC.Context);
-               auto callback = (ERR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.StdC.Routine;
-               result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.StdC.Meta);
+               pf::SwitchContext ctx(func.Context);
+               auto callback = (ERR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.Routine;
+               result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.Meta);
             }
             else if (func.isScript()) {
                ScriptArg args[] = {
@@ -798,7 +798,7 @@ static void process_resize_msgs(extVectorScene *Self)
                   { "ViewportWidth",  view->vpFixedWidth },
                   { "ViewportHeight", view->vpFixedHeight }
                };
-               scCallback(func.Script.Script, func.Script.ProcedureID, args, std::ssize(args), &result);
+               scCallback(func.Context, func.ProcedureID, args, std::ssize(args), &result);
             }
          }
       }
@@ -816,9 +816,9 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
       ERR result = ERR::Terminate;
       auto &sub = *it;
       if (sub.Callback.isC()) {
-         pf::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.StdC.Routine;
-         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.StdC.Meta);
+         pf::SwitchContext ctx(sub.Callback.Context);
+         auto callback = (ERR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.Routine;
+         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.Meta);
       }
       else if (sub.Callback.isScript()) {
          // In this implementation the script function will receive all the events chained via the Next field
@@ -828,7 +828,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
             { "Code",       LONG(Event->Code) },
             { "Unicode",    Event->Unicode }
          };
-         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, std::ssize(args), &result);
+         scCallback(sub.Callback.Context, sub.Callback.ProcedureID, args, std::ssize(args), &result);
       }
 
       if (result IS ERR::Terminate) Vector->KeyboardSubscriptions->erase(it);

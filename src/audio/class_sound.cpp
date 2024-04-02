@@ -82,15 +82,12 @@ static ERR win32_audio_stream(extSound *, LARGE, LARGE);
 static void sound_stopped_event(extSound *Self)
 {
    if (Self->OnStop.isC()) {
-      pf::SwitchContext context(Self->OnStop.StdC.Context);
-      auto routine = (void (*)(extSound *, APTR))Self->OnStop.StdC.Routine;
-      routine(Self, Self->OnStop.StdC.Meta);
+      pf::SwitchContext context(Self->OnStop.Context);
+      auto routine = (void (*)(extSound *, APTR))Self->OnStop.Routine;
+      routine(Self, Self->OnStop.Meta);
    }
    else if (Self->OnStop.isScript()) {
-      auto script = Self->OnStop.Script.Script;
-      const ScriptArg args[] = { { "Sound",  Self, FD_OBJECTPTR } };
-      ERR error;
-      scCallback(script, Self->OnStop.Script.ProcedureID, args, std::ssize(args), &error);
+      scCall(Self->OnStop, std::to_array<ScriptArg>({ { "Sound", Self, FD_OBJECTPTR } }));
    }
 }
 
@@ -598,7 +595,7 @@ static ERR SOUND_Free(extSound *Self, APTR Void)
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
    if (Self->OnStop.isScript()) {
-      UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      UnsubscribeAction(Self->OnStop.Context, AC_Free);
       Self->OnStop.clear();
    }
 
@@ -1462,10 +1459,10 @@ static ERR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
 static ERR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC_Free);
       Self->OnStop = *Value;
       if (Self->OnStop.isScript()) {
-         SubscribeAction(Self->OnStop.Script.Script, AC_Free, FUNCTION(notify_onstop_free));
+         SubscribeAction(Self->OnStop.Context, AC_Free, FUNCTION(notify_onstop_free));
       }
    }
    else Self->OnStop.clear();
