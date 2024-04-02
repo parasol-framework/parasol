@@ -3999,6 +3999,29 @@ class objScript : public BaseClass {
 
 };
 
+template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
+   struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+   return Action(MT_ScCallback, Function.Context, &args);
+}
+
+template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
+   struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+   ERR error = Action(MT_ScCallback, Function.Context, &args);
+   Result = args.Error;
+   return(error);
+}
+
+inline ERR scCall(const FUNCTION &Function) noexcept {
+   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+   return Action(MT_ScCallback, Function.Context, &args);
+}
+
+inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
+   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+   ERR error = Action(MT_ScCallback, Function.Context, &args);
+   Result = args.Error;
+   return(error);
+}
 // Task class definition
 
 #define VER_TASK (1.000000)
@@ -4889,22 +4912,22 @@ template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
 
 template <class T> FUNCTION::FUNCTION(T *pRoutine) {
    Type = CALL_STDC;
-   StdC.Context = CurrentContext();
-   StdC.Routine = (APTR)pRoutine;
+   Context = CurrentContext();
+   Routine = (APTR)pRoutine;
 };
 
 template <class T> FUNCTION::FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta) {
    Type = CALL_STDC;
-   StdC.Context = pContext;
-   StdC.Routine = (APTR)pRoutine;
-   StdC.Meta    = pMeta;
+   Context = pContext;
+   Routine = (APTR)pRoutine;
+   Meta    = pMeta;
 };
 
 template <class T> FUNCTION::FUNCTION(T *pRoutine, APTR pMeta) {
    Type = CALL_STDC;
-   StdC.Context = CurrentContext();
-   StdC.Routine = (APTR)pRoutine;
-   StdC.Meta    = pMeta;
+   Context = CurrentContext();
+   Routine = (APTR)pRoutine;
+   Meta    = pMeta;
 };
 
 inline CSTRING BaseClass::className() { return Class->ClassName; }

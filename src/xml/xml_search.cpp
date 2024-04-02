@@ -209,17 +209,15 @@ ERR extXML::find_tag(CSTRING XPath)
 
          ERR error = ERR::Okay;
          if (Callback.isC()) {
-            auto routine = (ERR (*)(extXML *, LONG, CSTRING, APTR))Callback.StdC.Routine;
-            error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.StdC.Meta);
+            auto routine = (ERR (*)(extXML *, LONG, CSTRING, APTR))Callback.Routine;
+            error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.Meta);
          }
          else if (Callback.isScript()) {
-            const ScriptArg args[] = {
+            if (scCall(Callback, std::to_array<ScriptArg>({
                { "XML",  this, FD_OBJECTPTR },
                { "Tag",  Cursor->ID },
                { "Attrib", Attrib.empty() ? CSTRING(NULL) : Attrib.c_str() }
-            };
-            auto script = Callback.Script.Script;
-            if (scCallback(script, Callback.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+            }), error) != ERR::Okay) error = ERR::Terminate;
          }
          else return ERR::InvalidValue;
 

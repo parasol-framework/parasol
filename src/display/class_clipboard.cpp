@@ -401,20 +401,18 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
       ERR error = ERR::Okay;
       if (Self->RequestHandler.isC()) {
-         auto routine = (ERR (*)(objClipboard *, OBJECTPTR, LONG, char *, APTR))Self->RequestHandler.StdC.Routine;
-         pf::SwitchContext ctx(Self->RequestHandler.StdC.Context);
-         error = routine(Self, Args->Object, request->Item, request->Preference, Self->RequestHandler.StdC.Meta);
+         auto routine = (ERR (*)(objClipboard *, OBJECTPTR, LONG, char *, APTR))Self->RequestHandler.Routine;
+         pf::SwitchContext ctx(Self->RequestHandler.Context);
+         error = routine(Self, Args->Object, request->Item, request->Preference, Self->RequestHandler.Meta);
       }
       else if (Self->RequestHandler.isScript()) {
-         const ScriptArg args[] = {
+         if (scCall(Self->RequestHandler, std::to_array<ScriptArg>({
             { "Clipboard", Self, FD_OBJECTPTR },
             { "Requester", Args->Object, FD_OBJECTPTR },
             { "Item",      request->Item },
             { "Datatypes", request->Preference, FD_ARRAY|FD_BYTE },
             { "Size",      LONG(ARRAYSIZE(request->Preference)), FD_LONG|FD_ARRAYSIZE }
-         };
-         auto script = Self->RequestHandler.Script.Script;
-         if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = log.warning(ERR::FieldNotSet);
 
@@ -432,7 +430,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 static ERR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
    if (Self->RequestHandler.isScript()) {
-      UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+      UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
       Self->RequestHandler.clear();
    }
 
@@ -639,10 +637,10 @@ static ERR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 static ERR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
       Self->RequestHandler = *Value;
       if (Self->RequestHandler.isScript()) {
-         SubscribeAction(Self->RequestHandler.Script.Script, AC_Free, FUNCTION(notify_script_free));
+         SubscribeAction(Self->RequestHandler.Context, AC_Free, FUNCTION(notify_script_free));
       }
    }
    else Self->RequestHandler.clear();

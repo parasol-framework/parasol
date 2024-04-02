@@ -311,12 +311,12 @@ ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #endif
 
    auto recv_function = FUNCTION(resolve_name_receiver);
-   recv_function.StdC.Context = CurrentTask();
+   recv_function.Context = CurrentTask();
    if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler) != ERR::Okay) {
       return ERR::Failed;
    }
 
-   recv_function.StdC.Routine = (APTR)resolve_addr_receiver;
+   recv_function.Routine = (APTR)resolve_addr_receiver;
    if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
       return ERR::Failed;
    }

@@ -504,8 +504,8 @@ static ERR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
    }
    else if (Flags & FD_POINTER) {
       offset[0].Type = (Data) ? CALL_STDC : CALL_NONE;
-      offset[0].StdC.Routine = (FUNCTION *)Data;
-      offset[0].StdC.Context = tlContext->object();
+      offset[0].Routine = (FUNCTION *)Data;
+      offset[0].Context = tlContext->object();
    }
    else return ERR::SetValueNotFunction;
    return ERR::Okay;
@@ -659,8 +659,8 @@ static ERR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
       FUNCTION func;
       if (Data) {
          func.Type = CALL_STDC;
-         func.StdC.Context = caller;
-         func.StdC.Routine = (APTR)Data;
+         func.Context = caller;
+         func.Routine = (APTR)Data;
       }
       else func.clear();
       return ((ERR (*)(APTR, FUNCTION *))(Field->SetValue))(Object, &func);

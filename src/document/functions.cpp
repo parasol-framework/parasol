@@ -980,29 +980,27 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
       log.traceBranch("Event $%x -> Entity %d", LONG(Event), Entity->uid);
 
       if (Self->EventCallback.isC()) {
-         auto routine = (ERR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.StdC.Routine;
-         pf::SwitchContext context(Self->EventCallback.StdC.Context);
-         result = routine(Self, Event, EventData, Entity, Self->EventCallback.StdC.Meta);
+         auto routine = (ERR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.Routine;
+         pf::SwitchContext context(Self->EventCallback.Context);
+         result = routine(Self, Event, EventData, Entity, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {
-         if (auto script = Self->EventCallback.Script.Script) {
+         if (auto script = Self->EventCallback.Context) {
             if (EventData) {
-               ScriptArg args[] = {
+               scCall(Self->EventCallback, std::to_array<ScriptArg>({
                   { "Document", Self, FD_OBJECTPTR },
                   { "EventMask", LONG(Event) },
                   { "KeyValue:Parameters", EventData, FD_STRUCT },
                   { "Entity", Entity->uid }
-               };
-               scCallback(script, Self->EventCallback.Script.ProcedureID, args, std::ssize(args), &result);
+               }), result);
             }
             else {
-               ScriptArg args[] = {
-                  { "Document", Self, FD_OBJECTPTR },
+               scCall(Self->EventCallback, std::to_array<ScriptArg>({
+                  { "Document",  Self, FD_OBJECTPTR },
                   { "EventMask", LONG(Event) },
-                  { "KeyValue", LONG(0) },
-                  { "Entity", Entity->uid }
-               };
-               scCallback(script, Self->EventCallback.Script.ProcedureID, args, std::ssize(args), &result);
+                  { "KeyValue",  LONG(0) },
+                  { "Entity",    Entity->uid }
+               }), result);
             }
          }
       }

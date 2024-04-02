@@ -142,19 +142,16 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (Self->Feedback.isC()) {
-      pf::SwitchContext context(Self->Feedback.StdC.Context);
-      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.StdC.Routine;
-      if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.StdC.Meta);
+      pf::SwitchContext context(Self->Feedback.Context);
+      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+      if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.Meta);
    }
    else if (Self->Feedback.isScript()) {
-      const ScriptArg args[] = {
+      scCall(Self->Feedback, std::to_array<ScriptArg>({
          { "NetSocket",    Self, FD_OBJECTPTR },
          { "ClientSocket", client_socket, FD_OBJECTPTR },
          { "State",        LONG(NTC::CONNECTED) }
-      };
-
-      auto script = Self->Feedback.Script.Script;
-      scCallback(script, Self->Feedback.Script.ProcedureID, args, std::ssize(args), NULL);
+      }));
    }
 
    log.trace("Total clients: %d", Self->TotalClients);
@@ -216,19 +213,16 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
 
    if (Signal) {
       if (Socket->Feedback.isC()) {
-         pf::SwitchContext context(Socket->Feedback.StdC.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.StdC.Routine;
-         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.StdC.Meta);
+         pf::SwitchContext context(Socket->Feedback.Context);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
+         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.Meta);
       }
       else if (Socket->Feedback.isScript()) {
-         const ScriptArg args[] = {
+         scCall(Socket->Feedback, std::to_array<ScriptArg>({
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR },
             { "State",        LONG(NTC::DISCONNECTED) }
-         };
-
-         auto script = Socket->Feedback.Script.Script;
-         scCallback(script, Socket->Feedback.Script.ProcedureID, args, std::ssize(args), NULL);
+         }));
       }
    }
 

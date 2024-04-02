@@ -124,19 +124,18 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
    log.traceBranch("%dx%d, %dx%d", X, Y, Width, Height);
 
    if (Feedback->isC()) {
-      auto routine = (ERR (*)(OBJECTID, LONG, LONG, LONG, LONG, APTR))Feedback->StdC.Routine;
-      pf::SwitchContext ctx(Feedback->StdC.Context);
-      routine(DisplayID, X, Y, Width, Height, Feedback->StdC.Meta);
+      auto routine = (ERR (*)(OBJECTID, LONG, LONG, LONG, LONG, APTR))Feedback->Routine;
+      pf::SwitchContext ctx(Feedback->Context);
+      routine(DisplayID, X, Y, Width, Height, Feedback->Meta);
    }
    else if (Feedback->isScript()) {
-      const ScriptArg args[] = {
+      scCall(*Feedback, std::to_array<ScriptArg>({
          { "Display", DisplayID, FD_OBJECTID },
          { "X",       X },
          { "Y",       Y },
          { "Width",   Width },
          { "Height",  Height }
-      };
-      scCallback(Feedback->Script.Script, Feedback->Script.ProcedureID, args, std::ssize(args), NULL);
+      }));
    }
 }
 
@@ -2680,10 +2679,10 @@ static ERR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 static ERR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
+      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Context, AC_Free);
       Self->ResizeFeedback = *Value;
       if (Self->ResizeFeedback.isScript()) {
-         SubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free, FUNCTION(notify_resize_free));
+         SubscribeAction(Self->ResizeFeedback.Context, AC_Free, FUNCTION(notify_resize_free));
       }
    }
    else Self->ResizeFeedback.clear();

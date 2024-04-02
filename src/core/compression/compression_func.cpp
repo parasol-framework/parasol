@@ -710,16 +710,15 @@ static ERR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
    if (!Self->Feedback.Type) return ERR::Okay;
 
    if (Self->Feedback.isC()) {
-      auto routine = (ERR (*)(extCompression *, CompressionFeedback *, APTR Meta))Self->Feedback.StdC.Routine;
-      pf::SwitchContext context(Self->Feedback.StdC.Context);
-      error = routine(Self, Feedback, Self->Feedback.StdC.Meta);
+      auto routine = (ERR (*)(extCompression *, CompressionFeedback *, APTR Meta))Self->Feedback.Routine;
+      pf::SwitchContext context(Self->Feedback.Context);
+      error = routine(Self, Feedback, Self->Feedback.Meta);
    }
    else if (Self->Feedback.isScript()) {
-      const ScriptArg args[] = {
+      if (scCall(Self->Feedback, std::to_array<ScriptArg>({
          { "Compression", Self, FD_OBJECTPTR },
          { "CompressionFeedback:Feedback", Feedback, FD_POINTER|FD_STRUCT }
-      };
-      if (scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+      }), error) != ERR::Okay) error = ERR::Failed;
    }
    else {
       log.warning("Callback function structure does not specify a recognised Type.");

@@ -338,36 +338,33 @@ timer_cycle:
             if (timer->Routine.isC()) {
                OBJECTPTR subscriber;
                if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
-                  auto routine = (ERR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.StdC.Routine;
+                  auto routine = (ERR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.Routine;
                   glmTimer.unlock();
                   relock = true;
-                  error = routine(NULL, elapsed, current_time, timer->Routine.StdC.Meta);
+                  error = routine(NULL, elapsed, current_time, timer->Routine.Meta);
                }
                else if (AccessObject(timer->SubscriberID, 50, &subscriber) IS ERR::Okay) {
                   pf::SwitchContext context(subscriber);
 
-                  auto routine = (ERR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.StdC.Routine;
+                  auto routine = (ERR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.Routine;
                   glmTimer.unlock();
                   relock = true;
 
-                  error = routine(subscriber, elapsed, current_time, timer->Routine.StdC.Meta);
+                  error = routine(subscriber, elapsed, current_time, timer->Routine.Meta);
 
                   ReleaseObject(subscriber);
                }
                else error = ERR::AccessObject;
             }
             else if (timer->Routine.isScript()) {
-               const ScriptArg scargs[] = {
-                  { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
-                  { "Elapsed",     elapsed },
-                  { "CurrentTime", current_time }
-               };
-
                glmTimer.unlock();
                relock = true;
 
-               auto script = (objScript *)timer->Routine.Script.Script;
-               if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, std::ssize(scargs), &error) != ERR::Okay) error = ERR::Terminate;
+               if (scCall(timer->Routine, std::to_array<ScriptArg>({
+                     { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
+                     { "Elapsed",     elapsed },
+                     { "CurrentTime", current_time }
+                  }), error) != ERR::Okay) error = ERR::Terminate;
             }
             else error = ERR::Terminate;
 
@@ -375,7 +372,7 @@ timer_cycle:
 
             if (error IS ERR::Terminate) {
                if (timer->Routine.isScript()) {
-                  scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
+                  scDerefProcedure(timer->Routine.Context, &timer->Routine);
                }
 
                timer = glTimers.erase(timer);
@@ -405,20 +402,18 @@ timer_cycle:
             if ((!hdl->MsgType) or (hdl->MsgType IS glQueue[i].Type)) {
                ERR result = ERR::NoSupport;
                if (hdl->Function.isC()) {
-                  auto msghandler = (ERR (*)(APTR, LONG, LONG, APTR, LONG, APTR))hdl->Function.StdC.Routine;
-                  if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.StdC.Meta);
-                  else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.StdC.Meta);
+                  auto msghandler = (ERR (*)(APTR, LONG, LONG, APTR, LONG, APTR))hdl->Function.Routine;
+                  if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.Meta);
+                  else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
                }
                else if (hdl->Function.isScript()) {
-                  const ScriptArg args[] = {
-                     { "Custom",   hdl->Custom },
-                     { "UID",      glQueue[i].UID },
-                     { "Type",     glQueue[i].Type },
-                     { "Data",     glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
-                     { "Size",     glQueue[i].Size, FD_LONG|FD_BUFSIZE }
-                  };
-                  auto &script = hdl->Function.Script;
-                  if (scCallback(script.Script, script.ProcedureID, args, std::ssize(args), &result) != ERR::Okay) result = ERR::Terminate;
+                  if (scCall(hdl->Function, std::to_array<ScriptArg>({
+                     { "Custom", hdl->Custom },
+                     { "UID",    glQueue[i].UID },
+                     { "Type",   glQueue[i].Type },
+                     { "Data",   glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
+                     { "Size",   glQueue[i].Size, FD_LONG|FD_BUFSIZE }
+                  }), result) != ERR::Okay) result = ERR::Terminate;
                }
 
                if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else

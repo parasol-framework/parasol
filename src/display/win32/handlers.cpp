@@ -282,13 +282,12 @@ void MsgWindowClose(OBJECTID SurfaceID)
          ERR result;
 
          if (func->isC()) {
-            pf::SwitchContext ctx(func->StdC.Context);
-            auto callback = (ERR (*)(OBJECTID SurfaceID, APTR))func->StdC.Routine;
-            result = callback(SurfaceID, func->StdC.Meta);
+            pf::SwitchContext ctx(func->Context);
+            auto callback = (ERR (*)(OBJECTID SurfaceID, APTR))func->Routine;
+            result = callback(SurfaceID, func->Meta);
          }
          else if (func->isScript()) {
-            ScriptArg args[] = { { "SurfaceID", SurfaceID, FDF_OBJECTID } };
-            scCallback(func->Script.Script, func->Script.ProcedureID, args, std::ssize(args), &result);
+            scCall(func, std::to_array<ScriptArg>({ { "SurfaceID", SurfaceID, FDF_OBJECTID } }), result);
          }
          else result = ERR::Okay;
 

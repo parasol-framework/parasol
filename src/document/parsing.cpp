@@ -266,12 +266,12 @@ void parser::process_page(objXML *pXML)
    if (!Self->PageProcessed) {
       for (auto &trigger : Self->Triggers[LONG(DRT::PAGE_PROCESSED)]) {
          if (trigger.isScript()) {
-            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, NULL);
+            scCall(trigger);
          }
          else if (trigger.isC()) {
-            auto routine = (void (*)(APTR, extDocument *, APTR))trigger.StdC.Routine;
-            pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, trigger.StdC.Meta);
+            auto routine = (void (*)(APTR, extDocument *, APTR))trigger.Routine;
+            pf::SwitchContext context(trigger.Context);
+            routine(trigger.Context, Self, trigger.Meta);
          }
       }
    }
@@ -354,8 +354,8 @@ void parser::translate_args(const std::string &Input, std::string &Output)
       unsigned i;
       for (i=0; i < Input.size(); i++) {
          if (Input[i] IS '[') break;
-         if ((Input[i] IS '&') and 
-             ((StrCompare("&lsqr;", Input.c_str()+i) IS ERR::Okay) or 
+         if ((Input[i] IS '&') and
+             ((StrCompare("&lsqr;", Input.c_str()+i) IS ERR::Okay) or
               (StrCompare("&rsqr;", Input.c_str()+i) IS ERR::Okay))) break;
       }
       if (i >= Input.size()) return;
@@ -1218,7 +1218,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
    if ((Style.options & (FSO::BOLD|FSO::ITALIC)) != (m_style.options & (FSO::BOLD|FSO::ITALIC))) {
       font_change = true;
    }
-   else if ((Style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != 
+   else if ((Style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) !=
             (m_style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
       font_change = true;
    }
@@ -1446,7 +1446,7 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_select_fill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
             Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
-         
+
          case HASH_clip_path: {
             OBJECTPTR clip;
             if (scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip) IS ERR::Okay) {
@@ -1650,10 +1650,10 @@ const char glButtonSVG[] = R"-(
     </linearGradient>
   </defs>
 
-  <rect opacity="0.6" fill="rgb(0,0,0)" filter="url(#dropShadow)" width="95%" height="93%" 
+  <rect opacity="0.6" fill="rgb(0,0,0)" filter="url(#dropShadow)" width="95%" height="93%"
     x="2.5%" y="4%" ry="20" rx="20"/>
   <rect fill="#555d6d" width="95%" height="93%" x="2.5%" y="2.5%" ry="20" rx="20"/>
-  <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="none" stroke="url(#darkEdge)" 
+  <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="none" stroke="url(#darkEdge)"
     stroke-width="0.5%" stroke-linecap="round" stroke-opacity="0.7" stroke-linejoin="round" stroke-miterlimit="4"/>
   <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="url(#shading)"/>
 </svg>)-";
@@ -1690,7 +1690,7 @@ void parser::tag_button(XMLTag &Tag)
 
          auto svg = objSVG::create { fl::Target(pattern_active->Scene), fl::Statement(glButtonSVG) };
 
-         if (svg.ok()) { 
+         if (svg.ok()) {
             FreeResource(*svg);
          }
          else { // Revert to a basic rectangle if the SVG didn't process
@@ -1738,7 +1738,7 @@ void parser::tag_button(XMLTag &Tag)
    if (!Tag.Children.empty()) {
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
-      parser parse(Self, widget.stream);    
+      parser parse(Self, widget.stream);
 
       auto new_style = m_style;
       new_style.options = FSO::ALIGN_CENTER;
@@ -2086,7 +2086,7 @@ void parser::tag_div(XMLTag &Tag)
    auto new_style = m_style;
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (StrMatch("align", Tag.Attribs[i].Name) IS ERR::Okay) {
-         if ((StrMatch(Tag.Attribs[i].Value, "center") IS ERR::Okay) or 
+         if ((StrMatch(Tag.Attribs[i].Value, "center") IS ERR::Okay) or
              (StrMatch(Tag.Attribs[i].Value, "horizontal") IS ERR::Okay)) {
             new_style.options |= FSO::ALIGN_CENTER;
          }
@@ -2232,7 +2232,7 @@ void parser::tag_parse(XMLTag &Tag)
    // is typically used when pulling XML information out of an object field.
 
    if (std::ssize(Tag.Attribs) > 1) {
-      if ((StrMatch("value", Tag.Attribs[1].Name) IS ERR::Okay) or 
+      if ((StrMatch("value", Tag.Attribs[1].Name) IS ERR::Okay) or
           (StrMatch("$value", Tag.Attribs[1].Name) IS ERR::Okay)) {
          log.traceBranch("Parsing string value as XML...");
 
@@ -2298,7 +2298,7 @@ void parser::tag_image(XMLTag &Tag)
                   break;
             }
             break;
-            
+
          case HASH_padding: img.pad.parse(value); break;
          case HASH_fill:    img.fill = value; break;
          case HASH_src:     img.fill = value; break;

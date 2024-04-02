@@ -100,7 +100,7 @@ static ERR thread_script_callback(OBJECTID ThreadID)
       thread_callback &cb = it->second;
       objScript *script;
       if (AccessObject(cb.mainScriptID, 4000, &script) IS ERR::Okay) {
-         auto prv = (prvFluid *)script->ChildPrivate;
+         auto prv= (prvFluid *)script->ChildPrivate;
          scCallback(script, cb.callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
          ReleaseObject(script);
@@ -183,7 +183,7 @@ static int thread_action(lua_State *Lua)
          }
       }
       else {
-         luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+         luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
          luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
          return 0;
       }
@@ -200,7 +200,7 @@ static int thread_action(lua_State *Lua)
       else error = log.warning(ERR::AccessObject);
    }
 
-   if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+   if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
    lua_pushinteger(Lua, LONG(error));
    return 1;
 }
@@ -271,7 +271,7 @@ static int thread_method(lua_State *Lua)
                      }
                   }
                   else {
-                     luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+                     luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
                      luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
                      return 0;
                   }
@@ -287,7 +287,7 @@ static int thread_method(lua_State *Lua)
                   else error = log.warning(ERR::AccessObject);
                }
 
-               if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+               if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
                lua_pushinteger(Lua, LONG(error));
                return 1;
             }

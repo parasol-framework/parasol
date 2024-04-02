@@ -43,17 +43,11 @@ struct FUNCTION {
    unsigned char Type;
    unsigned char PadA;
    unsigned short ID; // Unused.  Unique identifier for the function.
+   OBJECTPTR Context; // The context at the time the function was created, or a Script reference
+   void * Meta;       // Additional meta data provided by the client.
    union {
-      struct {
-         OBJECTPTR Context; // The context at the time the function was created
-         void * Routine;
-         void * Meta;       // Additional meta data provided by the client.
-      } StdC;
-
-      struct {
-         class objScript *Script;  // Equivalent to the StdC Context
-         LARGE ProcedureID; // Function identifier, usually a hash
-      } Script;
+      void * Routine;    // CALL_STDC: Pointer to a C routine
+      LARGE ProcedureID; // CALL_SCRIPT: Function identifier, usually a hash
    };
 
    FUNCTION() : Type(0) { }
@@ -64,7 +58,8 @@ struct FUNCTION {
 
    FUNCTION(class objScript *pScript, LARGE pProcedure) {
       Type = CALL_SCRIPT;
-      Script = { pScript, pProcedure };
+      Context = (OBJECTPTR)pScript;
+      ProcedureID = pProcedure;
    }
 
    void clear() { Type = CALL_NONE; }
@@ -75,7 +70,7 @@ struct FUNCTION {
 
 inline bool operator==(const struct FUNCTION &A, const struct FUNCTION &B)
 {
-   if (A.Type == CALL_STDC) return (A.Type == B.Type) and (A.StdC.Context == B.StdC.Context) and (A.StdC.Routine == B.StdC.Routine);
-   else if (A.Type == CALL_SCRIPT) return (A.Type == B.Type) and (A.Script.Script == B.Script.Script) and (A.Script.ProcedureID == B.Script.ProcedureID);
+   if (A.Type == CALL_STDC) return (A.Type == B.Type) and (A.Context == B.Context) and (A.Routine == B.Routine);
+   else if (A.Type == CALL_SCRIPT) return (A.Type == B.Type) and (A.Context == B.Context) and (A.ProcedureID == B.ProcedureID);
    else return (A.Type == B.Type);
 }

@@ -120,16 +120,12 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
 
-         const ScriptArg args[] = {
-            { "ViewWidth",  Self->VPWidth },
-            { "ViewHeight", Self->VPHeight }
-         };
-         scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, std::ssize(args), NULL);
+         scCall(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
       else if (trigger.isC()) {
-         auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.StdC.Routine;
-         pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight, trigger.StdC.Meta);
+         auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.Routine;
+         pf::SwitchContext context(trigger.Context);
+         routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, trigger.Meta);
       }
    }
 
@@ -610,7 +606,7 @@ static ERR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
 
    if (Self->EventCallback.isScript()) {
-      UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      UnsubscribeAction(Self->EventCallback.Context, AC_Free);
       Self->EventCallback.clear();
    }
 
@@ -1034,7 +1030,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self, APTR Void)
          // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 
          ERR error;
-         if (scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, &error) IS ERR::Okay) {
+         if (scCall(trigger, error) IS ERR::Okay) {
             if (error IS ERR::Skip) {
                log.msg("The refresh request has been handled by an event trigger.");
                return ERR::Okay;
@@ -1042,9 +1038,9 @@ static ERR DOCUMENT_Refresh(extDocument *Self, APTR Void)
          }
       }
       else if (trigger.isC()) {
-         auto routine = (void (*)(APTR, extDocument *))trigger.StdC.Routine;
-         pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self);
+         auto routine = (void (*)(APTR, extDocument *))trigger.Routine;
+         pf::SwitchContext context(trigger.Context);
+         routine(trigger.Context, Self);
       }
    }
 
@@ -1121,7 +1117,7 @@ static ERR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *
 
    if (Args->Function->isC()) {
       for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
-         if ((it->isC()) and (it->StdC.Routine IS Args->Function->StdC.Routine)) {
+         if ((it->isC()) and (it->Routine IS Args->Function->Routine)) {
             Self->Triggers[Args->Trigger].erase(it);
             return ERR::Okay;
          }
@@ -1130,8 +1126,8 @@ static ERR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *
    else if (Args->Function->isScript()) {
       for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
          if ((it->isScript()) and
-             (it->Script.Script IS Args->Function->Script.Script) and
-             (it->Script.ProcedureID IS Args->Function->Script.ProcedureID)) {
+             (it->Context IS Args->Function->Context) and
+             (it->ProcedureID IS Args->Function->ProcedureID)) {
             Self->Triggers[Args->Trigger].erase(it);
             return ERR::Okay;
          }

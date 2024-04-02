@@ -1432,7 +1432,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERR Err
       if (!glSubReadOnly) {
          if (!glDelayedSubscribe.empty()) {
             for (auto &entry : glDelayedSubscribe) {
-               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.StdC.Context, entry.Callback.StdC.Routine, entry.Callback.StdC.Meta);
+               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.Context, entry.Callback.Routine, entry.Callback.Meta);
             }
             glDelayedSubscribe.clear();
          }
@@ -1878,7 +1878,7 @@ ERR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    else {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
-      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine, Callback->StdC.Meta);
+      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->Context, Callback->Routine, Callback->Meta);
       Object->NotifyFlags.fetch_or(1LL<<(ActionID & 63), std::memory_order::relaxed);
    }
 

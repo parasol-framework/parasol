@@ -16,18 +16,12 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 {
    auto &sample = Audio.Samples[SampleHandle];
    if (sample.OnStop.isC()) {
-      pf::SwitchContext context(sample.OnStop.StdC.Context);
-      auto routine = (void (*)(extAudio *, LONG, APTR))sample.OnStop.StdC.Routine;
-      routine(&Audio, SampleHandle, sample.OnStop.StdC.Meta);
+      pf::SwitchContext context(sample.OnStop.Context);
+      auto routine = (void (*)(extAudio *, LONG, APTR))sample.OnStop.Routine;
+      routine(&Audio, SampleHandle, sample.OnStop.Meta);
    }
    else if (sample.OnStop.isScript()) {
-      auto script = sample.OnStop.Script.Script;
-      const ScriptArg args[] = {
-         { "Audio",  &Audio, FD_OBJECTPTR },
-         { "Handle", SampleHandle }
-      };
-      ERR error;
-      scCallback(script, sample.OnStop.Script.ProcedureID, args, std::ssize(args), &error);
+      scCall(sample.OnStop, std::to_array<ScriptArg>({ { "Audio", &Audio, FD_OBJECTPTR }, { "Handle", SampleHandle } }));
    }
 }
 
@@ -37,23 +31,21 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 {
    if (Sample.Callback.isC()) {
-      pf::SwitchContext context(Sample.Callback.StdC.Context);
-      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG, APTR))Sample.Callback.StdC.Routine;
-      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType), Sample.Callback.StdC.Meta);
+      pf::SwitchContext context(Sample.Callback.Context);
+      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG, APTR))Sample.Callback.Routine;
+      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType), Sample.Callback.Meta);
    }
    else if (Sample.Callback.isScript()) {
-      auto script = Sample.Callback.Script.Script;
-      const ScriptArg args[] = {
+      const auto args = std::to_array<ScriptArg>({
          { "Handle", Handle },
          { "Offset", Offset },
          { "Buffer", Sample.Data, FD_BUFFER },
          { "Length", Sample.SampleLength<<sample_shift(Sample.SampleType), FD_BUFSIZE|FD_LONG }
-      };
+      });
 
-      ERR result = ERR::Okay;
-      ERR error;
-      if (scCallback(script, Sample.Callback.Script.ProcedureID, args, std::ssize(args), &result) != ERR::Okay) error = ERR::Failed;
-      return BYTELEN(result);
+      ERR result;
+      if (scCall(Sample.Callback, args, result) IS ERR::Okay) return BYTELEN(result);
+      else return BYTELEN(0);
    }
 
    return BYTELEN(0);
