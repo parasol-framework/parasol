@@ -1,0 +1,42 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<!--
+Demonstrate the application of vertice limits for elliptical shapes (not an SVG feature).  This feature makes it easy
+to construct common geometric shapes like triangles, hexagons etc.  Manipulating the rx and ry values makes it possible
+to squash the shape on one of its axes.
+-->
+
+<svg viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet" version = "1.1" xmlns="http://www.w3.org/2000/svg"  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <rect fill="#ffffff" width="100%" height="100%"/>
+
+  <ellipse cx="110" cy="110" r="90" vertices="3" stroke="black" stroke-width="2" fill="none"/>
+  <ellipse cx="110" cy="330" r="90" vertices="4" stroke="green" stroke-width="2" fill="none"/>
+  <ellipse cx="110" cy="550" r="90" vertices="5" stroke="orange" stroke-width="12" fill="yellow"/>
+  <ellipse cx="110" cy="770" r="90" vertices="6" stroke="red" stroke-width="2" fill="none"/>
+  <ellipse cx="110" cy="1000" r="90" vertices="7" stroke="lightblue" stroke-width="4" fill="none"/>
+
+  <ellipse cx="350" cy="110" r="90" vertices="8" stroke="red" stroke-width="2" fill="none"/>
+  <ellipse cx="350" cy="330" r="110" vertices="9" stroke="grey" stroke-width="6" fill="none"/>
+  <ellipse cx="350" cy="550" r="90" vertices="10" stroke="turquoise" stroke-width="12" fill="none"/>
+  <ellipse cx="350" cy="770" r="90" vertices="11" stroke="black" stroke-width="1" fill="none"/>
+  <ellipse cx="350" cy="1000" r="90" vertices="12" stroke="pink" stroke-width="4" fill="yellow"/>
+
+  <ellipse cx="600" cy="110" r="90" vertices="13" stroke="rgb(128,128,128)" stroke-width="6" fill="none"/>
+  <ellipse cx="600" cy="330" r="110" vertices="14" stroke="blue" stroke-width="1" fill="none"/>
+  <ellipse cx="600" cy="550" r="90" vertices="15" stroke="darkred" stroke-width="12" fill="none"/>
+  <ellipse cx="600" cy="770" r="90" vertices="16" stroke="green" stroke-width="1" fill="none"/>
+  <ellipse cx="600" cy="1000" r="90" vertices="17" stroke="grey" stroke-width="6" fill="none"/>
+
+  <ellipse cx="850" cy="110" rx="90" ry="45" vertices="3" stroke="black" stroke-width="2" fill="none"/>
+  <ellipse cx="850" cy="330" rx="90" ry="45" vertices="4" stroke="green" stroke-width="2" fill="none"/>
+  <ellipse cx="850" cy="550" rx="90" ry="45" vertices="5" stroke="orange" stroke-width="12" fill="yellow"/>
+  <ellipse cx="850" cy="770" rx="90" ry="45" vertices="6" stroke="red" stroke-width="2" fill="none"/>
+  <ellipse cx="850" cy="1000" rx="90" ry="45" vertices="7" stroke="lightblue" stroke-width="4" fill="none"/>
+
+  <ellipse cx="1100" cy="110" rx="45" ry="90" vertices="8" stroke="red" stroke-width="2" fill="none"/>
+  <ellipse cx="1100" cy="330" rx="45" ry="90" vertices="9" stroke="grey" stroke-width="6" fill="none"/>
+  <ellipse cx="1100" cy="550" rx="45" ry="90" vertices="10" stroke="turquoise" stroke-width="12" fill="none"/>
+  <ellipse cx="1100" cy="770" rx="45" ry="90" vertices="11" stroke="black" stroke-width="1" fill="none"/>
+  <ellipse cx="1100" cy="1000" rx="45" ry="90" vertices="12" stroke="pink" stroke-width="4" fill="yellow"/>
+</svg>

@@ -20,9 +20,6 @@ function renderSVGToBitmap(Path)
 end
 
 function hashTestSVG(Path, ExpectedHash)
-   if (ExpectedHash == 0) then
-      error('File "' .. Path .. '" is yet to be assigned a checksum.')
-   end
    local bmp = renderSVGToBitmap(glSVGFolder .. Path)
    local hash = mSys.GenCRC32(0, bmp.data, bmp.size)
    if (ExpectedHash != hash) then
@@ -50,6 +47,7 @@ end
 
 function testCircles()            hashTestSVG('paths/circles.svg', 0xc2063c38) end
 function testMorph()              hashTestSVG('paths/morph.svg', 0x50272d17) end
+function testEllipseVertices()    hashTestSVG('paths/ellipse_vertices.svg', 0xee1cb501) end
 function testPolygons()           hashTestSVG('paths/polygons.svg', 0x2f17adec) end
 function testShapes()             hashTestSVG('paths/shapes.svg', 0xd67937c9) end
 function testSpirals()            hashTestSVG('paths/spirals.svg', 0x669dc06e) end
@@ -318,6 +316,7 @@ function testW3TextB25() hashTestSVG('text/text-ws-03-t.svg', -1) end
         'testClip',
         'testClipViewBox',
         'testClipViaUse',
+        'testEllipseVertices',
         'testMorph',
         'testPolygons',
         'testShapes',
