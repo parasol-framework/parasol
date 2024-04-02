@@ -123,100 +123,87 @@ static int obj_jump_method(lua_State *Lua, const obj_read &Handle, object *def)
 
 //********************************************************************************************************************
 
-inline READ_TABLE * get_read_table(object *Def)
+inline void build_read_table(object *Def)
 {
-   if (!Def->ReadTable) {
-      if (auto it = glClassReadTable.find(Def->Class); it != glClassReadTable.end()) {
-         Def->ReadTable = &it->second;
-      }
-      else {
-         READ_TABLE jmp;
+   if (Def->ReadTable) return;
 
-         // Every possible action is hashed because both sub-class and base-class actions require support.
+   if (auto it = glClassReadTable.find(Def->Class); it != glClassReadTable.end()) {
+      Def->ReadTable = &it->second;
+      return;
+   }
 
-         for (LONG code=1; code < AC_END; code++) {
-            auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
-            jmp.insert(obj_read(hash, glJumpActions[code]));
+   READ_TABLE jmp;
+
+   // Every possible action is hashed because both sub-class and base-class actions require support.
+
+   for (LONG code=1; code < AC_END; code++) {
+      auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
+      jmp.insert(obj_read(hash, glJumpActions[code]));
+   }
+
+   MethodEntry *methods;
+   LONG total_methods;
+   if (GetFieldArray(Def->Class, FID_Methods, &methods, &total_methods) IS ERR::Okay) {
+      for (LONG i=1; i < total_methods; i++) {
+         if (methods[i].MethodID) {
+            auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
+            jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
          }
-
-         MethodEntry *methods;
-         LONG total_methods;
-         if (GetFieldArray(Def->Class, FID_Methods, &methods, &total_methods) IS ERR::Okay) {
-            for (LONG i=1; i < total_methods; i++) {
-               if (methods[i].MethodID) {
-                  auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
-                  jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
-               }
-            }
-         }
-
-         Field *dict;
-         LONG total_dict;
-         if (GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict) IS ERR::Okay) {
-            jmp.insert(obj_read(simple_hash("id"), object_get_id));
-
-            for (LONG i=0; i < total_dict; i++) {
-               if (dict[i].Flags & FDF_R) {
-                  char ch[2] = { dict[i].Name[0], 0 };
-                  if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
-                  auto hash = simple_hash(dict[i].Name+1, simple_hash(ch));
-
-                  if (dict[i].Flags & FD_ARRAY) {
-                     if (dict[i].Flags & FD_RGB) {
-                        jmp.insert(obj_read(hash, object_get_rgb, &dict[i]));
-                     }
-                     else jmp.insert(obj_read(hash, object_get_array, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_STRUCT) {
-                     jmp.insert(obj_read(hash, object_get_struct, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_STRING) {
-                     jmp.insert(obj_read(hash, object_get_string, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_POINTER) {
-                     if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
-                        jmp.insert(obj_read(hash, object_get_object, &dict[i]));
-                     }
-                     else jmp.insert(obj_read(hash, object_get_ptr, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_DOUBLE) {
-                     jmp.insert(obj_read(hash, object_get_double, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_LARGE) {
-                     jmp.insert(obj_read(hash, object_get_large, &dict[i]));
-                  }
-                  else if (dict[i].Flags & FD_LONG) {
-                     if (dict[i].Flags & FD_UNSIGNED) {
-                        jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
-                     }
-                     else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
-                  }
-               }
-            }
-         }
-
-         jmp.emplace(OJH_init, stack_object_init);
-         jmp.emplace(OJH_free, stack_object_free);
-         jmp.emplace(OJH_lock, stack_object_lock);
-         jmp.emplace(OJH_children, stack_object_children);
-         jmp.emplace(OJH_detach, stack_object_detach);
-         jmp.emplace(OJH_get, stack_object_get);
-         jmp.emplace(OJH_new, stack_object_newchild);
-         jmp.emplace(OJH_state, stack_object_state);
-         jmp.emplace(OJH_var, stack_object_getVar);
-         jmp.emplace(OJH_getVar, stack_object_getVar);
-         jmp.emplace(OJH_set, stack_object_set);
-         jmp.emplace(OJH_setVar, stack_object_setVar);
-         jmp.emplace(OJH_delayCall, stack_object_delayCall);
-         jmp.emplace(OJH_exists, stack_object_exists);
-         jmp.emplace(OJH_subscribe, stack_object_subscribe);
-         jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
-
-         glClassReadTable[Def->Class] = std::move(jmp);
-         Def->ReadTable = &glClassReadTable[Def->Class];
       }
    }
-   return Def->ReadTable;
+
+   Field *dict;
+   LONG total_dict;
+   if (GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict) IS ERR::Okay) {
+      jmp.insert(obj_read(simple_hash("id"), object_get_id));
+
+      for (LONG i=0; i < total_dict; i++) {
+         if (!(dict[i].Flags & FDF_R)) continue;
+
+         char ch[2] = { dict[i].Name[0], 0 };
+         if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
+         auto hash = simple_hash(dict[i].Name+1, simple_hash(ch));
+
+         if (dict[i].Flags & FD_ARRAY) {
+            if (dict[i].Flags & FD_RGB) jmp.insert(obj_read(hash, object_get_rgb, &dict[i]));
+            else jmp.insert(obj_read(hash, object_get_array, &dict[i]));
+         }
+         else if (dict[i].Flags & FD_STRUCT) jmp.insert(obj_read(hash, object_get_struct, &dict[i]));
+         else if (dict[i].Flags & FD_STRING) jmp.insert(obj_read(hash, object_get_string, &dict[i]));
+         else if (dict[i].Flags & FD_POINTER) {
+            if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
+               jmp.insert(obj_read(hash, object_get_object, &dict[i]));
+            }
+            else jmp.insert(obj_read(hash, object_get_ptr, &dict[i]));
+         }
+         else if (dict[i].Flags & FD_DOUBLE) jmp.insert(obj_read(hash, object_get_double, &dict[i]));
+         else if (dict[i].Flags & FD_LARGE) jmp.insert(obj_read(hash, object_get_large, &dict[i]));
+         else if (dict[i].Flags & FD_LONG) {
+            if (dict[i].Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
+            else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
+         }
+      }
+   }
+
+   jmp.emplace(OJH_init, stack_object_init);
+   jmp.emplace(OJH_free, stack_object_free);
+   jmp.emplace(OJH_lock, stack_object_lock);
+   jmp.emplace(OJH_children, stack_object_children);
+   jmp.emplace(OJH_detach, stack_object_detach);
+   jmp.emplace(OJH_get, stack_object_get);
+   jmp.emplace(OJH_new, stack_object_newchild);
+   jmp.emplace(OJH_state, stack_object_state);
+   jmp.emplace(OJH_var, stack_object_getVar);
+   jmp.emplace(OJH_getVar, stack_object_getVar);
+   jmp.emplace(OJH_set, stack_object_set);
+   jmp.emplace(OJH_setVar, stack_object_setVar);
+   jmp.emplace(OJH_delayCall, stack_object_delayCall);
+   jmp.emplace(OJH_exists, stack_object_exists);
+   jmp.emplace(OJH_subscribe, stack_object_subscribe);
+   jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
+
+   glClassReadTable[Def->Class] = std::move(jmp);
+   Def->ReadTable = &glClassReadTable[Def->Class];
 }
 
 //********************************************************************************************************************
@@ -281,7 +268,7 @@ static int object_index(lua_State *Lua)
 {
    if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       auto keyname = luaL_checkstring(Lua, 2);
-      auto jt  = get_read_table(def);
+      build_read_table(def);
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
          luaL_error(Lua, "Unable to read field %s", keyname);
@@ -290,7 +277,7 @@ static int object_index(lua_State *Lua)
          return 0;
       }
 
-      if (auto func = jt->find(obj_read(simple_hash(keyname))); func != jt->end()) {
+      if (auto func = def->ReadTable->find(obj_read(simple_hash(keyname))); func != def->ReadTable->end()) {
          return func->Call(Lua, *func, def);
       }
       else {

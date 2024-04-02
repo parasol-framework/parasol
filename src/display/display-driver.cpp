@@ -297,10 +297,9 @@ void get_resolutions(extDisplay *Self)
 ERR xr_set_display_mode(LONG *Width, LONG *Height)
 {
    pf::Log log(__FUNCTION__);
-   LONG count;
-   WORD i;
-   WORD width = *Width;
-   WORD height = *Height;
+   LONG count, i;
+   LONG width = *Width;
+   LONG height = *Height;
 
    XRRScreenSize *sizes;
    if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
@@ -1196,7 +1195,7 @@ static ERR CMDExpunge(void)
 {
    pf::Log log(__FUNCTION__);
    ERR error = ERR::Okay;
-   
+
    clean_clipboard();
 
    glClips.clear();

@@ -255,7 +255,9 @@ gui.toolbar = function(HostVP, Options)
                end
             elseif nz(item.displayName) then
                local gname = 'tbar_grd' .. counter()
-               item.svgGradient = gui.simpleGradient(self.viewport.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, item.y, 0, item.height, 'userspace')
+               item.svgGradient = gui.simpleGradient(self.viewport.scene, gname,
+                  { lColours.iconGradient.first, lColours.iconGradient.last },
+                  0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = self.vg.new('VectorText', {
                   x        = x + self._cellMargin,
