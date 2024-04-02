@@ -147,14 +147,11 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.Meta);
    }
    else if (Self->Feedback.isScript()) {
-      const ScriptArg args[] = {
+      scCall(Self->Feedback, std::to_array<ScriptArg>({
          { "NetSocket",    Self, FD_OBJECTPTR },
          { "ClientSocket", client_socket, FD_OBJECTPTR },
          { "State",        LONG(NTC::CONNECTED) }
-      };
-
-      auto script = Self->Feedback.Context;
-      scCallback(script, Self->Feedback.ProcedureID, args, std::ssize(args), NULL);
+      }));
    }
 
    log.trace("Total clients: %d", Self->TotalClients);
@@ -221,14 +218,11 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
          if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.Meta);
       }
       else if (Socket->Feedback.isScript()) {
-         const ScriptArg args[] = {
+         scCall(Socket->Feedback, std::to_array<ScriptArg>({
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR },
             { "State",        LONG(NTC::DISCONNECTED) }
-         };
-
-         auto script = Socket->Feedback.Context;
-         scCallback(script, Socket->Feedback.ProcedureID, args, std::ssize(args), NULL);
+         }));
       }
    }
 

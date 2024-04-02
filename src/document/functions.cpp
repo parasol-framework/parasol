@@ -987,22 +987,20 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
       else if (Self->EventCallback.isScript()) {
          if (auto script = Self->EventCallback.Context) {
             if (EventData) {
-               ScriptArg args[] = {
+               scCall(Self->EventCallback, std::to_array<ScriptArg>({
                   { "Document", Self, FD_OBJECTPTR },
                   { "EventMask", LONG(Event) },
                   { "KeyValue:Parameters", EventData, FD_STRUCT },
                   { "Entity", Entity->uid }
-               };
-               scCallback(script, Self->EventCallback.ProcedureID, args, std::ssize(args), &result);
+               }), result);
             }
             else {
-               ScriptArg args[] = {
-                  { "Document", Self, FD_OBJECTPTR },
+               scCall(Self->EventCallback, std::to_array<ScriptArg>({
+                  { "Document",  Self, FD_OBJECTPTR },
                   { "EventMask", LONG(Event) },
-                  { "KeyValue", LONG(0) },
-                  { "Entity", Entity->uid }
-               };
-               scCallback(script, Self->EventCallback.ProcedureID, args, std::ssize(args), &result);
+                  { "KeyValue",  LONG(0) },
+                  { "Entity",    Entity->uid }
+               }), result);
             }
          }
       }

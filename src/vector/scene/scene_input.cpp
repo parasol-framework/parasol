@@ -74,11 +74,10 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
             result = callback(Vector, Event, sub.Callback.Meta);
          }
          else if (sub.Callback.isScript()) {
-            ScriptArg args[] = {
-               ScriptArg("Vector", Vector, FDF_OBJECT),
-               ScriptArg("InputEvent:Events", Event, FDF_STRUCT)
-            };
-            scCallback(sub.Callback.Context, sub.Callback.ProcedureID, args, std::ssize(args), &result);
+            scCall(sub.Callback, std::to_array<ScriptArg>({
+               { "Vector", Vector, FDF_OBJECT },
+               { "InputEvent:Events", Event, FDF_STRUCT }
+            }), result);
          }
 
          if (result IS ERR::Terminate) it = Vector->InputSubscriptions->erase(it);

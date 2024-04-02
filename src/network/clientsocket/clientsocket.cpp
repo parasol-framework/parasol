@@ -37,12 +37,10 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
          error = routine(Socket, ClientSocket, Socket->Incoming.Meta);
       }
       else if (Socket->Incoming.isScript()) {
-         const ScriptArg args[] = {
-            { "NetSocket",    Socket, FD_OBJECTPTR },
-            { "ClientSocket", ClientSocket, FD_OBJECTPTR }
-         };
-
-         if (scCallback(Socket->Incoming.Context, Socket->Incoming.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         if (scCall(Socket->Incoming, std::to_array<ScriptArg>({
+               { "NetSocket",    Socket, FD_OBJECTPTR },
+               { "ClientSocket", ClientSocket, FD_OBJECTPTR }
+            }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::InvalidValue;
 
@@ -147,11 +145,10 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
             error = routine(Socket, ClientSocket, ClientSocket->Outgoing.Meta);
          }
          else if (ClientSocket->Outgoing.isScript()) {
-            const ScriptArg args[] = {
-               { "NetSocket", Socket, FD_OBJECTPTR },
-               { "ClientSocket", ClientSocket, FD_OBJECTPTR }
-            };
-            if (scCallback(ClientSocket->Outgoing.Context, ClientSocket->Outgoing.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+            if (scCall(ClientSocket->Outgoing, std::to_array<ScriptArg>({
+                  { "NetSocket", Socket, FD_OBJECTPTR },
+                  { "ClientSocket", ClientSocket, FD_OBJECTPTR }
+               }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
          if (error != ERR::Okay) ClientSocket->Outgoing.clear();

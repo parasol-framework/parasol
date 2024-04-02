@@ -2266,15 +2266,27 @@ inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
   ]])
-  
+
   c_insert([[
-template <std::size_t SIZE> ERR scCall(FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
+template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
    struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
    return Action(MT_ScCallback, Function.Context, &args);
 }
 
-template <std::size_t SIZE> ERR scCall(FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
+template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
    struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+   ERR error = Action(MT_ScCallback, Function.Context, &args);
+   Result = args.Error;
+   return(error);
+}
+
+inline ERR scCall(const FUNCTION &Function) noexcept {
+   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+   return Action(MT_ScCallback, Function.Context, &args);
+}
+
+inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
+   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
    ERR error = Action(MT_ScCallback, Function.Context, &args);
    Result = args.Error;
    return(error);

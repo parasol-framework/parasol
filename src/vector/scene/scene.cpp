@@ -790,15 +790,14 @@ static void process_resize_msgs(extVectorScene *Self)
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.Meta);
             }
             else if (func.isScript()) {
-               ScriptArg args[] = {
+               scCall(func, std::to_array<ScriptArg>({
                   { "Viewport",       view, FDF_OBJECT },
                   { "Vector",         vector, FDF_OBJECT },
                   { "ViewportX",      view->FinalX },
                   { "ViewportY",      view->FinalY },
                   { "ViewportWidth",  view->vpFixedWidth },
                   { "ViewportHeight", view->vpFixedHeight }
-               };
-               scCallback(func.Context, func.ProcedureID, args, std::ssize(args), &result);
+               }));
             }
          }
       }
@@ -822,13 +821,12 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
       }
       else if (sub.Callback.isScript()) {
          // In this implementation the script function will receive all the events chained via the Next field
-         ScriptArg args[] = {
+         scCall(sub.Callback, std::to_array<ScriptArg>({
             { "Vector",     Vector, FDF_OBJECT },
             { "Qualifiers", LONG(Event->Qualifiers) },
             { "Code",       LONG(Event->Code) },
             { "Unicode",    Event->Unicode }
-         };
-         scCallback(sub.Callback.Context, sub.Callback.ProcedureID, args, std::ssize(args), &result);
+         }), result);
       }
 
       if (result IS ERR::Terminate) Vector->KeyboardSubscriptions->erase(it);

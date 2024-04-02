@@ -120,11 +120,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
 
-         const ScriptArg args[] = {
-            { "ViewWidth",  Self->VPWidth },
-            { "ViewHeight", Self->VPHeight }
-         };
-         scCallback(trigger.Context, trigger.ProcedureID, args, std::ssize(args), NULL);
+         scCall(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.Routine;
@@ -1034,7 +1030,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self, APTR Void)
          // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 
          ERR error;
-         if (scCallback(trigger.Context, trigger.ProcedureID, NULL, 0, &error) IS ERR::Okay) {
+         if (scCall(trigger, error) IS ERR::Okay) {
             if (error IS ERR::Skip) {
                log.msg("The refresh request has been handled by an event trigger.");
                return ERR::Okay;

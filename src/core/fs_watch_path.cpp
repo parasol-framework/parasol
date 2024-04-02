@@ -194,16 +194,12 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags, glFileMonitor[i].Routine.Meta);
             }
             else if (glFileMonitor[i].Routine.isScript()) {
-               if (auto script = tlFeedback.Context) {
-                  const ScriptArg args[] = {
+               if (scCall(glFileMonitor[i].Routine, std::to_array<ScriptArg>({
                      { "File",   glFileMonitor[i].File },
                      { "Path",   path },
                      { "Custom", glFileMonitor[i].Custom },
                      { "Flags",  LONG(flags) }
-                  };
-                  if (scCallback(script, tlFeedback.ProcedureID, args, std::ssize(args), &error)) error = ERR::Failed;
-               }
-               else error = ERR::Terminate;
+                  }), error)) error = ERR::Failed;
             }
 
             if (error IS ERR::Terminate) Action(MT_FlWatch, glFileMonitor[i].File, NULL);
@@ -266,16 +262,12 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
             error = routine(File, path, File->prvWatch->Custom, status, File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
-            if (auto script = File->prvWatch->Routine.Context) {
-               const ScriptArg args[] = {
-                  { "File",   File, FD_OBJECTPTR },
-                  { "Path",   path },
-                  { "Custom", File->prvWatch->Custom },
-                  { "Flags",  0 }
-               };
-               if (scCallback(script, File->prvWatch->Routine.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
-            }
-            else error = ERR::Terminate;
+            if (scCall(File->prvWatch->Routine, std::to_array<ScriptArg>({
+               { "File",   File, FD_OBJECTPTR },
+               { "Path",   path },
+               { "Custom", File->prvWatch->Custom },
+               { "Flags",  0 }
+            }), error) != ERR::Okay) error = ERR::Failed;
          }
          else error = ERR::Terminate;
 

@@ -129,14 +129,13 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
       routine(DisplayID, X, Y, Width, Height, Feedback->Meta);
    }
    else if (Feedback->isScript()) {
-      const ScriptArg args[] = {
+      scCall(*Feedback, std::to_array<ScriptArg>({
          { "Display", DisplayID, FD_OBJECTID },
          { "X",       X },
          { "Y",       Y },
          { "Width",   Width },
          { "Height",  Height }
-      };
-      scCallback(Feedback->Context, Feedback->ProcedureID, args, std::ssize(args), NULL);
+      }));
    }
 }
 

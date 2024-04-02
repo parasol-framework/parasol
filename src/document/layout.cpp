@@ -1305,13 +1305,10 @@ static void layout_doc(extDocument *Self)
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.isScript()) {
-            const ScriptArg args[] = {
-               { "ViewWidth",  Self->VPWidth },
-               { "ViewHeight", Self->VPHeight },
-               { "PageWidth",  Self->CalcWidth },
-               { "PageHeight", Self->PageHeight }
-            };
-            scCallback(trigger.Context, trigger.ProcedureID, args, std::ssize(args), NULL);
+            scCall(trigger, std::to_array<ScriptArg>({
+               { "ViewWidth", Self->VPWidth }, { "ViewHeight", Self->VPHeight },
+               { "PageWidth", Self->CalcWidth }, { "PageHeight", Self->PageHeight }
+            }));
          }
          else if (trigger.isC()) {
             auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG, APTR))trigger.Routine;

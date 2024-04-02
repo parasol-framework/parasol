@@ -185,16 +185,14 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
       return routine(Feedback, Callback->Meta);
    }
    else if (Callback->isScript()) {
-      const ScriptArg args[] = {
+      ERR error;
+      if (scCall(*Callback, std::to_array<ScriptArg>({
          { "Size",       Feedback->Size },
          { "Position",   Feedback->Position },
          { "Path",       Feedback->Path },
          { "Dest",       Feedback->Dest },
          { "FeedbackID", LONG(Feedback->FeedbackID) }
-      };
-
-      ERR error;
-      if (scCallback(Callback->Context, Callback->ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+      }), error) != ERR::Okay) error = ERR::Failed;
 
       if (error IS ERR::Okay) {
          CSTRING *results;

@@ -2188,7 +2188,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
    }
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static ERR load_file(extScintilla *Self, CSTRING Path)
 {
@@ -2256,7 +2256,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
    return error;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static void key_event(extScintilla *Self, evKey *Event, LONG Size)
 {
@@ -2329,7 +2329,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
    }
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static ERR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 {
@@ -2352,7 +2352,7 @@ static ERR consume_input_events(const InputEvent *Events, LONG TotalEvents)
    return ERR::Okay;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static void report_event(extScintilla *Self, SEF Event)
 {
@@ -2363,22 +2363,17 @@ static void report_event(extScintilla *Self, SEF Event)
          routine(Self, Event, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {
-         ScriptArg args[] = {
-            ScriptArg("Scintilla", Self, FD_OBJECTPTR),
-            ScriptArg("EventFlags", LARGE(Event))
-         };
-
-         scCallback(Self->EventCallback.Context, Self->EventCallback.ProcedureID, args, std::ssize(args), NULL);
+         scCall(Self->EventCallback, std::to_array<ScriptArg>({ { "Scintilla", Self, FD_OBJECTPTR }, { "EventFlags", LARGE(Event) } }));
       }
    }
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static void calc_longest_line(extScintilla *Self)
 {
    LONG linewidth;
-   #define LINE_COUNT_LIMIT 2000
+   static const LONG LINE_COUNT_LIMIT = 2000;
 
    if (!Self->Font) return;
 

@@ -224,7 +224,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
          routine(task, buffer, len, task->OutputCallback.Meta);
       }
       else if (task->OutputCallback.isScript()) {
-         scCallback(task->OutputCallback, std::to_array<ScriptArg>({
+         scCall(task->OutputCallback, std::to_array<ScriptArg>({
             { "Task",       Task,   FD_OBJECTPTR },
             { "Buffer",     buffer, FD_PTRBUFFER },
             { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
@@ -275,13 +275,11 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG
       routine(Task, Buffer, Size, Callback->Meta);
    }
    else if (Callback->isScript()) {
-      auto script = Callback->Context;
-      const ScriptArg args[] = {
+      scCall(*Callback, std::to_array<ScriptArg>({
          { "Task", Task, FD_OBJECTPTR },
          { "Data", Buffer, FD_PTRBUFFER },
          { "Size", Size, FD_LONG|FD_BUFSIZE }
-      };
-      scCallback(script, Callback->ProcedureID, args, std::ssize(args), NULL);
+      }));
    }
 }
 

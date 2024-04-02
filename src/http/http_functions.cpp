@@ -194,12 +194,10 @@ redo_upload:
       }
       else if (Self->Outgoing.isScript()) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
-         const ScriptArg args[] = {
-            { "HTTP",       Self, FD_OBJECTPTR },
-            { "BufferSize", Self->WriteSize }
-         };
-         auto script = Self->Outgoing.Context;
-         if (scCallback(script, Self->Outgoing.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Failed;
+         if (scCall(Self->Outgoing, std::to_array<ScriptArg>({
+               { "HTTP",       Self, FD_OBJECTPTR },
+               { "BufferSize", Self->WriteSize }
+            }), error) != ERR::Okay) error = ERR::Failed;
          if (error > ERR::ExceptionThreshold) {
             log.warning("Procedure %" PF64 " failed, aborting HTTP call.", Self->Outgoing.ProcedureID);
          }
@@ -1017,13 +1015,11 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
          log.trace("Calling script procedure %" PF64, Self->Incoming.ProcedureID);
 
-         const ScriptArg args[] = {
-            { "HTTP",       Self, FD_OBJECTPTR },
-            { "Buffer",     Buffer, FD_PTRBUFFER },
-            { "BufferSize", Length, FD_LONG|FD_BUFSIZE }
-         };
-
-         if (scCallback(Self->Incoming.Context, Self->Incoming.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         if (scCall(Self->Incoming, std::to_array<ScriptArg>({
+               { "HTTP",       Self,   FD_OBJECTPTR },
+               { "Buffer",     Buffer, FD_PTRBUFFER },
+               { "BufferSize", Length, FD_LONG|FD_BUFSIZE }
+            }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::InvalidValue;
 

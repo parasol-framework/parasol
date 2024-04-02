@@ -1525,13 +1525,10 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
          error = routine(Self, Self->CurrentState, Self->StateChanged.Meta);
       }
       else if (Self->StateChanged.isScript()) {
-         const ScriptArg args[] = {
+         if (scCall(Self->StateChanged, std::to_array<ScriptArg>({
             { "HTTP", Self->UID, FD_OBJECTID },
             { "State", LONG(Self->CurrentState) }
-         };
-
-         auto script = Self->StateChanged.Context;
-         if (scCallback(script, Self->StateChanged.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+         }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::Okay;
 

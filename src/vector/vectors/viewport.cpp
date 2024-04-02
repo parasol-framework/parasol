@@ -52,15 +52,10 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
                routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.Meta);
             }
             else if (Viewport->vpDragCallback.isScript()) {
-               if (auto script = Viewport->vpDragCallback.Context) {
-                  scCall(Viewport->vpDragCallback, std::to_array<ScriptArg>({
-                     { "Viewport", Viewport, FD_OBJECTPTR },
-                     { "X", x },
-                     { "Y", y },
-                     { "OriginX", glDragOriginX },
-                     { "OriginY", glDragOriginY }
-                  }));
-               }
+               scCall(Viewport->vpDragCallback, std::to_array<ScriptArg>({
+                  { "Viewport", Viewport, FD_OBJECTPTR }, { "X", x }, { "Y", y },
+                  { "OriginX", glDragOriginX }, { "OriginY", glDragOriginY }
+               }));
             }
          }
       }

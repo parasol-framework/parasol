@@ -2266,12 +2266,11 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
          }
          else if (sub.Callback.isScript()) {
             // In this implementation the script function will receive all the events chained via the Next field
-            ScriptArg args[] = {
+            scCall(sub.Callback, std::to_array<ScriptArg>({
                { "Vector", Vector, FDF_OBJECT },
                { "Event",  LONG(Event) },
                { "EventObject", EventObject, FDF_OBJECT }
-            };
-            scCallback(sub.Callback.Context, sub.Callback.ProcedureID, args, std::ssize(args), &result);
+            }), result);
          }
 
          sub.Mask |= Event;

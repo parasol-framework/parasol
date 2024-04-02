@@ -1163,12 +1163,11 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             if (routine) routine(Self, NULL, Self->State, Self->Feedback.Meta);
          }
          else if (Self->Feedback.isScript()) {
-            const ScriptArg args[] = {
+            scCall(Self->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    Self, FD_OBJECTPTR },
                { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
                { "State",        LONG(Self->State) }
-            };
-            scCallback(Self->Feedback.Context, Self->Feedback.ProcedureID, args, std::ssize(args), NULL);
+            }));
          }
       }
 

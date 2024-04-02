@@ -680,11 +680,7 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
       routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
    else if (Self->Callback.isScript()) {
-      const ScriptArg args[] = {
-         { "NetLookup", Self, FDF_OBJECT },
-         { "Error",     LONG(Error) }
-      };
-      scCallback(Self->Callback.Context, Self->Callback.ProcedureID, args, std::ssize(args), NULL);
+      scCall(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
    }
 }
 

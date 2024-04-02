@@ -287,8 +287,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
             result = callback(SurfaceID, func->Meta);
          }
          else if (func->isScript()) {
-            ScriptArg args[] = { { "SurfaceID", SurfaceID, FDF_OBJECTID } };
-            scCallback(func->Context, func->ProcedureID, args, std::ssize(args), &result);
+            scCall(func, std::to_array<ScriptArg>({ { "SurfaceID", SurfaceID, FDF_OBJECTID } }), result);
          }
          else result = ERR::Okay;
 

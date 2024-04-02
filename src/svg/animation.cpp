@@ -95,8 +95,7 @@ restart:
          routine(SVG, SVG->FrameCallback.Meta);
       }
       else if (SVG->FrameCallback.isScript()) {
-         const ScriptArg args[] = { { "SVG", SVG, FD_OBJECTPTR } };
-         scCallback(SVG->FrameCallback.Context, SVG->FrameCallback.ProcedureID, args, std::ssize(args), NULL);
+         scCall(SVG->FrameCallback, std::to_array<ScriptArg>({ { "SVG", SVG, FD_OBJECTPTR } }));
       }
    }
 

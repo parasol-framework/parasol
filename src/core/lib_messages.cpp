@@ -357,17 +357,14 @@ timer_cycle:
                else error = ERR::AccessObject;
             }
             else if (timer->Routine.isScript()) {
-               const ScriptArg scargs[] = {
-                  { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
-                  { "Elapsed",     elapsed },
-                  { "CurrentTime", current_time }
-               };
-
                glmTimer.unlock();
                relock = true;
 
-               auto script = (objScript *)timer->Routine.Context;
-               if (scCallback(script, timer->Routine.ProcedureID, scargs, std::ssize(scargs), &error) != ERR::Okay) error = ERR::Terminate;
+               if (scCall(timer->Routine, std::to_array<ScriptArg>({
+                     { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
+                     { "Elapsed",     elapsed },
+                     { "CurrentTime", current_time }
+                  }), error) != ERR::Okay) error = ERR::Terminate;
             }
             else error = ERR::Terminate;
 
@@ -410,14 +407,13 @@ timer_cycle:
                   else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
                }
                else if (hdl->Function.isScript()) {
-                  const ScriptArg args[] = {
-                     { "Custom",   hdl->Custom },
-                     { "UID",      glQueue[i].UID },
-                     { "Type",     glQueue[i].Type },
-                     { "Data",     glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
-                     { "Size",     glQueue[i].Size, FD_LONG|FD_BUFSIZE }
-                  };
-                  if (scCallback(hdl->Function.Context, hdl->Function.ProcedureID, args, std::ssize(args), &result) != ERR::Okay) result = ERR::Terminate;
+                  if (scCall(hdl->Function, std::to_array<ScriptArg>({
+                     { "Custom", hdl->Custom },
+                     { "UID",    glQueue[i].UID },
+                     { "Type",   glQueue[i].Type },
+                     { "Data",   glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
+                     { "Size",   glQueue[i].Size, FD_LONG|FD_BUFSIZE }
+                  }), result) != ERR::Okay) result = ERR::Terminate;
                }
 
                if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else

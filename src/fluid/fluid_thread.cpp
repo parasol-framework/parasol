@@ -100,7 +100,7 @@ static ERR thread_script_callback(OBJECTID ThreadID)
       thread_callback &cb = it->second;
       objScript *script;
       if (AccessObject(cb.mainScriptID, 4000, &script) IS ERR::Okay) {
-         auto prv = (prvFluid *)script->ChildPrivate;
+         auto prv= (prvFluid *)script->ChildPrivate;
          scCallback(script, cb.callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
          ReleaseObject(script);

@@ -176,13 +176,12 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
    else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Context;
       if (LockObject(script, 5000) IS ERR::Okay) {
-         const ScriptArg args[] = {
+         scCall(msg->Callback, std::to_array<ScriptArg>({
             { "ActionID", msg->ActionID },
             { "Object",   msg->Object, FD_OBJECTPTR },
             { "Error",    LONG(msg->Error) },
             { "Key",      msg->Key }
-         };
-         scCallback(script, msg->Callback.ProcedureID, args, std::ssize(args), NULL);
+         }));
          ReleaseObject(script);
       }
    }
@@ -207,13 +206,8 @@ ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
       callback(uid, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
-      if (auto script = msg->Callback.Context) {
-         if (LockObject(script, 5000) IS ERR::Okay) {
-            const ScriptArg args[] = { { "Thread", uid, FD_OBJECTID } };
-            scCallback(script, msg->Callback.ProcedureID, args, std::ssize(args), NULL);
-            ReleaseObject(script);
-         }
-      }
+      ScopedObjectLock<objScript> script(msg->Callback.Context, 5000);
+      if (script.granted()) scCall(msg->Callback, std::to_array<ScriptArg>({ { "Thread", uid, FD_OBJECTID } }));
    }
 
    // NB: Assume 'msg' is unstable after this point because the callback may have modified the message table.
@@ -272,8 +266,7 @@ static void * thread_entry(extThread *Self)
       else if (Self->Routine.isScript()) {
          ScopedObjectLock<objScript> script(Self->Routine.Context, 5000);
          if (script.granted()) {
-            const ScriptArg args[] = { { "Thread", Self, FD_OBJECTPTR } };
-            scCallback(*script, Self->Routine.ProcedureID, args, std::ssize(args), NULL);
+            scCall(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
          }
       }
    }

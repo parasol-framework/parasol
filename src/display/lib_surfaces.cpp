@@ -530,12 +530,10 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
          else routine(Self->Callback[i].Object, Self, Bitmap, cb.Meta);
       }
       else if (cb.isScript()) {
-         const ScriptArg args[] = {
+         scCall(cb, std::to_array<ScriptArg>({
             { "Surface", Self, FD_OBJECTPTR },
             { "Bitmap",  Bitmap, FD_OBJECTPTR }
-         };
-         auto script = cb.Context;
-         scCallback(script, cb.ProcedureID, args, std::ssize(args), NULL);
+         }));
       }
    }
 

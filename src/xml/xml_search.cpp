@@ -213,13 +213,11 @@ ERR extXML::find_tag(CSTRING XPath)
             error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.Meta);
          }
          else if (Callback.isScript()) {
-            const ScriptArg args[] = {
+            if (scCall(Callback, std::to_array<ScriptArg>({
                { "XML",  this, FD_OBJECTPTR },
                { "Tag",  Cursor->ID },
                { "Attrib", Attrib.empty() ? CSTRING(NULL) : Attrib.c_str() }
-            };
-            auto script = Callback.Context;
-            if (scCallback(script, Callback.ProcedureID, args, std::ssize(args), &error) != ERR::Okay) error = ERR::Terminate;
+            }), error) != ERR::Okay) error = ERR::Terminate;
          }
          else return ERR::InvalidValue;
 
