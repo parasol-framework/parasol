@@ -23,7 +23,7 @@ class extVectorEllipse : public extVector {
 
 //********************************************************************************************************************
 
-static void generate_ellipse(extVectorEllipse *Vector)
+static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
 {
    DOUBLE cx = Vector->eCX, cy = Vector->eCY;
    DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
@@ -43,12 +43,12 @@ static void generate_ellipse(extVectorEllipse *Vector)
    // is not good enough to make this viable at the current time.
    // Top -> right -> bottom -> left -> top
 
-   Vector->BasePath.move_to(cx, cy-ry);
-   Vector->BasePath.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, cx+rx, cy);
-   Vector->BasePath.arc_to(rx, ry, 0, 0, 1, cx, cy+ry);
-   Vector->BasePath.arc_to(rx, ry, 0, 0, 1, cx-rx, cy);
-   Vector->BasePath.arc_to(rx, ry, 0, 0, 1, cx, cy-ry);
-   Vector->BasePath.close_polygon();
+   Path.move_to(cx, cy-ry);
+   Path.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, cx+rx, cy);
+   Path.arc_to(rx, ry, 0, 0, 1, cx, cy+ry);
+   Path.arc_to(rx, ry, 0, 0, 1, cx-rx, cy);
+   Path.arc_to(rx, ry, 0, 0, 1, cx, cy-ry);
+   Path.close_polygon();
 #else
    ULONG vertices;
    if (Vector->eVertices >= 3) vertices = Vector->eVertices;
@@ -69,10 +69,10 @@ static void generate_ellipse(extVectorEllipse *Vector)
       //if (m_cw) angle = 2.0 * agg::pi - angle;
       DOUBLE x = cx + cos(angle) * rx;
       DOUBLE y = cy + sin(angle) * ry;
-      if (v == 0) Vector->BasePath.move_to(x, y);
-      else Vector->BasePath.line_to(x, y);
+      if (v == 0) Path.move_to(x, y);
+      else Path.line_to(x, y);
    }
-   Vector->BasePath.close_polygon();
+   Path.close_polygon();
 #endif
 
    Vector->Bounds = { cx - rx, cy - ry, cx + rx, cy + ry };
@@ -116,7 +116,7 @@ static ERR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *Arg
 
 static ERR ELLIPSE_NewObject(extVectorEllipse *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(extVector *))&generate_ellipse;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_ellipse;
    return ERR::Okay;
 }
 

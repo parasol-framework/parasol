@@ -34,7 +34,7 @@ class extVectorShape : public extVector {
 
 //********************************************************************************************************************
 
-static void generate_supershape(extVectorShape *Vector)
+static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 {
    DOUBLE cx = Vector->CX, cy = Vector->CY;
 
@@ -97,40 +97,40 @@ static void generate_supershape(extVectorShape *Vector)
       if (x > rescale) rescale = x;
       else if (y > rescale) rescale = y;
 
-      if (i == 0.0) Vector->BasePath.move_to(x, y); // Plot the vertex
-      else Vector->BasePath.line_to(x, y);
+      if (i == 0.0) Path.move_to(x, y); // Plot the vertex
+      else Path.line_to(x, y);
    }
 
    if (Vector->Spiral > 1) {
-      DOUBLE total = Vector->BasePath.total_vertices();
+      DOUBLE total = Path.total_vertices();
       for (DOUBLE i=0; i < total; i++) {
          DOUBLE x, y;
-         Vector->BasePath.vertex(i, &x, &y);
+         Path.vertex(i, &x, &y);
          x = x * (i / total);
          y = y * (i / total);
-         Vector->BasePath.modify_vertex(i, x, y);
+         Path.modify_vertex(i, x, y);
       }
    }
    else if (Vector->Repeat > 1) {
-      Vector->BasePath.close_polygon(); // Repeated paths are always closed.
+      Path.close_polygon(); // Repeated paths are always closed.
 
-      agg::path_storage clone(Vector->BasePath);
+      agg::path_storage clone(Path);
 
       for (LONG i=0; i < Vector->Repeat-1; i++) {
          agg::trans_affine transform;
          transform.scale(DOUBLE(i+1) / DOUBLE(Vector->Repeat));
          agg::conv_transform<agg::path_storage, agg::trans_affine> scaled_path(clone, transform);
-         Vector->BasePath.concat_path(scaled_path);
+         Path.concat_path(scaled_path);
       }
    }
-   else if (Vector->Close) Vector->BasePath.close_polygon();
+   else if (Vector->Close) Path.close_polygon();
 
    agg::trans_affine transform;
    if (rescale != scale) transform.scale(scale / rescale);
    transform.translate(cx, cy);
-   Vector->BasePath.transform(transform);
+   Path.transform(transform);
 
-   Vector->Bounds = get_bounds(Vector->BasePath);
+   Vector->Bounds = get_bounds(Path);
 }
 
 //********************************************************************************************************************
@@ -147,7 +147,7 @@ static ERR SUPER_NewObject(extVectorShape *Self, APTR Void)
    Self->Phi = 2;
    Self->Vertices = DEFAULT_VERTICES;
    Self->Close = TRUE;
-   Self->GeneratePath = (void (*)(extVector *))&generate_supershape;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_supershape;
    return ERR::Okay;
 }
 

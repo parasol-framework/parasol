@@ -215,7 +215,7 @@ static void add_line(extVectorText *, std::string, LONG Offset, LONG Length, LON
 static ERR cursor_timer(extVectorText *, LARGE, LARGE);
 static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
-static void generate_text(extVectorText *);
+static void generate_text(extVectorText *, agg::path_storage &Path);
 static void raster_text_to_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
 static ERR reset_font(extVectorText *, bool = false);
@@ -404,7 +404,7 @@ static ERR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    new (&Self->txCursor) TextCursor;
 
    StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
-   Self->GeneratePath = (void (*)(extVector *))&generate_text;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 16; // Pixel units @ 72 DPI

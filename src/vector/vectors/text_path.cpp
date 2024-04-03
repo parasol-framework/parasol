@@ -189,7 +189,7 @@ _close:
 // For truetype fonts, this path generator creates text as a single path by concatenating the paths of all individual
 // characters in the string.
 
-static void generate_text(extVectorText *Vector)
+static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -353,7 +353,7 @@ static void generate_text(extVectorText *Vector)
                transform.rotate(angle); // Rotate the character in accordance with its position on the path angle.
                transform.translate(tx, ty); // Move the character to its correct position on the path.
                agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(glyph.path, transform);
-               Vector->BasePath.concat_path(trans_char);
+               Path.concat_path(trans_char);
             }
 
             //dx += char_width;
@@ -424,7 +424,7 @@ static void generate_text(extVectorText *Vector)
 
             transform.translate(dx, dy);
             agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(glyph.path, transform);
-            Vector->BasePath.concat_path(trans_char);
+            Path.concat_path(trans_char);
 
             if (Vector->txCursor.vector) {
                calc_caret_position(line, transform, pt.ascent);
@@ -458,5 +458,5 @@ static void generate_text(extVectorText *Vector)
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in
    // mind it will provide tighter numbers, which is normal).
-   //bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
+   //bounding_rect_single(Path, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }

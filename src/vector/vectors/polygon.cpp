@@ -20,7 +20,7 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 #define MAX_POINTS 1024 * 16 // Maximum of 16k points per polygon object.
 
-static void generate_polygon(extVectorPoly *Vector)
+static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
 {
    auto view_width = get_parent_width(Vector);
    auto view_height = get_parent_height(Vector);
@@ -30,7 +30,7 @@ static void generate_polygon(extVectorPoly *Vector)
       DOUBLE y = Vector->Points[0].Y;
       if (Vector->Points[0].XScaled) x *= view_width;
       if (Vector->Points[0].YScaled) y *= view_height;
-      Vector->BasePath.move_to(x, y);
+      Path.move_to(x, y);
 
       DOUBLE min_x = x, max_x = x, min_y = y, max_y = y;
 
@@ -44,10 +44,10 @@ static void generate_polygon(extVectorPoly *Vector)
          if (y < min_y) min_y = y;
          if (x > max_x) max_x = x;
          if (y > max_y) max_y = y;
-         Vector->BasePath.line_to(x, y);
+         Path.line_to(x, y);
       }
 
-      if ((Vector->TotalPoints > 2) and (Vector->Closed)) Vector->BasePath.close_polygon();
+      if ((Vector->TotalPoints > 2) and (Vector->Closed)) Path.close_polygon();
 
       Vector->Bounds = { min_x, min_y, max_x, max_y };
    }
@@ -197,7 +197,7 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 
 static ERR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(extVector *))&generate_polygon;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_polygon;
    Self->Closed       = TRUE;
    Self->TotalPoints  = 2;
    if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM::DATA, &Self->Points) != ERR::Okay) return ERR::AllocMemory;
