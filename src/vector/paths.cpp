@@ -256,7 +256,7 @@ void gen_vector_path(extVector *Vector)
       if ((Vector->Dirty & RC::BASE_PATH) != RC::NIL) {
          Vector->BasePath.free_all();
 
-         Vector->GeneratePath(Vector);
+         Vector->GeneratePath(Vector, Vector->BasePath);
 
          if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS ID_VECTOR)) {
             if ((Vector->Class->ClassID IS ID_VECTORTEXT) and ((Vector->MorphFlags & VMF::STRETCH) IS VMF::NIL)) {

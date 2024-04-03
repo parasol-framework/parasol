@@ -380,7 +380,7 @@ class extVector : public objVector {
    agg::trans_affine Transform;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
-   void   (*GeneratePath)(extVector *);
+   void   (*GeneratePath)(extVector *, agg::path_storage &);
    agg::rasterizer_scanline_aa<>     *StrokeRaster;
    agg::rasterizer_scanline_aa<>     *FillRaster;
    std::vector<FeedbackSubscription> *FeedbackSubscriptions;
@@ -573,7 +573,7 @@ extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &)
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
 extern void calc_full_boundary(extVector *, TClipRectangle<DOUBLE> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
-extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage *);
+extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);
 extern void debug_tree(extVector *, LONG &);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);

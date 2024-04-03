@@ -9,7 +9,7 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 
 *********************************************************************************************************************/
 
-static void generate_rectangle(extVectorRectangle *Vector)
+static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Path)
 {
    DOUBLE x, y, width, height;
 
@@ -82,23 +82,23 @@ static void generate_rectangle(extVectorRectangle *Vector)
       }
 
       // Top left -> Top right
-      Vector->BasePath.move_to(x+rx[0], y);
-      Vector->BasePath.line_to(x+width-rx[1], y);
-      Vector->BasePath.arc_to(rx[1], ry[1], 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry[1]);
-      
+      Path.move_to(x+rx[0], y);
+      Path.line_to(x+width-rx[1], y);
+      Path.arc_to(rx[1], ry[1], 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry[1]);
+
       // Top right -> Bottom right
-      Vector->BasePath.line_to(x+width, y+height-ry[1]);
-      Vector->BasePath.arc_to(rx[2], ry[2], 0, 0, 1, x+width-rx[2], y+height);
+      Path.line_to(x+width, y+height-ry[1]);
+      Path.arc_to(rx[2], ry[2], 0, 0, 1, x+width-rx[2], y+height);
 
       // Bottom right -> Bottom left
-      Vector->BasePath.line_to(x+rx[2], y+height);
-      Vector->BasePath.arc_to(rx[3], ry[3], 0, 0, 1, x, y+height-ry[3]);
+      Path.line_to(x+rx[2], y+height);
+      Path.arc_to(rx[3], ry[3], 0, 0, 1, x, y+height-ry[3]);
 
       // Bottom left -> Top left
-      Vector->BasePath.line_to(x, y+ry[3]);
-      Vector->BasePath.arc_to(rx[0], ry[0], 0, 0, 1, x+rx[0], y);
+      Path.line_to(x, y+ry[3]);
+      Path.arc_to(rx[0], ry[0], 0, 0, 1, x+rx[0], y);
 
-      Vector->BasePath.close_polygon();
+      Path.close_polygon();
    }
    else if (Vector->rRound[0].x > 0) {
       // SVG rules that RX will also apply to RY unless RY != 0.
@@ -123,30 +123,30 @@ static void generate_rectangle(extVectorRectangle *Vector)
       else ry = rx;
 
       // Top left -> Top right
-      Vector->BasePath.move_to(x+rx, y);
-      Vector->BasePath.line_to(x+width-rx, y);
-      Vector->BasePath.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry);
-      
+      Path.move_to(x+rx, y);
+      Path.line_to(x+width-rx, y);
+      Path.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry);
+
       // Top right -> Bottom right
-      Vector->BasePath.line_to(x+width, y+height-ry);
-      Vector->BasePath.arc_to(rx, ry, 0, 0, 1, x+width-rx, y+height);
+      Path.line_to(x+width, y+height-ry);
+      Path.arc_to(rx, ry, 0, 0, 1, x+width-rx, y+height);
 
       // Bottom right -> Bottom left
-      Vector->BasePath.line_to(x+rx, y+height);
-      Vector->BasePath.arc_to(rx, ry, 0, 0, 1, x, y+height-ry);
+      Path.line_to(x+rx, y+height);
+      Path.arc_to(rx, ry, 0, 0, 1, x, y+height-ry);
 
       // Bottom left -> Top left
-      Vector->BasePath.line_to(x, y+ry);
-      Vector->BasePath.arc_to(rx, ry, 0, 0, 1, x+rx, y);
+      Path.line_to(x, y+ry);
+      Path.arc_to(rx, ry, 0, 0, 1, x+rx, y);
 
-      Vector->BasePath.close_polygon();
+      Path.close_polygon();
    }
    else {
-      Vector->BasePath.move_to(x, y);
-      Vector->BasePath.line_to(x+width, y);
-      Vector->BasePath.line_to(x+width, y+height);
-      Vector->BasePath.line_to(x, y+height);
-      Vector->BasePath.close_polygon();
+      Path.move_to(x, y);
+      Path.line_to(x+width, y);
+      Path.line_to(x+width, y+height);
+      Path.line_to(x, y+height);
+      Path.close_polygon();
    }
 
    Vector->Bounds = { x, y, x + width, y + height };
@@ -194,7 +194,7 @@ static ERR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint 
 
 static ERR RECTANGLE_NewObject(extVectorRectangle *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(extVector *))&generate_rectangle;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_rectangle;
    return ERR::Okay;
 }
 

@@ -11,17 +11,17 @@ VectorPath provides support for parsing SVG styled path strings.
 
 //********************************************************************************************************************
 
-static void generate_path(extVectorPath *Vector)
+static void generate_path(extVectorPath *Vector, agg::path_storage &Path)
 {
    // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and
    // extend it if necessary).
-   convert_to_aggpath(Vector, Vector->Commands, &Vector->BasePath);
-   Vector->Bounds = get_bounds(Vector->BasePath);
+   convert_to_aggpath(Vector, Vector->Commands, Path);
+   Vector->Bounds = get_bounds(Path);
 }
 
 //********************************************************************************************************************
 
-void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
+void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, agg::path_storage &BasePath)
 {
    PathCommand dummy = { PE::NIL, 0, 0, 0, 0, 0 };
    PathCommand &lp = dummy;
@@ -35,136 +35,136 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
          case PE::Move:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->move_to(path.AbsX, path.AbsY);
+            bp.move_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::MoveRel:
             path.AbsX = path.X + lp.AbsX;
             path.AbsY = path.Y + lp.AbsY;
-            bp->move_to(path.AbsX, path.AbsY);
+            bp.move_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::Line:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->line_to(path.AbsX, path.AbsY);
+            bp.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::LineRel:
             path.AbsX = path.X + lp.AbsX;
             path.AbsY = path.Y + lp.AbsY;
-            bp->line_to(path.AbsX, path.AbsY);
+            bp.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::HLine:
             path.AbsX = path.X;
             path.AbsY = lp.AbsY;
-            bp->line_to(path.AbsX, path.AbsY);
+            bp.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::HLineRel:
             path.AbsX = path.X + lp.AbsX;
             path.AbsY = lp.AbsY;
-            bp->line_to(path.AbsX, path.AbsY);
+            bp.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::VLine:
             path.AbsX = lp.AbsX;
             path.AbsY = path.Y;
-            bp->line_to(path.AbsX, path.AbsY);
+            bp.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::VLineRel:
             path.AbsX = lp.AbsX;
             path.AbsY = path.Y + lp.AbsY;
-            bp->line_to(path.AbsX, path.AbsY);
+            bp.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::Curve: // curve4()
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->curve4(path.X2, path.Y2, path.X3, path.Y3, path.AbsX, path.AbsY);
+            bp.curve4(path.X2, path.Y2, path.X3, path.Y3, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::CurveRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.X3+lp.AbsX, path.Y3+lp.AbsY, path.AbsX, path.AbsY);
+            bp.curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.X3+lp.AbsX, path.Y3+lp.AbsY, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
-         case PE::Smooth: 
+         case PE::Smooth:
             // Simplified curve3/4 with one control inherited from the previous vertex
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            if (!lp_curved) bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
-            else bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
+            if (!lp_curved) bp.curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
+            else bp.curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::SmoothRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            if (!lp_curved) bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
-            else bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            if (!lp_curved) bp.curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            else bp.curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::QuadCurve:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
+            bp.curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::QuadCurveRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            bp.curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::QuadSmooth: // Inherits a control from previous vertex
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
+            bp.curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::QuadSmoothRel: // Inherits a control from previous vertex
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            bp.curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::Arc:
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            bp->arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            bp.arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::ArcRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            bp->arc_to(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            bp.arc_to(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::ClosePath:
             path.AbsX = lp.AbsX; // Inherit the previous AbsX/Y values
             path.AbsY = lp.AbsY;
-            bp->close_polygon();
+            bp.close_polygon();
             break;
 
          default:
@@ -212,7 +212,7 @@ static ERR VECTORPATH_Init(extVectorPath *Self, APTR Void)
 static ERR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
 {
    new(&Self->Commands) std::vector<PathCommand>;
-   Self->GeneratePath = (void (*)(extVector *))&generate_path;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_path;
    return ERR::Okay;
 }
 
@@ -406,10 +406,10 @@ static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandLis
 Commands: Direct pointer to the PathCommand array.
 
 Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the control points of
-the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call 
+the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call
 #Flush() to register the changes for the next redraw.
 
-This field can also be written at any time with a new array of PathCommand structures.  Doing so will clear the 
+This field can also be written at any time with a new array of PathCommand structures.  Doing so will clear the
 existing path, if any.
 
 *********************************************************************************************************************/

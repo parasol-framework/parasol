@@ -36,7 +36,7 @@ class extVectorWave : public extVector {
 
 //********************************************************************************************************************
 
-static void generate_wave(extVectorWave *Vector)
+static void generate_wave(extVectorWave *Vector, agg::path_storage &Path)
 {
    DOUBLE ox = Vector->wX, oy = Vector->wY;
    DOUBLE width = Vector->wWidth, height = Vector->wHeight;
@@ -58,17 +58,17 @@ static void generate_wave(extVectorWave *Vector)
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);
 
    if ((Vector->wClose IS WVC::NIL) or (Vector->wThickness > 0)) {
-      Vector->BasePath.move_to(ox + x, oy + y);
+      Path.move_to(ox + x, oy + y);
    }
    else if (Vector->wClose IS WVC::TOP) {
-      Vector->BasePath.move_to(ox + width, oy); // Top right
-      Vector->BasePath.line_to(ox, oy); // Top left
-      Vector->BasePath.line_to(ox + x, oy + y);
+      Path.move_to(ox + width, oy); // Top right
+      Path.line_to(ox, oy); // Top left
+      Path.line_to(ox + x, oy + y);
    }
    else if (Vector->wClose IS WVC::BOTTOM) {
-      Vector->BasePath.move_to(ox + width, oy + height); // Bottom right
-      Vector->BasePath.line_to(ox, oy + height); // Bottom left
-      Vector->BasePath.line_to(ox + x, oy + y);
+      Path.move_to(ox + width, oy + height); // Bottom right
+      Path.line_to(ox, oy + height); // Bottom left
+      Path.line_to(ox + x, oy + y);
    }
    else return;
 
@@ -86,7 +86,7 @@ static void generate_wave(extVectorWave *Vector)
          DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((std::abs(x - last_x) >= 0.5) or (std::abs(y - last_y) >= 0.5)) {
-            Vector->BasePath.line_to(ox + x, oy + y);
+            Path.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -96,14 +96,14 @@ static void generate_wave(extVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath.line_to(ox + x, oy + y);
+      Path.line_to(ox + x, oy + y);
    }
    else if (Vector->wDecay > 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp((DOUBLE)angle / decay) + (height * 0.5);
          if ((std::abs(x - last_x) >= 0.5) or (std::abs(y - last_y) >= 0.5)) {
-            Vector->BasePath.line_to(ox + x, oy + y);
+            Path.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -113,7 +113,7 @@ static void generate_wave(extVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp(360.0 / decay) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath.line_to(ox + x, oy + y);
+      Path.line_to(ox + x, oy + y);
    }
    else if (Vector->wDecay < 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
@@ -121,7 +121,7 @@ static void generate_wave(extVectorWave *Vector)
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / log((DOUBLE)angle / decay) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((std::abs(x - last_x) >= 0.5) or (std::abs(y - last_y) >= 0.5)) {
-            Vector->BasePath.line_to(ox + x, oy + y);
+            Path.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -131,24 +131,24 @@ static void generate_wave(extVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / log(360.0 / decay) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath.line_to(ox + x, oy + y);
+      Path.line_to(ox + x, oy + y);
    }
 
    if (Vector->wThickness > 0) {
       DOUBLE x, y;
-      LONG total = Vector->BasePath.total_vertices();
-      Vector->BasePath.last_vertex(&x, &y);
-      Vector->BasePath.line_to(x, y + Vector->wThickness);
+      LONG total = Path.total_vertices();
+      Path.last_vertex(&x, &y);
+      Path.line_to(x, y + Vector->wThickness);
       for (LONG i=total-1; i >= 0; i--) {
-         Vector->BasePath.vertex(i, &x, &y);
-         Vector->BasePath.line_to(x, y + Vector->wThickness);
+         Path.vertex(i, &x, &y);
+         Path.line_to(x, y + Vector->wThickness);
       }
-      Vector->BasePath.translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
+      Path.translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
    }
 
-   if ((Vector->wClose != WVC::NIL) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
+   if ((Vector->wClose != WVC::NIL) or (Vector->wThickness > 0)) Path.close_polygon();
 
-   Vector->Bounds = get_bounds(Vector->BasePath);
+   Vector->Bounds = get_bounds(Path);
 }
 
 /*********************************************************************************************************************
@@ -193,7 +193,7 @@ static ERR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 
 static ERR WAVE_NewObject(extVectorWave *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(extVector *))&generate_wave;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_wave;
    Self->wFrequency = 1.0;
    Self->wAmplitude = 1.0;
    Self->wDecay = 1.0;

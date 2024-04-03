@@ -478,7 +478,7 @@ ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
       if ((error = read_path(paths, Sequence)) IS ERR::Okay) {
          auto vector = new_simplevector();
          if (vector) {
-            convert_to_aggpath(NULL, paths, &vector->mPath);
+            convert_to_aggpath(NULL, paths, vector->mPath);
             *Path = vector;
          }
          else error = ERR::AllocMemory;

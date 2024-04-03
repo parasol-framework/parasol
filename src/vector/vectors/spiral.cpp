@@ -27,7 +27,7 @@ class extVectorSpiral : public extVector {
 
 //********************************************************************************************************************
 
-static void generate_spiral(extVectorSpiral *Vector)
+static void generate_spiral(extVectorSpiral *Vector, agg::path_storage &Path)
 {
    const DOUBLE cx = (Vector->Dimensions & DMF_SCALED_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
    const DOUBLE cy = (Vector->Dimensions & DMF_SCALED_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
@@ -53,8 +53,8 @@ static void generate_spiral(extVectorSpiral *Vector)
       x += cx;
       y += cy;
       if ((std::abs(x - lx) >= 1.0) or (std::abs(y - ly) >= 1.0)) { // Only record a vertex if its position has significantly changed from the last
-         if (!v) Vector->BasePath.move_to(x, y); // First vertex
-         else Vector->BasePath.line_to(x, y);
+         if (!v) Path.move_to(x, y); // First vertex
+         else Path.line_to(x, y);
          lx = x;
          ly = y;
       }
@@ -65,7 +65,7 @@ static void generate_spiral(extVectorSpiral *Vector)
       if (y < min_y) min_y = y;
       if (x > max_x) max_x = x;
       if (y > max_y) max_y = y;
-      
+
       // These computations control the radius, effectively changing the rate at which the spiral expands.
 
       if (Vector->Spacing) radius = Vector->Offset + (Vector->Spacing * (angle / 360.0));
@@ -84,7 +84,7 @@ static void generate_spiral(extVectorSpiral *Vector)
 static ERR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
 {
    Self->Step   = 1.0;
-   Self->GeneratePath = (void (*)(extVector *))&generate_spiral;
+   Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_spiral;
    return ERR::Okay;
 }
 
@@ -159,7 +159,7 @@ static ERR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
 -FIELD-
 LoopLimit: Used to limit the number of loops produced by the spiral path generator.
 
-The LoopLimit can be used to impose a limit on the total number of loops that are performed by the spiral path 
+The LoopLimit can be used to impose a limit on the total number of loops that are performed by the spiral path
 generator.  It can be used as an alternative to, or conjunction with the #Radius value to limit the final spiral size.
 
 If the LoopLimit is not set, the #Radius will take precedence.
@@ -293,7 +293,7 @@ static ERR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
 -FIELD-
 Radius: The radius of the spiral.  Expressed as a fixed or scaled coordinate.
 
-The radius of the spiral is defined here as either a fixed or scaled value.  If zero, preference is given to 
+The radius of the spiral is defined here as either a fixed or scaled value.  If zero, preference is given to
 #LoopLimit.
 
 *********************************************************************************************************************/
