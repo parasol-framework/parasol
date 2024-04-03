@@ -214,10 +214,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
          morph = NULL;
       }
       else {
-         if (morph->dirty()) { // Regenerate the target path if necessary
-            gen_vector_path(morph);
-            morph->Dirty = RC::NIL;
-         }
+         if (morph->dirty()) gen_vector_path(morph); // Regenerate the target path if necessary
 
          if (!morph->BasePath.total_vertices()) morph = NULL;
          else {

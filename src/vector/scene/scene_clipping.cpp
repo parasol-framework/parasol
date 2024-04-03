@@ -144,10 +144,7 @@ void SceneRenderer::ClipBuffer::resize_bitmap(LONG X, LONG Y, LONG Width, LONG H
 void SceneRenderer::ClipBuffer::draw_viewport(SceneRenderer &Render)
 {
    auto vp = (extVectorViewport *)m_shape;
-   if (vp->dirty()) {
-      gen_vector_path(vp);
-      vp->Dirty = RC::NIL;
-   }
+   if (vp->dirty()) gen_vector_path(vp);
 
    resize_bitmap(F2T(vp->vpBounds.left), F2T(vp->vpBounds.top), F2T(vp->vpBounds.right) + 2, F2T(vp->vpBounds.bottom) + 2);
 
