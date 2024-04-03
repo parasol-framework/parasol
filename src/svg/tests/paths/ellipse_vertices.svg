@@ -8,16 +8,26 @@ to squash the shape on one of its axes.
 -->
 
 <svg viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet" version = "1.1" xmlns="http://www.w3.org/2000/svg"  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <image id="thin_blue_line" xlink:href="../brushes/thin_blue_line.png"/>
+    <image id="chain" xlink:href="../brushes/chain.png"/>
+    <image id="helix" xlink:href="../brushes/helix.png"/>
+    <image id="speckle" xlink:href="../brushes/speckle.png"/>
+    <image id="triangle" xlink:href="../brushes/triangle.png"/>
+    <image id="fuzz" xlink:href="../brushes/fuzz.png"/>
+    <image id="graphite" xlink:href="../brushes/graphite.png"/>
+  </defs>
+
   <rect fill="#ffffff" width="100%" height="100%"/>
 
-  <ellipse cx="110" cy="110" r="90" vertices="3" stroke="black" stroke-width="2" fill="none"/>
-  <ellipse cx="110" cy="330" r="90" vertices="4" stroke="green" stroke-width="2" fill="none"/>
-  <ellipse cx="110" cy="550" r="90" vertices="5" stroke="orange" stroke-width="12" fill="yellow"/>
-  <ellipse cx="110" cy="770" r="90" vertices="6" stroke="red" stroke-width="2" fill="none"/>
-  <ellipse cx="110" cy="1000" r="90" vertices="7" stroke="lightblue" stroke-width="4" fill="none"/>
+  <ellipse cx="110" cy="110" r="90" vertices="3" stroke="url(#chain)" stroke-width="12" fill="none"/>
+  <ellipse cx="110" cy="330" r="90" vertices="4" stroke="url(#helix)" stroke-width="16" fill="none"/>
+  <ellipse cx="110" cy="550" r="90" vertices="5" stroke="url(#speckle)" stroke-width="12" fill="yellow"/>
+  <ellipse cx="110" cy="770" r="90" vertices="6" stroke="url(#graphite)" stroke-width="4" fill="none"/>
+  <ellipse cx="110" cy="1000" r="90" vertices="7" stroke="url(#fuzz)" stroke-width="6" fill="none"/>
 
   <ellipse cx="350" cy="110" r="90" vertices="8" stroke="red" stroke-width="2" fill="none"/>
-  <ellipse cx="350" cy="330" r="110" vertices="9" stroke="grey" stroke-width="6" fill="none"/>
+  <ellipse cx="350" cy="330" r="110" vertices="9" stroke="url(#thin_blue_line)" stroke-width="12" fill="none"/>
   <ellipse cx="350" cy="550" r="90" vertices="10" stroke="turquoise" stroke-width="12" fill="none"/>
   <ellipse cx="350" cy="770" r="90" vertices="11" stroke="black" stroke-width="1" fill="none"/>
   <ellipse cx="350" cy="1000" r="90" vertices="12" stroke="pink" stroke-width="4" fill="yellow"/>
