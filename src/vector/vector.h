@@ -373,7 +373,7 @@ class extVector : public objVector {
    using create = pf::Create<extVector>;
 
    extPainter Fill[2], Stroke;
-   DOUBLE FinalX, FinalY;
+   DOUBLE FinalX, FinalY;         // Used by Viewport to define the target X,Y; also VectorText to position the text' final position.
    TClipRectangle<DOUBLE> Bounds; // Must be calculated by GeneratePath() and called from calc_full_boundary()
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;

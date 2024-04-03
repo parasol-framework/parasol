@@ -9,8 +9,6 @@ VectorPath provides support for parsing SVG styled path strings.
 
 *********************************************************************************************************************/
 
-//********************************************************************************************************************
-
 static void generate_path(extVectorPath *Vector, agg::path_storage &Path)
 {
    // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and

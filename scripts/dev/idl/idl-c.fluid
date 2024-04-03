@@ -1006,7 +1006,7 @@ function class(Name, Options, Blueprint, Private, Custom)
    --
    -- #define MT_[Prefix][Method] [ID]
    -- struct [Prefix][Method] { [Args] }
-   -- INLINE ERR [Prefix][Method]([Args]) { }
+   -- inline ERR [Prefix][Method]([Args]) { }
 
    if (class.methods != nil) then
       local pfx  = class.methodPrefix
@@ -1075,7 +1075,7 @@ function class(Name, Options, Blueprint, Private, Custom)
             class.methods[k].struct = 'struct ' .. lpfx .. method.name .. ' { ' .. def .. ' };'
 
             if (method.inline != false) then
-               local inline = 'INLINE ERR ' .. lpfx .. method.name .. '(' .. call .. ') noexcept {\n'
+               local inline = 'inline ERR ' .. lpfx .. method.name .. '(' .. call .. ') noexcept {\n'
                inline = inline .. '   struct ' .. lpfx .. method.name .. ' args = { ' .. values .. ' };\n'
                if (results) then
                   inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args);\n'

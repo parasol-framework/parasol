@@ -985,23 +985,21 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
          result = routine(Self, Event, EventData, Entity, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {
-         if (auto script = Self->EventCallback.Context) {
-            if (EventData) {
-               scCall(Self->EventCallback, std::to_array<ScriptArg>({
-                  { "Document", Self, FD_OBJECTPTR },
-                  { "EventMask", LONG(Event) },
-                  { "KeyValue:Parameters", EventData, FD_STRUCT },
-                  { "Entity", Entity->uid }
-               }), result);
-            }
-            else {
-               scCall(Self->EventCallback, std::to_array<ScriptArg>({
-                  { "Document",  Self, FD_OBJECTPTR },
-                  { "EventMask", LONG(Event) },
-                  { "KeyValue",  LONG(0) },
-                  { "Entity",    Entity->uid }
-               }), result);
-            }
+         if (EventData) {
+            scCall(Self->EventCallback, std::to_array<ScriptArg>({
+               { "Document", Self, FD_OBJECTPTR },
+               { "EventMask", LONG(Event) },
+               { "KeyValue:Parameters", EventData, FD_STRUCT },
+               { "Entity", Entity->uid }
+            }), result);
+         }
+         else {
+            scCall(Self->EventCallback, std::to_array<ScriptArg>({
+               { "Document",  Self, FD_OBJECTPTR },
+               { "EventMask", LONG(Event) },
+               { "KeyValue",  LONG(0) },
+               { "Entity",    Entity->uid }
+            }), result);
          }
       }
    }

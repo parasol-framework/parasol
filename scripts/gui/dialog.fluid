@@ -130,9 +130,12 @@ gui.dialog.message = function(Options)
       if (page_width < 100) then page_width = 100 end
       if (page_height < 100) then page_height = 100 end
 
-      self.window:sizeHints(page_width, page_height, page_width, page_height, false)
+      self.window:sizeHints(page_width, page_height, page_width * 3, page_height * 3, false)
       self.window.surface.insideWidth  = page_width
       self.window.surface.insideHeight = page_height
+
+      self.viewport.viewWidth  = page_width
+      self.viewport.viewHeight = page_height
    end
 
    local function docEvent(Document, EventFlag, Parameters)
@@ -304,6 +307,7 @@ gui.dialog.message = function(Options)
       center       = true,
       popover      = Options.popover,
       parent       = Options.target,
+      aspectRatio  = true,
       icon         = nz(Options.icon, 'items/question'),
       title        = nz(Options.title, 'Confirmation Required'),
       modal        = nz(Options.modal, false),
@@ -319,7 +323,9 @@ gui.dialog.message = function(Options)
       }
    })
 
-   lDoc = self.window:clientViewport().new('document', {
+   self.viewport = self.window:clientViewport()
+
+   lDoc = self.viewport.new('document', {
       eventMask     = 'LinkActivated',
       eventCallback = docEvent,
       path          = '#Index',

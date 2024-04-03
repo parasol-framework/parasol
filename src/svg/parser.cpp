@@ -77,9 +77,9 @@ void svgState::applyTag(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Total Attributes: %d", LONG(Tag.Attribs.size()));
+   log.traceBranch("Total Attributes: %d", LONG(std::ssize(Tag.Attribs)));
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -145,7 +145,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
       );
 
       std::string id;
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (Tag.Attribs[a].Value.empty()) continue;
 
          switch(StrHash(Tag.Attribs[a].Name)) {
@@ -317,7 +317,7 @@ static ERR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -366,7 +366,7 @@ static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -398,7 +398,7 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    if (NewObject(ID_MERGEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -413,7 +413,7 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    std::vector<MergeSource> list;
    for (auto &child : Tag.Children) {
       if (StrMatch("feMergeNode", child.name()) IS ERR::Okay) {
-         for (unsigned a=1; a < child.Attribs.size(); a++) {
+         for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             if (StrMatch("in", child.Attribs[a].Name) IS ERR::Okay) {
                switch (StrHash(child.Attribs[a].Value)) {
                   case SVF_SOURCEGRAPHIC:   list.push_back(VSF::GRAPHIC); break;
@@ -478,7 +478,7 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -555,7 +555,7 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -647,7 +647,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
    fx->set(FID_Type, LONG(Type));
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -770,7 +770,7 @@ static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLT
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -828,7 +828,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -859,7 +859,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
          LONG mask = 0xff;
          DOUBLE amp = 1.0, offset = 0, exp = 1.0, slope = 1.0, intercept = 0.0;
          std::vector<DOUBLE> values;
-         for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
+         for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(StrHash(child.Attribs[a].Name)) {
                case SVF_TYPE:        type = StrHash(child.Attribs[a].Value); break;
                case SVF_AMPLITUDE:   read_numseq(child.Attribs[a].Value, { &amp }); break;
@@ -914,7 +914,7 @@ static ERR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -1943,7 +1943,7 @@ static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          default: {
             // Anything not immediately recognised is added to the dictionary if it has an 'id' attribute.
             // No object is instantiated -- this is left to the referencee.
-            for (unsigned a=1; a < child.Attribs.size(); a++) {
+            for (LONG a=1; a < std::ssize(child.Attribs); a++) {
                if (StrMatch("id", child.Attribs[a].Name) IS ERR::Okay) {
                   add_id(Self, child, child.Attribs[a].Value);
                   break;
@@ -2054,7 +2054,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
    std::string transition;
    VMF flags = VMF::NIL;
    ARF align = ARF::NIL;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
 
       switch(StrHash(Tag.Attribs[a].Name)) {
@@ -2208,7 +2208,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       viewport->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))); // SVG default
 
       // Apply attributes from 'use' to the group and/or viewport
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -2230,7 +2230,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
       // Apply attributes from the symbol itself to the viewport
 
-      for (unsigned a=1; a < tagref->Attribs.size(); a++) {
+      for (LONG a=1; a < std::ssize(tagref->Attribs); a++) {
          auto &val = tagref->Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -2277,7 +2277,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          // Apply 'use' attributes to the group.
 
          FUNIT tx, ty;
-         for (unsigned t=1; t < Tag.Attribs.size(); t++) {
+         for (LONG t=1; t < std::ssize(Tag.Attribs); t++) {
             if (Tag.Attribs[t].Value.empty()) continue;
 
             // Ignore unrecognised namespaces, e.g. 'inkscape:dx'
@@ -2378,7 +2378,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    auto state = State;
    if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all attribute values to the current state.
 
-   for (a=1; a < LONG(Tag.Attribs.size()); a++) {
+   for (a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -2508,7 +2508,7 @@ static ERR xtag_animatetransform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
    svgAnimation anim;
    anim.TargetVector = Parent->UID;
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
@@ -2640,7 +2640,7 @@ static ERR xtag_animatemotion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       if (Tag.Attribs[a].Value.empty()) continue;
 
       switch(StrHash(Tag.Attribs[a].Name)) {
@@ -2671,7 +2671,7 @@ static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector
 {
    pf::Log log(__FUNCTION__);
 
-   for (unsigned t=1; t < Tag.Attribs.size(); t++) {
+   for (LONG t=1; t < std::ssize(Tag.Attribs); t++) {
       if (Tag.Attribs[t].Value.empty()) continue;
       auto &name = Tag.Attribs[t].Name;
       auto &value = Tag.Attribs[t].Value;
@@ -3138,6 +3138,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          else if (StrMatch("linearRGB", StrValue) IS ERR::Okay) Vector->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
          else if (StrMatch("inherit", StrValue) IS ERR::Okay) Vector->set(FID_ColourSpace, LONG(VCS::INHERIT));
          else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue.c_str(), Tag.LineNo);
+         break;
 
       case SVF_STROKE_LINEJOIN:
          switch(StrHash(StrValue)) {
@@ -3158,6 +3159,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_INHERIT: Vector->set(FID_InnerJoin, LONG(VIJ::INHERIT)); break;
             case SVF_JAG:     Vector->set(FID_InnerJoin, LONG(VIJ::JAG)); break;
          }
+         break;
 
       case SVF_STROKE_LINECAP:
          switch(StrHash(StrValue)) {

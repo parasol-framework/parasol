@@ -156,15 +156,11 @@ static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERR Resu
    if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = NULL;
 }
 
-//********************************************************************************************************************
-
 static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = NULL;
 }
-
-//********************************************************************************************************************
 
 static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
