@@ -570,9 +570,15 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    register_static_modules();
 
    // Initialise all the modules because we don't retain a class database in static builds.
+   // Note that the order of initialisation is variable because glStaticModules is a map.
+   // This can lead to rare bugs in custom builds where modules have dependencies on each other.
 
-   for (auto & [ name, hdr ] : glStaticModules) {
-      objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+   {
+      pf::Log log("Core");
+      log.branch("Initialising %d static modules.", LONG(std::ssize(glStaticModules)));
+      for (auto & [ name, hdr ] : glStaticModules) {
+         objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+      }
    }
 #endif
 
