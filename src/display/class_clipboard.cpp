@@ -416,7 +416,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else error = log.warning(ERR::FieldNotSet);
 
-      if (error IS ERR::Terminate) Self->RequestHandler.Type = 0;
+      if (error IS ERR::Terminate) Self->RequestHandler.Type = CALL::NIL;
 
       return ERR::Okay;
    }
@@ -640,7 +640,7 @@ static ERR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
       if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
       Self->RequestHandler = *Value;
       if (Self->RequestHandler.isScript()) {
-         SubscribeAction(Self->RequestHandler.Context, AC_Free, FUNCTION(notify_script_free));
+         SubscribeAction(Self->RequestHandler.Context, AC_Free, C_FUNCTION(notify_script_free));
       }
    }
    else Self->RequestHandler.clear();

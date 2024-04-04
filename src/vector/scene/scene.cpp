@@ -124,7 +124,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR A
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->KeyHandle) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(scene_key_event), Self, &Self->KeyHandle);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);
    }
 }
 
@@ -404,17 +404,17 @@ static ERR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
             Self->PageHeight = surface->get<LONG>(FID_Height);
          }
 
-         SubscribeAction(*surface, AC_Redimension, FUNCTION(notify_redimension));
-         SubscribeAction(*surface, AC_Free, FUNCTION(notify_free));
-         SubscribeAction(*surface, AC_Focus, FUNCTION(notify_focus));
-         SubscribeAction(*surface, AC_LostFocus, FUNCTION(notify_lostfocus));
+         SubscribeAction(*surface, AC_Redimension, C_FUNCTION(notify_redimension));
+         SubscribeAction(*surface, AC_Free, C_FUNCTION(notify_free));
+         SubscribeAction(*surface, AC_Focus, C_FUNCTION(notify_focus));
+         SubscribeAction(*surface, AC_LostFocus, C_FUNCTION(notify_lostfocus));
 
          if (surface->hasFocus()) {
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(scene_key_event), Self, &Self->KeyHandle);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);
          }
       }
 
-      auto callback = FUNCTION(scene_input_events);
+      auto callback = C_FUNCTION(scene_input_events);
       if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::CROSSING|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle) != ERR::Okay) {
          return ERR::Function;
       }

@@ -707,7 +707,7 @@ static ERR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
    pf::Log log(__FUNCTION__);
    ERR error;
 
-   if (!Self->Feedback.Type) return ERR::Okay;
+   if (!Self->Feedback.defined()) return ERR::Okay;
 
    if (Self->Feedback.isC()) {
       auto routine = (ERR (*)(extCompression *, CompressionFeedback *, APTR Meta))Self->Feedback.Routine;

@@ -162,7 +162,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
          }
       }
 
-      ((extNetLookup *)Self->NetLookup)->Callback = FUNCTION(connect_name_resolved_nl);
+      ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
       if (nlResolveName(Self->NetLookup, Self->Address) != ERR::Okay) {
          return log.warning(Self->Error = ERR::HostNotFound);
       }
@@ -972,7 +972,7 @@ static ERR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
       if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC_Free);
       Self->Feedback = *Value;
       if (Self->Feedback.isScript()) {
-         SubscribeAction(Self->Feedback.Context, AC_Free, FUNCTION(notify_free_feedback));
+         SubscribeAction(Self->Feedback.Context, AC_Free, C_FUNCTION(notify_free_feedback));
       }
    }
    else Self->Feedback.clear();
@@ -1015,7 +1015,7 @@ static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
       if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC_Free);
       Self->Incoming = *Value;
       if (Self->Incoming.isScript()) {
-         SubscribeAction(Self->Incoming.Context, AC_Free, FUNCTION(notify_free_incoming));
+         SubscribeAction(Self->Incoming.Context, AC_Free, C_FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.clear();
@@ -1059,7 +1059,7 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
    else {
       if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC_Free, FUNCTION(notify_free_outgoing));
+      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC_Free, C_FUNCTION(notify_free_outgoing));
 
       if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {

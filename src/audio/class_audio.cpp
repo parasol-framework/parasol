@@ -292,7 +292,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    pf::Log log;
 
    if ((!Args) or (Args->SampleFormat IS SFM::NIL)) return log.warning(ERR::NullArgs);
-   if (!Args->Callback.Type) return log.warning(ERR::NullArgs);
+   if (Args->Callback.Type IS CALL::NIL) return log.warning(ERR::NullArgs);
 
    log.branch("Length: %d", Args->SampleLength);
 

@@ -247,7 +247,7 @@ static ERR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
 
    if (Self->Callback.isScript()) {
       UnsubscribeAction(Self->Callback.Context, AC_Free);
-      Self->Callback.Type = 0;
+      Self->Callback.Type = CALL::NIL;
    }
 
    return ERR::Okay;
@@ -311,7 +311,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress 
    pf::Log log;
 
    if (!Args->Address) return log.warning(ERR::NullArgs);
-   if (!Self->Callback.Type) return log.warning(ERR::FieldNotSet);
+   if (Self->Callback.Type IS CALL::NIL) return log.warning(ERR::FieldNotSet);
 
    log.branch("Address: %s", Args->Address);
 
@@ -462,7 +462,7 @@ static ERR SET_Callback(extNetLookup *Self, FUNCTION *Value)
       if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC_Free);
       Self->Callback = *Value;
       if (Self->Callback.isScript()) {
-         SubscribeAction(Self->Callback.Context, AC_Free, FUNCTION(notify_free_callback));
+         SubscribeAction(Self->Callback.Context, AC_Free, C_FUNCTION(notify_free_callback));
       }
    }
    else Self->Callback.clear();

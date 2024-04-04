@@ -663,14 +663,14 @@ static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
    if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      vecSubscribeKeyboard(Self->Viewport, FUNCTION(key_event));
-      SubscribeAction(Self->Focus, AC_Focus, FUNCTION(notify_focus_viewport));
-      SubscribeAction(Self->Focus, AC_LostFocus, FUNCTION(notify_lostfocus_viewport));
-      SubscribeAction(Self->Viewport, AC_Disable, FUNCTION(notify_disable_viewport));
-      SubscribeAction(Self->Viewport, AC_Enable, FUNCTION(notify_enable_viewport));
+      vecSubscribeKeyboard(Self->Viewport, C_FUNCTION(key_event));
+      SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
+      SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
+      SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
+      SubscribeAction(Self->Viewport, AC_Enable, C_FUNCTION(notify_enable_viewport));
    }
 
-   SubscribeAction(Self->Viewport, AC_Free, FUNCTION(notify_free_viewport));
+   SubscribeAction(Self->Viewport, AC_Free, C_FUNCTION(notify_free_viewport));
 
    Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
    Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
@@ -706,17 +706,17 @@ static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
       // Recent changes mean that page input handling could be merged with inputevent_cell()
       // if necessary (VectorScene already manages existing use-cases).
       //if (Self->Page->Scene->SurfaceID) {
-      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, FUNCTION(consume_input_events));
+      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
       //}
    }
    else return ERR::CreateObject;
 
-   vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, FUNCTION(feedback_view));
+   vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, C_FUNCTION(feedback_view));
 
    // Flash the cursor via the timer
 
    if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
-      SubscribeTimer(0.5, FUNCTION(flash_cursor), &Self->FlashTimer);
+      SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
    }
 
    // Load a document file into the line array if required

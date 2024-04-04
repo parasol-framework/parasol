@@ -14,7 +14,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
       log.msg("Waiting for connection...");
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
-      else SubscribeTimer(Self->ConnectTimeout, FUNCTION(timeout_manager), &Self->TimeoutManager);
+      else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
       Self->Connecting = TRUE;
    }
@@ -345,7 +345,7 @@ continue_upload:
    DOUBLE time_limit = (Self->DataTimeout > 30) ? Self->DataTimeout : 30;
 
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, time_limit);
-   else SubscribeTimer(time_limit, FUNCTION(timeout_manager), &Self->TimeoutManager);
+   else SubscribeTimer(time_limit, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
    Self->WriteBuffer = NULL;
    Self->WriteSize = 0;
@@ -839,7 +839,7 @@ static ERR socket_incoming(objNetSocket *Socket)
       Self->LastReceipt = PreciseTime();
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->DataTimeout);
-      else SubscribeTimer(Self->DataTimeout, FUNCTION(timeout_manager), &Self->TimeoutManager);
+      else SubscribeTimer(Self->DataTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
       if (Self->Error != ERR::Okay) return ERR::Terminate;
    }

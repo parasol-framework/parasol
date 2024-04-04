@@ -73,7 +73,7 @@ static ERR SET_EventCallback(extDocument *Self, FUNCTION *Value)
       if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC_Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.isScript()) {
-         SubscribeAction(Self->EventCallback.Context, AC_Free, FUNCTION(notify_free_event));
+         SubscribeAction(Self->EventCallback.Context, AC_Free, C_FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.clear();

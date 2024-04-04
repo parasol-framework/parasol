@@ -385,7 +385,7 @@ int fcmd_subscribe_event(lua_State *Lua)
    }
    else {
       APTR handle;
-      if (auto error = SubscribeEvent(event_id, FUNCTION(receive_event), NULL, &handle); error IS ERR::Okay) {
+      if (auto error = SubscribeEvent(event_id, C_FUNCTION(receive_event), NULL, &handle); error IS ERR::Okay) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
          prv->EventList.emplace_back(luaL_ref(Lua, LUA_REGISTRYINDEX), event_id, handle);

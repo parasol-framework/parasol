@@ -44,8 +44,8 @@ static ERR SVG_Activate(extSVG *Self, APTR Void)
 {
    if (Self->Animated) {
       if (!Self->AnimationTimer) {
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, FUNCTION(animation_timer), &Self->AnimationTimer);
-         SubscribeAction(Self->Scene, AC_Free, FUNCTION(notify_free_scene));
+         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
+         SubscribeAction(Self->Scene, AC_Free, C_FUNCTION(notify_free_scene));
       }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }
@@ -445,7 +445,7 @@ static ERR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
       if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
       Self->FrameCallback = *Value;
       if (Self->FrameCallback.isScript()) {
-         SubscribeAction(Self->FrameCallback.Context, AC_Free, FUNCTION(notify_free_frame_callback));
+         SubscribeAction(Self->FrameCallback.Context, AC_Free, C_FUNCTION(notify_free_frame_callback));
       }
    }
    else Self->FrameCallback.clear();

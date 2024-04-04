@@ -33,44 +33,46 @@ struct SCALE : strong_typedef<SCALE, DOUBLE> {
 // Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
 // Fluid).
 
-enum {
-   CALL_NONE=0,
-   CALL_STDC,
-   CALL_SCRIPT
+enum class CALL : char {
+   NIL=0,
+   STD_C=1,
+   SCRIPT=2
 };
 
 struct FUNCTION {
-   unsigned char Type;
+   CALL Type;
    unsigned char PadA;
    unsigned short ID; // Unused.  Unique identifier for the function.
    OBJECTPTR Context; // The context at the time the function was created, or a Script reference
    void * Meta;       // Additional meta data provided by the client.
    union {
-      void * Routine;    // CALL_STDC: Pointer to a C routine
-      LARGE ProcedureID; // CALL_SCRIPT: Function identifier, usually a hash
+      void * Routine;    // CALL::STD_C: Pointer to a C routine
+      LARGE ProcedureID; // CALL::SCRIPT: Function identifier, usually a hash
    };
 
-   FUNCTION() : Type(0) { }
+   FUNCTION() : Type(CALL::NIL) { }
+   FUNCTION(CALL pType) : Type(pType) { }
 
-   template <class T> FUNCTION(T *pRoutine);
-   template <class T> FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta);
-   template <class T> FUNCTION(T *pRoutine, APTR pMeta);
+   // Script constructor
 
    FUNCTION(class objScript *pScript, LARGE pProcedure) {
-      Type = CALL_SCRIPT;
-      Context = (OBJECTPTR)pScript;
+      Type        = CALL::SCRIPT;
+      Context     = (OBJECTPTR)pScript;
       ProcedureID = pProcedure;
    }
 
-   void clear() { Type = CALL_NONE; }
-   bool isC() const { return Type IS CALL_STDC; }
-   bool isScript() const { return Type IS CALL_SCRIPT; }
-   bool defined() const { return Type != CALL_NONE; }
+   // The CALL::STDC constructor is managed by C_FUNCTION() in order to prevent problems with
+   // implicit type conversion.
+
+   void clear() { Type = CALL::NIL; }
+   bool isC() const { return Type IS CALL::STD_C; }
+   bool isScript() const { return Type IS CALL::SCRIPT; }
+   bool defined() const { return Type != CALL::NIL; }
 };
 
 inline bool operator==(const struct FUNCTION &A, const struct FUNCTION &B)
 {
-   if (A.Type == CALL_STDC) return (A.Type == B.Type) and (A.Context == B.Context) and (A.Routine == B.Routine);
-   else if (A.Type == CALL_SCRIPT) return (A.Type == B.Type) and (A.Context == B.Context) and (A.ProcedureID == B.ProcedureID);
+   if (A.Type == CALL::STD_C) return (A.Type == B.Type) and (A.Context == B.Context) and (A.Routine == B.Routine);
+   else if (A.Type == CALL::SCRIPT) return (A.Type == B.Type) and (A.Context == B.Context) and (A.ProcedureID == B.ProcedureID);
    else return (A.Type == B.Type);
 }

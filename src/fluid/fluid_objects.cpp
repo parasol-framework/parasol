@@ -892,7 +892,7 @@ static int object_subscribe(lua_State *Lua)
    pf::Log log("obj.subscribe");
    log.trace("Object: %d, Action: %s (ID %d)", def->UID, action, action_id);
 
-   auto callback = FUNCTION(notify_action);
+   auto callback = C_FUNCTION(notify_action);
    callback.Context = Lua->Script;
    if (auto error = SubscribeAction(obj, action_id, &callback); error IS ERR::Okay) {
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;

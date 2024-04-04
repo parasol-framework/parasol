@@ -85,7 +85,7 @@ static ERR FONT_Free(extFont *Self, APTR Void)
       if (!Self->BmpCache->OpenCount) {
          if (!glCacheTimer) {
             pf::SwitchContext ctx(modFont);
-            SubscribeTimer(60.0, FUNCTION(bitmap_cache_cleaner), &glCacheTimer);
+            SubscribeTimer(60.0, C_FUNCTION(bitmap_cache_cleaner), &glCacheTimer);
          }
       }
    }

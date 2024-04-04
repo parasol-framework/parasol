@@ -2682,7 +2682,7 @@ static ERR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
       if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Context, AC_Free);
       Self->ResizeFeedback = *Value;
       if (Self->ResizeFeedback.isScript()) {
-         SubscribeAction(Self->ResizeFeedback.Context, AC_Free, FUNCTION(notify_resize_free));
+         SubscribeAction(Self->ResizeFeedback.Context, AC_Free, C_FUNCTION(notify_resize_free));
       }
    }
    else Self->ResizeFeedback.clear();

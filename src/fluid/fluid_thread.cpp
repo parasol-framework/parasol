@@ -200,7 +200,7 @@ static int thread_action(lua_State *Lua)
       else error = log.warning(ERR::AccessObject);
    }
 
-   if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
+   if ((error != ERR::Okay) and (callback.defined())) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
    lua_pushinteger(Lua, LONG(error));
    return 1;
 }
@@ -246,7 +246,7 @@ static int thread_method(lua_State *Lua)
                   lua_pushvalue(Lua, 3);
                   callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
-               else callback.Type = 0;
+               else callback.Type = CALL::NIL;
 
                if (argsize > 0) {
                   auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
@@ -287,7 +287,7 @@ static int thread_method(lua_State *Lua)
                   else error = log.warning(ERR::AccessObject);
                }
 
-               if ((error != ERR::Okay) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
+               if ((error != ERR::Okay) and (callback.defined())) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
                lua_pushinteger(Lua, LONG(error));
                return 1;
             }

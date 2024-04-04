@@ -125,7 +125,7 @@ class extXML : public objXML {
       this->Attrib.clear();
 
       if (pCallback) this->Callback = *pCallback;
-      else this->Callback.Type = 0;
+      else this->Callback.Type = CALL::NIL;
 
       this->CursorTags = &this->Tags;
 
@@ -220,7 +220,7 @@ static ERR XML_Count(extXML *Self, struct xmlCount *Args)
 
    tlXMLCounter = 0;
 
-   auto call = FUNCTION(xml_count);
+   auto call = C_FUNCTION(xml_count);
    Self->findTag(Args->XPath, &call);
 
    Args->Result = tlXMLCounter;

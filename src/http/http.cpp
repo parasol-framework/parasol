@@ -647,14 +647,14 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
    else {
       log.trace("Re-using existing socket/server connection.");
 
-      Self->Socket->setIncoming(FUNCTION(socket_incoming));
-      Self->Socket->setFeedback(FUNCTION(socket_feedback));
+      Self->Socket->setIncoming(C_FUNCTION(socket_incoming));
+      Self->Socket->setFeedback(C_FUNCTION(socket_feedback));
    }
 
    if (!Self->Tunneling) {
       if (Self->CurrentState != HGS::AUTHENTICATING) {
          if ((Self->Method IS HTM::PUT) or (Self->Method IS HTM::POST)) {
-            Self->Socket->setOutgoing(FUNCTION(socket_outgoing));
+            Self->Socket->setOutgoing(C_FUNCTION(socket_outgoing));
          }
          else Self->Socket->set(FID_Outgoing, (APTR)NULL);
       }
@@ -671,7 +671,7 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
-            else SubscribeTimer(Self->ConnectTimeout, FUNCTION(timeout_manager), &Self->TimeoutManager);
+            else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
             return ERR::Okay;
          }
@@ -912,7 +912,7 @@ static ERR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
       if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC_Free);
       Self->AuthCallback = *Value;
       if (Self->AuthCallback.isScript()) {
-         SubscribeAction(Self->AuthCallback.Context, AC_Free, FUNCTION(notify_free_auth_callback));
+         SubscribeAction(Self->AuthCallback.Context, AC_Free, C_FUNCTION(notify_free_auth_callback));
       }
    }
    else Self->AuthCallback.clear();
@@ -1058,7 +1058,7 @@ static ERR SET_Incoming(extHTTP *Self, FUNCTION *Value)
       if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC_Free);
       Self->Incoming = *Value;
       if (Self->Incoming.isScript()) {
-         SubscribeAction(Self->Incoming.Context, AC_Free, FUNCTION(notify_free_incoming));
+         SubscribeAction(Self->Incoming.Context, AC_Free, C_FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.clear();
@@ -1297,7 +1297,7 @@ static ERR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
       if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC_Free);
       Self->Outgoing = *Value;
       if (Self->Outgoing.isScript()) {
-         SubscribeAction(Self->Outgoing.Context, AC_Free, FUNCTION(notify_free_outgoing));
+         SubscribeAction(Self->Outgoing.Context, AC_Free, C_FUNCTION(notify_free_outgoing));
       }
    }
    else Self->Outgoing.clear();
@@ -1578,7 +1578,7 @@ static ERR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
       if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC_Free);
       Self->StateChanged = *Value;
       if (Self->StateChanged.isScript()) {
-         SubscribeAction(Self->StateChanged.Context, AC_Free, FUNCTION(notify_free_state_changed));
+         SubscribeAction(Self->StateChanged.Context, AC_Free, C_FUNCTION(notify_free_state_changed));
       }
    }
    else Self->StateChanged.clear();
