@@ -509,32 +509,32 @@ struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour;
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 
-INLINE ERR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
+inline ERR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR bmpCompress(APTR Ob, LONG Level) noexcept {
+inline ERR bmpCompress(APTR Ob, LONG Level) noexcept {
    struct bmpCompress args = { Level };
    return(Action(MT_BmpCompress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR bmpDecompress(APTR Ob, LONG RetainData) noexcept {
+inline ERR bmpDecompress(APTR Ob, LONG RetainData) noexcept {
    struct bmpDecompress args = { RetainData };
    return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR bmpFlip(APTR Ob, FLIP Orientation) noexcept {
+inline ERR bmpFlip(APTR Ob, FLIP Orientation) noexcept {
    struct bmpFlip args = { Orientation };
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
+inline ERR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
+inline ERR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
    struct bmpSetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
    return(Action(MT_BmpSetClipRegion, (OBJECTPTR)Ob, &args));
 }
@@ -904,32 +904,32 @@ struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV;
 
 #define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
 
-INLINE ERR gfxUpdatePalette(APTR Ob, struct RGBPalette * NewPalette) noexcept {
+inline ERR gfxUpdatePalette(APTR Ob, struct RGBPalette * NewPalette) noexcept {
    struct gfxUpdatePalette args = { NewPalette };
    return(Action(MT_GfxUpdatePalette, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
+inline ERR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
    struct gfxSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
    return(Action(MT_GfxSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
+inline ERR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
    struct gfxSizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
    return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+inline ERR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
    struct gfxSetGamma args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+inline ERR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
    struct gfxSetGammaLinear args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
+inline ERR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
    struct gfxSetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
    return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
 }
@@ -1144,17 +1144,17 @@ struct clipGetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;
 struct clipAddText { CSTRING String;  };
 struct clipRemove { CLIPTYPE Datatype;  };
 
-INLINE ERR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
+inline ERR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
    struct clipAddFile args = { Datatype, Path, Flags };
    return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
+inline ERR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
    struct clipAddObjects args = { Datatype, Objects, Flags };
    return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) noexcept {
+inline ERR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) noexcept {
    struct clipGetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
    ERR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
    if (Datatype) *Datatype = args.Datatype;
@@ -1163,12 +1163,12 @@ INLINE ERR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Fil
    return(error);
 }
 
-INLINE ERR clipAddText(APTR Ob, CSTRING String) noexcept {
+inline ERR clipAddText(APTR Ob, CSTRING String) noexcept {
    struct clipAddText args = { String };
    return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR clipRemove(APTR Ob, CLIPTYPE Datatype) noexcept {
+inline ERR clipRemove(APTR Ob, CLIPTYPE Datatype) noexcept {
    struct clipRemove args = { Datatype };
    return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
 }
@@ -1354,34 +1354,34 @@ struct drwAddCallback { FUNCTION * Callback;  };
 struct drwResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
 struct drwRemoveCallback { FUNCTION * Callback;  };
 
-INLINE ERR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
+inline ERR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
    struct drwInheritedFocus args = { FocusID, Flags };
    return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
+inline ERR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR drwInvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+inline ERR drwInvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
    struct drwInvalidateRegion args = { X, Y, Width, Height };
    return(Action(MT_DrwInvalidateRegion, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR drwSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
+inline ERR drwSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
    struct drwSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
    return(Action(MT_DrwSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR drwSetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) noexcept {
+inline ERR drwSetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) noexcept {
    struct drwSetOpacity args = { Value, Adjustment };
    return(Action(MT_DrwSetOpacity, (OBJECTPTR)Ob, &args));
 }
 
 #define drwMinimise(obj) Action(MT_DrwMinimise,(obj),0)
 
-INLINE ERR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
+inline ERR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
    struct drwResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
    return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
 }

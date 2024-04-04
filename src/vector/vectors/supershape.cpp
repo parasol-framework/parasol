@@ -38,6 +38,10 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 {
    DOUBLE cx = Vector->CX, cy = Vector->CY;
 
+   agg::path_storage path_buffer, *target;
+   if (Path.empty()) target = &Path;
+   else target = &path_buffer;
+
    if (Vector->Dimensions & DMF_SCALED_CENTER_X) cx *= get_parent_width(Vector);
    if (Vector->Dimensions & DMF_SCALED_CENTER_Y) cy *= get_parent_height(Vector);
 
@@ -95,42 +99,44 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
       // If x or y is greater than the radius, we'll have to rescale the final result after the shape has been generated.
 
       if (x > rescale) rescale = x;
-      else if (y > rescale) rescale = y;
+      if (y > rescale) rescale = y;
 
-      if (i == 0.0) Path.move_to(x, y); // Plot the vertex
-      else Path.line_to(x, y);
+      if (i == 0.0) target->move_to(x, y); // Plot the vertex
+      else target->line_to(x, y);
    }
 
    if (Vector->Spiral > 1) {
-      DOUBLE total = Path.total_vertices();
+      DOUBLE total = target->total_vertices();
       for (DOUBLE i=0; i < total; i++) {
          DOUBLE x, y;
-         Path.vertex(i, &x, &y);
+         target->vertex(i, &x, &y);
          x = x * (i / total);
          y = y * (i / total);
-         Path.modify_vertex(i, x, y);
+         target->modify_vertex(i, x, y);
       }
    }
    else if (Vector->Repeat > 1) {
-      Path.close_polygon(); // Repeated paths are always closed.
+      target->close_polygon(); // Repeated paths are always closed.
 
-      agg::path_storage clone(Path);
+      agg::path_storage clone(*target);
 
       for (LONG i=0; i < Vector->Repeat-1; i++) {
          agg::trans_affine transform;
          transform.scale(DOUBLE(i+1) / DOUBLE(Vector->Repeat));
          agg::conv_transform<agg::path_storage, agg::trans_affine> scaled_path(clone, transform);
-         Path.concat_path(scaled_path);
+         target->concat_path(scaled_path);
       }
    }
-   else if (Vector->Close) Path.close_polygon();
+   else if (Vector->Close) target->close_polygon();
 
    agg::trans_affine transform;
    if (rescale != scale) transform.scale(scale / rescale);
    transform.translate(cx, cy);
-   Path.transform(transform);
+   target->transform(transform);
 
-   Vector->Bounds = get_bounds(Path);
+   if (&Path != target) Path.concat_path(*target);
+
+   Vector->Bounds = { cx - scale, cy - scale, cx + scale, cy + scale };
 }
 
 //********************************************************************************************************************

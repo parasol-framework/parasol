@@ -258,6 +258,32 @@ void gen_vector_path(extVector *Vector)
 
          Vector->GeneratePath(Vector, Vector->BasePath);
 
+         if (Vector->AppendPath) {
+            if (Vector->AppendPath->dirty()) gen_vector_path(Vector->AppendPath);
+
+            if (Vector->AppendPath->Matrices) {
+               agg::trans_affine trans;
+               trans.tx += Vector->AppendPath->FinalX;
+               trans.ty += Vector->AppendPath->FinalY;
+               for (auto t=Vector->AppendPath->Matrices; t; t=t->Next) {
+                  trans.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+               }
+
+               agg::conv_transform<agg::path_storage, agg::trans_affine> tp(Vector->AppendPath->BasePath, trans);
+               if ((Vector->Flags & VF::JOIN_PATHS) != VF::NIL) Vector->BasePath.join_path(tp);
+               else Vector->BasePath.concat_path(tp);
+
+               auto bound_path = Vector->AppendPath->Bounds.as_path();
+               bound_path.transform(trans);
+               Vector->Bounds.expanding(get_bounds(bound_path));
+            }
+            else {
+               if ((Vector->Flags & VF::JOIN_PATHS) != VF::NIL) Vector->BasePath.join_path(Vector->AppendPath->BasePath);
+               else Vector->BasePath.concat_path(Vector->AppendPath->BasePath);
+               Vector->Bounds.expanding(Vector->AppendPath);
+            }
+         }
+
          if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS ID_VECTOR)) {
             if ((Vector->Class->ClassID IS ID_VECTORTEXT) and ((Vector->MorphFlags & VMF::STRETCH) IS VMF::NIL)) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.

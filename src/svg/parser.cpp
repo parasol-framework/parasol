@@ -3124,6 +3124,25 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
    // Fall-through to generic attributes.
 
    switch (Hash) {
+      case SVF_APPEND_PATH: {
+         // The append-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
+         OBJECTPTR other = NULL;
+         if (scFindDef(Self->Scene, StrValue.c_str(), &other) IS ERR::Okay) Vector->set(FID_AppendPath, other);
+         else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
+         break;
+      }
+
+      case SVF_JOIN_PATH: {
+         // The join-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
+         OBJECTPTR other = NULL;
+         if (scFindDef(Self->Scene, StrValue.c_str(), &other) IS ERR::Okay) {
+            Vector->set(FID_AppendPath, other);
+            Vector->setFlags(VF::JOIN_PATHS|Vector->Flags);
+         }
+         else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
+         break;
+      }
+
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
          if (scFindDef(Self->Scene, StrValue.c_str(), &trans) IS ERR::Okay) Vector->set(FID_Transition, trans);

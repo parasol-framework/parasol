@@ -788,7 +788,7 @@ objMetaClass * FindClass(CLASSID ClassID)
 
    if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
 
-   // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
+   // Class is not loaded.  Try and find the class in the dictionary.  If we find one, we can
    // initialise the module and then find the new Class.
    //
    // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
@@ -814,7 +814,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       }
       else log.warning("No module path defined for class \"%s\"", glClassDB[ClassID].Name.c_str());
    }
-   else log.warning("Could not find class $%.8x in memory or dictionary.", ClassID);
+   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ClassID, LONG(glClassDB.size()));
 
    return NULL;
 }

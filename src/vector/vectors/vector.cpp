@@ -150,6 +150,12 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
 #endif
 //********************************************************************************************************************
 
+static void notify_free_appendpath(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extVector *)CurrentContext();
+   if ((Self->AppendPath) and (Object->UID IS Self->AppendPath->UID)) Self->AppendPath = NULL;
+}
+
 static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
@@ -279,6 +285,7 @@ static ERR VECTOR_Free(extVector *Self, APTR Void)
    if (Self->ClipMask)   UnsubscribeAction(Self->ClipMask, AC_Free);
    if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
    if (Self->Morph)      UnsubscribeAction(Self->Morph, AC_Free);
+   if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC_Free);
 
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
@@ -1041,6 +1048,54 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
    }
 
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+AppendPath: Experimental.  Append the path of the referenced vector during path generation.
+
+The path of an external Vector can be appended to the base path in real-time by making a reference to that vector 
+here.  The operation is completed immediately after the generation of the client vector's base path, prior to any 
+transforms.
+
+It is strongly recommended that the appended vector has its #Visibility set to `HIDDEN`.  Any direct transform that
+is applied to the vector will be utilised, but inherited transforms and placement information will be ignored.
+
+If it is necessary for the two paths to flow from one to the other, set `VF::JOIN_PATHS` in the #Flags field.
+
+Note: Appended paths are not compliant with SVG and this feature is considered experimental.
+
+*********************************************************************************************************************/
+
+static ERR VECTOR_GET_AppendPath(extVector *Self, extVector **Value)
+{
+   *Value = Self->AppendPath;
+   return ERR::Okay;
+}
+
+static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
+{
+   pf::Log log;
+
+   mark_dirty(Self, RC::BASE_PATH);
+
+   if (!Value) {
+      if (Self->AppendPath) {
+         UnsubscribeAction(Self->AppendPath, AC_Free);
+         Self->AppendPath = NULL;
+      }
+      return ERR::Okay;
+   }
+   else if (Value->Class->BaseClassID IS ID_VECTOR) {
+      if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC_Free);
+      if (Value->initialised()) { // The object must be initialised.
+         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_appendpath));
+         Self->AppendPath = Value;
+         return ERR::Okay;
+      }
+      else return log.warning(ERR::NotInitialised);
+   }
+   else return log.warning(ERR::InvalidObject);
 }
 
 /*********************************************************************************************************************
@@ -2361,6 +2416,7 @@ static const FieldArray clVectorFields[] = {
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, VECTOR_GET_DashArray, VECTOR_SET_DashArray },
    { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Mask, VECTOR_SET_Mask },
    { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Morph, VECTOR_SET_Morph },
+   { "AppendPath",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_AppendPath, VECTOR_SET_AppendPath },
    { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
    { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_NumericID, VECTOR_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_ID, VECTOR_SET_ID },

@@ -939,6 +939,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2024" }, function(
     "Weight")
 
   hash("FID", "0x%sLL",
+    "AppendPath",
     "Bias",
     "ClipFlags",
     "Constant",

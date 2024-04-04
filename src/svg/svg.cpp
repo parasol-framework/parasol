@@ -37,7 +37,7 @@ JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
-static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
+static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
 
 struct prvSVG { // Private variables for RSVG
    OBJECTPTR SVG;
@@ -147,7 +147,11 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
 
    if (init_svg() != ERR::Okay) return ERR::AddClass;
-   if (init_rsvg() != ERR::Okay) return ERR::AddClass;
+
+   if (objModule::load("picture", &modPicture) IS ERR::Okay) { // RSVG has a Picture class dependency
+      if (init_rsvg() != ERR::Okay) return ERR::AddClass;
+   }
+
    return ERR::Okay;
 }
 
@@ -155,6 +159,7 @@ static ERR CMDExpunge(void)
 {
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modVector)  { FreeResource(modVector);  modVector = NULL; }
+   if (modPicture) { FreeResource(modPicture); modPicture = NULL; }
 
    if (clSVG)  { FreeResource(clSVG);  clSVG = NULL; }
    if (clRSVG) { FreeResource(clRSVG); clRSVG = NULL; }

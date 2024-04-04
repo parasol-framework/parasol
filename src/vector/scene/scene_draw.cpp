@@ -675,10 +675,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       }
       else if (!shape->Scene) continue;
 
-      if (shape->dirty()) {
-         gen_vector_path(shape);
-         shape->Dirty = RC::NIL;
-      }
+      if (shape->dirty()) gen_vector_path(shape);
       else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
       // Visibility management.
