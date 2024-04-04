@@ -68,7 +68,7 @@ void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
       pf::SwitchContext context(glModule);
-      SubscribeTimer(0.02, FUNCTION(refresh_pointer_timer), &glRefreshPointerTimer);
+      SubscribeTimer(0.02, C_FUNCTION(refresh_pointer_timer), &glRefreshPointerTimer);
    }
 }
 
@@ -696,7 +696,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
    }
 
    if (Args->Callback->Type IS CALL::SCRIPT) {
-      SubscribeAction(Args->Callback->Context, AC_Free, FUNCTION(notify_free_callback));
+      SubscribeAction(Args->Callback->Context, AC_Free, C_FUNCTION(notify_free_callback));
    }
 
    return ERR::Okay;
@@ -1115,13 +1115,13 @@ static ERR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Subscribe to the surface parent's Resize and Redimension actions
 
-      SubscribeAction(*parent, AC_Free, FUNCTION(notify_free_parent));
-      SubscribeAction(*parent, AC_Redimension, FUNCTION(notify_redimension_parent));
+      SubscribeAction(*parent, AC_Free, C_FUNCTION(notify_free_parent));
+      SubscribeAction(*parent, AC_Redimension, C_FUNCTION(notify_redimension_parent));
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
       if (Self->transparent()) {
-         auto func = FUNCTION(draw_region);
+         auto func = C_FUNCTION(draw_region);
          struct drwAddCallback args = { &func };
          Action(MT_DrwAddCallback, *parent, &args);
 
@@ -1371,9 +1371,9 @@ static ERR SURFACE_Init(extSurface *Self, APTR Void)
          // can be used by the host to notify of window exposures.
 
          if (Self->DisplayWindow) {
-            display->setResizeFeedback(FUNCTION(display_resized));
+            display->setResizeFeedback(C_FUNCTION(display_resized));
 
-            SubscribeAction(display, AC_Draw, FUNCTION(notify_draw_display));
+            SubscribeAction(display, AC_Draw, C_FUNCTION(notify_draw_display));
          }
 
          Self->DisplayID = display->UID;
@@ -2122,7 +2122,7 @@ static ERR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
       return ERR::Okay;
    }
 
-   if (SubscribeTimer(1.0 / FPS, FUNCTION(redraw_timer), &Self->RedrawTimer) IS ERR::Okay) {
+   if (SubscribeTimer(1.0 / FPS, C_FUNCTION(redraw_timer), &Self->RedrawTimer) IS ERR::Okay) {
       Self->RedrawCountdown = FPS * 30.0;
       Self->RedrawScheduled = TRUE;
       return ERR::Okay;

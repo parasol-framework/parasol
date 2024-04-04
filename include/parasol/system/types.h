@@ -51,16 +51,18 @@ struct FUNCTION {
    };
 
    FUNCTION() : Type(CALL::NIL) { }
+   FUNCTION(CALL pType) : Type(pType) { }
 
-   template <class T> FUNCTION(T *pRoutine);
-   template <class T> FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta);
-   template <class T> FUNCTION(T *pRoutine, APTR pMeta);
+   // Script constructor
 
    FUNCTION(class objScript *pScript, LARGE pProcedure) {
-      Type = CALL::SCRIPT;
-      Context = (OBJECTPTR)pScript;
+      Type        = CALL::SCRIPT;
+      Context     = (OBJECTPTR)pScript;
       ProcedureID = pProcedure;
    }
+
+   // The CALL::STDC constructor is managed by C_FUNCTION() in order to prevent problems with
+   // implicit type conversion.
 
    void clear() { Type = CALL::NIL; }
    bool isC() const { return Type IS CALL::STD_C; }

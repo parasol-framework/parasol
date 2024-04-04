@@ -282,7 +282,7 @@ CELL layout::lay_cell(bc_table *Table)
       }));
 
       if (cell.hooks.events != JTYPE::NIL) {
-         vecSubscribeInput(*cell.viewport, cell.hooks.events, FUNCTION(inputevent_cell));
+         vecSubscribeInput(*cell.viewport, cell.hooks.events, C_FUNCTION(inputevent_cell));
       }
    }
 
@@ -526,7 +526,7 @@ WRAP layout::lay_button(bc_button &Button)
       }));
 
       if (Button.viewport->Scene->SurfaceID) {
-         vecSubscribeInput(*Button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_button));
+         vecSubscribeInput(*Button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_button));
       }
 
       Button.viewport->setFill(Button.fill);
@@ -1505,7 +1505,7 @@ extend_page:
                }));
 
                if (link.path->Scene->SurfaceID) {
-                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(link_callback));
+                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(link_callback));
                }
             }
             break;

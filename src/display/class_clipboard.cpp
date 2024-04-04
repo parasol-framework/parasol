@@ -640,7 +640,7 @@ static ERR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
       if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
       Self->RequestHandler = *Value;
       if (Self->RequestHandler.isScript()) {
-         SubscribeAction(Self->RequestHandler.Context, AC_Free, FUNCTION(notify_script_free));
+         SubscribeAction(Self->RequestHandler.Context, AC_Free, C_FUNCTION(notify_script_free));
       }
    }
    else Self->RequestHandler.clear();

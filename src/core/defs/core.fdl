@@ -1238,11 +1238,11 @@ inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
-inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR Handle) {
+inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR *Handle) {
    return SubscribeEvent(Event,&Callback,Custom,Handle);
 }
 
-inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR Subscription) {
+inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR *Subscription) {
    return SubscribeTimer(Interval,&Callback,Subscription);
 }
 
@@ -2650,24 +2650,12 @@ template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
 
 // Function construction (refer types.h)
 
-template <class T> FUNCTION::FUNCTION(T *pRoutine) {
-   Type = CALL::STD_C;
-   Context = CurrentContext();
-   Routine = (APTR)pRoutine;
-};
-
-template <class T> FUNCTION::FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta) {
-   Type = CALL::STD_C;
-   Context = pContext;
-   Routine = (APTR)pRoutine;
-   Meta    = pMeta;
-};
-
-template <class T> FUNCTION::FUNCTION(T *pRoutine, APTR pMeta) {
-   Type = CALL::STD_C;
-   Context = CurrentContext();
-   Routine = (APTR)pRoutine;
-   Meta    = pMeta;
+template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
+   auto func    = FUNCTION(CALL::STD_C);
+   func.Context = CurrentContext();
+   func.Routine = (APTR)pRoutine;
+   func.Meta    = pMeta;
+   return func;
 };
 
 inline CSTRING BaseClass::className() { return Class->ClassName; }

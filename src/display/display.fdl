@@ -671,7 +671,7 @@ inline ERR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
 
 inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
-      auto call = FUNCTION(Callback);
+      auto call = C_FUNCTION(Callback);
       struct drwAddCallback args = { &call };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
@@ -683,7 +683,7 @@ inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
 
 inline ERR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
-      auto call = FUNCTION(Callback);
+      auto call = C_FUNCTION(Callback);
       struct drwRemoveCallback args = { &call };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }

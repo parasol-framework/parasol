@@ -462,7 +462,7 @@ static ERR SET_Callback(extNetLookup *Self, FUNCTION *Value)
       if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC_Free);
       Self->Callback = *Value;
       if (Self->Callback.isScript()) {
-         SubscribeAction(Self->Callback.Context, AC_Free, FUNCTION(notify_free_callback));
+         SubscribeAction(Self->Callback.Context, AC_Free, C_FUNCTION(notify_free_callback));
       }
    }
    else Self->Callback.clear();

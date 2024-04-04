@@ -1035,7 +1035,7 @@ static void reset_cursor(extDocument *Self)
 
    Self->CursorState = 1;
    if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);
-   else SubscribeTimer(0.5, FUNCTION(flash_cursor), &Self->FlashTimer);
+   else SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
 }
 
 //********************************************************************************************************************

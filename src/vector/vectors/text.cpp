@@ -340,7 +340,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    }
 
    if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-      vecSubscribeInput(Self->ParentView, JTYPE::NIL, FUNCTION(text_input_events));
+      vecSubscribeInput(Self->ParentView, JTYPE::NIL, C_FUNCTION(text_input_events));
    }
 
    if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
@@ -352,7 +352,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 
    if (Self->txFocusID) {
       pf::ScopedObjectLock focus(Self->txFocusID, 5000);
-      if (focus.granted()) vecSubscribeFeedback(*focus, FM::NIL, FUNCTION(text_focus_event));
+      if (focus.granted()) vecSubscribeFeedback(*focus, FM::NIL, C_FUNCTION(text_focus_event));
    }
 
    return ERR::Okay;
@@ -370,7 +370,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       {
          pf::ScopedObjectLock focus(Self->txFocusID, 5000);
          if (focus.granted()) {
-            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, FUNCTION(text_focus_event));
+            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(text_focus_event));
          }
       }
 
@@ -389,7 +389,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
       if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, FUNCTION(text_input_events));
+         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, C_FUNCTION(text_input_events));
       }
    }
 
@@ -1463,10 +1463,10 @@ static ERR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, 
 
          if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
          else {
-            SubscribeTimer(0.8, FUNCTION(cursor_timer), &Self->txCursor.timer);
+            SubscribeTimer(0.8, C_FUNCTION(cursor_timer), &Self->txCursor.timer);
 
             if (!Self->txKeyEvent) {
-               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, FUNCTION(key_event), Self, &Self->txKeyEvent);
+               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->txKeyEvent);
             }
          }
 

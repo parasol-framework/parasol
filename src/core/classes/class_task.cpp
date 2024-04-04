@@ -635,7 +635,7 @@ static ERR TASK_Activate(extTask *Self, APTR Void)
 
    if (!glJanitorActive) {
       pf::SwitchContext ctx(glCurrentTask);
-      auto call = FUNCTION(process_janitor);
+      auto call = C_FUNCTION(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
       glJanitorActive = true;
    }

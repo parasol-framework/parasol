@@ -28,8 +28,8 @@ static void redraw(extDocument *Self, bool Focus)
 // if the client has not already done so, and it will be assumed that patterns defined in alt_state/alt_fill are to be
 // used as fills.
 //
-// Alternatively, a VectorRectangle will be created automatically and reference the patterns defined in 
-// alt_state/alt_fill.  This is the fastest means of rendering widget graphics at the cost of additional bitmap 
+// Alternatively, a VectorRectangle will be created automatically and reference the patterns defined in
+// alt_state/alt_fill.  This is the fastest means of rendering widget graphics at the cost of additional bitmap
 // caching.
 //
 // Irrespective of the drawing method, the X/Y/W/H dimensions of the widget are updated before returning.
@@ -296,7 +296,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      if (!para.icon.empty()) {
                         const DOUBLE radius = segment.area.Height * 0.2;
                         const DOUBLE cy = y - (font->metrics.Ascent * 0.5);
-                     
+
                         para.icon->setFields(
                            fl::CenterX(x - para.item_indent.px(*this) + radius),
                            fl::CenterY(cy),
@@ -493,7 +493,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                auto &button = segment.stream->lookup<bc_button>(cursor);
 
                gen_scene_graph(*button.viewport, button.segments);
-               
+
                DOUBLE wx, wy;
                if (position_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy) IS ERR::Okay) {
                   Self->VPToEntity.emplace(button.viewport.id, vp_to_entity { &button });
@@ -566,7 +566,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.processed) {
                   checkbox.processed = true;
                   if ((!checkbox.viewport.empty()) and (checkbox.viewport->Scene->SurfaceID)) {
-                     vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_checkbox));
+                     vecSubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_checkbox));
                   }
                }
 
@@ -638,9 +638,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Width(combo.full_height()) // Button width matches the widget height
                   });
 
-                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::CROSSING, FUNCTION(inputevent_dropdown));
+                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_dropdown));
 
-                  vecSubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, FUNCTION(combo_feedback));
+                  vecSubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(combo_feedback));
 
                   combo.clip_vp = objVectorViewport::create::global({
                      fl::Name("vp_clip_combo"),

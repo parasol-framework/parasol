@@ -631,7 +631,7 @@ ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION 
       // Execute the thread that will call the action.  Refer to thread_action() for the routine.
 
       if (error IS ERR::Okay) {
-         thread->Routine = FUNCTION(thread_action);
+         thread->Routine = C_FUNCTION(thread_action);
 
          auto call = (thread_data *)call_data;
          call->Object   = Object;
@@ -1823,7 +1823,7 @@ The following example illustrates how to listen to a Surface object's Redimensio
 events:
 
 <pre>
-SubscribeAction(surface, AC_Redimension, FUNCTION(notify_resize, meta_ptr));
+SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
 
 The template below illustrates how the Callback function should be constructed:

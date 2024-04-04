@@ -1089,7 +1089,7 @@ static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
    else if (Value->Class->BaseClassID IS ID_VECTOR) {
       if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_appendpath));
+         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_appendpath));
          Self->AppendPath = Value;
          return ERR::Okay;
       }
@@ -1660,7 +1660,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
    else if (Value->Class->ClassID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
-         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_clipmask));
+         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_clipmask));
          Self->ClipMask = Value;
          return ERR::Okay;
       }
@@ -1741,7 +1741,7 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
    else if (Value->Class->BaseClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_morph));
+         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_morph));
          Self->Morph = Value;
          return ERR::Okay;
       }
@@ -1951,7 +1951,7 @@ static ERR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
          auto scene = (extVectorScene *)Self->Scene;
          scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
 
-         SubscribeAction(Value->Context, AC_Free, FUNCTION(notify_free_resize_event));
+         SubscribeAction(Value->Context, AC_Free, C_FUNCTION(notify_free_resize_event));
       }
       else {
          const std::lock_guard<std::mutex> lock(glResizeLock);
@@ -2279,7 +2279,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
    else if (Value->Class->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         SubscribeAction(Value, AC_Free, FUNCTION(notify_free_transition));
+         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_transition));
          Self->Transition = Value;
          return ERR::Okay;
       }

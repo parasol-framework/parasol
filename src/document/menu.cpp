@@ -73,13 +73,13 @@ objSurface * doc_menu::create(DOUBLE Width)
          fl::Owner(m_surface->UID),
          fl::Viewport(m_view),
          fl::EventMask(DEF::LINK_ACTIVATED|DEF::ON_CLICK|DEF::ON_CROSSING),
-         fl::EventCallback(FUNCTION(menu_doc_events))
+         fl::EventCallback(C_FUNCTION(menu_doc_events))
       });
 
       m_doc->CreatorMeta = this;
 
-      SubscribeAction(*m_surface, AC_LostFocus, FUNCTION(menu_lost_focus, this));
-      SubscribeAction(*m_surface, AC_Hide, FUNCTION(menu_hidden, this));
+      SubscribeAction(*m_surface, AC_LostFocus, C_FUNCTION(menu_lost_focus, this));
+      SubscribeAction(*m_surface, AC_Hide, C_FUNCTION(menu_hidden, this));
 
       refresh();
    }

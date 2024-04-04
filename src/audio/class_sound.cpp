@@ -150,7 +150,7 @@ static ERR set_playback_trigger(extSound *Self)
          log.trace("Playback time period set to %.2fs", playback_time);
          if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
          else {
-            return SubscribeTimer(playback_time + 0.01, FUNCTION(timer_playback_ended), &Self->PlaybackTimer);
+            return SubscribeTimer(playback_time + 0.01, C_FUNCTION(timer_playback_ended), &Self->PlaybackTimer);
          }
       }
    }
@@ -175,7 +175,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
             }
             else {
                log.trace("Remaining time period set to %.2fs", playback_time);
-               SubscribeTimer(playback_time, FUNCTION(timer_playback_ended), &Self->PlaybackTimer);
+               SubscribeTimer(playback_time, C_FUNCTION(timer_playback_ended), &Self->PlaybackTimer);
             }
          }
       }
@@ -308,7 +308,7 @@ static ERR SOUND_Activate(extSound *Self, APTR Void)
    sndPan((PlatformData *)Self->PlatformData, Self->Pan);
 
    if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
-      if (SubscribeTimer(0.25, FUNCTION(win32_audio_stream), &Self->StreamTimer) != ERR::Okay) return log.warning(ERR::Failed);
+      if (SubscribeTimer(0.25, C_FUNCTION(win32_audio_stream), &Self->StreamTimer) != ERR::Okay) return log.warning(ERR::Failed);
    }
    else if (set_playback_trigger(Self) != ERR::Okay) return log.warning(ERR::Failed);
 
@@ -357,11 +357,11 @@ static ERR SOUND_Activate(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
-         if (Self->OnStop.Type) stream.OnStop = FUNCTION(onstop_event);
+         if (Self->OnStop.Type) stream.OnStop = C_FUNCTION(onstop_event);
          else stream.OnStop.clear();
 
          stream.PlayOffset   = Self->Position;
-         stream.Callback     = FUNCTION(read_stream);
+         stream.Callback     = C_FUNCTION(read_stream);
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
 
@@ -401,7 +401,7 @@ static ERR SOUND_Activate(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            if (Self->OnStop.Type) add.OnStop = FUNCTION(onstop_event);
+            if (Self->OnStop.Type) add.OnStop = C_FUNCTION(onstop_event);
             else add.OnStop.clear();
 
             add.SampleFormat = sampleformat;
@@ -1462,7 +1462,7 @@ static ERR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
       if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC_Free);
       Self->OnStop = *Value;
       if (Self->OnStop.isScript()) {
-         SubscribeAction(Self->OnStop.Context, AC_Free, FUNCTION(notify_onstop_free));
+         SubscribeAction(Self->OnStop.Context, AC_Free, C_FUNCTION(notify_onstop_free));
       }
    }
    else Self->OnStop.clear();

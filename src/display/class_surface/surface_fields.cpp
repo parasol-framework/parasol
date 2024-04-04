@@ -101,7 +101,7 @@ To turn off dragging, set the field to zero.
 static ERR SET_Drag(extSurface *Self, OBJECTID Value)
 {
    if (Value) {
-      auto callback = FUNCTION(consume_input_events);
+      auto callback = C_FUNCTION(consume_input_events);
       if (gfxSubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle) IS ERR::Okay) {
          Self->DragID = Value;
          return ERR::Okay;
