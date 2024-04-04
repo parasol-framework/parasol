@@ -260,7 +260,7 @@ static int module_call(lua_State *Lua)
          return 0;
       }
       else if (argtype & FD_FUNCTION) {
-         if (func.Type) { // Is the function reserve already used?
+         if (func.defined()) { // Is the function reserve already used?
             luaL_error(Lua, "Multiple function arguments are not supported.");
             return 0;
          }

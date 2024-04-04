@@ -783,8 +783,8 @@ static ERR TASK_Activate(extTask *Self, APTR Void)
    else group = true;
 
    LONG internal_redirect = 0;
-   if (Self->OutputCallback.Type) internal_redirect |= TSTD_OUT;
-   if (Self->ErrorCallback.Type) internal_redirect |= TSTD_ERR;
+   if (Self->OutputCallback.defined()) internal_redirect |= TSTD_OUT;
+   if (Self->ErrorCallback.defined()) internal_redirect |= TSTD_ERR;
    if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
    if (!(winerror = winLaunchProcess(Self, buffer, (launchdir[0] != 0) ? launchdir : 0, group,
@@ -1168,7 +1168,7 @@ static ERR TASK_Free(extTask *Self, APTR Void)
 #ifdef _WIN32
    if (Self->Env) { FreeResource(Self->Env); Self->Env = NULL; }
    if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = NULL; }
-   if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.defined()) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
    // Free allocations
@@ -1434,7 +1434,7 @@ static ERR TASK_Init(extTask *Self, APTR Void)
       // Initialise message handlers so that the task can process messages.
 
       FUNCTION call;
-      call.Type = CALL_STDC;
+      call.Type = CALL::STD_C;
       call.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
 
@@ -1854,7 +1854,7 @@ static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
    }
    else {
       #ifdef _WIN32
-      if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.defined()) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #else
       if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #endif

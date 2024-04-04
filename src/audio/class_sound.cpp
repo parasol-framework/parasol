@@ -138,7 +138,7 @@ static ERR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime
 #ifdef USE_WIN32_PLAYBACK
 static ERR set_playback_trigger(extSound *Self)
 {
-   if (Self->OnStop.Type) {
+   if (Self->OnStop.defined()) {
       pf::Log log(__FUNCTION__);
       const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
@@ -163,7 +163,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 {
    if (Object->Class->BaseClassID IS ID_SOUND) {
       auto Self = (extSound *)Object;
-      if (Self->OnStop.Type) {
+      if (Self->OnStop.defined()) {
          pf::Log log(__FUNCTION__);
          pf::SwitchContext context(Object);
          const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));

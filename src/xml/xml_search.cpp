@@ -244,6 +244,6 @@ ERR extXML::find_tag(CSTRING XPath)
       }
    }
 
-   if (Callback.Type) return ERR::Okay;
+   if (Callback.defined()) return ERR::Okay;
    else return ERR::Search;
 }

@@ -895,7 +895,7 @@ ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    auto subscriber = tlContext->object();
    if (subscriber->collecting()) return log.warning(ERR::InvalidState);
 
-   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
+   if (Callback->Type IS CALL::SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->Routine, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
@@ -974,7 +974,7 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
          if (timer->Locked) {
             // A timer can't be removed during its execution, but we can nullify the function entry
             // and ProcessMessages() will automatically terminate it on the next cycle.
-            timer->Routine.Type = 0;
+            timer->Routine.Type = CALL::NIL;
             return log.warning(ERR::AlreadyLocked);
          }
 

@@ -108,7 +108,7 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
       }
    }
 
-   if (Self->vpDragCallback.Type) vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
+   if (Self->vpDragCallback.defined()) vecSubscribeInput(Self, JTYPE::NIL, FUNCTION(drag_callback));
 
    return ERR::Okay;
 }

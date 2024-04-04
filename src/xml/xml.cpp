@@ -125,7 +125,7 @@ class extXML : public objXML {
       this->Attrib.clear();
 
       if (pCallback) this->Callback = *pCallback;
-      else this->Callback.Type = 0;
+      else this->Callback.Type = CALL::NIL;
 
       this->CursorTags = &this->Tags;
 

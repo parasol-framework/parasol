@@ -399,7 +399,7 @@ static ERR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
       case CHS::PLAYING:
          // Either playing sample before releasing, or playing has ended - check the first loop type.
 
-         if (sample.OnStop.Type) {
+         if (sample.OnStop.defined()) {
             DOUBLE sec;
             if (sample.Stream) {
                // NB: Accuracy is dependent on the StreamLength value being correct.

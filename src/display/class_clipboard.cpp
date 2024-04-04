@@ -416,7 +416,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else error = log.warning(ERR::FieldNotSet);
 
-      if (error IS ERR::Terminate) Self->RequestHandler.Type = 0;
+      if (error IS ERR::Terminate) Self->RequestHandler.Type = CALL::NIL;
 
       return ERR::Okay;
    }

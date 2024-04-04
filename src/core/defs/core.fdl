@@ -2651,20 +2651,20 @@ template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
 // Function construction (refer types.h)
 
 template <class T> FUNCTION::FUNCTION(T *pRoutine) {
-   Type = CALL_STDC;
+   Type = CALL::STD_C;
    Context = CurrentContext();
    Routine = (APTR)pRoutine;
 };
 
 template <class T> FUNCTION::FUNCTION(T *pRoutine, OBJECTPTR pContext, APTR pMeta) {
-   Type = CALL_STDC;
+   Type = CALL::STD_C;
    Context = pContext;
    Routine = (APTR)pRoutine;
    Meta    = pMeta;
 };
 
 template <class T> FUNCTION::FUNCTION(T *pRoutine, APTR pMeta) {
-   Type = CALL_STDC;
+   Type = CALL::STD_C;
    Context = CurrentContext();
    Routine = (APTR)pRoutine;
    Meta    = pMeta;

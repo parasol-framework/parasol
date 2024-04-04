@@ -1701,7 +1701,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
+      LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
@@ -1764,7 +1764,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
             if (error != ERR::Okay) break;
 
-            if ((Callback) and (Callback->Type)) {
+            if ((Callback) and (Callback->defined())) {
                if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
 
                FFR result = CALL_FEEDBACK(Callback, &feedback);
@@ -1849,7 +1849,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       error = ERR::Okay;
 
-      if ((Callback) and (Callback->Type)) {
+      if ((Callback) and (Callback->defined())) {
          FFR result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR::ABORT) { error = ERR::Cancelled; goto exit; }
          else if (result IS FFR::SKIP) goto exit;
@@ -1949,7 +1949,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
    if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
-      if ((Callback) and (Callback->Type)) {
+      if ((Callback) and (Callback->defined())) {
          FFR result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR::ABORT) { error = ERR::Cancelled; goto exit; }
          else if (result IS FFR::SKIP) { error = ERR::Okay; goto exit; }
@@ -2044,7 +2044,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
-         LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 524288;
+         LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
          error = ERR::Okay;
          if (AllocMemory(bufsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL) IS ERR::Okay) {
             while ((len = read(handle, data, bufsize)) > 0) {
@@ -2060,7 +2060,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                   break;
                }
 
-               if ((Callback) and (Callback->Type)) {
+               if ((Callback) and (Callback->defined())) {
                   feedback.Position += len;
                   if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
                   FFR result = CALL_FEEDBACK(Callback, &feedback);
@@ -2140,7 +2140,7 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
                StrCopy(file->Name, Source+srclen);
                StrCopy(file->Name, Dest+destlen);
 
-               if ((Callback) and (Callback->Type)) {
+               if ((Callback) and (Callback->defined())) {
                   Feedback->Path = Source;
                   Feedback->Dest = Dest;
                   FFR result = CALL_FEEDBACK(Callback, Feedback);
@@ -2170,7 +2170,7 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
          else if ((file->Flags & RDF::FOLDER) != RDF::NIL) {
             StrCopy(file->Name, Dest+destlen);
 
-            if ((Callback) and (Callback->Type)) {
+            if ((Callback) and (Callback->defined())) {
                Feedback->Path = Source;
                Feedback->Dest = Dest;
                FFR result = CALL_FEEDBACK(Callback, Feedback);
@@ -2313,7 +2313,7 @@ ERR fs_delete(STRING Path, FUNCTION *Callback)
 
       StrCopy(Path, buffer, sizeof(buffer));
 
-      if ((Callback) and (Callback->Type)) {
+      if ((Callback) and (Callback->defined())) {
          ClearMemory(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK::DELETE_FILE;
          feedback.Path = buffer;

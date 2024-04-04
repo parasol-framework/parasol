@@ -454,7 +454,7 @@ static ERR FILE_Delete(extFile *Self, struct flDelete *Args)
 
          FileFeedback fb;
          ClearMemory(&fb, sizeof(fb));
-         if ((Args->Callback) and (Args->Callback->Type)) {
+         if ((Args->Callback) and (Args->Callback->defined())) {
             fb.FeedbackID = FBK::DELETE_FILE;
             fb.Path       = buffer;
          }

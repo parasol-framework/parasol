@@ -695,7 +695,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
       Self->Callback[0].Function = *Args->Callback;
    }
 
-   if (Args->Callback->Type IS CALL_SCRIPT) {
+   if (Args->Callback->Type IS CALL::SCRIPT) {
       SubscribeAction(Args->Callback->Context, AC_Free, FUNCTION(notify_free_callback));
    }
 
@@ -1986,7 +1986,7 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Ar
       return ERR::Okay;
    }
    else {
-      if (Args->Callback->Type IS CALL_STDC) log.warning("Unable to find callback for #%d, routine %p", context->UID, Args->Callback->Routine);
+      if (Args->Callback->Type IS CALL::STD_C) log.warning("Unable to find callback for #%d, routine %p", context->UID, Args->Callback->Routine);
       else log.warning("Unable to find callback for #%d", context->UID);
       return ERR::Search;
    }
