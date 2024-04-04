@@ -32,12 +32,12 @@ DEFINE_ENUM_FLAG_OPERATORS(SVF)
 struct svgRender { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
 struct svgParseSymbol { CSTRING ID; objVectorViewport * Viewport;  };
 
-INLINE ERR svgRender(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+inline ERR svgRender(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
    struct svgRender args = { Bitmap, X, Y, Width, Height };
    return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR svgParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noexcept {
+inline ERR svgParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noexcept {
    struct svgParseSymbol args = { ID, Viewport };
    return(Action(MT_SvgParseSymbol, (OBJECTPTR)Ob, &args));
 }

@@ -357,7 +357,7 @@ static ERR SOUND_Activate(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
-         if (Self->OnStop.Type) stream.OnStop = C_FUNCTION(onstop_event);
+         if (Self->OnStop.defined()) stream.OnStop = C_FUNCTION(onstop_event);
          else stream.OnStop.clear();
 
          stream.PlayOffset   = Self->Position;
@@ -401,7 +401,7 @@ static ERR SOUND_Activate(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            if (Self->OnStop.Type) add.OnStop = C_FUNCTION(onstop_event);
+            if (Self->OnStop.defined()) add.OnStop = C_FUNCTION(onstop_event);
             else add.OnStop.clear();
 
             add.SampleFormat = sampleformat;
