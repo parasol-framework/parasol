@@ -11,6 +11,7 @@ static const struct FieldDef clVectorVisibility[] = {
 static const struct FieldDef clVectorFlags[] = {
    { "Disabled", 0x00000001 },
    { "HasFocus", 0x00000002 },
+   { "JoinPaths", 0x00000004 },
    { NULL, 0 }
 };
 

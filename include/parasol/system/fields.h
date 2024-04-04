@@ -932,6 +932,7 @@
 #define FID_Vertices 0xd31fda6aLL
 #define FID_Weight 0x24d3ea4dLL
 
+#define FID_AppendPath 0x778f85caLL
 #define FID_Bias 0x7c949844LL
 #define FID_ClipFlags 0x4959653aLL
 #define FID_Constant 0x42a2b30fLL

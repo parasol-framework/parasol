@@ -17,7 +17,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   flags("VF", { comment="Optional flags and indicators for the Vector class." },
      "DISABLED: The vector is disabled and user input should be ignored.",
-     "HAS_FOCUS: The vector holds the user's input focus.")
+     "HAS_FOCUS: The vector holds the user's input focus.",
+     "JOIN_PATHS: When appending a new path, use a join operation to connect the tail end to the head.")
 
   enum("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
      "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
@@ -1102,6 +1103,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "YELLOWGREEN")
 
    hash("SVF", "0x%s",
+    "APPEND-PATH",
+    "JOIN-PATH",
     "AZIMUTH",
     "ELEVATION",
     "FEFUNCR",
@@ -1161,6 +1164,8 @@ namespace fl {
    using namespace pf;
 
 constexpr FieldValue Flags(VCLF Value) { return FieldValue(FID_Flags, LONG(Value)); }
+
+constexpr FieldValue AppendPath(OBJECTPTR Value) { return FieldValue(FID_AppendPath, Value); }
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }

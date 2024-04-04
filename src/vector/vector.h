@@ -391,6 +391,7 @@ class extVector : public objVector {
    extVectorClip       *ClipMask;
    objVectorTransition *Transition;
    extVector           *Morph;
+   extVector           *AppendPath;
    DashedStroke        *DashArray;
    JTYPE  InputMask;
    LONG   NumericID;
