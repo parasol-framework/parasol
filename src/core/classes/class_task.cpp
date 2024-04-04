@@ -917,7 +917,7 @@ static ERR TASK_Activate(extTask *Self, APTR Void)
 
    input_fd = open("/dev/null", O_RDONLY); // Input is always NULL, we don't want the child process reading from our own stdin stream
 
-   if (Self->OutputCallback.Type) {
+   if (Self->OutputCallback.defined()) {
       log.trace("Output will be sent to callback.");
       if (!pipe(outpipe)) {
          out_fd = outpipe[1]; // for writing
@@ -936,7 +936,7 @@ static ERR TASK_Activate(extTask *Self, APTR Void)
       out_fd = open("/dev/null", O_RDONLY);
    }
 
-   if (Self->ErrorCallback.Type) {
+   if (Self->ErrorCallback.defined()) {
       log.trace("Error output will be sent to a callback.");
       if (!pipe(errpipe)) {
          out_errfd = errpipe[1];
@@ -1162,7 +1162,7 @@ static ERR TASK_Free(extTask *Self, APTR Void)
       Self->ErrFD = -1;
    }
 
-   if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.defined()) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
 #ifdef _WIN32
@@ -1856,7 +1856,7 @@ static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
       #ifdef _WIN32
       if (Self->InputCallback.defined()) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #else
-      if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.defined()) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #endif
       Self->InputCallback.clear();
    }

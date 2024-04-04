@@ -1806,7 +1806,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if ((i = readlink(src, linkto, sizeof(linkto)-1)) != -1) {
          linkto[i] = 0;
 
-         if ((Callback) and (Callback->Type)) {
+         if ((Callback) and (Callback->defined())) {
             FFR result = CALL_FEEDBACK(Callback, &feedback);
             if (result IS FFR::ABORT) { error = ERR::Cancelled; goto exit; }
             else if (result IS FFR::SKIP) { error = ERR::Okay; goto exit; }
@@ -2330,7 +2330,7 @@ ERR fs_delete(STRING Path, FUNCTION *Callback)
 
          StrCopy(Path, buffer, sizeof(buffer));
 
-         if ((Callback) and (Callback->Type)) {
+         if ((Callback) and (Callback->defined())) {
             ClearMemory(&feedback, sizeof(feedback));
             feedback.FeedbackID = FBK::DELETE_FILE;
             feedback.Path = buffer;
@@ -3043,7 +3043,7 @@ ERR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feedba
 
    log.trace("Path: %s", Path);
 
-   if ((Callback) and (Callback->Type)) {
+   if ((Callback) and (Callback->defined())) {
       Feedback->Path = Path;
       FFR result = CALL_FEEDBACK(Callback, Feedback);
       if (result IS FFR::ABORT) {
