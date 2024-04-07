@@ -71,7 +71,7 @@ function testComposite()          hashTestSVG('filters/composite.svg', 0x66a96a5
 function testConvolve()           hashTestSVG('filters/convolve.svg', 0x29d31e69) end
 function testRockyLighting()      hashTestSVG('filters/rocky_lighting.svg', 0x6e4322a9) end
 function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0xb0ac4263) end
-function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0xe1acd9c9) end
+function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0xebc363c1) end
 function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf2d1a46c) end
 function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x6f8b62dd) end
 function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0xd9e10af8) end

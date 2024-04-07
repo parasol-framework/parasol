@@ -822,8 +822,14 @@ static ERR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
    bool pct;
    auto size = read_unit(Value, pct);
 
+   // TODO: With respect to supporting sub-pixel point sizes and being cache-friendly, we could try caching fonts
+   // at pre-determined point sizes (4,6,8,10,12,14,20,30,40,50,60,...) and then use scaling to cater to other
+   // 'non-standard' sizes.  This would allow for hinting to remain effective when regular point sizes are being chosen.
+
    if (size > 0) {
-      Self->txFontSize = std::trunc(size);
+      auto new_size = std::trunc(size);
+      if (Self->txFontSize IS new_size) return ERR::Okay;
+      Self->txFontSize = new_size;
       Self->txScaledFontSize = pct;
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
@@ -1402,6 +1408,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
          Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
          Vector->txFontSize = std::trunc(DOUBLE(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
       }
+      mark_dirty(Vector, RC::ALL);
       return ERR::Okay;
    }
    else return log.warning(error);

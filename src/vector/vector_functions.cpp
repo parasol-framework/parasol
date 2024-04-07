@@ -896,7 +896,7 @@ next:
          if (rgb.Alpha > 1) rgb.Alpha = 1;
          else if (rgb.Alpha < 0) rgb.Alpha = 0;
       }
-      else if (rgb.Alpha <= 0) rgb.Alpha = 1.0; // Only set the alpha if it hasn't been set already (example: stroke-opacity)
+      else rgb.Alpha = 1.0;
 
       if (rgb.Red > 1) rgb.Red = 1;
       else if (rgb.Red < 0) rgb.Red = 0;
@@ -906,6 +906,139 @@ next:
 
       if (rgb.Blue > 1) rgb.Blue = 1;
       else if (rgb.Blue < 0) rgb.Blue = 0;
+
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
+   }
+   else if (StrCompare("hsl(", IRI, 4) IS ERR::Okay) {
+      auto &rgb = Painter->Colour;
+      IRI += 4;
+      DOUBLE hue = StrToFloat(IRI) * (1.0 / 255.0);
+      while ((*IRI) and (*IRI != ',')) {
+         if (*IRI IS '%') hue = hue * (255.0 / 100.0);
+         IRI++;
+      }
+      if (*IRI) IRI++;
+      DOUBLE sat = StrToFloat(IRI) * (1.0 / 255.0);
+      while ((*IRI) and (*IRI != ',')) {
+         if (*IRI IS '%') sat = sat * (255.0 / 100.0);
+         IRI++;
+      }
+      if (*IRI) IRI++;
+      DOUBLE light = StrToFloat(IRI) * (1.0 / 255.0);
+      while ((*IRI) and (*IRI != ',')) {
+         if (*IRI IS '%') light = light * (255.0 / 100.0);
+         IRI++;
+      }
+      if (*IRI) {
+         IRI++;
+         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         while (*IRI) {
+            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
+            IRI++;
+         }
+         if (rgb.Alpha > 1) rgb.Alpha = 1;
+         else if (rgb.Alpha < 0) rgb.Alpha = 0;
+      }
+      else rgb.Alpha = 1.0;
+
+      if (hue > 1) hue = 1;
+      else if (hue < 0) hue = 0;
+
+      if (sat > 1) sat = 1;
+      else if (sat < 0) sat = 0;
+
+      if (light > 1) light = 1;
+      else if (light < 0) light = 0;
+
+      // Convert HSL to RGB
+
+      auto hueToRgb = [](DOUBLE p, DOUBLE q, DOUBLE t) {
+         if (t < 0) t += 1;
+         if (t > 1) t -= 1;
+         if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+         if (t < 1.0/2.0) return q;
+         if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+         return p;
+      };
+
+      if (sat == 0) {
+         rgb.Red = rgb.Green = rgb.Blue = light;
+      } 
+      else {
+         const DOUBLE q = (light < 0.5) ? light * (1.0 + sat) : light + sat - light * sat;
+         const DOUBLE p = 2.0 * light - q;
+         rgb.Red   = hueToRgb(p, q, hue + 1.0/3.0);
+         rgb.Green = hueToRgb(p, q, hue);
+         rgb.Blue  = hueToRgb(p, q, hue - 1.0/3.0);
+      }
+
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
+   }
+   else if (StrCompare("hsv(", IRI, 4) IS ERR::Okay) {
+      auto &rgb = Painter->Colour;
+      IRI += 4;
+      DOUBLE hue = StrToFloat(IRI) * (1.0 / 255.0);
+      while ((*IRI) and (*IRI != ',')) {
+         if (*IRI IS '%') hue = hue * (255.0 / 100.0);
+         IRI++;
+      }
+      if (*IRI) IRI++;
+      DOUBLE sat = StrToFloat(IRI) * (1.0 / 255.0);
+      while ((*IRI) and (*IRI != ',')) {
+         if (*IRI IS '%') sat = sat * (255.0 / 100.0);
+         IRI++;
+      }
+      if (*IRI) IRI++;
+      DOUBLE val = StrToFloat(IRI) * (1.0 / 255.0);
+      while ((*IRI) and (*IRI != ',')) {
+         if (*IRI IS '%') val = val * (255.0 / 100.0);
+         IRI++;
+      }
+      if (*IRI) {
+         IRI++;
+         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         while (*IRI) {
+            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
+            IRI++;
+         }
+         if (rgb.Alpha > 1) rgb.Alpha = 1;
+         else if (rgb.Alpha < 0) rgb.Alpha = 0;
+      }
+      else rgb.Alpha = 1.0;
+
+      if (hue > 1) hue = 1;
+      else if (hue < 0) hue = 0;
+
+      if (sat > 1) sat = 1;
+      else if (sat < 0) sat = 0;
+
+      if (val > 1) val = 1;
+      else if (val < 0) val = 0;
+
+      hue = hue / 60.0;
+      LONG i = floor(hue);
+      DOUBLE f = hue - i;
+      if (!(i & 1)) f = 1 - f; // if i is even
+      DOUBLE m = val * (1 - sat);
+      DOUBLE n = val * (1 - sat * f);
+      switch (i) {
+         case 6:
+         case 0: rgb.Red = val; rgb.Green = n; rgb.Blue = m; break;
+         case 1: rgb.Red = n; rgb.Green = val; rgb.Blue = m; break;
+         case 2: rgb.Red = m; rgb.Green = val; rgb.Blue = n; break;
+         case 3: rgb.Red = m; rgb.Green = n; rgb.Blue = val; break;
+         case 4: rgb.Red = n; rgb.Green = m; rgb.Blue = val; break;
+         case 5: rgb.Red = val; rgb.Green = m; rgb.Blue = n; break;
+         default: rgb.Red = 0; rgb.Green = 0; rgb.Blue = 0; break;
+      }
 
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
