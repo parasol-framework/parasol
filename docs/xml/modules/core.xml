@@ -3449,10 +3449,11 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
-    <struct name="HSV" comment="Colour structure for Hue, Saturation and Value components.">
+    <struct name="HSV" comment="Colour structure for Hue, Saturation and Value/Light components.">
       <field name="Hue" type="DOUBLE">Between 0 and 359.999</field>
       <field name="Saturation" type="DOUBLE">Between 0 and 1.0</field>
       <field name="Value" type="DOUBLE">Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness</field>
+      <field name="Alpha" type="DOUBLE">Alpha blending value from 0 to 1.0.</field>
     </struct>
 
     <struct name="InputEvent">

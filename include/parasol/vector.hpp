@@ -120,15 +120,17 @@ public:
 
    // Erasure
 
-   inline void erase(iterator Ref) {
+   inline T * erase(iterator Ref) {
       erase(Ref, Ref + 1);
+      return Ref;
    }
 
-   inline void erase(size_t Index) {
+   inline T * erase(size_t Index) {
       erase(from(Index), from(Index + 1));
+      return from(Index);
    }
 
-   void erase(iterator Start, iterator Stop) {
+   T * erase(iterator Start, iterator Stop) {
       if (Stop IS end()) {
          for (auto it = Start; it != Stop; it++) {
             (*it).~T();
@@ -142,6 +144,8 @@ public:
          auto total_removed = Stop - Start;
          length -= total_removed;
       }
+
+      return Start;
    }
 
    iterator insert(const_iterator pTarget, T &pValue) {

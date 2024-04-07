@@ -1637,6 +1637,11 @@ struct BaseClass { // Must be 64-bit aligned
       return obj ? true : false;
    }
 
+   inline ERR setArray(ULONG FieldID, FLOAT *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TFLOAT, Value, Size); }
+   inline ERR setArray(ULONG FieldID, DOUBLE *Value, LONG Size) { return SetArray(this, (FIELD)FieldID|TDOUBLE, Value, Size); }
+   inline ERR setArray(ULONG FieldID, LONG *Value, LONG Size)   { return SetArray(this, (FIELD)FieldID|TLONG, Value, Size); }
+   inline ERR setArray(ULONG FieldID, LARGE *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TLARGE, Value, Size); }
+
    inline ERR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }

@@ -2,6 +2,8 @@
 
 #include <sstream>
 #include <algorithm>
+#include <cctype>
+#include <string_view>
 
 namespace pf {
 
@@ -53,6 +55,16 @@ inline void camelcase(std::string &s) {
       }
       else if (s[i] <= 0x20) raise = true;
    }
+}
+
+inline bool iequals(std::string_view lhs, std::string_view rhs)
+{
+   auto ichar_equals = [](char a, char b) {
+       return std::tolower(static_cast<unsigned char>(a)) ==
+              std::tolower(static_cast<unsigned char>(b));
+   };
+
+   return std::ranges::equal(lhs, rhs, ichar_equals);
 }
 
 } // namespace
