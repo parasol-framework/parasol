@@ -1553,8 +1553,10 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
          for (auto &child : Tag.Children) {
             if (child.isTag()) {
                switch(StrHash(child.name())) {
-                  case SVF_ANIMATETRANSFORM: xtag_animatetransform(Self, child, vector); break;
-                  case SVF_ANIMATEMOTION:    xtag_animatemotion(Self, child, vector); break;
+                  case SVF_ANIMATE:          xtag_animate(Self, child, vector); break;
+                  case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, vector); break;
+                  case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, vector); break;
+                  case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, vector); break;
                   case SVF_PARASOL_MORPH:    xtag_morph(Self, child, vector); break;
                   case SVF_TEXTPATH:
                      if (VectorID IS ID_VECTORTEXT) {
@@ -1616,7 +1618,10 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
       case SVF_CONICGRADIENT:    xtag_conicgradient(Self, Tag); break;
       case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, Tag); break;
       case SVF_SYMBOL:           xtag_symbol(Self, Tag); break;
-      case SVF_ANIMATETRANSFORM: xtag_animatetransform(Self, Tag, Parent); break;
+      case SVF_ANIMATE:          xtag_animate(Self, Tag, Parent); break;
+      case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, Tag, Parent); break;
+      case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, Tag, Parent); break;
+      case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, Tag, Parent); break;
       case SVF_FILTER:           xtag_filter(Self, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, Tag); break;
@@ -2330,6 +2335,26 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
    SetOwner(group, Parent);
    if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all group attribute values to the current state.
    process_attrib(Self, Tag, State, group);
+   
+   // Process <animate/> child tags in advance.  Unfortunately there is a requirement for <animate> to work only 
+   // on objects that do not already have the target 'attributeName' already defined.  We therefore need
+   // to do a bit of filtering and clone the <animate> tag for the affected elements.
+
+   for (auto find_anim=Tag.Children.begin(); find_anim != Tag.Children.end(); ) {
+      if ((find_anim->isTag()) and (iequals("animate", find_anim->name()))) {
+         if (auto attrib = find_anim->attrib("attributeName")) {
+            for (auto &clone_to : Tag.Children) {
+               if (clone_to.isTag() and (not iequals("animate", clone_to.name()))) {
+                  if (!clone_to.attrib(*attrib)) {
+                     clone_to.Children.push_back(*find_anim);
+                  }
+               }
+            }
+         }
+         find_anim = Tag.Children.erase(find_anim);
+      }
+      else find_anim++;
+   }
 
    // Process child tags
 
@@ -2373,6 +2398,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    // specified a custom target, in which case there needs to be a way to discover the root of the SVG.
 
    if (!Self->Viewport) Self->Viewport = viewport;
+
    // Process <svg> attributes
 
    auto state = State;
@@ -2425,7 +2451,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
             break;
 
          case SVF_ENABLE_BACKGROUND:
-            if ((StrMatch("true", val) IS ERR::Okay) or (StrMatch("1", val) IS ERR::Okay)) viewport->set(FID_EnableBkgd, TRUE);
+            if ((iequals("true", val)) or (iequals("1", val))) viewport->set(FID_EnableBkgd, TRUE);
             break;
 
          case SVF_ZOOMANDPAN:
@@ -2463,7 +2489,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          // larger separation between "a" and "b" than "a b" (one space between "a" and "b").
 
          case SVF_XML_SPACE:
-            if (StrMatch("preserve", val) IS ERR::Okay) Self->PreserveWS = TRUE;
+            if (iequals("preserve", val)) Self->PreserveWS = TRUE;
             else Self->PreserveWS = FALSE;
             break;
 
@@ -2499,132 +2525,81 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERR xtag_animatetransform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
    Self->Animated = true;
 
-   svgAnimation anim;
-   anim.TargetVector = Parent->UID;
+   anim_transform anim(Parent->UID);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
-         case SVF_ATTRIBUTENAME: // Name of the target attribute affected by the From and To values.
-            anim.TargetAttribute = value;
-            break;
-
-         case SVF_ATTRIBUTETYPE: // Namespace of the target attribute: XML, CSS, auto
-            //if (StrMatch("XML", value) IS ERR::Okay);
-            //else if (StrMatch("CSS", value) IS ERR::Okay);
-            //else if (StrMatch("auto", value) IS ERR::Okay);
-            break;
-
-         case SVF_ID:
-            anim.ID = value;
-            add_id(Self, Tag, value);
-            break;
-
-         case SVF_BEGIN:
-            // Defines when the element should become active.  Specified as a semi-colon list.
-            //   offset: A clock-value that is offset from the moment the animation is activated.
-            //   id.end/begin: Reference to another animation's begin or end to determine when the animation starts.
-            //   event: An event reference like 'focusin' determines that the animation starts when the event is triggered.
-            //   id.repeat(value): Reference to another animation, repeat when the given value is reached.
-            //   access-key: The animation starts when a keyboard key is pressed.
-            //   clock: A real-world clock time (not supported)
-            break;
-
-         case SVF_END: // The animation ends when one of the triggers is reached.  Semi-colon list of multiple values permitted.
-
-            break;
-
-         case SVF_DUR: // 4s, 02:33, 12:10:53, 45min, 4ms, 12.93, 1h, 'media', 'indefinite'
-            if (StrMatch("media", value) IS ERR::Okay) anim.Duration = 0; // Does not apply to animation
-            else if (StrMatch("indefinite", value) IS ERR::Okay) anim.Duration = -1;
-            else anim.Duration = read_time(value);
-            break;
-
+      auto hash = StrHash(Tag.Attribs[a].Name);
+      switch (hash) {
          case SVF_TYPE: // translate, scale, rotate, skewX, skewY
-            if (StrMatch("translate", value) IS ERR::Okay)   anim.Transform = AT_TRANSLATE;
-            else if (StrMatch("scale", value) IS ERR::Okay)  anim.Transform = AT_SCALE;
-            else if (StrMatch("rotate", value) IS ERR::Okay) anim.Transform = AT_ROTATE;
-            else if (StrMatch("skewX", value) IS ERR::Okay)  anim.Transform = AT_SKEW_X;
-            else if (StrMatch("skewY", value) IS ERR::Okay)  anim.Transform = AT_SKEW_Y;
+            if (iequals("translate", value))   anim.type = AT::TRANSLATE;
+            else if (iequals("scale", value))  anim.type = AT::SCALE;
+            else if (iequals("rotate", value)) anim.type = AT::ROTATE;
+            else if (iequals("skewX", value))  anim.type = AT::SKEW_X;
+            else if (iequals("skewY", value))  anim.type = AT::SKEW_Y;
             else log.warning("Unsupported type '%s'", value.c_str());
             break;
 
-         case SVF_MIN:
-            if (StrMatch("media", value) IS ERR::Okay) anim.MinDuration = 0; // Does not apply to animation
-            else anim.MinDuration = read_time(value);
-            break;
-
-         case SVF_MAX:
-            if (StrMatch("media", value) IS ERR::Okay) anim.MaxDuration = 0; // Does not apply to animation
-            else anim.MaxDuration = read_time(value);
-            break;
-
-         case SVF_FROM: { // The starting value of the animation.
-            if (anim.Values.empty()) anim.Values.push_back(value);
-            else anim.Values[0] = value;
-            break;
-         }
-
-         case SVF_TO: {
-            if (anim.Values.size() >= 1) anim.Values[1] = value;
-            else anim.Values.insert(anim.Values.begin() + 1, value);
-            break;
-         }
-
-         // Similar to from and to, this is a series of values that are interpolated over the time line.
-         case SVF_VALUES: {
-            anim.Values.clear();
-            LONG s, v = 0;
-            while ((v < std::ssize(value)) and (std::ssize(anim.Values) < MAX_VALUES)) {
-               while ((value[v]) and (value[v] <= 0x20)) v++;
-               for (s=v; (value[s]) and (value[s] != ';'); s++);
-               anim.Values.push_back(value.substr(v, s-v));
-               v = s;
-               if (value[v] IS ';') v++;
-            }
-            break;
-         }
-
-         case SVF_RESTART: // always, whenNotActive, never
-            if (StrMatch("always", value) IS ERR::Okay) anim.Restart = RST_ALWAYS;
-            else if (StrMatch("whenNotActive", value) IS ERR::Okay) anim.Restart = RST_WHEN_NOT_ACTIVE;
-            else if (StrMatch("never", value) IS ERR::Okay) anim.Restart = RST_NEVER;
-            break;
-
-         case SVF_REPEATDUR:
-            if (StrMatch("indefinite", value) IS ERR::Okay) anim.RepeatDuration = -1;
-            else anim.RepeatDuration = read_time(value);
-            break;
-
-         case SVF_REPEATCOUNT: // Integer, 'indefinite'
-            if (StrMatch("indefinite", value) IS ERR::Okay) anim.RepeatCount = -1;
-            else anim.RepeatCount = read_time(value);
-            break;
-
-         case SVF_FILL: // freeze, remove
-            if (StrMatch("freeze", value) IS ERR::Okay) anim.Freeze = true; // Freeze the effect value at the last value of the duration (i.e. keep the last frame).
-            else if (StrMatch("remove", value) IS ERR::Okay) anim.Freeze = true; // The default.  The effect is stopped when the duration is over.
-            break;
-
-         case SVF_ADDITIVE: // replace, sum
-            if (StrMatch("replace", value) IS ERR::Okay) anim.Replace = true; // The animation values replace the underlying values of the target vector's attributes.
-            else if (StrMatch("sum", value) IS ERR::Okay) anim.Replace = false; // The animation adds to the underlying values of the target vector.
-            break;
-
-         case SVF_ACCUMULATE:
-            if (StrMatch("none", value) IS ERR::Okay) anim.Accumulate = false; // Repeat iterations are not cumulative.  This is the default.
-            else if (StrMatch("sum", value) IS ERR::Okay) anim.Accumulate = true; // Each repeated iteration builds on the last value of the previous iteration.
-            break;
-
          default:
+            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            break;
+      }
+   }
+
+   Self->Animations.emplace_back(anim);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// The ‘animate’ element is used to animate a single attribute or property over time. For example, to make a
+// rectangle repeatedly fade away over 5 seconds:
+
+static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+{
+   Self->Animated = true;
+
+   anim_value anim(Parent->UID);
+
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
+
+      auto hash = StrHash(Tag.Attribs[a].Name);
+      switch (hash) {
+         default:
+            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            break;
+      }
+   }
+
+   Self->Animations.emplace_back(anim);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+{
+   Self->Animated = true;
+   
+   anim_colour anim(Parent->UID);
+
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
+
+      auto hash = StrHash(Tag.Attribs[a].Name);
+      switch (hash) {
+         default:
+            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
             break;
       }
    }
@@ -2636,32 +2611,35 @@ static ERR xtag_animatetransform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 //********************************************************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERR xtag_animatemotion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
+   
+   anim_motion anim(Parent->UID);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
-      if (Tag.Attribs[a].Value.empty()) continue;
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
-         case SVF_FROM:
-            break;
-         case SVF_TO:
-            break;
-         case SVF_DUR:
-            break;
+      auto hash = StrHash(Tag.Attribs[a].Name);
+      switch (hash) {
          case SVF_PATH:
             //path="M 0 0 L 100 100"
             break;
-         case SVF_FILL:
-            // freeze = The last frame will be displayed at the end of the animation, rather than going back to the first frame.
 
+         case SVF_ROTATE:
             break;
+
+         case SVF_ORIGIN:
+            break;
+
          default:
+            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
             break;
       }
    }
 
+   Self->Animations.emplace_back(anim);
    return ERR::Okay;
 }
 
@@ -2935,13 +2913,13 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
                // Note: For the time being, VectorRectangle doesn't support X2/Y2 as a concept.  This would
                // cause problems if the client was to specify a scaled value here.
                auto width = FUNIT(FID_Width, StrValue);
-               SetField(Vector, FID_Width|TDOUBLE, std::abs(DOUBLE(width) - Vector->get<DOUBLE>(FID_X)));
+               Vector->setFields(fl::Width(std::abs(width - Vector->get<DOUBLE>(FID_X))));
                return ERR::Okay;
             }
 
             case SVF_Y2: {
                auto height = FUNIT(FID_Height, StrValue);
-               SetField(Vector, FID_Height|TDOUBLE, std::abs(DOUBLE(height) - Vector->get<DOUBLE>(FID_Y)));
+               Vector->setFields(fl::Height(std::abs(height - Vector->get<DOUBLE>(FID_Y))));
                return ERR::Okay;
             }
          }

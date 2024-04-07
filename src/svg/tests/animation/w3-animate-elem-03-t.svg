@@ -12,9 +12,9 @@ animated values - the fill color changes and the text grows in size.
 
 <svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <g font-family="MyDecFont" fill="#00f" stroke="none">
-    <text x="20" y="80" font-size="40">Become Green</text>
+    <text x="20" y="80" font-size="40">Turn Green</text>
     <text x="20" y="155" font-size="60" fill="#00f">Stay the Same</text>
-    <text x="20" y="250">Grow &amp; Colour</text>
+    <text x="20" y="250">Grow &amp; Green</text>
     <animate attributeName="font-size" attributeType="CSS" begin="0s" dur="3s" fill="freeze" from="40" to="80"/>
     <animate attributeName="fill" attributeType="CSS" begin="0s" dur="3s" fill="freeze" from="#00f" to="#070"/>
   </g>
