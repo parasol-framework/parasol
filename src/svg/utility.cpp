@@ -399,7 +399,7 @@ inline std::string_view next_value(const std::string_view Value)
 // The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
 // include: 0 - 9 , ( ) - + SPACE
 
-static void read_numseq(std::string_view String, std::initializer_list<DOUBLE *> Value)
+static std::string_view read_numseq(std::string_view String, std::initializer_list<DOUBLE *> Value)
 {
    for (DOUBLE *v : Value) {
       String = next_value(String);
@@ -408,11 +408,13 @@ static void read_numseq(std::string_view String, std::initializer_list<DOUBLE *>
       auto [ next, error ] = std::from_chars(String.data(), String.data() + String.size(), num);
 
       if ((!num) and ((!next) or (String IS next))) {  // Invalid character or end-of-stream check.
-         return;
+         return String;
       }
       String = std::string_view(next, String.data() + String.size() - next);
       *v = num;
    }
+
+   return String;
 }
 
 //********************************************************************************************************************

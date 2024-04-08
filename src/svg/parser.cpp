@@ -515,13 +515,13 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
             }
 
             fx->set(FID_Mode, LONG(mode));
-            if (mode IS CM::MATRIX) SetArray(fx, FID_Values|TDOUBLE, (APTR)m, CM_SIZE);
+            if ((mode IS CM::MATRIX) and (m)) fx->setArray(FID_Values, (DOUBLE *)m, CM_SIZE);
             break;
          }
 
          case SVF_VALUES: {
             auto m = read_array<DOUBLE>(val, CM_SIZE);
-            SetArray(fx, FID_Values|TDOUBLE, m);
+            fx->setArray(FID_Values, m.data(), CM_SIZE);
             break;
          }
 

@@ -136,20 +136,26 @@ FRGB anim_base::get_colour_value()
    }
    else return { 0, 0, 0, 0 };
    
-   // Linear interpolation is superior to operating on raw RGB values.
+   if (calc_mode IS CMODE::DISCRETE) {
+      if (seek < 0.5) return from_col.Colour;
+      else return to_col.Colour;
+   }
+   else { // CMODE::LINEAR
+      // Linear RGB interpolation is superior to operating on raw RGB values.
 
-   glLinearRGB.convert(from_col.Colour);
-   glLinearRGB.convert(to_col.Colour);
+      glLinearRGB.convert(from_col.Colour);
+      glLinearRGB.convert(to_col.Colour);
 
-   auto result = FRGB {
-      FLOAT(from_col.Colour.Red   + ((to_col.Colour.Red   - from_col.Colour.Red) * seek)),
-      FLOAT(from_col.Colour.Green + ((to_col.Colour.Green - from_col.Colour.Green) * seek)),
-      FLOAT(from_col.Colour.Blue  + ((to_col.Colour.Blue  - from_col.Colour.Blue) * seek)),
-      FLOAT(from_col.Colour.Alpha + ((to_col.Colour.Alpha - from_col.Colour.Alpha) * seek))
-   };
+      auto result = FRGB {
+         FLOAT(from_col.Colour.Red   + ((to_col.Colour.Red   - from_col.Colour.Red) * seek)),
+         FLOAT(from_col.Colour.Green + ((to_col.Colour.Green - from_col.Colour.Green) * seek)),
+         FLOAT(from_col.Colour.Blue  + ((to_col.Colour.Blue  - from_col.Colour.Blue) * seek)),
+         FLOAT(from_col.Colour.Alpha + ((to_col.Colour.Alpha - from_col.Colour.Alpha) * seek))
+      };
 
-   glLinearRGB.invert(result);
-   return result;
+      glLinearRGB.invert(result);
+      return result;
+   }
 }
 
 //********************************************************************************************************************
@@ -350,10 +356,50 @@ void anim_colour::perform()
 }
 
 //********************************************************************************************************************
+// The specified values for 'from', 'by', 'to' and 'values' consists of x, y coordinate pairs, with a single comma 
+// and/or white space separating the x coordinate from the y coordinate. For example, from="33,15" specifies an x 
+// coordinate value of 33 and a y coordinate value of 15.
 
 void anim_motion::perform()
 {
+   DOUBLE x1, y1, x2, y2;
 
+   pf::ScopedObjectLock<objVector *> vector(target_vector, 1000);
+   if (vector.granted()) {
+      if (not values.empty()) {
+         LONG vi = F2T((values.size()-1) * seek);
+         if (vi >= LONG(values.size())-1) vi = values.size() - 2;
+
+         read_numseq(values[vi], { &x1, &y1 });
+         read_numseq(values[vi+1], { &x2, &y2 } );
+
+         // Recompute the seek position to fit between the two values
+         const DOUBLE mod = 1.0 / DOUBLE(values.size() - 1);
+         seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
+      else if (not from.empty()) {
+         if (not to.empty()) {
+            read_numseq(from, { &x1, &y1 });
+            read_numseq(to, { &x2, &y2 } );
+         }
+         else if (not by.empty()) {
+            return;
+         }
+      }
+   }
+
+   if (not matrix) vecNewMatrix(*vector, &matrix);
+   vecResetMatrix(matrix);
+
+   if (calc_mode IS CMODE::DISCRETE) {
+      if (seek < 0.5) vecTranslate(matrix, x1, y1);
+      else vecTranslate(matrix, x2, y2);
+   }
+   else { // CMODE::LINEAR
+      x1 = x1 + ((x2 - x1) * seek);
+      y1 = y1 + ((y2 - y1) * seek);
+      vecTranslate(matrix, x1, y1);
+   }
 }
 
 //********************************************************************************************************************
@@ -362,9 +408,7 @@ void anim_transform::perform()
 {
    pf::ScopedObjectLock<objVector *> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (not matrix) {
-         vecNewMatrix(*vector, &matrix);
-      }
+      if (not matrix) vecNewMatrix(*vector, &matrix);
 
       switch(type) {
          case AT::TRANSLATE: break;
