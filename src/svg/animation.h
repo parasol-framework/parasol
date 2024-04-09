@@ -87,11 +87,12 @@ public:
 class anim_motion : public anim_base {
 public:
    typedef struct { FLOAT x, y; } POINT;
-   ART auto_rotate = ART::NIL; // 0 = None; 1 = Auto Rotate by path tangent; -1 = Auto rotate by inverse of path tangent
+   ART auto_rotate = ART::NIL; // Inline rotation along the path
    DOUBLE rotate = 0;
-   objVector *mpath; // External vector path
+   objVector *mpath = NULL; // External vector path
    pf::GuardedObject<objVector> path; // Client provided path sequence
    std::vector<POINT> points;
+   std::vector<FLOAT> angles;
    LONG path_timestamp;
 
    anim_motion(OBJECTID pTarget) : anim_base(pTarget) { }

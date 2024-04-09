@@ -1314,7 +1314,7 @@ static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
 -FIELD-
 DisplayScale: Returns the scale of the vector as it appears on the display.
 
-The DisplayScale field will return the scale factor of the vector's path as it appears in the final rendering.  For 
+The DisplayScale field will return the scale factor of the vector's path as it appears in the final rendering.  For
 instance if the vector is the child of a viewport scaled down to 50%, the resulting value would be `0.5`.
 
 *********************************************************************************************************************/
@@ -1935,7 +1935,7 @@ composed of lines at 45 degree increments and `FAST` if points are aligned to wh
 PathTimestamp: This counter is modified each time the path is regenerated.
 
 The PathTimestamp can be used as a basic means of recording the state of the vector's path, and checking that state
-for changes at a later time.  For more active monitoring and response, clients should subscribe to the `PATH_CHANGED` 
+for changes at a later time.  For more active monitoring and response, clients should subscribe to the `PATH_CHANGED`
 event.
 
 -FIELD-

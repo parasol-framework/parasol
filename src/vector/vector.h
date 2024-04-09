@@ -55,7 +55,8 @@ using namespace pf;
 #include <float.h>
 
 static const DOUBLE DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
-static const DOUBLE DEG2RAD     = 0.0174532925;  // Multiple any angle by this value to convert to radians
+static const DOUBLE DEG2RAD     = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
+static const DOUBLE RAD2DEG     = 57.295779513082320876798154814105;
 static const DOUBLE SQRT2       = 1.41421356237; // sqrt(2)
 static const DOUBLE INV_SQRT2   = 1.0 / SQRT2;
 

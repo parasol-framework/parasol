@@ -38,6 +38,9 @@ JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
+static const DOUBLE DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
+static const DOUBLE RAD2DEG = 57.295779513082320876798154814105;
+
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
 
 struct prvSVG { // Private variables for RSVG
@@ -58,6 +61,10 @@ struct svgID { // All elements using the 'id' attribute will be registered with 
 
    svgID() { TagIndex = -1; }
 };
+
+inline DOUBLE get_angle(anim_motion::POINT &A, anim_motion::POINT &B) {
+   return std::atan2(B.y - A.y, B.x - A.x) * RAD2DEG;
+}
 
 #include <parasol/modules/svg.h>
 
