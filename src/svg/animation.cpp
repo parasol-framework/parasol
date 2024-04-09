@@ -459,6 +459,7 @@ void anim_motion::perform()
    vecResetMatrix(matrix);
 
    if (angle != -1) vecRotate(matrix, angle, 0, 0);
+   else if (auto_rotate IS ART::FIXED)  vecRotate(matrix, rotate, 0, 0);
 
    if (calc_mode IS CMODE::DISCRETE) {
       if (seek < 0.5) vecTranslate(matrix, x1, y1);

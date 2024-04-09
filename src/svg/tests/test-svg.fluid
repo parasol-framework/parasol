@@ -46,11 +46,11 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testCircles()            hashTestSVG('paths/circles.svg', 0xc2063c38) end
-function testMorph()              hashTestSVG('paths/morph.svg', 0x50272d17) end
+function testMorph()              hashTestSVG('paths/morph.svg', 0x4f9e9c4f) end
 function testEllipseVertices()    hashTestSVG('paths/ellipse_vertices.svg', 0x00d2264b) end
 function testPolygons()           hashTestSVG('paths/polygons.svg', 0x2f17adec) end
 function testShapes()             hashTestSVG('paths/shapes.svg', 0xd67937c9) end
-function testSpirals()            hashTestSVG('paths/spirals.svg', 0x84bb0e08) end
+function testSpirals()            hashTestSVG('paths/spirals.svg', 0x0d713688) end
 function testStrokes()            hashTestSVG('paths/strokes.svg', 0x087fb44e) end
 function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0x915ba38c) end
 function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0xd981df67) end
