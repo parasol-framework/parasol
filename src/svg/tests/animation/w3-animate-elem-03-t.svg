@@ -1,0 +1,21 @@
+<!--
+Test inheritance of animated properties.
+
+Three colored text strings appear. All three are inside of the same 'g' element. The 'g' element has its 'font-size'
+animated from 30 to 40, and its 'fill' from #00f (blue) to #070 (green).
+
+The first colored 'text' element has the font-size set, so the animation of the parent 'g' only affects the fill
+color. The second has the fill set and font-size set, so no inherited values are used. The font-size and fill color
+stay constant. The third colored 'text' element has neither of these properties specified and thus inherits both
+animated values - the fill color changes and the text grows in size.
+-->
+
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g font-family="MyDecFont" fill="#00f" stroke="none">
+    <text x="20" y="80" font-size="40">Turn Green</text>
+    <text x="20" y="155" font-size="60" fill="#00f">Stay the Same</text>
+    <text x="20" y="250">Grow &amp; Green</text>
+    <animate attributeName="font-size" attributeType="CSS" begin="0s" dur="3s" fill="freeze" from="40" to="80"/>
+    <animate attributeName="fill" attributeType="CSS" begin="0s" dur="3s" fill="freeze" from="#00f" to="#070"/>
+  </g>
+</svg>

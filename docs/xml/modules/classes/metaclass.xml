@@ -223,6 +223,17 @@
     </field>
 
     <field>
+      <name>Objects</name>
+      <comment>Returns an allocated list of all objects that belong to this class.</comment>
+      <access read="G">Get</access>
+      <type>LONG []</type>
+      <description>
+<p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
+<p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
+      </description>
+    </field>
+
+    <field>
       <name>OpenCount</name>
       <comment>The total number of active objects that are linked back to the MetaClass.</comment>
       <access read="R">Read</access>
@@ -239,17 +250,6 @@
       <type>CSTRING</type>
       <description>
 <p>The Path field must be set on initialisation and refers to the default location of the class' module binary, for example <code>modules:display</code>. For reasons of platform portability, the file extension must not be specified at the end of the file name.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>PrivateObjects</name>
-      <comment>Returns an allocated list of all objects that belong to this class.</comment>
-      <access read="G">Get</access>
-      <type>LONG []</type>
-      <description>
-<p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
-<p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
       </description>
     </field>
 

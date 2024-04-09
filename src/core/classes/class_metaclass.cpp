@@ -50,7 +50,7 @@ static ERR GET_Fields(extMetaClass *, const FieldArray **, LONG *);
 static ERR GET_Location(extMetaClass *, CSTRING *);
 static ERR GET_Methods(extMetaClass *, const MethodEntry **, LONG *);
 static ERR GET_Module(extMetaClass *, CSTRING *);
-static ERR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
+static ERR GET_Objects(extMetaClass *, OBJECTID **, LONG *);
 static ERR GET_RootModule(extMetaClass *, class RootModule **);
 static ERR GET_Dictionary(extMetaClass *, struct Field **, LONG *);
 static ERR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
@@ -100,12 +100,12 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { (MAXINT)&CategoryTable, NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(BaseClass)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
    { (MAXINT)"MethodEntry", (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(BaseClass), 14, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { 0, NULL, (APTR)SET_Actions,                    writeval_default,   "Actions",           FID_Actions,         sizeof(BaseClass), 15, FDF_POINTER|FDF_I },
+   { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(BaseClass), 15, FDF_POINTER|FDF_I },
    { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(BaseClass), 16, FDF_ARRAY|FDF_POINTER|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(BaseClass), 17, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 18, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 19, FDF_STRING|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 20, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(BaseClass), 20, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
    { (MAXINT)"FieldArray", (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 21, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { ID_ROOTMODULE, (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(BaseClass), 22, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
@@ -133,7 +133,7 @@ static const FieldArray glMetaFields[] = {
    { "Location",        FDF_STRING|FDF_R },
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, GET_ClassName, SET_ClassName },
    { "Module",          FDF_STRING|FDF_R, GET_Module },
-   { "PrivateObjects",  FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, GET_PrivateObjects },
+   { "Objects",         FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, GET_Objects },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, NULL, "FieldArray" },
    { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, NULL, ID_ROOTMODULE },
    END_FIELD
@@ -693,7 +693,7 @@ static ERR GET_Module(extMetaClass *Self, CSTRING *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-PrivateObjects: Returns an allocated list of all objects that belong to this class.
+Objects: Returns an allocated list of all objects that belong to this class.
 
 This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest
 object appearing first.
@@ -702,7 +702,7 @@ The resulting array must be terminated with ~FreeResource() after use.
 
 *********************************************************************************************************************/
 
-static ERR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
+static ERR GET_Objects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 {
    pf::Log log;
    std::list<OBJECTID> objlist;

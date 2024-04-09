@@ -245,9 +245,11 @@
     <method>
       <name>TracePath</name>
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
-      <prototype>ERR vecTracePath(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR vecTracePath(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">The function to call with each coordinate of the path.</param>
+        <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
+        <param type="LONG" name="Transform">Set to TRUE if all transforms applicable to the vector should be applied to the path.</param>
       </input>
       <description>
 <p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
@@ -256,6 +258,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="NoData">The vector does not define a path.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -560,6 +563,16 @@
       <description>
 <p>Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the default option of <code>AUTO</code> is recommended, it is optimal to lower the rendering quality to <code>CRISP</code> if the path is composed of lines at 45 degree increments and <code>FAST</code> if points are aligned to whole numbers when rendered to a bitmap.</p>
 <types lookup="RQ"/>
+      </description>
+    </field>
+
+    <field>
+      <name>PathTimestamp</name>
+      <comment>This counter is modified each time the path is regenerated.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The PathTimestamp can be used as a basic means of recording the state of the vector's path, and checking that state for changes at a later time.  For more active monitoring and response, clients should subscribe to the <code>PATH_CHANGED</code> event.</p>
       </description>
     </field>
 

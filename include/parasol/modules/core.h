@@ -1354,6 +1354,7 @@ struct HSV {
    DOUBLE Hue;           // Between 0 and 359.999
    DOUBLE Saturation;    // Between 0 and 1.0
    DOUBLE Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
+   DOUBLE Alpha;         // Alpha blending value from 0 to 1.0.
 };
 
 struct FRGB {
@@ -2796,6 +2797,11 @@ struct BaseClass { // Must be 64-bit aligned
       return obj ? true : false;
    }
 
+   inline ERR setArray(ULONG FieldID, FLOAT *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TFLOAT, Value, Size); }
+   inline ERR setArray(ULONG FieldID, DOUBLE *Value, LONG Size) { return SetArray(this, (FIELD)FieldID|TDOUBLE, Value, Size); }
+   inline ERR setArray(ULONG FieldID, LONG *Value, LONG Size)   { return SetArray(this, (FIELD)FieldID|TLONG, Value, Size); }
+   inline ERR setArray(ULONG FieldID, LARGE *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TLARGE, Value, Size); }
+
    inline ERR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
@@ -3359,7 +3365,7 @@ class objMetaClass : public BaseClass {
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 

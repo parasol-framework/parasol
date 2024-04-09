@@ -55,7 +55,8 @@ using namespace pf;
 #include <float.h>
 
 static const DOUBLE DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
-static const DOUBLE DEG2RAD     = 0.0174532925;  // Multiple any angle by this value to convert to radians
+static const DOUBLE DEG2RAD     = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
+static const DOUBLE RAD2DEG     = 57.295779513082320876798154814105;
 static const DOUBLE SQRT2       = 1.41421356237; // sqrt(2)
 static const DOUBLE INV_SQRT2   = 1.0 / SQRT2;
 
@@ -377,7 +378,7 @@ class extVector : public objVector {
    TClipRectangle<DOUBLE> Bounds; // Must be calculated by GeneratePath() and called from calc_full_boundary()
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;
-   agg::trans_affine Transform;
+   agg::trans_affine Transform;   // Final transform.  Accumulated from the Matrix list during path generation.
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
    void   (*GeneratePath)(extVector *, agg::path_storage &);
@@ -1101,37 +1102,37 @@ extern DOUBLE glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 
 extern void set_text_final_xy(extVectorText *);
 
-extern "C" void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern "C" ERR vecApplyPath(class SimpleVector *, extVectorPath *);
+extern "C" void vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
+extern "C" ERR  vecApplyPath(class SimpleVector *, extVectorPath *);
 extern "C" DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
-extern "C" void  vecClosePath(class SimpleVector *);
-extern "C" void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern "C" void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern "C" ERR vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern "C" ERR vecFlushMatrix(VectorMatrix *);
-extern "C" void  vecFreePath(APTR);
-extern "C" ERR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
-extern "C" ERR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
-extern "C" ERR vecGeneratePath(CSTRING, APTR *);
-extern "C" ERR vecGetFontHandle(CSTRING, CSTRING, LONG, LONG, APTR *);
-extern "C" ERR vecGetFontMetrics(APTR, struct FontMetrics *);
-extern "C" LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
-extern "C" void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" ERR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern "C" ERR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
-extern "C" ERR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern "C" ERR vecReadPainter(objVectorScene *, CSTRING, VectorPainter *, CSTRING *);
-extern "C" ERR vecResetMatrix(struct VectorMatrix *);
-extern "C" void  vecRewindPath(class SimpleVector *);
-extern "C" ERR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-extern "C" ERR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" ERR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern "C" void vecClosePath(class SimpleVector *);
+extern "C" void vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern "C" void vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+extern "C" ERR  vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern "C" ERR  vecFlushMatrix(VectorMatrix *);
+extern "C" void vecFreePath(APTR);
+extern "C" ERR  vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
+extern "C" ERR  vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
+extern "C" ERR  vecGeneratePath(CSTRING, APTR *);
+extern "C" ERR  vecGetFontHandle(CSTRING, CSTRING, LONG, LONG, APTR *);
+extern "C" ERR  vecGetFontMetrics(APTR, struct FontMetrics *);
+extern "C" LONG vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
+extern "C" void vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" void vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" ERR  vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERR  vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
+extern "C" ERR  vecParseTransform(struct VectorMatrix *, CSTRING Commands);
+extern "C" ERR  vecReadPainter(objVectorScene *, CSTRING, VectorPainter *, CSTRING *);
+extern "C" ERR  vecResetMatrix(struct VectorMatrix *);
+extern "C" void vecRewindPath(class SimpleVector *);
+extern "C" ERR  vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERR  vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" ERR  vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" void vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" void vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern "C" DOUBLE vecStringWidth(APTR, CSTRING, LONG);
-extern "C" ERR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" ERR  vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" void vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 
 template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {
    *this = pVector->Bounds;

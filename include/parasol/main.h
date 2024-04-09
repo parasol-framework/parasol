@@ -63,10 +63,10 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 // Defer() function for calling lambdas at end-of-scope
 
 template <typename FUNC> struct deferred_call {
-   deferred_call(const deferred_call& that) = delete;
-   deferred_call& operator=(const deferred_call& that) = delete;
-   deferred_call(deferred_call&& that) = delete;
-   deferred_call(FUNC&& f) : func(std::forward<FUNC>(f)) { }
+   deferred_call(const deferred_call &that) = delete;
+   deferred_call & operator = (const deferred_call &that) = delete;
+   deferred_call(deferred_call &&that) = delete;
+   deferred_call(FUNC &&f) : func(std::forward<FUNC>(f)) { }
 
    ~deferred_call() { func(); }
 
@@ -74,7 +74,7 @@ private:
    FUNC func;
 };
 
-template <typename F> deferred_call<F> Defer(F&& f) {
+template <typename F> deferred_call<F> Defer(F &&f) {
    return deferred_call<F>(std::forward<F>(f));
 }
 
@@ -128,7 +128,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
 
 //********************************************************************************************************************
 // Resource guard for any allocation that can be freed with FreeResource().  Retains the resource ID rather than the
-// pointer to ensure that termination is safe even if the original resource gets terminated elsewhere.
+// pointer to ensure that termination is safe, even if the original resource gets terminated elsewhere.
 //
 // Usage: pf::GuardedResource resource(thing)
 
@@ -145,13 +145,14 @@ class GuardedResource {
 };
 
 //********************************************************************************************************************
-// The object equivalent of GuardedResource.  Also guarantees safety for object termination.
+// The object equivalent of GuardedResource.  Also guarantees safety for object termination.  The use of
+// GuardedObject is considered essential for interoperability with the C++ class destruction model.
 
 template <class T = BaseClass, class C = std::atomic_int>
 class GuardedObject {
    private:
       C * count;  // Count of GuardedObjects accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
-      T * object;
+      T * object; // Pointer to the Parasol object being guarded.  Use '*' or '->' operators to access.
 
    public:
       OBJECTID id; // Object UID
@@ -234,7 +235,7 @@ class GuardedObject {
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
 
-      constexpr bool empty() { return !object; }
+      constexpr bool empty() { return !object; } // Returns true if no object is being guarded.
 
       T * operator->() { return object; }; // Promotes underlying methods and fields
       T * & operator*() { return object; }; // To allow object pointer referencing when calling functions

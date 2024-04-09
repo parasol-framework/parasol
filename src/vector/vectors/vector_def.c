@@ -61,7 +61,7 @@ static const struct FieldDef clVectorColourSpace[] = {
 };
 
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
-FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { "Scale", FD_DOUBLE }, { "Transform", FD_LONG }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF maPointInPath[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maSubscribeInput[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };

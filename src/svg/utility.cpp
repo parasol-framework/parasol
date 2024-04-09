@@ -1,4 +1,7 @@
 
+static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
+static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
+
 #if defined(DEBUG)
 static void debug_tree(CSTRING Header, OBJECTPTR) __attribute__ ((unused));
 static void debug_branch(CSTRING Header, OBJECTPTR, LONG &Level) __attribute__ ((unused));
@@ -40,6 +43,55 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 }
 
 #endif
+
+//********************************************************************************************************************
+
+static HSV rgb_to_hsl(FRGB Colour)
+{
+   DOUBLE vmax = std::ranges::max({ Colour.Red, Colour.Green, Colour.Blue });
+   DOUBLE vmin = std::ranges::min({ Colour.Red, Colour.Green, Colour.Blue });
+   DOUBLE light = (vmax + vmin) * 0.5;
+
+   if (vmax IS vmin) return HSV { 0, 0, light };
+
+   DOUBLE sat = light, hue = light;
+   DOUBLE d = vmax - vmin;
+   sat = light > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
+   if (vmax IS Colour.Red)   hue = (Colour.Green - Colour.Blue) / d + (Colour.Green < Colour.Blue ? 6.0 : 0.0);
+   if (vmax IS Colour.Green) hue = (Colour.Blue  - Colour.Red) / d + 2.0;
+   if (vmax IS Colour.Blue)  hue = (Colour.Red   - Colour.Green) / d + 4.0;
+   hue /= 6.0;
+
+   return HSV { hue, sat, light, Colour.Alpha };
+}
+
+//********************************************************************************************************************
+
+static FRGB hsl_to_rgb(HSV Colour)
+{
+   auto hueToRgb = [](FLOAT p, FLOAT q, FLOAT t) -> FLOAT {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+      if (t < 1.0/2.0) return q;
+      if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+      return p;
+   };
+
+   if (Colour.Saturation == 0) {
+      return { FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Alpha) };
+   }
+   else {
+      const DOUBLE q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
+      const DOUBLE p = 2.0 * Colour.Value - q;
+      return {
+         hueToRgb(p, q, Colour.Hue + 1.0/3.0),
+         hueToRgb(p, q, Colour.Hue),
+         hueToRgb(p, q, Colour.Hue - 1.0/3.0),
+         FLOAT(Colour.Alpha)
+      };
+   }
+}
 
 //********************************************************************************************************************
 // Support for the 'currentColor' colour value.  Finds the first parent with a defined fill colour and returns it.
@@ -347,7 +399,7 @@ inline std::string_view next_value(const std::string_view Value)
 // The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
 // include: 0 - 9 , ( ) - + SPACE
 
-static void read_numseq(std::string_view String, std::initializer_list<DOUBLE *> Value)
+static std::string_view read_numseq(std::string_view String, std::initializer_list<DOUBLE *> Value)
 {
    for (DOUBLE *v : Value) {
       String = next_value(String);
@@ -356,11 +408,13 @@ static void read_numseq(std::string_view String, std::initializer_list<DOUBLE *>
       auto [ next, error ] = std::from_chars(String.data(), String.data() + String.size(), num);
 
       if ((!num) and ((!next) or (String IS next))) {  // Invalid character or end-of-stream check.
-         return;
+         return String;
       }
       String = std::string_view(next, String.data() + String.size() - next);
       *v = num;
    }
+
+   return String;
 }
 
 //********************************************************************************************************************

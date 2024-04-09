@@ -1564,7 +1564,7 @@ class objVectorFilter : public BaseClass {
 #define MT_VecFreeMatrix -10
 
 struct vecPush { LONG Position;  };
-struct vecTracePath { FUNCTION * Callback;  };
+struct vecTracePath { FUNCTION * Callback; DOUBLE Scale; LONG Transform;  };
 struct vecGetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
@@ -1578,8 +1578,8 @@ inline ERR vecPush(APTR Ob, LONG Position) noexcept {
    return(Action(MT_VecPush, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecTracePath(APTR Ob, FUNCTION * Callback) noexcept {
-   struct vecTracePath args = { Callback };
+inline ERR vecTracePath(APTR Ob, FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
+   struct vecTracePath args = { Callback, Scale, Transform };
    return(Action(MT_VecTracePath, (OBJECTPTR)Ob, &args));
 }
 
@@ -1652,6 +1652,7 @@ class objVector : public BaseClass {
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    RQ        PathQuality;             // Defines the quality of a path when it is rendered.
    VCS       ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
+   LONG      PathTimestamp;           // This counter is modified each time the path is regenerated.
 
    // Action stubs
 
@@ -1672,37 +1673,37 @@ class objVector : public BaseClass {
 
    inline ERR setNext(objVector * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setPrev(objVector * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setStrokeOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[35];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setFillOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[41];
+      auto field = &this->Class->Dictionary[42];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setMiterLimit(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1713,7 +1714,7 @@ class objVector : public BaseClass {
 
    inline ERR setDashOffset(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1730,7 +1731,7 @@ class objVector : public BaseClass {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[42];
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1746,19 +1747,19 @@ class objVector : public BaseClass {
 
    inline ERR setClipRule(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setDashArray(const DOUBLE * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
    inline ERR setMask(OBJECTPTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
@@ -1770,19 +1771,19 @@ class objVector : public BaseClass {
 
    inline ERR setAppendPath(OBJECTPTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
    inline ERR setMorphFlags(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setNumeric(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[34];
+      auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1794,7 +1795,7 @@ class objVector : public BaseClass {
 
    inline ERR setResizeEvent(const FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[37];
+      auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -1819,61 +1820,61 @@ class objVector : public BaseClass {
 
    inline ERR setTransition(OBJECTPTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
    inline ERR setEnableBkgd(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[40];
+      auto field = &this->Class->Dictionary[41];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    template <class T> inline ERR setFill(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setFillColour(const FLOAT * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[33];
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    inline ERR setFillRule(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    template <class T> inline ERR setFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setLineJoin(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setLineCap(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setInnerJoin(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setTabOrder(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -2194,9 +2195,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_A 0x0002b606
 #define SVF_ACHROMATOMALY 0xc3f37036
 #define SVF_ACHROMATOPSIA 0xc3f56170
+#define SVF_ADDITIVE 0x035604af
 #define SVF_ALIGN 0x0f174e50
 #define SVF_ALT_FILL 0x8c3507fa
 #define SVF_AMPLITUDE 0x5e60600a
+#define SVF_ANIMATE 0x36d195e4
+#define SVF_ANIMATECOLOR 0xcd2d1683
 #define SVF_ANIMATEMOTION 0x8a27c6ba
 #define SVF_ANIMATETRANSFORM 0x6349c940
 #define SVF_ARITHMETIC 0x600354ef
@@ -2682,6 +2686,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_SEMI_EXPANDED 0xa6ff90c9
 #define SVF_EXTRA_EXPANDED 0x8c599b5f
 #define SVF_ULTRA_EXPANDED 0x87e8c363
+#define SVF_CALCMODE 0x0723eabd
+#define SVF_KEYPOINTS 0x47b5578b
+#define SVF_ORIGIN 0x1315e3ed
+#define SVF_KEYTIMES 0xbc9ffbb0
+#define SVF_KEYSPLINES 0x27d7988c
+#define SVF_BY 0x00597760
 
 
 INLINE ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
