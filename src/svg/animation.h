@@ -11,6 +11,13 @@ enum class ATT : char { // Attribute Type
    AUTO = 0, CSS, XML
 };
 
+enum class ART: char {
+   NIL = 0,
+   AUTO,
+   AUTO_REVERSE,
+   FIXED
+};
+
 enum class CMODE : char { // Specifies the interpolation mode for the animation.
    LINEAR = 0, // Simple linear interpolation between values is used to calculate the animation function.
    DISCRETE,   // The animation function will jump from one value to the next without any interpolation.
@@ -63,6 +70,11 @@ public:
    void next_frame(DOUBLE);
 
    virtual void perform() = 0;
+   virtual bool is_valid() {
+      if (!values.empty()) return true;
+      if ((!to.empty()) or (!by.empty())) return true;
+      return false;
+   }
 };
 
 class anim_transform : public anim_base {
@@ -74,8 +86,22 @@ public:
 
 class anim_motion : public anim_base {
 public:
+   typedef struct { FLOAT x, y; } POINT;
+   ART auto_rotate = ART::NIL; // 0 = None; 1 = Auto Rotate by path tangent; -1 = Auto rotate by inverse of path tangent
+   DOUBLE rotate = 0;
+   pf::GuardedObject<objVector> path;
+   std::vector<POINT> points;
+   LONG path_timestamp;
+
    anim_motion(OBJECTID pTarget) : anim_base(pTarget) { }
    void perform();
+
+   bool is_valid() {
+      if (!values.empty()) return true;
+      if (path.id) return true;
+      if ((!to.empty()) or (!by.empty())) return true;
+      return false;
+   }
 };
 
 class anim_colour : public anim_base {

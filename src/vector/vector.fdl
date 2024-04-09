@@ -548,6 +548,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     int(PTC) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
     int(RQ)  PathQuality    # Defines the quality of rendered path outlines.
     int(VCS) ColourSpace    # Desired colour space to use when blending colours.
+    int      PathTimestamp  # This counter is modified each time the path is regenerated.
   ]])
 
   // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.

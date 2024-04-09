@@ -2554,7 +2554,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   Self->Animations.emplace_back(anim);
+   if (anim.is_valid()) Self->Animations.emplace_back(anim);
    return ERR::Okay;
 }
 
@@ -2580,7 +2580,7 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   Self->Animations.emplace_back(anim);
+   if (anim.is_valid()) Self->Animations.emplace_back(anim);
    return ERR::Okay;
 }
 
@@ -2604,7 +2604,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   Self->Animations.emplace_back(anim);
+   if (anim.is_valid()) Self->Animations.emplace_back(anim);
    return ERR::Okay;
 }
 
@@ -2623,15 +2623,38 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
-         case SVF_PATH:
-            //path="M 0 0 L 100 100"
+         case SVF_PATH: // List of standard path commands, e.g. "M 0 0 L 100 100"
+            anim.path.set(objVectorPath::create::global(
+                fl::Name("motion_path"),
+                fl::Owner(Self->Scene->UID),
+                fl::Sequence(value),
+                fl::Visibility(VIS::HIDDEN)));
             break;
 
          case SVF_ROTATE:
+            // Post-multiplies a supplemental transformation matrix onto the CTM of the target element to apply a 
+            // rotation transformation about the origin of the current user coordinate system. The rotation 
+            // transformation is applied after the supplemental translation transformation that is computed due to 
+            // the ‘path’ attribute.
+            //
+            // auto: The object is rotated over time by the angle of the direction (i.e., directional tangent 
+            // vector) of the motion path.
+            //
+            // auto-reverse: Indicates that the object is rotated over time by the angle of the direction (i.e., 
+            // directional tangent vector) of the motion path plus 180 degrees.
+            //
+            // <number>: Indicates that the target element has a constant rotation transformation applied to it, 
+            // where the rotation angle is the specified number of degrees.
+
+            if (iequals("auto", value)) anim.auto_rotate = ART::AUTO;
+            else if (iequals("auto-reverse", value)) anim.auto_rotate = ART::AUTO_REVERSE;
+            else { 
+               anim.auto_rotate = ART::FIXED; 
+               anim.rotate = strtod(value.c_str(), NULL); 
+            }
             break;
 
-         case SVF_ORIGIN:
-            break;
+         case SVF_ORIGIN: break; // Officially serves no purpose.
 
          default:
             set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
@@ -2639,7 +2662,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   Self->Animations.emplace_back(anim);
+   if (anim.is_valid()) Self->Animations.emplace_back(anim);
    return ERR::Okay;
 }
 

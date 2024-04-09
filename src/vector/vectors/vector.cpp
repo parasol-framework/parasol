@@ -995,6 +995,7 @@ ptr(func) Callback: The function to call with each coordinate of the path.
 -ERRORS-
 Okay:
 NullArgs:
+NoData: The vector does not define a path.
 
 *********************************************************************************************************************/
 
@@ -1002,26 +1003,31 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (Args->Callback)) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
    if (Self->dirty()) gen_vector_tree(Self);
 
-   if (!Self->BasePath.total_vertices()) return ERR::NoData;
+   if (Self->BasePath.empty()) return ERR::NoData;
 
    Self->BasePath.rewind(0);
 
    DOUBLE x, y;
    LONG cmd = -1;
+   LONG index = 0;
+
+   agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
 
   if (Args->Callback->isC()) {
-      auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
+      auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(GetParentContext());
-
-      LONG index = 0;
       do {
-        cmd = Self->BasePath.vertex(&x, &y);
-        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y, Args->Callback->Meta);
+         cmd = t_path.vertex(&x, &y);
+         if (agg::is_vertex(cmd)) {
+            if (routine(Self, index++, cmd, x, y, Args->Callback->Meta) IS ERR::Terminate) {
+               return ERR::Okay;
+            }
+         }
       } while (cmd != agg::path_cmd_stop);
    }
    else if (Args->Callback->isScript()) {
@@ -1034,15 +1040,16 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
       }};
       args[0].Long = Self->UID;
 
-      LONG index = 0;
+      ERR result;
       do {
-         cmd = Self->BasePath.vertex(&x, &y);
+         cmd = t_path.vertex(&x, &y);
          if (agg::is_vertex(cmd)) {
             args[1].Long = index++;
             args[2].Long = cmd;
             args[3].Double = x;
             args[4].Double = y;
-            scCall(*Args->Callback, args);
+            if (scCall(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+            if (result IS ERR::Terminate) return ERR::Okay;
          }
       } while (cmd != agg::path_cmd_stop);
    }
@@ -1054,8 +1061,8 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 -FIELD-
 AppendPath: Experimental.  Append the path of the referenced vector during path generation.
 
-The path of an external Vector can be appended to the base path in real-time by making a reference to that vector 
-here.  The operation is completed immediately after the generation of the client vector's base path, prior to any 
+The path of an external Vector can be appended to the base path in real-time by making a reference to that vector
+here.  The operation is completed immediately after the generation of the client vector's base path, prior to any
 transforms.
 
 It is strongly recommended that the appended vector has its #Visibility set to `HIDDEN`.  Any direct transform that
@@ -1875,6 +1882,13 @@ default option of `AUTO` is recommended, it is optimal to lower the rendering qu
 composed of lines at 45 degree increments and `FAST` if points are aligned to whole numbers when rendered to a bitmap.
 
 -FIELD-
+PathTimestamp: This counter is modified each time the path is regenerated.
+
+The PathTimestamp can be used as a basic means of recording the state of the vector's path, and checking that state
+for changes at a later time.  For more active monitoring and response, clients should subscribe to the `PATH_CHANGED` 
+event.
+
+-FIELD-
 Prev: The previous vector in the branch, or NULL.
 
 The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the
@@ -2411,6 +2425,7 @@ static const FieldArray clVectorFields[] = {
    { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Cursor, &clVectorCursor },
    { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorPathQuality },
    { "ColourSpace",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorColourSpace },
+   { "PathTimestamp",   FDF_LONG|FDF_R },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, VECTOR_GET_DashArray, VECTOR_SET_DashArray },

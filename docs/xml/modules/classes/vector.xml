@@ -256,6 +256,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="NoData">The vector does not define a path.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -560,6 +561,16 @@
       <description>
 <p>Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the default option of <code>AUTO</code> is recommended, it is optimal to lower the rendering quality to <code>CRISP</code> if the path is composed of lines at 45 degree increments and <code>FAST</code> if points are aligned to whole numbers when rendered to a bitmap.</p>
 <types lookup="RQ"/>
+      </description>
+    </field>
+
+    <field>
+      <name>PathTimestamp</name>
+      <comment>This counter is modified each time the path is regenerated.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The PathTimestamp can be used as a basic means of recording the state of the vector's path, and checking that state for changes at a later time.  For more active monitoring and response, clients should subscribe to the <code>PATH_CHANGED</code> event.</p>
       </description>
     </field>
 

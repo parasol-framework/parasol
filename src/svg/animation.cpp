@@ -31,7 +31,7 @@ DOUBLE anim_base::get_numeric_value()
          return 0;
       }
    }
-   
+
    const auto offset = to_val;
 
    if ((accumulate) and (repeat_count)) {
@@ -135,7 +135,7 @@ FRGB anim_base::get_colour_value()
       }
    }
    else return { 0, 0, 0, 0 };
-   
+
    if (calc_mode IS CMODE::DISCRETE) {
       if (seek < 0.5) return from_col.Colour;
       else return to_col.Colour;
@@ -356,17 +356,48 @@ void anim_colour::perform()
 }
 
 //********************************************************************************************************************
-// The specified values for 'from', 'by', 'to' and 'values' consists of x, y coordinate pairs, with a single comma 
-// and/or white space separating the x coordinate from the y coordinate. For example, from="33,15" specifies an x 
+// The specified values for 'from', 'by', 'to' and 'values' consists of x, y coordinate pairs, with a single comma
+// and/or white space separating the x coordinate from the y coordinate. For example, from="33,15" specifies an x
 // coordinate value of 33 and a y coordinate value of 15.
+
+static ERR motion_callback(objVector *Vector, LONG Index, LONG Cmd, DOUBLE X, DOUBLE Y, anim_motion &Motion)
+{
+   Motion.points.push_back(anim_motion::POINT { FLOAT(X), FLOAT(Y) });
+   return ERR::Okay;
+};
 
 void anim_motion::perform()
 {
    DOUBLE x1, y1, x2, y2;
 
-   pf::ScopedObjectLock<objVector *> vector(target_vector, 1000);
+   pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (not values.empty()) {
+      if (not path.empty()) {
+         LONG new_timestamp;
+         vector->get(FID_PathTimestamp, &new_timestamp);
+
+         if ((points.empty()) or (path_timestamp != new_timestamp)) {
+            // Trace the path and store its points
+            auto call = C_FUNCTION(motion_callback);
+            call.Meta = this;
+            points.clear();
+            if ((vecTracePath(*path, &call) != ERR::Okay) or (points.empty())) return;
+            vector->get(FID_PathTimestamp, &path_timestamp);
+         }
+
+         LONG vi = F2T((std::ssize(points)-1) * seek);
+         if (vi >= std::ssize(points)-1) vi = std::ssize(points) - 2;
+
+         x1 = points[vi].x;
+         y1 = points[vi].y;
+         x2 = points[vi+1].x;
+         y2 = points[vi+1].y;
+
+         // Recompute the seek position to fit between the two values
+         const DOUBLE mod = 1.0 / DOUBLE(points.size() - 1);
+         seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
+      else if (not values.empty()) {
          LONG vi = F2T((values.size()-1) * seek);
          if (vi >= LONG(values.size())-1) vi = values.size() - 2;
 
@@ -529,10 +560,6 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 
    for (auto &record : SVG->Animations) {
       std::visit([ &record ](auto &&anim) {
-         if (anim.values.empty()) {
-            if ((anim.to.empty()) and (anim.by.empty())) return;
-         }
-
          if (anim.end_time) return;
 
          DOUBLE current_time = DOUBLE(PreciseTime()) / 1000000.0;

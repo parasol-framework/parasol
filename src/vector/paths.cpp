@@ -63,6 +63,8 @@ void gen_vector_path(extVector *Vector)
 
    auto parent_view = get_parent_view(Vector);
 
+   Vector->PathTimestamp++;
+
    if (Vector->Class->ClassID IS ID_VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
