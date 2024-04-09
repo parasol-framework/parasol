@@ -372,7 +372,36 @@ void anim_motion::perform()
 
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (not path.empty()) {
+      // Note that the order of processing here is important, and matches the priority list documented for SVG's 
+      // animateMotion property.
+      
+      if (mpath) {
+         LONG new_timestamp;
+         vector->get(FID_PathTimestamp, &new_timestamp);
+
+         if ((points.empty()) or (path_timestamp != new_timestamp)) {
+            // Trace the path and store its points.  Transforms are completely ignored when pulling the path from
+            // an external source.
+            auto call = C_FUNCTION(motion_callback);
+            call.Meta = this;
+            points.clear();
+            if ((vecTracePath(mpath, &call, vector->get<DOUBLE>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
+            vector->get(FID_PathTimestamp, &path_timestamp);
+         }
+
+         LONG vi = F2T((std::ssize(points)-1) * seek);
+         if (vi >= std::ssize(points)-1) vi = std::ssize(points) - 2;
+
+         x1 = points[vi].x;
+         y1 = points[vi].y;
+         x2 = points[vi+1].x;
+         y2 = points[vi+1].y;
+
+         // Recompute the seek position to fit between the two values
+         const DOUBLE mod = 1.0 / DOUBLE(points.size() - 1);
+         seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
+      else if (not path.empty()) {
          LONG new_timestamp;
          vector->get(FID_PathTimestamp, &new_timestamp);
 
@@ -381,7 +410,7 @@ void anim_motion::perform()
             auto call = C_FUNCTION(motion_callback);
             call.Meta = this;
             points.clear();
-            if ((vecTracePath(*path, &call) != ERR::Okay) or (points.empty())) return;
+            if ((vecTracePath(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
             vector->get(FID_PathTimestamp, &path_timestamp);
          }
 
@@ -417,6 +446,7 @@ void anim_motion::perform()
             return;
          }
       }
+      else return;
    }
 
    if (not matrix) vecNewMatrix(*vector, &matrix);

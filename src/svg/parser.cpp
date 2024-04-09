@@ -2662,6 +2662,24 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
+   if (!Tag.Children.empty()) {
+      // Search for mpath references, e.g. <mpath xlink:href="#mpathRef"/>
+
+      for (auto &child : Tag.Children) {
+         if ((child.isTag()) and (StrMatch("mpath", child.name()) IS ERR::Okay)) {
+            auto href = child.attrib("xlink:href");
+            if (!href) child.attrib("href");
+
+            if (href) {
+               objVector *path;
+               if (scFindDef(Self->Scene, href->c_str(), (OBJECTPTR *)&path) IS ERR::Okay) {
+                  anim.mpath = path;
+               }
+            }
+         }
+      }
+   }
+
    if (anim.is_valid()) Self->Animations.emplace_back(anim);
    return ERR::Okay;
 }

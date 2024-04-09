@@ -89,7 +89,8 @@ public:
    typedef struct { FLOAT x, y; } POINT;
    ART auto_rotate = ART::NIL; // 0 = None; 1 = Auto Rotate by path tangent; -1 = Auto rotate by inverse of path tangent
    DOUBLE rotate = 0;
-   pf::GuardedObject<objVector> path;
+   objVector *mpath; // External vector path
+   pf::GuardedObject<objVector> path; // Client provided path sequence
    std::vector<POINT> points;
    LONG path_timestamp;
 
@@ -99,6 +100,7 @@ public:
    bool is_valid() {
       if (!values.empty()) return true;
       if (path.id) return true;
+      if (mpath) return true;
       if ((!to.empty()) or (!by.empty())) return true;
       return false;
    }

@@ -991,6 +991,8 @@ If the Callback returns `ERR::Terminate`, then no further coordinates will be pr
 
 -INPUT-
 ptr(func) Callback: The function to call with each coordinate of the path.
+double Scale: Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.
+int Transform: Set to TRUE if all transforms applicable to the vector should be applied to the path.
 
 -ERRORS-
 Okay:
@@ -1010,25 +1012,38 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
    if (Self->BasePath.empty()) return ERR::NoData;
 
    Self->BasePath.rewind(0);
+   Self->BasePath.approximation_scale(Args->Scale);
 
    DOUBLE x, y;
    LONG cmd = -1;
    LONG index = 0;
 
-   agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
-
   if (Args->Callback->isC()) {
       auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(GetParentContext());
-      do {
-         cmd = t_path.vertex(&x, &y);
-         if (agg::is_vertex(cmd)) {
-            if (routine(Self, index++, cmd, x, y, Args->Callback->Meta) IS ERR::Terminate) {
-               return ERR::Okay;
+
+      if (Args->Transform) {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
+         do {
+            cmd = t_path.vertex(&x, &y);
+            if (agg::is_vertex(cmd)) {
+               if (routine(Self, index++, cmd, x, y, Args->Callback->Meta) IS ERR::Terminate) {
+                  return ERR::Okay;
+               }
             }
-         }
-      } while (cmd != agg::path_cmd_stop);
+         } while (cmd != agg::path_cmd_stop);
+      }
+      else {
+         do {
+            cmd = Self->BasePath.vertex(&x, &y);
+            if (agg::is_vertex(cmd)) {
+               if (routine(Self, index++, cmd, x, y, Args->Callback->Meta) IS ERR::Terminate) {
+                  return ERR::Okay;
+               }
+            }
+         } while (cmd != agg::path_cmd_stop);
+      }
    }
    else if (Args->Callback->isScript()) {
       std::array<ScriptArg, 5> args {{
@@ -1040,18 +1055,35 @@ static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
       }};
       args[0].Long = Self->UID;
 
-      ERR result;
-      do {
-         cmd = t_path.vertex(&x, &y);
-         if (agg::is_vertex(cmd)) {
-            args[1].Long = index++;
-            args[2].Long = cmd;
-            args[3].Double = x;
-            args[4].Double = y;
-            if (scCall(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
-            if (result IS ERR::Terminate) return ERR::Okay;
-         }
-      } while (cmd != agg::path_cmd_stop);
+      if (Args->Transform) {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
+         ERR result;
+         do {
+            cmd = t_path.vertex(&x, &y);
+            if (agg::is_vertex(cmd)) {
+               args[1].Long = index++;
+               args[2].Long = cmd;
+               args[3].Double = x;
+               args[4].Double = y;
+               if (scCall(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (result IS ERR::Terminate) return ERR::Okay;
+            }
+         } while (cmd != agg::path_cmd_stop);
+      }
+      else {
+         ERR result;
+         do {
+            cmd = Self->BasePath.vertex(&x, &y);
+            if (agg::is_vertex(cmd)) {
+               args[1].Long = index++;
+               args[2].Long = cmd;
+               args[3].Double = x;
+               args[4].Double = y;
+               if (scCall(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (result IS ERR::Terminate) return ERR::Okay;
+            }
+         } while (cmd != agg::path_cmd_stop);
+      }
    }
 
    return ERR::Okay;
@@ -1274,6 +1306,24 @@ static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
       if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
       else Self->DashArray->path.dash_start(Self->DashArray->path.dash_length() + Self->DashOffset);
    }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+DisplayScale: Returns the scale of the vector as it appears on the display.
+
+The DisplayScale field will return the scale factor of the vector's path as it appears in the final rendering.  For 
+instance if the vector is the child of a viewport scaled down to 50%, the resulting value would be `0.5`.
+
+*********************************************************************************************************************/
+
+static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
+{
+   if (!Self->initialised()) return ERR::NotInitialised;
+   if (Self->dirty()) gen_vector_tree(Self);
+   *Value = Self->Transform.scale();
    return ERR::Okay;
 }
 
@@ -2429,6 +2479,7 @@ static const FieldArray clVectorFields[] = {
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, VECTOR_GET_DashArray, VECTOR_SET_DashArray },
+   { "DisplayScale", FDF_VIRTUAL|FDF_DOUBLE|FDF_R,           VECTOR_GET_DisplayScale },
    { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Mask, VECTOR_SET_Mask },
    { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Morph, VECTOR_SET_Morph },
    { "AppendPath",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_AppendPath, VECTOR_SET_AppendPath },

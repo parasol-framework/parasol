@@ -3365,7 +3365,7 @@ class objMetaClass : public BaseClass {
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 

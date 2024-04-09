@@ -1564,7 +1564,7 @@ class objVectorFilter : public BaseClass {
 #define MT_VecFreeMatrix -10
 
 struct vecPush { LONG Position;  };
-struct vecTracePath { FUNCTION * Callback;  };
+struct vecTracePath { FUNCTION * Callback; DOUBLE Scale; LONG Transform;  };
 struct vecGetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
@@ -1578,8 +1578,8 @@ inline ERR vecPush(APTR Ob, LONG Position) noexcept {
    return(Action(MT_VecPush, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecTracePath(APTR Ob, FUNCTION * Callback) noexcept {
-   struct vecTracePath args = { Callback };
+inline ERR vecTracePath(APTR Ob, FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
+   struct vecTracePath args = { Callback, Scale, Transform };
    return(Action(MT_VecTracePath, (OBJECTPTR)Ob, &args));
 }
 
