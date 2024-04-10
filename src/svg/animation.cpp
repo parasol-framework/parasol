@@ -5,6 +5,88 @@
 #include "../link/linear_rgb.h"
 
 //********************************************************************************************************************
+
+DOUBLE anim_motion::get_total_dist()
+{
+   if (total_dist != 0) return total_dist;
+
+   distances.clear();
+   total_dist = 0;
+   if (not points.empty()) {
+      auto prev = points[0];
+      for (auto &pt : points) {
+         auto delta = prev - pt;
+         total_dist += delta;
+         distances.push_back(total_dist);
+         prev = pt;
+      }
+   }
+   else if (not values.empty()) {
+      POINT<DOUBLE> prev, pt;
+      read_numseq(values[0], { &prev.x, &prev.y });
+      distances.push_back(0);
+      for (LONG i=1; i < std::ssize(values); i++) {
+         read_numseq(values[i], { &pt.x, &pt.y });
+         total_dist += prev - pt;
+         distances.push_back(total_dist);
+         prev = pt;
+      }
+   }
+   else if (not from.empty()) {
+      if (not to.empty()) {
+         POINT<DOUBLE> a, b;
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(to, { &b.x, &b.y } );
+         total_dist = a - b;
+      }
+      else if (not by.empty()) {
+         POINT<DOUBLE> a = { 0, 0 }, b;
+         read_numseq(by, { &b.x, &b.y } );
+         total_dist = a - b;
+      }
+   }
+   else return 0;
+
+   return total_dist;
+}
+
+//********************************************************************************************************************
+
+DOUBLE anim_base::get_total_dist()
+{
+   if (total_dist != 0) return total_dist;
+
+   distances.clear();
+   total_dist = 0;
+   if (not values.empty()) {
+      DOUBLE prev, val;
+      read_numseq(values[0], { &prev });
+      distances.push_back(0);
+      for (LONG i=1; i < std::ssize(values); i++) {
+         read_numseq(values[i], { &val });
+         total_dist += std::abs(val - prev);
+         distances.push_back(total_dist);
+         prev = val;
+      }
+   }
+   else if (not from.empty()) {
+      if (not to.empty()) {
+         DOUBLE a, b;
+         read_numseq(from, { &a });
+         read_numseq(to, { &b } );
+         total_dist = std::abs(a - b);
+      }
+      else if (not by.empty()) {
+         read_numseq(by, { &total_dist } );
+         total_dist = std::abs(total_dist);
+      }
+   }
+   else return 0;
+
+   return total_dist;
+}
+
+//********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
 DOUBLE anim_base::get_numeric_value()
@@ -63,17 +145,25 @@ DOUBLE anim_base::get_numeric_value()
 DOUBLE anim_base::get_dimension()
 {
    DOUBLE from_val, to_val;
+   DOUBLE seek_to = seek;
 
    if (not values.empty()) {
-      LONG vi = F2T((values.size()-1) * seek);
-      if (vi >= LONG(values.size())-1) vi = values.size() - 2;
+      LONG i;
 
-      read_numseq(values[vi], { &from_val });
-      read_numseq(values[vi+1], { &to_val } );
+      if (calc_mode IS CMODE::PACED) {
+         const auto dist_pos = seek * get_total_dist();
+         for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
+         seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
+      }
+      else {
+         i = F2T((values.size()-1) * seek);
+         if (i >= LONG(values.size())-1) i = values.size() - 2;
+         const DOUBLE mod = 1.0 / DOUBLE(values.size() - 1);
+         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
 
-      // Recompute the seek position to fit between the two values
-      const DOUBLE mod = 1.0 / DOUBLE(values.size() - 1);
-      seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      read_numseq(values[i], { &from_val });
+      read_numseq(values[i+1], { &to_val });
    }
    else if (not from.empty()) {
       if (not to.empty()) {
@@ -84,6 +174,7 @@ DOUBLE anim_base::get_dimension()
          return 0;
       }
    }
+   else return 0;
 
    const auto offset = to_val;
 
@@ -102,11 +193,11 @@ DOUBLE anim_base::get_dimension()
    }
 
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek < 0.5) return from_val;
+      if (seek_to < 0.5) return from_val;
       else return to_val;
    }
    else { // CMODE::LINEAR
-      return from_val + ((to_val - from_val) * seek);
+      return from_val + ((to_val - from_val) * seek_to);
    }
 }
 
@@ -356,104 +447,148 @@ void anim_colour::perform()
 }
 
 //********************************************************************************************************************
+// Rotation angles are pre-calculated once.
+
+void anim_motion::precalc_angles()
+{
+   if (points.empty()) return;
+
+   // Start by calculating all angles from point to point.
+
+   std::vector<DOUBLE> precalc(points.size());
+   POINT prev = points[0];
+   precalc[0] = get_angle(points[0], points[1]);
+   for (LONG i=1; i < std::ssize(points)-1; i++) {
+      precalc[i] = get_angle(prev, points[i]);
+      prev = points[i];
+   }
+   precalc[points.size()-1] = precalc[points.size()-2];
+
+   // Average out the angle for each point so that they have a smoother flow.
+               
+   angles.clear();
+   angles.reserve(precalc.size());
+   angles.push_back(precalc[0]);
+   for (LONG i=1; i < std::ssize(precalc)-1; i++) {
+      angles.push_back((precalc[i] + precalc[i-1] + precalc[i+1]) / 3);
+   }
+   angles.push_back(precalc.back());
+}
+
+//********************************************************************************************************************
 
 static ERR motion_callback(objVector *Vector, LONG Index, LONG Cmd, DOUBLE X, DOUBLE Y, anim_motion &Motion)
 {
-   Motion.points.push_back(anim_motion::POINT { FLOAT(X), FLOAT(Y) });
+   Motion.points.push_back(pf::POINT<FLOAT> { FLOAT(X), FLOAT(Y) });
    return ERR::Okay;
 };
 
 void anim_motion::perform()
 {
    DOUBLE x1, y1, x2, y2, angle = -1;
+   DOUBLE seek_to = seek;
 
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
-   if (vector.granted()) {
-      // Note that the order of processing here is important, and matches the priorities documented for SVG's
-      // animateMotion property.
+   if (!vector.granted()) return;
 
-      if ((mpath) or (not path.empty())) {
-         LONG new_timestamp;
-         vector->get(FID_PathTimestamp, &new_timestamp);
+   // Note that the order of processing here is important, and matches the priorities documented for SVG's
+   // animateMotion property.
 
-         if ((points.empty()) or (path_timestamp != new_timestamp)) {
-            // Trace the path and store its points.  Transforms are completely ignored when pulling the path from
-            // an external source.
+   if ((mpath) or (not path.empty())) {
+      LONG new_timestamp;
+      vector->get(FID_PathTimestamp, &new_timestamp);
 
-            auto call = C_FUNCTION(motion_callback, this);
+      if ((points.empty()) or (path_timestamp != new_timestamp)) {
+         // Trace the path and store its points.  Transforms are completely ignored when pulling the path from
+         // an external source.
 
-            points.clear();
-            if (mpath) {
-               if ((vecTracePath(mpath, &call, vector->get<DOUBLE>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
-            }
-            else if ((vecTracePath(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
-            
-            vector->get(FID_PathTimestamp, &path_timestamp);
-            
-            if ((auto_rotate IS ART::AUTO) or (auto_rotate IS ART::AUTO_REVERSE)) {
-               // Rotation angles are pre-calculated.  Start by calculating the angle from point to point.
+         auto call = C_FUNCTION(motion_callback, this);
 
-               std::vector<FLOAT> precalc(points.size());
-               POINT prev = points[0];
-               precalc[0] = get_angle(points[0], points[1]);
-               for (LONG i=1; i < std::ssize(points)-1; i++) {
-                  precalc[i] = get_angle(prev, points[i]);
-                  prev = points[i];
-               }
-               precalc[points.size()-1] = precalc[points.size()-2];
-
-               // Average out the angle for each point so that they have a smoother flow.
-               
-               angles.clear();
-               angles.reserve(precalc.size());
-               angles.push_back(precalc[0]);
-               for (LONG i=1; i < std::ssize(precalc)-1; i++) {
-                  angles.push_back((precalc[i] + precalc[i-1] + precalc[i+1]) / 3);
-               }
-               angles.push_back(precalc.back());
-            }
+         points.clear();
+         if (mpath) {
+            if ((vecTracePath(mpath, &call, vector->get<DOUBLE>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
          }
+         else if ((vecTracePath(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
+            
+         vector->get(FID_PathTimestamp, &path_timestamp);
+            
+         if ((auto_rotate IS ART::AUTO) or (auto_rotate IS ART::AUTO_REVERSE)) {
+            precalc_angles();
+         }
+      }
 
-         LONG vi = F2T((std::ssize(points)-1) * seek);
-         if (vi >= std::ssize(points)-1) vi = std::ssize(points) - 2;
+      if (calc_mode IS CMODE::PACED) {
+         const auto dist = get_total_dist();
+         const auto dist_pos = seek * dist;
 
-         x1 = points[vi].x;
-         y1 = points[vi].y;
-         x2 = points[vi+1].x;
-         y2 = points[vi+1].y;
+         // Use the distances array to determine the correct index.
 
-         // Recompute the seek position to fit between the two values
-         const DOUBLE mod = 1.0 / DOUBLE(points.size() - 1);
-         seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+         LONG i;
+         for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
+            
+         x1 = points[i].x;
+         y1 = points[i].y;
+         x2 = points[i+1].x;
+         y2 = points[i+1].y;
+
+         seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
 
          if ((auto_rotate IS ART::AUTO) or (auto_rotate IS ART::AUTO_REVERSE)) {
-            angle = angles[vi] + ((angles[vi+1] - angles[vi]) * seek);
+            angle = (angles[i] * (1.0 - seek_to)) + (angles[i+1] * seek_to);
             if (auto_rotate IS ART::AUTO_REVERSE) angle += 180.0;
          }
       }
-      else if (not values.empty()) {
-         // Values are x,y coordinate pairs.
-         LONG vi = F2T((values.size()-1) * seek);
-         if (vi >= LONG(values.size())-1) vi = values.size() - 2;
+      else { // CMODE::LINEAR: Interpolate between the two values
+         LONG i = F2T((std::ssize(points)-1) * seek);
+         if (i >= std::ssize(points)-1) i = std::ssize(points) - 2;
 
-         read_numseq(values[vi], { &x1, &y1 });
-         read_numseq(values[vi+1], { &x2, &y2 } );
+         x1 = points[i].x;
+         y1 = points[i].y;
+         x2 = points[i+1].x;
+         y2 = points[i+1].y;
 
-         // Recompute the seek position to fit between the two values
-         const DOUBLE mod = 1.0 / DOUBLE(values.size() - 1);
-         seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+         const DOUBLE mod = 1.0 / DOUBLE(points.size() - 1);
+         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+
+         if ((auto_rotate IS ART::AUTO) or (auto_rotate IS ART::AUTO_REVERSE)) {
+            angle = (angles[i] * (1.0 - seek_to)) + (angles[i+1] * seek_to);
+            if (auto_rotate IS ART::AUTO_REVERSE) angle += 180.0;
+         }
       }
-      else if (not from.empty()) {
-         if (not to.empty()) {
-            read_numseq(from, { &x1, &y1 });
-            read_numseq(to, { &x2, &y2 } );
-         }
-         else if (not by.empty()) {
-            return;
-         }
+   }
+   else if (not values.empty()) {
+      // Values are x,y coordinate pairs.
+
+      LONG i;
+      if (calc_mode IS CMODE::PACED) {
+         const auto dist_pos = seek * get_total_dist();
+         for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
+         seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
+      }
+      else { // CMODE::LINEAR: Interpolate between the two values
+         i = F2T((std::ssize(values)-1) * seek);
+         if (i >= std::ssize(values)-1) i = values.size() - 2;
+         const DOUBLE mod = 1.0 / DOUBLE(values.size() - 1);
+         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
+
+      read_numseq(values[i], { &x1, &y1 });
+      read_numseq(values[i+1], { &x2, &y2 });
+   }
+   else if (not from.empty()) {
+      if (not to.empty()) {
+         read_numseq(from, { &x1, &y1 });
+         read_numseq(to, { &x2, &y2 } );
+      }
+      else if (not by.empty()) {
+         read_numseq(from, { &x1, &y1 });
+         read_numseq(by, { &x2, &y2 } );
+         x2 += x1;
+         y2 += y1;
       }
       else return;
    }
+   else return;
 
    if (not matrix) vecNewMatrix(*vector, &matrix);
    vecResetMatrix(matrix);
@@ -462,12 +597,12 @@ void anim_motion::perform()
    else if (auto_rotate IS ART::FIXED)  vecRotate(matrix, rotate, 0, 0);
 
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek < 0.5) vecTranslate(matrix, x1, y1);
+      if (seek_to < 0.5) vecTranslate(matrix, x1, y1);
       else vecTranslate(matrix, x2, y2);
    }
    else { // CMODE::LINEAR
-      x1 = x1 + ((x2 - x1) * seek);
-      y1 = y1 + ((y2 - y1) * seek);
+      x1 = x1 + ((x2 - x1) * seek_to);
+      y1 = y1 + ((y2 - y1) * seek_to);
       vecTranslate(matrix, x1, y1);
    }
 }
@@ -535,8 +670,6 @@ void anim_transform::perform()
 
 void anim_value::perform()
 {
-   pf::Log log(__FUNCTION__);
-
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
       // Determine the type of the attribute that we're targeting, then interpolate the value and set it.
