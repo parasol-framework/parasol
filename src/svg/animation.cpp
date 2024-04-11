@@ -110,9 +110,13 @@ double anim_base::get_numeric_value()
          read_numseq(to, { &to_val } );
       }
       else if (not by.empty()) {
-         return 0;
+         read_numseq(from, { &from_val });
+         read_numseq(by, { &to_val } );
+         to_val += from_val;
       }
+      else return 0;
    }
+   else return 0;
 
    const auto offset = to_val;
 
@@ -171,8 +175,11 @@ double anim_base::get_dimension()
          read_numseq(to, { &to_val } );
       }
       else if (not by.empty()) {
-         return 0;
+         read_numseq(from, { &from_val });
+         read_numseq(by, { &to_val } );
+         to_val += from_val;
       }
+      else return 0;
    }
    else return 0;
 
