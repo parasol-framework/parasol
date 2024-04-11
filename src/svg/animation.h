@@ -1,8 +1,8 @@
 
 #include <cmath>
 
-static const DOUBLE DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
-static const DOUBLE RAD2DEG = 57.295779513082320876798154814105;
+static const double DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
+static const double RAD2DEG = 57.295779513082320876798154814105;
 static const LONG MAX_VALUES = 8;
 
 //********************************************************************************************************************
@@ -41,11 +41,11 @@ enum class RST : char { // Restart
 
 //********************************************************************************************************************
 
-template <class T = DOUBLE> DOUBLE dist(const pf::POINT<T> &A, const pf::POINT<T> &B)
+template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T> &B)
 {
    if (A == B) return 0;
-   DOUBLE a = std::abs(B.x - A.x);
-   DOUBLE b = std::abs(B.y - A.y);
+   double a = std::abs(B.x - A.x);
+   double b = std::abs(B.y - A.y);
    if (a > b) std::swap(a, b);
    return b + 0.428 * a * a / b; // Error level of ~1.04%
    //return std::sqrt((a * a) + (b * b)); // Full accuracy
@@ -85,12 +85,12 @@ public:
 
    anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
 
-   DOUBLE get_total_dist();
-   DOUBLE get_dimension();
-   DOUBLE get_numeric_value();
+   double get_total_dist();
+   double get_dimension();
+   double get_numeric_value();
    FRGB get_colour_value();
-   bool started(DOUBLE);
-   void next_frame(DOUBLE);
+   bool started(double);
+   void next_frame(double);
 
    virtual void perform() = 0;
    virtual bool is_valid() {
@@ -114,11 +114,11 @@ public:
 class anim_motion : public anim_base {
 public:
    ART auto_rotate = ART::NIL; // Inline rotation along the path
-   DOUBLE rotate = 0; // Fixed angle rotation
+   double rotate = 0; // Fixed angle rotation
    objVector *mpath = NULL; // External vector path
    pf::GuardedObject<objVector> path; // Client provided path sequence
-   std::vector<pf::POINT<FLOAT>> points;
-   std::vector<FLOAT> angles; // Precalc'd angles for rotation along paths
+   std::vector<pf::POINT<float>> points;
+   std::vector<float> angles; // Precalc'd angles for rotation along paths
    LONG path_timestamp;
 
    anim_motion(OBJECTID pTarget) : anim_base(pTarget) {
@@ -127,7 +127,7 @@ public:
 
    void perform();
    void precalc_angles();
-   DOUBLE get_total_dist();
+   double get_total_dist();
 
    bool is_valid() {
       if (!values.empty()) return true;
@@ -156,6 +156,6 @@ public:
 
 //********************************************************************************************************************
 
-template <class T = FLOAT> DOUBLE get_angle(pf::POINT<T> &A, pf::POINT<T> &B) {
+template <class T = float> double get_angle(pf::POINT<T> &A, pf::POINT<T> &B) {
    return std::atan2(B.y - A.y, B.x - A.x) * RAD2DEG;
 }

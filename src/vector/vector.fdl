@@ -618,7 +618,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "GetFontMetrics",
     "CharWidth",
     "StringWidth",
-    "FlushMatrix")
+    "FlushMatrix",
+    "TracePath")
 
   c_insert([[
 

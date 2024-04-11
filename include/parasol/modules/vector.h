@@ -1691,7 +1691,7 @@ class objVector : public BaseClass {
 
    inline ERR setFillOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[42];
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1731,7 +1731,7 @@ class objVector : public BaseClass {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1850,7 +1850,7 @@ class objVector : public BaseClass {
 
    template <class T> inline ERR setFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[44];
+      auto field = &this->Class->Dictionary[45];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
@@ -2093,6 +2093,7 @@ struct VectorBase {
    DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
    DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
    ERR (*_FlushMatrix)(struct VectorMatrix * Matrix);
+   ERR (*_TracePath)(APTR Path, FUNCTION Callback, DOUBLE Scale);
 #endif // PARASOL_STATIC
 };
 
@@ -2130,6 +2131,7 @@ inline ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info) { return Ve
 inline DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
 inline DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
 inline ERR vecFlushMatrix(struct VectorMatrix * Matrix) { return VectorBase->_FlushMatrix(Matrix); }
+inline ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
 #else
 extern "C" {
 extern ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
@@ -2163,6 +2165,7 @@ extern ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info);
 extern DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
 extern DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars);
 extern ERR vecFlushMatrix(struct VectorMatrix * Matrix);
+extern ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale);
 }
 #endif // PARASOL_STATIC
 #endif

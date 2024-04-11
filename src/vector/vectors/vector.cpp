@@ -990,7 +990,7 @@ the currently plotted point.  The X and Y parameters reflect the coordinate of a
 If the Callback returns `ERR::Terminate`, then no further coordinates will be processed.
 
 -INPUT-
-ptr(func) Callback: The function to call with each coordinate of the path.
+ptr(func) Callback: A function to call with the path coordinates.
 double Scale: Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.
 int Transform: Set to TRUE if all transforms applicable to the vector should be applied to the path.
 

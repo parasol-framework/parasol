@@ -491,6 +491,85 @@ ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
 /*********************************************************************************************************************
 
 -FUNCTION-
+TracePath: Returns the coordinates for a vector path, using callbacks.
+
+Generated paths can be traced by calling this function.  Tracing allows the caller to follow the path for each pixel 
+that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback
+function is `ERR Function(APTR Path, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
+
+The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the 
+coordinate of a point on the path.
+
+If the Callback returns `ERR::Terminate`, then no further coordinates will be processed.
+
+-INPUT-
+ptr Path:      The vector path to trace.
+func Callback: A function to call with the path coordinates.
+double Scale:  Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, DOUBLE Scale)
+{
+   pf::Log log;
+
+   if ((!Path) or (!Callback)) return ERR::NullArgs;
+
+   Path->mPath.rewind(0);
+   Path->mPath.approximation_scale(Scale);
+
+   DOUBLE x, y;
+   LONG cmd = -1;
+   LONG index = 0;
+
+  if (Callback->isC()) {
+      auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Callback->Routine));
+
+      pf::SwitchContext context(GetParentContext());
+
+      do {
+         cmd = Path->mPath.vertex(&x, &y);
+         if (agg::is_vertex(cmd)) {
+            if (routine(Path, index++, cmd, x, y, Callback->Meta) IS ERR::Terminate) {
+               return ERR::Okay;
+            }
+         }
+      } while (cmd != agg::path_cmd_stop);
+   }
+   else if (Callback->isScript()) {
+      std::array<ScriptArg, 5> args {{
+         { "Path",    Path },
+         { "Index",   LONG(0) },
+         { "Command", LONG(0) },
+         { "X",       DOUBLE(0) },
+         { "Y",       DOUBLE(0) }
+      }};
+      args[0].Address = Path;
+
+      ERR result;
+      do {
+         cmd = Path->mPath.vertex(&x, &y);
+         if (agg::is_vertex(cmd)) {
+            args[1].Long = index++;
+            args[2].Long = cmd;
+            args[3].Double = x;
+            args[4].Double = y;
+            if (scCall(*Callback, args, result) != ERR::Okay) return ERR::Failed;
+            if (result IS ERR::Terminate) return ERR::Okay;
+         }
+      } while (cmd != agg::path_cmd_stop);
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 LineTo: Alter a path by setting a line-to command at the current vertex position.
 
 This function alters a path by setting a line-to command at the current vertex position.  The index is then advanced by

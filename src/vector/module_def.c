@@ -33,6 +33,7 @@ FDEF argsSkew[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_P
 FDEF argsSmooth3[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth4[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX", FD_DOUBLE }, { "CtrlY", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsStringWidth[] = { { "Result", FD_DOUBLE }, { "FontHandle", FD_PTR }, { "String", FD_STR }, { "Chars", FD_LONG }, { 0, 0 } };
+FDEF argsTracePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_PTR }, { "Callback", FD_FUNCTION }, { "Scale", FD_DOUBLE }, { 0, 0 } };
 FDEF argsTranslate[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsTranslatePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 
@@ -68,6 +69,7 @@ const struct Function glFunctions[] = {
    { (APTR)vecCharWidth, "CharWidth", argsCharWidth },
    { (APTR)vecStringWidth, "StringWidth", argsStringWidth },
    { (APTR)vecFlushMatrix, "FlushMatrix", argsFlushMatrix },
+   { (APTR)vecTracePath, "TracePath", argsTracePath },
    { NULL, NULL, NULL }
 };
 

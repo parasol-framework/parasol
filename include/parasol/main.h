@@ -35,18 +35,18 @@ namespace pf {
 
 //********************************************************************************************************************
 
-template <class T = DOUBLE> struct POINT { 
+template <class T = double> struct POINT { 
    T x, y;
 };
 
-template <class T = DOUBLE> bool operator==(const POINT<T> &a, const POINT<T> &b) { 
+template <class T = double> bool operator==(const POINT<T> &a, const POINT<T> &b) { 
    return (a.x == b.x) and (a.y == b.y);
 } 
 
-template <class T = DOUBLE> T operator-(POINT<T> A, const POINT<T> &B) {
+template <class T = double> T operator-(POINT<T> A, const POINT<T> &B) {
    if (A == B) return 0;
-   DOUBLE a = std::abs(B.x - A.x);
-   DOUBLE b = std::abs(B.y - A.y);
+   double a = std::abs(B.x - A.x);
+   double b = std::abs(B.y - A.y);
    if (a > b) std::swap(a, b);
    return T(b + 0.428 * a * a / b); // Error level of ~1.04%
    //return T(std::sqrt((a * a) + (b * b))); // Full accuracy

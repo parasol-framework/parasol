@@ -247,7 +247,7 @@
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
       <prototype>ERR vecTracePath(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
-        <param type="FUNCTION *" name="Callback">The function to call with each coordinate of the path.</param>
+        <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
         <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
         <param type="LONG" name="Transform">Set to TRUE if all transforms applicable to the vector should be applied to the path.</param>
       </input>
@@ -340,6 +340,16 @@
       <type>DOUBLE</type>
       <description>
 <p>The DashOffset can be set in conjunction with the <field>DashArray</field> to shift the dash pattern to the left.  If the offset is negative then the shift will be to the right.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplayScale</name>
+      <comment>Returns the scale of the vector as it appears on the display.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The DisplayScale field will return the scale factor of the vector's path as it appears in the final rendering.  For instance if the vector is the child of a viewport scaled down to 50%, the resulting value would be <code>0.5</code>.</p>
       </description>
     </field>
 
