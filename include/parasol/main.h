@@ -153,23 +153,26 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
 // Resource guard for any allocation that can be freed with FreeResource().  Retains the resource ID rather than the
 // pointer to ensure that termination is safe, even if the original resource gets terminated elsewhere.
 //
-// Usage: pf::GuardedResource resource(thing)
+// For locally scoped allocations only; this class does not support reference counting.
+// 
+// Usage: pf::LocalResource resource(thing)
 
 template <class T>
-class GuardedResource {
+class LocalResource {
    private:
       MEMORYID id;
    public:
-      GuardedResource(T Resource) {
+      LocalResource(T Resource) {
          static_assert(std::is_pointer<T>::value, "The resource value must be a pointer");
          id = ((LONG *)Resource)[-2];
       }
-      ~GuardedResource() { FreeResource(id); }
+      ~LocalResource() { FreeResource(id); }
 };
 
 //********************************************************************************************************************
-// The object equivalent of GuardedResource.  Also guarantees safety for object termination.  The use of
-// GuardedObject is considered essential for interoperability with the C++ class destruction model.
+// Enhanced version of LocalResource that features reference counting and is usable for both objects and regular
+// resources.  The use of GuardedObject is considered essential for interoperability with the C++ class destruction 
+// model.
 
 template <class T = BaseClass, class C = std::atomic_int>
 class GuardedObject {
@@ -178,14 +181,15 @@ class GuardedObject {
       T * object; // Pointer to the Parasol object being guarded.  Use '*' or '->' operators to access.
 
    public:
-      OBJECTID id; // Object UID
+      OBJECTID id; // Object/Resource UID
 
       // Constructors
 
       GuardedObject() : count(new C(1)), object(NULL), id(0) { }
 
-      GuardedObject(T *Object) : count(new C(1)), object(Object), id(Object->UID) {
+      GuardedObject(T *Object) : count(new C(1)), object(Object) {
          static_assert(std::is_base_of_v<BaseClass, T>, "The resource value must belong to BaseClass");
+         id = ((LONG *)Object)[-2];
       }
 
       GuardedObject(const GuardedObject &other) { // Copy constructor
@@ -219,8 +223,6 @@ class GuardedObject {
          }
       }
 
-      // Assignments
-
       GuardedObject & operator = (const GuardedObject &other) { // Copy assignment
          if (this == &other) return *this;
          if (!--count[0]) delete count;
@@ -253,7 +255,7 @@ class GuardedObject {
          if (!Object) return;
          else if (count[0] IS 1) {
             object = Object;
-            id     = Object->UID;
+            id     = ((LONG *)Object)[-2];
          }
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }

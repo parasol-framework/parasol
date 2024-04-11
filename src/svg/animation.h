@@ -115,7 +115,7 @@ class anim_motion : public anim_base {
 public:
    ART auto_rotate = ART::NIL; // Inline rotation along the path
    double rotate = 0; // Fixed angle rotation
-   objVector *mpath = NULL; // External vector path
+   objVector *mpath = NULL; // External vector path (untracked)
    pf::GuardedObject<objVector> path; // Client provided path sequence
    std::vector<pf::POINT<float>> points;
    std::vector<float> angles; // Precalc'd angles for rotation along paths
