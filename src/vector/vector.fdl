@@ -589,7 +589,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   functionNames("vec",
     "DrawPath",
-    "FreePath",
     "GenerateEllipse",
     "GeneratePath",
     "GenerateRectangle",

@@ -2063,7 +2063,6 @@ class objVectorViewport : public objVector {
 struct VectorBase {
 #ifndef PARASOL_STATIC
    ERR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-   void (*_FreePath)(APTR Path);
    ERR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
    ERR (*_GeneratePath)(CSTRING Sequence, APTR Path);
    ERR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
@@ -2101,7 +2100,6 @@ struct VectorBase {
 #ifndef PARASOL_STATIC
 extern struct VectorBase *VectorBase;
 inline ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
-inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
 inline ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
 inline ERR vecGeneratePath(CSTRING Sequence, APTR Path) { return VectorBase->_GeneratePath(Sequence,Path); }
 inline ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
@@ -2135,7 +2133,6 @@ inline ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale) { return Vec
 #else
 extern "C" {
 extern ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern void vecFreePath(APTR Path);
 extern ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
 extern ERR vecGeneratePath(CSTRING Sequence, APTR Path);
 extern ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
