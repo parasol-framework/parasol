@@ -170,9 +170,8 @@ class LocalResource {
 };
 
 //********************************************************************************************************************
-// Enhanced version of LocalResource that features reference counting and is usable for both objects and regular
-// resources.  The use of GuardedObject is considered essential for interoperability with the C++ class destruction 
-// model.
+// Enhanced version of LocalResource that features reference counting and is usable for object resources.  The use of 
+// GuardedObject is considered essential for interoperability with the C++ class destruction model.
 
 template <class T = BaseClass, class C = std::atomic_int>
 class GuardedObject {
@@ -264,6 +263,101 @@ class GuardedObject {
 
       T * operator->() { return object; }; // Promotes underlying methods and fields
       T * & operator*() { return object; }; // To allow object pointer referencing when calling functions
+};
+
+//********************************************************************************************************************
+// As for GuardedObject, but works with any resource type.  The reason why these two managers exist with duplicated 
+// functionality is because GuardedObject may be enhanced with more integration with the Core in future.
+
+template <class T = void, class C = std::atomic_int>
+class GuardedResource {
+   private:
+      C * count;  // Count of GuardedResources accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
+      T * resource; // Pointer to the Parasol resource being guarded.  Use '*' or '->' operators to access.
+
+   public:
+      MEMORYID id; // Resource UID
+
+      // Constructors
+
+      GuardedResource() : count(new C(1)), resource(NULL), id(0) { }
+
+      GuardedResource(T *Resource) : count(new C(1)), resource(Resource) {
+         id = ((LONG *)Resource)[-2];
+      }
+
+      GuardedResource(const GuardedResource &other) { // Copy constructor
+         if (other.resource) {
+            resource = other.resource;
+            count  = other.count;
+            count[0]++;
+         }
+         else { // If the other resource is undefined then use a default state
+            resource = NULL;
+            id     = 0;
+            count  = new C(1);
+         }
+      }
+
+      GuardedResource(GuardedResource &&other) { // Move constructor
+         id     = other.id;
+         resource = other.resource;
+         count  = other.count;
+         other.count = NULL;
+      }
+
+      // Destructor
+
+      ~GuardedResource() {
+         if (!count) return; // The count can be empty if this GuardedResource was moved
+
+         if (!--count[0]) {
+            if (id) FreeResource(id);
+            delete count;
+         }
+      }
+
+      GuardedResource & operator = (const GuardedResource &other) { // Copy assignment
+         if (this == &other) return *this;
+         if (!--count[0]) delete count;
+         if (other.resource) {
+            resource = other.resource;
+            count  = other.count;
+            count[0]++;
+         }
+         else { // If the other resource is undefined then we reset our state with no count inheritance.
+            resource   = NULL;
+            id       = 0;
+            count[0] = 1;
+         }
+         return *this;
+      }
+
+      GuardedResource & operator = (GuardedResource &&other) { // Move assignment
+         if (this == &other) return *this;
+         if (!--count[0]) delete count;
+         id     = other.id;
+         resource = other.resource;
+         count  = other.count;
+         other.count = NULL;
+         return *this;
+      }
+
+      // Public methods
+
+      inline void set(T *Resource) { // set() requires caution as the resource reference is modified without adjusting the counter
+         if (!Resource) return;
+         else if (count[0] IS 1) {
+            resource = Resource;
+            id     = ((LONG *)Resource)[-2];
+         }
+         else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
+      }
+
+      constexpr bool empty() { return !resource; } // Returns true if no resource is being guarded.
+
+      T * operator->() { return resource; }; // Promotes underlying methods and fields
+      T * & operator*() { return resource; }; // To allow resource pointer referencing when calling functions
 };
 
 //********************************************************************************************************************
