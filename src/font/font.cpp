@@ -843,11 +843,11 @@ static void scan_truetype_folder(objConfig *Config)
 
    STRING path;
    if (ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, (STRING *)&path) IS ERR::Okay) {
-      GuardedResource free_path(path);
+      LocalResource free_path(path);
 
       DirInfo *dir;
       if (OpenDir(path, RDF::FILE, &dir) IS ERR::Okay) {
-         GuardedResource free_dir(dir);
+         LocalResource free_dir(dir);
 
          while (ScanDir(dir) IS ERR::Okay) {
             std::string ttpath(path);

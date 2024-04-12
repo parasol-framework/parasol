@@ -1,4 +1,12 @@
 
+#include <cmath>
+
+static const double DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
+static const double RAD2DEG = 57.295779513082320876798154814105;
+static const LONG MAX_VALUES = 8;
+
+//********************************************************************************************************************
+
 enum class AT : char { // Transform Type
    TRANSLATE = 1, SCALE, ROTATE, SKEW_X, SKEW_Y
 };
@@ -25,17 +33,30 @@ enum class CMODE : char { // Specifies the interpolation mode for the animation.
    SPLINE      // Interpolates from one value in the values list to the next according to a time function defined by a cubic Bezier spline. The points of the spline are defined in the keyTimes attribute, and the control points for each interval are defined in the keySplines attribute.
 };
 
-constexpr LONG MAX_VALUES = 8;
-
 enum class RST : char { // Restart
    ALWAYS = 0,
    WHEN_NOT_ACTIVE,
    NEVER
 };
 
+//********************************************************************************************************************
+
+template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T> &B)
+{
+   if (A == B) return 0;
+   double a = std::abs(B.x - A.x);
+   double b = std::abs(B.y - A.y);
+   if (a > b) std::swap(a, b);
+   return b + 0.428 * a * a / b; // Error level of ~1.04%
+   //return std::sqrt((a * a) + (b * b)); // Full accuracy
+}
+
+//********************************************************************************************************************
+
 class anim_base {
 public:
    std::vector<std::string> values; // Set of discrete values that override 'from', 'to', 'by'
+   std::vector<FLOAT> distances; // Maps directly to 'points' or 'values' for paced calculations
    std::string from;             // Start from this value. Ignored if 'values' is defined.
    std::string to, by;           // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
    std::string target_attrib;    // Name of the target attribute affected by the From and To values.
@@ -49,25 +70,27 @@ public:
    DOUBLE first_time = 0;      // Time-stamp of the first iteration
    DOUBLE start_time = 0;      // This is time-stamped once the animation has started (the first begin event is hit)
    DOUBLE end_time   = 0;      // This is time-stamped once the animation has finished all of its cycles (including repetitions)
-   DOUBLE end  = 0;            
+   DOUBLE end  = 0;
    DOUBLE seek = 0;            // Current seek position, between 0 - 1.0
+   DOUBLE total_dist = 0;      // Total distance between all value nodes
    OBJECTID target_vector = 0;
    LONG   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
    LONG   repeat_index = 0; // Current index within the repeat cycle.
    CMODE  calc_mode   = CMODE::LINEAR;
    RST    restart     = RST::ALWAYS;
    ATT    attrib_type = ATT::AUTO;
-   ADD    additive    = ADD::SUM;
+   ADD    additive    = ADD::REPLACE;
    bool   freeze      = false;
    bool   accumulate  = false;
 
    anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
 
-   DOUBLE get_dimension();
-   DOUBLE get_numeric_value();
+   double get_total_dist();
+   double get_dimension();
+   double get_numeric_value();
    FRGB get_colour_value();
-   bool started(DOUBLE);
-   void next_frame(DOUBLE);
+   bool started(double);
+   void next_frame(double);
 
    virtual void perform() = 0;
    virtual bool is_valid() {
@@ -77,6 +100,8 @@ public:
    }
 };
 
+//********************************************************************************************************************
+
 class anim_transform : public anim_base {
 public:
    AT type;
@@ -84,19 +109,25 @@ public:
    void perform();
 };
 
+//********************************************************************************************************************
+
 class anim_motion : public anim_base {
 public:
-   typedef struct { FLOAT x, y; } POINT;
    ART auto_rotate = ART::NIL; // Inline rotation along the path
-   DOUBLE rotate = 0; // Fixed angle rotation
-   objVector *mpath = NULL; // External vector path
+   double rotate = 0; // Fixed angle rotation
+   objVector *mpath = NULL; // External vector path (untracked)
    pf::GuardedObject<objVector> path; // Client provided path sequence
-   std::vector<POINT> points;
-   std::vector<FLOAT> angles; // Precalc'd angles for rotation along paths
+   std::vector<pf::POINT<float>> points;
+   std::vector<float> angles; // Precalc'd angles for rotation along paths
    LONG path_timestamp;
 
-   anim_motion(OBJECTID pTarget) : anim_base(pTarget) { }
+   anim_motion(OBJECTID pTarget) : anim_base(pTarget) {
+      calc_mode = CMODE::PACED;
+   }
+
    void perform();
+   void precalc_angles();
+   double get_total_dist();
 
    bool is_valid() {
       if (!values.empty()) return true;
@@ -107,11 +138,15 @@ public:
    }
 };
 
+//********************************************************************************************************************
+
 class anim_colour : public anim_base {
 public:
    anim_colour(OBJECTID pTarget) : anim_base(pTarget) { }
    void perform();
 };
+
+//********************************************************************************************************************
 
 class anim_value : public anim_base {
 public:
@@ -119,3 +154,8 @@ public:
    void perform();
 };
 
+//********************************************************************************************************************
+
+template <class T = float> double get_angle(pf::POINT<T> &A, pf::POINT<T> &B) {
+   return std::atan2(B.y - A.y, B.x - A.x) * RAD2DEG;
+}

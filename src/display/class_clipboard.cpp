@@ -76,7 +76,7 @@ void clean_clipboard(void)
 
    DirInfo *dir;
    if (OpenDir("clipboard:", RDF::FILE|RDF::DATE, &dir) IS ERR::Okay) {
-      GuardedResource free_dir(dir);
+      LocalResource free_dir(dir);
 
       while (ScanDir(dir) IS ERR::Okay) {
          const std::regex txt_regex("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$");

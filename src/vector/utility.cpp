@@ -479,7 +479,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
    CSTRING location = NULL;
    FMETA meta = FMETA::NIL;
    if (auto error = fntSelectFont(family.c_str(), style.c_str(), &location, &meta); error IS ERR::Okay) {
-      GuardedResource loc(location);
+      LocalResource loc(location);
 
       if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
          auto key = StrHash(style + ":" + std::to_string(point_size) + ":" + location);

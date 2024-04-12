@@ -1691,7 +1691,7 @@ class objVector : public BaseClass {
 
    inline ERR setFillOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[42];
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1731,7 +1731,7 @@ class objVector : public BaseClass {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1850,7 +1850,7 @@ class objVector : public BaseClass {
 
    template <class T> inline ERR setFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[44];
+      auto field = &this->Class->Dictionary[45];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
@@ -2063,7 +2063,6 @@ class objVectorViewport : public objVector {
 struct VectorBase {
 #ifndef PARASOL_STATIC
    ERR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-   void (*_FreePath)(APTR Path);
    ERR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
    ERR (*_GeneratePath)(CSTRING Sequence, APTR Path);
    ERR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
@@ -2093,6 +2092,7 @@ struct VectorBase {
    DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
    DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
    ERR (*_FlushMatrix)(struct VectorMatrix * Matrix);
+   ERR (*_TracePath)(APTR Path, FUNCTION Callback, DOUBLE Scale);
 #endif // PARASOL_STATIC
 };
 
@@ -2100,7 +2100,6 @@ struct VectorBase {
 #ifndef PARASOL_STATIC
 extern struct VectorBase *VectorBase;
 inline ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
-inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
 inline ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
 inline ERR vecGeneratePath(CSTRING Sequence, APTR Path) { return VectorBase->_GeneratePath(Sequence,Path); }
 inline ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
@@ -2130,10 +2129,10 @@ inline ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info) { return Ve
 inline DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
 inline DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
 inline ERR vecFlushMatrix(struct VectorMatrix * Matrix) { return VectorBase->_FlushMatrix(Matrix); }
+inline ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
 #else
 extern "C" {
 extern ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern void vecFreePath(APTR Path);
 extern ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
 extern ERR vecGeneratePath(CSTRING Sequence, APTR Path);
 extern ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
@@ -2163,6 +2162,7 @@ extern ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info);
 extern DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
 extern DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars);
 extern ERR vecFlushMatrix(struct VectorMatrix * Matrix);
+extern ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale);
 }
 #endif // PARASOL_STATIC
 #endif
