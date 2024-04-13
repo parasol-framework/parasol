@@ -243,9 +243,9 @@
     </method>
 
     <method>
-      <name>TracePath</name>
+      <name>Trace</name>
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
-      <prototype>ERR vecTracePath(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
+      <prototype>ERR vecTrace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
         <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>

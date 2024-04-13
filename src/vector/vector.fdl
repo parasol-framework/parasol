@@ -519,7 +519,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   methods("vector", "Vec", {
     { id=1, name="Push" },
-    { id=2, name="TracePath" },
+    { id=2, name="Trace" },
     { id=3, name="GetBoundary" },
     { id=4, name="PointInPath" },
     { id=5, name="SubscribeInput" },
