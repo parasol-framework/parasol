@@ -56,23 +56,23 @@ template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T
 class anim_base {
 public:
    std::vector<std::string> values; // Set of discrete values that override 'from', 'to', 'by'
-   std::vector<FLOAT> distances; // Maps directly to 'points' or 'values' for paced calculations
-   std::string from;             // Start from this value. Ignored if 'values' is defined.
-   std::string to, by;           // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
-   std::string target_attrib;    // Name of the target attribute affected by the From and To values.
-   std::string id;               // Identifier for the animation
+   std::vector<float> distances;    // Maps directly to 'points' or 'values' for paced calculations
+   std::string from;                // Start from this value. Ignored if 'values' is defined.
+   std::string to, by;              // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
+   std::string target_attrib;       // Name of the target attribute affected by the From and To values.
+   std::string id;                  // Identifier for the animation
    struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
-   DOUBLE begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
-   DOUBLE repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
-   DOUBLE min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
-   DOUBLE max_duration = 0;    // The maximum value of the active duration.
-   DOUBLE duration   = 0;      // Measured in seconds, anything < 0 means infinite.
-   DOUBLE first_time = 0;      // Time-stamp of the first iteration
-   DOUBLE start_time = 0;      // This is time-stamped once the animation has started (the first begin event is hit)
-   DOUBLE end_time   = 0;      // This is time-stamped once the animation has finished all of its cycles (including repetitions)
-   DOUBLE end  = 0;
-   DOUBLE seek = 0;            // Current seek position, between 0 - 1.0
-   DOUBLE total_dist = 0;      // Total distance between all value nodes
+   double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
+   double repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
+   double min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
+   double max_duration = 0;    // The maximum value of the active duration.
+   double duration   = 0;      // Measured in seconds, anything < 0 means infinite.
+   double first_time = 0;      // Time-stamp of the first iteration
+   double start_time = 0;      // This is time-stamped once the animation has started (the first begin event is hit)
+   double end_time   = 0;      // This is time-stamped once the animation has finished all of its cycles (including repetitions)
+   double end  = 0;
+   double seek = 0;            // Current seek position, between 0 - 1.0
+   double total_dist = 0;      // Total distance between all value nodes
    OBJECTID target_vector = 0;
    LONG   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
    LONG   repeat_index = 0; // Current index within the repeat cycle.

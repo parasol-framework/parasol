@@ -514,9 +514,9 @@ void anim_motion::perform()
 
          points.clear();
          if (mpath) {
-            if ((vecTracePath(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
+            if ((vecTrace(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
          }
-         else if ((vecTracePath(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
+         else if ((vecTrace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
 
          vector->get(FID_PathTimestamp, &path_timestamp);
 
