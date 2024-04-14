@@ -159,6 +159,32 @@ double anim_base::get_dimension()
          for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
          seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
       }
+      else if (calc_mode IS CMODE::SPLINE) {
+         i = 0;
+         if (timing.empty()) {
+            // When no timing is specified, the 'values' are distributed evenly.  This determines
+            // what spline-path we are going to use.
+
+            i = std::clamp(F2T(seek * std::ssize(spline_paths)), 0, LONG(std::ssize(spline_paths) - 1));
+            auto &sp = spline_paths[i]; // sp = The spline we're going to use
+
+            // Rather than use distance, we're going to use the 'x' position as a lookup on the horizontal axis.
+            // The paired y value then gives us the 'real' seek_to value.
+            // The spline points are already sorted by the x value to make this easier.
+            
+            const DOUBLE x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / DOUBLE(std::ssize(spline_paths))) * std::ssize(spline_paths);
+
+            LONG si;
+            for (si=0; (si < std::ssize(sp.points)-1) and (sp.points[si+1].point.x < x); si++);
+
+            const double mod_x = x - sp.points[si].point.x;
+            const double c = mod_x / sp.points[si].cos_angle;
+            seek_to = std::clamp(sp.points[si].point.y + std::sqrt((c * c) - (mod_x * mod_x)), 0.0, 1.0);
+         }
+         else {
+
+         }
+      }
       else {
          i = F2T((values.size()-1) * seek);
          if (i >= LONG(values.size())-1) i = values.size() - 2;
@@ -307,6 +333,18 @@ void anim_base::next_frame(double CurrentTime)
 //********************************************************************************************************************
 // Set common animation properties
 
+static ERR parse_spline(APTR Path, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, anim_base::SPLINE_POINTS &Meta)
+{
+   Meta.emplace_back(pf::POINT<float> { float(X), float(Y) }, 0);
+
+   if (Meta.size() > 1) {
+      Meta[Meta.size()-2].angle = std::atan2(Meta.back().point.y - Meta[Meta.size()-2].point.y, Meta.back().point.x - Meta[Meta.size()-2].point.x);
+      Meta[Meta.size()-2].cos_angle = std::cos(Meta[Meta.size()-2].angle);
+   }
+
+   return ERR::Okay;
+}
+
 static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, XMLTag &Tag, ULONG Hash, const std::string_view Value)
 {
    switch (Hash) {
@@ -426,18 +464,108 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          break;
       }
 
-      case SVF_KEYPOINTS:
-         // Takes a semicolon-separated list of floating point values between 0 and 1 and indicates how far along
-         // the motion path the object shall move at the moment in time specified by corresponding ‘keyTimes’
-         // value. Distance calculations use the user agent's distance along the path algorithm. Each progress
-         // value in the list corresponds to a value in the ‘keyTimes’ attribute list.
-         break;
+      // Takes a semicolon-separated list of floating point values between 0 and 1 and indicates how far along
+      // the motion path the object shall move at the moment in time specified by corresponding 'keyTimes'
+      // value. Distance calculations use the user agent's distance along the path algorithm. Each progress
+      // value in the list corresponds to a value in the 'keyTimes' attribute list.
 
-      case SVF_KEYTIMES:
+      case SVF_KEYPOINTS: {
+         Anim.key_points.clear();
+         LONG s, v = 0;
+         while (v < std::ssize(Value)) {
+            while ((Value[v]) and (Value[v] <= 0x20)) v++;
+            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            std::string_view val = Value.substr(v, s-v);
+            double fv;
+            auto [ ptr, error ] = std::from_chars(val.data(), val.data() + val.size(), fv);
+            fv = std::clamp(fv, 0.0, 1.0);
+            Anim.key_points.push_back(fv);
+            v = s;
+            if (Value[v] IS ';') v++;
+         }
          break;
+      }
 
-      case SVF_KEYSPLINES:
+      // A semicolon-separated list of time values used to control the pacing of the animation. Each time in the
+      // list corresponds to a value in the 'values' attribute list, and defines when the value is used in the
+      // animation function. Each time value in the 'keyTimes' list is specified as a floating point value between
+      // 0 and 1 (inclusive), representing a proportional offset into the simple duration of the animation
+      // element.
+      //
+      // For animations specified with a 'values' list, the 'keyTimes' attribute if specified must have exactly as
+      // many values as there are in the 'values' attribute. For from/to/by animations, the 'keyTimes' attribute
+      // if specified must have two values.
+      //
+      // Each successive time value must be greater than or equal to the preceding time value.
+
+      case SVF_KEYTIMES: {
+         Anim.timing.clear();
+         LONG s, v = 0;
+         double last_val = 0.0;
+         while (v < std::ssize(Value)) {
+            while ((Value[v]) and (Value[v] <= 0x20)) v++;
+            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            std::string_view val = Value.substr(v, s-v);
+            double fv;
+            auto [ ptr, error ] = std::from_chars(val.data(), val.data() + val.size(), fv);
+            fv = std::clamp(fv, last_val, 1.0);
+            Anim.timing.push_back(fv);
+            last_val = fv;
+            v = s;
+            if (Value[v] IS ';') v++;
+         }
          break;
+      }
+
+      // A set of Bézier control points associated with the 'keyTimes' list, defining a cubic Bézier function
+      // that controls interval pacing. The attribute value is a semicolon-separated list of control point
+      // descriptions. Each control point description is a set of four values: x1 y1 x2 y2, describing the
+      // Bézier control points for one time segment. Note: SMIL allows these values to be separated either by
+      // commas with optional whitespace, or by whitespace alone. The 'keyTimes' values that define the
+      // associated segment are the Bézier "anchor points", and the 'keySplines' values are the control points.
+      // Thus, there must be one fewer sets of control points than there are 'keyTimes'.
+      //
+      // The values must all be in the range 0 to 1.
+      // This attribute is ignored unless the 'calcMode' is set to 'spline'.
+      // Parsing errors must be propagated.
+
+      case SVF_KEYSPLINES: {
+         Anim.splines.clear();
+         LONG s, v = 0;
+         while (v < std::ssize(Value)) {
+            while ((Value[v]) and (Value[v] <= 0x20)) v++;
+            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            auto quad = std::string_view(Value.substr(v, s-v));
+
+            POINT<double> a, b;
+            read_numseq(quad, { &a.x, &a.y, &b.x, &b.y });
+            a.x = std::clamp(a.x, 0.0, 1.0);
+            a.y = std::clamp(a.y, 0.0, 1.0);
+            b.x = std::clamp(b.x, 0.0, 1.0);
+            b.y = std::clamp(b.y, 0.0, 1.0);
+            Anim.splines.push_back(std::make_pair(a, b));
+
+            v = s;
+            if (Value[v] IS ';') v++;
+         }
+
+         if (Anim.splines.size() < 2) Anim.splines.clear();
+         else {
+            // Convert the splines into bezier paths and generate a point-based path in advance.
+            for (auto &sp : Anim.splines) {
+               APTR path;
+               if (vecGeneratePath(NULL, &path) IS ERR::Okay) {
+                  anim_base::SPLINE_POINTS lookup;
+                  vecMoveTo(path, 0, 0);
+                  vecCurve4(path, sp.first.x, sp.first.y, sp.second.x, sp.second.y, 1.0, 1.0);
+                  vecTracePath(path, C_FUNCTION(parse_spline, &lookup), 512.0);
+                  Anim.spline_paths.push_back(lookup);
+                  FreeResource(path);
+               }
+            }
+         }
+         break;
+      }
 
       case SVF_EXTERNALRESOURCESREQUIRED:
          // Deprecated

@@ -55,13 +55,33 @@ template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T
 
 class anim_base {
 public:
+   struct spline_point {
+      pf::POINT<float> point;
+      float angle;
+      float cos_angle;
+      spline_point(pf::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
+   };
+   
+   typedef std::vector<float> DISTANCES;
+   typedef std::vector<spline_point> SPLINE_POINTS;
+
+   class spline_path {
+   public:
+      SPLINE_POINTS points;
+      spline_path(SPLINE_POINTS pPoints) : points(pPoints) { }
+   };
+
    std::vector<std::string> values; // Set of discrete values that override 'from', 'to', 'by'
-   std::vector<float> distances;    // Maps directly to 'points' or 'values' for paced calculations
+   std::vector<double> timing;      // Key times.  Ignored if duration < 0
+   std::vector<double> key_points;  // Key points
+   DISTANCES distances;             // Maps directly to 'points' or 'values' for paced calculations
    std::string from;                // Start from this value. Ignored if 'values' is defined.
    std::string to, by;              // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
    std::string target_attrib;       // Name of the target attribute affected by the From and To values.
    std::string id;                  // Identifier for the animation
+   std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
    struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
+   std::vector<spline_path> spline_paths;
    double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
    double repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
    double min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.

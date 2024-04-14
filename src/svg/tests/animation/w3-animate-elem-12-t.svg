@@ -1,0 +1,54 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<!--
+Test possible values for 'calcMode="spline"'.
+
+Two animations have been defined. For each animation, ruler lines and text are provided to help show what the correct behavior is.
+The black text and ruler lines help show the sizes and movement of the rectangles over time.
+
+For calcMode='spline' in this test case, the initial rate of change is defined to be the same as linear, but the
+last jump has an ease-in/ease-out effect where the change is slower at the start and end but faster in the middle.
+-->
+
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g font-family="Arial" font-size="30">
+    <g transform="translate(20,50)">
+      <text x="0" y="203">at 0 sec.</text>
+      <text x="0" y="170">at 3 sec. </text>
+      <text x="0" y="114">at 6 sec. </text>
+      <text x="3" y="3">9+ sec. </text>
+
+      <g stroke="#800" stroke-width="4">
+        <line x1="120" y1="200" x2="170" y2="200"/>
+        <line x1="120" y1="167" x2="170" y2="167"/>
+        <line x1="120" y1="111" x2="170" y2="111"/>
+        <line x1="120" y1="0" x2="170" y2="0"/>
+      </g>
+
+      <rect x="140" y="-10" width="60" height="210" fill="#FFAA44" stroke="#FF00FF" stroke-width="4">
+        <animate attributeName="height" calcMode="spline" keySplines="0,0,1,1;0,0,1,1;.75,0,0,.75"
+          values="210;177;121;10" begin="0s" dur="9s" fill="freeze"/>
+      </rect>
+    </g>
+
+    <g transform="translate(250,50)">
+      <text x="0" y="203">at 0 sec.</text>
+      <text x="0" y="170">at 3 sec. </text>
+      <text x="0" y="114">at 6 sec. </text>
+      <text x="3" y="3">9+ sec. </text>
+
+      <g stroke="#800" stroke-width="4">
+        <line x1="120" y1="200" x2="170" y2="200"/>
+        <line x1="120" y1="167" x2="170" y2="167"/>
+        <line x1="120" y1="111" x2="170" y2="111"/>
+        <line x1="120" y1="0" x2="170" y2="0"/>
+      </g>
+
+      <rect x="140" y="-10" width="60" height="10" fill="#FFAA44" stroke="#FF00FF" stroke-width="4">
+        <animateMotion calcMode="spline" keySplines="0,0,1,1;0,0,1,1;.75,0,0,.75"
+          values="0,200; 0,167; 0,111; 0,0" begin="0s" dur="9s" fill="freeze"/>
+      </rect>
+    </g>
+  </g>
+</svg>
