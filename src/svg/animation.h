@@ -106,7 +106,7 @@ public:
    anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
 
    double get_total_dist();
-   double get_dimension();
+   double get_dimension(objVector &, FIELD);
    double get_numeric_value();
    FRGB get_colour_value();
    bool started(double);

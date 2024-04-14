@@ -146,7 +146,7 @@ double anim_base::get_numeric_value()
 //********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
-double anim_base::get_dimension()
+double anim_base::get_dimension(objVector &Vector, FIELD Field)
 {
    double from_val, to_val;
    double seek_to = seek;
@@ -206,6 +206,17 @@ double anim_base::get_dimension()
          to_val += from_val;
       }
       else return 0;
+   }
+   else if (not to.empty()) {
+      from_val = Vector.get<double>(Field);
+      from = std::to_string(from_val);
+      read_numseq(to, { &to_val } );
+   }
+   else if (not by.empty()) {
+      from_val = Vector.get<double>(Field);
+      from = std::to_string(from_val);
+      read_numseq(by, { &to_val } );
+      to_val += from_val;
    }
    else return 0;
 
@@ -830,25 +841,25 @@ void anim_value::perform()
          }
 
          case SVF_X: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_X);
             vector->set(FID_X, val);
             break;
          }
 
          case SVF_Y: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_Y);
             vector->set(FID_Y, val);
             break;
          }
 
          case SVF_WIDTH: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_Width);
             vector->set(FID_Width, val);
             break;
          }
 
          case SVF_HEIGHT: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_Height);
             vector->set(FID_Height, val);
             break;
          }
