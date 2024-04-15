@@ -1118,9 +1118,9 @@ next:
       while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {
-         rgb.Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
-         rgb.Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
-         rgb.Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
+         rgb.Red   = DOUBLE((nibbles[0]<<4)|nibbles[0]) * (1.0 / 255.0);
+         rgb.Green = DOUBLE((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
          if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR::Okay;

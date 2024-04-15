@@ -339,6 +339,12 @@ bool anim_base::started(double CurrentTime)
       const double elapsed = CurrentTime - start_time;
       if (elapsed < begin_offset) return false;
    }
+   
+   // Start/Reset linked animations
+   for (auto &other : start_on_begin) {
+      other->activate();
+      other->start_time = CurrentTime;
+   }
 
    start_time = CurrentTime;
    return true;
@@ -359,17 +365,11 @@ void anim_base::next_frame(double CurrentTime)
          seek = 0;
          return;
       }
-      else {
-         end_time = CurrentTime; // Setting the end-time will prevent further animation after the completion of this frame.
-         seek = 1.0; // Necessary in case the seek range calculation has overflowed
-      }
+      else stop(CurrentTime); // Setting the end-time will prevent further animation after the completion of this frame.
    }
 
    // repeat_duration prevents the animation from running past a fixed number of seconds since it started.
-   if ((repeat_duration > 0) and (elapsed > repeat_duration)) {
-      end_time = CurrentTime; // End the animation.
-      seek = 1.0;
-   }
+   if ((repeat_duration > 0) and (elapsed > repeat_duration)) stop(CurrentTime);
 }
 
 //********************************************************************************************************************
@@ -443,10 +443,40 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          //   id.repeat(value): Reference to another animation, repeat when the given value is reached.
          //   access-key: The animation starts when a keyboard key is pressed.
          //   clock: A real-world clock time (not supported)
-         if (iequals("indefinite", Value)) {
+         
+         if ("indefinite" IS Value) {
             Anim.begin_offset = std::numeric_limits<double>::max();
+            break;
          }
-         else Anim.begin_offset = read_time(Value);
+         
+         if (Value.ends_with(".begin")) {
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            auto ref = Value.substr(0, Value.size()-6);
+            for (auto &scan : Self->Animations) {
+               std::visit([ &Anim, &ref ](auto &&scan) {
+                  if (scan.id IS ref) scan.start_on_begin.emplace_back(&Anim);
+               }, scan);
+            }
+            break;
+         }
+
+         if (Value.ends_with(".end")) {
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            auto ref = Value.substr(0, Value.size()-4);
+            for (auto &scan : Self->Animations) {
+               std::visit([ &Anim, &ref ](auto &&scan) {
+                  if (scan.id IS ref) scan.start_on_end.emplace_back(&Anim);
+               }, scan);
+            }
+            break;
+         }
+         
+         if ("access-key" IS Value) { // Start the animation when the user presses a key.
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            break;
+         }
+
+         Anim.begin_offset = read_time(Value);
          break;
 
       case SVF_END:
@@ -863,8 +893,14 @@ void anim_value::perform()
          }
 
          case SVF_FILL: {
-            auto val = get_colour_value(**vector, FID_Fill);
+            auto val = get_colour_value(**vector, FID_FillColour);
             vector->setArray(FID_FillColour, (float *)&val, 4);
+            break;
+         }
+
+         case SVF_STROKE: {
+            auto val = get_colour_value(**vector, FID_StrokeColour);
+            vector->setArray(FID_StrokeColour, (float *)&val, 4);
             break;
          }
 

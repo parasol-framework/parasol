@@ -19,6 +19,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <string>
 #include <sstream>
 #include <charconv>
+#include <forward_list>
 #include <variant>
 #include <algorithm>
 #include <parasol/main.h>
@@ -78,7 +79,7 @@ class extSVG : public objSVG {
    STRING Folder;
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
-   std::vector<std::variant<anim_transform, anim_motion, anim_colour, anim_value>> Animations;
+   std::forward_list<std::variant<anim_transform, anim_motion, anim_colour, anim_value>> Animations;
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    TIMER AnimationTimer;

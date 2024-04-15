@@ -79,6 +79,8 @@ public:
    std::string to, by;              // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
    std::string target_attrib;       // Name of the target attribute affected by the From and To values.
    std::string id;                  // Identifier for the animation
+   std::vector<class anim_base *> start_on_begin;
+   std::vector<class anim_base *> start_on_end;
    std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
    struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
    std::vector<spline_path> spline_paths;
@@ -118,6 +120,17 @@ public:
       repeat_index = 0;
       start_time   = 0;
       end_time     = 0;
+   }
+
+   void stop(double Time) {
+      end_time = Time;
+      seek = 1.0; // Necessary in case the seek range calculation has overflowed
+
+      // Start animations that are to be triggered from our ending.
+      for (auto &other : start_on_end) {
+         other->activate();
+         other->start_time = Time;
+      }
    }
 
    virtual void perform() = 0;
