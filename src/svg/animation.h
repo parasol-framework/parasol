@@ -110,6 +110,7 @@ public:
    double get_total_dist();
    double get_dimension(objVector &, FIELD);
    double get_numeric_value(objVector &, FIELD);
+   std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
    void next_frame(double);
@@ -177,14 +178,6 @@ public:
       if ((!to.empty()) or (!by.empty())) return true;
       return false;
    }
-};
-
-//********************************************************************************************************************
-
-class anim_colour : public anim_base {
-public:
-   anim_colour(OBJECTID pTarget) : anim_base(pTarget) { }
-   void perform();
 };
 
 //********************************************************************************************************************

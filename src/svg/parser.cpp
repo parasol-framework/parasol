@@ -1558,6 +1558,7 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
                   case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, vector); break;
                   case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, vector); break;
                   case SVF_PARASOL_MORPH:    xtag_morph(Self, child, vector); break;
+                  case SVF_SET:              xtag_set(Self, child, vector); break;
                   case SVF_TEXTPATH:
                      if (VectorID IS ID_VECTORTEXT) {
                         if (!child.Children.empty()) {
@@ -1623,6 +1624,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
       case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, Tag, Parent); break;
       case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, Tag, Parent); break;
       case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, Tag, Parent); break;
+      case SVF_SET:              xtag_set(Self, Tag, Parent); break;
       case SVF_FILTER:           xtag_filter(Self, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, Tag); break;
@@ -2665,13 +2667,41 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 }
 
 //********************************************************************************************************************
+// <set> is largely equivalent to <animate> but does not interpolate values.
+
+static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+{
+   Self->Animated = true;
+
+   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &anim = std::get<anim_value>(new_anim);
+
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
+
+      auto hash = StrHash(Tag.Attribs[a].Name);
+      switch (hash) {
+         default:
+            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            break;
+      }
+   }
+
+   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the 
+// existing <animate> tag.
 
 static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   auto &new_anim = Self->Animations.emplace_front(anim_colour { Parent->UID });
-   auto &anim = std::get<anim_colour>(new_anim);
+   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;

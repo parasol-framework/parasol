@@ -79,7 +79,7 @@ class extSVG : public objSVG {
    STRING Folder;
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
-   std::forward_list<std::variant<anim_transform, anim_motion, anim_colour, anim_value>> Animations;
+   std::forward_list<std::variant<anim_transform, anim_motion, anim_value>> Animations;
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    TIMER AnimationTimer;
@@ -136,6 +136,7 @@ static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &)
 static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
+static ERR  xtag_set(extSVG *, XMLTag &, OBJECTPTR);
 static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static ERR  xtag_style(extSVG *, XMLTag &);

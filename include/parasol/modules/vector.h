@@ -2394,6 +2394,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_SCALE 0x1057f68d
 #define SVF_SCREEN 0x1b5ffd45
 #define SVF_SEED 0x7c9dda26
+#define SVF_SET 0x0b88a991
 #define SVF_SHAPE_RENDERING 0xeecea7a1
 #define SVF_SOFTLIGHT 0x78b6e7b9
 #define SVF_SOURCEALPHA 0xbe4b853c

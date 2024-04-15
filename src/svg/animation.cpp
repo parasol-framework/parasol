@@ -163,6 +163,15 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
 }
 
 //********************************************************************************************************************
+// Suitable for <set> instructions only.  Very straight-forward as there is no interpolation.
+
+std::string anim_base::get_string()
+{
+   if (not to.empty()) return to;
+   else return "";
+}
+
+//********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
 double anim_base::get_dimension(objVector &Vector, FIELD Field)
@@ -651,13 +660,6 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
 }
 
 //********************************************************************************************************************
-
-void anim_colour::perform()
-{
-
-}
-
-//********************************************************************************************************************
 // Rotation angles are pre-calculated once.
 
 void anim_motion::precalc_angles()
@@ -943,6 +945,12 @@ void anim_value::perform()
          case SVF_HEIGHT: {
             auto val = get_dimension(**vector, FID_Height);
             vector->set(FID_Height, val);
+            break;
+         }
+
+         case SVF_VISIBILITY: {
+            auto val = get_string();
+            vector->set(FID_Visibility, val);
             break;
          }
       }
