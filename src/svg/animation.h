@@ -112,6 +112,14 @@ public:
    bool started(double);
    void next_frame(double);
 
+   void activate(void) { 
+      // Reset all the variables that control time management and the animation will start from scratch.
+      begin_offset = 0;
+      repeat_index = 0;
+      start_time   = 0;
+      end_time     = 0;
+   }
+
    virtual void perform() = 0;
    virtual bool is_valid() {
       if (!values.empty()) return true;

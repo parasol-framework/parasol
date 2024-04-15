@@ -49,6 +49,10 @@ struct svgInherit {
    std::string ID;
 };
 
+struct svgLink {
+   std::string ref;
+};
+
 struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
    LONG TagIndex;
 
@@ -75,6 +79,7 @@ class extSVG : public objSVG {
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::vector<std::variant<anim_transform, anim_motion, anim_colour, anim_value>> Animations;
+   std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    TIMER AnimationTimer;
    WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
@@ -128,6 +133,7 @@ static ERR  xtag_default(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * 
 static ERR  xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
 static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);

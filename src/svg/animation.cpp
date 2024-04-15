@@ -443,7 +443,10 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          //   id.repeat(value): Reference to another animation, repeat when the given value is reached.
          //   access-key: The animation starts when a keyboard key is pressed.
          //   clock: A real-world clock time (not supported)
-         Anim.begin_offset = read_time(Value);
+         if (iequals("indefinite", Value)) {
+            Anim.begin_offset = std::numeric_limits<double>::max();
+         }
+         else Anim.begin_offset = read_time(Value);
          break;
 
       case SVF_END:
@@ -921,7 +924,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
    }
 
    for (auto &record : SVG->Animations) {
-      std::visit([ &record ](auto &&anim) {
+      std::visit([](auto &&anim) {
          if (anim.end_time) return;
 
          double current_time = double(PreciseTime()) / 1000000.0;
