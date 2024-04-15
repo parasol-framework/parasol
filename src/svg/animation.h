@@ -107,8 +107,8 @@ public:
 
    double get_total_dist();
    double get_dimension(objVector &, FIELD);
-   double get_numeric_value();
-   FRGB get_colour_value();
+   double get_numeric_value(objVector &, FIELD);
+   FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
    void next_frame(double);
 
