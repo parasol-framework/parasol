@@ -567,7 +567,7 @@ Z: Close Path
       <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
     </input>
     <description>
-<p>Generated paths can be traced by calling this function.  Tracing allows the caller to follow the path for each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback function is <code>ERR Function(APTR Path, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
 <p>The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
 <p>If the Callback returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
     </description>

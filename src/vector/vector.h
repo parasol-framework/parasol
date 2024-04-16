@@ -1131,6 +1131,7 @@ extern "C" ERR  vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" void vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern "C" DOUBLE vecStringWidth(APTR, CSTRING, LONG);
+extern "C" ERR  vecTracePath(SimpleVector *, FUNCTION *, DOUBLE);
 extern "C" ERR  vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
 extern "C" void vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 

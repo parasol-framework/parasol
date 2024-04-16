@@ -243,16 +243,16 @@
     </method>
 
     <method>
-      <name>TracePath</name>
+      <name>Trace</name>
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
-      <prototype>ERR vecTracePath(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
+      <prototype>ERR vecTrace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
         <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
         <param type="LONG" name="Transform">Set to TRUE if all transforms applicable to the vector should be applied to the path.</param>
       </input>
       <description>
-<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
 <p>The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
 <p>If the Callback returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
       </description>

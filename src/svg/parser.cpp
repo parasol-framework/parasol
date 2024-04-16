@@ -1558,6 +1558,7 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
                   case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, vector); break;
                   case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, vector); break;
                   case SVF_PARASOL_MORPH:    xtag_morph(Self, child, vector); break;
+                  case SVF_SET:              xtag_set(Self, child, vector); break;
                   case SVF_TEXTPATH:
                      if (VectorID IS ID_VECTORTEXT) {
                         if (!child.Children.empty()) {
@@ -1601,6 +1602,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
 
    switch(StrHash(Tag.name())) {
       case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
+      case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
       case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
       case SVF_RECT:             process_shape(Self, ID_VECTORRECTANGLE, State, Tag, Parent, Vector); break;
@@ -1622,6 +1624,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
       case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, Tag, Parent); break;
       case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, Tag, Parent); break;
       case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, Tag, Parent); break;
+      case SVF_SET:              xtag_set(Self, Tag, Parent); break;
       case SVF_FILTER:           xtag_filter(Self, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, Tag); break;
@@ -2321,6 +2324,83 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 }
 
 //********************************************************************************************************************
+// "a href" link support.  The child vectors belonging to the link must be monitored for click events.
+// https://www.w3.org/TR/SVG2/linking.html
+
+static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto Self = (extSVG *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if ((event->Type IS JET::LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
+         if (!event->Value) continue;
+
+         if (Link->ref.starts_with('#')) {
+            // The link activates a document node, like an animation.
+            if (find_href_tag(Self, Link->ref)) {
+               for (auto &record : Self->Animations) {
+                  std::visit([ Link ](auto &&anim) {
+                     if (anim.id IS Link->ref.substr(1)) anim.activate();
+                  }, record);
+               }
+            }
+            else log.warning("Unknown reference '%s'", Link->ref.c_str());
+         }
+         else {
+            // The link is a URI that could refer to an HTTP location, local file, etc...
+            log.warning("URI links are not yet supported.");
+         }
+      }
+   }
+
+   return ERR::Okay;
+}
+
+static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+{
+   auto link = std::make_unique<svgLink>();
+
+   if (Tag.Children.empty()) return;
+
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &val = Tag.Attribs[a].Value;
+      if (val.empty()) continue;
+
+      switch(StrHash(Tag.Attribs[a].Name)) {
+         case SVF_HREF:
+         case SVF_XLINK_HREF:
+            link.get()->ref = val;
+            break;
+         // SVF_TARGET: _self, _parent, _top, _blank
+         // SVF_DOWNLOAD, SVF_PING, SVF_REL, SVF_HREFLANG, SVF_TYPE, SVF_REFERRERPOLICY
+      }
+   }
+   
+   // Vectors within <a> will be assigned to a group purely because it's easier for us to manage them that way.
+
+   objVector *group;
+   if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
+      SetOwner(group, Parent);
+
+      process_children(Self, State, Tag, group);
+   
+      pf::vector<ChildEntry> list;
+      if (ListChildren(group->UID, &list) IS ERR::Okay) {
+         for (auto &child : list) {
+            auto obj = GetObjectPtr(child.ObjectID);
+            vecSubscribeInput(obj, JTYPE::BUTTON, C_FUNCTION(link_event, link.get()));
+         }
+         Self->Links.emplace_back(std::move(link));
+      }
+   
+      if ((!Self->Links.empty()) and (group->init() IS ERR::Okay)) Vector = group;
+      else FreeResource(group);
+   }
+}
+
+//********************************************************************************************************************
 
 static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
 {
@@ -2531,7 +2611,8 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
    Self->Animated = true;
 
-   anim_transform anim(Parent->UID);
+   auto &new_anim = Self->Animations.emplace_front(anim_transform { Parent->UID });
+   auto &anim = std::get<anim_transform>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
@@ -2554,7 +2635,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (anim.is_valid()) Self->Animations.emplace_back(anim);
+   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
    return ERR::Okay;
 }
 
@@ -2566,7 +2647,8 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
-   anim_value anim(Parent->UID);
+   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
@@ -2580,17 +2662,46 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (anim.is_valid()) Self->Animations.emplace_back(anim);
+   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
+// <set> is largely equivalent to <animate> but does not interpolate values.
+
+static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+{
+   Self->Animated = true;
+
+   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &anim = std::get<anim_value>(new_anim);
+
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &value = Tag.Attribs[a].Value;
+      if (value.empty()) continue;
+
+      auto hash = StrHash(Tag.Attribs[a].Name);
+      switch (hash) {
+         default:
+            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            break;
+      }
+   }
+
+   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the 
+// existing <animate> tag.
 
 static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   anim_colour anim(Parent->UID);
+   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
@@ -2604,7 +2715,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (anim.is_valid()) Self->Animations.emplace_back(anim);
+   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
    return ERR::Okay;
 }
 
@@ -2615,7 +2726,8 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   anim_motion anim(Parent->UID);
+   auto &new_anim = Self->Animations.emplace_front(anim_motion { Parent->UID });
+   auto &anim = std::get<anim_motion>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
@@ -2680,7 +2792,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (anim.is_valid()) Self->Animations.emplace_back(anim);
+   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
    return ERR::Okay;
 }
 

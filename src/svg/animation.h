@@ -55,24 +55,46 @@ template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T
 
 class anim_base {
 public:
+   struct spline_point {
+      pf::POINT<float> point;
+      float angle;
+      float cos_angle;
+      spline_point(pf::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
+   };
+   
+   typedef std::vector<float> DISTANCES;
+   typedef std::vector<spline_point> SPLINE_POINTS;
+
+   class spline_path {
+   public:
+      SPLINE_POINTS points;
+      spline_path(SPLINE_POINTS pPoints) : points(pPoints) { }
+   };
+
    std::vector<std::string> values; // Set of discrete values that override 'from', 'to', 'by'
-   std::vector<FLOAT> distances; // Maps directly to 'points' or 'values' for paced calculations
-   std::string from;             // Start from this value. Ignored if 'values' is defined.
-   std::string to, by;           // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
-   std::string target_attrib;    // Name of the target attribute affected by the From and To values.
-   std::string id;               // Identifier for the animation
+   std::vector<double> timing;      // Key times.  Ignored if duration < 0
+   std::vector<double> key_points;  // Key points
+   DISTANCES distances;             // Maps directly to 'points' or 'values' for paced calculations
+   std::string from;                // Start from this value. Ignored if 'values' is defined.
+   std::string to, by;              // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
+   std::string target_attrib;       // Name of the target attribute affected by the From and To values.
+   std::string id;                  // Identifier for the animation
+   std::vector<class anim_base *> start_on_begin;
+   std::vector<class anim_base *> start_on_end;
+   std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
    struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
-   DOUBLE begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
-   DOUBLE repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
-   DOUBLE min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
-   DOUBLE max_duration = 0;    // The maximum value of the active duration.
-   DOUBLE duration   = 0;      // Measured in seconds, anything < 0 means infinite.
-   DOUBLE first_time = 0;      // Time-stamp of the first iteration
-   DOUBLE start_time = 0;      // This is time-stamped once the animation has started (the first begin event is hit)
-   DOUBLE end_time   = 0;      // This is time-stamped once the animation has finished all of its cycles (including repetitions)
-   DOUBLE end  = 0;
-   DOUBLE seek = 0;            // Current seek position, between 0 - 1.0
-   DOUBLE total_dist = 0;      // Total distance between all value nodes
+   std::vector<spline_path> spline_paths;
+   double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
+   double repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
+   double min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
+   double max_duration = 0;    // The maximum value of the active duration.
+   double duration   = 0;      // Measured in seconds, anything < 0 means infinite.
+   double first_time = 0;      // Time-stamp of the first iteration
+   double start_time = 0;      // This is time-stamped once the animation has started (the first begin event is hit)
+   double end_time   = 0;      // This is time-stamped once the animation has finished all of its cycles (including repetitions)
+   double end  = 0;
+   double seek = 0;            // Current seek position, between 0 - 1.0
+   double total_dist = 0;      // Total distance between all value nodes
    OBJECTID target_vector = 0;
    LONG   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
    LONG   repeat_index = 0; // Current index within the repeat cycle.
@@ -86,11 +108,31 @@ public:
    anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
 
    double get_total_dist();
-   double get_dimension();
-   double get_numeric_value();
-   FRGB get_colour_value();
+   double get_dimension(objVector &, FIELD);
+   double get_numeric_value(objVector &, FIELD);
+   std::string get_string();
+   FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
    void next_frame(double);
+
+   void activate(void) { 
+      // Reset all the variables that control time management and the animation will start from scratch.
+      begin_offset = 0;
+      repeat_index = 0;
+      start_time   = 0;
+      end_time     = 0;
+   }
+
+   void stop(double Time) {
+      end_time = Time;
+      seek = 1.0; // Necessary in case the seek range calculation has overflowed
+
+      // Start animations that are to be triggered from our ending.
+      for (auto &other : start_on_end) {
+         other->activate();
+         other->start_time = Time;
+      }
+   }
 
    virtual void perform() = 0;
    virtual bool is_valid() {
@@ -136,14 +178,6 @@ public:
       if ((!to.empty()) or (!by.empty())) return true;
       return false;
    }
-};
-
-//********************************************************************************************************************
-
-class anim_colour : public anim_base {
-public:
-   anim_colour(OBJECTID pTarget) : anim_base(pTarget) { }
-   void perform();
 };
 
 //********************************************************************************************************************

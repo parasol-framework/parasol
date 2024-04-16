@@ -978,11 +978,11 @@ static ERR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard
 /*********************************************************************************************************************
 
 -METHOD-
-TracePath: Returns the coordinates for a vector path, using callbacks.
+Trace: Returns the coordinates for a vector path, using callbacks.
 
-Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for
-each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback
-function is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
+Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path
+from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is 
+`ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
 
 The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
 the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.
@@ -1001,7 +1001,7 @@ NoData: The vector does not define a path.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
+static ERR VECTOR_Trace(extVector *Self, struct vecTrace *Args)
 {
    pf::Log log;
 

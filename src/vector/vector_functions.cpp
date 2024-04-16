@@ -477,9 +477,9 @@ ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
 -FUNCTION-
 TracePath: Returns the coordinates for a vector path, using callbacks.
 
-Generated paths can be traced by calling this function.  Tracing allows the caller to follow the path for each pixel 
-that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback
-function is `ERR Function(APTR Path, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
+Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path
+from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is 
+`ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
 
 The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the 
 coordinate of a point on the path.
@@ -510,7 +510,7 @@ ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, DOUBLE Scale)
    LONG cmd = -1;
    LONG index = 0;
 
-  if (Callback->isC()) {
+   if (Callback->isC()) {
       auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Callback->Routine));
 
       pf::SwitchContext context(GetParentContext());
@@ -1118,9 +1118,9 @@ next:
       while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {
-         rgb.Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
-         rgb.Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
-         rgb.Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
+         rgb.Red   = DOUBLE((nibbles[0]<<4)|nibbles[0]) * (1.0 / 255.0);
+         rgb.Green = DOUBLE((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
          if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR::Okay;

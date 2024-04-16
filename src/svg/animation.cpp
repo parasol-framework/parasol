@@ -89,20 +89,28 @@ double anim_base::get_total_dist()
 //********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
-double anim_base::get_numeric_value()
+double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
 {
    double from_val, to_val;
+   double seek_to = seek;
 
    if (not values.empty()) {
-      LONG i = F2T((values.size()-1) * seek);
-      if (i >= LONG(values.size())-1) i = values.size() - 2;
+      LONG i;
+      if (timing.size() IS values.size()) {
+         seek *= timing.back(); // In discrete mode the last time doesn't have to be 1.0
+         for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
+         const double delta = timing[i+1] - timing[i];
+         seek_to = (seek - timing[i]) / delta;
+      }
+      else {
+         i = std::clamp<LONG>(F2T((values.size()-1) * seek), 0, values.size() - 2);
+         // Recompute the seek position to fit between the two values
+         const double mod = 1.0 / double(values.size() - 1);
+         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
 
       read_numseq(values[i], { &from_val });
       read_numseq(values[i+1], { &to_val } );
-
-      // Recompute the seek position to fit between the two values
-      const double mod = 1.0 / double(values.size() - 1);
-      seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
    }
    else if (not from.empty()) {
       if (not to.empty()) {
@@ -115,6 +123,17 @@ double anim_base::get_numeric_value()
          to_val += from_val;
       }
       else return 0;
+   }
+   else if (not to.empty()) {
+      from_val = Vector.get<double>(Field);
+      from = std::to_string(from_val);
+      read_numseq(to, { &to_val } );
+   }
+   else if (not by.empty()) {
+      from_val = Vector.get<double>(Field);
+      from = std::to_string(from_val);
+      read_numseq(by, { &to_val } );
+      to_val += from_val;
    }
    else return 0;
 
@@ -135,18 +154,27 @@ double anim_base::get_numeric_value()
    }
 
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek < 0.5) return from_val;
+      if (seek_to < 0.5) return from_val;
       else return to_val;
    }
    else { // CMODE::LINEAR
-      return from_val + ((to_val - from_val) * seek);
+      return from_val + ((to_val - from_val) * seek_to);
    }
+}
+
+//********************************************************************************************************************
+// Suitable for <set> instructions only.  Very straight-forward as there is no interpolation.
+
+std::string anim_base::get_string()
+{
+   if (not to.empty()) return to;
+   else return "";
 }
 
 //********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
-double anim_base::get_dimension()
+double anim_base::get_dimension(objVector &Vector, FIELD Field)
 {
    double from_val, to_val;
    double seek_to = seek;
@@ -158,12 +186,50 @@ double anim_base::get_dimension()
          const auto dist_pos = seek * get_total_dist();
          for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
          seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
+         // keyTiming is not permitted in PACED mode.
       }
-      else {
-         i = F2T((values.size()-1) * seek);
-         if (i >= LONG(values.size())-1) i = values.size() - 2;
-         const double mod = 1.0 / double(values.size() - 1);
-         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      else if (calc_mode IS CMODE::SPLINE) {
+         i = 0;
+         if (timing.size() IS spline_paths.size()) {
+            for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
+            i = std::clamp<LONG>(i, 0, timing.size() - 1);
+         }
+         else {
+            // When no timing is specified, the 'values' are distributed evenly.  This determines
+            // what spline-path we are going to use.
+
+            i = std::clamp<LONG>(F2T(seek * std::ssize(spline_paths)), 0, std::ssize(spline_paths) - 1);
+         }
+
+         auto &sp = spline_paths[i]; // sp = The spline we're going to use
+
+         // Rather than use distance, we're going to use the 'x' position as a lookup on the horizontal axis.
+         // The paired y value then gives us the 'real' seek_to value.
+         // The spline points are already sorted by the x value to make this easier.
+            
+         const double x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / double(std::ssize(spline_paths))) * std::ssize(spline_paths);
+
+         LONG si;
+         for (si=0; (si < std::ssize(sp.points)-1) and (sp.points[si+1].point.x < x); si++);
+
+         const double mod_x = x - sp.points[si].point.x;
+         const double c = mod_x / sp.points[si].cos_angle;
+         seek_to = std::clamp(sp.points[si].point.y + std::sqrt((c * c) - (mod_x * mod_x)), 0.0, 1.0);
+      }
+      else { // CMODE::LINEAR
+         if (timing.size() IS values.size()) {
+            seek *= timing.back(); // In discrete mode the last time doesn't have to be 1.0
+
+            for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
+            i = std::clamp<LONG>(i, 0, timing.size() - 2);
+            const double delta = timing[i+1] - timing[i];
+            seek_to = (seek - timing[i]) / delta;
+         }
+         else {
+            i = std::clamp<LONG>(F2T((values.size()-1) * seek), 0, values.size() - 2);
+            const double mod = 1.0 / double(values.size() - 1);
+            seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+         }
       }
 
       read_numseq(values[i], { &from_val });
@@ -180,6 +246,17 @@ double anim_base::get_dimension()
          to_val += from_val;
       }
       else return 0;
+   }
+   else if (not to.empty()) {
+      from_val = Vector.get<double>(Field);
+      from = std::to_string(from_val);
+      read_numseq(to, { &to_val } );
+   }
+   else if (not by.empty()) {
+      from_val = Vector.get<double>(Field);
+      from = std::to_string(from_val);
+      read_numseq(by, { &to_val } );
+      to_val += from_val;
    }
    else return 0;
 
@@ -210,7 +287,7 @@ double anim_base::get_dimension()
 
 //********************************************************************************************************************
 
-FRGB anim_base::get_colour_value()
+FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
 {
    VectorPainter from_col, to_col;
 
@@ -245,10 +322,10 @@ FRGB anim_base::get_colour_value()
       glLinearRGB.convert(to_col.Colour);
 
       auto result = FRGB {
-         FLOAT(from_col.Colour.Red   + ((to_col.Colour.Red   - from_col.Colour.Red) * seek)),
-         FLOAT(from_col.Colour.Green + ((to_col.Colour.Green - from_col.Colour.Green) * seek)),
-         FLOAT(from_col.Colour.Blue  + ((to_col.Colour.Blue  - from_col.Colour.Blue) * seek)),
-         FLOAT(from_col.Colour.Alpha + ((to_col.Colour.Alpha - from_col.Colour.Alpha) * seek))
+         float(from_col.Colour.Red   + ((to_col.Colour.Red   - from_col.Colour.Red) * seek)),
+         float(from_col.Colour.Green + ((to_col.Colour.Green - from_col.Colour.Green) * seek)),
+         float(from_col.Colour.Blue  + ((to_col.Colour.Blue  - from_col.Colour.Blue) * seek)),
+         float(from_col.Colour.Alpha + ((to_col.Colour.Alpha - from_col.Colour.Alpha) * seek))
       };
 
       glLinearRGB.invert(result);
@@ -271,6 +348,12 @@ bool anim_base::started(double CurrentTime)
       const double elapsed = CurrentTime - start_time;
       if (elapsed < begin_offset) return false;
    }
+   
+   // Start/Reset linked animations
+   for (auto &other : start_on_begin) {
+      other->activate();
+      other->start_time = CurrentTime;
+   }
 
    start_time = CurrentTime;
    return true;
@@ -291,21 +374,27 @@ void anim_base::next_frame(double CurrentTime)
          seek = 0;
          return;
       }
-      else {
-         end_time = CurrentTime; // Setting the end-time will prevent further animation after the completion of this frame.
-         seek = 1.0; // Necessary in case the seek range calculation has overflowed
-      }
+      else stop(CurrentTime); // Setting the end-time will prevent further animation after the completion of this frame.
    }
 
    // repeat_duration prevents the animation from running past a fixed number of seconds since it started.
-   if ((repeat_duration > 0) and (elapsed > repeat_duration)) {
-      end_time = CurrentTime; // End the animation.
-      seek = 1.0;
-   }
+   if ((repeat_duration > 0) and (elapsed > repeat_duration)) stop(CurrentTime);
 }
 
 //********************************************************************************************************************
 // Set common animation properties
+
+static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y, anim_base::SPLINE_POINTS &Meta)
+{
+   Meta.emplace_back(pf::POINT<float> { float(X), float(Y) }, 0);
+
+   if (Meta.size() > 1) {
+      Meta[Meta.size()-2].angle = std::atan2(Meta.back().point.y - Meta[Meta.size()-2].point.y, Meta.back().point.x - Meta[Meta.size()-2].point.x);
+      Meta[Meta.size()-2].cos_angle = std::cos(Meta[Meta.size()-2].angle);
+   }
+
+   return ERR::Okay;
+}
 
 static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, XMLTag &Tag, ULONG Hash, const std::string_view Value)
 {
@@ -363,6 +452,39 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          //   id.repeat(value): Reference to another animation, repeat when the given value is reached.
          //   access-key: The animation starts when a keyboard key is pressed.
          //   clock: A real-world clock time (not supported)
+         
+         if ("indefinite" IS Value) {
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            break;
+         }
+         
+         if (Value.ends_with(".begin")) {
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            auto ref = Value.substr(0, Value.size()-6);
+            for (auto &scan : Self->Animations) {
+               std::visit([ &Anim, &ref ](auto &&scan) {
+                  if (scan.id IS ref) scan.start_on_begin.emplace_back(&Anim);
+               }, scan);
+            }
+            break;
+         }
+
+         if (Value.ends_with(".end")) {
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            auto ref = Value.substr(0, Value.size()-4);
+            for (auto &scan : Self->Animations) {
+               std::visit([ &Anim, &ref ](auto &&scan) {
+                  if (scan.id IS ref) scan.start_on_end.emplace_back(&Anim);
+               }, scan);
+            }
+            break;
+         }
+         
+         if ("access-key" IS Value) { // Start the animation when the user presses a key.
+            Anim.begin_offset = std::numeric_limits<double>::max();
+            break;
+         }
+
          Anim.begin_offset = read_time(Value);
          break;
 
@@ -426,18 +548,108 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          break;
       }
 
-      case SVF_KEYPOINTS:
-         // Takes a semicolon-separated list of floating point values between 0 and 1 and indicates how far along
-         // the motion path the object shall move at the moment in time specified by corresponding ‘keyTimes’
-         // value. Distance calculations use the user agent's distance along the path algorithm. Each progress
-         // value in the list corresponds to a value in the ‘keyTimes’ attribute list.
-         break;
+      // Takes a semicolon-separated list of floating point values between 0 and 1 and indicates how far along
+      // the motion path the object shall move at the moment in time specified by corresponding 'keyTimes'
+      // value. Distance calculations use the user agent's distance along the path algorithm. Each progress
+      // value in the list corresponds to a value in the 'keyTimes' attribute list.
 
-      case SVF_KEYTIMES:
+      case SVF_KEYPOINTS: {
+         Anim.key_points.clear();
+         LONG s, v = 0;
+         while (v < std::ssize(Value)) {
+            while ((Value[v]) and (Value[v] <= 0x20)) v++;
+            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            std::string_view val = Value.substr(v, s-v);
+            double fv;
+            auto [ ptr, error ] = std::from_chars(val.data(), val.data() + val.size(), fv);
+            fv = std::clamp(fv, 0.0, 1.0);
+            Anim.key_points.push_back(fv);
+            v = s;
+            if (Value[v] IS ';') v++;
+         }
          break;
+      }
 
-      case SVF_KEYSPLINES:
+      // A semicolon-separated list of time values used to control the pacing of the animation. Each time in the
+      // list corresponds to a value in the 'values' attribute list, and defines when the value is used in the
+      // animation function. Each time value in the 'keyTimes' list is specified as a floating point value between
+      // 0 and 1 (inclusive), representing a proportional offset into the simple duration of the animation
+      // element.
+      //
+      // For animations specified with a 'values' list, the 'keyTimes' attribute if specified must have exactly as
+      // many values as there are in the 'values' attribute. For from/to/by animations, the 'keyTimes' attribute
+      // if specified must have two values.
+      //
+      // Each successive time value must be greater than or equal to the preceding time value.
+
+      case SVF_KEYTIMES: {
+         Anim.timing.clear();
+         LONG s, v = 0;
+         double last_val = 0.0;
+         while (v < std::ssize(Value)) {
+            while ((Value[v]) and (Value[v] <= 0x20)) v++;
+            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            std::string_view val = Value.substr(v, s-v);
+            double fv;
+            auto [ ptr, error ] = std::from_chars(val.data(), val.data() + val.size(), fv);
+            fv = std::clamp(fv, last_val, 1.0);
+            Anim.timing.push_back(fv);
+            last_val = fv;
+            v = s;
+            if (Value[v] IS ';') v++;
+         }
          break;
+      }
+
+      // A set of Bézier control points associated with the 'keyTimes' list, defining a cubic Bézier function
+      // that controls interval pacing. The attribute value is a semicolon-separated list of control point
+      // descriptions. Each control point description is a set of four values: x1 y1 x2 y2, describing the
+      // Bézier control points for one time segment. Note: SMIL allows these values to be separated either by
+      // commas with optional whitespace, or by whitespace alone. The 'keyTimes' values that define the
+      // associated segment are the Bézier "anchor points", and the 'keySplines' values are the control points.
+      // Thus, there must be one fewer sets of control points than there are 'keyTimes'.
+      //
+      // The values must all be in the range 0 to 1.
+      // This attribute is ignored unless the 'calcMode' is set to 'spline'.
+      // Parsing errors must be propagated.
+
+      case SVF_KEYSPLINES: {
+         Anim.splines.clear();
+         LONG s, v = 0;
+         while (v < std::ssize(Value)) {
+            while ((Value[v]) and (Value[v] <= 0x20)) v++;
+            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            auto quad = std::string_view(Value.substr(v, s-v));
+
+            POINT<double> a, b;
+            read_numseq(quad, { &a.x, &a.y, &b.x, &b.y });
+            a.x = std::clamp(a.x, 0.0, 1.0);
+            a.y = std::clamp(a.y, 0.0, 1.0);
+            b.x = std::clamp(b.x, 0.0, 1.0);
+            b.y = std::clamp(b.y, 0.0, 1.0);
+            Anim.splines.push_back(std::make_pair(a, b));
+
+            v = s;
+            if (Value[v] IS ';') v++;
+         }
+
+         if (Anim.splines.size() < 2) Anim.splines.clear();
+         else {
+            // Convert the splines into bezier paths and generate a point-based path in advance.
+            for (auto &sp : Anim.splines) {
+               APTR path;
+               if (vecGeneratePath(NULL, &path) IS ERR::Okay) {
+                  anim_base::SPLINE_POINTS lookup;
+                  vecMoveTo(path, 0, 0);
+                  vecCurve4(path, sp.first.x, sp.first.y, sp.second.x, sp.second.y, 1.0, 1.0);
+                  vecTracePath(path, C_FUNCTION(parse_spline, &lookup), 512.0);
+                  Anim.spline_paths.push_back(lookup);
+                  FreeResource(path);
+               }
+            }
+         }
+         break;
+      }
 
       case SVF_EXTERNALRESOURCESREQUIRED:
          // Deprecated
@@ -445,13 +657,6 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
    }
 
    return ERR::Okay;
-}
-
-//********************************************************************************************************************
-
-void anim_colour::perform()
-{
-
 }
 
 //********************************************************************************************************************
@@ -487,7 +692,7 @@ void anim_motion::precalc_angles()
 
 static ERR motion_callback(objVector *Vector, LONG Index, LONG Cmd, double X, double Y, anim_motion &Motion)
 {
-   Motion.points.push_back(pf::POINT<FLOAT> { FLOAT(X), FLOAT(Y) });
+   Motion.points.push_back(pf::POINT<float> { float(X), float(Y) });
    return ERR::Okay;
 };
 
@@ -514,9 +719,9 @@ void anim_motion::perform()
 
          points.clear();
          if (mpath) {
-            if ((vecTracePath(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
+            if ((vecTrace(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
          }
-         else if ((vecTracePath(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
+         else if ((vecTrace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
 
          vector->get(FID_PathTimestamp, &path_timestamp);
 
@@ -684,44 +889,68 @@ void anim_value::perform()
 
       switch(StrHash(target_attrib)) {
          case SVF_FONT_SIZE: {
-            auto val = get_numeric_value();
+            auto val = get_numeric_value(**vector, FID_FontSize);
             vector->set(FID_FontSize, val);
             break;
          }
 
          case SVF_FILL: {
-            auto val = get_colour_value();
-            vector->setArray(FID_FillColour, (FLOAT *)&val, 4);
+            auto val = get_colour_value(**vector, FID_FillColour);
+            vector->setArray(FID_FillColour, (float *)&val, 4);
+            break;
+         }
+
+         case SVF_STROKE: {
+            auto val = get_colour_value(**vector, FID_StrokeColour);
+            vector->setArray(FID_StrokeColour, (float *)&val, 4);
             break;
          }
 
          case SVF_OPACITY: {
-            auto val = get_numeric_value();
+            auto val = get_numeric_value(**vector, FID_Opacity);
             vector->set(FID_Opacity, val);
             break;
          }
 
+         case SVF_CX: {
+            auto val = get_dimension(**vector, FID_CX);
+            vector->set(FID_CX, val);
+            break;
+         }
+
+         case SVF_CY: {
+            auto val = get_dimension(**vector, FID_CY);
+            vector->set(FID_CY, val);
+            break;
+         }
+
          case SVF_X: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_X);
             vector->set(FID_X, val);
             break;
          }
 
          case SVF_Y: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_Y);
             vector->set(FID_Y, val);
             break;
          }
 
          case SVF_WIDTH: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_Width);
             vector->set(FID_Width, val);
             break;
          }
 
          case SVF_HEIGHT: {
-            auto val = get_dimension();
+            auto val = get_dimension(**vector, FID_Height);
             vector->set(FID_Height, val);
+            break;
+         }
+
+         case SVF_VISIBILITY: {
+            auto val = get_string();
+            vector->set(FID_Visibility, val);
             break;
          }
       }
@@ -739,7 +968,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
    }
 
    for (auto &record : SVG->Animations) {
-      std::visit([ &record ](auto &&anim) {
+      std::visit([](auto &&anim) {
          if (anim.end_time) return;
 
          double current_time = double(PreciseTime()) / 1000000.0;
