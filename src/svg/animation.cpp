@@ -142,7 +142,6 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
    if ((accumulate) and (repeat_count)) {
       // Cumulative animation is not permitted for:
       // * The 'to animation' where 'from' is undefined.
-      // * Animations that do not repeat
 
       from_val += offset * repeat_index;
       to_val += offset * repeat_index;
@@ -206,7 +205,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
          // Rather than use distance, we're going to use the 'x' position as a lookup on the horizontal axis.
          // The paired y value then gives us the 'real' seek_to value.
          // The spline points are already sorted by the x value to make this easier.
-            
+
          const double x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / double(std::ssize(spline_paths))) * std::ssize(spline_paths);
 
          LONG si;
@@ -348,7 +347,7 @@ bool anim_base::started(double CurrentTime)
       const double elapsed = CurrentTime - start_time;
       if (elapsed < begin_offset) return false;
    }
-   
+
    // Start/Reset linked animations
    for (auto &other : start_on_begin) {
       other->activate();
@@ -396,7 +395,7 @@ static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y,
    return ERR::Okay;
 }
 
-static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, XMLTag &Tag, ULONG Hash, const std::string_view Value)
+static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
 {
    switch (Hash) {
       case SVF_ID:
@@ -452,12 +451,12 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          //   id.repeat(value): Reference to another animation, repeat when the given value is reached.
          //   access-key: The animation starts when a keyboard key is pressed.
          //   clock: A real-world clock time (not supported)
-         
+
          if ("indefinite" IS Value) {
             Anim.begin_offset = std::numeric_limits<double>::max();
             break;
          }
-         
+
          if (Value.ends_with(".begin")) {
             Anim.begin_offset = std::numeric_limits<double>::max();
             auto ref = Value.substr(0, Value.size()-6);
@@ -479,7 +478,7 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
             }
             break;
          }
-         
+
          if ("access-key" IS Value) { // Start the animation when the user presses a key.
             Anim.begin_offset = std::numeric_limits<double>::max();
             break;
@@ -696,9 +695,10 @@ static ERR motion_callback(objVector *Vector, LONG Index, LONG Cmd, double X, do
    return ERR::Okay;
 };
 
-void anim_motion::perform()
+void anim_motion::perform(extSVG &SVG)
 {
-   double x1, y1, x2, y2, angle = -1;
+   POINT<float> a, b;
+   double angle = -1;
    double seek_to = seek;
 
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
@@ -708,8 +708,7 @@ void anim_motion::perform()
    // animateMotion property.
 
    if ((mpath) or (not path.empty())) {
-      LONG new_timestamp;
-      vector->get(FID_PathTimestamp, &new_timestamp);
+      auto new_timestamp = vector->get<LONG>(FID_PathTimestamp);
 
       if ((points.empty()) or (path_timestamp != new_timestamp)) {
          // Trace the path and store its points.  Transforms are completely ignored when pulling the path from
@@ -723,7 +722,7 @@ void anim_motion::perform()
          }
          else if ((vecTrace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
 
-         vector->get(FID_PathTimestamp, &path_timestamp);
+         path_timestamp = vector->get<LONG>(FID_PathTimestamp);
 
          if ((auto_rotate IS ART::AUTO) or (auto_rotate IS ART::AUTO_REVERSE)) {
             precalc_angles();
@@ -739,10 +738,8 @@ void anim_motion::perform()
          LONG i;
          for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
 
-         x1 = points[i].x;
-         y1 = points[i].y;
-         x2 = points[i+1].x;
-         y2 = points[i+1].y;
+         a = points[i];
+         b = points[i+1];
 
          seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
 
@@ -755,10 +752,8 @@ void anim_motion::perform()
          LONG i = F2T((std::ssize(points)-1) * seek);
          if (i >= std::ssize(points)-1) i = std::ssize(points) - 2;
 
-         x1 = points[i].x;
-         y1 = points[i].y;
-         x2 = points[i+1].x;
-         y2 = points[i+1].y;
+         a = points[i];
+         b = points[i+1];
 
          const double mod = 1.0 / double(points.size() - 1);
          seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
@@ -785,19 +780,19 @@ void anim_motion::perform()
          seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
       }
 
-      read_numseq(values[i], { &x1, &y1 });
-      read_numseq(values[i+1], { &x2, &y2 });
+      read_numseq(values[i], { &a.x, &a.y });
+      read_numseq(values[i+1], { &b.x, &b.y });
    }
    else if (not from.empty()) {
       if (not to.empty()) {
-         read_numseq(from, { &x1, &y1 });
-         read_numseq(to, { &x2, &y2 } );
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(to, { &b.x, &b.y } );
       }
       else if (not by.empty()) {
-         read_numseq(from, { &x1, &y1 });
-         read_numseq(by, { &x2, &y2 } );
-         x2 += x1;
-         y2 += y1;
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(by, { &b.x, &b.y } );
+         b.x += a.x;
+         b.y += a.y;
       }
       else return;
    }
@@ -807,22 +802,24 @@ void anim_motion::perform()
    vecResetMatrix(matrix);
 
    if (angle != -1) vecRotate(matrix, angle, 0, 0);
-   else if (auto_rotate IS ART::FIXED)  vecRotate(matrix, rotate, 0, 0);
+   else if (auto_rotate IS ART::FIXED) vecRotate(matrix, rotate, 0, 0);
 
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek_to < 0.5) vecTranslate(matrix, x1, y1);
-      else vecTranslate(matrix, x2, y2);
+      if (seek_to < 0.5) vecTranslate(matrix, a.x, a.y);
+      else vecTranslate(matrix, b.x, b.y);
    }
    else { // CMODE::LINEAR
-      x1 = x1 + ((x2 - x1) * seek_to);
-      y1 = y1 + ((y2 - y1) * seek_to);
-      vecTranslate(matrix, x1, y1);
+      pf::POINT<double> final { a.x + ((b.x - a.x) * seek_to), a.y + ((b.y - a.y) * seek_to) };
+      vecTranslate(matrix, final.x, final.y);
    }
 }
 
 //********************************************************************************************************************
+// Note: SVG rules state that only one transformation matrix is active at any time, irrespective of however many
+// <animateTransform> elements are active for a vector.  Multiple transformations are multiplicative by default,
+// a transform is in REPLACE mode, in which case all prior transforms can be overwritten.
 
-void anim_transform::perform()
+void anim_transform::perform(extSVG &SVG)
 {
    pf::ScopedObjectLock<objVector *> vector(target_vector, 1000);
    if (vector.granted()) {
@@ -869,8 +866,11 @@ void anim_transform::perform()
             vecRotate(matrix, new_angle, new_cx, new_cy);
             break;
          }
+
          case AT::SKEW_X: break;
+
          case AT::SKEW_Y: break;
+
          default: break;
       }
    }
@@ -881,7 +881,7 @@ void anim_transform::perform()
 // <animate attributeName="font-size" attributeType="CSS" begin="0s" dur="6s" fill="freeze" from="40" to="80"/>
 // <animate attributeName="fill" attributeType="CSS" begin="0s" dur="6s" fill="freeze" from="#00f" to="#070"/>
 
-void anim_value::perform()
+void anim_value::perform(extSVG &SVG)
 {
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
@@ -967,15 +967,21 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       return ERR::Terminate;
    }
 
+   // All transform matrices need to be reset on each cycle.
+
+   for (auto &matrix : SVG->Animatrix) {
+      vecResetMatrix(matrix.second);
+   }
+
    for (auto &record : SVG->Animations) {
-      std::visit([](auto &&anim) {
+      std::visit([SVG](auto &&anim) {
          if (anim.end_time) return;
 
          double current_time = double(PreciseTime()) / 1000000.0;
 
          if (not anim.started(current_time)) return;
          anim.next_frame(current_time);
-         anim.perform();
+         anim.perform(*SVG);
       }, record);
    }
 

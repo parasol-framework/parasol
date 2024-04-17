@@ -2630,7 +2630,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
 
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
@@ -2657,7 +2657,7 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
@@ -2683,7 +2683,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
@@ -2710,7 +2710,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
@@ -2769,7 +2769,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
          case SVF_ORIGIN: break; // Officially serves no purpose.
 
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }

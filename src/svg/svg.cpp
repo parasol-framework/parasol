@@ -80,6 +80,7 @@ class extSVG : public objSVG {
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::forward_list<std::variant<anim_transform, anim_motion, anim_value>> Animations;
+   std::map<OBJECTID, VectorMatrix *> Animatrix; // For animated transforms, a vector may have one matrix only.
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    TIMER AnimationTimer;
