@@ -558,7 +558,14 @@ struct VectorMatrix {
    DOUBLE ScaleY;                 // Matrix value D
    DOUBLE TranslateX;             // Matrix value E
    DOUBLE TranslateY;             // Matrix value F
+   LONG   Tag;                    // An optional tag value defined by the client for matrix identification.
 };
+
+#define MTAG_ANIMATE_MOTION 0x8b929127
+#define MTAG_ANIMATE_TRANSFORM 0x5374188d
+#define MTAG_SCENE_GRAPH 0xacc188f2
+#define MTAG_USE_TRANSFORM 0x35a3f7fb
+#define MTAG_SVG_TRANSFORM 0x3479679e
 
 struct FontMetrics {
    LONG Height;         // Capitalised font height

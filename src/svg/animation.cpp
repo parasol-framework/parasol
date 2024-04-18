@@ -799,10 +799,13 @@ void anim_motion::perform(extSVG &SVG)
    else return;
 
    // Note how the matrix is assigned to the end of the transform list so that it is executed last.  This is a
-   // requirement of the SVG standard.  It is important that the matrix is managed independently and not 
+   // requirement of the SVG standard.  It is important that the matrix is managed independently and not
    // intermixed with other transforms.
 
-   if (not matrix) vecNewMatrix(*vector, &matrix, true);
+   if (not matrix) {
+      vecNewMatrix(*vector, &matrix, true);
+      matrix->Tag = MTAG_ANIMATE_MOTION;
+   }
    vecResetMatrix(matrix);
 
    if (angle != -1) vecRotate(matrix, angle, 0, 0);
@@ -820,8 +823,8 @@ void anim_motion::perform(extSVG &SVG)
 
 //********************************************************************************************************************
 // Note: SVG rules state that only one transformation matrix is active at any time, irrespective of however many
-// <animateTransform> elements are active for a vector.  Multiple transformations are multiplicative by default,
-// a transform is in REPLACE mode, in which case all prior transforms can be overwritten.
+// <animateTransform> elements are active for a vector.  Multiple transformations are multiplicative by default.
+// If a transform is in REPLACE mode, all prior transforms are overwritten, INCLUDING the vector's 'transform' attribute.
 
 void anim_transform::perform(extSVG &SVG)
 {

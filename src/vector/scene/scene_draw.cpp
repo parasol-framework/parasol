@@ -74,7 +74,7 @@ public:
 // inheritable values that arise as part of the drawing process (transformation management being an obvious example).
 //
 // NOTE: This feature is not intended to manage inheritable features that cross-over with SVG.  For instance, fill
-// values are not inheritable.  Wherever it is possible to do so, inheritance should be managed by the client, with 
+// values are not inheritable.  Wherever it is possible to do so, inheritance should be managed by the client, with
 // the goal of building a scene graph that has static properties.
 
 class VectorState {

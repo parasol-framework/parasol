@@ -209,7 +209,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
       if (NewObject(ID_VECTORCLIP, &clip) IS ERR::Okay) {
          clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
 
-         if (!transform.empty()) parse_transform(clip, transform);
+         if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
 
          if (!units.empty()) {
             if (StrMatch("userSpaceOnUse", units) IS ERR::Okay) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
@@ -292,7 +292,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
             fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
             fl::Units(units));
 
-         if (!transform.empty()) parse_transform(clip, transform);
+         if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
 
          if (InitObject(clip) IS ERR::Okay) {
             svgState state(Self);
@@ -2310,7 +2310,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          }
 
          if ((!tx.empty()) or (!ty.empty())) {
-            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")");
+            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
          }
 
          if (group->init() != ERR::Okay) { FreeResource(group); return; }
@@ -3395,7 +3395,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          else Vector->set(FID_Fill, StrValue);
          break;
 
-      case SVF_TRANSFORM: parse_transform(Vector, StrValue); break;
+      case SVF_TRANSFORM: parse_transform(Vector, StrValue, MTAG_SVG_TRANSFORM); break;
 
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;

@@ -243,12 +243,13 @@ static CSTRING folder(extSVG *Self)
 
 //********************************************************************************************************************
 
-static void parse_transform(objVector *Vector, const std::string Value)
+static void parse_transform(objVector *Vector, const std::string Value, LONG Tag)
 {
    if ((Vector->Class->BaseClassID IS ID_VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
       if (vecNewMatrix((objVector *)Vector, &matrix, false) IS ERR::Okay) {
          vecParseTransform(matrix, Value.c_str());
+         matrix->Tag = Tag;
       }
       else {
          pf::Log log(__FUNCTION__);
