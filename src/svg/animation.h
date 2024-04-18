@@ -179,8 +179,21 @@ public:
 class anim_transform : public anim_base {
 public:
    AT type;
-   anim_transform(OBJECTID pTarget) : anim_base(pTarget) { additive = ADD::SUM; }
+
+   anim_transform(OBJECTID pTarget) : anim_base(pTarget) { }
+
    void perform(extSVG &);
+
+   std::string type_name() {
+      switch (type) {
+         case AT::TRANSLATE: return "translate";
+         case AT::SCALE: return "scale";
+         case AT::ROTATE: return "rotate";
+         case AT::SKEW_X: return "skewX";
+         case AT::SKEW_Y: return "skewY";
+         default: return "?";
+      }
+   }
 };
 
 //********************************************************************************************************************

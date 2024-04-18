@@ -363,6 +363,8 @@ bool anim_base::started(double CurrentTime)
 
 void anim_base::next_frame(double CurrentTime)
 {
+   if (end_time) return;
+
    const double elapsed = CurrentTime - start_time;
    seek = elapsed / duration; // A value between 0 and 1.0
 
@@ -701,6 +703,8 @@ void anim_motion::perform(extSVG &SVG)
    double angle = -1;
    double seek_to = seek;
 
+   if ((end_time) and (!freeze)) return;
+
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (!vector.granted()) return;
 
@@ -828,49 +832,156 @@ void anim_motion::perform(extSVG &SVG)
 
 void anim_transform::perform(extSVG &SVG)
 {
-   pf::ScopedObjectLock<objVector *> vector(target_vector, 1000);
+   double seek_to = seek;
+
+   if ((end_time) and (!freeze)) return;
+
+   pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (not matrix) vecNewMatrix(*vector, &matrix);
+      if (not matrix) {
+         if (auto im = SVG.Animatrix.find(target_vector); im != SVG.Animatrix.end()) {
+            matrix = im->second;
+         }
+      }
+
+      if (not matrix) {
+         vecNewMatrix(*vector, &matrix, false);
+         matrix->Tag = MTAG_ANIMATE_TRANSFORM;
+         SVG.Animatrix[target_vector] = matrix;
+      }
+
+      if (additive IS ADD::REPLACE) {
+         // Replace mode is a little tricky if the vector has a transform attribute applied to it.  We want to
+         // override the existing transform, but we could cause problems if we were to permanently destroy
+         // that information.  The solution we're taking is to create an inversion of the transform declaration
+         // in order to undo it.
+
+         VectorMatrix *m = NULL;
+         for (m = vector->Matrices; (m); m=m->Next) {
+            if (m->Tag IS MTAG_SVG_TRANSFORM) {
+               double d = 1.0 / (m->ScaleX * m->ScaleY - m->ShearY * m->ShearX);
+
+               double t0 = m->ScaleY * d;
+               matrix->ScaleY = m->ScaleX * d;
+               matrix->ShearY = -m->ShearY * d;
+               matrix->ShearX = -m->ShearX * d;
+
+               double t4 = -m->TranslateX * t0 - m->TranslateY * matrix->ShearX;
+               matrix->TranslateY = -m->TranslateX * matrix->ShearY - m->TranslateY * matrix->ScaleY;
+
+               matrix->ScaleX = t0;
+               matrix->TranslateX = t4;
+               break;
+            }
+         }
+
+         if (!m) vecResetMatrix(matrix);
+      }
+      else {} // In the case of ADD::SUM, we are layering this transform on top of any previously declared animateTransforms
 
       switch(type) {
          case AT::TRANSLATE: break;
-         case AT::SCALE: break;
-         case AT::ROTATE: {
-            double from_angle = 0, from_cx = 0, from_cy = 0, to_angle = 0, to_cx = 0, to_cy = 0;
+
+         case AT::SCALE: {
+            POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
 
             if (not values.empty()) {
                LONG vi = F2T((values.size()-1) * seek);
-               if (vi >= LONG(values.size())-1) vi = values.size() - 2;
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
 
-               read_numseq(values[vi], { &from_angle, &from_cx, &from_cy });
-               read_numseq(values[vi+1], { &to_angle, &to_cx, &to_cy } );
+               read_numseq(values[vi], { &t_from.x, &t_from.y });
+               read_numseq(values[vi+1], { &t_to.x, &t_to.y } );
+
+               if (!t_from.y) t_from.y = t_from.x;
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
             }
             else if (not from.empty()) {
-               read_numseq(from, { &from_angle, &from_cx, &from_cy });
+               read_numseq(from, { &t_from.x, &t_from.y });
+               if (!t_from.y) t_from.y = t_from.x;
+
                if (not to.empty()) {
-                  read_numseq(to, { &to_angle, &to_cx, &to_cy } );
+                  read_numseq(to, { &t_to.x, &t_to.y } );
                }
                else if (not by.empty()) {
-                  read_numseq(by, { &to_angle, &to_cx, &to_cy } );
-                  to_angle += from_angle;
-                  to_cx += from_cx;
-                  to_cy += from_cy;
+                  read_numseq(by, { &t_to.x, &t_to.y } );
+                  t_to.x += t_from.x;
+                  t_to.y += t_from.y;
                }
                else break;
             }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to.x, &t_to.y } );
+               t_from = t_to;
+            }
             else break;
 
-            double mod = 1.0 / (double)(values.size() - 1);
-            double ratio;
-            if (seek == 1.0) ratio = 1.0;
-            else ratio = fmod(seek, mod) / mod;
+            if (!t_to.y) t_to.y = t_to.x;
 
-            double new_angle = from_angle + ((to_angle - from_angle) * ratio);
-            double new_cx    = from_cx + ((to_cx - from_cx) * ratio);
-            double new_cy    = from_cy + ((to_cy - from_cy) * ratio);
+            const POINT<double> t_offset = t_to;
 
-            vecResetMatrix(matrix);
-            vecRotate(matrix, new_angle, new_cx, new_cy);
+            if ((accumulate) and (repeat_count)) {
+               const POINT<double> acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double x = t_from.x + ((t_to.x - t_from.x) * seek_to);
+            double y = t_from.y + ((t_to.y - t_from.y) * seek_to);
+            if (!y) y = x;
+            vecScale(matrix, x, y);
+            break;
+         }
+
+         case AT::ROTATE: {
+            ROTATE r_from, r_to;
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &r_from.angle, &r_from.cx, &r_from.cy });
+               read_numseq(values[vi+1], { &r_to.angle, &r_to.cx, &r_to.cy } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &r_from.angle, &r_from.cx, &r_from.cy });
+               if (not to.empty()) {
+                  read_numseq(to, { &r_to.angle, &r_to.cx, &r_to.cy } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &r_to.angle, &r_to.cx, &r_to.cy } );
+                  r_to.angle += r_from.angle;
+                  r_to.cx += r_from.cx;
+                  r_to.cy += r_from.cy;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &r_to.angle, &r_to.cx, &r_to.cy } );
+               r_from = r_to;
+            }
+            else break;
+
+            const auto r_offset = r_to;
+
+            if ((accumulate) and (repeat_count)) {
+               r_from += r_offset * repeat_index;
+               r_to   += r_offset * repeat_index;
+            }
+
+            const ROTATE r_new = {
+               r_from.angle + ((r_to.angle - r_from.angle) * seek_to),
+               r_from.cx + ((r_to.cx - r_from.cx) * seek_to),
+               r_from.cy + ((r_to.cy - r_from.cy) * seek_to)
+            };
+
+            vecRotate(matrix, r_new.angle, r_new.cx, r_new.cy);
             break;
          }
 
@@ -890,6 +1001,8 @@ void anim_transform::perform(extSVG &SVG)
 
 void anim_value::perform(extSVG &SVG)
 {
+   if ((end_time) and (!freeze)) return;
+
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
       // Determine the type of the attribute that we're targeting, then interpolate the value and set it.
@@ -968,8 +1081,9 @@ void anim_value::perform(extSVG &SVG)
 
 static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
+   pf::Log log(__FUNCTION__);
+
    if (SVG->Animations.empty()) {
-      pf::Log log(__FUNCTION__);
       log.msg("All animations processed, timer suspended.");
       return ERR::Terminate;
    }
@@ -982,8 +1096,6 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 
    for (auto &record : SVG->Animations) {
       std::visit([SVG](auto &&anim) {
-         if (anim.end_time) return;
-
          double current_time = double(PreciseTime()) / 1000000.0;
 
          if (not anim.started(current_time)) return;

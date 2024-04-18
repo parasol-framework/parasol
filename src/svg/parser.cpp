@@ -2611,7 +2611,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
    Self->Animated = true;
 
-   auto &new_anim = Self->Animations.emplace_front(anim_transform { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_transform { Parent->UID });
    auto &anim = std::get<anim_transform>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2635,7 +2635,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
    return ERR::Okay;
 }
 
@@ -2647,7 +2647,7 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
-   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2662,7 +2662,7 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
    return ERR::Okay;
 }
 
@@ -2673,7 +2673,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
-   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2688,7 +2688,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
    return ERR::Okay;
 }
 
@@ -2700,7 +2700,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2715,7 +2715,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
    return ERR::Okay;
 }
 
@@ -2726,7 +2726,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   auto &new_anim = Self->Animations.emplace_front(anim_motion { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_motion { Parent->UID });
    auto &anim = std::get<anim_motion>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2792,7 +2792,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
    return ERR::Okay;
 }
 
