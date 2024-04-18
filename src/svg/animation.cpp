@@ -405,6 +405,15 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG H
          add_id(Self, Tag, Value);
          break;
 
+      case SVF_HREF:
+      case SVF_XLINK_HREF: {
+         OBJECTPTR ref_vector;
+         if (scFindDef(Self->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
+            Anim.target_vector = ref_vector->UID;
+         }
+         break;
+      }
+
       case SVF_ATTRIBUTENAME: // Name of the target attribute affected by the From and To values.
          Anim.target_attrib = Value;
          break;
@@ -1023,6 +1032,12 @@ void anim_value::perform(extSVG &SVG)
          case SVF_STROKE: {
             auto val = get_colour_value(**vector, FID_StrokeColour);
             vector->setArray(FID_StrokeColour, (float *)&val, 4);
+            break;
+         }
+
+         case SVF_STROKE_WIDTH: {
+            auto val = get_numeric_value(**vector, FID_StrokeWidth);
+            vector->set(FID_StrokeWidth, val);
             break;
          }
 

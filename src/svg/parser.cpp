@@ -2422,7 +2422,12 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
 
    for (auto find_anim=Tag.Children.begin(); find_anim != Tag.Children.end(); ) {
       if ((find_anim->isTag()) and (iequals("animate", find_anim->name()))) {
-         if (auto attrib = find_anim->attrib("attributeName")) {
+         if ((find_anim->attrib("href")) or (find_anim->attrib("xlink:href"))) {
+            // Ignore animation tags that specify a link.
+            find_anim++;
+            continue;
+         }
+         else if (auto attrib = find_anim->attrib("attributeName")) {
             for (auto &clone_to : Tag.Children) {
                if (clone_to.isTag() and (not iequals("animate", clone_to.name()))) {
                   if (!clone_to.attrib(*attrib)) {
@@ -2640,8 +2645,10 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 }
 
 //********************************************************************************************************************
-// The ‘animate’ element is used to animate a single attribute or property over time. For example, to make a
+// The 'animate' element is used to animate a single attribute or property over time. For example, to make a
 // rectangle repeatedly fade away over 5 seconds:
+//
+// NOTE: Also see xtag_group() which duplicates <animate> elements for technical reasons.
 
 static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
