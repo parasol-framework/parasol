@@ -889,7 +889,52 @@ void anim_transform::perform(extSVG &SVG)
       else {} // In the case of ADD::SUM, we are layering this transform on top of any previously declared animateTransforms
 
       switch(type) {
-         case AT::TRANSLATE: break;
+         case AT::TRANSLATE: {
+            POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &t_from.x, &t_from.y });
+               read_numseq(values[vi+1], { &t_to.x, &t_to.y } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &t_from.x, &t_from.y });
+
+               if (not to.empty()) {
+                  read_numseq(to, { &t_to.x, &t_to.y } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &t_to.x, &t_to.y } );
+                  t_to.x += t_from.x;
+                  t_to.y += t_from.y;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to.x, &t_to.y } );
+               t_from = t_to;
+            }
+            else break;
+
+            const POINT<double> t_offset = t_to;
+
+            if ((accumulate) and (repeat_count)) {
+               const POINT<double> acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double x = t_from.x + ((t_to.x - t_from.x) * seek_to);
+            double y = t_from.y + ((t_to.y - t_from.y) * seek_to);
+            vecTranslate(matrix, x, y);
+            break;
+         }
 
          case AT::SCALE: {
             POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
@@ -994,9 +1039,95 @@ void anim_transform::perform(extSVG &SVG)
             break;
          }
 
-         case AT::SKEW_X: break;
+         case AT::SKEW_X: {
+            double t_from = 0, t_to = 0;
 
-         case AT::SKEW_Y: break;
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &t_from });
+               read_numseq(values[vi+1], { &t_to } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &t_from });
+
+               if (not to.empty()) {
+                  read_numseq(to, { &t_to } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &t_to } );
+                  t_to += t_from;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to } );
+               t_from = t_to;
+            }
+            else break;
+
+            const double t_offset = t_to;
+
+            if ((accumulate) and (repeat_count)) {
+               const double acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double x = t_from + ((t_to - t_from) * seek_to);
+            vecSkew(matrix, x, 0);
+            break;
+         }
+
+         case AT::SKEW_Y: {
+            double t_from = 0, t_to = 0;
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &t_from });
+               read_numseq(values[vi+1], { &t_to } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &t_from });
+
+               if (not to.empty()) {
+                  read_numseq(to, { &t_to } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &t_to } );
+                  t_to += t_from;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to } );
+               t_from = t_to;
+            }
+            else break;
+
+            const double t_offset = t_to;
+
+            if ((accumulate) and (repeat_count)) {
+               const double acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double y = t_from + ((t_to - t_from) * seek_to);
+            vecSkew(matrix, 0, y);
+            break;
+         }
 
          default: break;
       }
@@ -1029,6 +1160,12 @@ void anim_value::perform(extSVG &SVG)
             break;
          }
 
+         case SVF_FILL_OPACITY: {
+            auto val = get_numeric_value(**vector, FID_FillOpacity);
+            vector->set(FID_FillOpacity, val);
+            break;
+         }
+
          case SVF_STROKE: {
             auto val = get_colour_value(**vector, FID_StrokeColour);
             vector->setArray(FID_StrokeColour, (float *)&val, 4);
@@ -1036,56 +1173,67 @@ void anim_value::perform(extSVG &SVG)
          }
 
          case SVF_STROKE_WIDTH: {
-            auto val = get_numeric_value(**vector, FID_StrokeWidth);
-            vector->set(FID_StrokeWidth, val);
+            vector->set(FID_StrokeWidth, get_numeric_value(**vector, FID_StrokeWidth));
             break;
          }
 
          case SVF_OPACITY: {
-            auto val = get_numeric_value(**vector, FID_Opacity);
-            vector->set(FID_Opacity, val);
+            vector->set(FID_Opacity, get_numeric_value(**vector, FID_Opacity));
             break;
          }
 
          case SVF_CX: {
-            auto val = get_dimension(**vector, FID_CX);
-            vector->set(FID_CX, val);
+            vector->set(FID_CX, get_dimension(**vector, FID_CX));
             break;
          }
 
          case SVF_CY: {
-            auto val = get_dimension(**vector, FID_CY);
-            vector->set(FID_CY, val);
+            vector->set(FID_CY, get_dimension(**vector, FID_CY));
+            break;
+         }
+                    
+         case SVF_X1: {
+            vector->set(FID_X1, get_dimension(**vector, FID_X1));
+            break;
+         }
+
+         case SVF_Y1: {
+            vector->set(FID_Y1, get_dimension(**vector, FID_Y1));
+            break;
+         }
+
+         case SVF_X2: {
+            vector->set(FID_X2, get_dimension(**vector, FID_X2));
+            break;
+         }
+
+         case SVF_Y2: {
+            vector->set(FID_Y2, get_dimension(**vector, FID_Y2));
             break;
          }
 
          case SVF_X: {
-            auto val = get_dimension(**vector, FID_X);
-            vector->set(FID_X, val);
+            vector->set(FID_X, get_dimension(**vector, FID_X));
             break;
          }
 
          case SVF_Y: {
-            auto val = get_dimension(**vector, FID_Y);
-            vector->set(FID_Y, val);
+            vector->set(FID_Y, get_dimension(**vector, FID_Y));
             break;
          }
 
          case SVF_WIDTH: {
-            auto val = get_dimension(**vector, FID_Width);
-            vector->set(FID_Width, val);
+            vector->set(FID_Width, get_dimension(**vector, FID_Width));
             break;
          }
 
          case SVF_HEIGHT: {
-            auto val = get_dimension(**vector, FID_Height);
-            vector->set(FID_Height, val);
+            vector->set(FID_Height, get_dimension(**vector, FID_Height));
             break;
          }
 
          case SVF_VISIBILITY: {
-            auto val = get_string();
-            vector->set(FID_Visibility, val);
+            vector->set(FID_Visibility, get_string());
             break;
          }
       }
