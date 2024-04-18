@@ -153,7 +153,7 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local state = { name = 'zoomIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
    local err
-   err, state.matrix = Viewport.mtNewMatrix()
+   err, state.matrix = Viewport.mtNewMatrix(false)
    mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
    mVector.Scale(state.matrix, value, value)
    mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
@@ -196,7 +196,7 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local state = { name = 'zoomOut', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
    local err
-   err, state.matrix = Viewport.mtNewMatrix()
+   err, state.matrix = Viewport.mtNewMatrix(false)
    mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
    mVector.Scale(state.matrix, value, value)
    mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
@@ -251,7 +251,7 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
    if (SHAKES < 1) then SHAKES = 1 end
 
    local err
-   err, state.matrix = Viewport.mtNewMatrix()
+   err, state.matrix = Viewport.mtNewMatrix(false)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
@@ -298,7 +298,7 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local state = { name = 'rotate', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
    local err
-   err, state.matrix = Viewport.mtNewMatrix()
+   err, state.matrix = Viewport.mtNewMatrix(false)
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
       if not Viewport.exists() then check(ERR_Terminate) end
 
@@ -333,7 +333,7 @@ end
 vfx.wipes.simple.init = function(State, Options)
    if (Options.rotate) then
       local err
-      err, State.matrix = State.clip_path.mtNewMatrix()
+      err, State.matrix = State.clip_path.mtNewMatrix(false)
       mVector.Rotate(State.matrix, Options.rotate, State.v_width * 0.5, State.v_height * 0.5)
    end
 end
@@ -516,7 +516,7 @@ end
 vfx.wipes.shutter.init = function(State, Options)
    if (Options.rotate) then
       local err
-      err, State.matrix = State.clip_path.mtNewMatrix()
+      err, State.matrix = State.clip_path.mtNewMatrix(false)
       mVector.Rotate(State.matrix, Options.rotate, State.v_width * 0.5, State.v_height * 0.5)
    end
 end

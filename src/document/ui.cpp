@@ -1172,7 +1172,7 @@ static ERR inputevent_button(objVectorViewport *Viewport, const InputEvent *Even
 
             if (!button->viewport->Matrices) {
                VectorMatrix *matrix;
-               vecNewMatrix(*button->viewport, &matrix);
+               vecNewMatrix(*button->viewport, &matrix, false);
             }
 
             const auto width  = button->viewport->get<DOUBLE>(FID_Width);

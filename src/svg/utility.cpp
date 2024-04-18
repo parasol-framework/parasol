@@ -247,7 +247,7 @@ static void parse_transform(objVector *Vector, const std::string Value)
 {
    if ((Vector->Class->BaseClassID IS ID_VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
-      if (vecNewMatrix((objVector *)Vector, &matrix) IS ERR::Okay) {
+      if (vecNewMatrix((objVector *)Vector, &matrix, false) IS ERR::Okay) {
          vecParseTransform(matrix, Value.c_str());
       }
       else {

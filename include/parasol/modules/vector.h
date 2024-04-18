@@ -1570,7 +1570,7 @@ struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
 struct vecSubscribeKeyboard { FUNCTION * Callback;  };
 struct vecSubscribeFeedback { FM Mask; FUNCTION * Callback;  };
-struct vecNewMatrix { struct VectorMatrix * Transform;  };
+struct vecNewMatrix { struct VectorMatrix * Transform; LONG End;  };
 struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
 
 inline ERR vecPush(APTR Ob, LONG Position) noexcept {
@@ -1615,8 +1615,8 @@ inline ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) noexcept 
 
 #define vecDebug(obj) Action(MT_VecDebug,(obj),0)
 
-inline ERR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform) noexcept {
-   struct vecNewMatrix args = { (struct VectorMatrix *)0 };
+inline ERR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform, LONG End) noexcept {
+   struct vecNewMatrix args = { (struct VectorMatrix *)0, End };
    ERR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);

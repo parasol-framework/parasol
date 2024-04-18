@@ -798,7 +798,11 @@ void anim_motion::perform(extSVG &SVG)
    }
    else return;
 
-   if (not matrix) vecNewMatrix(*vector, &matrix);
+   // Note how the matrix is assigned to the end of the transform list so that it is executed last.  This is a
+   // requirement of the SVG standard.  It is important that the matrix is managed independently and not 
+   // intermixed with other transforms.
+
+   if (not matrix) vecNewMatrix(*vector, &matrix, true);
    vecResetMatrix(matrix);
 
    if (angle != -1) vecRotate(matrix, angle, 0, 0);

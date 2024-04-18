@@ -120,9 +120,10 @@
     <method>
       <name>NewMatrix</name>
       <comment>Returns a VectorMatrix structure that allows transformations to be applied to the vector.</comment>
-      <prototype>ERR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform)</prototype>
+      <prototype>ERR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</prototype>
       <input>
         <param type="struct VectorMatrix **" name="Transform">A reference to the new transform structure is returned here.</param>
+        <param type="LONG" name="End">If true, the matrix priority is lowered by inserting it at the end of the transform list.</param>
       </input>
       <description>
 <p>Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating the transformation matrix is supported by functions in the Vector module, such as <function module="Vector">Scale</function> and <function module="Vector">Rotate</function>.</p>
