@@ -2635,7 +2635,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2662,7 +2662,7 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2688,7 +2688,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2715,7 +2715,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2792,7 +2792,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase(Self->Animations.end());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
