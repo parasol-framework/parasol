@@ -1172,70 +1172,90 @@ void anim_value::perform(extSVG &SVG)
             break;
          }
 
-         case SVF_STROKE_WIDTH: {
+         case SVF_STROKE_WIDTH:
             vector->set(FID_StrokeWidth, get_numeric_value(**vector, FID_StrokeWidth));
             break;
-         }
 
-         case SVF_OPACITY: {
+         case SVF_OPACITY:
             vector->set(FID_Opacity, get_numeric_value(**vector, FID_Opacity));
             break;
-         }
 
-         case SVF_CX: {
+         case SVF_CX:
             vector->set(FID_CX, get_dimension(**vector, FID_CX));
             break;
-         }
 
-         case SVF_CY: {
+         case SVF_CY:
             vector->set(FID_CY, get_dimension(**vector, FID_CY));
             break;
-         }
                     
-         case SVF_X1: {
+         case SVF_X1:
             vector->set(FID_X1, get_dimension(**vector, FID_X1));
             break;
-         }
 
-         case SVF_Y1: {
+         case SVF_Y1:
             vector->set(FID_Y1, get_dimension(**vector, FID_Y1));
             break;
-         }
 
-         case SVF_X2: {
+         case SVF_X2:
             vector->set(FID_X2, get_dimension(**vector, FID_X2));
             break;
-         }
 
-         case SVF_Y2: {
+         case SVF_Y2:
             vector->set(FID_Y2, get_dimension(**vector, FID_Y2));
             break;
-         }
 
          case SVF_X: {
-            vector->set(FID_X, get_dimension(**vector, FID_X));
+            if (vector->Class->ClassID IS ID_VECTORGROUP) {
+               // Special case: SVG groups don't have an (x,y) position, but can declare one in the form of a
+               // transform.  Refer to xtag_use() for a working example as to why.
+
+               VectorMatrix *m;
+               for (m=vector->Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
+
+               if (!m) {
+                  vecNewMatrix(*vector, &m, false);
+                  m->Tag = MTAG_SVG_TRANSFORM;
+               }
+
+               if (m) {
+                  m->TranslateX = get_dimension(**vector, FID_X);
+                  vecFlushMatrix(m);
+               }
+            }
+            else vector->set(FID_X, get_dimension(**vector, FID_X));
             break;
          }
 
          case SVF_Y: {
-            vector->set(FID_Y, get_dimension(**vector, FID_Y));
+            if (vector->Class->ClassID IS ID_VECTORGROUP) {
+               VectorMatrix *m;
+               for (m=vector->Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
+
+               if (!m) {
+                  vecNewMatrix(*vector, &m, false);
+                  m->Tag = MTAG_SVG_TRANSFORM;
+               }
+
+               if (m) {
+                  m->TranslateY = get_dimension(**vector, FID_Y);
+                  vecFlushMatrix(m);
+               }
+            }
+            else vector->set(FID_Y, get_dimension(**vector, FID_Y));
             break;
          }
 
-         case SVF_WIDTH: {
+         case SVF_WIDTH:
             vector->set(FID_Width, get_dimension(**vector, FID_Width));
             break;
-         }
 
-         case SVF_HEIGHT: {
+         case SVF_HEIGHT:
             vector->set(FID_Height, get_dimension(**vector, FID_Height));
             break;
-         }
 
-         case SVF_VISIBILITY: {
+         case SVF_VISIBILITY:
             vector->set(FID_Visibility, get_string());
             break;
-         }
       }
    }
 }
