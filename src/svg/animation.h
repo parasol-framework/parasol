@@ -114,6 +114,7 @@ public:
    std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
    struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
    std::vector<spline_path> spline_paths;
+   std::vector<double> begin_series; // List of valid start times for the animation
    double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
    double repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
    double min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
@@ -156,6 +157,18 @@ public:
    }
 
    void stop(double Time) {
+      if (!begin_series.empty()) {
+         // Check if there's a serialised begin offset following the one that's completed.
+         LONG i;
+         for (i=0; i < std::ssize(begin_series)-1; i++) {
+            if (begin_offset IS begin_series[i]) {
+               begin_offset = begin_series[i+1];
+               start_time = 0;
+               return;
+            }
+         }
+      }
+
       end_time = Time;
       seek = 1.0; // Necessary in case the seek range calculation has overflowed
 

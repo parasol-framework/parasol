@@ -331,12 +331,11 @@ static DOUBLE read_time(const std::string_view Value)
             return (units[0] * 60 * 60) + (units[1] * 60);
          }
       }
-      else if ((v[0] IS 'h') and (unsigned(v[1]) <= 0x20)) return units[0] * 60 * 60;
-      else if ((v[0] IS 's') and (unsigned(v[1]) <= 0x20)) return units[0];
-      else if ((v[0] IS 'm') and (v[1] IS 'i') and (v[2] IS 'n') and (unsigned(v[3]) <= 0x20)) return units[0] * 60;
-      else if ((v[0] IS 'm') and (v[1] IS 's') and (unsigned(v[2]) <= 0x20)) return DOUBLE(units[0]) / 1000.0;
-      else if (unsigned(v[0]) <= 0x20) return units[0];
-      else return 0;
+      else if (Value.ends_with("h")) return units[0] * 60 * 60;
+      else if (Value.ends_with("s")) return units[0];
+      else if (Value.ends_with("min")) return units[0] * 60;
+      else if (Value.ends_with("ms")) return DOUBLE(units[0]) / 1000.0;
+      else return units[0];
    }
    else return 0;
 }

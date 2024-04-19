@@ -583,6 +583,7 @@ static ERR VECTOR_NewObject(extVector *Self, APTR Void)
    Self->Dirty         = RC::ALL;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
+   Self->ValidState    = true;
    return ERR::Okay;
 }
 

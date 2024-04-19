@@ -687,7 +687,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
          else if (shape->Visibility != VIS::VISIBLE) visible = false;
 
-         if (!visible) {
+         if ((!visible) or (!shape->ValidState)) {
             log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
             continue;
          }

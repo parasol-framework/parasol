@@ -529,7 +529,21 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG H
             break;
          }
 
-         Anim.begin_offset = read_time(Value);
+         // Read one or more timing offsets as a series
+         
+         LONG v;
+         if (Value.find(';') != std::string::npos) {
+            for (unsigned v=0; v < Value.size(); ) {
+                while ((Value[v]) and (Value[v] <= 0x20)) v++;
+                auto v_end = Value.find(';', v);
+                if (v_end IS std::string::npos) v_end = Value.size();
+                Anim.begin_series.push_back(read_time(Value.substr(v, v_end - v)));
+                v = v_end + 1;
+            }
+            Anim.begin_offset = Anim.begin_series[0];
+         }
+         else Anim.begin_offset = read_time(Value);
+
          break;
 
       case SVF_END:
@@ -1212,6 +1226,26 @@ void anim_value::perform(extSVG &SVG)
 
          case SVF_OPACITY:
             vector->set(FID_Opacity, get_numeric_value(**vector, FID_Opacity));
+            break;
+
+         case SVF_DISPLAY: {
+            auto val = get_string();
+            if (StrMatch("none", val) IS ERR::Okay)         vector->set(FID_Visibility, LONG(VIS::HIDDEN));
+            else if (StrMatch("inline", val) IS ERR::Okay)  vector->set(FID_Visibility, LONG(VIS::VISIBLE));
+            else if (StrMatch("inherit", val) IS ERR::Okay) vector->set(FID_Visibility, LONG(VIS::INHERIT));
+            break;
+         }
+
+         case SVF_R:
+            vector->set(FID_Radius, get_dimension(**vector, FID_Radius));
+            break;
+
+         case SVF_RX:
+            vector->set(FID_RadiusX, get_dimension(**vector, FID_RadiusX));
+            break;
+
+         case SVF_RY:
+            vector->set(FID_RadiusY, get_dimension(**vector, FID_RadiusY));
             break;
 
          case SVF_CX:

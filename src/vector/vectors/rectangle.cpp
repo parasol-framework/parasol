@@ -150,6 +150,11 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
    }
 
    Vector->Bounds = { x, y, x + width, y + height };
+
+   // SVG rules stipulate that a rectangle missing a dimension won't be drawn, but it does maintain a bounding box.
+
+   if ((!width) or (!height)) Vector->ValidState = false;
+   else Vector->ValidState = true;
 }
 
 /*********************************************************************************************************************
