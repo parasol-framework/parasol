@@ -310,7 +310,7 @@ static DOUBLE read_time(const std::string_view Value)
    std::size_t i = 0;
    while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
 
-   LONG num;
+   double num;
    auto [ v, error ] = std::from_chars(Value.data() + i, Value.data() + Value.size(), num);
 
    if (error IS std::errc()) {

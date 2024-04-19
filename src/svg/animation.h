@@ -107,6 +107,7 @@ public:
    std::string from;                // Start from this value. Ignored if 'values' is defined.
    std::string to, by;              // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
    std::string target_attrib;       // Name of the target attribute affected by the From and To values.
+   std::string target_attrib_orig;  // Original value of the target attribute (if not freezing)
    std::string id;                  // Identifier for the animation
    std::vector<class anim_base *> start_on_begin;
    std::vector<class anim_base *> start_on_end;
@@ -144,7 +145,7 @@ public:
    std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
-   void next_frame(double);
+   bool next_frame(double);
 
    void activate(void) { 
       // Reset all the variables that control time management and the animation will start from scratch.

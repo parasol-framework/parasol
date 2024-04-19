@@ -289,6 +289,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
 FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
 {
    VectorPainter from_col, to_col;
+   double seek_to = seek;
 
    if (not values.empty()) {
       LONG vi = F2T((values.size()-1) * seek);
@@ -297,7 +298,7 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
       vecReadPainter(NULL, values[vi+1].c_str(), &to_col, NULL);
 
       const double mod = 1.0 / double(values.size() - 1);
-      seek = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
    }
    else if (not from.empty()) {
       if (not to.empty()) {
@@ -308,10 +309,38 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
          return { 0, 0, 0, 0 };
       }
    }
+   else if (not to.empty()) {
+      FLOAT *colour;
+      LONG elements;
+      if ((GetFieldArray(&Vector, Field, &colour, &elements) IS ERR::Okay) and (elements IS 4)) {
+         from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
+         vecReadPainter(NULL, to.c_str(), &to_col, NULL);
+      }
+      else return { 0, 0, 0, 0 };
+   }
+   else if (not by.empty()) {
+      FLOAT *colour;
+      LONG elements;
+      if ((GetFieldArray(&Vector, Field, &colour, &elements) IS ERR::Okay) and (elements IS 4)) {
+         from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
+         vecReadPainter(NULL, to.c_str(), &to_col, NULL);
+         to_col.Colour.Red   = std::clamp<float>(to_col.Colour.Red   + colour[0], 0.0, 1.0);
+         to_col.Colour.Green = std::clamp<float>(to_col.Colour.Green + colour[1], 0.0, 1.0);
+         to_col.Colour.Blue  = std::clamp<float>(to_col.Colour.Blue  + colour[2], 0.0, 1.0);
+         to_col.Colour.Alpha = std::clamp<float>(to_col.Colour.Alpha + colour[3], 0.0, 1.0);
+      }
+      else return { 0, 0, 0, 0 };
+   }
    else return { 0, 0, 0, 0 };
 
+   if ((seek_to >= 1.0) and (!freeze)) {
+      VectorPainter painter;
+      vecReadPainter(NULL, target_attrib_orig.c_str(), &painter, NULL);
+      return painter.Colour;
+   }
+
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek < 0.5) return from_col.Colour;
+      if (seek_to < 0.5) return from_col.Colour;
       else return to_col.Colour;
    }
    else { // CMODE::LINEAR
@@ -321,10 +350,10 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
       glLinearRGB.convert(to_col.Colour);
 
       auto result = FRGB {
-         float(from_col.Colour.Red   + ((to_col.Colour.Red   - from_col.Colour.Red) * seek)),
-         float(from_col.Colour.Green + ((to_col.Colour.Green - from_col.Colour.Green) * seek)),
-         float(from_col.Colour.Blue  + ((to_col.Colour.Blue  - from_col.Colour.Blue) * seek)),
-         float(from_col.Colour.Alpha + ((to_col.Colour.Alpha - from_col.Colour.Alpha) * seek))
+         float(from_col.Colour.Red   + ((to_col.Colour.Red   - from_col.Colour.Red) * seek_to)),
+         float(from_col.Colour.Green + ((to_col.Colour.Green - from_col.Colour.Green) * seek_to)),
+         float(from_col.Colour.Blue  + ((to_col.Colour.Blue  - from_col.Colour.Blue) * seek_to)),
+         float(from_col.Colour.Alpha + ((to_col.Colour.Alpha - from_col.Colour.Alpha) * seek_to))
       };
 
       glLinearRGB.invert(result);
@@ -361,25 +390,30 @@ bool anim_base::started(double CurrentTime)
 //********************************************************************************************************************
 // Advance the seek position to represent the next frame.
 
-void anim_base::next_frame(double CurrentTime)
+bool anim_base::next_frame(double CurrentTime)
 {
-   if (end_time) return;
+
+   if (end_time) return false;
 
    const double elapsed = CurrentTime - start_time;
-   seek = elapsed / duration; // A value between 0 and 1.0
+   
+   if (!duration) seek = 0;
+   else seek = elapsed / duration; // A value between 0 and 1.0
 
    if (seek >= 1.0) { // Check if the sequence has ended.
       if ((repeat_count < 0) or (repeat_index+1 < repeat_count)) {
          repeat_index++;
          start_time = CurrentTime;
          seek = 0;
-         return;
+         return false;
       }
-      else stop(CurrentTime); // Setting the end-time will prevent further animation after the completion of this frame.
+      else return true;
    }
 
    // repeat_duration prevents the animation from running past a fixed number of seconds since it started.
-   if ((repeat_duration > 0) and (elapsed > repeat_duration)) stop(CurrentTime);
+   if ((repeat_duration > 0) and (elapsed > repeat_duration)) return true;
+
+   return false;
 }
 
 //********************************************************************************************************************
@@ -1282,8 +1316,12 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
          double current_time = double(PreciseTime()) / 1000000.0;
 
          if (not anim.started(current_time)) return;
-         anim.next_frame(current_time);
-         anim.perform(*SVG);
+
+         if (anim.next_frame(current_time)) {
+            anim.perform(*SVG);
+            anim.stop(current_time);
+         }
+         else anim.perform(*SVG);
       }, record);
    }
 

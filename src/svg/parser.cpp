@@ -2695,6 +2695,18 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
+   if ((!anim.freeze) and (!anim.target_attrib.empty())) {
+      pf::ScopedObjectLock<objVector> obj(anim.target_vector);
+      if (obj.granted()) {
+         char buffer[400];
+         if (GetFieldVariable(*obj, anim.target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
+            anim.target_attrib_orig.assign(buffer);
+         }
+      }
+   }
+
+   anim.calc_mode = CMODE::DISCRETE; // Disables interpolation
+
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
