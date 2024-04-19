@@ -67,7 +67,7 @@ FDEF maPointInPath[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maSubscribeInput[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maSubscribeKeyboard[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maSubscribeFeedback[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maNewMatrix[] = { { "VectorMatrix:Transform", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
+FDEF maNewMatrix[] = { { "VectorMatrix:Transform", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { "End", FD_LONG }, { 0, 0 } };
 FDEF maFreeMatrix[] = { { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 
 static const struct MethodEntry clVectorMethods[] = {

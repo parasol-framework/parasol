@@ -59,12 +59,12 @@ function testWave()               hashTestSVG('paths/wave.svg', 0xc462fb58) end
 
 function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
 function testComplex()            hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
-function testDiamonds()           hashTestSVG('patterns/diamonds.svg', 0xe14ac1e8) end
+function testDiamonds()           hashTestSVG('patterns/diamonds.svg', 0x4642c53a) end
 function testDimple()             hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
-function testDot()                hashTestSVG('patterns/dot.svg', 0x13252bb4) end
+function testDot()                hashTestSVG('patterns/dot.svg', 0x6736bc6c) end
 function testHoneycomb()          hashTestSVG('patterns/honeycomb.svg', 0x7b678ada) end
 function testSnake()              hashTestSVG('patterns/snake.svg', 0xbb7d40f0) end
-function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
+function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
 function testComposite()          hashTestSVG('filters/composite.svg', 0x66a96a50) end
@@ -125,7 +125,7 @@ function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xd7fb84f
 function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
 function testClock()              hashTestSVG('images/clock.svg', 0xe5ad43cb) end
 function testIceCube()            hashTestSVG('images/icecube.svg', 0x86d23579) end
-function testTiger()              hashTestSVG('images/tiger.svg', 0x8e6b884e) end
+function testTiger()              hashTestSVG('images/tiger.svg', 0xa7b2c808) end
 function testPod()                hashTestSVG('images/pod.svg', 0x9a0fbeda) end
 
 function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
@@ -138,8 +138,8 @@ function testW3MasksIntro()       hashTestSVG('masks/w3-masking-intro-01-f.svg',
 function testW3Masks1()           hashTestSVG('masks/w3-masking-mask-01-b.svg', 0x74e684d6) end
 function testW3Masks2()           hashTestSVG('masks/w3-masking-mask-02-f.svg', 0x9f518e5f) end
 function testW3MasksOpacity()     hashTestSVG('masks/w3-masking-opacity-01-b.svg', -1) end
-function testW3MasksPath1()       hashTestSVG('masks/w3-masking-path-01-b.svg', 0xddc00e40) end
-function testW3MasksPath2()       hashTestSVG('masks/w3-masking-path-02-b.svg', 0x33811df4) end
+function testW3MasksPath1()       hashTestSVG('masks/w3-masking-path-01-b.svg', 0x792ed4f4) end
+function testW3MasksPath2()       hashTestSVG('masks/w3-masking-path-02-b.svg', 0x7676e492) end
 function testW3MasksPath3()       hashTestSVG('masks/w3-masking-path-03-b.svg', 0x97f20e58) end
 function testW3MasksPath4()       hashTestSVG('masks/w3-masking-path-04-b.svg', 0x74da608c) end
 function testW3MasksPath5()       hashTestSVG('masks/w3-masking-path-05-f.svg', 0x2ad5769b) end

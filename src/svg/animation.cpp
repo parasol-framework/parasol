@@ -142,7 +142,6 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
    if ((accumulate) and (repeat_count)) {
       // Cumulative animation is not permitted for:
       // * The 'to animation' where 'from' is undefined.
-      // * Animations that do not repeat
 
       from_val += offset * repeat_index;
       to_val += offset * repeat_index;
@@ -206,7 +205,7 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
          // Rather than use distance, we're going to use the 'x' position as a lookup on the horizontal axis.
          // The paired y value then gives us the 'real' seek_to value.
          // The spline points are already sorted by the x value to make this easier.
-            
+
          const double x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / double(std::ssize(spline_paths))) * std::ssize(spline_paths);
 
          LONG si;
@@ -348,7 +347,7 @@ bool anim_base::started(double CurrentTime)
       const double elapsed = CurrentTime - start_time;
       if (elapsed < begin_offset) return false;
    }
-   
+
    // Start/Reset linked animations
    for (auto &other : start_on_begin) {
       other->activate();
@@ -364,6 +363,8 @@ bool anim_base::started(double CurrentTime)
 
 void anim_base::next_frame(double CurrentTime)
 {
+   if (end_time) return;
+
    const double elapsed = CurrentTime - start_time;
    seek = elapsed / duration; // A value between 0 and 1.0
 
@@ -396,13 +397,22 @@ static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y,
    return ERR::Okay;
 }
 
-static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, XMLTag &Tag, ULONG Hash, const std::string_view Value)
+static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
 {
    switch (Hash) {
       case SVF_ID:
          Anim.id = Value;
          add_id(Self, Tag, Value);
          break;
+
+      case SVF_HREF:
+      case SVF_XLINK_HREF: {
+         OBJECTPTR ref_vector;
+         if (scFindDef(Self->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
+            Anim.target_vector = ref_vector->UID;
+         }
+         break;
+      }
 
       case SVF_ATTRIBUTENAME: // Name of the target attribute affected by the From and To values.
          Anim.target_attrib = Value;
@@ -452,12 +462,12 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
          //   id.repeat(value): Reference to another animation, repeat when the given value is reached.
          //   access-key: The animation starts when a keyboard key is pressed.
          //   clock: A real-world clock time (not supported)
-         
+
          if ("indefinite" IS Value) {
             Anim.begin_offset = std::numeric_limits<double>::max();
             break;
          }
-         
+
          if (Value.ends_with(".begin")) {
             Anim.begin_offset = std::numeric_limits<double>::max();
             auto ref = Value.substr(0, Value.size()-6);
@@ -479,7 +489,7 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, objVector *Vector, X
             }
             break;
          }
-         
+
          if ("access-key" IS Value) { // Start the animation when the user presses a key.
             Anim.begin_offset = std::numeric_limits<double>::max();
             break;
@@ -696,10 +706,13 @@ static ERR motion_callback(objVector *Vector, LONG Index, LONG Cmd, double X, do
    return ERR::Okay;
 };
 
-void anim_motion::perform()
+void anim_motion::perform(extSVG &SVG)
 {
-   double x1, y1, x2, y2, angle = -1;
+   POINT<float> a, b;
+   double angle = -1;
    double seek_to = seek;
+
+   if ((end_time) and (!freeze)) return;
 
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (!vector.granted()) return;
@@ -708,8 +721,7 @@ void anim_motion::perform()
    // animateMotion property.
 
    if ((mpath) or (not path.empty())) {
-      LONG new_timestamp;
-      vector->get(FID_PathTimestamp, &new_timestamp);
+      auto new_timestamp = vector->get<LONG>(FID_PathTimestamp);
 
       if ((points.empty()) or (path_timestamp != new_timestamp)) {
          // Trace the path and store its points.  Transforms are completely ignored when pulling the path from
@@ -723,7 +735,7 @@ void anim_motion::perform()
          }
          else if ((vecTrace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
 
-         vector->get(FID_PathTimestamp, &path_timestamp);
+         path_timestamp = vector->get<LONG>(FID_PathTimestamp);
 
          if ((auto_rotate IS ART::AUTO) or (auto_rotate IS ART::AUTO_REVERSE)) {
             precalc_angles();
@@ -739,10 +751,8 @@ void anim_motion::perform()
          LONG i;
          for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
 
-         x1 = points[i].x;
-         y1 = points[i].y;
-         x2 = points[i+1].x;
-         y2 = points[i+1].y;
+         a = points[i];
+         b = points[i+1];
 
          seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
 
@@ -755,10 +765,8 @@ void anim_motion::perform()
          LONG i = F2T((std::ssize(points)-1) * seek);
          if (i >= std::ssize(points)-1) i = std::ssize(points) - 2;
 
-         x1 = points[i].x;
-         y1 = points[i].y;
-         x2 = points[i+1].x;
-         y2 = points[i+1].y;
+         a = points[i];
+         b = points[i+1];
 
          const double mod = 1.0 / double(points.size() - 1);
          seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
@@ -785,92 +793,342 @@ void anim_motion::perform()
          seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
       }
 
-      read_numseq(values[i], { &x1, &y1 });
-      read_numseq(values[i+1], { &x2, &y2 });
+      read_numseq(values[i], { &a.x, &a.y });
+      read_numseq(values[i+1], { &b.x, &b.y });
    }
    else if (not from.empty()) {
       if (not to.empty()) {
-         read_numseq(from, { &x1, &y1 });
-         read_numseq(to, { &x2, &y2 } );
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(to, { &b.x, &b.y } );
       }
       else if (not by.empty()) {
-         read_numseq(from, { &x1, &y1 });
-         read_numseq(by, { &x2, &y2 } );
-         x2 += x1;
-         y2 += y1;
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(by, { &b.x, &b.y } );
+         b.x += a.x;
+         b.y += a.y;
       }
       else return;
    }
    else return;
 
-   if (not matrix) vecNewMatrix(*vector, &matrix);
+   // Note how the matrix is assigned to the end of the transform list so that it is executed last.  This is a
+   // requirement of the SVG standard.  It is important that the matrix is managed independently and not
+   // intermixed with other transforms.
+
+   if (not matrix) {
+      vecNewMatrix(*vector, &matrix, true);
+      matrix->Tag = MTAG_ANIMATE_MOTION;
+   }
    vecResetMatrix(matrix);
 
    if (angle != -1) vecRotate(matrix, angle, 0, 0);
-   else if (auto_rotate IS ART::FIXED)  vecRotate(matrix, rotate, 0, 0);
+   else if (auto_rotate IS ART::FIXED) vecRotate(matrix, rotate, 0, 0);
 
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek_to < 0.5) vecTranslate(matrix, x1, y1);
-      else vecTranslate(matrix, x2, y2);
+      if (seek_to < 0.5) vecTranslate(matrix, a.x, a.y);
+      else vecTranslate(matrix, b.x, b.y);
    }
    else { // CMODE::LINEAR
-      x1 = x1 + ((x2 - x1) * seek_to);
-      y1 = y1 + ((y2 - y1) * seek_to);
-      vecTranslate(matrix, x1, y1);
+      pf::POINT<double> final { a.x + ((b.x - a.x) * seek_to), a.y + ((b.y - a.y) * seek_to) };
+      vecTranslate(matrix, final.x, final.y);
    }
 }
 
 //********************************************************************************************************************
+// Note: SVG rules state that only one transformation matrix is active at any time, irrespective of however many
+// <animateTransform> elements are active for a vector.  Multiple transformations are multiplicative by default.
+// If a transform is in REPLACE mode, all prior transforms are overwritten, INCLUDING the vector's 'transform' attribute.
 
-void anim_transform::perform()
+void anim_transform::perform(extSVG &SVG)
 {
-   pf::ScopedObjectLock<objVector *> vector(target_vector, 1000);
+   double seek_to = seek;
+
+   if ((end_time) and (!freeze)) return;
+
+   pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (not matrix) vecNewMatrix(*vector, &matrix);
+      if (not matrix) {
+         if (auto im = SVG.Animatrix.find(target_vector); im != SVG.Animatrix.end()) {
+            matrix = im->second;
+         }
+      }
+
+      if (not matrix) {
+         vecNewMatrix(*vector, &matrix, false);
+         matrix->Tag = MTAG_ANIMATE_TRANSFORM;
+         SVG.Animatrix[target_vector] = matrix;
+      }
+
+      if (additive IS ADD::REPLACE) {
+         // Replace mode is a little tricky if the vector has a transform attribute applied to it.  We want to
+         // override the existing transform, but we could cause problems if we were to permanently destroy
+         // that information.  The solution we're taking is to create an inversion of the transform declaration
+         // in order to undo it.
+
+         VectorMatrix *m = NULL;
+         for (m = vector->Matrices; (m); m=m->Next) {
+            if (m->Tag IS MTAG_SVG_TRANSFORM) {
+               double d = 1.0 / (m->ScaleX * m->ScaleY - m->ShearY * m->ShearX);
+
+               double t0 = m->ScaleY * d;
+               matrix->ScaleY = m->ScaleX * d;
+               matrix->ShearY = -m->ShearY * d;
+               matrix->ShearX = -m->ShearX * d;
+
+               double t4 = -m->TranslateX * t0 - m->TranslateY * matrix->ShearX;
+               matrix->TranslateY = -m->TranslateX * matrix->ShearY - m->TranslateY * matrix->ScaleY;
+
+               matrix->ScaleX = t0;
+               matrix->TranslateX = t4;
+               break;
+            }
+         }
+
+         if (!m) vecResetMatrix(matrix);
+      }
+      else {} // In the case of ADD::SUM, we are layering this transform on top of any previously declared animateTransforms
 
       switch(type) {
-         case AT::TRANSLATE: break;
-         case AT::SCALE: break;
-         case AT::ROTATE: {
-            double from_angle = 0, from_cx = 0, from_cy = 0, to_angle = 0, to_cx = 0, to_cy = 0;
+         case AT::TRANSLATE: {
+            POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
 
             if (not values.empty()) {
                LONG vi = F2T((values.size()-1) * seek);
-               if (vi >= LONG(values.size())-1) vi = values.size() - 2;
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
 
-               read_numseq(values[vi], { &from_angle, &from_cx, &from_cy });
-               read_numseq(values[vi+1], { &to_angle, &to_cx, &to_cy } );
+               read_numseq(values[vi], { &t_from.x, &t_from.y });
+               read_numseq(values[vi+1], { &t_to.x, &t_to.y } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
             }
             else if (not from.empty()) {
-               read_numseq(from, { &from_angle, &from_cx, &from_cy });
+               read_numseq(from, { &t_from.x, &t_from.y });
+
                if (not to.empty()) {
-                  read_numseq(to, { &to_angle, &to_cx, &to_cy } );
+                  read_numseq(to, { &t_to.x, &t_to.y } );
                }
                else if (not by.empty()) {
-                  read_numseq(by, { &to_angle, &to_cx, &to_cy } );
-                  to_angle += from_angle;
-                  to_cx += from_cx;
-                  to_cy += from_cy;
+                  read_numseq(by, { &t_to.x, &t_to.y } );
+                  t_to.x += t_from.x;
+                  t_to.y += t_from.y;
                }
                else break;
             }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to.x, &t_to.y } );
+               t_from = t_to;
+            }
             else break;
 
-            double mod = 1.0 / (double)(values.size() - 1);
-            double ratio;
-            if (seek == 1.0) ratio = 1.0;
-            else ratio = fmod(seek, mod) / mod;
+            const POINT<double> t_offset = t_to;
 
-            double new_angle = from_angle + ((to_angle - from_angle) * ratio);
-            double new_cx    = from_cx + ((to_cx - from_cx) * ratio);
-            double new_cy    = from_cy + ((to_cy - from_cy) * ratio);
+            if ((accumulate) and (repeat_count)) {
+               const POINT<double> acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
 
-            vecResetMatrix(matrix);
-            vecRotate(matrix, new_angle, new_cx, new_cy);
+            const double x = t_from.x + ((t_to.x - t_from.x) * seek_to);
+            double y = t_from.y + ((t_to.y - t_from.y) * seek_to);
+            vecTranslate(matrix, x, y);
             break;
          }
-         case AT::SKEW_X: break;
-         case AT::SKEW_Y: break;
+
+         case AT::SCALE: {
+            POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &t_from.x, &t_from.y });
+               read_numseq(values[vi+1], { &t_to.x, &t_to.y } );
+
+               if (!t_from.y) t_from.y = t_from.x;
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &t_from.x, &t_from.y });
+               if (!t_from.y) t_from.y = t_from.x;
+
+               if (not to.empty()) {
+                  read_numseq(to, { &t_to.x, &t_to.y } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &t_to.x, &t_to.y } );
+                  t_to.x += t_from.x;
+                  t_to.y += t_from.y;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to.x, &t_to.y } );
+               t_from = t_to;
+            }
+            else break;
+
+            if (!t_to.y) t_to.y = t_to.x;
+
+            const POINT<double> t_offset = t_to;
+
+            if ((accumulate) and (repeat_count)) {
+               const POINT<double> acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double x = t_from.x + ((t_to.x - t_from.x) * seek_to);
+            double y = t_from.y + ((t_to.y - t_from.y) * seek_to);
+            if (!y) y = x;
+            vecScale(matrix, x, y);
+            break;
+         }
+
+         case AT::ROTATE: {
+            ROTATE r_from, r_to;
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &r_from.angle, &r_from.cx, &r_from.cy });
+               read_numseq(values[vi+1], { &r_to.angle, &r_to.cx, &r_to.cy } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &r_from.angle, &r_from.cx, &r_from.cy });
+               if (not to.empty()) {
+                  read_numseq(to, { &r_to.angle, &r_to.cx, &r_to.cy } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &r_to.angle, &r_to.cx, &r_to.cy } );
+                  r_to.angle += r_from.angle;
+                  r_to.cx += r_from.cx;
+                  r_to.cy += r_from.cy;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &r_to.angle, &r_to.cx, &r_to.cy } );
+               r_from = r_to;
+            }
+            else break;
+
+            const auto r_offset = r_to;
+
+            if ((accumulate) and (repeat_count)) {
+               r_from += r_offset * repeat_index;
+               r_to   += r_offset * repeat_index;
+            }
+
+            const ROTATE r_new = {
+               r_from.angle + ((r_to.angle - r_from.angle) * seek_to),
+               r_from.cx + ((r_to.cx - r_from.cx) * seek_to),
+               r_from.cy + ((r_to.cy - r_from.cy) * seek_to)
+            };
+
+            vecRotate(matrix, r_new.angle, r_new.cx, r_new.cy);
+            break;
+         }
+
+         case AT::SKEW_X: {
+            double t_from = 0, t_to = 0;
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &t_from });
+               read_numseq(values[vi+1], { &t_to } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &t_from });
+
+               if (not to.empty()) {
+                  read_numseq(to, { &t_to } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &t_to } );
+                  t_to += t_from;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to } );
+               t_from = t_to;
+            }
+            else break;
+
+            const double t_offset = t_to;
+
+            if ((accumulate) and (repeat_count)) {
+               const double acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double x = t_from + ((t_to - t_from) * seek_to);
+            vecSkew(matrix, x, 0);
+            break;
+         }
+
+         case AT::SKEW_Y: {
+            double t_from = 0, t_to = 0;
+
+            if (not values.empty()) {
+               LONG vi = F2T((values.size()-1) * seek);
+               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+
+               read_numseq(values[vi], { &t_from });
+               read_numseq(values[vi+1], { &t_to } );
+
+               const double mod = 1.0 / double(values.size() - 1);
+               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+            }
+            else if (not from.empty()) {
+               read_numseq(from, { &t_from });
+
+               if (not to.empty()) {
+                  read_numseq(to, { &t_to } );
+               }
+               else if (not by.empty()) {
+                  read_numseq(by, { &t_to } );
+                  t_to += t_from;
+               }
+               else break;
+            }
+            else if (not to.empty()) break; // SVG prohibits the use of a single 'to' value for transforms.
+            else if (not by.empty()) { // Placeholder; not correctly implemented
+               read_numseq(by, { &t_to } );
+               t_from = t_to;
+            }
+            else break;
+
+            const double t_offset = t_to;
+
+            if ((accumulate) and (repeat_count)) {
+               const double acc = t_offset * repeat_index;
+               t_from += acc;
+               t_to   += acc;
+            }
+
+            const double y = t_from + ((t_to - t_from) * seek_to);
+            vecSkew(matrix, 0, y);
+            break;
+         }
+
          default: break;
       }
    }
@@ -881,8 +1139,10 @@ void anim_transform::perform()
 // <animate attributeName="font-size" attributeType="CSS" begin="0s" dur="6s" fill="freeze" from="40" to="80"/>
 // <animate attributeName="fill" attributeType="CSS" begin="0s" dur="6s" fill="freeze" from="#00f" to="#070"/>
 
-void anim_value::perform()
+void anim_value::perform(extSVG &SVG)
 {
+   if ((end_time) and (!freeze)) return;
+
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
       // Determine the type of the attribute that we're targeting, then interpolate the value and set it.
@@ -900,59 +1160,102 @@ void anim_value::perform()
             break;
          }
 
+         case SVF_FILL_OPACITY: {
+            auto val = get_numeric_value(**vector, FID_FillOpacity);
+            vector->set(FID_FillOpacity, val);
+            break;
+         }
+
          case SVF_STROKE: {
             auto val = get_colour_value(**vector, FID_StrokeColour);
             vector->setArray(FID_StrokeColour, (float *)&val, 4);
             break;
          }
 
-         case SVF_OPACITY: {
-            auto val = get_numeric_value(**vector, FID_Opacity);
-            vector->set(FID_Opacity, val);
+         case SVF_STROKE_WIDTH:
+            vector->set(FID_StrokeWidth, get_numeric_value(**vector, FID_StrokeWidth));
             break;
-         }
 
-         case SVF_CX: {
-            auto val = get_dimension(**vector, FID_CX);
-            vector->set(FID_CX, val);
+         case SVF_OPACITY:
+            vector->set(FID_Opacity, get_numeric_value(**vector, FID_Opacity));
             break;
-         }
 
-         case SVF_CY: {
-            auto val = get_dimension(**vector, FID_CY);
-            vector->set(FID_CY, val);
+         case SVF_CX:
+            vector->set(FID_CX, get_dimension(**vector, FID_CX));
             break;
-         }
+
+         case SVF_CY:
+            vector->set(FID_CY, get_dimension(**vector, FID_CY));
+            break;
+                    
+         case SVF_X1:
+            vector->set(FID_X1, get_dimension(**vector, FID_X1));
+            break;
+
+         case SVF_Y1:
+            vector->set(FID_Y1, get_dimension(**vector, FID_Y1));
+            break;
+
+         case SVF_X2:
+            vector->set(FID_X2, get_dimension(**vector, FID_X2));
+            break;
+
+         case SVF_Y2:
+            vector->set(FID_Y2, get_dimension(**vector, FID_Y2));
+            break;
 
          case SVF_X: {
-            auto val = get_dimension(**vector, FID_X);
-            vector->set(FID_X, val);
+            if (vector->Class->ClassID IS ID_VECTORGROUP) {
+               // Special case: SVG groups don't have an (x,y) position, but can declare one in the form of a
+               // transform.  Refer to xtag_use() for a working example as to why.
+
+               VectorMatrix *m;
+               for (m=vector->Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
+
+               if (!m) {
+                  vecNewMatrix(*vector, &m, false);
+                  m->Tag = MTAG_SVG_TRANSFORM;
+               }
+
+               if (m) {
+                  m->TranslateX = get_dimension(**vector, FID_X);
+                  vecFlushMatrix(m);
+               }
+            }
+            else vector->set(FID_X, get_dimension(**vector, FID_X));
             break;
          }
 
          case SVF_Y: {
-            auto val = get_dimension(**vector, FID_Y);
-            vector->set(FID_Y, val);
+            if (vector->Class->ClassID IS ID_VECTORGROUP) {
+               VectorMatrix *m;
+               for (m=vector->Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
+
+               if (!m) {
+                  vecNewMatrix(*vector, &m, false);
+                  m->Tag = MTAG_SVG_TRANSFORM;
+               }
+
+               if (m) {
+                  m->TranslateY = get_dimension(**vector, FID_Y);
+                  vecFlushMatrix(m);
+               }
+            }
+            else vector->set(FID_Y, get_dimension(**vector, FID_Y));
             break;
          }
 
-         case SVF_WIDTH: {
-            auto val = get_dimension(**vector, FID_Width);
-            vector->set(FID_Width, val);
+         case SVF_WIDTH:
+            vector->set(FID_Width, get_dimension(**vector, FID_Width));
             break;
-         }
 
-         case SVF_HEIGHT: {
-            auto val = get_dimension(**vector, FID_Height);
-            vector->set(FID_Height, val);
+         case SVF_HEIGHT:
+            vector->set(FID_Height, get_dimension(**vector, FID_Height));
             break;
-         }
 
-         case SVF_VISIBILITY: {
-            auto val = get_string();
-            vector->set(FID_Visibility, val);
+         case SVF_VISIBILITY:
+            vector->set(FID_Visibility, get_string());
             break;
-         }
       }
    }
 }
@@ -961,21 +1264,26 @@ void anim_value::perform()
 
 static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
+   pf::Log log(__FUNCTION__);
+
    if (SVG->Animations.empty()) {
-      pf::Log log(__FUNCTION__);
       log.msg("All animations processed, timer suspended.");
       return ERR::Terminate;
    }
 
-   for (auto &record : SVG->Animations) {
-      std::visit([](auto &&anim) {
-         if (anim.end_time) return;
+   // All transform matrices need to be reset on each cycle.
 
+   for (auto &matrix : SVG->Animatrix) {
+      vecResetMatrix(matrix.second);
+   }
+
+   for (auto &record : SVG->Animations) {
+      std::visit([SVG](auto &&anim) {
          double current_time = double(PreciseTime()) / 1000000.0;
 
          if (not anim.started(current_time)) return;
          anim.next_frame(current_time);
-         anim.perform();
+         anim.perform(*SVG);
       }, record);
    }
 

@@ -120,9 +120,10 @@
     <method>
       <name>NewMatrix</name>
       <comment>Returns a VectorMatrix structure that allows transformations to be applied to the vector.</comment>
-      <prototype>ERR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform)</prototype>
+      <prototype>ERR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</prototype>
       <input>
         <param type="struct VectorMatrix **" name="Transform">A reference to the new transform structure is returned here.</param>
+        <param type="LONG" name="End">If true, the matrix priority is lowered by inserting it at the end of the transform list.</param>
       </input>
       <description>
 <p>Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating the transformation matrix is supported by functions in the Vector module, such as <function module="Vector">Scale</function> and <function module="Vector">Rotate</function>.</p>
@@ -252,7 +253,7 @@
         <param type="LONG" name="Transform">Set to TRUE if all transforms applicable to the vector should be applied to the path.</param>
       </input>
       <description>
-<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
 <p>The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
 <p>If the Callback returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
       </description>
@@ -800,6 +801,7 @@ Z: Close Path
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
     </struct>
 
   </structs>

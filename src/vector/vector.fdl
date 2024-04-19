@@ -346,7 +346,17 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     double ScaleY               # Matrix value D
     double TranslateX           # Matrix value E
     double TranslateY           # Matrix value F
+    int    Tag                  # An optional tag value defined by the client for matrix identification.
   ]])
+
+  // Pre-defined tags for VectorMatrix
+
+  hash("MTAG", "0x%s",
+     "ANIMATE-MOTION",
+     "ANIMATE-TRANSFORM",
+     "SCENE-GRAPH",
+     "USE-TRANSFORM",
+     "SVG-TRANSFORM")
 
   struct("FontMetrics", { comment="Font metrics, measured in pixels relative to the display" }, [[
     int Height       # Capitalised font height

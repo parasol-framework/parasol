@@ -37,19 +37,29 @@ namespace pf {
 
 template <class T = double> struct POINT { 
    T x, y;
+
+   constexpr POINT<T> & operator += (const POINT &Other) {
+      x += Other.x;
+      y += Other.y;
+      return *this;
+   }
 };
 
 template <class T = double> bool operator==(const POINT<T> &a, const POINT<T> &b) { 
    return (a.x == b.x) and (a.y == b.y);
 } 
 
-template <class T = double> T operator-(POINT<T> A, const POINT<T> &B) {
+template <class T = double> T operator-(const POINT<T> A, const POINT<T> &B) {
    if (A == B) return 0;
    double a = std::abs(B.x - A.x);
    double b = std::abs(B.y - A.y);
    if (a > b) std::swap(a, b);
    return T(b + 0.428 * a * a / b); // Error level of ~1.04%
    //return T(std::sqrt((a * a) + (b * b))); // Full accuracy
+}
+
+template <class T = double> POINT<T> operator * (const POINT<T> &lhs, const double &Multiplier) {
+   return POINT<T> { lhs.x * Multiplier, lhs.y * Multiplier };
 }
 
 //********************************************************************************************************************
@@ -429,7 +439,7 @@ inline FieldValue FileDescription(const std::string &Value) { return FieldValue(
 constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
 inline FieldValue FileHeader(const std::string &Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
 
-constexpr FieldValue FontSize(DOUBLE Value) { return FieldValue(FID_FontSize, Value); }
+constexpr FieldValue FontSize(double Value) { return FieldValue(FID_FontSize, Value); }
 constexpr FieldValue FontSize(LONG Value) { return FieldValue(FID_FontSize, Value); }
 constexpr FieldValue FontSize(CSTRING Value) { return FieldValue(FID_FontSize, Value); }
 inline FieldValue FontSize(const std::string &Value) { return FieldValue(FID_FontSize, Value.c_str()); }
@@ -452,7 +462,7 @@ constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Val
 constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
 inline FieldValue ButtonOrder(const std::string &Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
 
-constexpr FieldValue Point(DOUBLE Value) { return FieldValue(FID_Point, Value); }
+constexpr FieldValue Point(double Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(const std::string &Value) { return FieldValue(FID_Point, Value.c_str()); }
@@ -463,7 +473,7 @@ inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Point
 constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
 inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pretext, Value.c_str()); }
 
-constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
+constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
 constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
@@ -472,11 +482,11 @@ constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPix
 constexpr FieldValue BytesPerPixel(LONG Value) { return FieldValue(FID_BytesPerPixel, Value); }
 constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(Value)); }
 constexpr FieldValue ClassID(LONG Value) { return FieldValue(FID_ClassID, Value); }
-constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
+constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, LONG(Value)); }
 constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, LONG(Value)); }
-constexpr FieldValue DoubleClick(DOUBLE Value) { return FieldValue(FID_DoubleClick, Value); }
+constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
 constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
@@ -489,28 +499,28 @@ constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Valu
 constexpr FieldValue MatrixColumns(LONG Value) { return FieldValue(FID_MatrixColumns, Value); }
 constexpr FieldValue MatrixRows(LONG Value) { return FieldValue(FID_MatrixRows, Value); }
 constexpr FieldValue MaxHeight(LONG Value) { return FieldValue(FID_MaxHeight, Value); }
-constexpr FieldValue MaxSpeed(DOUBLE Value) { return FieldValue(FID_MaxSpeed, Value); }
+constexpr FieldValue MaxSpeed(double Value) { return FieldValue(FID_MaxSpeed, Value); }
 constexpr FieldValue MaxWidth(LONG Value) { return FieldValue(FID_MaxWidth, Value); }
 constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
-constexpr FieldValue Opacity(DOUBLE Value) { return FieldValue(FID_Opacity, Value); }
+constexpr FieldValue Opacity(double Value) { return FieldValue(FID_Opacity, Value); }
 constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
 constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
 constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, LONG(Value)); }
 constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
-constexpr FieldValue RefreshRate(DOUBLE Value) { return FieldValue(FID_RefreshRate, Value); }
+constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
 constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
 constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
-constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); }
-constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
+constexpr FieldValue Speed(double Value) { return FieldValue(FID_Speed, Value); }
+constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWidth, Value); }
 constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
-constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
 constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
 constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
-constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }
+constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
 

@@ -282,6 +282,7 @@
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
     </struct>
 
     <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">

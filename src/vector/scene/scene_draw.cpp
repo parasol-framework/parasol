@@ -74,7 +74,7 @@ public:
 // inheritable values that arise as part of the drawing process (transformation management being an obvious example).
 //
 // NOTE: This feature is not intended to manage inheritable features that cross-over with SVG.  For instance, fill
-// values are not inheritable.  Wherever it is possible to do so, inheritance should be managed by the client, with 
+// values are not inheritable.  Wherever it is possible to do so, inheritance should be managed by the client, with
 // the goal of building a scene graph that has static properties.
 
 class VectorState {
@@ -823,7 +823,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // applied in realtime.
 
                   if (!view->Fill[0].Pattern->Scene->Viewport->Matrices) {
-                     vecNewMatrix(view->Fill[0].Pattern->Scene->Viewport, NULL);
+                     vecNewMatrix(view->Fill[0].Pattern->Scene->Viewport, NULL, false);
                   }
 
                   // Use transforms for the purpose of placing the pattern correctly
@@ -859,7 +859,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   if ((view->FGFill) and (view->Fill[1].Pattern)) {
                      // Support for foreground fill patterns
                      if (!view->Fill[1].Pattern->Scene->Viewport->Matrices) {
-                        vecNewMatrix(view->Fill[1].Pattern->Scene->Viewport, NULL);
+                        vecNewMatrix(view->Fill[1].Pattern->Scene->Viewport, NULL, false);
                      }
 
                      auto &matrix = view->Fill[1].Pattern->Scene->Viewport->Matrices;

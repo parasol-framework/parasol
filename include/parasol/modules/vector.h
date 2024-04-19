@@ -558,7 +558,14 @@ struct VectorMatrix {
    DOUBLE ScaleY;                 // Matrix value D
    DOUBLE TranslateX;             // Matrix value E
    DOUBLE TranslateY;             // Matrix value F
+   LONG   Tag;                    // An optional tag value defined by the client for matrix identification.
 };
+
+#define MTAG_ANIMATE_MOTION 0x8b929127
+#define MTAG_ANIMATE_TRANSFORM 0x5374188d
+#define MTAG_SCENE_GRAPH 0xacc188f2
+#define MTAG_USE_TRANSFORM 0x35a3f7fb
+#define MTAG_SVG_TRANSFORM 0x3479679e
 
 struct FontMetrics {
    LONG Height;         // Capitalised font height
@@ -1570,7 +1577,7 @@ struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
 struct vecSubscribeKeyboard { FUNCTION * Callback;  };
 struct vecSubscribeFeedback { FM Mask; FUNCTION * Callback;  };
-struct vecNewMatrix { struct VectorMatrix * Transform;  };
+struct vecNewMatrix { struct VectorMatrix * Transform; LONG End;  };
 struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
 
 inline ERR vecPush(APTR Ob, LONG Position) noexcept {
@@ -1615,8 +1622,8 @@ inline ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) noexcept 
 
 #define vecDebug(obj) Action(MT_VecDebug,(obj),0)
 
-inline ERR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform) noexcept {
-   struct vecNewMatrix args = { (struct VectorMatrix *)0 };
+inline ERR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform, LONG End) noexcept {
+   struct vecNewMatrix args = { (struct VectorMatrix *)0, End };
    ERR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);

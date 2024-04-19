@@ -209,7 +209,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
       if (NewObject(ID_VECTORCLIP, &clip) IS ERR::Okay) {
          clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
 
-         if (!transform.empty()) parse_transform(clip, transform);
+         if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
 
          if (!units.empty()) {
             if (StrMatch("userSpaceOnUse", units) IS ERR::Okay) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
@@ -292,7 +292,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
             fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
             fl::Units(units));
 
-         if (!transform.empty()) parse_transform(clip, transform);
+         if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
 
          if (InitObject(clip) IS ERR::Okay) {
             svgState state(Self);
@@ -2310,7 +2310,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          }
 
          if ((!tx.empty()) or (!ty.empty())) {
-            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")");
+            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
          }
 
          if (group->init() != ERR::Okay) { FreeResource(group); return; }
@@ -2422,7 +2422,12 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
 
    for (auto find_anim=Tag.Children.begin(); find_anim != Tag.Children.end(); ) {
       if ((find_anim->isTag()) and (iequals("animate", find_anim->name()))) {
-         if (auto attrib = find_anim->attrib("attributeName")) {
+         if ((find_anim->attrib("href")) or (find_anim->attrib("xlink:href"))) {
+            // Ignore animation tags that specify a link.
+            find_anim++;
+            continue;
+         }
+         else if (auto attrib = find_anim->attrib("attributeName")) {
             for (auto &clone_to : Tag.Children) {
                if (clone_to.isTag() and (not iequals("animate", clone_to.name()))) {
                   if (!clone_to.attrib(*attrib)) {
@@ -2611,7 +2616,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
    Self->Animated = true;
 
-   auto &new_anim = Self->Animations.emplace_front(anim_transform { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_transform { Parent->UID });
    auto &anim = std::get<anim_transform>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2630,24 +2635,26 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
 
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
-// The ‘animate’ element is used to animate a single attribute or property over time. For example, to make a
+// The 'animate' element is used to animate a single attribute or property over time. For example, to make a
 // rectangle repeatedly fade away over 5 seconds:
+//
+// NOTE: Also see xtag_group() which duplicates <animate> elements for technical reasons.
 
 static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
-   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2657,12 +2664,12 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2673,7 +2680,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
 
-   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2683,12 +2690,12 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2700,7 +2707,7 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   auto &new_anim = Self->Animations.emplace_front(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2710,12 +2717,12 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -2726,7 +2733,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    Self->Animated = true;
    
-   auto &new_anim = Self->Animations.emplace_front(anim_motion { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_motion { Parent->UID });
    auto &anim = std::get<anim_motion>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2769,7 +2776,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
          case SVF_ORIGIN: break; // Officially serves no purpose.
 
          default:
-            set_anim_property(Self, anim, (objVector *)Parent, Tag, hash, value);
+            set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
@@ -2792,7 +2799,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if (!anim.is_valid()) Self->Animations.erase_after(Self->Animations.before_begin());
+   if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
 }
 
@@ -3395,7 +3402,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          else Vector->set(FID_Fill, StrValue);
          break;
 
-      case SVF_TRANSFORM: parse_transform(Vector, StrValue); break;
+      case SVF_TRANSFORM: parse_transform(Vector, StrValue, MTAG_SVG_TRANSFORM); break;
 
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;

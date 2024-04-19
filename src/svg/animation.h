@@ -41,6 +41,33 @@ enum class RST : char { // Restart
 
 //********************************************************************************************************************
 
+struct ROTATE {
+   double angle = 0, cx = 0, cy = 0;
+
+   constexpr ROTATE & operator += (const ROTATE &Other) {
+      angle += Other.angle;
+      cx += Other.cx;
+      cy += Other.cy;
+      return *this;
+   }
+
+   constexpr ROTATE & operator += (const DOUBLE &Angle) {
+      angle += Angle;
+      return *this;
+   }
+
+   constexpr ROTATE & operator *= (const DOUBLE &Angle) {
+      angle *= Angle;
+      return *this;
+   }
+};
+
+constexpr ROTATE operator * (const ROTATE &lhs, const DOUBLE &Num) {
+   return ROTATE { lhs.angle * Num, lhs.cx, lhs.cy };
+}
+
+//********************************************************************************************************************
+
 template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T> &B)
 {
    if (A == B) return 0;
@@ -70,6 +97,8 @@ public:
       SPLINE_POINTS points;
       spline_path(SPLINE_POINTS pPoints) : points(pPoints) { }
    };
+
+   // Variables
 
    std::vector<std::string> values; // Set of discrete values that override 'from', 'to', 'by'
    std::vector<double> timing;      // Key times.  Ignored if duration < 0
@@ -105,6 +134,8 @@ public:
    bool   freeze      = false;
    bool   accumulate  = false;
 
+   // Functionality
+
    anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
 
    double get_total_dist();
@@ -134,7 +165,8 @@ public:
       }
    }
 
-   virtual void perform() = 0;
+   virtual void perform(class extSVG &) = 0;
+
    virtual bool is_valid() {
       if (!values.empty()) return true;
       if ((!to.empty()) or (!by.empty())) return true;
@@ -147,8 +179,21 @@ public:
 class anim_transform : public anim_base {
 public:
    AT type;
+
    anim_transform(OBJECTID pTarget) : anim_base(pTarget) { }
-   void perform();
+
+   void perform(extSVG &);
+
+   std::string type_name() {
+      switch (type) {
+         case AT::TRANSLATE: return "translate";
+         case AT::SCALE: return "scale";
+         case AT::ROTATE: return "rotate";
+         case AT::SKEW_X: return "skewX";
+         case AT::SKEW_Y: return "skewY";
+         default: return "?";
+      }
+   }
 };
 
 //********************************************************************************************************************
@@ -167,7 +212,7 @@ public:
       calc_mode = CMODE::PACED;
    }
 
-   void perform();
+   void perform(extSVG &);
    void precalc_angles();
    double get_total_dist();
 
@@ -185,7 +230,7 @@ public:
 class anim_value : public anim_base {
 public:
    anim_value(OBJECTID pTarget) : anim_base(pTarget) { }
-   void perform();
+   void perform(extSVG &);
 };
 
 //********************************************************************************************************************

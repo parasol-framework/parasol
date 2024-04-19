@@ -621,6 +621,7 @@ transform is no longer required before then, it can be manually removed with ~Ve
 
 -INPUT-
 &resource(*VectorMatrix) Transform: A reference to the new transform structure is returned here.
+int End: If true, the matrix priority is lowered by inserting it at the end of the transform list.
 
 -ERRORS-
 Okay:
@@ -634,10 +635,8 @@ static ERR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
 
    VectorMatrix *transform;
    if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &transform) IS ERR::Okay) {
-      // Insert transform at the start of the list.
 
       transform->Vector = Self;
-      transform->Next   = Self->Matrices;
       transform->ScaleX = 1.0;
       transform->ScaleY = 1.0;
       transform->ShearX = 0;
@@ -645,7 +644,17 @@ static ERR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
       transform->TranslateX = 0;
       transform->TranslateY = 0;
 
-      Self->Matrices = transform;
+      if ((Args->End) and (Self->Matrices)) {
+         transform->Next   = NULL;
+         VectorMatrix *last = Self->Matrices;
+         while (last->Next) last = last->Next;
+         last->Next = transform;
+      }
+      else { // Insert transform at the start of the list.
+         transform->Next = Self->Matrices;
+         Self->Matrices = transform;
+      }
+
       Args->Transform = transform;
 
       mark_dirty(Self, RC::TRANSFORM);
@@ -981,7 +990,7 @@ static ERR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard
 Trace: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path
-from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is 
+from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback function is
 `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
 
 The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
