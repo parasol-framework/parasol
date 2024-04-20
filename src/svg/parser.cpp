@@ -1464,8 +1464,8 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_PATTERNCONTENTUNITS:
                // SVG: "This attribute has no effect if viewbox is specified"
-               // userSpaceOnUse: The user coordinate system for the contents of the ‘pattern’ element is the coordinate system that results from taking the current user coordinate system in place at the time when the ‘pattern’ element is referenced (i.e., the user coordinate system for the element referencing the ‘pattern’ element via a ‘fill’ or ‘stroke’ property) and then applying the transform specified by attribute ‘patternTransform’.
-               // objectBoundingBox: The user coordinate system for the contents of the ‘pattern’ element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute ‘patternTransform’.
+               // userSpaceOnUse: The user coordinate system for the contents of the 'pattern' element is the coordinate system that results from taking the current user coordinate system in place at the time when the 'pattern' element is referenced (i.e., the user coordinate system for the element referencing the 'pattern' element via a 'fill' or 'stroke' property) and then applying the transform specified by attribute 'patternTransform'.
+               // objectBoundingBox: The user coordinate system for the contents of the 'pattern' element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute 'patternTransform'.
                // The default is userSpaceOnUse
 
                if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) pattern->ContentUnits = VUNIT::USERSPACE;
@@ -1764,7 +1764,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
          fl::Units(VUNIT::BOUNDING_BOX),
          fl::SpreadMethod(VSPREAD::PAD));
 
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -2269,11 +2269,11 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       process_children(Self, state, *tagref, viewport);
    }
    else {
-      // W3C: In the generated content, the ‘use’ will be replaced by ‘g’, where all attributes from the ‘use’ element
-      // except for ‘x’, ‘y’, ‘width’, ‘height’ and ‘xlink:href’ are transferred to the generated ‘g’ element. An
-      // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the ‘transform’
-      // attribute on the generated ‘g’, where x and y represent the values of the ‘x’ and ‘y’ attributes on the
-      // ‘use’ element. The referenced object and its contents are deep-cloned into the generated tree.
+      // W3C: In the generated content, the 'use' will be replaced by 'g', where all attributes from the 'use' element
+      // except for 'x', 'y', 'width', 'height' and 'xlink:href' are transferred to the generated 'g' element. An
+      // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the 'transform'
+      // attribute on the generated 'g', where x and y represent the values of the 'x' and 'y' attributes on the
+      // 'use' element. The referenced object and its contents are deep-cloned into the generated tree.
 
       objVector *group;
       if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
@@ -2282,7 +2282,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
          state.applyTag(Tag); // Apply supported attribute values to the current state.
 
-         // Apply 'use' attributes to the group.
+         // Apply 'use' attributes to the group, making a special case for 'x' and 'y'.
 
          FUNIT tx, ty;
          for (LONG t=1; t < std::ssize(Tag.Attribs); t++) {
@@ -2766,7 +2766,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             // Post-multiplies a supplemental transformation matrix onto the CTM of the target element to apply a 
             // rotation transformation about the origin of the current user coordinate system. The rotation 
             // transformation is applied after the supplemental translation transformation that is computed due to 
-            // the ‘path’ attribute.
+            // the 'path' attribute.
             //
             // auto: The object is rotated over time by the angle of the direction (i.e., directional tangent 
             // vector) of the motion path.

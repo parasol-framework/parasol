@@ -531,7 +531,6 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG H
 
          // Read one or more timing offsets as a series
          
-         LONG v;
          if (Value.find(';') != std::string::npos) {
             for (unsigned v=0; v < Value.size(); ) {
                 while ((Value[v]) and (Value[v] <= 0x20)) v++;
