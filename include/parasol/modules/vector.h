@@ -2224,6 +2224,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_BURN 0x7c94cd7c
 #define SVF_BUTT 0x7c94cdc4
 #define SVF_CIRCLE 0xf679fe97
+#define SVF_CLIP 0x7c95326d
 #define SVF_CLIP_PATH 0x455423a7
 #define SVF_CLIP_RULE 0x45559072
 #define SVF_CLIP_RULE 0x45559072
@@ -2239,12 +2240,10 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_COLOURISE 0xf3cb4eda
 #define SVF_CONTOURGRADIENT 0x82a83fdd
 #define SVF_CONTRAST 0x42b3b373
+#define SVF_CROSSORIGIN 0x8e204b17
 #define SVF_CX 0x00597780
 #define SVF_CY 0x00597781
 #define SVF_D 0x0002b609
-#define SVF_DARKEN 0xf83e845a
-#define SVF_DECAY 0x0f49a6eb
-#define SVF_DEFS 0x7c95a0a7
 #define SVF_DESATURATE 0x226696d7
 #define SVF_DESC 0x7c95a244
 #define SVF_DEUTERANOMALY 0xe42f689f
@@ -2429,8 +2428,6 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_TRANSITION 0x96486f70
 #define SVF_TRITANOMALY 0x2e7de3f9
 #define SVF_TRITANOPIA 0x9c8f8140
-#define SVF_VERTEX_SCALING 0x2363f691
-#define SVF_VERTICES 0xd31fda6a
 #define SVF_X 0x0002b61d
 #define SVF_X1 0x005979ee
 #define SVF_X2 0x005979ef
@@ -2640,6 +2637,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_USE 0x0b88b3d2
 #define SVF_VALUES 0x22383ff5
 #define SVF_VERSION 0x73006c4b
+#define SVF_VERTEX_SCALING 0x2363f691
+#define SVF_VERTICES 0xd31fda6a
 #define SVF_VIEW_HEIGHT 0x56219666
 #define SVF_VIEW_WIDTH 0x497f2d2d
 #define SVF_VIEW_X 0x22c52ea5
@@ -2653,12 +2652,14 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_WIDER 0x10a3aec0
 #define SVF_WIDTH 0x10a3b0a5
 #define SVF_WORD_SPACING 0x62976533
-#define SVF_YELLOW 0x297ff6e1
-#define SVF_YELLOWGREEN 0xda4a85b2
 
 #define SVF_APPEND_PATH 0x64cbc017
 #define SVF_JOIN_PATH 0x34d6680f
 #define SVF_AZIMUTH 0x52cfd287
+#define SVF_DARKEN 0xf83e845a
+#define SVF_DECAY 0x0f49a6eb
+#define SVF_DECODING 0x13246362
+#define SVF_DEFS 0x7c95a0a7
 #define SVF_ELEVATION 0x0c12538c
 #define SVF_FEFUNCR 0xa284a6ae
 #define SVF_FEFUNCG 0xa284a6a3
@@ -2700,6 +2701,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_KEYTIMES 0xbc9ffbb0
 #define SVF_KEYSPLINES 0x27d7988c
 #define SVF_BY 0x00597760
+#define SVF_YELLOW 0x297ff6e1
+#define SVF_YELLOWGREEN 0xda4a85b2
 
 
 INLINE ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {

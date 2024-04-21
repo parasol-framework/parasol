@@ -107,7 +107,20 @@ animation, the colors goes from white to blue (the same blue color used for all 
       <animateMotion path="M 0 0 l 0 150" begin="0" dur="3" fill="freeze"/>
       <animateTransform attributeName="transform" type="scale" from="1 1" to="1 2" begin="0" dur="3" additive="sum" fill="freeze"/>
     </use>
+<!--
+The above would expand to the following in order to be valid.  Notice how the animateMotion and animateTransform are given their own group
+to be inserted at a level that is above the <use> tag!
 
+  <g>
+    <g transform="translate(60 -10)">
+      <polygon id="polygonID" fill="green" stroke="black" points="240,20 240,40 260,40 260,20" stroke-width="2">
+        <animate attributeName="fill" from="white" to="rgb(16, 93, 140)" begin="0" dur="3" fill="freeze"/>
+      </polygon>
+    </g>
+    <animateMotion path="M 0 0 l 0 150" begin="0" dur="3" fill="freeze"/>
+    <animateTransform attributeName="transform" type="scale" from="1 1" to="1 2" begin="0" dur="3" additive="sum" fill="freeze"/>
+  </g>
+-->
     <use xlink:href="#imageID">
       <animateTransform attributeName="transform" type="scale" from="1 .25" to="1 1" begin="0" dur="3" additive="sum" fill="freeze"/>
     </use>

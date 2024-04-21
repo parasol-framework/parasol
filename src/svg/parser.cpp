@@ -1777,8 +1777,11 @@ static void def_image(extSVG *Self, XMLTag &Tag)
 
             case SVF_XLINK_HREF: src = val; break;
             case SVF_ID:     id = val; break;
-            case SVF_X:      FUNIT(FID_X, val).set(image); break;
-            case SVF_Y:      FUNIT(FID_Y, val).set(image); break;
+            // Applying (x,y) values as a texture offset here appears to be a mistake because <use> will deep-clone 
+            // the values also.  SVG documentation is silent on the validity of (x,y) values when an image
+            // is in the <defs> area, so a W3C test may be needed to settle the matter.
+            case SVF_X:      /*FUNIT(FID_X, val).set(image);*/ break;
+            case SVF_Y:      /*FUNIT(FID_Y, val).set(image);*/ break;
             case SVF_WIDTH:  width = FUNIT(val); break;
             case SVF_HEIGHT: height = FUNIT(val); break;
             default: {
@@ -1829,33 +1832,29 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
    FUNIT x, y, width, height;
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
-      auto &name = Tag.Attribs[a].Name;
       auto &value = Tag.Attribs[a].Value;
-      if ((StrMatch("xlink:href", name) IS ERR::Okay) or (StrMatch("href", name) IS ERR::Okay)) {
-         src = value;
+      switch (StrHash(Tag.Attribs[a].Name)) {
+         case SVF_XLINK_HREF:
+         case SVF_HREF:
+            src = value;
+            break;
+         case SVF_ID: id = value; break;
+         case SVF_TRANSFORM: transform = value; break;
+         case SVF_PRESERVEASPECTRATIO: ratio = parse_aspect_ratio(value); break;
+         case SVF_X: x = FUNIT(FID_X, value); break;
+         case SVF_Y: y = FUNIT(FID_Y, value); break;
+         case SVF_WIDTH:
+            width = FUNIT(FID_Width, value);
+            if (!width.valid_size()) return log.warning(ERR::InvalidDimension);
+            break;
+         case SVF_HEIGHT:
+            height = FUNIT(FID_Height, value);
+            if (!height.valid_size()) return log.warning(ERR::InvalidDimension);
+            break;
+         case SVF_CROSSORIGIN: break; // Defines the value of the credentials flag for CORS requests.
+         case SVF_DECODING: break; // Hint as to whether image decoding is synchronous or asynchronous
+         case SVF_CLIP: break; // Deprecated from SVG; allows a rect() to be declared that functions as a clip-path
       }
-      else if (StrMatch("preserveAspectRatio", name) IS ERR::Okay) {
-         ratio = parse_aspect_ratio(value);
-      }
-      else if (StrMatch("x", name) IS ERR::Okay) {
-         x = FUNIT(FID_X, value);
-      }
-      else if (StrMatch("y", name) IS ERR::Okay) {
-         y = FUNIT(FID_Y, value);
-      }
-      else if (StrMatch("width", name) IS ERR::Okay) {
-         width = FUNIT(FID_Width, value);
-         if (!width.valid_size()) return log.warning(ERR::InvalidDimension);
-      }
-      else if (StrMatch("height", name) IS ERR::Okay) {
-         height = FUNIT(FID_Height, value);
-         if (!height.valid_size()) return log.warning(ERR::InvalidDimension);
-      }
-      else if (StrMatch("id", name) IS ERR::Okay) id = value;
-      else if (StrMatch("transform", name) IS ERR::Okay) transform = value;
-      else if (StrMatch("crossorigin", name) IS ERR::Okay); // Defines the value of the credentials flag for CORS requests.
-      else if (StrMatch("decoding", name) IS ERR::Okay); // Hint as to whether image decoding is synchronous or asynchronous
-      else if (StrMatch("clip", name) IS ERR::Okay); // Deprecated from SVG; allows a rect() to be declared that functions as a clip-path
    }
 
    if (src.empty()) return ERR::FieldNotSet;
