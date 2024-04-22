@@ -2471,14 +2471,7 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
       else find_anim++;
    }
 
-   // Process child tags
-
-   objVector *sibling = NULL;
-   for (auto &child : Tag.Children) {
-      if (child.isTag()) {
-         xtag_default(Self, state, child, group, sibling);
-      }
-   }
+   process_children(Self, state, Tag, group);
 
    if (group->init() IS ERR::Okay) Vector = group;
    else FreeResource(group);
@@ -2644,8 +2637,6 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
-   Self->Animated = true;
-
    auto &new_anim = Self->Animations.emplace_back(anim_transform { Parent->UID });
    auto &anim = std::get<anim_transform>(new_anim);
 
@@ -2682,8 +2673,6 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
@@ -2698,6 +2687,8 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
       }
    }
+   
+   anim.set_orig_value();
 
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
@@ -2708,8 +2699,6 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
@@ -2725,16 +2714,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       }
    }
 
-   if ((!anim.freeze) and (!anim.target_attrib.empty())) {
-      pf::ScopedObjectLock<objVector> obj(anim.target_vector);
-      if (obj.granted()) {
-         char buffer[400];
-         if (GetFieldVariable(*obj, anim.target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
-            anim.target_attrib_orig.assign(buffer);
-         }
-      }
-   }
-
+   anim.set_orig_value();
    anim.calc_mode = CMODE::DISCRETE; // Disables interpolation
 
    if (!anim.is_valid()) Self->Animations.pop_back();
@@ -2747,8 +2727,6 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-   
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
@@ -2773,8 +2751,6 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-   
    auto &new_anim = Self->Animations.emplace_back(anim_motion { Parent->UID });
    auto &anim = std::get<anim_motion>(new_anim);
 

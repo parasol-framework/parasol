@@ -3,6 +3,31 @@
 
 //********************************************************************************************************************
 
+void anim_base::set_orig_value()
+{
+   if ((freeze) or (target_attrib.empty())) return;
+
+   pf::ScopedObjectLock<objVector> obj(target_vector);
+   if (obj.granted()) {
+      switch(StrHash(target_attrib)) {
+         case SVF_DISPLAY:
+            if (obj->Visibility IS VIS::HIDDEN) target_attrib_orig = "none";
+            else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
+            else if (obj->Visibility IS VIS::VISIBLE) target_attrib_orig = "inline";
+            break;
+
+         default: {
+            char buffer[400];
+            if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
+               target_attrib_orig.assign(buffer);
+            }
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
+
 double anim_motion::get_total_dist()
 {
    if (total_dist != 0) return total_dist;
@@ -163,6 +188,8 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
 
 std::string anim_base::get_string()
 {
+   if ((seek >= 1.0) and (!freeze)) return target_attrib_orig;
+
    if (not to.empty()) return to;
    else return "";
 }

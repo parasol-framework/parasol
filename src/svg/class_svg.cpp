@@ -42,7 +42,7 @@ The client can hook into the animation cycle by setting the #FrameCallback with 
 
 static ERR SVG_Activate(extSVG *Self, APTR Void)
 {
-   if (Self->Animated) {
+   if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
          SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
          SubscribeAction(Self->Scene, AC_Free, C_FUNCTION(notify_free_scene));

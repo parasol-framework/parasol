@@ -146,6 +146,7 @@ public:
    FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
    bool next_frame(double);
+   void set_orig_value();
 
    void activate(void) { 
       // Reset all the variables that control time management and the animation will start from scratch.
