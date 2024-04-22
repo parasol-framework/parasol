@@ -2334,7 +2334,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
             parse_transform(subgroup, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
          }
 
-         if (group->init() IS ERR::Okay) {
+         if ((group IS subgroup) or (group->init() IS ERR::Okay)) {
             if (subgroup->init() IS ERR::Okay) { 
                // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
                log.branch("Duplicating tags at %s", ref.c_str());
