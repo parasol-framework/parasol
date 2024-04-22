@@ -26,30 +26,39 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
    auto view_height = get_parent_height(Vector);
 
    if ((Vector->Points) and (Vector->TotalPoints >= 2)) {
-      DOUBLE x = Vector->Points[0].X;
-      DOUBLE y = Vector->Points[0].Y;
-      if (Vector->Points[0].XScaled) x *= view_width;
-      if (Vector->Points[0].YScaled) y *= view_height;
-      Path.move_to(x, y);
+      pf::POINT<double> p = { Vector->Points[0].X, Vector->Points[0].Y };
+      if (Vector->Points[0].XScaled) p.x *= view_width;
+      if (Vector->Points[0].YScaled) p.y *= view_height;
+      Path.move_to(p.x, p.y);
 
-      DOUBLE min_x = x, max_x = x, min_y = y, max_y = y;
+      auto min = p; // Record min and max for the boundary.
+      auto max = p;
+      auto last = p;
 
       for (LONG i=1; i < Vector->TotalPoints; i++) {
-         x = Vector->Points[i].X;
-         y = Vector->Points[i].Y;
-         if (Vector->Points[i].XScaled) x *= view_width;
-         if (Vector->Points[i].YScaled) y *= view_height;
+         p.x = Vector->Points[i].X;
+         p.y = Vector->Points[i].Y;
+         if (Vector->Points[i].XScaled) p.x *= view_width;
+         if (Vector->Points[i].YScaled) p.y *= view_height;
 
-         if (x < min_x) min_x = x;
-         if (y < min_y) min_y = y;
-         if (x > max_x) max_x = x;
-         if (y > max_y) max_y = y;
-         Path.line_to(x, y);
+         if (p.x < min.x) min.x = p.x;
+         if (p.y < min.y) min.y = p.y;
+         if (p.x > max.x) max.x = p.x;
+         if (p.y > max.y) max.y = p.y;
+
+         // A quirk of AGG is that it won't draw a line if the start and end points are equal.  This might
+         // seem reasonable, but it has side-effects such as stroke end-caps not being drawn at all.  For the
+         // time being we can avoid this problem by making a slight adjustment so that the points don't match.
+
+         if (p == last) p.x += 0.000001;
+
+         Path.line_to(p.x, p.y);
+         last = p;
       }
 
       if ((Vector->TotalPoints > 2) and (Vector->Closed)) Path.close_polygon();
 
-      Vector->Bounds = { min_x, min_y, max_x, max_y };
+      Vector->Bounds = { min.x, min.y, max.x, max.y };
    }
    else Vector->Bounds = { 0, 0, 0, 0 };
 }

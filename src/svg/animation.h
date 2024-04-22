@@ -107,12 +107,13 @@ public:
    std::string from;                // Start from this value. Ignored if 'values' is defined.
    std::string to, by;              // Note that 'to' and 'by' are mutually exclusive, with 'to' as the preference.
    std::string target_attrib;       // Name of the target attribute affected by the From and To values.
+   std::string target_attrib_orig;  // Original value of the target attribute (if not freezing)
    std::string id;                  // Identifier for the animation
    std::vector<class anim_base *> start_on_begin;
    std::vector<class anim_base *> start_on_end;
    std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
-   struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
    std::vector<spline_path> spline_paths;
+   std::vector<double> begin_series; // List of valid start times for the animation
    double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
    double repeat_duration = 0; // The animation will be allowed to repeat for up to the number of seconds indicated.  The time includes the initial loop.
    double min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
@@ -144,7 +145,8 @@ public:
    std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
    bool started(double);
-   void next_frame(double);
+   bool next_frame(double);
+   void set_orig_value();
 
    void activate(void) { 
       // Reset all the variables that control time management and the animation will start from scratch.
@@ -155,6 +157,18 @@ public:
    }
 
    void stop(double Time) {
+      if (!begin_series.empty()) {
+         // Check if there's a serialised begin offset following the one that's completed.
+         LONG i;
+         for (i=0; i < std::ssize(begin_series)-1; i++) {
+            if (begin_offset IS begin_series[i]) {
+               begin_offset = begin_series[i+1];
+               start_time = 0;
+               return;
+            }
+         }
+      }
+
       end_time = Time;
       seek = 1.0; // Necessary in case the seek range calculation has overflowed
 
@@ -178,6 +192,7 @@ public:
 
 class anim_transform : public anim_base {
 public:
+   VectorMatrix matrix = { .Vector = NULL }; // Exclusive transform matrix for animation.
    AT type;
 
    anim_transform(OBJECTID pTarget) : anim_base(pTarget) { }
@@ -203,6 +218,7 @@ public:
    ART auto_rotate = ART::NIL; // Inline rotation along the path
    double rotate = 0; // Fixed angle rotation
    objVector *mpath = NULL; // External vector path (untracked)
+   VectorMatrix *matrix = NULL;
    pf::GuardedObject<objVector> path; // Client provided path sequence
    std::vector<pf::POINT<float>> points;
    std::vector<float> angles; // Precalc'd angles for rotation along paths

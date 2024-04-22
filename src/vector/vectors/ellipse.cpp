@@ -76,6 +76,9 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
 #endif
 
    Vector->Bounds = { cx - rx, cy - ry, cx + rx, cy + ry };
+
+   if ((rx <= 0) or (ry <= 0)) Vector->ValidState = false;
+   else Vector->ValidState = true;
 }
 
 /*********************************************************************************************************************

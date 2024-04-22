@@ -64,6 +64,11 @@ struct svgID { // All elements using the 'id' attribute will be registered with 
    svgID() { TagIndex = -1; }
 };
 
+struct svgAnimState {
+   VectorMatrix *matrix = NULL;
+   std::vector<class anim_transform *> transforms;
+};
+
 #include <parasol/modules/svg.h>
 
 //********************************************************************************************************************
@@ -80,12 +85,11 @@ class extSVG : public objSVG {
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::list<std::variant<anim_transform, anim_motion, anim_value>> Animations; // NB: Pointer stability is a container requirement
-   std::map<OBJECTID, VectorMatrix *> Animatrix; // For animated transforms, a vector may have one matrix only.
+   std::map<OBJECTID, svgAnimState> Animatrix; // For animated transforms, a vector may have one matrix only.
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    TIMER AnimationTimer;
    WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
-   bool  Animated;
    bool  PreserveWS; // Preserve white-space
 };
 

@@ -76,6 +76,13 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
    inline bool isContent() const { return Attribs[0].Name.empty(); }
    inline bool isTag() const { return !Attribs[0].Name.empty(); }
 
+   inline bool hasChildTags() const { 
+      for (auto &scan : Children) {
+         if (!scan.Attribs[0].Name.empty()) return true;
+      }
+      return false;
+   }
+
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
          if (StrMatch(Attribs[a].Name, Name) IS ERR::Okay) return &Attribs[a].Value;

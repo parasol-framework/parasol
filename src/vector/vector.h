@@ -401,15 +401,16 @@ class extVector : public objVector {
    VFR    FillRule;
    VFR    ClipRule;
    RC     Dirty;
-   UBYTE  TabOrder;
-   UBYTE  EnableBkgd:1;
-   UBYTE  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
-   UBYTE  ButtonLock:1;
-   UBYTE  ScaledStrokeWidth:1;
-   UBYTE  DisableHitTesting:1;
-   UBYTE  ResizeSubscription:1;
-   UBYTE  FGFill:1;
-   UBYTE  Stroked:1;
+   UWORD  TabOrder;
+   UWORD  EnableBkgd:1;
+   UWORD  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
+   UWORD  ButtonLock:1;
+   UWORD  ScaledStrokeWidth:1;
+   UWORD  DisableHitTesting:1;
+   UWORD  ResizeSubscription:1;
+   UWORD  FGFill:1;
+   UWORD  Stroked:1;
+   UWORD  ValidState:1;         // Can be set to false during path generation if the shape is invalid
    agg::line_join_e  LineJoin;
    agg::line_cap_e   LineCap;
    agg::inner_join_e InnerJoin;

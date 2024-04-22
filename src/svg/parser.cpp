@@ -130,6 +130,44 @@ static void process_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTP
 }
 
 //********************************************************************************************************************
+// Process a restricted set of children for shape objects.
+
+static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Vector)
+{
+   pf::Log log;
+
+   for (auto &child : Tag.Children) {
+      if (!child.isTag()) continue;
+
+      switch(StrHash(child.name())) {
+         case SVF_ANIMATE:          xtag_animate(Self, child, Vector); break;
+         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, Vector); break;
+         case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, Vector); break;
+         case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, Vector); break;
+         case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
+         case SVF_SET:              xtag_set(Self, child, Vector); break;
+         case SVF_TEXTPATH:
+            if (Vector->Class->ClassID IS ID_VECTORTEXT) {
+               if (!child.Children.empty()) {
+                  auto buffer = child.getContent();
+                  if (!buffer.empty()) {
+                     pf::ltrim(buffer);
+                     Vector->set(FID_String, buffer);
+                  }
+                  else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
+               }
+
+               xtag_morph(Self, child, Vector);
+            }
+            break;
+         default:
+            log.warning("Failed to interpret vector child element <%s/> @ line %d", child.name(), child.LineNo);
+            break;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
 {
@@ -1464,8 +1502,8 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_PATTERNCONTENTUNITS:
                // SVG: "This attribute has no effect if viewbox is specified"
-               // userSpaceOnUse: The user coordinate system for the contents of the ‘pattern’ element is the coordinate system that results from taking the current user coordinate system in place at the time when the ‘pattern’ element is referenced (i.e., the user coordinate system for the element referencing the ‘pattern’ element via a ‘fill’ or ‘stroke’ property) and then applying the transform specified by attribute ‘patternTransform’.
-               // objectBoundingBox: The user coordinate system for the contents of the ‘pattern’ element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute ‘patternTransform’.
+               // userSpaceOnUse: The user coordinate system for the contents of the 'pattern' element is the coordinate system that results from taking the current user coordinate system in place at the time when the 'pattern' element is referenced (i.e., the user coordinate system for the element referencing the 'pattern' element via a 'fill' or 'stroke' property) and then applying the transform specified by attribute 'patternTransform'.
+               // objectBoundingBox: The user coordinate system for the contents of the 'pattern' element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute 'patternTransform'.
                // The default is userSpaceOnUse
 
                if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) pattern->ContentUnits = VUNIT::USERSPACE;
@@ -1548,38 +1586,7 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
       process_attrib(Self, Tag, State, vector);
 
       if (vector->init() IS ERR::Okay) {
-         // Process child tags, if any
-
-         for (auto &child : Tag.Children) {
-            if (child.isTag()) {
-               switch(StrHash(child.name())) {
-                  case SVF_ANIMATE:          xtag_animate(Self, child, vector); break;
-                  case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, vector); break;
-                  case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, vector); break;
-                  case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, vector); break;
-                  case SVF_PARASOL_MORPH:    xtag_morph(Self, child, vector); break;
-                  case SVF_SET:              xtag_set(Self, child, vector); break;
-                  case SVF_TEXTPATH:
-                     if (VectorID IS ID_VECTORTEXT) {
-                        if (!child.Children.empty()) {
-                           auto buffer = child.getContent();
-                           if (!buffer.empty()) {
-                              pf::ltrim(buffer);
-                              vector->set(FID_String, buffer);
-                           }
-                           else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
-                        }
-
-                        xtag_morph(Self, child, vector);
-                     }
-                     break;
-                  default:
-                     log.warning("Failed to interpret vector child element <%s/> @ line %d", child.name(), child.LineNo);
-                     break;
-               }
-            }
-         }
-
+         process_shape_children(Self, State, Tag, vector);
          Result = vector;
          return error;
       }
@@ -1764,7 +1771,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
          fl::Units(VUNIT::BOUNDING_BOX),
          fl::SpreadMethod(VSPREAD::PAD));
 
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -1777,8 +1784,11 @@ static void def_image(extSVG *Self, XMLTag &Tag)
 
             case SVF_XLINK_HREF: src = val; break;
             case SVF_ID:     id = val; break;
-            case SVF_X:      FUNIT(FID_X, val).set(image); break;
-            case SVF_Y:      FUNIT(FID_Y, val).set(image); break;
+            // Applying (x,y) values as a texture offset here appears to be a mistake because <use> will deep-clone 
+            // the values also.  SVG documentation is silent on the validity of (x,y) values when an image
+            // is in the <defs> area, so a W3C test may be needed to settle the matter.
+            case SVF_X:      /*FUNIT(FID_X, val).set(image);*/ break;
+            case SVF_Y:      /*FUNIT(FID_Y, val).set(image);*/ break;
             case SVF_WIDTH:  width = FUNIT(val); break;
             case SVF_HEIGHT: height = FUNIT(val); break;
             default: {
@@ -1829,33 +1839,29 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
    FUNIT x, y, width, height;
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
-      auto &name = Tag.Attribs[a].Name;
       auto &value = Tag.Attribs[a].Value;
-      if ((StrMatch("xlink:href", name) IS ERR::Okay) or (StrMatch("href", name) IS ERR::Okay)) {
-         src = value;
+      switch (StrHash(Tag.Attribs[a].Name)) {
+         case SVF_XLINK_HREF:
+         case SVF_HREF:
+            src = value;
+            break;
+         case SVF_ID: id = value; break;
+         case SVF_TRANSFORM: transform = value; break;
+         case SVF_PRESERVEASPECTRATIO: ratio = parse_aspect_ratio(value); break;
+         case SVF_X: x = FUNIT(FID_X, value); break;
+         case SVF_Y: y = FUNIT(FID_Y, value); break;
+         case SVF_WIDTH:
+            width = FUNIT(FID_Width, value);
+            if (!width.valid_size()) return log.warning(ERR::InvalidDimension);
+            break;
+         case SVF_HEIGHT:
+            height = FUNIT(FID_Height, value);
+            if (!height.valid_size()) return log.warning(ERR::InvalidDimension);
+            break;
+         case SVF_CROSSORIGIN: break; // Defines the value of the credentials flag for CORS requests.
+         case SVF_DECODING: break; // Hint as to whether image decoding is synchronous or asynchronous
+         case SVF_CLIP: break; // Deprecated from SVG; allows a rect() to be declared that functions as a clip-path
       }
-      else if (StrMatch("preserveAspectRatio", name) IS ERR::Okay) {
-         ratio = parse_aspect_ratio(value);
-      }
-      else if (StrMatch("x", name) IS ERR::Okay) {
-         x = FUNIT(FID_X, value);
-      }
-      else if (StrMatch("y", name) IS ERR::Okay) {
-         y = FUNIT(FID_Y, value);
-      }
-      else if (StrMatch("width", name) IS ERR::Okay) {
-         width = FUNIT(FID_Width, value);
-         if (!width.valid_size()) return log.warning(ERR::InvalidDimension);
-      }
-      else if (StrMatch("height", name) IS ERR::Okay) {
-         height = FUNIT(FID_Height, value);
-         if (!height.valid_size()) return log.warning(ERR::InvalidDimension);
-      }
-      else if (StrMatch("id", name) IS ERR::Okay) id = value;
-      else if (StrMatch("transform", name) IS ERR::Okay) transform = value;
-      else if (StrMatch("crossorigin", name) IS ERR::Okay); // Defines the value of the credentials flag for CORS requests.
-      else if (StrMatch("decoding", name) IS ERR::Okay); // Hint as to whether image decoding is synchronous or asynchronous
-      else if (StrMatch("clip", name) IS ERR::Okay); // Deprecated from SVG; allows a rect() to be declared that functions as a clip-path
    }
 
    if (src.empty()) return ERR::FieldNotSet;
@@ -1913,6 +1919,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       Vector->set(FID_Fill, "url(#" + id + ")");
 
       if (Vector->init() IS ERR::Okay) {
+         process_shape_children(Self, State, Tag, Vector);
          return ERR::Okay;
       }
       else {
@@ -2269,20 +2276,34 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       process_children(Self, state, *tagref, viewport);
    }
    else {
-      // W3C: In the generated content, the ‘use’ will be replaced by ‘g’, where all attributes from the ‘use’ element
-      // except for ‘x’, ‘y’, ‘width’, ‘height’ and ‘xlink:href’ are transferred to the generated ‘g’ element. An
-      // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the ‘transform’
-      // attribute on the generated ‘g’, where x and y represent the values of the ‘x’ and ‘y’ attributes on the
-      // ‘use’ element. The referenced object and its contents are deep-cloned into the generated tree.
+      // W3C: In the generated content, the 'use' will be replaced by 'g', where all attributes from the 'use' element
+      // except for 'x', 'y', 'width', 'height' and 'xlink:href' are transferred to the generated 'g' element. An
+      // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the 'transform'
+      // attribute on the generated 'g', where x and y represent the values of the 'x' and 'y' attributes on the
+      // 'use' element. The referenced object and its contents are deep-cloned into the generated tree.
+      //
+      // NOTE: The SVG documentation appears to be silent on the matter of children in the <use> element.  So far we've
+      // encountered animate instructions in the <use> area, and this expands into a complicated dual-group configuration
+      // (at least that appears to be the only way we can get our animations to match expected behaviour patterns in W3C
+      // tests).  In any case, if a <use> element contains children then the dual group method is employed.
 
-      objVector *group;
+      objVector *group, *subgroup;
       if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
          SetOwner(group, Parent);
          SetName(group, "UseElement");
 
+         if (Tag.hasChildTags()) {
+            if (NewObject(ID_VECTORGROUP, &subgroup) IS ERR::Okay) {
+               SetOwner(subgroup, group);
+               SetName(subgroup, "UseElementSG");
+            }
+            else subgroup = group;
+         }
+         else subgroup = group;
+
          state.applyTag(Tag); // Apply supported attribute values to the current state.
 
-         // Apply 'use' attributes to the group.
+         // Apply 'use' attributes to the group, making a special case for 'x' and 'y'.
 
          FUNIT tx, ty;
          for (LONG t=1; t < std::ssize(Tag.Attribs); t++) {
@@ -2303,22 +2324,31 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
                   break;
 
                default:
-                  if (auto error = set_property(Self, group, hash, Tag, State, Tag.Attribs[t].Value); error != ERR::Okay) {
+                  if (auto error = set_property(Self, subgroup, hash, Tag, State, Tag.Attribs[t].Value); error != ERR::Okay) {
                      log.warning("Failed to apply %s=%s to <use> group: %s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), GetErrorMsg(error));
                   }
             }
          }
 
          if ((!tx.empty()) or (!ty.empty())) {
-            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
+            parse_transform(subgroup, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
          }
 
-         if (group->init() != ERR::Okay) { FreeResource(group); return; }
+         if ((group IS subgroup) or (group->init() IS ERR::Okay)) {
+            if (subgroup->init() IS ERR::Okay) { 
+               // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
+               log.branch("Duplicating tags at %s", ref.c_str());
+               objVector *sibling = NULL;
+               xtag_default(Self, state, *tagref, subgroup, sibling);
 
-         // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
-         log.branch("Duplicating tags at %s", ref.c_str());
-         objVector *sibling = NULL;
-         xtag_default(Self, state, *tagref, group, sibling);
+               log.traceBranch("Processing all child elements within <use>");
+               process_children(Self, state, Tag, group);
+               return;
+            }
+         }
+
+         FreeResource(group);
+         if (group != subgroup) FreeResource(subgroup);
       }
    }
 }
@@ -2441,14 +2471,7 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
       else find_anim++;
    }
 
-   // Process child tags
-
-   objVector *sibling = NULL;
-   for (auto &child : Tag.Children) {
-      if (child.isTag()) {
-         xtag_default(Self, state, child, group, sibling);
-      }
-   }
+   process_children(Self, state, Tag, group);
 
    if (group->init() IS ERR::Okay) Vector = group;
    else FreeResource(group);
@@ -2614,8 +2637,6 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
-   Self->Animated = true;
-
    auto &new_anim = Self->Animations.emplace_back(anim_transform { Parent->UID });
    auto &anim = std::get<anim_transform>(new_anim);
 
@@ -2652,8 +2673,6 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
@@ -2668,6 +2687,8 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
       }
    }
+   
+   anim.set_orig_value();
 
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
@@ -2678,8 +2699,6 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
@@ -2694,6 +2713,9 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
       }
    }
+
+   anim.set_orig_value();
+   anim.calc_mode = CMODE::DISCRETE; // Disables interpolation
 
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
@@ -2705,8 +2727,6 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-   
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
    auto &anim = std::get<anim_value>(new_anim);
 
@@ -2731,8 +2751,6 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   Self->Animated = true;
-   
    auto &new_anim = Self->Animations.emplace_back(anim_motion { Parent->UID });
    auto &anim = std::get<anim_motion>(new_anim);
 
@@ -2754,7 +2772,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             // Post-multiplies a supplemental transformation matrix onto the CTM of the target element to apply a 
             // rotation transformation about the origin of the current user coordinate system. The rotation 
             // transformation is applied after the supplemental translation transformation that is computed due to 
-            // the ‘path’ attribute.
+            // the 'path' attribute.
             //
             // auto: The object is rotated over time by the angle of the direction (i.e., directional tangent 
             // vector) of the motion path.
