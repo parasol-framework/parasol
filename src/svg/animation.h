@@ -112,7 +112,6 @@ public:
    std::vector<class anim_base *> start_on_begin;
    std::vector<class anim_base *> start_on_end;
    std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
-   struct VectorMatrix *matrix = NULL; // Exclusive transform matrix for animation.
    std::vector<spline_path> spline_paths;
    std::vector<double> begin_series; // List of valid start times for the animation
    double begin_offset = 0;    // Start animating after this much time (in seconds) has elapsed.
@@ -192,6 +191,7 @@ public:
 
 class anim_transform : public anim_base {
 public:
+   VectorMatrix matrix = { .Vector = NULL }; // Exclusive transform matrix for animation.
    AT type;
 
    anim_transform(OBJECTID pTarget) : anim_base(pTarget) { }
@@ -217,6 +217,7 @@ public:
    ART auto_rotate = ART::NIL; // Inline rotation along the path
    double rotate = 0; // Fixed angle rotation
    objVector *mpath = NULL; // External vector path (untracked)
+   VectorMatrix *matrix = NULL;
    pf::GuardedObject<objVector> path; // Client provided path sequence
    std::vector<pf::POINT<float>> points;
    std::vector<float> angles; // Precalc'd angles for rotation along paths

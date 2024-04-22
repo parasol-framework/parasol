@@ -97,19 +97,13 @@ animation, the colors goes from white to blue (the same blue color used for all 
       <animateTransform attributeName="transform" type="rotate" from="0" to="15" additive="sum" begin="0" dur="3" fill="freeze"/>
     </use>
 
-    <!-- Parasol does not currently support this rather esoteric SVG functionality.  When run in Chrome the excerpt demonstrates that the
-         animateTransform command is to be applied directly to the <use> tag's (x,y) values as well as the referenced polygonID.  This
-         appears contradictory to the 'use' documentation however, and there is no counter-point offered in the documentation for
-         animateTransform.
-    -->
-
     <use x="60" y="-10" xlink:href="#polygonID">
       <animateMotion path="M 0 0 l 0 150" begin="0" dur="3" fill="freeze"/>
       <animateTransform attributeName="transform" type="scale" from="1 1" to="1 2" begin="0" dur="3" additive="sum" fill="freeze"/>
     </use>
 <!--
-The above would expand to the following in order to be valid.  Notice how the animateMotion and animateTransform are given their own group
-to be inserted at a level that is above the <use> tag!
+The above polygonID declaration expands to the following in order to be valid.  Notice how the animateMotion and
+animateTransform are given their own group to be inserted at a level that is above the <use> tag!
 
   <g>
     <g transform="translate(60 -10)">

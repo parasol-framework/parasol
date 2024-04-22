@@ -617,6 +617,8 @@ static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 
 //********************************************************************************************************************
 
+#include "animation_values.cpp"
+#include "animation_timing.cpp"
 #include "animation.cpp"
 #include "gradients.cpp"
 #include "parser.cpp"

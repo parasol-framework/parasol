@@ -130,6 +130,44 @@ static void process_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTP
 }
 
 //********************************************************************************************************************
+// Process a restricted set of children for shape objects.
+
+static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Vector)
+{
+   pf::Log log;
+
+   for (auto &child : Tag.Children) {
+      if (!child.isTag()) continue;
+
+      switch(StrHash(child.name())) {
+         case SVF_ANIMATE:          xtag_animate(Self, child, Vector); break;
+         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, Vector); break;
+         case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, Vector); break;
+         case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, Vector); break;
+         case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
+         case SVF_SET:              xtag_set(Self, child, Vector); break;
+         case SVF_TEXTPATH:
+            if (Vector->Class->ClassID IS ID_VECTORTEXT) {
+               if (!child.Children.empty()) {
+                  auto buffer = child.getContent();
+                  if (!buffer.empty()) {
+                     pf::ltrim(buffer);
+                     Vector->set(FID_String, buffer);
+                  }
+                  else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
+               }
+
+               xtag_morph(Self, child, Vector);
+            }
+            break;
+         default:
+            log.warning("Failed to interpret vector child element <%s/> @ line %d", child.name(), child.LineNo);
+            break;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
 {
@@ -1548,38 +1586,7 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
       process_attrib(Self, Tag, State, vector);
 
       if (vector->init() IS ERR::Okay) {
-         // Process child tags, if any
-
-         for (auto &child : Tag.Children) {
-            if (child.isTag()) {
-               switch(StrHash(child.name())) {
-                  case SVF_ANIMATE:          xtag_animate(Self, child, vector); break;
-                  case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, vector); break;
-                  case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, vector); break;
-                  case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, vector); break;
-                  case SVF_PARASOL_MORPH:    xtag_morph(Self, child, vector); break;
-                  case SVF_SET:              xtag_set(Self, child, vector); break;
-                  case SVF_TEXTPATH:
-                     if (VectorID IS ID_VECTORTEXT) {
-                        if (!child.Children.empty()) {
-                           auto buffer = child.getContent();
-                           if (!buffer.empty()) {
-                              pf::ltrim(buffer);
-                              vector->set(FID_String, buffer);
-                           }
-                           else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
-                        }
-
-                        xtag_morph(Self, child, vector);
-                     }
-                     break;
-                  default:
-                     log.warning("Failed to interpret vector child element <%s/> @ line %d", child.name(), child.LineNo);
-                     break;
-               }
-            }
-         }
-
+         process_shape_children(Self, State, Tag, vector);
          Result = vector;
          return error;
       }
@@ -1912,6 +1919,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       Vector->set(FID_Fill, "url(#" + id + ")");
 
       if (Vector->init() IS ERR::Okay) {
+         process_shape_children(Self, State, Tag, Vector);
          return ERR::Okay;
       }
       else {
@@ -2273,11 +2281,25 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the 'transform'
       // attribute on the generated 'g', where x and y represent the values of the 'x' and 'y' attributes on the
       // 'use' element. The referenced object and its contents are deep-cloned into the generated tree.
+      //
+      // NOTE: The SVG documentation appears to be silent on the matter of children in the <use> element.  So far we've
+      // encountered animate instructions in the <use> area, and this expands into a complicated dual-group configuration
+      // (at least that appears to be the only way we can get our animations to match expected behaviour patterns in W3C
+      // tests).  In any case, if a <use> element contains children then the dual group method is employed.
 
-      objVector *group;
+      objVector *group, *subgroup;
       if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
          SetOwner(group, Parent);
          SetName(group, "UseElement");
+
+         if (Tag.hasChildTags()) {
+            if (NewObject(ID_VECTORGROUP, &subgroup) IS ERR::Okay) {
+               SetOwner(subgroup, group);
+               SetName(subgroup, "UseElementSG");
+            }
+            else subgroup = group;
+         }
+         else subgroup = group;
 
          state.applyTag(Tag); // Apply supported attribute values to the current state.
 
@@ -2302,22 +2324,31 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
                   break;
 
                default:
-                  if (auto error = set_property(Self, group, hash, Tag, State, Tag.Attribs[t].Value); error != ERR::Okay) {
+                  if (auto error = set_property(Self, subgroup, hash, Tag, State, Tag.Attribs[t].Value); error != ERR::Okay) {
                      log.warning("Failed to apply %s=%s to <use> group: %s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), GetErrorMsg(error));
                   }
             }
          }
 
          if ((!tx.empty()) or (!ty.empty())) {
-            parse_transform(group, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
+            parse_transform(subgroup, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
          }
 
-         if (group->init() != ERR::Okay) { FreeResource(group); return; }
+         if (group->init() IS ERR::Okay) {
+            if (subgroup->init() IS ERR::Okay) { 
+               // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
+               log.branch("Duplicating tags at %s", ref.c_str());
+               objVector *sibling = NULL;
+               xtag_default(Self, state, *tagref, subgroup, sibling);
 
-         // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
-         log.branch("Duplicating tags at %s", ref.c_str());
-         objVector *sibling = NULL;
-         xtag_default(Self, state, *tagref, group, sibling);
+               log.traceBranch("Processing all child elements within <use>");
+               process_children(Self, state, Tag, group);
+               return;
+            }
+         }
+
+         FreeResource(group);
+         if (group != subgroup) FreeResource(subgroup);
       }
    }
 }
