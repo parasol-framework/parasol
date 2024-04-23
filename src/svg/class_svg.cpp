@@ -76,7 +76,7 @@ static ERR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
    if (!Args) return ERR::NullArgs;
 
    if (Args->Datatype IS DATA::XML) {
-      return load_svg(Self, 0, (CSTRING)Args->Buffer);
+      return parse_svg(Self, 0, (CSTRING)Args->Buffer);
    }
 
    return ERR::Okay;
@@ -107,6 +107,7 @@ static ERR SVG_Free(extSVG *Self, APTR Void)
    if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
    if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
 
    return ERR::Okay;
 }
@@ -131,8 +132,8 @@ static ERR SVG_Init(extSVG *Self, APTR Void)
       else return ERR::NewObject;
    }
 
-   if (Self->Path) return load_svg(Self, Self->Path, NULL);
-   else if (Self->Statement) return load_svg(Self, NULL, Self->Statement);
+   if (Self->Path) return parse_svg(Self, Self->Path, NULL);
+   else if (Self->Statement) return parse_svg(Self, NULL, Self->Statement);
 
    return ERR::Okay;
 }

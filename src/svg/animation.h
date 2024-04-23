@@ -1,5 +1,6 @@
 
 #include <cmath>
+#include <string>
 
 static const double DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
 static const double RAD2DEG = 57.295779513082320876798154814105;
@@ -245,8 +246,12 @@ public:
 
 class anim_value : public anim_base {
 public:
-   anim_value(OBJECTID pTarget) : anim_base(pTarget) { }
+   XMLTag *tag = NULL;
+
+   anim_value(OBJECTID pTarget, XMLTag *pTag) : anim_base(pTarget), tag(pTag) { }
    void perform(extSVG &);
+   void set_value(objVector &Vector);
+
 };
 
 //********************************************************************************************************************
