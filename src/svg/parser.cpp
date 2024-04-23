@@ -2198,6 +2198,9 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       // SVG spec requires that we create a VectorGroup and then create a Viewport underneath that.  However if there
       // are no attributes to apply to the group then there is no sense in creating an empty one.
       
+      // TODO: We should be using the same replace-and-expand tag method that is applied for group
+      // handling, as seen further below in this routine. 
+
       objVector *viewport = NULL;
 
       auto state = State;

@@ -140,6 +140,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
          vt.matrix[0] *= t->matrix;
          //if (t->additive IS ADD::SUM) vt.matrix[0] *= t->matrix;
          //else vt.matrix[0] = t->matrix;
+         vecFlushMatrix(vt.matrix);
       });
    }
 
