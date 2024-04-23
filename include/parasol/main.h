@@ -117,26 +117,26 @@ template <typename F> deferred_call<F> Defer(F &&f) {
 //
 // E.g. std::unique_ptr<objVectorViewport, DeleteObject<objVectorViewport>> viewport;
 
-template <class T = BaseClass> struct DeleteObject {
+template <class T = Object> struct DeleteObject {
   void operator()(T *Object) const { if (Object) FreeResource(Object->UID); }
 };
 
 // Simplify the creation of unique pointers with the destructor
 
-template <class T = BaseClass> std::unique_ptr<T> make_unique_object(T *Object) {
+template <class T = Object> std::unique_ptr<T> make_unique_object(T *Object) {
    return std::unique_ptr<T>(Object, DeleteObject{});
 }
 
 // Variant for std::shared_ptr
 
-template <class T = BaseClass> std::shared_ptr<T> make_shared_object(T *Object) {
+template <class T = Object> std::shared_ptr<T> make_shared_object(T *Object) {
    return std::shared_ptr<T>(Object, DeleteObject{});
 }
 
 //********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
-template <class T = BaseClass>
+template <class T = Object>
 class ScopedObjectLock { // C++ wrapper for automatically releasing an object
    public:
       ERR error;
@@ -183,7 +183,7 @@ class LocalResource {
 // Enhanced version of LocalResource that features reference counting and is usable for object resources.  The use of 
 // GuardedObject is considered essential for interoperability with the C++ class destruction model.
 
-template <class T = BaseClass, class C = std::atomic_int>
+template <class T = Object, class C = std::atomic_int>
 class GuardedObject {
    private:
       C * count;  // Count of GuardedObjects accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
@@ -196,9 +196,9 @@ class GuardedObject {
 
       GuardedObject() : count(new C(1)), object(NULL), id(0) { }
 
-      GuardedObject(T *Object) : count(new C(1)), object(Object) {
-         static_assert(std::is_base_of_v<BaseClass, T>, "The resource value must belong to BaseClass");
-         id = ((LONG *)Object)[-2];
+      GuardedObject(T *pObject) : count(new C(1)), object(pObject) {
+         static_assert(std::is_base_of_v<Object, T>, "The resource value must belong to Object");
+         id = ((LONG *)pObject)[-2];
       }
 
       GuardedObject(const GuardedObject &other) { // Copy constructor

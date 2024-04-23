@@ -303,7 +303,7 @@ struct TransitionStop { // Passed to the Stops field.
    agg::trans_affine *AGGTransform;
 };
 
-class objVectorTransition : public BaseClass {
+class objVectorTransition : public Object {
    public:
    LONG TotalStops; // Total number of stops registered.
 

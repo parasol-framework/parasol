@@ -160,7 +160,7 @@ INLINE ERR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) noexcept {
 #define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
 
 
-class objScintilla : public BaseClass {
+class objScintilla : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_SCINTILLA;
    static constexpr CSTRING CLASS_NAME = "Scintilla";
@@ -443,7 +443,7 @@ INLINE ERR ssFind(APTR Ob, LONG * Pos, STF Flags) noexcept {
 }
 
 
-class objScintillaSearch : public BaseClass {
+class objScintillaSearch : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_SCINTILLASEARCH;
    static constexpr CSTRING CLASS_NAME = "ScintillaSearch";

@@ -193,7 +193,7 @@ INLINE ERR docReadContent(APTR Ob, DATA Format, LONG Start, LONG End, STRING * R
 }
 
 
-class objDocument : public BaseClass {
+class objDocument : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_DOCUMENT;
    static constexpr CSTRING CLASS_NAME = "Document";

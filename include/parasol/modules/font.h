@@ -69,7 +69,7 @@ struct FontList {
 
 #define VER_FONT (1.000000)
 
-class objFont : public BaseClass {
+class objFont : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_FONT;
    static constexpr CSTRING CLASS_NAME = "Font";

@@ -161,7 +161,7 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
             WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags & (~FD_READ));
          }
 
-         if (info->Reference) win32_netresponse((struct BaseClass *)info->Reference, info->SocketHandle, state, error);
+         if (info->Reference) win32_netresponse((struct Object *)info->Reference, info->SocketHandle, state, error);
          else printf("win_messages() Missing reference for FD %d, state %d\n", info->SocketHandle, state);
 
          if ((resub) and (!glSocketsDisabled)) {

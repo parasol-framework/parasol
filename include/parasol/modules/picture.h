@@ -31,7 +31,7 @@ DEFINE_ENUM_FLAG_OPERATORS(PCF)
 
 #define VER_PICTURE (1.000000)
 
-class objPicture : public BaseClass {
+class objPicture : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_PICTURE;
    static constexpr CSTRING CLASS_NAME = "Picture";

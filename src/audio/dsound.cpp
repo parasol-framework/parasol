@@ -11,12 +11,12 @@
 #define FILL_FIRST  1
 #define FILL_SECOND 2
 
-class BaseClass;
+class Object;
 class extAudio;
 
 struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
-   BaseClass *Object;
+   Object *Object;
    DWORD  BufferLength;
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
@@ -27,8 +27,8 @@ struct PlatformData {
    bool   Loop;
 };
 
-extern "C" int dsReadData(BaseClass *, void *, int);
-extern "C" void dsSeekData(BaseClass *, int);
+extern "C" int dsReadData(Object *, void *, int);
+extern "C" void dsSeekData(Object *, int);
 
 #include "windows.h"
 
@@ -109,7 +109,7 @@ static const GUID pa_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = { STATIC_KSDATAFORMAT_SUB
 //********************************************************************************************************************
 // SampleLength: The byte length of the raw audio data, excludes all file headers.
 
-extern "C" const char * sndCreateBuffer(BaseClass *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
+extern "C" const char * sndCreateBuffer(Object *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
 {
    if (!glDirectSound) return 0;
 

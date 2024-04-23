@@ -282,7 +282,7 @@ static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
 
    std::vector<ClipItem> items;
    for (unsigned i=0; Args->Objects[i]; i++) {
-      pf::ScopedObjectLock<BaseClass> object(Args->Objects[i], 5000);
+      pf::ScopedObjectLock<Object> object(Args->Objects[i], 5000);
       if (object.granted()) {
          if (!classid) classid = object.obj->Class->ClassID;
 

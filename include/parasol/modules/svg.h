@@ -43,7 +43,7 @@ inline ERR svgParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noe
 }
 
 
-class objSVG : public BaseClass {
+class objSVG : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_SVG;
    static constexpr CSTRING CLASS_NAME = "SVG";

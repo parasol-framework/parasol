@@ -1559,7 +1559,7 @@ class LogLevel {
 } // namespace
 
 //********************************************************************************************************************
-// Refer to BaseClass->get() to see what this is about...
+// Refer to Object->get() to see what this is about...
 
 template <class T> inline LARGE FIELD_TAG()     { return 0; }
 template <> inline LARGE FIELD_TAG<DOUBLE>()    { return TDOUBLE; }
@@ -1575,14 +1575,14 @@ template <> inline LARGE FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 //********************************************************************************************************************
 // Header used for all objects.
 
-struct BaseClass { // Must be 64-bit aligned
+struct Object { // Must be 64-bit aligned
    union {
       objMetaClass *Class;          // [Public] Class pointer
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
-   struct BaseClass *Owner;      // The owner of this object
+   struct Object *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    LONG     Dummy;               // For 64-bit alignment
    OBJECTID UID;                 // Unique object identifier
@@ -1731,7 +1731,7 @@ struct BaseClass { // Must be 64-bit aligned
 
 namespace pf {
 
-template<class T = BaseClass>
+template<class T = Object>
 class Create {
    private:
       T *obj;
@@ -1794,7 +1794,7 @@ class Create {
       // Create a scoped object that is not initialised.
 
       Create(NF Flags = NF::NIL) : obj(NULL), error(ERR::NewObject) {
-         if (NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj) IS ERR::Okay) {
+         if (NewObject(T::CLASS_ID, Flags, (Object **)&obj) IS ERR::Okay) {
             error = ERR::Okay;
          }
       }
@@ -1805,7 +1805,7 @@ class Create {
          pf::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj) IS ERR::Okay) {
+         if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (Object **)&obj) IS ERR::Okay) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
@@ -1852,7 +1852,7 @@ class Create {
       ~Create() {
          if (obj) {
             if (obj->initialised()) {
-               if ((obj->BaseClass::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+               if ((obj->Object::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
                   return; // Detected a successfully created unscoped object
                }
             }
@@ -2098,7 +2098,7 @@ inline ERR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
   ]])
 
 c_insert([[
-inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassID; }
+inline bool Object::isSubClass() { return Class->ClassID != Class->ObjectID; }
 ]])
 
   class("StorageDevice", { src="../classes/class_storagedevice.cpp" }, [[
@@ -2663,7 +2663,7 @@ template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
    return func;
 };
 
-inline CSTRING BaseClass::className() { return Class->ClassName; }
+inline CSTRING Object::className() { return Class->ClassName; }
   ]])
 
   if (glProgram == "idl-def") then

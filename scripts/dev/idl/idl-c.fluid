@@ -1498,7 +1498,7 @@ function outputClassHeader(class, Private, Custom)
       end
 
       priority('class obj' .. class.name .. ';') -- Forward declaration
-      output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'BaseClass') .. ' {')
+      output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'Object') .. ' {')
       output('   public:')
       output('   static constexpr CLASSID CLASS_ID = ID_' .. class.name:upper() .. ';')
       output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")

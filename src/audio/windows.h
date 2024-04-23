@@ -4,7 +4,7 @@
 */
 
 int sndCheckActivity(struct PlatformData *);
-extern "C" const char * sndCreateBuffer(BaseClass *, void *, int, int, struct PlatformData *, int);
+extern "C" const char * sndCreateBuffer(Object *, void *, int, int, struct PlatformData *, int);
 void sndFree(struct PlatformData *);
 void sndFrequency(struct PlatformData *, int);
 void sndSetPosition(struct PlatformData *, int);
@@ -16,4 +16,4 @@ void sndStop(struct PlatformData *);
 extern "C" int sndStreamAudio(struct PlatformData *);
 void sndVolume(struct PlatformData *, float);
 void sndLength(struct PlatformData *, int);
-extern "C" void end_of_stream(BaseClass *, int);
+extern "C" void end_of_stream(Object *, int);
