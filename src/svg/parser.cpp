@@ -2371,8 +2371,8 @@ static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link
             // The link activates a document node, like an animation.
             if (find_href_tag(Self, Link->ref)) {
                for (auto &record : Self->Animations) {
-                  std::visit([ Link ](auto &&anim) {
-                     if (anim.id IS Link->ref.substr(1)) anim.activate();
+                  std::visit([ Link, Self ](auto &&anim) {
+                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self);
                   }, record);
                }
             }

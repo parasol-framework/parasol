@@ -29,7 +29,6 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <parasol/modules/display.h>
 #include <parasol/strings.hpp>
 #include "svg_def.c"
-#include "animation.h"
 #include <katana.h>
 #include <math.h>
 
@@ -71,6 +70,10 @@ struct svgAnimState {
 
 #include <parasol/modules/svg.h>
 
+class extSVG;
+
+#include "animation.h"
+
 //********************************************************************************************************************
 
 class extSVG : public objSVG {
@@ -79,6 +82,7 @@ class extSVG : public objSVG {
    std::unordered_map<std::string, XMLTag> IDs;
    std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
+   DOUBLE AnimEpoch;  // Epoch time for the animations.
    objXML *XML;
    objVectorScene *Scene;
    STRING Folder;

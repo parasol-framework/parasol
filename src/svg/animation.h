@@ -120,7 +120,6 @@ public:
    double min_duration = 0;    // The minimum value of the active duration.  If zero, the active duration is not constrained.
    double max_duration = 0;    // The maximum value of the active duration.
    double duration   = 0;      // Measured in seconds, anything < 0 means infinite.
-   double first_time = 0;      // Time-stamp of the first iteration
    double start_time = 0;      // This is time-stamped once the animation has started (the first begin event is hit)
    double end_time   = 0;      // This is time-stamped once the animation has finished all of its cycles (including repetitions)
    double end  = 0;
@@ -145,40 +144,11 @@ public:
    double get_numeric_value(objVector &, FIELD);
    std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
-   bool started(double);
+   bool started(extSVG *, double);
    bool next_frame(double);
    void set_orig_value();
-
-   void activate(void) { 
-      // Reset all the variables that control time management and the animation will start from scratch.
-      begin_offset = 0;
-      repeat_index = 0;
-      start_time   = 0;
-      end_time     = 0;
-   }
-
-   void stop(double Time) {
-      if (!begin_series.empty()) {
-         // Check if there's a serialised begin offset following the one that's completed.
-         LONG i;
-         for (i=0; i < std::ssize(begin_series)-1; i++) {
-            if (begin_offset IS begin_series[i]) {
-               begin_offset = begin_series[i+1];
-               start_time = 0;
-               return;
-            }
-         }
-      }
-
-      end_time = Time;
-      seek = 1.0; // Necessary in case the seek range calculation has overflowed
-
-      // Start animations that are to be triggered from our ending.
-      for (auto &other : start_on_end) {
-         other->activate();
-         other->start_time = Time;
-      }
-   }
+   void activate(extSVG *);
+   void stop(extSVG *, double);
 
    virtual void perform(class extSVG &) = 0;
 

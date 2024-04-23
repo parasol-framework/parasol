@@ -3,7 +3,50 @@
 // https://www.w3.org/TR/2001/REC-smil-animation-20010904
 
 //********************************************************************************************************************
-// Set common animation properties
+
+void anim_base::activate(extSVG *SVG)
+{ 
+   // Reset all the variables that control time management and the animation will start from scratch.
+   begin_offset = (double(PreciseTime()) / 1000000.0) - SVG->AnimEpoch;
+   repeat_index = 0;
+   start_time   = SVG->AnimEpoch + begin_offset;
+   end_time     = 0;
+
+   // Test: w3-animate-elem-21-t.svg
+
+   for (auto &other : start_on_begin) {
+      other->activate(SVG);
+      other->start_time = start_time; // Ensure that times match exactly
+   }
+}
+
+//********************************************************************************************************************
+
+void anim_base::stop(extSVG *SVG, double Time)
+{
+   if (!begin_series.empty()) {
+      // Check if there's a serialised begin offset following the one that's completed.
+      LONG i;
+      for (i=0; i < std::ssize(begin_series)-1; i++) {
+         if (begin_offset IS begin_series[i]) {
+            begin_offset = begin_series[i+1];
+            start_time = 0;
+            return;
+         }
+      }
+   }
+
+   end_time = Time;
+   seek = 1.0; // Necessary in case the seek range calculation has overflowed
+
+   // Start animations that are to be triggered from our ending.
+   for (auto &other : start_on_end) {
+      other->activate(SVG);
+      other->start_time = Time;
+   }
+}
+
+//********************************************************************************************************************
 
 static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y, anim_base::SPLINE_POINTS &Meta)
 {
@@ -16,6 +59,9 @@ static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y,
 
    return ERR::Okay;
 }
+
+//********************************************************************************************************************
+// Set common animation properties
 
 static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
 {
