@@ -48,7 +48,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
   [[
    inline bool isContent() const { return Name.empty(); }
    inline bool isTag() const { return !Name.empty(); }
-   XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
+   XMLAttrib(std::string pName, std::string pValue = "") : Name(pName), Value(pValue) { };
    XMLAttrib() = default;
   ]])
 

@@ -29,7 +29,6 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <parasol/modules/display.h>
 #include <parasol/strings.hpp>
 #include "svg_def.c"
-#include "animation.h"
 #include <katana.h>
 #include <math.h>
 
@@ -71,6 +70,10 @@ struct svgAnimState {
 
 #include <parasol/modules/svg.h>
 
+class extSVG;
+
+#include "animation.h"
+
 //********************************************************************************************************************
 
 class extSVG : public objSVG {
@@ -79,6 +82,7 @@ class extSVG : public objSVG {
    std::unordered_map<std::string, XMLTag> IDs;
    std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
+   DOUBLE AnimEpoch;  // Epoch time for the animations.
    objXML *XML;
    objVectorScene *Scene;
    STRING Folder;
@@ -120,28 +124,32 @@ struct svgState {
 
 static ERR  animation_timer(extSVG *, LARGE, LARGE);
 static void convert_styles(objXML::TAGS &);
+static ERR  set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
+
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);
+
 static void process_attrib(extSVG *, XMLTag &, svgState &, objVector *);
 static void process_children(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
 static ERR  process_shape(extSVG *, CLASSID, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+
 static ERR  save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
-static ERR  set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
-static ERR  xtag_animate(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_colour(extSVG *, XMLTag &, OBJECTPTR);
+
+static ERR  xtag_animate(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_animate_colour(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
 static ERR  xtag_animate_motion(extSVG *, XMLTag &, OBJECTPTR);
 static ERR  xtag_animate_transform(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_default(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static ERR  xtag_default(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR, objVector * &);
 static ERR  xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_set(extSVG *, XMLTag &, OBJECTPTR);
+static ERR  xtag_set(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
 static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static ERR  xtag_style(extSVG *, XMLTag &);
@@ -170,6 +178,8 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    return ERR::Okay;
 }
+
+//********************************************************************************************************************
 
 static ERR CMDExpunge(void)
 {

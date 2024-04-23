@@ -82,7 +82,7 @@ typedef struct XMLAttrib {
    std::string Value;   // Value of the attribute
    inline bool isContent() const { return Name.empty(); }
    inline bool isTag() const { return !Name.empty(); }
-   XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
+   XMLAttrib(std::string pName, std::string pValue = "") : Name(pName), Value(pValue) { };
    XMLAttrib() = default;
 } XMLATTRIB;
 

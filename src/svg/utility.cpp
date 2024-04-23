@@ -452,8 +452,9 @@ static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
 }
 
 //********************************************************************************************************************
+// Parse SVG from a file or string buffer.
 
-static ERR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
+static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
    pf::Log log(__FUNCTION__);
 
@@ -464,6 +465,8 @@ static ERR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 #ifndef DEBUG
    AdjustLogLevel(1);
 #endif
+
+   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
 
    objXML *xml;
    ERR error = ERR::Okay;
@@ -540,8 +543,6 @@ static ERR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             while ((view) and (view->Class->ClassID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
             if (view) view->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)));
          }
-
-         Self->XML = NULL;
       }
       else error = ERR::Init;
 
@@ -549,8 +550,6 @@ static ERR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          task->setPath(working_path);
          FreeResource(working_path);
       }
-
-      FreeResource(xml);
    }
    else error = ERR::NewObject;
 

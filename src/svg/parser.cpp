@@ -124,7 +124,7 @@ static void process_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTP
    objVector *sibling = NULL;
    for (auto &child : Tag.Children) {
       if (child.isTag()) {
-         xtag_default(Self, State, child, Vector, sibling);
+         xtag_default(Self, State, child, Tag, Vector, sibling);
       }
    }
 }
@@ -140,12 +140,12 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
       if (!child.isTag()) continue;
 
       switch(StrHash(child.name())) {
-         case SVF_ANIMATE:          xtag_animate(Self, child, Vector); break;
-         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, Vector); break;
+         case SVF_ANIMATE:          xtag_animate(Self, child, Tag, Vector); break;
+         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, Tag, Vector); break;
          case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, Vector); break;
          case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, Vector); break;
+         case SVF_SET:              xtag_set(Self, child, Tag, Vector); break;
          case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
-         case SVF_SET:              xtag_set(Self, child, Vector); break;
          case SVF_TEXTPATH:
             if (Vector->Class->ClassID IS ID_VECTORTEXT) {
                if (!child.Children.empty()) {
@@ -1236,7 +1236,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
          // live reference being found.
 
          if (auto tagref = find_href_tag(Self, ref)) {
-            xtag_default(Self, State, *tagref, Self->Scene, vector);
+            xtag_default(Self, State, *tagref, Tag, Self->Scene, vector);
          }
          else log.warning("Element id '%s' not found.", ref.c_str());
       }
@@ -1587,6 +1587,7 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
 
       if (vector->init() IS ERR::Okay) {
          process_shape_children(Self, State, Tag, vector);
+         Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(vector->UID) });
          Result = vector;
          return error;
       }
@@ -1601,7 +1602,7 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
 //********************************************************************************************************************
 // See also process_children()
 
-static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent, objVector * &Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1627,11 +1628,11 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
       case SVF_CONICGRADIENT:    xtag_conicgradient(Self, Tag); break;
       case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, Tag); break;
       case SVF_SYMBOL:           xtag_symbol(Self, Tag); break;
-      case SVF_ANIMATE:          xtag_animate(Self, Tag, Parent); break;
-      case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, Tag, Parent); break;
+      case SVF_ANIMATE:          xtag_animate(Self, Tag, ParentTag, Parent); break;
+      case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, Tag, ParentTag, Parent); break;
       case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, Tag, Parent); break;
       case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, Tag, Parent); break;
-      case SVF_SET:              xtag_set(Self, Tag, Parent); break;
+      case SVF_SET:              xtag_set(Self, Tag, ParentTag, Parent); break;
       case SVF_FILTER:           xtag_filter(Self, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, Tag); break;
@@ -1920,6 +1921,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
       if (Vector->init() IS ERR::Okay) {
          process_shape_children(Self, State, Tag, Vector);
+         Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(Vector->UID) });
          return ERR::Okay;
       }
       else {
@@ -2161,8 +2163,8 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
-   std::string ref;
 
+   std::string ref;
    for (LONG a=1; (a < std::ssize(Tag.Attribs)) and ref.empty(); a++) {
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_HREF: // SVG2
@@ -2183,11 +2185,6 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       return;
    }
 
-   objVector *viewport = NULL;
-
-   auto state = State;
-   state.applyTag(Tag); // Apply all attribute values to the current state.
-
    // Increment the Cloning variable to indicate that we are in a region that is being cloned.
    // This is important for some elements like clip-path, whereby the path only needs to be created
    // once and can then be referenced multiple times.
@@ -2200,6 +2197,14 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    if ((StrMatch("symbol", tagref->name()) IS ERR::Okay) or (StrMatch("svg", tagref->name()) IS ERR::Okay)) {
       // SVG spec requires that we create a VectorGroup and then create a Viewport underneath that.  However if there
       // are no attributes to apply to the group then there is no sense in creating an empty one.
+      
+      // TODO: We should be using the same replace-and-expand tag method that is applied for group
+      // handling, as seen further below in this routine. 
+
+      objVector *viewport = NULL;
+
+      auto state = State;
+      state.applyTag(Tag); // Apply all attribute values to the current state.
 
       objVector *group;
       bool need_group = false;
@@ -2281,41 +2286,21 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       // additional transformation translate(x,y) is appended to the end (i.e., right-side) of the 'transform'
       // attribute on the generated 'g', where x and y represent the values of the 'x' and 'y' attributes on the
       // 'use' element. The referenced object and its contents are deep-cloned into the generated tree.
-      //
-      // NOTE: The SVG documentation appears to be silent on the matter of children in the <use> element.  So far we've
-      // encountered animate instructions in the <use> area, and this expands into a complicated dual-group configuration
-      // (at least that appears to be the only way we can get our animations to match expected behaviour patterns in W3C
-      // tests).  In any case, if a <use> element contains children then the dual group method is employed.
 
-      objVector *group, *subgroup;
-      if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
-         SetOwner(group, Parent);
-         SetName(group, "UseElement");
+      auto use_attribs = Tag.Attribs;
+      Tag.Attribs[0].Name = "g";
+      if (Tag.Attribs.size() > 1) Tag.Attribs.erase(Tag.Attribs.begin()+1, Tag.Attribs.end());
 
-         if (Tag.hasChildTags()) {
-            if (NewObject(ID_VECTORGROUP, &subgroup) IS ERR::Okay) {
-               SetOwner(subgroup, group);
-               SetName(subgroup, "UseElementSG");
-            }
-            else subgroup = group;
-         }
-         else subgroup = group;
+      if (Tag.Children.empty()) {
+         Tag.Children = { *tagref }; // Deep-clone
 
-         state.applyTag(Tag); // Apply supported attribute values to the current state.
-
-         // Apply 'use' attributes to the group, making a special case for 'x' and 'y'.
+         // Apply 'use' attributes, making a special case for 'x' and 'y'.
 
          FUNIT tx, ty;
-         for (LONG t=1; t < std::ssize(Tag.Attribs); t++) {
-            if (Tag.Attribs[t].Value.empty()) continue;
-
-            // Ignore unrecognised namespaces, e.g. 'inkscape:dx'
-            if (Tag.Attribs[t].Name.find(':') != std::string::npos) continue;
-
-            auto hash = StrHash(Tag.Attribs[t].Name);
-            switch (hash) {
-               case SVF_X: tx = FUNIT(FID_X, Tag.Attribs[t].Value); break;
-               case SVF_Y: ty = FUNIT(FID_Y, Tag.Attribs[t].Value); break;
+         for (LONG t=1; t < std::ssize(use_attribs); t++) {
+            switch (StrHash(use_attribs[t].Name)) {
+               case SVF_X: tx = FUNIT(FID_X, use_attribs[t].Value); break;
+               case SVF_Y: ty = FUNIT(FID_Y, use_attribs[t].Value); break;
                // SVG states that the following are not to be applied to the group...
                case SVF_WIDTH:
                case SVF_HEIGHT:
@@ -2324,32 +2309,47 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
                   break;
 
                default:
-                  if (auto error = set_property(Self, subgroup, hash, Tag, State, Tag.Attribs[t].Value); error != ERR::Okay) {
-                     log.warning("Failed to apply %s=%s to <use> group: %s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), GetErrorMsg(error));
-                  }
+                  Tag.Attribs.push_back(use_attribs[t]);
             }
          }
 
          if ((!tx.empty()) or (!ty.empty())) {
-            parse_transform(subgroup, "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")", MTAG_USE_TRANSFORM);
+            Tag.Attribs.push_back({ "transform", "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")" });
          }
+      }
+      else {
+         // The SVG documentation appears to be silent on the matter of children in the <use> element.  So far we've
+         // encountered animate instructions in the <use> area, and this expands into a complicated dual-group configuration
+         // (at least that appears to be the only way we can get our animations to match expected behaviour patterns in W3C
+         // tests).
 
-         if ((group IS subgroup) or (group->init() IS ERR::Okay)) {
-            if (subgroup->init() IS ERR::Okay) { 
-               // Perform the deep-clone as stipulated by W3C.  Generated objects will inherit attributes from the group.
-               log.branch("Duplicating tags at %s", ref.c_str());
-               objVector *sibling = NULL;
-               xtag_default(Self, state, *tagref, subgroup, sibling);
+         auto &subgroup = Tag.Children.emplace_back(XMLTag(0));
+         subgroup.Attribs.push_back(XMLAttrib("g"));
+         subgroup.Children.push_back(*tagref);
 
-               log.traceBranch("Processing all child elements within <use>");
-               process_children(Self, state, Tag, group);
-               return;
+         FUNIT tx, ty;
+         for (LONG t=1; t < std::ssize(use_attribs); t++) {
+            switch (StrHash(use_attribs[t].Name)) {
+               case SVF_X: tx = FUNIT(FID_X, use_attribs[t].Value); break;
+               case SVF_Y: ty = FUNIT(FID_Y, use_attribs[t].Value); break;
+               case SVF_WIDTH:
+               case SVF_HEIGHT:
+               case SVF_XLINK_HREF:
+               case SVF_HREF:
+                  break;
+
+               default:
+                  subgroup.Attribs.push_back(use_attribs[t]);
             }
          }
 
-         FreeResource(group);
-         if (group != subgroup) FreeResource(subgroup);
+         if ((!tx.empty()) or (!ty.empty())) {
+            subgroup.Attribs.push_back({ "transform", "translate(" + std::to_string(tx) + " " + std::to_string(ty) + ")" });
+         }
       }
+
+      objVector *new_group = NULL;
+      xtag_group(Self, State, Tag, Parent, new_group);
    }
 }
 
@@ -2371,8 +2371,8 @@ static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link
             // The link activates a document node, like an animation.
             if (find_href_tag(Self, Link->ref)) {
                for (auto &record : Self->Animations) {
-                  std::visit([ Link ](auto &&anim) {
-                     if (anim.id IS Link->ref.substr(1)) anim.activate();
+                  std::visit([ Link, Self ](auto &&anim) {
+                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self);
                   }, record);
                }
             }
@@ -2445,35 +2445,13 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
    SetOwner(group, Parent);
    if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all group attribute values to the current state.
    process_attrib(Self, Tag, State, group);
-   
-   // Process <animate/> child tags in advance.  Unfortunately there is a requirement for <animate> to work only 
-   // on objects that do not already have the target 'attributeName' already defined.  We therefore need
-   // to do a bit of filtering and clone the <animate> tag for the affected elements.
-
-   for (auto find_anim=Tag.Children.begin(); find_anim != Tag.Children.end(); ) {
-      if ((find_anim->isTag()) and (iequals("animate", find_anim->name()))) {
-         if ((find_anim->attrib("href")) or (find_anim->attrib("xlink:href"))) {
-            // Ignore animation tags that specify a link.
-            find_anim++;
-            continue;
-         }
-         else if (auto attrib = find_anim->attrib("attributeName")) {
-            for (auto &clone_to : Tag.Children) {
-               if (clone_to.isTag() and (not iequals("animate", clone_to.name()))) {
-                  if (!clone_to.attrib(*attrib)) {
-                     clone_to.Children.push_back(*find_anim);
-                  }
-               }
-            }
-         }
-         find_anim = Tag.Children.erase(find_anim);
-      }
-      else find_anim++;
-   }
 
    process_children(Self, state, Tag, group);
 
-   if (group->init() IS ERR::Okay) Vector = group;
+   if (group->init() IS ERR::Okay) {
+      Vector = group;
+      Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(group->UID) });
+   }
    else FreeResource(group);
 }
 
@@ -2619,7 +2597,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
          switch(StrHash(child.name())) {
             case SVF_DEFS: xtag_defs(Self, state, child, viewport); break;
-            default:       xtag_default(Self, state, child, viewport, sibling);  break;
+            default:       xtag_default(Self, state, child, Tag, viewport, sibling);  break;
          }
       }
    }
@@ -2668,12 +2646,12 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 //********************************************************************************************************************
 // The 'animate' element is used to animate a single attribute or property over time. For example, to make a
 // rectangle repeatedly fade away over 5 seconds:
-//
-// NOTE: Also see xtag_group() which duplicates <animate> elements for technical reasons.
 
-static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+static ERR xtag_animate(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
-   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
+   pf::Log log(__FUNCTION__);
+
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2697,9 +2675,9 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 //********************************************************************************************************************
 // <set> is largely equivalent to <animate> but does not interpolate values.
 
-static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+static ERR xtag_set(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
-   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2725,9 +2703,9 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 // The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the 
 // existing <animate> tag.
 
-static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
-   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2833,6 +2811,7 @@ static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector
       auto &value = Tag.Attribs[t].Value;
 
       if (name.find(':') != std::string::npos) continue; // Do not interpret non-SVG attributes, e.g. 'inkscape:dx'
+      if (name == "_id") continue; // Ignore temporary private attribs like '_id'
 
       log.trace("%s = %.40s", name.c_str(), value.c_str());
 

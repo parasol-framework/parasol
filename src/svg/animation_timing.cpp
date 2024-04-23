@@ -1,27 +1,26 @@
 
 //********************************************************************************************************************
-// Return true if the animation has started
+// Return true if the animation has started.  For absolute consistency, animations start 'at the time they should have 
+// started', which we can strictly calculate from begin and duration timing values.
 
-bool anim_base::started(double CurrentTime)
+bool anim_base::started(extSVG *SVG, double CurrentTime)
 {
-   if (not first_time) first_time = CurrentTime;
-
+   if (end_time) return false;
    if (start_time) return true;
    if (repeat_index > 0) return true;
 
-   if (begin_offset) {
-      // Check if one of the animation's begin triggers has been tripped.
-      const double elapsed = CurrentTime - start_time;
-      if (elapsed < begin_offset) return false;
-   }
+   // Check if the begin trigger has been tripped.  If begin_offset is 0 then we start immediately.
 
-   // Start/Reset linked animations
+   if (CurrentTime < SVG->AnimEpoch + begin_offset) return false;
+   start_time = SVG->AnimEpoch + begin_offset;
+
+   // Start/Reset linked animations that are to start when we do
+
    for (auto &other : start_on_begin) {
-      other->activate();
-      other->start_time = CurrentTime;
+      other->activate(SVG);
+      other->start_time = start_time; // Ensure that times match exactly
    }
 
-   start_time = CurrentTime;
    return true;
 }
 
@@ -71,17 +70,19 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       matrix.second.transforms.clear();
    }
 
+   if (!SVG->AnimEpoch) {
+      SVG->AnimEpoch = double(CurrentTime) / 1000000.0;
+   }
+
+   double current_time = double(CurrentTime) / 1000000.0;
+
    for (auto &record : SVG->Animations) {
-      std::visit([SVG](auto &&anim) {
-         double current_time = double(PreciseTime()) / 1000000.0;
+      std::visit([ SVG, current_time ](auto &&anim) {
+         if (not anim.started(SVG, current_time)) return;
 
-         if (not anim.started(current_time)) return;
-
-         if (anim.next_frame(current_time)) {
-            anim.perform(*SVG);
-            anim.stop(current_time);
-         }
-         else anim.perform(*SVG);
+         bool stop = anim.next_frame(current_time);
+         anim.perform(*SVG);
+         if (stop) anim.stop(SVG, current_time);
       }, record);
    }
 
@@ -140,6 +141,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
          vt.matrix[0] *= t->matrix;
          //if (t->additive IS ADD::SUM) vt.matrix[0] *= t->matrix;
          //else vt.matrix[0] = t->matrix;
+         vecFlushMatrix(vt.matrix);
       });
    }
 
