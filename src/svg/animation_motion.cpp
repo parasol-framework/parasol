@@ -117,6 +117,34 @@ void anim_motion::perform(extSVG &SVG)
          for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
          seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
       }
+      else if (calc_mode IS CMODE::SPLINE) {
+         i = 0;
+         if (timing.size() IS spline_paths.size()) {
+            for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);
+            i = std::clamp<LONG>(i, 0, timing.size() - 1);
+         }
+         else {
+            // When no timing is specified, the 'values' are distributed evenly.  This determines
+            // what spline-path we are going to use.
+
+            i = std::clamp<LONG>(F2T(seek * std::ssize(spline_paths)), 0, std::ssize(spline_paths) - 1);
+         }
+
+         auto &sp = spline_paths[i]; // sp = The spline we're going to use
+
+         // Rather than use distance, we're going to use the 'x' position as a lookup on the horizontal axis.
+         // The paired y value then gives us the 'real' seek_to value.
+         // The spline points are already sorted by the x value to make this easier.
+
+         const double x = (seek >= 1.0) ? 1.0 : fmod(seek, 1.0 / double(std::ssize(spline_paths))) * std::ssize(spline_paths);
+
+         LONG si;
+         for (si=0; (si < std::ssize(sp.points)-1) and (sp.points[si+1].point.x < x); si++);
+
+         const double mod_x = x - sp.points[si].point.x;
+         const double c = mod_x / sp.points[si].cos_angle;
+         seek_to = std::clamp(sp.points[si].point.y + std::sqrt((c * c) - (mod_x * mod_x)), 0.0, 1.0);
+      }
       else { // CMODE::LINEAR: Interpolate between the two values
          i = F2T((std::ssize(values)-1) * seek);
          if (i >= std::ssize(values)-1) i = values.size() - 2;
