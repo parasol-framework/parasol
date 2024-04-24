@@ -139,8 +139,8 @@ static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
 
-static ERR  xtag_animate(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_colour(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_animate(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_animate_colour(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
 static ERR  xtag_animate_motion(extSVG *, XMLTag &, OBJECTPTR);
 static ERR  xtag_animate_transform(extSVG *, XMLTag &, OBJECTPTR);
 static ERR  xtag_default(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR, objVector * &);
@@ -149,7 +149,7 @@ static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &)
 static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_set(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_set(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
 static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static ERR  xtag_style(extSVG *, XMLTag &);
