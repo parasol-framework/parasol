@@ -114,10 +114,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       matrix.second.transforms.clear();
    }
 
-   if (!SVG->AnimEpoch) {
-      SVG->AnimEpoch = double(CurrentTime) / 1000000.0;
-   }
-
+   if (!SVG->AnimEpoch) SVG->AnimEpoch = double(CurrentTime) / 1000000.0;
    double current_time = double(CurrentTime) / 1000000.0;
 
    for (auto &record : SVG->Animations) {

@@ -487,14 +487,22 @@ void anim_transform::perform(extSVG &SVG)
             POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
 
             if (not values.empty()) {
-               LONG vi = F2T((values.size()-1) * seek);
-               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+               LONG i;
+               if (calc_mode IS CMODE::PACED) {
+                  const auto dist_pos = seek * get_paired_dist();
+                  for (i=0; (i < std::ssize(distances)-2) and (distances[i+1] < dist_pos); i++);
+                  seek_to = std::clamp((dist_pos - distances[i]) / (distances[i+1] - distances[i]), 0.0, 1.0);
+               }
+               else {
+                  i = F2T((values.size()-1) * seek);
 
-               read_numseq(values[vi], { &t_from.x, &t_from.y });
-               read_numseq(values[vi+1], { &t_to.x, &t_to.y } );
-
-               const double mod = 1.0 / double(values.size() - 1);
-               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+                  const double mod = 1.0 / double(values.size() - 1);
+                  seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+               }
+               
+               if (i >= std::ssize(values)-1) i = std::ssize(values) - 2;
+               read_numseq(values[i], { &t_from.x, &t_from.y });
+               read_numseq(values[i+1], { &t_to.x, &t_to.y } );
             }
             else if (not from.empty()) {
                read_numseq(from, { &t_from.x, &t_from.y });
@@ -535,16 +543,24 @@ void anim_transform::perform(extSVG &SVG)
             POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
 
             if (not values.empty()) {
-               LONG vi = F2T((values.size()-1) * seek);
-               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+               LONG i;
+               if (calc_mode IS CMODE::PACED) {
+                  const auto dist_pos = seek * get_paired_dist();
+                  for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
+                  seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
+               }
+               else {
+                  i = F2T((values.size()-1) * seek);
+                  if (i >= std::ssize(values)-1) i = std::ssize(values) - 2;
 
-               read_numseq(values[vi], { &t_from.x, &t_from.y });
-               read_numseq(values[vi+1], { &t_to.x, &t_to.y } );
+                  const double mod = 1.0 / double(values.size() - 1);
+                  seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+               }
+               
+               read_numseq(values[i], { &t_from.x, &t_from.y });
+               read_numseq(values[i+1], { &t_to.x, &t_to.y } );
 
                if (!t_from.y) t_from.y = t_from.x;
-
-               const double mod = 1.0 / double(values.size() - 1);
-               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
             }
             else if (not from.empty()) {
                read_numseq(from, { &t_from.x, &t_from.y });
@@ -591,16 +607,26 @@ void anim_transform::perform(extSVG &SVG)
 
          case AT::ROTATE: {
             ROTATE r_from, r_to;
-
             if (not values.empty()) {
-               LONG vi = F2T((values.size()-1) * seek);
-               if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
+               LONG i;
+               if (calc_mode IS CMODE::PACED) {
+                  // The get_total_dist() call will calculate the distance between angles as it operates on the first
+                  // value of paired coordinates.
+                  const auto dist_pos = seek * get_total_dist();
+                  for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
+                  seek_to = (dist_pos - distances[i]) / (distances[i+1] - distances[i]);
+                  // keyTiming is not permitted in PACED mode.
+               }
+               else {
+                  i = F2T((values.size()-1) * seek);
+                  if (i >= std::ssize(values)-1) i = std::ssize(values) - 2;
 
-               read_numseq(values[vi], { &r_from.angle, &r_from.cx, &r_from.cy });
-               read_numseq(values[vi+1], { &r_to.angle, &r_to.cx, &r_to.cy } );
+                  const double mod = 1.0 / double(values.size() - 1);
+                  seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+               }
 
-               const double mod = 1.0 / double(values.size() - 1);
-               seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+               read_numseq(values[i], { &r_from.angle, &r_from.cx, &r_from.cy });
+               read_numseq(values[i+1], { &r_to.angle, &r_to.cx, &r_to.cy } );
             }
             else if (not from.empty()) {
                read_numseq(from, { &r_from.angle, &r_from.cx, &r_from.cy });

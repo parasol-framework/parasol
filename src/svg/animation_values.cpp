@@ -18,8 +18,16 @@ void anim_base::set_orig_value()
 
          default: {
             char buffer[400];
-            if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
-               target_attrib_orig.assign(buffer);
+
+            switch(StrHash(target_attrib)) {
+               case SVF_STROKE_WIDTH:
+                  target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
+                  break;
+
+               default:
+                  if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
+                     target_attrib_orig.assign(buffer);
+                  }
             }
          }
       }
@@ -73,6 +81,7 @@ double anim_motion::get_total_dist()
 }
 
 //********************************************************************************************************************
+// The default for get_total_dist() is to use the first value in any series and not to include pairings.
 
 double anim_base::get_total_dist()
 {
@@ -109,12 +118,51 @@ double anim_base::get_total_dist()
 }
 
 //********************************************************************************************************************
+
+double anim_base::get_paired_dist()
+{
+   if (total_dist != 0) return total_dist;
+
+   distances.clear();
+   if (not values.empty()) {
+      POINT<double> a, b;
+      read_numseq(values[0], { &b.x, &b.y });
+      distances.push_back(0);
+      for (LONG i=1; i < std::ssize(values); i++) {
+         read_numseq(values[i], { &a.x, &a.y });
+         total_dist += a - b;
+         distances.push_back(total_dist);
+         b = a;
+      }
+   }
+   else if (not from.empty()) {
+      POINT<double> a, b;
+      if (not to.empty()) {
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(to, { &b.x, &b.y } );
+         total_dist = a - b;
+      }
+      else if (not by.empty()) {
+         read_numseq(by, { &a.x, &a.y } );
+         b = { 0, 0 };
+         total_dist = a - b;
+      }
+   }
+
+   return total_dist;
+}
+
+//********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
 double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
 {
    double from_val, to_val;
    double seek_to = seek;
+   
+   if ((seek >= 1.0) and (!freeze)) {
+      return strtod(target_attrib_orig.c_str(), NULL);
+   }
 
    if (not values.empty()) {
       LONG i;

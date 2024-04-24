@@ -139,6 +139,7 @@ public:
 
    anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
 
+   double get_paired_dist();
    double get_total_dist();
    double get_dimension(objVector &, FIELD);
    double get_numeric_value(objVector &, FIELD);
