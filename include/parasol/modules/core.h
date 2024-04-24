@@ -1045,7 +1045,7 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define MAX_FILENAME 256
 
-#define MAX_NAME_LEN 32
+#define MAX_NAME_LEN 31
 
 // Reserved message ID's that are handled internally.
 
@@ -2751,7 +2751,7 @@ struct Object { // Must be 64-bit aligned
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    volatile LONG  ThreadID;      // Managed by locking functions
-   char Name[MAX_NAME_LEN];      // The name of the object (optional)
+   char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }

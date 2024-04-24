@@ -291,7 +291,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not necessarily including path)
 
-  const("MAX", nil, { NAME_LEN = 32 })
+  const("MAX", nil, { NAME_LEN = 31 }) -- Refer to the 'Object' struct for more info on the NAME_LEN value
 
   const("MSGID", { comment="Reserved message ID's that are handled internally." }, {
      QUIT             = 1000,   -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
@@ -1591,7 +1591,7 @@ struct Object { // Must be 64-bit aligned
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    volatile LONG  ThreadID;      // Managed by locking functions
-   char Name[MAX_NAME_LEN];      // The name of the object (optional)
+   char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
