@@ -1,3 +1,6 @@
+// Relevant SVG materials:
+// https://www.w3.org/TR/SVG11/animate.html#ToAttribute
+// https://www.w3.org/TR/2001/REC-smil-animation-20010904
 
 #include <cmath>
 #include <string>

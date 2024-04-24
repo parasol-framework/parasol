@@ -386,7 +386,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 Colour: Defines the default fill to use for 'currentColor' references.
 
 Set the Colour value to alter the default fill that is used for `currentColor` references.  Typically a standard RGB
-painter fill reference should be used for this purpose, e.g. `rgb(255,255,255)`.  It is however, also acceptable to use 
+painter fill reference should be used for this purpose, e.g. `rgb(255,255,255)`.  It is however, also acceptable to use
 URL references to named definitions such as gradients and images.  This will work as long as the named definition is
 registered in the top-level @VectorScene object.
 
@@ -620,7 +620,10 @@ static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 
 #include "animation_values.cpp"
 #include "animation_timing.cpp"
-#include "animation.cpp"
+#include "animation_parsing.cpp"
+#include "animation_motion.cpp"
+#include "animation_transform.cpp"
+#include "animation_value.cpp"
 #include "gradients.cpp"
 #include "parser.cpp"
 
