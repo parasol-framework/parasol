@@ -1045,7 +1045,7 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define MAX_FILENAME 256
 
-#define MAX_NAME_LEN 32
+#define MAX_NAME_LEN 31
 
 // Reserved message ID's that are handled internally.
 
@@ -2719,7 +2719,7 @@ class LogLevel {
 } // namespace
 
 //********************************************************************************************************************
-// Refer to BaseClass->get() to see what this is about...
+// Refer to Object->get() to see what this is about...
 
 template <class T> inline LARGE FIELD_TAG()     { return 0; }
 template <> inline LARGE FIELD_TAG<DOUBLE>()    { return TDOUBLE; }
@@ -2735,25 +2735,24 @@ template <> inline LARGE FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 //********************************************************************************************************************
 // Header used for all objects.
 
-struct BaseClass { // Must be 64-bit aligned
+struct Object { // Must be 64-bit aligned
    union {
       objMetaClass *Class;          // [Public] Class pointer
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
-   struct BaseClass *Owner;      // The owner of this object
+   struct Object *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   LONG     Dummy;               // For 64-bit alignment
-   OBJECTID UID;                 // Unique object identifier
-   NF       Flags;               // Object flags
-   volatile LONG  ThreadID;      // Managed by locking functions
-   char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
    std::atomic_char Queue;       // Counter of locks gained by incQueue()
    std::atomic_char SleepQueue;  // For the use of LockObject() only
-   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object
+   OBJECTID UID;                 // Unique object identifier
+   NF       Flags;               // Object flags
+   volatile LONG  ThreadID;      // Managed by locking functions
+   char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
+   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
@@ -2891,7 +2890,7 @@ struct BaseClass { // Must be 64-bit aligned
 
 namespace pf {
 
-template<class T = BaseClass>
+template<class T = Object>
 class Create {
    private:
       T *obj;
@@ -2954,7 +2953,7 @@ class Create {
       // Create a scoped object that is not initialised.
 
       Create(NF Flags = NF::NIL) : obj(NULL), error(ERR::NewObject) {
-         if (NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj) IS ERR::Okay) {
+         if (NewObject(T::CLASS_ID, Flags, (Object **)&obj) IS ERR::Okay) {
             error = ERR::Okay;
          }
       }
@@ -2965,7 +2964,7 @@ class Create {
          pf::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj) IS ERR::Okay) {
+         if (NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (Object **)&obj) IS ERR::Okay) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
@@ -3012,7 +3011,7 @@ class Create {
       ~Create() {
          if (obj) {
             if (obj->initialised()) {
-               if ((obj->BaseClass::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+               if ((obj->Object::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
                   return; // Detected a successfully created unscoped object
                }
             }
@@ -3254,7 +3253,7 @@ inline ERR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** 
 }
 
 
-class objMetaClass : public BaseClass {
+class objMetaClass : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_METACLASS;
    static constexpr CSTRING CLASS_NAME = "MetaClass";
@@ -3371,13 +3370,13 @@ class objMetaClass : public BaseClass {
 
 };
 
-inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassID; }
+inline bool Object::isSubClass() { return Class->ClassID != Class->BaseClassID; }
 
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
 
-class objStorageDevice : public BaseClass {
+class objStorageDevice : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_STORAGEDEVICE;
    static constexpr CSTRING CLASS_NAME = "StorageDevice";
@@ -3467,7 +3466,7 @@ inline ERR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) noexce
 }
 
 
-class objFile : public BaseClass {
+class objFile : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_FILE;
    static constexpr CSTRING CLASS_NAME = "File";
@@ -3697,7 +3696,7 @@ inline ERR cfgMerge(APTR Ob, OBJECTPTR Source) noexcept {
 }
 
 
-class objConfig : public BaseClass {
+class objConfig : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_CONFIG;
    static constexpr CSTRING CLASS_NAME = "Config";
@@ -3879,7 +3878,7 @@ inline ERR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) noe
 }
 
 
-class objScript : public BaseClass {
+class objScript : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_SCRIPT;
    static constexpr CSTRING CLASS_NAME = "Script";
@@ -4066,7 +4065,7 @@ inline ERR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) noexcept {
 }
 
 
-class objTask : public BaseClass {
+class objTask : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_TASK;
    static constexpr CSTRING CLASS_NAME = "Task";
@@ -4229,7 +4228,7 @@ inline ERR thSetData(APTR Ob, APTR Data, LONG Size) noexcept {
 }
 
 
-class objThread : public BaseClass {
+class objThread : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_THREAD;
    static constexpr CSTRING CLASS_NAME = "Thread";
@@ -4293,7 +4292,7 @@ inline ERR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) noexcept {
 }
 
 
-class objModule : public BaseClass {
+class objModule : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_MODULE;
    static constexpr CSTRING CLASS_NAME = "Module";
@@ -4367,7 +4366,7 @@ class objModule : public BaseClass {
 #define tmSetTime(obj) Action(MT_TmSetTime,(obj),0)
 
 
-class objTime : public BaseClass {
+class objTime : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_TIME;
    static constexpr CSTRING CLASS_NAME = "Time";
@@ -4555,7 +4554,7 @@ inline ERR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** It
 }
 
 
-class objCompression : public BaseClass {
+class objCompression : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_COMPRESSION;
    static constexpr CSTRING CLASS_NAME = "Compression";
@@ -4641,7 +4640,7 @@ class objCompression : public BaseClass {
 
 #define VER_COMPRESSEDSTREAM (1.000000)
 
-class objCompressedStream : public BaseClass {
+class objCompressedStream : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_COMPRESSEDSTREAM;
    static constexpr CSTRING CLASS_NAME = "CompressedStream";
@@ -4924,4 +4923,4 @@ template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
    return func;
 };
 
-inline CSTRING BaseClass::className() { return Class->ClassName; }
+inline CSTRING Object::className() { return Class->ClassName; }

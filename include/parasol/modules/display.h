@@ -548,7 +548,7 @@ inline ERR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Righ
 #define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
 
 
-class objBitmap : public BaseClass {
+class objBitmap : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_BITMAP;
    static constexpr CSTRING CLASS_NAME = "Bitmap";
@@ -939,7 +939,7 @@ inline ERR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV,
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
 
 
-class objDisplay : public BaseClass {
+class objDisplay : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_DISPLAY;
    static constexpr CSTRING CLASS_NAME = "Display";
@@ -1174,7 +1174,7 @@ inline ERR clipRemove(APTR Ob, CLIPTYPE Datatype) noexcept {
 }
 
 
-class objClipboard : public BaseClass {
+class objClipboard : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_CLIPBOARD;
    static constexpr CSTRING CLASS_NAME = "Clipboard";
@@ -1216,7 +1216,7 @@ class objClipboard : public BaseClass {
 
 #define VER_POINTER (1.000000)
 
-class objPointer : public BaseClass {
+class objPointer : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_POINTER;
    static constexpr CSTRING CLASS_NAME = "Pointer";
@@ -1389,7 +1389,7 @@ inline ERR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBL
 #define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
 
-class objSurface : public BaseClass {
+class objSurface : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_SURFACE;
    static constexpr CSTRING CLASS_NAME = "Surface";

@@ -264,7 +264,7 @@ inline ERR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) noexcept {
 }
 
 
-class objXML : public BaseClass {
+class objXML : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_XML;
    static constexpr CSTRING CLASS_NAME = "XML";

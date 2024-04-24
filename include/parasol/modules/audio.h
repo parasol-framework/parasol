@@ -225,7 +225,7 @@ INLINE ERR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Chann
 }
 
 
-class objAudio : public BaseClass {
+class objAudio : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_AUDIO;
    static constexpr CSTRING CLASS_NAME = "Audio";
@@ -325,7 +325,7 @@ class objAudio : public BaseClass {
 
 #define VER_SOUND (1.000000)
 
-class objSound : public BaseClass {
+class objSound : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_SOUND;
    static constexpr CSTRING CLASS_NAME = "Sound";

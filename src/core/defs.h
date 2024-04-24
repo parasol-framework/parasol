@@ -646,7 +646,7 @@ extern extTask *glCurrentTask;
 extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
-extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
+extern std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
 extern std::unordered_map<std::string, struct ModHeader *> glStaticModules;
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
@@ -678,7 +678,7 @@ extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern objConfig *glDatatypes;
 extern objFile *glClassFile;
-extern BaseClass glDummyObject;
+extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 extern struct ModHeader glCoreHeader;
@@ -925,7 +925,7 @@ extern std::vector<FDRecord> glRegisterFD;
 
 //********************************************************************************************************************
 
-class RootModule : public BaseClass {
+class RootModule : public Object {
    public:
    class RootModule *Next;     // Next module in list
    class RootModule *Prev;     // Previous module in list

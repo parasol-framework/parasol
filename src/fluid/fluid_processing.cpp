@@ -133,7 +133,7 @@ static int processing_sleep(lua_State *Lua)
    // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
    // All other objects can be pre-signalled legitimately.
 
-   Lua->Script->BaseClass::Flags = Lua->Script->BaseClass::Flags & (~NF::SIGNALLED);
+   Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
 
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {

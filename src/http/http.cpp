@@ -519,7 +519,7 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
             }
             else if (Self->InputObjectID) {
                if (!Self->Size) {
-                  pf::ScopedObjectLock<BaseClass> input(Self->InputObjectID, 3000);
+                  pf::ScopedObjectLock<Object> input(Self->InputObjectID, 3000);
                   if (input.granted()) {
                      input->get(FID_Size, &Self->ContentLength);
                   }

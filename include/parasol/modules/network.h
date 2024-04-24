@@ -180,7 +180,7 @@ INLINE ERR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
 }
 
 
-class objClientSocket : public BaseClass {
+class objClientSocket : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_CLIENTSOCKET;
    static constexpr CSTRING CLASS_NAME = "ClientSocket";
@@ -271,7 +271,7 @@ INLINE ERR prxFind(APTR Ob, LONG Port, LONG Enabled) noexcept {
 #define prxFindNext(obj) Action(MT_prxFindNext,(obj),0)
 
 
-class objProxy : public BaseClass {
+class objProxy : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_PROXY;
    static constexpr CSTRING CLASS_NAME = "Proxy";
@@ -398,7 +398,7 @@ INLINE ERR nlBlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
 }
 
 
-class objNetLookup : public BaseClass {
+class objNetLookup : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_NETLOOKUP;
    static constexpr CSTRING CLASS_NAME = "NetLookup";
@@ -488,7 +488,7 @@ INLINE ERR nsWriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
 }
 
 
-class objNetSocket : public BaseClass {
+class objNetSocket : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_NETSOCKET;
    static constexpr CSTRING CLASS_NAME = "NetSocket";

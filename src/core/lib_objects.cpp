@@ -68,7 +68,7 @@ ERR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 //********************************************************************************************************************
 // Object termination hook for FreeResource()
 
-static ERR object_free(BaseClass *Object)
+static ERR object_free(Object *Object)
 {
    pf::Log log("Free");
 

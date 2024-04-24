@@ -578,7 +578,7 @@ struct FontMetrics {
 
 #define VER_VECTORCOLOUR (1.000000)
 
-class objVectorColour : public BaseClass {
+class objVectorColour : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORCOLOUR;
    static constexpr CSTRING CLASS_NAME = "VectorColour";
@@ -651,7 +651,7 @@ inline ERR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) noexcept {
 #define scDebug(obj) Action(MT_ScDebug,(obj),0)
 
 
-class objVectorScene : public BaseClass {
+class objVectorScene : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORSCENE;
    static constexpr CSTRING CLASS_NAME = "VectorScene";
@@ -744,7 +744,7 @@ class objVectorScene : public BaseClass {
 
 #define VER_VECTORIMAGE (1.000000)
 
-class objVectorImage : public BaseClass {
+class objVectorImage : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORIMAGE;
    static constexpr CSTRING CLASS_NAME = "VectorImage";
@@ -810,7 +810,7 @@ class objVectorImage : public BaseClass {
 
 #define VER_VECTORPATTERN (1.000000)
 
-class objVectorPattern : public BaseClass {
+class objVectorPattern : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORPATTERN;
    static constexpr CSTRING CLASS_NAME = "VectorPattern";
@@ -904,7 +904,7 @@ class objVectorPattern : public BaseClass {
 
 #define VER_VECTORGRADIENT (1.000000)
 
-class objVectorGradient : public BaseClass {
+class objVectorGradient : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORGRADIENT;
    static constexpr CSTRING CLASS_NAME = "VectorGradient";
@@ -1067,7 +1067,7 @@ class objVectorGradient : public BaseClass {
 
 #define VER_FILTEREFFECT (1.000000)
 
-class objFilterEffect : public BaseClass {
+class objFilterEffect : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_FILTEREFFECT;
    static constexpr CSTRING CLASS_NAME = "FilterEffect";
@@ -1420,7 +1420,7 @@ class objTurbulenceFX : public objFilterEffect {
 
 #define VER_VECTORCLIP (1.000000)
 
-class objVectorClip : public BaseClass {
+class objVectorClip : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
@@ -1451,7 +1451,7 @@ class objVectorClip : public BaseClass {
 
 #define VER_VECTORFILTER (1.000000)
 
-class objVectorFilter : public BaseClass {
+class objVectorFilter : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORFILTER;
    static constexpr CSTRING CLASS_NAME = "VectorFilter";
@@ -1635,7 +1635,7 @@ inline ERR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) noexcept {
 }
 
 
-class objVector : public BaseClass {
+class objVector : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTOR;
    static constexpr CSTRING CLASS_NAME = "Vector";

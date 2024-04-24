@@ -136,7 +136,7 @@ DEFINE_ENUM_FLAG_OPERATORS(HTF)
 
 #define VER_HTTP (1.000000)
 
-class objHTTP : public BaseClass {
+class objHTTP : public Object {
    public:
    static constexpr CLASSID CLASS_ID = ID_HTTP;
    static constexpr CSTRING CLASS_NAME = "HTTP";
