@@ -153,7 +153,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       // that information.  The solution we're taking is to create an inversion of the transform declaration
       // in order to undo it.
       //
-      // Tested in: w3-animate-elem-24-t.svg
+      // Tested in: w3-animate-elem-(24|81)-t.svg
 
       VectorMatrix *m = NULL;
       if (vt.transforms.front()->additive IS ADD::REPLACE) {
@@ -180,13 +180,11 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 
       // Apply the transforms in reverse.
 
-      std::for_each(vt.transforms.rbegin(), vt.transforms.rend(), [&](auto t) {
-         // In the case of ADD::SUM, we are layering this transform on top of any previously declared animateTransforms
-         vt.matrix[0] *= t->matrix;
-         //if (t->additive IS ADD::SUM) vt.matrix[0] *= t->matrix;
-         //else vt.matrix[0] = t->matrix;
+      for (auto t = vt.transforms.rbegin(); t != vt.transforms.rend(); t++) {
+         vt.matrix[0] *= t[0]->matrix;
          vecFlushMatrix(vt.matrix);
-      });
+         if (t[0]->additive IS ADD::REPLACE) break;
+      }
    }
 
    SVG->Scene->Viewport->draw();
