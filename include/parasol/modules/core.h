@@ -2742,18 +2742,17 @@ struct Object { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
-   struct Object *Owner;         // The owner of this object
+   struct Object *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   LONG     Dummy;               // For 64-bit alignment
+   std::atomic_uchar ThreadPending; // ActionThread() increments this.
+   std::atomic_char Queue;       // Counter of locks gained by incQueue()
+   std::atomic_char SleepQueue;  // For the use of LockObject() only
+   BYTE ActionDepth;             // Incremented each time an action or method is called on the object
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
-   std::atomic_uchar ThreadPending; // ActionThread() increments this.
-   std::atomic_char Queue;       // Counter of locks gained by incQueue()
-   std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
-   BYTE ActionDepth;             // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
