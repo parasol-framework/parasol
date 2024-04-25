@@ -1,19 +1,21 @@
 
 //********************************************************************************************************************
 
-void anim_base::activate(extSVG *SVG)
+void anim_base::activate(extSVG *SVG, bool Reset)
 { 
    // Reset all the variables that control time management and the animation will start from scratch.
-   begin_offset = (double(PreciseTime()) / 1000000.0) - SVG->AnimEpoch;
+   if (Reset) begin_offset = (double(PreciseTime()) / 1000000.0) - SVG->AnimEpoch;
    repeat_index = 0;
    start_time   = SVG->AnimEpoch + begin_offset;
    end_time     = 0;
 
    // Test: w3-animate-elem-21-t.svg
 
-   for (auto &other : start_on_begin) {
-      other->activate(SVG);
-      other->start_time = start_time; // Ensure that times match exactly
+   if (auto others = SVG->StartOnBegin.find(hash_id()); others != SVG->StartOnBegin.end()) {
+      for (auto &other : others->second) {
+         other->activate(SVG, true);
+         other->start_time = start_time; // Ensure that times match exactly
+      }
    }
 }
 
@@ -26,19 +28,8 @@ bool anim_base::started(extSVG *SVG, double CurrentTime)
    if (end_time) return false;
    if (start_time) return true;
    if (repeat_index > 0) return true;
-
-   // Check if the begin trigger has been tripped.  If begin_offset is 0 then we start immediately.
-
    if (CurrentTime < SVG->AnimEpoch + begin_offset) return false;
-   start_time = SVG->AnimEpoch + begin_offset;
-
-   // Start/Reset linked animations that are to start when we do
-
-   for (auto &other : start_on_begin) {
-      other->activate(SVG);
-      other->start_time = start_time; // Ensure that times match exactly
-   }
-
+   activate(SVG, false);
    return true;
 }
 
@@ -93,9 +84,11 @@ void anim_base::stop(extSVG *SVG, double Time)
    seek = 1.0; // Necessary in case the seek range calculation has overflowed
 
    // Start animations that are to be triggered from our ending.
-   for (auto &other : start_on_end) {
-      other->activate(SVG);
-      other->start_time = Time;
+   if (auto others = SVG->StartOnEnd.find(hash_id()); others != SVG->StartOnEnd.end()) {
+      for (auto &other : others->second) {
+         other->activate(SVG, true);
+         other->start_time = Time;
+      }
    }
 }
 

@@ -1611,6 +1611,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
    switch(StrHash(Tag.name())) {
       case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
       case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
+      case SVF_SWITCH:           log.warning("<switch> not supported."); break;
       case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
       case SVF_RECT:             process_shape(Self, ID_VECTORRECTANGLE, State, Tag, Parent, Vector); break;
@@ -2372,7 +2373,7 @@ static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link
             if (find_href_tag(Self, Link->ref)) {
                for (auto &record : Self->Animations) {
                   std::visit([ Link, Self ](auto &&anim) {
-                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self);
+                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self, true);
                   }, record);
                }
             }

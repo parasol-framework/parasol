@@ -85,6 +85,9 @@ template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T
 //********************************************************************************************************************
 
 class anim_base {
+private:
+   ULONG _hash_id = 0;
+
 public:
    struct spline_point {
       pf::POINT<float> point;
@@ -92,7 +95,7 @@ public:
       float cos_angle;
       spline_point(pf::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
    };
-   
+
    typedef std::vector<float> DISTANCES;
    typedef std::vector<spline_point> SPLINE_POINTS;
 
@@ -113,8 +116,6 @@ public:
    std::string target_attrib;       // Name of the target attribute affected by the From and To values.
    std::string target_attrib_orig;  // Original value of the target attribute (if not freezing)
    std::string id;                  // Identifier for the animation
-   std::vector<class anim_base *> start_on_begin;
-   std::vector<class anim_base *> start_on_end;
    std::vector< std::pair<pf::POINT<double>, pf::POINT<double> > > splines; // Key splines
    std::vector<spline_path> spline_paths;
    std::vector<double> begin_series; // List of valid start times for the animation
@@ -131,12 +132,13 @@ public:
    OBJECTID target_vector = 0;
    LONG   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
    LONG   repeat_index = 0; // Current index within the repeat cycle.
-   CMODE  calc_mode   = CMODE::LINEAR;
-   RST    restart     = RST::ALWAYS;
-   ATT    attrib_type = ATT::AUTO;
-   ADD    additive    = ADD::REPLACE;
-   bool   freeze      = false;
-   bool   accumulate  = false;
+   CMODE  calc_mode    = CMODE::LINEAR;
+   RST    restart      = RST::ALWAYS;
+   ATT    attrib_type  = ATT::AUTO;
+   ADD    additive     = ADD::REPLACE;
+   bool   freeze       = false;
+   bool   accumulate   = false;
+   bool   begin_on_key = false;
 
    // Functionality
 
@@ -151,8 +153,13 @@ public:
    bool started(extSVG *, double);
    bool next_frame(double);
    void set_orig_value(svgState &);
-   void activate(extSVG *);
+   void activate(extSVG *, bool);
    void stop(extSVG *, double);
+
+   ULONG hash_id() {
+      _hash_id = StrHash(id);
+      return _hash_id;
+   }
 
    virtual void perform(class extSVG &) = 0;
 
@@ -177,10 +184,10 @@ public:
    std::string type_name() {
       switch (type) {
          case AT::TRANSLATE: return "translate";
-         case AT::SCALE: return "scale";
-         case AT::ROTATE: return "rotate";
-         case AT::SKEW_X: return "skewX";
-         case AT::SKEW_Y: return "skewY";
+         case AT::SCALE:     return "scale";
+         case AT::ROTATE:    return "rotate";
+         case AT::SKEW_X:    return "skewX";
+         case AT::SKEW_Y:    return "skewY";
          default: return "?";
       }
    }
@@ -225,7 +232,6 @@ public:
    anim_value(OBJECTID pTarget, XMLTag *pTag) : anim_base(pTarget), tag(pTag) { }
    void perform(extSVG &);
    void set_value(objVector &Vector);
-
 };
 
 //********************************************************************************************************************

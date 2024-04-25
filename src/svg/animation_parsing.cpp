@@ -12,6 +12,27 @@ static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y,
 }
 
 //********************************************************************************************************************
+
+static double parse_begin(extSVG *SVG, anim_base &Anim, std::string_view Value)
+{
+   if (Value.ends_with(".begin")) {
+      auto ref_id = StrHash(std::string(Value.substr(0, Value.size()-6)));
+      SVG->StartOnBegin[ref_id].push_back(&Anim);
+      return std::numeric_limits<double>::max();
+   }
+   else if (Value.ends_with(".end")) {
+      auto ref_id = StrHash(std::string(Value.substr(0, Value.size()-4)));
+      SVG->StartOnEnd[ref_id].push_back(&Anim);
+      return std::numeric_limits<double>::max();
+   }
+   else if ("access-key" IS Value) { // Start the animation when the user presses a key.
+      Anim.begin_on_key = true;
+      return std::numeric_limits<double>::max();
+   }
+   else return read_time(Value);
+}
+
+//********************************************************************************************************************
 // Set common animation properties
 
 static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
@@ -84,47 +105,24 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG H
             Anim.begin_offset = std::numeric_limits<double>::max();
             break;
          }
-
-         if (Value.ends_with(".begin")) {
-            Anim.begin_offset = std::numeric_limits<double>::max();
-            auto ref = Value.substr(0, Value.size()-6);
-            for (auto &scan : Self->Animations) {
-               std::visit([ &Anim, &ref ](auto &&scan) {
-                  if (scan.id IS ref) scan.start_on_begin.emplace_back(&Anim);
-               }, scan);
-            }
-            break;
-         }
-
-         if (Value.ends_with(".end")) {
-            Anim.begin_offset = std::numeric_limits<double>::max();
-            auto ref = Value.substr(0, Value.size()-4);
-            for (auto &scan : Self->Animations) {
-               std::visit([ &Anim, &ref ](auto &&scan) {
-                  if (scan.id IS ref) scan.start_on_end.emplace_back(&Anim);
-               }, scan);
-            }
-            break;
-         }
-
-         if ("access-key" IS Value) { // Start the animation when the user presses a key.
-            Anim.begin_offset = std::numeric_limits<double>::max();
-            break;
-         }
-
-         // Read one or more timing offsets as a series
+         else if (Value.find(';') != std::string::npos) {
+            // A series of numbers has likely been provided, but '.begin' and '.end' references are possible also.
          
-         if (Value.find(';') != std::string::npos) {
             for (unsigned v=0; v < Value.size(); ) {
                 while ((Value[v]) and (Value[v] <= 0x20)) v++;
                 auto v_end = Value.find(';', v);
                 if (v_end IS std::string::npos) v_end = Value.size();
-                Anim.begin_series.push_back(read_time(Value.substr(v, v_end - v)));
+
+                if (auto begin_offset = parse_begin(Self, Anim, Value.substr(v, v_end - v)); begin_offset != std::numeric_limits<double>::max()) {
+                   Anim.begin_series.push_back(begin_offset);
+                }
                 v = v_end + 1;
             }
-            Anim.begin_offset = Anim.begin_series[0];
+
+            if (not Anim.begin_series.empty()) Anim.begin_offset = Anim.begin_series[0];
+            else Anim.begin_offset = std::numeric_limits<double>::max();
          }
-         else Anim.begin_offset = read_time(Value);
+         else Anim.begin_offset = parse_begin(Self, Anim, Value);
 
          break;
 
