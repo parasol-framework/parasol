@@ -71,6 +71,7 @@ struct svgAnimState {
 #include <parasol/modules/svg.h>
 
 class extSVG;
+struct svgState;
 
 #include "animation.h"
 
@@ -98,16 +99,16 @@ class extSVG : public objSVG {
 };
 
 struct svgState {
-   std::string m_color;
-   std::string m_fill;
-   std::string m_stroke;
+   std::string m_color;       // currentColor value, initialised to SVG.Colour
+   std::string m_fill;        // Defaults to rgb(0,0,0)
+   std::string m_stroke;      // Empty by default
    std::string m_font_size;
    std::string m_font_family;
-   DOUBLE  m_stroke_width;
-   DOUBLE  m_fill_opacity;
-   DOUBLE  m_opacity;
-   LONG    m_font_weight;
-   RQ      m_path_quality;
+   DOUBLE  m_stroke_width;    // 0 if undefined
+   DOUBLE  m_fill_opacity;    // -1 if undefined
+   DOUBLE  m_opacity;         // -1 if undefined
+   LONG    m_font_weight;     // 0 if undefined
+   RQ      m_path_quality;    // RQ::AUTO default
 
    private:
    objVectorScene *Scene;

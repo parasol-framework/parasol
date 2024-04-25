@@ -150,7 +150,7 @@ public:
    FRGB get_colour_value(objVector &, FIELD);
    bool started(extSVG *, double);
    bool next_frame(double);
-   void set_orig_value();
+   void set_orig_value(svgState &);
    void activate(extSVG *);
    void stop(extSVG *, double);
 

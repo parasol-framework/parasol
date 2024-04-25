@@ -2668,8 +2668,8 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
             break;
       }
    }
-   
-   anim.set_orig_value();
+
+   anim.set_orig_value(State);
 
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
@@ -2698,7 +2698,7 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
       }
    }
 
-   anim.set_orig_value();
+   anim.set_orig_value(State);
    anim.calc_mode = CMODE::DISCRETE; // Disables interpolation
 
    if (!anim.is_valid()) Self->Animations.pop_back();

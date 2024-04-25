@@ -3,9 +3,9 @@
 
 //********************************************************************************************************************
 
-void anim_base::set_orig_value()
+void anim_base::set_orig_value(svgState &State)
 {
-   if ((freeze) or (target_attrib.empty())) return;
+   if ((freeze and not from.empty()) or target_attrib.empty()) return;
 
    pf::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
@@ -15,19 +15,41 @@ void anim_base::set_orig_value()
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
             else if (obj->Visibility IS VIS::VISIBLE) target_attrib_orig = "inline";
             break;
+            
+         case SVF_STROKE_WIDTH:
+            target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
+            break;
 
+         case SVF_FILL: {
+            CSTRING val;
+            if ((obj->getPtr(FID_Fill, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            else target_attrib_orig = State.m_fill;
+            break;
+         }
+
+         case SVF_STROKE: {
+            CSTRING val;
+            if ((obj->getPtr(FID_Stroke, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            else target_attrib_orig = State.m_stroke;
+            break;
+         }
+
+         case SVF_FILL_OPACITY:
+            if (obj->FillOpacity != 1.0) target_attrib_orig = obj->FillOpacity;
+            else if (State.m_fill_opacity != -1) target_attrib_orig = State.m_fill_opacity;
+            else target_attrib_orig = 1.0;
+            break;
+
+         case SVF_OPACITY:
+            if (obj->Opacity != 1.0) target_attrib_orig = obj->Opacity;
+            else if (State.m_opacity != -1) target_attrib_orig = State.m_opacity;
+            else target_attrib_orig = 1.0;
+            break;
+        
          default: {
             char buffer[400];
-
-            switch(StrHash(target_attrib)) {
-               case SVF_STROKE_WIDTH:
-                  target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
-                  break;
-
-               default:
-                  if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
-                     target_attrib_orig.assign(buffer);
-                  }
+            if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
+               target_attrib_orig.assign(buffer);
             }
          }
       }
@@ -238,8 +260,13 @@ std::string anim_base::get_string()
 {
    if ((seek >= 1.0) and (!freeze)) return target_attrib_orig;
 
-   if (not to.empty()) return to;
-   else return "";
+   if (not from.empty()) {
+      if (seek < 0.5) return from;
+      else if (not to.empty()) return to;
+      else return target_attrib_orig;
+   }
+   else if (not to.empty()) return to;
+   else return target_attrib_orig;
 }
 
 //********************************************************************************************************************
@@ -382,13 +409,9 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
       }
    }
    else if (not to.empty()) {
-      FLOAT *colour;
-      LONG elements;
-      if ((GetFieldArray(&Vector, Field, &colour, &elements) IS ERR::Okay) and (elements IS 4)) {
-         from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
-         vecReadPainter(NULL, to.c_str(), &to_col, NULL);
-      }
-      else return { 0, 0, 0, 0 };
+      // The original value will be the 'from' in this situation
+      vecReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
+      vecReadPainter(NULL, to.c_str(), &to_col, NULL);
    }
    else if (not by.empty()) {
       FLOAT *colour;
