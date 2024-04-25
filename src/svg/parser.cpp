@@ -2373,7 +2373,7 @@ static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link
             if (find_href_tag(Self, Link->ref)) {
                for (auto &record : Self->Animations) {
                   std::visit([ Link, Self ](auto &&anim) {
-                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self, true);
+                     if (anim.id IS Link->ref.substr(1)) anim.activate(true);
                   }, record);
                }
             }
@@ -2616,7 +2616,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
-   auto &new_anim = Self->Animations.emplace_back(anim_transform { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_transform { Self, Parent->UID });
    auto &anim = std::get<anim_transform>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2635,7 +2635,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
 
          default:
-            set_anim_property(Self, anim, Tag, hash, value);
+            set_anim_property(anim, Tag, hash, value);
             break;
       }
    }
@@ -2652,7 +2652,7 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
 {
    pf::Log log(__FUNCTION__);
 
-   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Self, Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2663,9 +2663,9 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
       switch (hash) {
          default:
             if (value == "currentColor") {
-               set_anim_property(Self, anim, Tag, hash, State.m_color);
+               set_anim_property(anim, Tag, hash, State.m_color);
             }
-            else set_anim_property(Self, anim, Tag, hash, value);
+            else set_anim_property(anim, Tag, hash, value);
             break;
       }
    }
@@ -2681,7 +2681,7 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
 
 static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
-   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Self, Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2692,9 +2692,9 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
       switch (hash) {
          default:
             if (value == "currentColor") {
-               set_anim_property(Self, anim, Tag, hash, State.m_color);
+               set_anim_property(anim, Tag, hash, State.m_color);
             }
-            else set_anim_property(Self, anim, Tag, hash, value);
+            else set_anim_property(anim, Tag, hash, value);
             break;
       }
    }
@@ -2712,7 +2712,7 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
 
 static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
-   auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
+   auto &new_anim = Self->Animations.emplace_back(anim_value { Self, Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2723,9 +2723,9 @@ static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTa
       switch (hash) {
          default:
             if (value == "currentColor") {
-               set_anim_property(Self, anim, Tag, hash, State.m_color);
+               set_anim_property(anim, Tag, hash, State.m_color);
             }
-            else set_anim_property(Self, anim, Tag, hash, value);
+            else set_anim_property(anim, Tag, hash, value);
             break;
       }
    }
@@ -2739,7 +2739,7 @@ static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTa
 
 static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
-   auto &new_anim = Self->Animations.emplace_back(anim_motion { Parent->UID });
+   auto &new_anim = Self->Animations.emplace_back(anim_motion { Self, Parent->UID });
    auto &anim = std::get<anim_motion>(new_anim);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2782,7 +2782,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
          case SVF_ORIGIN: break; // Officially serves no purpose.
 
          default:
-            set_anim_property(Self, anim, Tag, hash, value);
+            set_anim_property(anim, Tag, hash, value);
             break;
       }
    }

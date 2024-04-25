@@ -1,19 +1,19 @@
 
 //********************************************************************************************************************
 
-void anim_base::activate(extSVG *SVG, bool Reset)
+void anim_base::activate(bool Reset)
 { 
    // Reset all the variables that control time management and the animation will start from scratch.
-   if (Reset) begin_offset = (double(PreciseTime()) / 1000000.0) - SVG->AnimEpoch;
+   if (Reset) begin_offset = (double(PreciseTime()) / 1000000.0) - svg->AnimEpoch;
    repeat_index = 0;
-   start_time   = SVG->AnimEpoch + begin_offset;
+   start_time   = svg->AnimEpoch + begin_offset;
    end_time     = 0;
 
    // Test: w3-animate-elem-21-t.svg
 
-   if (auto others = SVG->StartOnBegin.find(hash_id()); others != SVG->StartOnBegin.end()) {
+   if (auto others = svg->StartOnBegin.find(hash_id()); others != svg->StartOnBegin.end()) {
       for (auto &other : others->second) {
-         other->activate(SVG, true);
+         other->activate(true);
          other->start_time = start_time; // Ensure that times match exactly
       }
    }
@@ -23,13 +23,13 @@ void anim_base::activate(extSVG *SVG, bool Reset)
 // Return true if the animation has started.  For absolute consistency, animations start 'at the time they should have 
 // started', which we can strictly calculate from begin and duration timing values.
 
-bool anim_base::started(extSVG *SVG, double CurrentTime)
+bool anim_base::started(double CurrentTime)
 {
    if (end_time) return false;
    if (start_time) return true;
    if (repeat_index > 0) return true;
-   if (CurrentTime < SVG->AnimEpoch + begin_offset) return false;
-   activate(SVG, false);
+   if (CurrentTime < svg->AnimEpoch + begin_offset) return false;
+   activate(false);
    return true;
 }
 
@@ -66,7 +66,7 @@ bool anim_base::next_frame(double CurrentTime)
 
 //********************************************************************************************************************
 
-void anim_base::stop(extSVG *SVG, double Time)
+void anim_base::stop(double Time)
 {
    if (!begin_series.empty()) {
       // Check if there's a serialised begin offset following the one that's completed.
@@ -84,9 +84,9 @@ void anim_base::stop(extSVG *SVG, double Time)
    seek = 1.0; // Necessary in case the seek range calculation has overflowed
 
    // Start animations that are to be triggered from our ending.
-   if (auto others = SVG->StartOnEnd.find(hash_id()); others != SVG->StartOnEnd.end()) {
+   if (auto others = svg->StartOnEnd.find(hash_id()); others != svg->StartOnEnd.end()) {
       for (auto &other : others->second) {
-         other->activate(SVG, true);
+         other->activate(true);
          other->start_time = Time;
       }
    }
@@ -111,12 +111,12 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
    double current_time = double(CurrentTime) / 1000000.0;
 
    for (auto &record : SVG->Animations) {
-      std::visit([ SVG, current_time ](auto &&anim) {
-         if (not anim.started(SVG, current_time)) return;
+      std::visit([ current_time ](auto &&anim) {
+         if (not anim.started(current_time)) return;
 
          bool stop = anim.next_frame(current_time);
-         anim.perform(*SVG);
-         if (stop) anim.stop(SVG, current_time);
+         anim.perform();
+         if (stop) anim.stop(current_time);
       }, record);
    }
 

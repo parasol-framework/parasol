@@ -1,5 +1,5 @@
 
-void anim_transform::perform(extSVG &SVG)
+void anim_transform::perform()
 {
    double seek_to = seek;
 
@@ -284,7 +284,7 @@ void anim_transform::perform(extSVG &SVG)
          default: return;
       } // switch
 
-      SVG.Animatrix[target_vector].transforms.push_back(this);
+      svg->Animatrix[target_vector].transforms.push_back(this);
    }
 }
 
