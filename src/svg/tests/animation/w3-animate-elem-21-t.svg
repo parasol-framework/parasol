@@ -27,7 +27,7 @@ SMIL Animation specification.
     <animate id="fadeout" attributeName="stroke" attributeType="auto" from="#666" to="white" begin="indefinite" dur="3s" fill="freeze"/>
   </circle>
 
-  <rect id="pink" x="20" y="20" width="180" height="180" fill="#fff">
+  <rect x="20" y="20" width="180" height="180" fill="#fff">
     <animate id="fadein2" attributeName="fill" attributeType="auto" from="#fff" to="blue" begin="fadein.begin" dur="3s" fill="freeze"/>
     <animate id="fadeout2" attributeName="fill" attributeType="auto" from="blue" to="#fff" begin="fadeout.begin" dur="3s" fill="freeze"/>
   </rect>

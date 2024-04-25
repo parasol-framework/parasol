@@ -71,6 +71,7 @@ struct svgAnimState {
 #include <parasol/modules/svg.h>
 
 class extSVG;
+struct svgState;
 
 #include "animation.h"
 
@@ -92,22 +93,24 @@ class extSVG : public objSVG {
    std::map<OBJECTID, svgAnimState> Animatrix; // For animated transforms, a vector may have one matrix only.
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
+   std::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
+   std::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
    TIMER AnimationTimer;
    WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  PreserveWS; // Preserve white-space
 };
 
 struct svgState {
-   std::string m_color;
-   std::string m_fill;
-   std::string m_stroke;
+   std::string m_color;       // currentColor value, initialised to SVG.Colour
+   std::string m_fill;        // Defaults to rgb(0,0,0)
+   std::string m_stroke;      // Empty by default
    std::string m_font_size;
    std::string m_font_family;
-   DOUBLE  m_stroke_width;
-   DOUBLE  m_fill_opacity;
-   DOUBLE  m_opacity;
-   LONG    m_font_weight;
-   RQ      m_path_quality;
+   DOUBLE  m_stroke_width;    // 0 if undefined
+   DOUBLE  m_fill_opacity;    // -1 if undefined
+   DOUBLE  m_opacity;         // -1 if undefined
+   LONG    m_font_weight;     // 0 if undefined
+   RQ      m_path_quality;    // RQ::AUTO default
 
    private:
    objVectorScene *Scene;
@@ -139,8 +142,8 @@ static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
 
-static ERR  xtag_animate(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_colour(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_animate(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_animate_colour(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
 static ERR  xtag_animate_motion(extSVG *, XMLTag &, OBJECTPTR);
 static ERR  xtag_animate_transform(extSVG *, XMLTag &, OBJECTPTR);
 static ERR  xtag_default(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR, objVector * &);
@@ -149,7 +152,7 @@ static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &)
 static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_set(extSVG *, XMLTag &, XMLTag &, OBJECTPTR);
+static ERR  xtag_set(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
 static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static ERR  xtag_style(extSVG *, XMLTag &);

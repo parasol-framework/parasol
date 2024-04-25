@@ -986,7 +986,7 @@ static ERR SURFACE_Hide(extSurface *Self, APTR Void)
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (Self->invisible()) return ERR::Okay|ERR::Notified;
 

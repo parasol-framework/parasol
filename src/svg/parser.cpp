@@ -140,11 +140,11 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
       if (!child.isTag()) continue;
 
       switch(StrHash(child.name())) {
-         case SVF_ANIMATE:          xtag_animate(Self, child, Tag, Vector); break;
-         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, child, Tag, Vector); break;
+         case SVF_ANIMATE:          xtag_animate(Self, State, child, Tag, Vector); break;
+         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, State, child, Tag, Vector); break;
          case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, Vector); break;
          case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, Vector); break;
-         case SVF_SET:              xtag_set(Self, child, Tag, Vector); break;
+         case SVF_SET:              xtag_set(Self, State, child, Tag, Vector); break;
          case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
          case SVF_TEXTPATH:
             if (Vector->Class->ClassID IS ID_VECTORTEXT) {
@@ -1611,6 +1611,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
    switch(StrHash(Tag.name())) {
       case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
       case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
+      case SVF_SWITCH:           log.warning("<switch> not supported."); break;
       case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
       case SVF_RECT:             process_shape(Self, ID_VECTORRECTANGLE, State, Tag, Parent, Vector); break;
@@ -1628,11 +1629,11 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
       case SVF_CONICGRADIENT:    xtag_conicgradient(Self, Tag); break;
       case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, Tag); break;
       case SVF_SYMBOL:           xtag_symbol(Self, Tag); break;
-      case SVF_ANIMATE:          xtag_animate(Self, Tag, ParentTag, Parent); break;
-      case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, Tag, ParentTag, Parent); break;
+      case SVF_ANIMATE:          xtag_animate(Self, State, Tag, ParentTag, Parent); break;
+      case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, State, Tag, ParentTag, Parent); break;
       case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, Tag, Parent); break;
       case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, Tag, Parent); break;
-      case SVF_SET:              xtag_set(Self, Tag, ParentTag, Parent); break;
+      case SVF_SET:              xtag_set(Self, State, Tag, ParentTag, Parent); break;
       case SVF_FILTER:           xtag_filter(Self, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, Tag); break;
@@ -2372,7 +2373,7 @@ static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link
             if (find_href_tag(Self, Link->ref)) {
                for (auto &record : Self->Animations) {
                   std::visit([ Link, Self ](auto &&anim) {
-                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self);
+                     if (anim.id IS Link->ref.substr(1)) anim.activate(Self, true);
                   }, record);
                }
             }
@@ -2647,7 +2648,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 // The 'animate' element is used to animate a single attribute or property over time. For example, to make a
 // rectangle repeatedly fade away over 5 seconds:
 
-static ERR xtag_animate(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
+static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2661,12 +2662,15 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR 
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, Tag, hash, value);
+            if (value == "currentColor") {
+               set_anim_property(Self, anim, Tag, hash, State.m_color);
+            }
+            else set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
-   
-   anim.set_orig_value();
+
+   anim.set_orig_value(State);
 
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
@@ -2675,7 +2679,7 @@ static ERR xtag_animate(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR 
 //********************************************************************************************************************
 // <set> is largely equivalent to <animate> but does not interpolate values.
 
-static ERR xtag_set(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
+static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
@@ -2687,12 +2691,15 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Pare
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, Tag, hash, value);
+            if (value == "currentColor") {
+               set_anim_property(Self, anim, Tag, hash, State.m_color);
+            }
+            else set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }
 
-   anim.set_orig_value();
+   anim.set_orig_value(State);
    anim.calc_mode = CMODE::DISCRETE; // Disables interpolation
 
    if (!anim.is_valid()) Self->Animations.pop_back();
@@ -2703,7 +2710,7 @@ static ERR xtag_set(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Pare
 // The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the 
 // existing <animate> tag.
 
-static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
+static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
 {
    auto &new_anim = Self->Animations.emplace_back(anim_value { Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
@@ -2715,7 +2722,10 @@ static ERR xtag_animate_colour(extSVG *Self, XMLTag &Tag, XMLTag &ParentTag, OBJ
       auto hash = StrHash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
-            set_anim_property(Self, anim, Tag, hash, value);
+            if (value == "currentColor") {
+               set_anim_property(Self, anim, Tag, hash, State.m_color);
+            }
+            else set_anim_property(Self, anim, Tag, hash, value);
             break;
       }
    }

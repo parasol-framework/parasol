@@ -3,9 +3,9 @@
 
 //********************************************************************************************************************
 
-void anim_base::set_orig_value()
+void anim_base::set_orig_value(svgState &State)
 {
-   if ((freeze) or (target_attrib.empty())) return;
+   if ((freeze and not from.empty()) or target_attrib.empty()) return;
 
    pf::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
@@ -15,7 +15,37 @@ void anim_base::set_orig_value()
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
             else if (obj->Visibility IS VIS::VISIBLE) target_attrib_orig = "inline";
             break;
+            
+         case SVF_STROKE_WIDTH:
+            target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
+            break;
 
+         case SVF_FILL: {
+            CSTRING val;
+            if ((obj->getPtr(FID_Fill, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            else target_attrib_orig = State.m_fill;
+            break;
+         }
+
+         case SVF_STROKE: {
+            CSTRING val;
+            if ((obj->getPtr(FID_Stroke, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            else target_attrib_orig = State.m_stroke;
+            break;
+         }
+
+         case SVF_FILL_OPACITY:
+            if (obj->FillOpacity != 1.0) target_attrib_orig = obj->FillOpacity;
+            else if (State.m_fill_opacity != -1) target_attrib_orig = State.m_fill_opacity;
+            else target_attrib_orig = 1.0;
+            break;
+
+         case SVF_OPACITY:
+            if (obj->Opacity != 1.0) target_attrib_orig = obj->Opacity;
+            else if (State.m_opacity != -1) target_attrib_orig = State.m_opacity;
+            else target_attrib_orig = 1.0;
+            break;
+        
          default: {
             char buffer[400];
             if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
@@ -73,6 +103,7 @@ double anim_motion::get_total_dist()
 }
 
 //********************************************************************************************************************
+// The default for get_total_dist() is to use the first value in any series and not to include pairings.
 
 double anim_base::get_total_dist()
 {
@@ -109,12 +140,51 @@ double anim_base::get_total_dist()
 }
 
 //********************************************************************************************************************
+
+double anim_base::get_paired_dist()
+{
+   if (total_dist != 0) return total_dist;
+
+   distances.clear();
+   if (not values.empty()) {
+      POINT<double> a, b;
+      read_numseq(values[0], { &b.x, &b.y });
+      distances.push_back(0);
+      for (LONG i=1; i < std::ssize(values); i++) {
+         read_numseq(values[i], { &a.x, &a.y });
+         total_dist += a - b;
+         distances.push_back(total_dist);
+         b = a;
+      }
+   }
+   else if (not from.empty()) {
+      POINT<double> a, b;
+      if (not to.empty()) {
+         read_numseq(from, { &a.x, &a.y });
+         read_numseq(to, { &b.x, &b.y } );
+         total_dist = a - b;
+      }
+      else if (not by.empty()) {
+         read_numseq(by, { &a.x, &a.y } );
+         b = { 0, 0 };
+         total_dist = a - b;
+      }
+   }
+
+   return total_dist;
+}
+
+//********************************************************************************************************************
 // Return an interpolated value based on the values or from/to/by settings.
 
 double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
 {
    double from_val, to_val;
    double seek_to = seek;
+   
+   if ((seek >= 1.0) and (!freeze)) {
+      return strtod(target_attrib_orig.c_str(), NULL);
+   }
 
    if (not values.empty()) {
       LONG i;
@@ -190,8 +260,13 @@ std::string anim_base::get_string()
 {
    if ((seek >= 1.0) and (!freeze)) return target_attrib_orig;
 
-   if (not to.empty()) return to;
-   else return "";
+   if (not from.empty()) {
+      if (seek < 0.5) return from;
+      else if (not to.empty()) return to;
+      else return target_attrib_orig;
+   }
+   else if (not to.empty()) return to;
+   else return target_attrib_orig;
 }
 
 //********************************************************************************************************************
@@ -334,13 +409,9 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
       }
    }
    else if (not to.empty()) {
-      FLOAT *colour;
-      LONG elements;
-      if ((GetFieldArray(&Vector, Field, &colour, &elements) IS ERR::Okay) and (elements IS 4)) {
-         from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
-         vecReadPainter(NULL, to.c_str(), &to_col, NULL);
-      }
-      else return { 0, 0, 0, 0 };
+      // The original value will be the 'from' in this situation
+      vecReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
+      vecReadPainter(NULL, to.c_str(), &to_col, NULL);
    }
    else if (not by.empty()) {
       FLOAT *colour;
