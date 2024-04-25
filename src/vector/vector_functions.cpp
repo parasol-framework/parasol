@@ -117,7 +117,7 @@ int(ARC) Flags: Optional flags.
 
 *********************************************************************************************************************/
 
-void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)
+void vecArcTo(SimpleVector *Vector, double RX, double RY, double Angle, double X, double Y, ARC Flags)
 {
    Vector->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
 }
@@ -160,7 +160,7 @@ double Y: The vertical end point for the curve3 command.
 
 *********************************************************************************************************************/
 
-void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void vecCurve3(SimpleVector *Vector, double CtrlX, double CtrlY, double X, double Y)
 {
    Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
@@ -184,7 +184,7 @@ double Y: The vertical end point for the curve4 command.
 
 *********************************************************************************************************************/
 
-void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
+void vecCurve4(SimpleVector *Vector, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y)
 {
    Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
@@ -216,7 +216,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
+ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, double StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
@@ -274,15 +274,15 @@ internal command number for that vertex is the return value.
 
 -INPUT-
 ptr Path: The vector path to query.
-&double X: Pointer to a DOUBLE that will receive the X coordinate value.
-&double Y: Pointer to a DOUBLE that will receive the Y coordinate value.
+&double X: Pointer to a double that will receive the X coordinate value.
+&double Y: Pointer to a double that will receive the Y coordinate value.
 
 -RESULT-
 int: The internal command value for the vertex will be returned.
 
 *********************************************************************************************************************/
 
-LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
+LONG vecGetVertex(SimpleVector *Vector, double *X, double *Y)
 {
    return Vector->mPath.vertex(X, Y);
 }
@@ -310,7 +310,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
+ERR vecGenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -323,12 +323,12 @@ ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices
    // Bezier curves can produce a reasonable approximation of an ellipse, but in practice there is
    // both a noticeable loss of speed and path accuracy vs the point plotting method.
 
-   const DOUBLE kappa = 0.5522848; // 4 * ((√(2) - 1) / 3)
+   const double kappa = 0.5522848; // 4 * ((√(2) - 1) / 3)
 
-   const DOUBLE ox = RX * kappa;  // control point offset horizontal
-   const DOUBLE oy = RY * kappa;  // control point offset vertical
-   const DOUBLE xe = CX + RX;
-   const DOUBLE ye = CY + RY;
+   const double ox = RX * kappa;  // control point offset horizontal
+   const double oy = RY * kappa;  // control point offset vertical
+   const double xe = CX + RX;
+   const double ye = CY + RY;
 
    vector->mPath.move_to(CX - RX, CY);
    vector->mPath.curve4(CX - RX, CY - oy, CX - ox, CY - RY, CX, CY - RY);
@@ -341,16 +341,16 @@ ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices
 
    if (Vertices >= 3) steps = Vertices;
    else {
-      const DOUBLE ra = (fabs(RX) + fabs(RY)) / 2.0;
-      const DOUBLE da = acos(ra / (ra + 0.125)) * 2.0;
+      const double ra = (fabs(RX) + fabs(RY)) / 2.0;
+      const double da = acos(ra / (ra + 0.125)) * 2.0;
       steps = agg::uround(2.0 * agg::pi / da);
       if (steps < 3) steps = 3; // Because you need at least 3 vertices to create a shape.
    }
 
    for (ULONG step=0; step < steps; step++) {
-      const DOUBLE angle = DOUBLE(step) / DOUBLE(steps) * 2.0 * agg::pi;
-      const DOUBLE x = CX + cos(angle) * RX;
-      const DOUBLE y = CY + sin(angle) * RY;
+      const double angle = double(step) / double(steps) * 2.0 * agg::pi;
+      const double x = CX + cos(angle) * RX;
+      const double y = CY + sin(angle) * RY;
       if (step == 0) vector->mPath.move_to(x, y);
       else vector->mPath.line_to(x, y);
    }
@@ -383,7 +383,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
+ERR vecGenerateRectangle(double X, double Y, double Width, double Height, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -479,7 +479,7 @@ TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path
 from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is 
-`ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
+`ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
 
 The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the 
 coordinate of a point on the path.
@@ -497,7 +497,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, DOUBLE Scale)
+ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, double Scale)
 {
    pf::Log log;
 
@@ -506,12 +506,12 @@ ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, DOUBLE Scale)
    Path->mPath.rewind(0);
    Path->mPath.approximation_scale(Scale);
 
-   DOUBLE x, y;
+   double x, y;
    LONG cmd = -1;
    LONG index = 0;
 
    if (Callback->isC()) {
-      auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Callback->Routine));
+      auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, double, double, APTR))(Callback->Routine));
 
       pf::SwitchContext context(GetParentContext());
 
@@ -529,8 +529,8 @@ ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, DOUBLE Scale)
          { "Path",    Path },
          { "Index",   LONG(0) },
          { "Command", LONG(0) },
-         { "X",       DOUBLE(0) },
-         { "Y",       DOUBLE(0) }
+         { "X",       double(0) },
+         { "Y",       double(0) }
       }};
       args[0].Address = Path;
 
@@ -566,7 +566,7 @@ double Y: The line end point on the vertical plane.
 
 *********************************************************************************************************************/
 
-void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecLineTo(SimpleVector *Vector, double X, double Y)
 {
    Vector->mPath.line_to(X, Y);
 }
@@ -588,7 +588,7 @@ double Y: The vertical end point for the command.
 
 *********************************************************************************************************************/
 
-void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecMoveTo(SimpleVector *Vector, double X, double Y)
 {
    Vector->mPath.move_to(X, Y);
 }
@@ -616,8 +616,8 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
-   DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
+ERR vecMultiply(VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX,
+   double ScaleY, double TranslateX, double TranslateY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -625,9 +625,9 @@ ERR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE Shear
    }
 
    auto &d = *Matrix;
-   DOUBLE t0    = (d.ScaleX * ScaleX) + (d.ShearY * ShearX);
-   DOUBLE t2    = (d.ShearX * ScaleX) + (d.ScaleY * ShearX);
-   DOUBLE t4    = (d.TranslateX * ScaleX) + (d.TranslateY * ShearX) + TranslateX;
+   double t0    = (d.ScaleX * ScaleX) + (d.ShearY * ShearX);
+   double t2    = (d.ShearX * ScaleX) + (d.ScaleY * ShearX);
+   double t4    = (d.TranslateX * ScaleX) + (d.TranslateY * ShearX) + TranslateX;
    d.ShearY     = (d.ScaleX * ShearY) + (d.ShearY * ScaleY);
    d.ScaleY     = (d.ShearX * ShearY) + (d.ScaleY * ScaleY);
    d.TranslateY = (d.TranslateX * ShearY) + (d.TranslateY * ScaleY) + TranslateY;
@@ -666,9 +666,9 @@ ERR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 
    auto &d = *Target;
    auto &s = *Source;
-   DOUBLE t0  = (d.ScaleX * s.ScaleX) + (d.ShearY * s.ShearX);
-   DOUBLE t2  = (d.ShearX * s.ScaleX) + (d.ScaleY * s.ShearX);
-   DOUBLE t4  = (d.TranslateX * s.ScaleX) + (d.TranslateY * s.ShearX) + s.TranslateX;
+   double t0  = (d.ScaleX * s.ScaleX) + (d.ShearY * s.ShearX);
+   double t2  = (d.ShearX * s.ScaleX) + (d.ScaleY * s.ShearX);
+   double t4  = (d.TranslateX * s.ScaleX) + (d.TranslateY * s.ShearX) + s.TranslateX;
    d.ShearY     = (d.ScaleX * s.ShearY) + (d.ShearY * s.ScaleY);
    d.ScaleY     = (d.ShearX * s.ShearY) + (d.ScaleY * s.ScaleY);
    d.TranslateY = (d.TranslateX * s.ShearY) + (d.TranslateY * s.ScaleY) + s.TranslateY;
@@ -715,8 +715,8 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    class cmd {
       public:
       BYTE type;
-      DOUBLE sx, sy, shx, shy, tx, ty;
-      DOUBLE angle;
+      double sx, sy, shx, shy, tx, ty;
+      double angle;
       cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
    };
 
@@ -788,9 +788,9 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
          case M_MUL: {
             auto &d = *Matrix;
             auto &s = m;
-            DOUBLE t0    = (d.ScaleX * s.sx) + (d.ShearY * s.shx);
-            DOUBLE t2    = (d.ShearX * s.sx) + (d.ScaleY * s.shx);
-            DOUBLE t4    = (d.TranslateX * s.sx) + (d.TranslateY * s.shx) + s.tx;
+            double t0    = (d.ScaleX * s.sx) + (d.ShearY * s.shx);
+            double t2    = (d.ShearX * s.sx) + (d.ScaleY * s.shx);
+            double t4    = (d.TranslateX * s.sx) + (d.TranslateY * s.shx) + s.tx;
             d.ShearY     = (d.ScaleX * s.shy) + (d.ShearY * s.sy);
             d.ScaleY     = (d.ShearX * s.shy) + (d.ScaleY * s.sy);
             d.TranslateY = (d.TranslateX * s.shy) + (d.TranslateY * s.sy) + s.ty;
@@ -976,50 +976,36 @@ next:
       }
       return ERR::Okay;
    }
-   else if (StrCompare("hsl(", IRI, 4) IS ERR::Okay) {
+   else if ((StrCompare("hsl(", IRI, 4) IS ERR::Okay) or (StrCompare("hsla(", IRI, 5) IS ERR::Okay)) {
+      // Hue is a number expressing an angle in degrees
+      // S&L are expressed as a percentage from 0 to 100.  The '%' is ignored.  'none' is also valid.
+      // Alpha is a number from 0 to 1
       auto &rgb = Painter->Colour;
-      IRI += 4;
-      DOUBLE hue = StrToFloat(IRI) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') hue = hue * (255.0 / 100.0);
-         IRI++;
-      }
+      while (*IRI != '(') IRI++;
+      IRI++;
+      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      DOUBLE sat = StrToFloat(IRI) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') sat = sat * (255.0 / 100.0);
-         IRI++;
-      }
+      double sat = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      DOUBLE light = StrToFloat(IRI) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') light = light * (255.0 / 100.0);
-         IRI++;
-      }
+      double light = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
+
       if (*IRI) {
          IRI++;
-         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
-         while (*IRI) {
-            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
-            IRI++;
-         }
-         if (rgb.Alpha > 1) rgb.Alpha = 1;
-         else if (rgb.Alpha < 0) rgb.Alpha = 0;
+         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
+      
+      hue = std::clamp(hue, 0.0, 1.0);
+      sat = std::clamp(sat, 0.0, 1.0);
+      light = std::clamp(light, 0.0, 1.0);
 
-      if (hue > 1) hue = 1;
-      else if (hue < 0) hue = 0;
+      // Convert HSL to RGB.  HSL values are from 0.0 - 1.0
 
-      if (sat > 1) sat = 1;
-      else if (sat < 0) sat = 0;
-
-      if (light > 1) light = 1;
-      else if (light < 0) light = 0;
-
-      // Convert HSL to RGB
-
-      auto hueToRgb = [](DOUBLE p, DOUBLE q, DOUBLE t) {
+      auto hueToRgb = [](double p, double q, double t) {
          if (t < 0) t += 1;
          if (t > 1) t -= 1;
          if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
@@ -1032,8 +1018,8 @@ next:
          rgb.Red = rgb.Green = rgb.Blue = light;
       } 
       else {
-         const DOUBLE q = (light < 0.5) ? light * (1.0 + sat) : light + sat - light * sat;
-         const DOUBLE p = 2.0 * light - q;
+         const double q = (light < 0.5) ? light * (1.0 + sat) : light + sat - light * sat;
+         const double p = 2.0 * light - q;
          rgb.Red   = hueToRgb(p, q, hue + 1.0/3.0);
          rgb.Green = hueToRgb(p, q, hue);
          rgb.Blue  = hueToRgb(p, q, hue - 1.0/3.0);
@@ -1046,61 +1032,43 @@ next:
       return ERR::Okay;
    }
    else if (StrCompare("hsv(", IRI, 4) IS ERR::Okay) {
+      // Rules apply as for HSL, but the conversion algorithm is different.
       auto &rgb = Painter->Colour;
       IRI += 4;
-      DOUBLE hue = StrToFloat(IRI) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') hue = hue * (255.0 / 100.0);
-         IRI++;
-      }
+      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      DOUBLE sat = StrToFloat(IRI) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') sat = sat * (255.0 / 100.0);
-         IRI++;
-      }
+      double sat = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      DOUBLE val = StrToFloat(IRI) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') val = val * (255.0 / 100.0);
-         IRI++;
-      }
+      double val = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) {
          IRI++;
-         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
-         while (*IRI) {
-            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
-            IRI++;
-         }
-         if (rgb.Alpha > 1) rgb.Alpha = 1;
-         else if (rgb.Alpha < 0) rgb.Alpha = 0;
+         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
 
-      if (hue > 1) hue = 1;
-      else if (hue < 0) hue = 0;
-
-      if (sat > 1) sat = 1;
-      else if (sat < 0) sat = 0;
-
-      if (val > 1) val = 1;
-      else if (val < 0) val = 0;
+      hue = std::clamp(hue, 0.0, 1.0);
+      sat = std::clamp(sat, 0.0, 1.0);
+      val = std::clamp(val, 0.0, 1.0);
 
       hue = hue / 60.0;
       LONG i = floor(hue);
-      DOUBLE f = hue - i;
-      if (!(i & 1)) f = 1 - f; // if i is even
-      DOUBLE m = val * (1 - sat);
-      DOUBLE n = val * (1 - sat * f);
+      double f = hue - i;
+      if (!(i & 1)) f = 1.0 - f; // if i is even
+      double m = val * (1.0 - sat);
+      double n = val * (1.0 - sat * f);
       switch (i) {
          case 6:
-         case 0: rgb.Red = val; rgb.Green = n; rgb.Blue = m; break;
-         case 1: rgb.Red = n; rgb.Green = val; rgb.Blue = m; break;
-         case 2: rgb.Red = m; rgb.Green = val; rgb.Blue = n; break;
-         case 3: rgb.Red = m; rgb.Green = n; rgb.Blue = val; break;
-         case 4: rgb.Red = n; rgb.Green = m; rgb.Blue = val; break;
-         case 5: rgb.Red = val; rgb.Green = m; rgb.Blue = n; break;
-         default: rgb.Red = 0; rgb.Green = 0; rgb.Blue = 0; break;
+         case 0:  rgb.Red = val; rgb.Green = n;   rgb.Blue = m; break;
+         case 1:  rgb.Red = n;   rgb.Green = val; rgb.Blue = m; break;
+         case 2:  rgb.Red = m;   rgb.Green = val; rgb.Blue = n; break;
+         case 3:  rgb.Red = m;   rgb.Green = n;   rgb.Blue = val; break;
+         case 4:  rgb.Red = n;   rgb.Green = m;   rgb.Blue = val; break;
+         case 5:  rgb.Red = val; rgb.Green = m;   rgb.Blue = n; break;
+         default: rgb.Red = 0;   rgb.Green = 0;   rgb.Blue = 0; break;
       }
 
       if (Result) {
@@ -1118,26 +1086,26 @@ next:
       while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {
-         rgb.Red   = DOUBLE((nibbles[0]<<4)|nibbles[0]) * (1.0 / 255.0);
-         rgb.Green = DOUBLE((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
-         rgb.Blue  = DOUBLE((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
+         rgb.Red   = double((nibbles[0]<<4)|nibbles[0]) * (1.0 / 255.0);
+         rgb.Green = double((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
+         rgb.Blue  = double((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
          if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR::Okay;
       }
       else if (n IS 6) {
-         rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Red   = double((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
          if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR::Okay;
       }
       else if (n IS 8) {
-         rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         rgb.Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         rgb.Red   = double((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = double((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
          if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR::Okay;
       }
@@ -1238,7 +1206,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
+ERR vecRotate(VectorMatrix *Matrix, double Angle, double CenterX, double CenterY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1248,11 +1216,11 @@ ERR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY
    Matrix->TranslateX -= CenterX;
    Matrix->TranslateY -= CenterY;
 
-   DOUBLE ca = cos(Angle * DEG2RAD);
-   DOUBLE sa = sin(Angle * DEG2RAD);
-   DOUBLE t0 = (Matrix->ScaleX * ca) - (Matrix->ShearY * sa);
-   DOUBLE t2 = (Matrix->ShearX * ca) - (Matrix->ScaleY * sa);
-   DOUBLE t4 = (Matrix->TranslateX  * ca) - (Matrix->TranslateY * sa);
+   double ca = cos(Angle * DEG2RAD);
+   double sa = sin(Angle * DEG2RAD);
+   double t0 = (Matrix->ScaleX * ca) - (Matrix->ShearY * sa);
+   double t2 = (Matrix->ShearX * ca) - (Matrix->ScaleY * sa);
+   double t4 = (Matrix->TranslateX  * ca) - (Matrix->TranslateY * sa);
    Matrix->ShearY     = (Matrix->ScaleX * sa) + (Matrix->ShearY * ca);
    Matrix->ScaleY     = (Matrix->ShearX * sa) + (Matrix->ScaleY * ca);
    Matrix->TranslateY = (Matrix->TranslateX * sa) + (Matrix->TranslateY * ca);
@@ -1293,7 +1261,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecScale(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1332,7 +1300,7 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 *********************************************************************************************************************/
 
-ERR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecSkew(VectorMatrix *Matrix, double X, double Y)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1378,7 +1346,7 @@ double Y: The vertical end point for the smooth3 command.
 
 *********************************************************************************************************************/
 
-void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecSmooth3(SimpleVector *Vector, double X, double Y)
 {
    if (!Vector) return;
    Vector->mPath.curve3(X, Y);
@@ -1404,7 +1372,7 @@ double Y: The vertical end point for the smooth4 instruction.
 
 *********************************************************************************************************************/
 
-void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void vecSmooth4(SimpleVector *Vector, double CtrlX, double CtrlY, double X, double Y)
 {
    if (!Vector) return;
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
@@ -1433,7 +1401,7 @@ double: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning)
+double vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
 {
    if (!Handle) return 0;
 
@@ -1480,7 +1448,7 @@ double: The pixel width of the string is returned.
 
 *********************************************************************************************************************/
 
-DOUBLE vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
+double vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1624,7 +1592,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR vecTranslate(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1654,7 +1622,7 @@ double Y: Translate the path vertically by the given value.
 
 *********************************************************************************************************************/
 
-void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecTranslatePath(SimpleVector *Vector, double X, double Y)
 {
    if (!Vector) return;
    Vector->mPath.translate_all_paths(X, Y);
