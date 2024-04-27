@@ -1,13 +1,19 @@
 
 //********************************************************************************************************************
+// Manually activate the animation.  If Reset is true, the animation is guaranteed to start from seek position zero.
 
 void anim_base::activate(bool Reset)
 { 
-   // Reset all the variables that control time management and the animation will start from scratch.
-   if (Reset) begin_offset = (double(PreciseTime()) / 1000000.0) - svg->AnimEpoch;
-   repeat_index = 0;
-   start_time   = svg->AnimEpoch + begin_offset;
-   end_time     = 0;
+   // Reset the variables that control time management and the animation will start from scratch.
+
+   if (Reset) {
+      begin_offset = (double(PreciseTime()) / 1000000.0) - svg->AnimEpoch; // Seeks to position zero
+      repeat_index = 0;
+   }
+   
+   start_time = svg->AnimEpoch + begin_offset; // Directly affects the calculated seek value
+   
+   end_time   = 0;
 
    // Test: w3-animate-elem-21-t.svg
 

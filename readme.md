@@ -18,7 +18,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 ### Features
 
 * Multi-functional: Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
-* Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.
+* Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.  Our UI code is script driven, making customisation easy.
 * Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
 * Integrated data handling APIs for XML, JSON, ZIP, PNG, JPEG, SVG.
@@ -82,7 +82,7 @@ Alternatively the `master` branch is generally stable and updated often, but be 
 
 ## 3. Build Process
 
-We recommend using GCC to build the framework on most platforms.  On Windows we use Visual Studio to compile 'pure' builds for release, but you can also use MSYS2 and MinGW as a GCC build environment.  Targeting Android (experimental) will require Cygwin.
+GCC is our recommended build tool for most platforms.  On Windows we use Visual Studio C++ to compile release builds, but you also have the option of using MSYS2 and MinGW as a GCC build environment.  Targeting Android (experimental) will require Cygwin.
 
 ### 3.1 Linux Builds (GCC)
 
@@ -109,11 +109,11 @@ If problems occur at any stage during the build and you suspect an issue in the 
 
 ## 3.2 Windows Builds (GCC or Visual Studio)
 
-On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, we recommend using Visual Studio.  There are a number of reasons, but ultimately the optimised builds produced by VS are approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
+On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, we recommend using Visual Studio as it produces optimised builds approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
 
 ### 3.2.1 Visual Studio Builds
 
-If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you behind the scenes when it detects Parasol's CMake files.  Consequently there is little instruction required if choosing that option, we just suggest adding `-j 8` to the cmake build options for faster builds.
+If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you if you open the parasol folder and it auto-detects Parasol's CMake files.  Consequently there is little instruction required if choosing that option, we just suggest adding `-j 8` to the cmake "Build command arguments" input box for faster builds.  It is possible to run Fluid scripts from the default build's `parasol.exe` program.  The `.vs/launch.vs.json` file manages the launch configuration of this program, and a working example is included in the project folder.
 
 You can alternatively opt for a leaner build environment with MSVC Build Tools and get more hands-on with the build process.  Obtain the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and choose 'Desktop Development with C++' on install.  Your Start Menu will include a new launch option for 'Developer PowerShell for VS' that you can use to open a correctly preconfigured build environment.
 
