@@ -45,6 +45,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 #endif
 
 //********************************************************************************************************************
+// HSV values are from 0 - 1.0
 
 static HSV rgb_to_hsl(FRGB Colour)
 {
@@ -66,6 +67,7 @@ static HSV rgb_to_hsl(FRGB Colour)
 }
 
 //********************************************************************************************************************
+// HSV values are from 0 - 1.0
 
 static FRGB hsl_to_rgb(HSV Colour)
 {

@@ -107,6 +107,7 @@ public:
 
    // Variables
 
+   extSVG *svg;
    std::vector<std::string> values; // Set of discrete values that override 'from', 'to', 'by'
    std::vector<double> timing;      // Key times.  Ignored if duration < 0
    std::vector<double> key_points;  // Key points
@@ -136,13 +137,14 @@ public:
    RST    restart      = RST::ALWAYS;
    ATT    attrib_type  = ATT::AUTO;
    ADD    additive     = ADD::REPLACE;
-   bool   freeze       = false;
+   bool   freeze       = false; // True if the animation freezes on the last frame
    bool   accumulate   = false;
-   bool   begin_on_key = false;
+   bool   begin_on_key = false; // Animation starts if the user hits a key
+   bool   begin_on_click = false; // Animation starts if the user clicks anywhere in the scene graph
 
    // Functionality
 
-   anim_base(OBJECTID pTarget) : target_vector(pTarget) { }
+   anim_base(extSVG *pSVG, OBJECTID pTarget) : svg(pSVG), target_vector(pTarget) { }
 
    double get_paired_dist();
    double get_total_dist();
@@ -150,18 +152,18 @@ public:
    double get_numeric_value(objVector &, FIELD);
    std::string get_string();
    FRGB get_colour_value(objVector &, FIELD);
-   bool started(extSVG *, double);
+   bool started(double);
    bool next_frame(double);
    void set_orig_value(svgState &);
-   void activate(extSVG *, bool);
-   void stop(extSVG *, double);
+   void activate(bool);
+   void stop(double);
 
    ULONG hash_id() {
       _hash_id = StrHash(id);
       return _hash_id;
    }
 
-   virtual void perform(class extSVG &) = 0;
+   virtual void perform() = 0;
 
    virtual bool is_valid() {
       if (!values.empty()) return true;
@@ -177,9 +179,9 @@ public:
    VectorMatrix matrix = { .Vector = NULL }; // Exclusive transform matrix for animation.
    AT type;
 
-   anim_transform(OBJECTID pTarget) : anim_base(pTarget) { }
+   anim_transform(extSVG *pSVG, OBJECTID pTarget) : anim_base(pSVG, pTarget) { }
 
-   void perform(extSVG &);
+   void perform();
 
    std::string type_name() {
       switch (type) {
@@ -206,11 +208,11 @@ public:
    std::vector<float> angles; // Precalc'd angles for rotation along paths
    LONG path_timestamp;
 
-   anim_motion(OBJECTID pTarget) : anim_base(pTarget) {
+   anim_motion(extSVG *pSVG, OBJECTID pTarget) : anim_base(pSVG, pTarget) {
       calc_mode = CMODE::PACED;
    }
 
-   void perform(extSVG &);
+   void perform();
    void precalc_angles();
    double get_total_dist();
 
@@ -229,8 +231,8 @@ class anim_value : public anim_base {
 public:
    XMLTag *tag = NULL;
 
-   anim_value(OBJECTID pTarget, XMLTag *pTag) : anim_base(pTarget), tag(pTag) { }
-   void perform(extSVG &);
+   anim_value(extSVG *pSVG, OBJECTID pTarget, XMLTag *pTag) : anim_base(pSVG, pTarget), tag(pTag) { }
+   void perform();
    void set_value(objVector &Vector);
 };
 

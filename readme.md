@@ -9,7 +9,7 @@
 
 Parasol is an open source vector graphics engine and application framework for Windows and Linux.  It features integrated support for SVG with a focus on correctness, and we test against W3C's official SVG compliance tests.
 
-Our integrated scripting language, Fluid, is based on LuaJIT and helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred language if it supports linking with standard system libraries and C function calls.
+The API is written in C/C++ and is accessible as a standard library, allowing most popular programming languages to interface with it.  Our integrated scripting language, Fluid, is based on Lua and helps to simplify application development without compromising on speed or modern features.  Extensive API documentation is hosted at our website.
 
 ### Motivation
 
@@ -18,8 +18,10 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 ### Features
 
 * Multi-functional: Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
-* Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.
+* Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.  Our UI code is script driven, making customisation easy.
 * Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
+* SVG animation (SMIL) is supported.
+* Includes RIPL, a text layout engine modeled on HTML, SVG and word processing technologies.
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
 * Integrated data handling APIs for XML, JSON, ZIP, PNG, JPEG, SVG.
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
@@ -82,7 +84,7 @@ Alternatively the `master` branch is generally stable and updated often, but be 
 
 ## 3. Build Process
 
-We recommend using GCC to build the framework on most platforms.  On Windows we use Visual Studio to compile 'pure' builds for release, but you can also use MSYS2 and MinGW as a GCC build environment.  Targeting Android (experimental) will require Cygwin.
+GCC is our recommended build tool for most platforms.  On Windows we use Visual Studio C++ to compile release builds, but you also have the option of using MSYS2 and MinGW as a GCC build environment.  Targeting Android (experimental) will require Cygwin.
 
 ### 3.1 Linux Builds (GCC)
 
@@ -109,11 +111,27 @@ If problems occur at any stage during the build and you suspect an issue in the 
 
 ## 3.2 Windows Builds (GCC or Visual Studio)
 
-On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, we recommend using Visual Studio.  There are a number of reasons, but ultimately the optimised builds produced by VS are approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
+On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, we recommend using Visual Studio as it produces optimised builds approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
 
 ### 3.2.1 Visual Studio Builds
 
-If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you behind the scenes when it detects Parasol's CMake files.  Consequently there is little instruction required if choosing that option, we just suggest adding `-j 8` to the cmake build options for faster builds.
+If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you.  Open the parasol folder from VS and it will auto-detect Parasol's CMake files.  We recommend adding `-j 8` to the cmake "Build command arguments" input box for faster builds.
+
+Once built, VS can run Fluid scripts using the `parasol.exe` program.  The `.vs/launch.vs.json` file manages launch configuration, and a working example is included below.
+
+```json
+{
+  "version": "0.2.1", "defaults": {},
+  "configurations": [ {
+      "type": "launch",
+      "project": "CMakeLists.txt",
+      "projectTarget": "parasol.exe (Install)",
+      "name": "Widgets Demo",
+      "args": [ "--log-api", "${workspaceRoot}/examples/widgets.fluid" ]
+    }
+  ]
+}
+```
 
 You can alternatively opt for a leaner build environment with MSVC Build Tools and get more hands-on with the build process.  Obtain the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and choose 'Desktop Development with C++' on install.  Your Start Menu will include a new launch option for 'Developer PowerShell for VS' that you can use to open a correctly preconfigured build environment.
 
@@ -185,9 +203,9 @@ ENABLE_ANALYSIS   OFF  Enable run-time address analysis if available.  Incompati
 
 ### 5.1 Static Builds
 
-Parasol is built as a set of categorised API's such as 'display', 'network' and 'vector'.  Each API is compiled in its own individual library file.  By default we build them as shared libraries as it prevents scripts and programs from loading unnecessary features.
+Parasol is built as a series of APIs such as 'core', 'display', 'network' and 'vector'.  Each API is compiled as an individual component.  A default system build compiles the APIs as shared libraries, as it prevents scripts and programs from loading unnecessary features.
 
-If you're using Parasol for a specific run-time application that you're developing, you probably want a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation.
+If you're using Parasol for a specific run-time application that you're developing, you probably want a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation and a smaller binary.
 
 To enable a static build, use the `-DPARASOL_STATIC=ON` build option.  Your program's cmake file should link to the framework with `target_link_libraries (your_program PRIVATE ${INIT_LINK})`.
 

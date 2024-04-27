@@ -37,7 +37,7 @@ static ERR motion_callback(objVector *Vector, LONG Index, LONG Cmd, double X, do
 
 //********************************************************************************************************************
 
-void anim_motion::perform(extSVG &SVG)
+void anim_motion::perform()
 {
    POINT<float> a, b;
    double angle = -1;

@@ -299,20 +299,20 @@ class GuardedResource {
       GuardedResource(const GuardedResource &other) { // Copy constructor
          if (other.resource) {
             resource = other.resource;
-            count  = other.count;
+            count    = other.count;
             count[0]++;
          }
          else { // If the other resource is undefined then use a default state
             resource = NULL;
-            id     = 0;
-            count  = new C(1);
+            id       = 0;
+            count    = new C(1);
          }
       }
 
       GuardedResource(GuardedResource &&other) { // Move constructor
-         id     = other.id;
+         id       = other.id;
          resource = other.resource;
-         count  = other.count;
+         count    = other.count;
          other.count = NULL;
       }
 
@@ -336,7 +336,7 @@ class GuardedResource {
             count[0]++;
          }
          else { // If the other resource is undefined then we reset our state with no count inheritance.
-            resource   = NULL;
+            resource = NULL;
             id       = 0;
             count[0] = 1;
          }
@@ -346,9 +346,9 @@ class GuardedResource {
       GuardedResource & operator = (GuardedResource &&other) { // Move assignment
          if (this == &other) return *this;
          if (!--count[0]) delete count;
-         id     = other.id;
+         id       = other.id;
          resource = other.resource;
-         count  = other.count;
+         count    = other.count;
          other.count = NULL;
          return *this;
       }
@@ -359,7 +359,7 @@ class GuardedResource {
          if (!Resource) return;
          else if (count[0] IS 1) {
             resource = Resource;
-            id     = ((LONG *)Resource)[-2];
+            id       = ((LONG *)Resource)[-2];
          }
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }

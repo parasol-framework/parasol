@@ -13,16 +13,16 @@ static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y,
 
 //********************************************************************************************************************
 
-static double parse_begin(extSVG *SVG, anim_base &Anim, std::string_view Value)
+static double parse_begin(anim_base &Anim, std::string_view Value)
 {
    if (Value.ends_with(".begin")) {
       auto ref_id = StrHash(std::string(Value.substr(0, Value.size()-6)));
-      SVG->StartOnBegin[ref_id].push_back(&Anim);
+      Anim.svg->StartOnBegin[ref_id].push_back(&Anim);
       return std::numeric_limits<double>::max();
    }
    else if (Value.ends_with(".end")) {
       auto ref_id = StrHash(std::string(Value.substr(0, Value.size()-4)));
-      SVG->StartOnEnd[ref_id].push_back(&Anim);
+      Anim.svg->StartOnEnd[ref_id].push_back(&Anim);
       return std::numeric_limits<double>::max();
    }
    else if ("access-key" IS Value) { // Start the animation when the user presses a key.
@@ -35,18 +35,18 @@ static double parse_begin(extSVG *SVG, anim_base &Anim, std::string_view Value)
 //********************************************************************************************************************
 // Set common animation properties
 
-static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
+static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
 {
    switch (Hash) {
       case SVF_ID:
          Anim.id = Value;
-         add_id(Self, Tag, Value);
+         add_id(Anim.svg, Tag, Value);
          break;
 
       case SVF_HREF:
       case SVF_XLINK_HREF: {
          OBJECTPTR ref_vector;
-         if (scFindDef(Self->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
+         if (scFindDef(Anim.svg->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
             Anim.target_vector = ref_vector->UID;
          }
          break;
@@ -113,7 +113,7 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG H
                 auto v_end = Value.find(';', v);
                 if (v_end IS std::string::npos) v_end = Value.size();
 
-                if (auto begin_offset = parse_begin(Self, Anim, Value.substr(v, v_end - v)); begin_offset != std::numeric_limits<double>::max()) {
+                if (auto begin_offset = parse_begin(Anim, Value.substr(v, v_end - v)); begin_offset != std::numeric_limits<double>::max()) {
                    Anim.begin_series.push_back(begin_offset);
                 }
                 v = v_end + 1;
@@ -122,7 +122,7 @@ static ERR set_anim_property(extSVG *Self, anim_base &Anim, XMLTag &Tag, ULONG H
             if (not Anim.begin_series.empty()) Anim.begin_offset = Anim.begin_series[0];
             else Anim.begin_offset = std::numeric_limits<double>::max();
          }
-         else Anim.begin_offset = parse_begin(Self, Anim, Value);
+         else Anim.begin_offset = parse_begin(Anim, Value);
 
          break;
 

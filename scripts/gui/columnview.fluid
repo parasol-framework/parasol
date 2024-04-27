@@ -344,7 +344,7 @@ gui.columnView = function(Options)
 
       if not View.banner.viewport then
          View.banner.clip = View.viewport.new('VectorViewport', {
-            x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
+            x = 0, y = 0, xOffset = 2, height = View.bannerHeight, overflow = VOF_HIDDEN
          })
 
          View.banner.viewport = View.banner.clip.new('VectorViewport', {

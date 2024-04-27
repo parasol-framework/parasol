@@ -1,0 +1,66 @@
+<!-- Tiffany Rayside https://codepen.io/tmrDevelops/pen/WbXeOB -->
+
+<svg width="400" height="600" viewBox="-250 -250 400 600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <rect fill="white" x="-250" y="-250" width="100%" height="100%"/>
+
+  <defs>
+    <clipPath id="clip">
+      <path d="M0,0H100L50,88Z"/>
+    </clipPath>
+
+    <g id="tile" clip-path="url(#clip)">
+      <rect fill="transparent" x="0" y="0" width="100" height="100"/>
+      <circle cx="50" cy="50" r="30" opacity="0.8">
+          <animate attributeName="cx" values="0;150;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="5s" repeatCount="indefinite"/>
+          <animate attributeName="cy" values="0;150;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="7s" repeatCount="indefinite"/>
+          <animate attributeName="r" values="20;60;20" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="9s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-width" values="0;10;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="13s" repeatCount="indefinite"/>
+          <animate attributeName="fill" from="hsla(333, 95%, 5%, 1)" to="hsla(333, 95%, 5%, 1)" calcMode="linear" begin="0s" dur="11s" repeatCount="indefinite"/>
+          <animate attributeName="stroke" from="hsla(110, 95%, 35%, 1)" to="hsla(110, 95%, 45%, 1)" calcMode="linear" begin="0s" dur="8s" repeatCount="indefinite"/>
+      </circle>
+      <line stroke-width="3" stroke="hsla(151, 95%, 45%, 1)" opacity="0.8">
+          <animate attributeName="x1" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="5s" repeatCount="indefinite"/>
+          <animate attributeName="y1" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="6s" repeatCount="indefinite"/>
+          <animate attributeName="x2" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="7s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="8s" repeatCount="indefinite"/>
+      </line>
+      <line stroke-width="3" stroke="hsla(300, 95%, 35%, 1)" opacity="0.8">
+          <animate attributeName="x1" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="5.5s" repeatCount="indefinite"/>
+          <animate attributeName="y1" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="6.5s" repeatCount="indefinite"/>
+          <animate attributeName="x2" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="7.5s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="8.5s" repeatCount="indefinite"/>
+      </line>
+      <line stroke-width="5" stroke="hsla(333, 95%, 45%, 1)" opacity="0.8">
+          <animate attributeName="x1" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="5.7s" repeatCount="indefinite"/>
+          <animate attributeName="y1" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="6.7s" repeatCount="indefinite"/>
+          <animate attributeName="x2" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="7.7s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="0;100;0" keyTimes="0;0.5;1" calcMode="linear" begin="0s" dur="8.7s" repeatCount="indefinite"/>
+      </line>
+    </g>
+
+    <g id="kaleidoscopeTile">
+      <use xlink:href="#tile" transform="rotate(0)"/>
+      <use xlink:href="#tile" transform="scale(-1,1),rotate(60)"/>
+      <use xlink:href="#tile" transform="rotate(120)"/>
+      <use xlink:href="#tile" transform="scale(1,-1),rotate(120)"/>
+      <use xlink:href="#tile" transform="rotate(240)"/>
+      <use xlink:href="#tile" transform="scale(1,-1)"/>
+      <use xlink:href="#tile" transform="translate(150,-87),rotate(120)"/>
+      <use xlink:href="#tile" transform="translate(-150,87),scale(1,-1)"/>
+      <use xlink:href="#tile" transform="translate(-150,-87),rotate(0)"/>
+      <use xlink:href="#tile" transform="translate(150,87),scale(1,-1),rotate(120)"/>
+      <use xlink:href="#tile" transform="translate(-150,-87),scale(-1,1),rotate(60)"/>
+      <use xlink:href="#tile" transform="translate(-150,87),rotate(240)"/>
+      <use xlink:href="#tile" transform="translate(150,-87),scale(-1,1),rotate(60)"/>
+      <use xlink:href="#tile" transform="translate(150,87),rotate(240)"/>
+    </g>
+
+    <pattern id="kaleidoscope" x="0" y="0" width="300" height="174" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse">
+      <use xlink:href="#kaleidoscopeTile" x="150" y="87"/>
+    </pattern>
+  </defs>
+
+  <rect fill="url(#kaleidoscope)" x="-400" y="-400" width="800" height="800">
+    <animateTransform attributeName="transform" type="rotate" from="0,0,0" to="360,0,0" begin="0s" dur="20s" repeatCount="indefinite"/>
+  </rect>
+</svg>

@@ -73,7 +73,7 @@ struct svgAnimState {
 class extSVG;
 struct svgState;
 
-#include "animation.h"
+#include "anim.h"
 
 //********************************************************************************************************************
 
