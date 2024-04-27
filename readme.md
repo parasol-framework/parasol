@@ -115,7 +115,23 @@ On Windows you can choose between a Visual Studio (MSVC) build or a GCC build en
 
 ### 3.2.1 Visual Studio Builds
 
-If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you if you open the parasol folder and it auto-detects Parasol's CMake files.  Consequently there is little instruction required if choosing that option, we just suggest adding `-j 8` to the cmake "Build command arguments" input box for faster builds.  It is possible to run Fluid scripts from the default build's `parasol.exe` program.  The `.vs/launch.vs.json` file manages the launch configuration of this program, and a working example is included in the project folder.
+If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you.  Open the parasol folder from VS and it will auto-detect Parasol's CMake files.  We recommend adding `-j 8` to the cmake "Build command arguments" input box for faster builds.
+
+Once built, VS can run Fluid scripts using the `parasol.exe` program.  The `.vs/launch.vs.json` file manages launch configuration, and a working example is included below.
+
+```json
+{
+  "version": "0.2.1", "defaults": {},
+  "configurations": [ {
+      "type": "launch",
+      "project": "CMakeLists.txt",
+      "projectTarget": "parasol.exe (Install)",
+      "name": "Widgets Demo",
+      "args": [ "--log-api", "${workspaceRoot}/examples/widgets.fluid" ]
+    }
+  ]
+}
+```
 
 You can alternatively opt for a leaner build environment with MSVC Build Tools and get more hands-on with the build process.  Obtain the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and choose 'Desktop Development with C++' on install.  Your Start Menu will include a new launch option for 'Developer PowerShell for VS' that you can use to open a correctly preconfigured build environment.
 

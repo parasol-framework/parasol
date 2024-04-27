@@ -72,4 +72,3 @@ debug-mod/
 local-mod/
 local-gdb/
 out/
-launch.vs.json
