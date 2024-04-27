@@ -9,7 +9,7 @@
 
 Parasol is an open source vector graphics engine and application framework for Windows and Linux.  It features integrated support for SVG with a focus on correctness, and we test against W3C's official SVG compliance tests.
 
-Our integrated scripting language, Fluid, is based on LuaJIT and helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred language if it supports linking with standard system libraries and C function calls.
+The API is written in C/C++ and is accessible as a standard library, allowing most popular programming languages to interface with it.  Our integrated scripting language, Fluid, is based on Lua and helps to simplify application development without compromising on speed or modern features.  Extensive API documentation is hosted at our website.
 
 ### Motivation
 
@@ -20,6 +20,8 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Multi-functional: Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
 * Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.  Our UI code is script driven, making customisation easy.
 * Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
+* SVG animation (SMIL) is supported.
+* Includes RIPL, a text layout engine modeled on HTML, SVG and word processing technologies.
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
 * Integrated data handling APIs for XML, JSON, ZIP, PNG, JPEG, SVG.
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
@@ -185,9 +187,9 @@ ENABLE_ANALYSIS   OFF  Enable run-time address analysis if available.  Incompati
 
 ### 5.1 Static Builds
 
-Parasol is built as a set of categorised API's such as 'display', 'network' and 'vector'.  Each API is compiled in its own individual library file.  By default we build them as shared libraries as it prevents scripts and programs from loading unnecessary features.
+Parasol is built as a series of APIs such as 'core', 'display', 'network' and 'vector'.  Each API is compiled as an individual component.  A default system build compiles the APIs as shared libraries, as it prevents scripts and programs from loading unnecessary features.
 
-If you're using Parasol for a specific run-time application that you're developing, you probably want a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation.
+If you're using Parasol for a specific run-time application that you're developing, you probably want a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation and a smaller binary.
 
 To enable a static build, use the `-DPARASOL_STATIC=ON` build option.  Your program's cmake file should link to the framework with `target_link_libraries (your_program PRIVATE ${INIT_LINK})`.
 
