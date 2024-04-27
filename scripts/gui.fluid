@@ -1,33 +1,82 @@
 -- Graphical User Interface functions
 
 if (gui == nil) then
+   -- The following values are the default.  They can be overridden by the "style:values.xml" file.
    gui = {
-      dpi = 160,
-      fonts = { },
-      colours = { },
-      interface = { },
-      rgb = { },
-      counter = 0,
-      iconThemes = {
-         default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-         carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-         yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
-         orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
-         blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
-         ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
-         green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
-         red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
-         indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
-         rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
-         pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
-         grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
-         pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-      }
+     dpi = 160,
+     fonts = {
+       -- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize"
+       default = { face='Noto Sans,Source Sans 3', size='100%', colour='0,0,0' },
+       window  = { face='Noto Sans,Source Sans 3', size='100%', colour='0,0,0' }, -- For text that is not inside a widget
+       button  = { face='Noto Sans,Source Sans 3', size='100%', colour='0,0,0' }, -- Text inside buttons -->
+       icon    = { face='Noto Sans,Source Sans 3', size='100%', colour='255,255,255' }, -- Text at the bottom of icons
+       menu    = { face='Noto Sans,Source Sans 3', size='100%', colour='255,255,255', highlight='255,255,255' }, -- Menu item text
+       titlebar = { face='Noto Sans', size='100%', colour='255,255,255' }, -- Title bar text (in standalone OS mode)
+       small    = { face='Tiny', size='6' }, -- Recommended text for small sizes -->
+       large    = { face='Noto Sans,Source Sans 3', size='130%' }, -- Recommended text for headers -->
+       widget   = { face='Noto Sans,Source Sans 3', size=11, colour='255,255,255' }, -- Text inside widgets (e.g. combobox)
+       label    = { face='Noto Sans,Source Sans 3:11:bold', size=11, colour='0,0,0' } -- Text for labels and outside widgets
+     },
+     colours = {
+       -- These are all fills, so any SVG compliant fill value can potentially be used to define a 'colour'.
+       shadow       = 'rgb(0,0,0,100)',
+       highlight    = 'rgb(255,255,255,150)',
+       colour       = 'rgb(220,220,220)',
+       window       = 'rgb(220,220,220)',
+       widgetText   = 'rgb(255,255,255)',
+       widgetBkgd   = 'rgb(0,0,0,100)',
+       widgetStroke = 'rgb(255,255,255,60)',
+       widgetStrokeFocus    = 'rgb(255,255,255,160)',
+       widgetStrokeDisabled = 'rgb(255,255,255,60)',
+       button        = 'rgb(230,230,230)',
+       buttonclick   = 'rgb(200,200,200)',
+       menubar       = 'rgb(190,190,190)',
+       menu          = 'rgb(240,240,240)',
+       border        = '#909090',
+       menuborder    = 'rgb(200,200,200)',
+       desktop       = 'rgb(160,160,160)',
+       recess        = 'rgb(160,160,160)',
+       background    = 'rgb(255,255,255)',
+       texthighlight = '#e0e0f0',
+       boxedText     = 'rgb(255,255,255)',
+       windowText    = 'rgb(0,0,0)'
+     },
+     interface = {
+       inputBorder   = 1,
+       outputBorder  = 1,
+       widgetMargin  = 5,
+       widgetGap     = 6,
+       textBorder    = 1,
+       fontSize      = 11,
+       sliderSize    = 16,
+       scrollSize    = 18,
+       scrollOpacity = 100,
+       iconRatio     = '7%',
+       iconTheme     = 'Default',
+       iconSize      = 0
+     },
+     rgb = { },
+     counter = 0,
+     iconThemes = {
+        default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+        carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+        yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
+        orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
+        blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
+        ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
+        green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
+        red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
+        indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
+        rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
+        pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
+        grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
+        pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+     }
    }
 
    gui.colours.rgb = function(Name)
       if not gui.colours[Name] then error('Invalid colour name "' .. Name .. '"') end
-      return 'rgb(' .. gui.colours[Name] .. ')'
+      return gui.colours[Name]
    end
 
    do
@@ -59,62 +108,26 @@ if (gui == nil) then
                end
             end)
 
-         if (total == 0) then
-            error('No fonts were processed from the style information.')
-         end
-
          local err, index = xml.mtFindTag('/colours')
          if (err == ERR_Okay) then
-            err, gui.colours['shadow']        = xml.mtGetAttrib(index, 'shadow')
-            err, gui.colours['highlight']     = xml.mtGetAttrib(index, 'highlight')
-            err, gui.colours['colour']        = xml.mtGetAttrib(index, 'colour')
-            err, gui.colours['widgetText']    = xml.mtGetAttrib(index, 'widgetText')
-            err, gui.colours['widgetBkgd']    = xml.mtGetAttrib(index, 'widgetBkgd')
-            err, gui.colours['widgetStroke']  = xml.mtGetAttrib(index, 'widgetStroke')
-            err, gui.colours['widgetStrokeFocus']   = xml.mtGetAttrib(index, 'widgetStrokeFocus')
-            err, gui.colours['widgetStrokeDisabled'] = xml.mtGetAttrib(index, 'widgetStrokeDisabled')
-            err, gui.colours['button']        = xml.mtGetAttrib(index, 'button')
-            err, gui.colours['buttonClick']   = xml.mtGetAttrib(index, 'buttonClick')
-            err, gui.colours['menubar']       = xml.mtGetAttrib(index, 'menubar')
-            err, gui.colours['menu']          = xml.mtGetAttrib(index, 'menu')
-            err, gui.colours['border']        = xml.mtGetAttrib(index, 'border')
-            err, gui.colours['menuBorder']    = xml.mtGetAttrib(index, 'menuBorder')
-            err, gui.colours['desktop']       = xml.mtGetAttrib(index, 'desktop')
-            err, gui.colours['recess']        = xml.mtGetAttrib(index, 'recess')
-            err, gui.colours['white']         = xml.mtGetAttrib(index, 'white')
-            err, gui.colours['red']           = xml.mtGetAttrib(index, 'red')
-            err, gui.colours['green']         = xml.mtGetAttrib(index, 'green')
-            err, gui.colours['blue']          = xml.mtGetAttrib(index, 'blue')
-            err, gui.colours['background']    = xml.mtGetAttrib(index, 'background')
-            err, gui.colours['textHighlight'] = xml.mtGetAttrib(index, 'textHighlight')
-            err, gui.colours['window']        = xml.mtGetAttrib(index, 'window')
-            err, gui.colours['boxedText']     = xml.mtGetAttrib(index, 'boxedText')
-            err, gui.colours['windowText']    = xml.mtGetAttrib(index, 'windowText')
-         else
-            error('No colours tag in style values.')
+            for k,v in pairs(gui.colours) do
+               err, colour = xml.mtGetAttrib(index, k)
+               if (err == ERR_Okay) then gui.colours[k] = colour end
+            end
          end
 
          local err, index = xml.mtFindTag('/interface')
          if (err == ERR_Okay) then
-            err, gui.interface['inputBorder']    = xml.mtGetAttrib(index, 'inputBorder')
-            err, gui.interface['outputBorder']   = xml.mtGetAttrib(index, 'outputBorder')
-            err, gui.interface['widgetMargin']   = xml.mtGetAttrib(index, 'widgetMargin')
-            err, gui.interface['widgetGap']      = xml.mtGetAttrib(index, 'widgetGap')
-            err, gui.interface['textBorder']     = xml.mtGetAttrib(index, 'textBorder')
-            err, gui.interface['fontSize']       = xml.mtGetAttrib(index, 'fontSize')
-            err, gui.interface['sliderSize']     = xml.mtGetAttrib(index, 'sliderSize')
-            err, gui.interface['scrollSize']     = xml.mtGetAttrib(index, 'scrollSize')
-            err, gui.interface['scrollOpacity']  = xml.mtGetAttrib(index, 'scrollOpacity')
-            err, gui.interface['iconRatio']      = xml.mtGetAttrib(index, 'iconRatio')
-            err, gui.interface['iconTheme']      = xml.mtGetAttrib(index, 'iconTheme')
-            err, gui.interface['iconSize']       = xml.mtGetAttrib(index, 'iconSize')
-            for k, v in pairs(gui.interface) do
-               if string.match(v, '^%-?%d+$') then
-                  gui.interface[k] = tonumber(v)
+            for k,v in pairs(gui.interface) do
+               err, val = xml.mtGetAttrib(index, k)
+               if (err == ERR_Okay) then
+                  if string.match(val, '^%-?%d+$') then
+                     gui.interface[k] = tonumber(val)
+                  else
+                     gui.interface[k] = val
+                  end
                end
             end
-         else
-            error('No interface tag in style values.')
          end
 
          xml = nil
