@@ -5,55 +5,52 @@ if (gui == nil) then
    gui = {
      dpi = 160,
      fonts = {
-       -- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize"
-       default = { face='Noto Sans,Source Sans 3', size='100%', colour='0,0,0' },
-       window  = { face='Noto Sans,Source Sans 3', size='100%', colour='0,0,0' }, -- For text that is not inside a widget
-       button  = { face='Noto Sans,Source Sans 3', size='100%', colour='0,0,0' }, -- Text inside buttons -->
-       icon    = { face='Noto Sans,Source Sans 3', size='100%', colour='255,255,255' }, -- Text at the bottom of icons
-       menu    = { face='Noto Sans,Source Sans 3', size='100%', colour='255,255,255', highlight='255,255,255' }, -- Menu item text
-       titlebar = { face='Noto Sans', size='100%', colour='255,255,255' }, -- Title bar text (in standalone OS mode)
-       small    = { face='Tiny', size='6' }, -- Recommended text for small sizes -->
-       large    = { face='Noto Sans,Source Sans 3', size='130%' }, -- Recommended text for headers -->
-       widget   = { face='Noto Sans,Source Sans 3', size=11, colour='255,255,255' }, -- Text inside widgets (e.g. combobox)
-       label    = { face='Noto Sans,Source Sans 3:11:bold', size=11, colour='0,0,0' } -- Text for labels and outside widgets
+       -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
+       default  = { face='Noto Sans,Source Sans 3', size='100%' },
+       window   = { face='Noto Sans,Source Sans 3', size='100%' }, -- For text that is not inside a widget
+       button   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside buttons
+       icon     = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text at the bottom of icons
+       menu     = { face='Noto Sans,Source Sans 3', size='100%' }, -- Menu item text
+       titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
+       small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
+       large    = { face='Noto Sans,Source Sans 3', size='130%' }, -- Recommended text for headers
+       widget   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside widgets (e.g. combobox)
+       label    = { face='Noto Sans,Source Sans 3::bold', size='100%' } -- Text for labels and outside widgets
      },
      colours = {
        -- These are all fills, so any SVG compliant fill value can potentially be used to define a 'colour'.
-       shadow       = 'rgb(0,0,0,100)',
-       highlight    = 'rgb(255,255,255,150)',
-       colour       = 'rgb(220,220,220)',
-       window       = 'rgb(220,220,220)',
        widgetText   = 'rgb(255,255,255)',
        widgetBkgd   = 'rgb(0,0,0,100)',
        widgetStroke = 'rgb(255,255,255,60)',
        widgetStrokeFocus    = 'rgb(255,255,255,160)',
        widgetStrokeDisabled = 'rgb(255,255,255,60)',
-       button        = 'rgb(230,230,230)',
-       buttonclick   = 'rgb(200,200,200)',
-       menubar       = 'rgb(190,190,190)',
-       menu          = 'rgb(240,240,240)',
-       border        = '#909090',
-       menuborder    = 'rgb(200,200,200)',
-       desktop       = 'rgb(160,160,160)',
-       recess        = 'rgb(160,160,160)',
-       background    = 'rgb(255,255,255)',
-       texthighlight = '#e0e0f0',
-       boxedText     = 'rgb(255,255,255)',
-       windowText    = 'rgb(0,0,0)'
+       shadow        = 'rgb(0,0,0,100)', -- Base colour/alpha value for stroked shadows
+       highlight     = 'rgb(255,255,255,150)', -- Base colour/alpha value for stroked highlights
+       button        = 'rgb(230,230,230)', -- Button background (raised)
+       buttonClick   = 'rgb(200,200,200)', -- Button background when clicked (depressed)
+       menubar       = 'rgb(190,190,190)', -- Menubar background fill
+       menu          = 'rgb(240,240,240)', -- Menu background fill
+       border        = 'rgb(144,144,144)', -- Standard border for any area filled with 'background'
+       borderFocus   = 'rgb(160,160,160)', -- Colour to use when 'border' has the user's focus
+       menuborder    = 'rgb(200,200,200)', -- Menu border
+       desktop       = 'rgb(160,160,160)', -- Background colour for the desktop
+       recess        = 'rgb(160,160,160)', -- Background colour for recessed areas with no content.
+       background    = 'rgb(255,255,255)', -- Standard background for hosting text & paper-based layouts
+       textHighlight = 'rgb(224,224,240)', -- Background fill for text that is highlighted
+       window        = 'rgb(220,220,220)', -- Background fill for windows
+       windowText    = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
      },
      interface = {
-       inputBorder   = 1,
-       outputBorder  = 1,
-       widgetMargin  = 5,
-       widgetGap     = 6,
-       textBorder    = 1,
-       fontSize      = 11,
-       sliderSize    = 16,
-       scrollSize    = 18,
-       scrollOpacity = 100,
-       iconRatio     = '7%',
+       inputBorder   = 1,  -- Stroke size for borders that receive keyboard input
+       outputBorder  = 1,  -- Stroke size for borders containing immutable content
+       widgetMargin  = 5,  -- Recommended internal margin for widgets (px)
+       widgetGap     = 6,  -- Recommended gap between widgets (px)
+       fontSize      = 11, -- Default font-size for everything (pt)
+       sliderSize    = 16, -- Max size for slider widgets (px)
+       scrollSize    = 18, -- Max size for scroll widgets (px)
+       scrollOpacity = 100, -- Opacity for scrollbar background fills
        iconTheme     = 'Default',
-       iconSize      = 0
+       iconSize      = 20   -- Recommended default size for icons (px) and should be linked to fontSize
      },
      rgb = { },
      counter = 0,
@@ -79,61 +76,77 @@ if (gui == nil) then
       return gui.colours[Name]
    end
 
-   do
-      local path = 'style:values.xml'
+   function convertFontSizes() -- Convert font percentage sizes to their px size
+      for k,v in pairs(gui.fonts) do
+         if gui.fonts[k].size then
+            if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
+               pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
+               gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
+            end
+         end
+      end
+   end
+
+   local path = 'style:values.xml'
+   if mSys.AnalysePath(path) != ERR_Okay then
+      path = 'environment:config/values.xml'
       if mSys.AnalysePath(path) != ERR_Okay then
-         path = 'environment:config/values.xml'
-         if mSys.AnalysePath(path) != ERR_Okay then
-            path = 'styles:default/values.xml'
+         path = 'styles:default/values.xml'
+      end
+   end
+
+   local xml = obj.new('xml', { path=path })
+
+   if (xml != nil) then
+      local err, index = xml.mtFindTag('/colours')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.colours) do
+            err, colour = xml.mtGetAttrib(index, k)
+            if (err == ERR_Okay) then gui.colours[k] = colour end
          end
       end
 
-      local xml = obj.new('xml', { path=path })
-
-      if (xml != nil) then
-         local total = 0
-         xml.mtFindTag('/fonts/font',
-            function(XML, TagIndex, Attrib)
-               local font = { }
-               local err, name = xml.mtGetAttrib(TagIndex, 'name')
-               if nz(name) then
-                  err, font.face = xml.mtGetAttrib(TagIndex, 'face')
-                  if nz(font.face) then
-                     err, font.size      = xml.mtGetAttrib(TagIndex, 'size')
-                     err, font.colour    = xml.mtGetAttrib(TagIndex, 'colour')
-                     err, font.highlight = xml.mtGetAttrib(TagIndex, 'highlight')
-                     gui.fonts[name] = font
-                     total = total + 1
-                  end
+      local err, index = xml.mtFindTag('/interface')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.interface) do
+            err, val = xml.mtGetAttrib(index, k)
+            if (err == ERR_Okay) then
+               if string.match(val, '^%-?%d+$') then
+                  gui.interface[k] = tonumber(val)
+               else
+                  gui.interface[k] = val
                end
-            end)
-
-         local err, index = xml.mtFindTag('/colours')
-         if (err == ERR_Okay) then
-            for k,v in pairs(gui.colours) do
-               err, colour = xml.mtGetAttrib(index, k)
-               if (err == ERR_Okay) then gui.colours[k] = colour end
             end
          end
+      end
 
-         local err, index = xml.mtFindTag('/interface')
-         if (err == ERR_Okay) then
-            for k,v in pairs(gui.interface) do
-               err, val = xml.mtGetAttrib(index, k)
+      convertFontSizes()
+
+      local err, index = xml.mtFindTag('/fonts')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.fonts) do
+            local err, index = xml.mtFindTag("/fonts/font(@name='" .. k .. "')")
+            if (err == ERR_Okay) then
+               local err, face = xml.mtGetAttrib(index, 'face')
+               if (err == ERR_Okay) then gui.fonts[k].face = face end
+               local err, size = xml.mtGetAttrib(index, 'size')
                if (err == ERR_Okay) then
-                  if string.match(val, '^%-?%d+$') then
-                     gui.interface[k] = tonumber(val)
+                  if string.match(size, '^%-?%d+$') then
+                     gui.fonts[k].size = tonumber(size)
+                  elseif string.match(size, '^%-?%d+%%$') then
+                     pct = tonumber(string.match(size, '^(%-?%d+)%%$'))
+                     gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
                   else
-                     gui.interface[k] = val
+                     gui.fonts[k].size = size
                   end
                end
             end
          end
-
-         xml = nil
-      else
-         error('Failed to retrieve style information.')
       end
+
+      xml = nil
+   else
+      convertFontSizes()
    end
 end
 
