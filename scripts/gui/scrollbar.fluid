@@ -155,7 +155,7 @@ gui.scrollbar = function(Options)
       local bar
 
       if (Direction == 'V') then
-         local vp = lTarget.new('VectorViewport', { y = 0, xOffset = 0, yOffset = 0, width = lBreadth })
+         local vp = lTarget.new('VectorViewport', { y = 0, xOffset = 0, yOffset = 0, width = lBreadth, overflow = VOF_HIDDEN })
 
          bar = vp.state()
          bar.viewport  = vp
@@ -163,10 +163,10 @@ gui.scrollbar = function(Options)
 
          lStyle.background(bar, bar.viewport)
 
-         bar.negVP = vp.new('VectorViewport', { width = lBreadth, height = lBreadth })
-         bar.posVP = vp.new('VectorViewport', { yOffset = 0, width = lBreadth, height = lBreadth })
-         bar.sliderHostVP = vp.new('VectorViewport', { y = lBreadth, width = '100%', yOffset = lBreadth })
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = lBreadth, height = bar.sliderHostVP.height })
+         bar.negVP = vp.new('VectorViewport', { width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
+         bar.posVP = vp.new('VectorViewport', { yOffset = 0, width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
+         bar.sliderHostVP = vp.new('VectorViewport', { y = lBreadth, width = '100%', yOffset = lBreadth, overflow = VOF_HIDDEN })
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = lBreadth, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
 
          -- Respond to the user dragging the slider.  Moving the page is all that is necessary; this
          -- will result in downstream callbacks making the necessary updates.
@@ -194,10 +194,10 @@ gui.scrollbar = function(Options)
 
          lStyle.background(bar, bar.viewport)
 
-         bar.negVP = vp.new('VectorViewport', { width = lBreadth, height = lBreadth })
-         bar.posVP = vp.new('VectorViewport', { xOffset = 0, width = lBreadth, height = lBreadth })
-         bar.sliderHostVP = vp.new('VectorViewport', { x = lBreadth, height = '100%', xOffset = lBreadth })
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = bar.sliderHostVP.height, height = lBreadth  })
+         bar.negVP = vp.new('VectorViewport', { width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
+         bar.posVP = vp.new('VectorViewport', { xOffset = 0, width = lBreadth, height = lBreadth, overflow = VOF_HIDDEN })
+         bar.sliderHostVP = vp.new('VectorViewport', { x = lBreadth, height = '100%', xOffset = lBreadth, overflow = VOF_HIDDEN })
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = bar.sliderHostVP.height, height = lBreadth, overflow = VOF_HIDDEN })
 
          bar.sliderVP.dragCallback = function(Viewport, X, Y)
             local slider_width = Viewport.width

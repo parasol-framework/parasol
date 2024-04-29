@@ -7,7 +7,7 @@ and their default settings.
 <!-- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize" -->
 <!--
 <fonts>
-  <font name="default"  face="Noto Sans,Source Sans 3" size="100%" colour="0,0,0"/>
+  <font name="default" face="Noto Sans,Source Sans 3" size="100%" colour="0,0,0"/>
 </fonts>
 
 <colours shadow="rgb(0,0,0,100)"/>

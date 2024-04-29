@@ -67,7 +67,7 @@ gui.toolbar = function(HostVP, Options)
       _cellMargin = nz(Options.cellMargin, 6),
       _disabled = false,
       _lookup = { },
-      _iconSize = nz(Options.iconSize, 20),
+      _iconSize = nz(Options.iconSize, gui.interface.iconSize),
       _hasFocus = false
    }
 

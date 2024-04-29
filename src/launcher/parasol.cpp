@@ -41,10 +41,9 @@ static const char glHelp[] = {
 The following parameters can be used when executing script files:\n\
 \n\
  --procedure [n] The name of a procedure to execute.\n\
- --target    [n] The name of an existing object that the script will target for hosting.  Used in multi-tasking\n\
-                 environments.\n\
  --time          Print the amount of time that it took to execute the program.\n\
 \n\
+ --log-api       Activates run-time log messages at API level.\n\
  --log-info      Activates run-time log messages at INFO level.\n\
  --log-error     Activates run-time log messages at ERROR level.\n"
 };
@@ -76,6 +75,7 @@ static ERR process_args(void)
             glTime = true;
          }
          else if (StrMatch(args[i], "--relaunch") IS ERR::Okay) {
+            // Internal argument to detect relaunching at an altered security level
             glRelaunched = true;
          }
          else if (StrMatch(args[i], "--procedure") IS ERR::Okay) {
