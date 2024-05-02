@@ -36,12 +36,12 @@ static ERR exec_source(CSTRING, LONG, const std::string);
 static const char glHelp[] = {
 "This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.\n\
 \n\
-   parasol [args] [script.ext] arg1 arg2=value ...\n\
+   parasol [options] [script.ext] arg1 arg2=value ...\n\
 \n\
-The following parameters can be used when executing script files:\n\
+The following options can be used when executing script files:\n\
 \n\
  --procedure [n] The name of a procedure to execute.\n\
- --time          Print the amount of time that it took to execute the program.\n\
+ --time          Print the amount of time that it took to execute the script.\n\
 \n\
  --log-api       Activates run-time log messages at API level.\n\
  --log-info      Activates run-time log messages at INFO level.\n\

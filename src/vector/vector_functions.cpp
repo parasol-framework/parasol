@@ -238,7 +238,7 @@ ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, double StrokeWidth,
 -FUNCTION-
 FlushMatrix: Flushes matrix changes to a vector.
 
-If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in 
+If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in
 order to have those changes reflected on the display.  This needs to be done before the next draw cycle.
 
 Note that if the client uses API functions to modify a VectorMatrix, a call to FlushMatrix() is unnecessary as the
@@ -478,10 +478,10 @@ ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
 TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path
-from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is 
+from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is
 `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
 
-The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the 
+The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the
 coordinate of a point on the path.
 
 If the Callback returns `ERR::Terminate`, then no further coordinates will be processed.
@@ -839,10 +839,10 @@ rendering a stroke or fill operation in the chosen style.
 
 Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
-component values range between 0.0 and 255.0.
+component values range between `0.0` and `255.0`.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
-been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.
+been registered with the provided Scene object.  If Scene is `NULL` then it will not be possible to find the reference.
 Any failure to lookup a reference will be silently discarded.
 
 A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
@@ -998,7 +998,7 @@ next:
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
-      
+
       hue = std::clamp(hue, 0.0, 1.0);
       sat = std::clamp(sat, 0.0, 1.0);
       light = std::clamp(light, 0.0, 1.0);
@@ -1016,7 +1016,7 @@ next:
 
       if (sat == 0) {
          rgb.Red = rgb.Green = rgb.Blue = light;
-      } 
+      }
       else {
          const double q = (light < 0.5) ? light * (1.0 + sat) : light + sat - light * sat;
          const double p = 2.0 * light - q;
@@ -1240,15 +1240,15 @@ ERR vecRotate(VectorMatrix *Matrix, double Angle, double CenterX, double CenterY
 -FUNCTION-
 Scale: Scale the size of the vector by (x,y)
 
-This function will perform a scale operation on a matrix.  Values of less than 1.0 will shrink the affected vector
-path, while values greater than 1.0 will enlarge it.
+This function will perform a scale operation on a matrix.  Values of less than `1.0` will shrink the affected vector
+path, while values greater than `1.0` will enlarge it.
 
-Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without
-affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path
+Scaling is relative to position `(0,0)`.  If the width and height of the vector path needs to be transformed without
+affecting its top-left position, the client must translate the path to `(0,0)` around its center point.  The path
 should then be scaled before being transformed back to its original top-left coordinate.
 
 The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of
--1.0 on the x axis would result in a 1:1 flip across the horizontal.
+`-1.0` on the x axis would result in a 1:1 flip across the horizontal.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -1285,7 +1285,7 @@ ERR vecScale(VectorMatrix *Matrix, double X, double Y)
 Skew: Skews the matrix along the horizontal and/or vertical axis.
 
 The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix.
-Valid X and Y values are in the range of -90 < Angle < 90.
+Valid X and Y values are in the range of `-90 < Angle < 90`.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.

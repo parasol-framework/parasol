@@ -28,7 +28,7 @@ static int module_call(lua_State *);
 static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
 
 //********************************************************************************************************************
-// Usage: module = mod.load("core")
+// Usage: module = mod.load('core')
 
 static int module_load(lua_State *Lua)
 {

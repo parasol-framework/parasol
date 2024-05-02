@@ -19,10 +19,11 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 * Multi-functional: Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
 * Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.  Our UI code is script driven, making customisation easy.
-* Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
+* Load SVG files into vector scene graphs, interact with them live via our API and changes will appear on the display automatically.
 * SVG animation (SMIL) is supported.
-* Includes RIPL, a text layout engine modeled on HTML, SVG and word processing technologies.
-* Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
+* SVG support is tested against W3C's official SVG test suite, currently passing over 140 tests and counting.
+* Use RIPL, a text layout engine modeled on HTML, SVG and word processing methodologies.
+* Our multi-platform networking API provides coverage for TCP/IP sockets, HTTP and SSL.
 * Integrated data handling APIs for XML, JSON, ZIP, PNG, JPEG, SVG.
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback supporting WAV and MP3 files.

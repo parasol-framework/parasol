@@ -712,8 +712,7 @@ int fcmd_exec(lua_State *Lua)
 
    LONG results = 0;
 
-   CSTRING statement;
-   if ((statement = lua_tostring(Lua, 1))) {
+   if (auto statement = lua_tostring(Lua, 1)) {
       CSTRING error_msg = NULL;
 
       {

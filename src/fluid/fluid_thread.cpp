@@ -112,7 +112,7 @@ static ERR thread_script_callback(OBJECTID ThreadID)
 }
 
 //********************************************************************************************************************
-// Usage: error = thread.action(Object, Action, Callback, Key, Args...)
+// Usage: thread.action(Object, Action, Callback, Key, Args...)
 
 static int thread_action(lua_State *Lua)
 {
@@ -125,25 +125,32 @@ static int thread_action(lua_State *Lua)
       luaL_argerror(Lua, 1, "Object required.");
       return 0;
    }
-
-   CSTRING action;
-   if (!(action = luaL_checkstring(Lua, 2))) {
-      luaL_argerror(Lua, 2, "Action name required.");
-      return 0;
+   
+   LONG type = lua_type(Lua, 2);
+   ACTIONID action_id;
+   CSTRING action = NULL;
+   if (type IS LUA_TSTRING) {
+      action = lua_tostring(Lua, 2);
+      if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
+         action_id = it->second;
+      }
+      else {
+         luaL_argerror(Lua, 2, "Action name is not recognised (is it a method?)");
+         return 0;
+      }
    }
-
-   LONG action_id;
-   auto it = glActionLookup.find(action);
-   if (it != glActionLookup.end()) action_id = it->second;
+   else if (type IS LUA_TNUMBER) {
+      action_id = lua_tointeger(Lua, 2);
+   }
    else {
-      luaL_argerror(Lua, 2, "Action name is not recognised (is it a method?)");
+      luaL_argerror(Lua, 2, "Action name required.");
       return 0;
    }
 
    FUNCTION callback;
    LONG key = lua_tointeger(Lua, 4);
 
-   LONG type = lua_type(Lua, 3); // Optional callback.
+   type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
       callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
@@ -200,13 +207,16 @@ static int thread_action(lua_State *Lua)
       else error = log.warning(ERR::AccessObject);
    }
 
-   if ((error != ERR::Okay) and (callback.defined())) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-   lua_pushinteger(Lua, LONG(error));
-   return 1;
+   if (error != ERR::Okay) {
+      if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
+      luaL_error(Lua, "Failed with error %s", GetErrorMsg(error));
+   }
+
+   return 0;
 }
 
 //********************************************************************************************************************
-// Usage: error = thread.method(Object, Action, Callback, Key, Args...)
+// Usage: error = thread.method(Object, Method, Callback, Key, Args...)
 
 static int thread_method(lua_State *Lua)
 {
@@ -218,6 +228,8 @@ static int thread_method(lua_State *Lua)
       if (auto method = luaL_checkstring(Lua, 2)) {
          MethodEntry *table;
          LONG total_methods, i;
+
+         // TODO: We should be using a hashmap here.
 
          if ((GetFieldArray(object->Class, FID_Methods, &table, &total_methods) IS ERR::Okay) and (table)) {
             bool found = false;
@@ -287,16 +299,18 @@ static int thread_method(lua_State *Lua)
                   else error = log.warning(ERR::AccessObject);
                }
 
-               if ((error != ERR::Okay) and (callback.defined())) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-               lua_pushinteger(Lua, LONG(error));
-               return 1;
+               if (error != ERR::Okay) {
+                  if (callback.defined()) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
+                  luaL_error(Lua, "Failed with error %s", GetErrorMsg(error));
+               }
+
+               return 0;
             }
          }
 
          luaL_error(Lua, "No '%s' method for class %s.", method, object->Class->ClassName);
-         return 0;
       }
-      else luaL_argerror(Lua, 2, "Action name required.");
+      else luaL_argerror(Lua, 2, "Method name required.");
    }
    else luaL_argerror(Lua, 1, "Object required.");
 
