@@ -725,6 +725,9 @@ function platform(Platform, Function)
    elseif (Platform:lower() == 'x11') then
       define = '__xwindows__'
       Function()
+   --elseif (Platform:lower() == 'osx') then
+   --   define = '__xwindows__'
+   --   Function()
    else
       error('Unrecognised platform "' .. Platform .. '"')
    end
@@ -882,7 +885,7 @@ end
 -- FDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
-function class(Name, Options, Blueprint, Private, Custom)
+function class(Name, Options, Spec, Private, Custom)
    if (glFeedback == 'verbose') then print('Processing class ' .. nz(Name,'NIL')) end
 
    Options = checkOptions(Options)
@@ -921,7 +924,7 @@ function class(Name, Options, Blueprint, Private, Custom)
 
    -- Process methods and fields defined in the source code (if available)
 
-   local cdef = processClassFields(class, Blueprint)
+   local cdef = processClassFields(class, Spec)
 
    if nz(Options.references) then
       for _, v in pairs(Options.references) do
@@ -1272,7 +1275,7 @@ function processField(class, extract)
       end
       f.description = description
    elseif (class.meta != nil) then
-      print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class blueprint.")
+      print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class spec.")
    end
 end
 
@@ -1398,14 +1401,14 @@ function outputLookup(Name, List)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Process the formal field definitions in a class blueprint.
+-- Process the formal field definitions in a class spec.
 
-function processClassFields(class, ClientBlueprint)
+function processClassFields(class, ClientSpec)
    local cdef = ''
 
    -- Process fields defined in the FDL
 
-   class.fields = extractFields(ClientBlueprint, class.name)
+   class.fields = extractFields(ClientSpec, class.name)
 
    -- Add compiled fields into the field definitions.  NB: Technically this relies on a circular reference, so such
    -- information can only be taken advantage of for phase 2 processing (class documentation).
@@ -2009,7 +2012,7 @@ function processFunction(extract)
    local status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
    local category    = extract:match('\n[Cc]ategory:%s+(.-)\n')
    local ext_proto   = extract:match('\n[Ee]xtPrototype:%s+(.-)\n')
-   local attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n')
+   local attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n') -- This value is appended to the jump table name
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
    if (name:find('%(%)') != nil) then
@@ -2193,7 +2196,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    -- The func.def is used for building the jump table
    func.def = "   " .. nz(response.type,"NIL")
-   if Def.attrib then func.def = func.def .. " " .. nz(Def.attrib,"") end
+   if Def.attrib then func.def = func.def .. " " .. Def.attrib end
    func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(jumpArgs,"void") .. ");"
 
    func.c_proto = proto

@@ -472,7 +472,7 @@ gui.window = function(Options)
 
    if hosted(self) then
       self.bkgd = self.viewport.new('VectorRectangle', {
-         fill   = gui.colours.rgb('window'),
+         fill   = gui.colours['window'],
          x      = 0,
          y      = 0,
          width  = '100%',

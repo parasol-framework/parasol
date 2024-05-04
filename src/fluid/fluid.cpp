@@ -24,7 +24,7 @@ high performance version of the Lua scripting language.  It supports garbage col
 interpreter for compiled code.  We chose to support Lua due to its extensive popularity amongst game developers, a
 testament to its low overhead, speed and lightweight processing when compared to common scripting languages.
 
-Fluid files use the file extensions .lua and .fluid.  Ideally, scripts should start with the comment '-- $FLUID' near
+Fluid files use the file extensions `.lua` and `.fluid`.  Ideally, scripts should start with the comment '-- $FLUID' near
 the start of the document so that it can be correctly identified by the Fluid class.
 
 For more information on the Fluid syntax, please refer to the official Fluid Reference Manual.

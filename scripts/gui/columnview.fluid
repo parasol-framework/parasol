@@ -281,7 +281,8 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort = { col=Col, ascending=false }
       if not View.iconDescending then
          if not View.icons['sort_desc'] then
-            View.icons['sort_desc'] = gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, nil, 'sort_desc')
+            gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, nil, 'sort_desc')
+            View.icons['sort_desc'] = true
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
@@ -295,7 +296,8 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort = { col=Col, ascending=true }
       if not View.iconAscending then
          if not View.icons['sort_asc'] then
-            View.icons['sort_asc'] = gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, nil, 'sort_asc')
+            View.icons['sort_asc'] = true
+            gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, nil, 'sort_asc')
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
@@ -569,7 +571,8 @@ gui.columnView = function(Options)
                   end
 
                   if not View.icons[uid] then
-                     View.icons[uid] = gui.createIcon(View.scene, item.icon, ICON_SIZE, item.iconColour, uid)
+                     gui.createIcon(View.scene, item.icon, ICON_SIZE, item.iconColour, uid)
+                     View.icons[uid] = true
                   end
 
                   if not item._vectors.iconImage then
