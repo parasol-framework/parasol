@@ -52,8 +52,6 @@ if (gui == nil) then
        iconTheme     = 'Default',
        iconSize      = 20   -- Recommended default size for icons (px) and should be linked to fontSize
      },
-     rgb = { },
-     counter = 0,
      iconThemes = {
         default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
         carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
@@ -68,13 +66,9 @@ if (gui == nil) then
         pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
         grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
         pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-     }
+     },
+     _counter = 0
    }
-
-   gui.colours.rgb = function(Name)
-      if not gui.colours[Name] then error('Invalid colour name "' .. Name .. '"') end
-      return gui.colours[Name]
-   end
 
    function convertFontSizes() -- Convert font percentage sizes to their px size
       for k,v in pairs(gui.fonts) do
@@ -161,22 +155,6 @@ gui.getFontHeight = function(Font)
       Font.spacing = metrics.lineSpacing
    end
    return Font.spacing, Font.height
-end
-
-------------------------------------------------------------------------------
-
-gui.bitmapColour = function(Bitmap, ColourName)
-   if (gui.rgb[ColourName] == nil) then
-      local str = gui.colours[ColourName]
-      if (str == nil) then
-         error('Unrecognised colour "' .. nz(ColourName,'NIL') .. '"')
-      end
-      gui.rgb[ColourName] = gui.strToRGB(str)
-   end
-
-   local rgb = gui.rgb[ColourName]
-   local err, col = Bitmap.mtGetColour(rgb.r, rgb.g, rgb.b, rgb.a)
-   return col
 end
 
 ------------------------------------------------------------------------------
@@ -452,8 +430,8 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       end
    end
 
-   gui.counter = gui.counter + 1
-   local gname   = 'icon_grd' .. gui.counter
+   gui._counter = gui._counter + 1
+   local gname   = 'icon_grd' .. gui._counter
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1)
    if string.find(Path, 'icons:') != 1 then
@@ -495,6 +473,4 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    end
 
    check(Scene.mtAddDef(Name, icon.pattern))
-
-   return icon
 end

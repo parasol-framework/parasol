@@ -161,7 +161,8 @@ gui.listView = function(Options)
                if not View.icons then View.icons = { } end
 
                if not View.icons[item.icon] then
-                  View.icons[item.icon] = gui.createIcon(Scene, item.icon, lIconSize)
+                  gui.createIcon(Scene, item.icon, lIconSize)
+                  View.icons[item.icon] = true
                end
 
                if not item._vectors.iconImage then

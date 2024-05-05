@@ -29,7 +29,7 @@ return {
          name = 'window_frame',
          x=0, y=0, width='100%', height='100%',
          strokeWidth=5, stroke='rgb(100,100,100)',
-         fill=gui.colours.rgb('window')
+         fill=gui.colours['window']
       })
    end,
    menubar = function(Window)

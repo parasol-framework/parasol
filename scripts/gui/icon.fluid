@@ -177,7 +177,7 @@ gui.icon = function(Options)
             x        = math.floor(lIconSize * 0.5),
             face     = gui.fonts.icon.face,
             fontSize = string.format('%.2fpt', lFontSize),
-            fill     = gui.colours.rgb('widgetText'),
+            fill     = gui.colours['widgetText'],
             align    = 'horizontal',
             string   = line
          })
