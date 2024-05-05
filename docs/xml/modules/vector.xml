@@ -303,8 +303,8 @@ Z: Close Path
     <prototype>LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to query.</param>
-      <param type="DOUBLE *" name="X">Pointer to a DOUBLE that will receive the X coordinate value.</param>
-      <param type="DOUBLE *" name="Y">Pointer to a DOUBLE that will receive the Y coordinate value.</param>
+      <param type="DOUBLE *" name="X">Pointer to a double that will receive the X coordinate value.</param>
+      <param type="DOUBLE *" name="Y">Pointer to a double that will receive the Y coordinate value.</param>
     </input>
     <description>
 <p>The coordinates of the current vertex are returned by this function in the X and Y parameters.  In addition, the internal command number for that vertex is the return value.</p>
@@ -567,7 +567,7 @@ Z: Close Path
       <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
     </input>
     <description>
-<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)</code>.</p>
 <p>The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
 <p>If the Callback returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
     </description>
