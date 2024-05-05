@@ -2498,7 +2498,6 @@ end
    glProgram     = 'idl-c' // FDL's can read this
    glSource      = arg('src')
    glOutputPath  = arg('output')
-   glLanguage    = arg('language')
    glFeedback    = arg('feedback')
    glOutputDefs  = arg('output-defs')
    glOutputProto = arg('output-proto')
