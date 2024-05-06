@@ -153,7 +153,7 @@ int main() {
 find_program (XXD_CMD "xxd")
 find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
 find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
-find_file (IDL_DEF_SCRIPT "idl-def.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev")
 
 if (PARASOL_CMD STREQUAL "PARASOL_CMD-NOTFOUND")
@@ -174,8 +174,8 @@ if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
    message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 endif ()
 
-if (IDL_DEF_SCRIPT STREQUAL "IDL_DEF_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-def.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+if (IDL_COMPILE_SCRIPT STREQUAL "IDL_COMPILE_SCRIPT-NOTFOUND")
+   message (FATAL_ERROR "The idl-compile.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 endif ()
 
 if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
@@ -227,9 +227,9 @@ function (flute_test name path)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# idl_all() is used to generate both C/C++ headers and IDL strings from FDL files.
+# idl_gen() is used to generate both C/C++ headers and IDL strings from FDL files.
 
-function (idl_all)
+function (idl_gen)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;APPEND_IDL;NAME" "ARGS;FILES")
 
    if (BUILD_DEFS)
@@ -247,7 +247,7 @@ function (idl_all)
          "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=${ARGV0}"
+         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${ARGV0}"
             "output=${IDLC_APPEND_IDL}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" "append")
       endif ()
 
@@ -268,11 +268,10 @@ function (idl_all)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# idl_c() is used to generate C/C++ headers from FDL files.
+# idl_compile() is used to generate universal IDL strings
 # Always provide a full path for OUTPUT
-# Use FILES to reference additional source files not in the .def file.
 
-function (idl_c)
+function (idl_compile)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;NAME" "ARGS;FILES")
 
    if (BUILD_DEFS)
@@ -282,47 +281,9 @@ function (idl_c)
          string (REGEX REPLACE "[/:\.]" "_" OUTPUT_NAME ${IDLC_OUTPUT})
       endif ()
 
-      if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
-      endif ()
-
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-         DEPENDS ${ARGV0}
-         COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
-         VERBATIM)
-
-      add_custom_target (${OUTPUT_NAME} DEPENDS ${IDLC_OUTPUT})
-
-      add_dependencies (build_headers ${OUTPUT_NAME})
-   else ()
-      message (STATUS "The generation of ${IDLC_OUTPUT} will be skipped.")
-   endif ()
-endfunction ()
-
-# --------------------------------------------------------------------------------------------------------------------
-# idl_def() is used to generate C/C++ data definition files for functions, structural declarations etc
-# Always provide a full path for OUTPUT
-
-function (idl_def)
-   cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;NAME" "ARGS;FILES")
-
-   if (BUILD_DEFS)
-      if (DEFINED IDLC_NAME)
-         set (OUTPUT_NAME ${IDLC_NAME})
-      else ()
-         string (REGEX REPLACE "[/:\.]" "_" OUTPUT_NAME ${IDLC_OUTPUT})
-      endif ()
-
-      if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
-      endif ()
-
-      add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_COMPILE_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"

@@ -19,7 +19,7 @@ else ()
    add_dependencies (build_headers http_auth)
 endif ()
 
-idl_all ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "${MOD}_def.c")
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "${MOD}_def.c")
 
 add_library (${MOD})
 set_module_defaults (${MOD})

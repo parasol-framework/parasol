@@ -164,7 +164,7 @@ struct NetClient {
 struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct csWriteClientMsg { APTR Message; LONG Length;  };
 
-INLINE ERR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+inline ERR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
    struct csReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
@@ -174,7 +174,7 @@ INLINE ERR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progre
    return(error);
 }
 
-INLINE ERR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
+inline ERR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
    struct csWriteClientMsg args = { Message, Length };
    return(Action(MT_csWriteClientMsg, (OBJECTPTR)Ob, &args));
 }
@@ -263,7 +263,7 @@ struct prxFind { LONG Port; LONG Enabled;  };
 
 #define prxDelete(obj) Action(MT_prxDelete,(obj),0)
 
-INLINE ERR prxFind(APTR Ob, LONG Port, LONG Enabled) noexcept {
+inline ERR prxFind(APTR Ob, LONG Port, LONG Enabled) noexcept {
    struct prxFind args = { Port, Enabled };
    return(Action(MT_prxFind, (OBJECTPTR)Ob, &args));
 }
@@ -377,22 +377,22 @@ struct nlResolveAddress { CSTRING Address;  };
 struct nlBlockingResolveName { CSTRING HostName;  };
 struct nlBlockingResolveAddress { CSTRING Address;  };
 
-INLINE ERR nlResolveName(APTR Ob, CSTRING HostName) noexcept {
+inline ERR nlResolveName(APTR Ob, CSTRING HostName) noexcept {
    struct nlResolveName args = { HostName };
    return(Action(MT_nlResolveName, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nlResolveAddress(APTR Ob, CSTRING Address) noexcept {
+inline ERR nlResolveAddress(APTR Ob, CSTRING Address) noexcept {
    struct nlResolveAddress args = { Address };
    return(Action(MT_nlResolveAddress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nlBlockingResolveName(APTR Ob, CSTRING HostName) noexcept {
+inline ERR nlBlockingResolveName(APTR Ob, CSTRING HostName) noexcept {
    struct nlBlockingResolveName args = { HostName };
    return(Action(MT_nlBlockingResolveName, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nlBlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
+inline ERR nlBlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
    struct nlBlockingResolveAddress args = { Address };
    return(Action(MT_nlBlockingResolveAddress, (OBJECTPTR)Ob, &args));
 }
@@ -452,27 +452,27 @@ struct nsDisconnectSocket { objClientSocket * Socket;  };
 struct nsReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct nsWriteMsg { APTR Message; LONG Length;  };
 
-INLINE ERR nsConnect(APTR Ob, CSTRING Address, LONG Port) noexcept {
+inline ERR nsConnect(APTR Ob, CSTRING Address, LONG Port) noexcept {
    struct nsConnect args = { Address, Port };
    return(Action(MT_nsConnect, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) noexcept {
+inline ERR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) noexcept {
    struct nsGetLocalIPAddress args = { Address };
    return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nsDisconnectClient(APTR Ob, struct NetClient * Client) noexcept {
+inline ERR nsDisconnectClient(APTR Ob, struct NetClient * Client) noexcept {
    struct nsDisconnectClient args = { Client };
    return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) noexcept {
+inline ERR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) noexcept {
    struct nsDisconnectSocket args = { Socket };
    return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+inline ERR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
    struct nsReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
@@ -482,7 +482,7 @@ INLINE ERR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LO
    return(error);
 }
 
-INLINE ERR nsWriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
+inline ERR nsWriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
    struct nsWriteMsg args = { Message, Length };
    return(Action(MT_nsWriteMsg, (OBJECTPTR)Ob, &args));
 }

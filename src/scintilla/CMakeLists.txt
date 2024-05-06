@@ -3,7 +3,7 @@
 set (MOD scintilla)
 set (INC_MOD_SCINTILLA TRUE PARENT_SCOPE)
 
-idl_all ("${MOD}.fdl"
+idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    ARGS "output-defs=module_def.c" "output-proto=module_def.c" "prototypes=static"

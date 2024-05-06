@@ -611,7 +611,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-   glProgram    = 'idl-def'
+   glProgram    = 'idl-compile'
    glSource     = arg('src')
    glOutputPath = arg('output')
    glFeedback   = arg('feedback')

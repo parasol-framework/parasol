@@ -208,6 +208,6 @@ end
 
    if (glProgram == "idl-c") then
       header({ path="system/errors", copyright="Paul Manias © 1996-2024" }, declareErrors)
-   elseif (glProgram == "idl-def") then
+   elseif (glProgram == "idl-compile") then
       declareErrors()
    end

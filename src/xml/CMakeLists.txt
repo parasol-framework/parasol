@@ -3,7 +3,7 @@
 set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_all ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "${MOD}_def.c")
 

@@ -2665,7 +2665,7 @@ template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
 inline CSTRING Object::className() { return Class->ClassName; }
   ]])
 
-  if (glProgram == "idl-def") then
+  if (glProgram == "idl-compile") then
      loadFile("defs/errors.fdl")
   end
 end)

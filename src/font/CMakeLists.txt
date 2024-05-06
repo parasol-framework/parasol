@@ -3,7 +3,7 @@
 set (MOD "font")
 set (INC_MOD_FONT TRUE PARENT_SCOPE)
 
-idl_all ("${MOD}.fdl"
+idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/font.h"
    FILES "font.cpp"

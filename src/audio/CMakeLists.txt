@@ -11,7 +11,7 @@ int main() {
 }"
    ALSA_INSTALLED)
 
-idl_all ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"
    FILES "${MOD}.cpp" "commands.cpp"
