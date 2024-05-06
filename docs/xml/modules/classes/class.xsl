@@ -171,7 +171,7 @@
               <ul class="nav navbar-nav">
                 <li><a href="../core.html">Modules</a></li>
                 <li class="active"><a href="module.html">Classes</a></li>
-                <li><a href="../fluid.html">Fluid</a></li>
+                <li><a href="https://github.com/parasol-framework/parasol/wiki">Wiki</a></li>
               </ul>
             </div> <!-- nav-collapse -->
           </div>

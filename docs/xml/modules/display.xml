@@ -40,7 +40,7 @@
   <function>
     <name>CheckIfChild</name>
     <category>Surfaces</category>
-    <comment>Checks if a surface is a child of another particular surface.</comment>
+    <comment>Check if a surface is the child of another surface.</comment>
     <prototype>ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
     <input>
       <param type="OBJECTID" name="Parent">The surface that is assumed to be the parent.</param>
