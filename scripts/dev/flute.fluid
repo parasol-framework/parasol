@@ -4,7 +4,7 @@
 
    require 'common'
 
-//=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function runTests()
    glTestTotal = 0
@@ -57,21 +57,21 @@ function runTests()
    print("--")
 
    if (glTestsPassed < glTestTotal) then
-      // Setting the errorString will ensure that an error code is returned to the shell.
+      -- Setting the errorString will ensure that an error code is returned to the shell.
       glSelf.errorString = "Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed
    end
 
    print("Ran " .. glTestTotal .. " tests, passed " .. glTestsPassed)
 end
 
-//=====================================================================================================================
-// Unit tests should call logOutput() for the purpose of formally logging output for the current test.
+----------------------------------------------------------------------------------------------------------------------
+-- Unit tests should call logOutput() for the purpose of formally logging output for the current test.
 
 function logOutput(Message)
    print(Message)
 end
 
-//=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
    glFile = arg("file")
    glSelf = obj.find('self')

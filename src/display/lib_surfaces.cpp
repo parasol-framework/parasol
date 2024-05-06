@@ -287,7 +287,7 @@ ERR update_surface_copy(extSurface *Self)
 
       auto level = list[i].Level;
       LONG c = i+1;
-      while ((c < LONG(list.size())) and (list[c].Level > level)) {
+      while ((c < std::ssize(list)) and (list[c].Level > level)) {
          for (auto j=c-1; j >= 0; j--) {
             if (list[j].SurfaceID IS list[c].ParentID) {
                list[c].Left   = list[j].Left + list[c].X;
@@ -311,7 +311,7 @@ void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
    if (Src IS Dest) return;
 
    LONG children;
-   for (children=Src+1; (children < LONG(List.size())) and (List[children].Level > List[Src].Level); children++);
+   for (children=Src+1; (children < std::ssize(List)) and (List[children].Level > List[Src].Level); children++);
    children -= Src;
 
    if ((Dest >= Src) and (Dest <= Src + children)) return;
@@ -440,7 +440,7 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
          // anything that sits behind us in the containing parent.
 
          LONG vindex;
-         for (vindex=index+1; (vindex < LONG(list.size())) and (list[vindex].Level > list[index].Level); vindex++);
+         for (vindex=index+1; (vindex < std::ssize(list)) and (list[vindex].Level > list[index].Level); vindex++);
          tlVolatileIndex = vindex;
 
          LONG parent_index;
@@ -637,7 +637,7 @@ void print_layer_list(STRING Function, LONG POI)
 /*********************************************************************************************************************
 
 -FUNCTION-
-CheckIfChild: Checks if a surface is a child of another particular surface.
+CheckIfChild: Check if a surface is the child of another surface.
 
 This function checks if a surface identified by the Child value is the child of the surface identified by the Parent
 value.  `ERR::True` is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent
@@ -669,7 +669,7 @@ ERR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 
    if (auto i = find_surface_list(ParentID); i != -1) {
       auto level = glSurfaces[i].Level;
-      for (++i; (i < LONG(glSurfaces.size())) and (glSurfaces[i].Level > level); i++) {
+      for (++i; (i < std::ssize(glSurfaces)) and (glSurfaces[i].Level > level); i++) {
          if (glSurfaces[i].SurfaceID IS ChildID) {
             log.trace("Child confirmed.");
             return ERR::True;
@@ -1295,7 +1295,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
 
    if (Self->transparent()) return;
 
-   if (Index >= LONG(list.size())) log.warning("Index %d > %d", Index, LONG(list.size()));
+   if (Index >= std::ssize(list)) log.warning("Index %d > %d", Index, LONG(list.size()));
 
    auto abs = Area;
 
@@ -1308,7 +1308,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
    if ((Flags & IRF::FORCE_DRAW) IS IRF::NIL) {
       LONG level = list[Index].Level + 1;   // The +1 is used to include children contained in the surface object
 
-      for (i=Index+1; (i < LONG(list.size())) and (list[i].Level > 1); i++) {
+      for (i=Index+1; (i < std::ssize(list)) and (list[i].Level > 1); i++) {
          if (list[i].Level < level) level = list[i].Level;
 
          // If the listed object obscures our surface area, analyse the region around it

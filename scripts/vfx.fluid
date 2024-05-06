@@ -8,7 +8,7 @@ if (vfx == nil) then
    }
 end
 
-vfx.wipes = { shutter = { }, simple = { }, radial = { }, shape = { }, clock = { }, spiral = { }, pixelate = { } }
+vfx.wipes = { shutter = { }, simple = { }, radial = { }, clock = { }, spiral = { }, shape = { }, pixelate = { } }
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Use 'screen wipe' effects to display or hide a viewport.  The Viewport's Mask is utilised to achieve this.  A
--- wipe-out can be achieved by setting inverse=true in the Options.
+-- wipe-out can be achieved by setting invert=true in the Options.
 --
 -- Seconds:  Specifies the maximum number of seconds for the effect to complete.
 -- Delay: Delays the initial start of the effect, measured in seconds.
@@ -111,10 +111,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Fades a viewport into the display by adjusting the opacity level.
 --
--- Seconds:  Specifies the maximum number of seconds for the effect to complete.
--- Delay: Delays the initial start of the effect, measured in seconds.
+-- Seconds: Specifies the maximum number of seconds for the effect to complete.
+-- Delay:   Delays the initial start of the effect, measured in seconds.
 
-vfx.fadeIn = function(Viewport, Seconds, Delay)
+vfx.fadeIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local state = { name = 'fadeIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
    Viewport.opacity = 0
@@ -583,7 +583,7 @@ vfx.initTimer = function(State, Options)
             if State.callback then State.callback(State) end
             check(ERR_Terminate)
          else
-            if Options.inverse then
+            if Options.invert then
                State.animate(State, Options, 1.0 - value)
             else
                State.animate(State, Options, value)
