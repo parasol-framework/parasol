@@ -1,32 +1,5 @@
 --[[
-The gui.input API creates and manages input boxes in the user interface.
-
-Basic template for creating a new input box:
-
-   require 'gui/input'
-   my_button = gui.input({ Options... })
-
-Valid options to use when creating the input box are as follows:
-
-  target:     Required.  Refers to a viewport that will contain the input box.
-  events:     A table of event triggers.  Supported events: activate, show, disable, enable, focus, lostFocus, keypress
-  flushEdges: Set to true if the box needs to be squared off for flush edges.
-  inputMask:  Restrict input with a pattern that is compliant with Lua 5.1's string.find().
-  secret:     Set to true if the input box needs to hide a secret phrase from view.
-  selected:   Set to true if the input text should be pre-selected for the user.
-  text:       A preset string to display in the input box.
-  width:      Width of the box (including any label).
-  x:          The x coordinate of the box.
-  xOffset:    X offset, if not defining x.
-  y:          The y coordinate of the box.
-  yOffset:    Y offset, if not defining y.
-
-  :disable()
-    Disable user interactivity.
-
-  :enable()
-    Enable user interactivity.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'

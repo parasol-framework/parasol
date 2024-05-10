@@ -1,44 +1,7 @@
 --[[
-
 The ListView API is used to display data to the user in the form of a list of items.
 
-Items are created and stored as structured tables.  Here is an example of a list of valid item structures.
-
-   { { id=1, name='document.txt' },
-     { id=2, name='config', icon='category/name' }
-   }
-
-Initialisation options:
-
-   multiSelect:    If true, more than one item can be selected at a time by the user.
-   sensitive:      If true, activation will occur whenever a new item is selected (double click no longer necessary).
-   compact:        Activates compact styling; 1 = Tabulate horizontally; 2 = Compress horizontally
-   target:         The viewport that will host the view.
-   textAttrib:     Declares the attribute to use as the main text when drawing each item.  Defaults to 'text'.
-
-Callbacks:
-
-   itemSelected:     An item has been selected by the user.
-   itemActivated:    An item has been activated by the user, e.g. by double clicking or pressing enter.
-   itemDeselected:   An item has been deselected by the user.
-   activeChange:     The active item has changed (includes reporting of deselection events)
-
-Readable fields:
-
-   highlightedItem: Refers to the current item that the user has highlighted.
-   selectedItem:    TODO - Refers to the most recently selected item.
-
-Methods:
-
-   loadItems()     Load a new set of items and display them for the user.  Any existing items will be cleared.
-   selectedItems() TODO - Returns a table of all currently selected items.
-
-Graphics and UI options:
-
-   noIcons:       Do not display icons alongside the item text.
-   dragDrop:      Enable support for drag and drop.
-   autoDeselect:  Deselects a highlighted item when it is activated through user interaction (e.g. mouse click).
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'gui/libview'

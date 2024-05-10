@@ -1,52 +1,21 @@
 --[[
-The Icon class provides a convenient interface for creating and managing icons.
-
-Client interaction is possible via the feedback option, which will send user activity events to the caller.
-Supported events are 'click', 'dblclick' and 'altclick' (e.g. right mouse button).
-
-The following example illustrates typical usage:
-
-   gui.icon({
-      target = viewport,
-      x      = 10,
-      y      = 10,
-      text   = 'File Manager',
-      image  = 'programs/filemanager',
-      events = {
-         activate = function(Icon, Event)
-            print('Icon activated.')
-         end
-      }
-   })
-
-Valid options to use when creating the icon are as follows:
-
-  target:    Required.  Refers to a viewport that will contain the icon.
-  image:     The name of an icon image to display, in format 'category/name'.
-  x:         The x coordinate of the icon.
-  y:         The y coordinate of the icon.
-  size:      The preferred size of the icon, in pixels.
-  text:      A string to display in the icon.
-  events:    A table of event triggers.  Supported events: activate, show
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
    require 'gui'
 
-local MARGIN      = 6
+local MARGIN = 6
 
 -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
 
 local function imageLocation(Path)
    if (Path:find('^icons:') == 1) then
       return Path
+   elseif (Path:find('^[%w]+:') == 1) then
+      return Path
    else
-      local colon = Path:find('^[%w]+:')
-      if (colon == 1) then
-         return Path
-      else
-         return 'icons:' .. Path
-      end
+      return 'icons:' .. Path
    end
 end
 

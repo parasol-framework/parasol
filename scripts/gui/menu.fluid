@@ -1,29 +1,5 @@
 --[[
-The Menu class provides a convenient interface for creating and managing menus.
-
-The following example illustrates typical usage:
-
-   gui.menu({
-      target = surface,
-      x = 10, y = 10,
-      config = {
-         { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
-         { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=itemClicked }
-      }
-   })
-
-Valid options to use when creating the menu are as follows:
-
-  target:    Optional reference to a Surface that will contain the menu.  Viewports are not supported.
-  config:    Required.  A list of items for configuring the content of the menu.
-  client:    Optional vector deemed responsible for instantiating the menu.  Recommended to enable keyboard
-             navigation for the user.
-  x:         The x coordinate of the menu.
-  y:         The y coordinate of the menu.
-  width:     The preferred width of the menu, in pixels.
-  popup:     Locks the position of the menu to the mouse pointer; also grabs the UI focus.
-  style:     'menubar', 'list', 'popup'
-  noTranslation: If true, do not translate menu text to the user's native language.
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'

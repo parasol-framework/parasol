@@ -1,49 +1,7 @@
 --[[
-
 The ColumnView API is used to display data to the user in the form of tabulated items.
 
-Items are created and stored as structured tables.  Here is an example of a list of valid item structures.  Each
-attribute can potentially be a column in the display.
-
-   { { id=1, group='file', path='parasol:system/', name='document.txt', size=1232, dateCreated='2018-08-02T17:14' },
-     { id=2, group='folder', path='parasol:system/', name='config', icon='category/name' }
-   }
-
-Initialisation options:
-
-   x, y:             Top left coordinates.  Defaults to 0,0.
-   width, height:    Width and height values, default to 100%.
-   xOffset, yOffset: Offsets are an alternative to width and height.
-   columns:          Declares the visible columns.
-   dateFormat:       The format to use when displaying date types.
-   multiSelect:      If true, more than one item can be selected at a time by the user.
-   sensitive:        If true, activation will occur whenever a new item is selected (double click no longer necessary).
-   target:           The surface or vector viewport that will host the view.
-
-Callbacks:
-
-   itemSelected:     An item has been selected by the user.
-   itemActivated:    An item has been activated by the user, e.g. by double clicking or pressing enter.
-   itemDeselected:   An item has been deselected by the user.
-   activeChange:     The active item has changed (includes reporting of deselection events)
-
-Readable fields:
-
-   highlightedItem: Refers to the current item that the user has highlighted.
-   selectedItem:    TODO - Refers to the most recently selected item.
-
-Methods:
-
-   loadItems(Items)
-      Load a new set of items and display them for the user.  Any existing items will be cleared.
-
-   selectedItems()
-      Returns a table of all currently selected items.
-
-Graphics and UI options:
-
-   dragDrop:      Enable support for drag and drop.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'gui/libview'

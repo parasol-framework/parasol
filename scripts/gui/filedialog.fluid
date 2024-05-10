@@ -1,38 +1,5 @@
 --[[
-To display a file dialog box:
-
-   gui.dialog.file({ Options... })
-
-If the dialog box is modal, the call will not return until the user has responded to the dialog.
-
-To receive feedback from the dialog box, set the feedback option with a function that follows this prototype:
-
-   function feedback(Dialog, Files)
-
-Whereby Dialog refers to the dialog object and Files refers to an array of the selected file names (full path not
-included, read currentPath for the folder).  In the event that the dialog is cancelled, the Files array will be set to
-nil.
-
-Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the
-user has responded (i.e. set all references to nil).  Retaining dialog boxes in memory will provide no descernible
-speed improvement to the user.
-
-Valid options to use when creating the dialog are as follows:
-
-   popOver:      Place the dialog window over the referenced surface.
-   target:       Open the dialog window within the referenced surface.
-   modal:        Set to true if the dialog box needs to be modal (prevents interaction with other windows).
-   okText:       Override the text to display in the OK button.
-   cancelText:   Override the text to display in the Cancel button.
-   filter:       Name of the default filter to apply from the filterList.
-   filterList:   List of items for the combobox filter, e.g. { { name='All Files', pattern='*' } }
-   icon:         Window icon
-   path:         The initial selection path.
-   selectFolder: Set to true if folders can be selected.
-   multiSelect:  Set to true if more than one item can be selected.
-   userInput:    Set to true if the user can enter custom text.
-   warnExists:   If true, confirm with the user if the selected file should be overwritten.
-   feedback:     Refers to a Fluid function that will receive the user's response to the dialog.
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'

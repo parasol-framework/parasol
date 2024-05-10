@@ -22,8 +22,8 @@ A demonstration of standard widgets
    local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
-function itemCallback(ID, Name)
-   print('Callback: ' .. ID .. ', ' .. Name)
+function itemCallback(Bar, Item)
+   print('Callback: ' .. Item.id .. ', ' .. Item.name)
 end
 
 -- This callback is activated whenever a menu is activated by the user.
@@ -45,7 +45,8 @@ function widgetFocus(Widget)
    --end)
 end
 
-   local menubar = gui.menubar(viewport, {
+   local menubar = gui.menubar({
+      target = viewport,
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
             { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
@@ -74,7 +75,8 @@ end
 
    local y = menubar.viewport.height
 
-   lToolbar = gui.toolbar(viewport, {
+   lToolbar = gui.toolbar({
+      target      = viewport,
       xOffset     = 0,
       y           = y,
       iconSize    = 22,

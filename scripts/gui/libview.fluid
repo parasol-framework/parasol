@@ -224,7 +224,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.disabled = false
    end
 
-   -- Add a monitored click zone.
+   -- Add a monitored click zone.  Not for client use.
    -- If Width is nil then the click zone will span the entire width of the page and X is ignored.
 
    vw.addZone = function(X, Y, Width, Height, Item, HoverCallback)

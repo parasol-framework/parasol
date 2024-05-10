@@ -1,34 +1,7 @@
 --[[
 The gui.combobox API creates and manages combobox boxes in the user interface.
 
-Basic template for creating a new combobox:
-
-   require 'gui/combobox'
-   my_button = gui.combobox({ Options... })
-
-Valid options to use when creating the combobox box are as follows:
-
-  target:        Required.  Refers to a viewport that will contain the combobox box.
-  items:         Required.  List of menu items (refer to gui.menu for formatting)
-  events:        A table of event triggers.  Supported events: activate, show, focus, lostFocus, enable, disable
-  flushEdges:    Set to true if the box needs to be squared off for flush edges.
-  text:          A preset string to display in the box.  If not set, defaults to first entry in items.
-  vfx:           A special effect to apply to the combobox box on its creation.
-  showIcons:     If true, show icons in the dropdown list.
-  allowCustom:   If true, the user can enter enter text that isn't in the combobox list.
-  noTranslation: Do not translate combobox strings or the drop-down menu to the user's native language.
-  width:         Width of the box (including any label).
-  x:             The x coordinate of the box.
-  xOffset:       X offset, if not defining x.
-  y:             The y coordinate of the box.
-  yOffset:       Y offset, if not defining y.
-
-  :disable()
-    Disable user interactivity.
-
-  :enable()
-    Enable user interactivity.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'

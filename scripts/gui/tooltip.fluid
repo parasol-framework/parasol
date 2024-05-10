@@ -1,15 +1,5 @@
 --[[
-To create a tool tip:
-
-   local tip = gui.tooltip({ Options... })
-
-Valid options to use when creating the dialog are as follows:
-
-   text: The text to display inside the tool-tip
-   icon: Optional icon to display alongside the text.
-
-The surface representing the tooltip is readable from the 'surface' field.  Early termination of the tooltip
-is possible by calling the free method.
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
