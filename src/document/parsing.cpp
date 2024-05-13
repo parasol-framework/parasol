@@ -28,7 +28,6 @@ struct parser {
    objTime *m_time = NULL;
    LONG  m_loop_index  = 0;
    UWORD m_paragraph_depth = 0;     // Incremented when inside <p> tags
-   UWORD m_bkgd_gfx    = 0;
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
    bool  m_check_else  = false;
@@ -187,8 +186,8 @@ void parser::process_page(objXML *pXML)
    if ((page) and (!page->Children.empty())) {
       Self->PageTag = page;
 
-      bool no_header = page->attrib("noheader") ? true : false;
-      bool no_footer = page->attrib("nofooter") ? true : false;
+      bool no_header = page->attrib("no-header") ? true : false;
+      bool no_footer = page->attrib("no-footer") ? true : false;
 
       // Reset values that are specific to page state
 
@@ -1091,14 +1090,6 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_debug: tag_debug(Tag); break;
 
-      // <focus> indicates that the interactable thing (e.g. hyperlink) that immediately follows it should
-      // have the initial focus when the user interacts with the document.  Commonly used for things such as input boxes.
-      //
-      // If the focus tag encapsulates any content, it will be processed in the same way as if it were to immediately follow
-      // the closing tag.
-      //
-      // Note that for hyperlinks, the 'select' attribute can also be used as a convenient means to assign focus.
-
       case HASH_focus: Self->FocusIndex = Self->Tabs.size(); break;
 
       case HASH_include: tag_include(Tag); break;
@@ -1139,12 +1130,6 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_tr: if (!Tag.Children.empty()) tag_row(Tag); break;
 
       // Others
-
-      case HASH_background: // In background mode, all vectors will target the View rather than the Page.
-         m_bkgd_gfx++;
-         parse_tags(Tag.Children);
-         m_bkgd_gfx--;
-         break;
 
       case HASH_data: break; // Intentionally does nothing
 
@@ -1296,7 +1281,7 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
          ALIGN align = ALIGN::NIL;
          if (StrMatch("top", Attrib.Value) IS ERR::Okay) align = ALIGN::TOP;
          else if (StrMatch("center", Attrib.Value) IS ERR::Okay) align = ALIGN::VERTICAL;
-         else if (StrMatch("middle", Attrib.Value) IS ERR::Okay) align = ALIGN::VERTICAL;
+         else if (StrMatch("middle", Attrib.Value) IS ERR::Okay) align = ALIGN::VERTICAL; // synonym
          else if (StrMatch("bottom", Attrib.Value) IS ERR::Okay) align = ALIGN::BOTTOM;
 
          if (align != ALIGN::NIL) {
@@ -1418,6 +1403,9 @@ void parser::tag_advance(XMLTag &Tag)
          case HASH_x: adv.x = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
          case HASH_y: adv.y = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
       }
+
+      adv.x.value = std::abs(adv.x.value);
+      adv.y.value = std::abs(adv.y.value);
    }
 }
 
@@ -1435,18 +1423,6 @@ void parser::tag_body(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
-         case HASH_link:
-            Self->LinkFill = Tag.Attribs[i].Value;
-            break;
-
-         case HASH_v_link:
-            Self->VisitedLinkFill = Tag.Attribs[i].Value;
-            break;
-
-         case HASH_select_fill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
-            Self->LinkSelectFill = Tag.Attribs[i].Value;
-            break;
-
          case HASH_clip_path: {
             OBJECTPTR clip;
             if (scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip) IS ERR::Okay) {
@@ -1459,6 +1435,10 @@ void parser::tag_body(XMLTag &Tag)
             Self->CursorStroke = Tag.Attribs[i].Value;
             break;
 
+         case HASH_link:
+            Self->LinkFill = Tag.Attribs[i].Value;
+            break;
+            
          // This subroutine supports "N" for setting all margins to "N" and "L T R B" for setting individual
          // margins clockwise
 
@@ -1492,14 +1472,8 @@ void parser::tag_body(XMLTag &Tag)
             break;
          }
 
-         case HASH_page_width:
-            [[fallthrough]];
-         case HASH_width:
-            Self->PageWidth = std::clamp(StrToFloat(Tag.Attribs[i].Value), 1.0, 6000.0);
-
-            if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
-            else Self->RelPageWidth = false;
-            log.msg("Page width forced to %g%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
+         case HASH_select_fill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
+            Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
 
          case HASH_fill:
@@ -1521,6 +1495,20 @@ void parser::tag_body(XMLTag &Tag)
             [[fallthrough]];
          case HASH_font_fill: // Default font fill
             Self->FontFill = Tag.Attribs[i].Value;
+            break;
+            
+         case HASH_v_link:
+            Self->VisitedLinkFill = Tag.Attribs[i].Value;
+            break;
+            
+         case HASH_page_width:
+            [[fallthrough]];
+         case HASH_width:
+            Self->PageWidth = std::clamp(StrToFloat(Tag.Attribs[i].Value), 1.0, 6000.0);
+
+            if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
+            else Self->RelPageWidth = false;
+            log.msg("Page width forced to %g%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
             break;
 
          default:
@@ -2087,7 +2075,7 @@ void parser::tag_div(XMLTag &Tag)
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (StrMatch("align", Tag.Attribs[i].Name) IS ERR::Okay) {
          if ((StrMatch(Tag.Attribs[i].Value, "center") IS ERR::Okay) or
-             (StrMatch(Tag.Attribs[i].Value, "horizontal") IS ERR::Okay)) {
+             (StrMatch(Tag.Attribs[i].Value, "middle") IS ERR::Okay)) {
             new_style.options |= FSO::ALIGN_CENTER;
          }
          else if (StrMatch(Tag.Attribs[i].Value, "right") IS ERR::Okay) {
@@ -2114,7 +2102,7 @@ void parser::tag_editdef(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
-         case HASH_maxchars:
+         case HASH_max_chars:
             edit.max_chars = StrToInt(Tag.Attribs[i].Value);
             if (edit.max_chars < 0) edit.max_chars = -1;
             break;
@@ -2214,7 +2202,10 @@ void parser::tag_include(XMLTag &Tag)
             change_xml(old_xml);
          }
          else log.warning("Failed to include '%s'", Tag.Attribs[i].Value.c_str());
-         return;
+      }
+      else if (StrMatch("volatile", Tag.Attribs[i].Name) IS ERR::Okay) {
+         // Instruct the cache manager that it should always check if the source requires reloading, irrespective of the
+         // amount of time that has passed since the last load.
       }
    }
 
@@ -2279,7 +2270,7 @@ void parser::tag_image(XMLTag &Tag)
                case HASH_left:   img.align = ALIGN::LEFT; break;
                case HASH_right:  img.align = ALIGN::RIGHT; break;
                case HASH_center: img.align = ALIGN::CENTER; break;
-               case HASH_middle: img.align = ALIGN::CENTER; break;
+               case HASH_middle: img.align = ALIGN::CENTER; break; // synonym
                default:
                   log.warning("Invalid alignment value '%s'", value.c_str());
                   break;
@@ -2291,7 +2282,7 @@ void parser::tag_image(XMLTag &Tag)
             switch(StrHash(value)) {
                case HASH_top:    img.align = ALIGN::TOP; break;
                case HASH_center: img.align = ALIGN::VERTICAL; break;
-               case HASH_middle: img.align = ALIGN::VERTICAL; break;
+               case HASH_middle: img.align = ALIGN::VERTICAL; break; // synonym
                case HASH_bottom: img.align = ALIGN::BOTTOM; break;
                default:
                   log.warning("Invalid valign value '%s'", value.c_str());
@@ -2406,9 +2397,9 @@ void parser::tag_link(XMLTag &Tag)
             }
             break;
 
-         case HASH_hint:
-            [[fallthrough]];
          case HASH_title: // 'title' is the http equivalent of our 'hint'
+            [[fallthrough]];
+         case HASH_hint:
             link.hint = Tag.Attribs[i].Value;
             break;
 
@@ -2529,7 +2520,7 @@ void parser::tag_paragraph(XMLTag &Tag)
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (StrMatch("align", Tag.Attribs[i].Name) IS ERR::Okay) {
          if ((StrMatch(Tag.Attribs[i].Value, "center") IS ERR::Okay) or
-             (StrMatch(Tag.Attribs[i].Value, "horizontal") IS ERR::Okay)) {
+             (StrMatch(Tag.Attribs[i].Value, "middle") IS ERR::Okay)) {
             para.font.options |= FSO::ALIGN_CENTER;
          }
          else if (StrMatch(Tag.Attribs[i].Value, "right") IS ERR::Okay) {
@@ -3238,7 +3229,7 @@ void parser::tag_script(XMLTag &Tag)
             return;
          }
       }
-      else if (StrMatch("cachefile", tagname) IS ERR::Okay) {
+      else if (StrMatch("cache-file", tagname) IS ERR::Okay) {
          // Currently the security risk of specifying a cache file is that you could overwrite files on the user's PC,
          // so for the time being this requires unrestricted mode.
 
@@ -3252,9 +3243,6 @@ void parser::tag_script(XMLTag &Tag)
       }
       else if (StrMatch("name", tagname) IS ERR::Okay) {
          name = Tag.Attribs[i].Value;
-      }
-      else if (StrMatch("postprocess", tagname) IS ERR::Okay) {
-         log.warning("--- PostProcess mode for scripts is obsolete - please use the PageProcessed event trigger or call an initialisation function directly ---");
       }
       else if (StrMatch("default", tagname) IS ERR::Okay) {
          defaultscript = true;
@@ -3582,7 +3570,7 @@ void parser::tag_table(XMLTag &Tag)
             if (table.stroke_width.empty()) table.stroke_width = DUNIT(1.0, DU::PIXEL);
             break;
 
-         case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'h-spacing') on the sides
+         case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'h-spacing') on the edges
             table.collapsed = true;
             break;
 
@@ -3604,12 +3592,12 @@ void parser::tag_table(XMLTag &Tag)
                case HASH_left:   table.align = ALIGN::LEFT; break;
                case HASH_right:  table.align = ALIGN::RIGHT; break;
                case HASH_center: table.align = ALIGN::CENTER; break;
-               case HASH_middle: table.align = ALIGN::CENTER; break;
+               case HASH_middle: table.align = ALIGN::CENTER; break; // synonym
                default: log.warning("Invalid alignment value '%s'", value.c_str()); break;
             }
             break;
 
-         case HASH_margins:
+         case HASH_margins: // synonym
          case HASH_cell_padding: // Equivalent to CSS cell-padding
             table.cell_padding.parse(value);
             break;
@@ -3872,16 +3860,16 @@ void parser::tag_trigger(XMLTag &Tag)
       // These are described in the documentation for the AddListener method
 
       switch(StrHash(event)) {
-         case HASH_AfterLayout:       trigger_code = DRT::AFTER_LAYOUT; break;
-         case HASH_BeforeLayout:      trigger_code = DRT::BEFORE_LAYOUT; break;
-         case HASH_UserClick:         trigger_code = DRT::USER_CLICK; break;
-         case HASH_UserClickRelease:  trigger_code = DRT::USER_CLICK_RELEASE; break;
-         case HASH_UserMovement:      trigger_code = DRT::USER_MOVEMENT; break;
-         case HASH_Refresh:           trigger_code = DRT::REFRESH; break;
-         case HASH_GotFocus:          trigger_code = DRT::GOT_FOCUS; break;
-         case HASH_LostFocus:         trigger_code = DRT::LOST_FOCUS; break;
-         case HASH_LeavingPage:       trigger_code = DRT::LEAVING_PAGE; break;
-         case HASH_PageProcessed:     trigger_code = DRT::PAGE_PROCESSED; break;
+         case HASH_after_layout:    trigger_code = DRT::AFTER_LAYOUT; break;
+         case HASH_before_layout:   trigger_code = DRT::BEFORE_LAYOUT; break;
+         case HASH_on_click:        trigger_code = DRT::USER_CLICK; break;
+         case HASH_on_release:      trigger_code = DRT::USER_CLICK_RELEASE; break;
+         case HASH_on_motion:       trigger_code = DRT::USER_MOVEMENT; break;
+         case HASH_refresh:         trigger_code = DRT::REFRESH; break;
+         case HASH_focus:           trigger_code = DRT::GOT_FOCUS; break;
+         case HASH_focus_lost:      trigger_code = DRT::LOST_FOCUS; break;
+         case HASH_leaving_page:    trigger_code = DRT::LEAVING_PAGE; break;
+         case HASH_page_processed:  trigger_code = DRT::PAGE_PROCESSED; break;
          default:
             log.warning("Trigger event '%s' for function '%s' is not recognised.", event.c_str(), function_name.c_str());
             return;

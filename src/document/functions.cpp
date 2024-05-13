@@ -854,7 +854,7 @@ void ui_link::exec(extDocument *Self)
       if (origin.type IS LINK::FUNCTION) {
          std::string function_name, args;
          if (extract_script(Self, origin.ref, NULL, function_name, args) IS ERR::Okay) {
-            params.emplace("onclick", function_name);
+            params.emplace("on-click", function_name);
          }
       }
       else if (origin.type IS LINK::HREF) {
