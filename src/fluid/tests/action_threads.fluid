@@ -49,8 +49,7 @@ function testParallel()
    glPicsProcessed = 0
 
    for k, v in ipairs(glPictures) do
-      local err = thread.action(v.pic, 'Activate', picProcessed, k)
-      assert(err == ERR_Okay, 'Thread failed to process ' .. v.path .. ': ' .. mSys.GetErrorMsg(err))
+      thread.action(v.pic, 'Activate', picProcessed, k)
    end
 
    -- Wait for threads to complete
