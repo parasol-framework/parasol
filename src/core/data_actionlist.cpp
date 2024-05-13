@@ -5,7 +5,6 @@
 
 FDEF argsClipboard[]     = { { "Mode", FD_LONG }, { 0, 0 } };
 FDEF argsCopyData[]      = { { "Dest", FD_OBJECTPTR  }, { 0, 0 } };
-FDEF argsCustom[]        = { { "Number", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsDataFeed[]      = { { "Object", FD_OBJECTPTR }, { "Datatype", FD_LONG }, { "Buffer", FD_PTR }, { "Size", FD_LONG|FD_PTRSIZE }, { 0, 0 } };
 FDEF argsDragDrop[]      = { { "Source", FD_OBJECTPTR }, { "Item", FD_LONG }, { "Datatype", FD_STR }, { 0, 0 } };
 FDEF argsDraw[]          = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
@@ -82,6 +81,5 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_REDIMENSION,    sizeof(struct acRedimension), "Redimension", argsRedimension },
    { AHASH_MOVETOPOINT,    sizeof(struct acMoveToPoint), "MoveToPoint", argsMoveToPoint },
    { AHASH_SCROLLTOPOINT,  sizeof(struct acScrollToPoint), "ScrollToPoint", argsScrollToPoint },
-   { AHASH_CUSTOM,         sizeof(struct acCustom), "Custom", argsCustom },
    { 0, 0, 0, 0 }
 };

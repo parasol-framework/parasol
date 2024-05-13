@@ -23,7 +23,6 @@ glActionComments[AC_Activate]       = 'Performs the native action of the object.
 glActionComments[AC_Clear]          = 'Clears an object\'s data.'
 glActionComments[AC_Clipboard]      = 'Copy and paste information to and from clipboard objects.'
 glActionComments[AC_CopyData]       = 'Copies one object\'s data to another.'
-glActionComments[AC_Custom]         = 'Allows customised messages to be passed through the action system.'
 glActionComments[AC_DataFeed]       = 'Provides a mechanism for feeding data to objects.'
 glActionComments[AC_Deactivate]     = 'Stops an object from performing its native activities.'
 glActionComments[AC_Disable]        = 'Disables an object.'

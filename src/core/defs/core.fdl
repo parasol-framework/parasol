@@ -88,7 +88,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "READ",         "RENAME",        "RESET",     "RESIZE",      "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",
     "SEEK",         "SETVAR",        "SHOW",      "TIMER",       "UNLOCK",       "NEXT",         "PREV",
     "WRITE",        "SETFIELD",      "CLIPBOARD", "REFRESH",     "DISABLE",      "ENABLE",       "REDIMENSION",
-    "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",    "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
+    "MOVETOPOINT",  "SCROLLTOPOINT", "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
     "UNDO")
 
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
@@ -1874,7 +1874,6 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResou
 
 struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
-struct acCustom        { LONG Number; CSTRING String; };
 struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
 struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
@@ -2421,11 +2420,6 @@ inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
 #define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-inline ERR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
-   struct acCustom args = { Number, String };
-   return ActionMsg(AC_Custom, ObjectID, &args);
-}
 
 inline ERR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
    struct acDataFeed channel = { Sender, Datatype, Data, Size };

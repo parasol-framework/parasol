@@ -114,7 +114,6 @@ static int obj_jump_enable(lua_State *Lua, const obj_read &Handle, object *def) 
 static int obj_jump_redimension(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Redimension); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
 static int obj_jump_movetopoint(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_MoveToPoint); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
 static int obj_jump_scrolltopoint(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_ScrollToPoint); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_custom(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Custom); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
 
 static std::array<obj_read::JUMP *, AC_END> glJumpActions = {
    obj_jump_empty,
@@ -168,6 +167,5 @@ static std::array<obj_read::JUMP *, AC_END> glJumpActions = {
    obj_jump_enable,
    obj_jump_redimension,
    obj_jump_movetopoint,
-   obj_jump_scrolltopoint,
-   obj_jump_custom
+   obj_jump_scrolltopoint
 };

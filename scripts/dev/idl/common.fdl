@@ -54,7 +54,7 @@ enum("AC", { weak=true, start=1, comment="Action identifiers.", module="Core" },
     "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "Scroll",
     "Seek",         "SetVar",         "Show",         "Undo",     "Unlock",       "Next",         "Prev",
     "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "Enable",       "Redimension",
-    "MoveToPoint",  "ScrollToPoint",  "Custom",
+    "MoveToPoint",  "ScrollToPoint",
     "END")
 
 flags("PERMIT", { comment="Permission flags", module="Core" },

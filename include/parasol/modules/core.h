@@ -176,8 +176,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_Redimension 49
 #define AC_MoveToPoint 50
 #define AC_ScrollToPoint 51
-#define AC_Custom 52
-#define AC_END 53
+#define AC_END 52
 
 // Permission flags
 
@@ -1474,7 +1473,6 @@ struct Edges {
 #define AHASH_REDIMENSION 0x08a67fa2
 #define AHASH_MOVETOPOINT 0x48467e29
 #define AHASH_SCROLLTOPOINT 0xe3665f41
-#define AHASH_CUSTOM 0xf753f9c0
 #define AHASH_SORT 0x7c9e066d
 #define AHASH_SAVESETTINGS 0x475f7165
 #define AHASH_SELECTAREA 0xf55e615e
@@ -3034,7 +3032,6 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResou
 
 struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
-struct acCustom        { LONG Number; CSTRING String; };
 struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
 struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
@@ -4682,11 +4679,6 @@ class objCompressedStream : public Object {
 #define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-inline ERR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
-   struct acCustom args = { Number, String };
-   return ActionMsg(AC_Custom, ObjectID, &args);
-}
 
 inline ERR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
    struct acDataFeed channel = { Sender, Datatype, Data, Size };

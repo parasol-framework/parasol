@@ -2302,7 +2302,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="Clear"/>
       <const name="Clipboard"/>
       <const name="CopyData"/>
-      <const name="Custom"/>
       <const name="DataFeed"/>
       <const name="Deactivate"/>
       <const name="Disable"/>
