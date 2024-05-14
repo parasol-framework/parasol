@@ -31,10 +31,10 @@
     </action>
 
     <action>
-      <name>GetVar</name>
+      <name>GetKey</name>
       <comment>Retrieves data from an xml object.</comment>
       <description>
-<p>The XML class uses variable fields for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
+<p>The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
 <types type="Path">
 <type name="/menu/submenu">Return the content of the submenu tag whose parent is the first window.</type>
 <type name="xpath:/menu[2]/window">Return the content of the submenu tag whose parent is the 3rd window.</type>
@@ -62,10 +62,10 @@
     </action>
 
     <action>
-      <name>SetVar</name>
-      <comment>Sets attributes and content in the XML tree using XPaths,</comment>
+      <name>SetKey</name>
+      <comment>Sets attributes and content in the XML tree using XPaths.</comment>
       <description>
-<p>Use SetVar to add tag attributes and content using XPaths.  The XPath is specified in the Field parameter and the data is specified in the Value parameter.  Setting the Value to NULL will remove the attribute or existing content, while an empty string will keep an attribute but eliminate any associated data.</p>
+<p>Use SetKey to add tag attributes and content using XPaths.  The XPath is specified in the <code>Key</code> parameter and the data is specified in the <code>Value</code> parameter.  Setting the Value to <code>NULL</code> will remove the attribute or existing content, while an empty string will keep an attribute but eliminate any associated data.</p>
 <p>It is not possible to add new tags using this action - it is only possible to update existing tags.</p>
 <p>Please note that making changes to the XML tree will render all previously obtained tag pointers and indexes invalid.</p>
       </description>

@@ -243,7 +243,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    OBJECTID id;
    if (FindObject("glStyle", ID_XML, FOF::NIL, &id) IS ERR::Okay) {
       char buffer[40];
-      if (acGetVar(GetObjectPtr(id), "/colours/@texthighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
+      if (acGetKey(GetObjectPtr(id), "/colours/@texthighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
          read_rgb8(buffer, &glHighlight);
       }
    }
@@ -2163,10 +2163,10 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
    if (NewObject(ID_SCRIPT, &dialog) IS ERR::Okay) {
       dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.fluid"));
 
-      acSetVar(dialog, "modal", "1");
-      acSetVar(dialog, "title", Title);
-      acSetVar(dialog, "options", "okay");
-      acSetVar(dialog, "type", "error");
+      acSetKey(dialog, "modal", "1");
+      acSetKey(dialog, "title", Title);
+      acSetKey(dialog, "options", "okay");
+      acSetKey(dialog, "type", "error");
 
       CSTRING errstr;
       if ((Error != ERR::Okay) and (errstr = GetErrorMsg(Error))) {
@@ -2174,9 +2174,9 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
          if (Message) buffer << Message << "\n\nDetails: " << errstr;
          else buffer << "Error: " << errstr;
 
-         acSetVar(dialog, "message", buffer.str().c_str());
+         acSetKey(dialog, "message", buffer.str().c_str());
       }
-      else acSetVar(dialog, "message", Message);
+      else acSetKey(dialog, "message", Message);
 
       if ((InitObject(dialog) IS ERR::Okay) and (acActivate(dialog) IS ERR::Okay)) {
          CSTRING *results;

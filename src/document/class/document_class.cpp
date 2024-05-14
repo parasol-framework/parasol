@@ -620,24 +620,24 @@ static ERR DOCUMENT_Free(extDocument *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Script arguments can be retrieved through this action.
+GetKey: Retrieves script parameters.
 -END-
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
+static ERR DOCUMENT_GetKey(extDocument *Self, struct acGetKey *Args)
 {
-   if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR::Args;
+   if ((!Args) or (!Args->Value) or (!Args->Key) or (Args->Size < 2)) return ERR::Args;
 
-   if (Self->Vars.contains(Args->Field)) {
-      StrCopy(Self->Vars[Args->Field], Args->Buffer, Args->Size);
+   if (Self->Vars.contains(Args->Key)) {
+      StrCopy(Self->Vars[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
-   else if (Self->Params.contains(Args->Field)) {
-      StrCopy(Self->Params[Args->Field], Args->Buffer, Args->Size);
+   else if (Self->Params.contains(Args->Key)) {
+      StrCopy(Self->Params[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
-   Args->Buffer[0] = 0;
+   Args->Value[0] = 0;
    return ERR::UnsupportedField;
 }
 
@@ -1243,18 +1243,18 @@ static ERR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Passes variable parameters to loaded documents.
+SetKey: Passes variable parameters to loaded documents.
 -END-
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
+static ERR DOCUMENT_SetKey(extDocument *Self, struct acSetKey *Args)
 {
    // Please note that it is okay to set zero-length arguments
 
-   if ((!Args) or (!Args->Field)) return ERR::NullArgs;
-   if (!Args->Field[0]) return ERR::Args;
+   if ((!Args) or (!Args->Key)) return ERR::NullArgs;
+   if (!Args->Key[0]) return ERR::Args;
 
-   Self->Vars[Args->Field] = Args->Value;
+   Self->Vars[Args->Key] = Args->Value;
 
    return ERR::Okay;
 }

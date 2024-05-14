@@ -125,7 +125,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
          for (unsigned i=glArgsIndex; i < args.size(); i++) {
             auto eq = args[i].find('=');
-            if (eq IS std::string::npos) SetVar(glScript, args[i].c_str(), "1");
+            if (eq IS std::string::npos) SetKey(glScript, args[i].c_str(), "1");
             else {
                auto argname = std::string(args[i], 0, eq);
                eq++;
@@ -133,12 +133,12 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
                   // Array definition, e.g. files={ file1.txt file2.txt }
                   // This will be converted to files(0)=file.txt files(1)=file2.txt
 
-                  if (args[i][eq+1] > 0x20) SetVar(glScript, argname.c_str(), args[i].c_str() + eq);
+                  if (args[i][eq+1] > 0x20) SetKey(glScript, argname.c_str(), args[i].c_str() + eq);
                   else {
                      unsigned arg_index = 0;
                      for (++i; (i < args.size()) and (args[i][0] != '}'); i++) {
                         auto argindex = argname + '(' + std::to_string(arg_index) + ')';
-                        SetVar(glScript, argindex.c_str(), args[i].c_str());
+                        SetKey(glScript, argindex.c_str(), args[i].c_str());
                         arg_index++;
                      }
 
@@ -146,10 +146,10 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
                      // Note that the last arg in the array will be the "}" that closes it
 
-                     SetVar(glScript, (argname + ":size").c_str(), std::to_string(arg_index).c_str());
+                     SetKey(glScript, (argname + ":size").c_str(), std::to_string(arg_index).c_str());
                   }
                }
-               else SetVar(glScript, argname.c_str(), args[i].c_str() + eq);
+               else SetKey(glScript, argname.c_str(), args[i].c_str() + eq);
             }
          }
       }

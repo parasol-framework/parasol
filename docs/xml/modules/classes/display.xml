@@ -67,7 +67,7 @@
     </action>
 
     <action>
-      <name>GetVar</name>
+      <name>GetKey</name>
       <comment>Retrieve formatted information from the display.</comment>
     </action>
 

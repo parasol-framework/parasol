@@ -182,10 +182,10 @@ class extHTTP : public objHTTP {
 static ERR HTTP_Activate(extHTTP *, APTR);
 static ERR HTTP_Deactivate(extHTTP *, APTR);
 static ERR HTTP_Free(extHTTP *, APTR);
-static ERR HTTP_GetVar(extHTTP *, struct acGetVar *);
+static ERR HTTP_GetKey(extHTTP *, struct acGetKey *);
 static ERR HTTP_Init(extHTTP *, APTR);
 static ERR HTTP_NewObject(extHTTP *, APTR);
-static ERR HTTP_SetVar(extHTTP *, struct acSetVar *);
+static ERR HTTP_SetKey(extHTTP *, struct acSetKey *);
 static ERR HTTP_Write(extHTTP *, struct acWrite *);
 
 #include "http_def.c"
@@ -786,21 +786,21 @@ static ERR HTTP_Free(extHTTP *Self, APTR Args)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Entries in the HTTP response header can be read as variable fields.
+GetKey: Entries in the HTTP response header can be read as key-values.
 -END-
 *********************************************************************************************************************/
 
-static ERR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
+static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if ((Self->Args) and (Self->Args->contains(Args->Field))) {
-      StrCopy(Self->Args[0][Args->Field].c_str(), Args->Buffer, Args->Size);
+   if ((Self->Args) and (Self->Args->contains(Args->Key))) {
+      StrCopy(Self->Args[0][Args->Key].c_str(), Args->Value, Args->Size);
       return ERR::Okay;
    }
 
-   if ((Self->Headers) and (Self->Headers->contains(Args->Field))) {
-      StrCopy(Self->Headers[0][Args->Field].c_str(), Args->Buffer, Args->Size);
+   if ((Self->Headers) and (Self->Headers->contains(Args->Key))) {
+      StrCopy(Self->Headers[0][Args->Key].c_str(), Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -847,11 +847,11 @@ static ERR HTTP_NewObject(extHTTP *Self, APTR Args)
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Options to pass in the HTTP method header can be set as variable fields.
+SetKey: Options to pass in the HTTP method header can be set as key-values.
 -END-
 *********************************************************************************************************************/
 
-static ERR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
+static ERR HTTP_SetKey(extHTTP *Self, struct acSetKey *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -859,7 +859,7 @@ static ERR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
       Self->Headers = new (std::nothrow) std::unordered_map<std::string, std::string>;
       if (!Self->Headers) return ERR::Memory;
    }
-   Self->Headers[0][Args->Field] = Args->Value;
+   Self->Headers[0][Args->Key] = Args->Value;
    return ERR::Okay;
 }
 

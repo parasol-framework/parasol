@@ -322,11 +322,11 @@ static void error_dialog(const std::string Title, const std::string Message)
    if (NewObject(ID_SCRIPT, &dialog) IS ERR::Okay) {
       dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
 
-      acSetVar(dialog, "modal", "1");
-      acSetVar(dialog, "title", Title.c_str());
-      acSetVar(dialog, "options", "okay");
-      acSetVar(dialog, "type", "error");
-      acSetVar(dialog, "message", Message.c_str());
+      acSetKey(dialog, "modal", "1");
+      acSetKey(dialog, "title", Title.c_str());
+      acSetKey(dialog, "options", "okay");
+      acSetKey(dialog, "type", "error");
+      acSetKey(dialog, "message", Message.c_str());
 
       if ((InitObject(dialog) IS ERR::Okay) and (acActivate(dialog) IS ERR::Okay)) {
          CSTRING *results;

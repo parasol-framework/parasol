@@ -23,11 +23,11 @@ static const struct ActionArray clScriptActions[] = {
    { AC_Activate, SCRIPT_Activate },
    { AC_DataFeed, SCRIPT_DataFeed },
    { AC_Free, SCRIPT_Free },
-   { AC_GetVar, SCRIPT_GetVar },
+   { AC_GetKey, SCRIPT_GetKey },
    { AC_Init, SCRIPT_Init },
    { AC_NewObject, SCRIPT_NewObject },
    { AC_Reset, SCRIPT_Reset },
-   { AC_SetVar, SCRIPT_SetVar },
+   { AC_SetKey, SCRIPT_SetKey },
    { 0, NULL }
 };
 

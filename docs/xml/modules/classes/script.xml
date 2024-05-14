@@ -15,7 +15,7 @@
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does not include a default parser or execution process of any kind.</p>
-<p>To execute a script file, choose a sub-class that matches the language and create the script object.  Set the <field>Path</field> field and then <action>Activate</action> the script.  Global input parameters for the script can be defined via the <action>SetVar</action> action.</p>
+<p>To execute a script file, choose a sub-class that matches the language and create the script object.  Set the <field>Path</field> field and then <action>Activate</action> the script.  Global input parameters for the script can be defined via the <action>SetKey</action> action.</p>
 <p>Note that client scripts may sometimes create objects that are unmanaged by the script object that created them. Terminating the script will not remove objects that are outside its resource hierarchy.</p></description>
     <source>
       <file path="../classes/">class_script.cpp</file>
@@ -29,7 +29,7 @@
     </action>
 
     <action>
-      <name>GetVar</name>
+      <name>GetKey</name>
       <comment>Script parameters can be retrieved through this action.</comment>
     </action>
 
@@ -39,7 +39,7 @@
     </action>
 
     <action>
-      <name>SetVar</name>
+      <name>SetKey</name>
       <comment>Script parameters can be set through this action.</comment>
     </action>
 

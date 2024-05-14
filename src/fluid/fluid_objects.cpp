@@ -32,8 +32,8 @@ template<class... Args> void RMSG(Args...) {
    //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
 }
 
-static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_var, OJH_getVar;
-static ULONG OJH_set, OJH_setVar, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
+static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_key, OJH_getKey;
+static ULONG OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
 
 static int object_action_call_args(lua_State *);
 static int object_method_call_args(lua_State *);
@@ -48,13 +48,13 @@ static int object_detach(lua_State *);
 static int object_exists(lua_State *);
 static int object_free(lua_State *);
 static int object_get(lua_State *);
-static int object_getvar(lua_State *);
+static int object_getkey(lua_State *);
 static int object_init(lua_State *);
 static int object_lock(lua_State *);
 static int object_newchild(lua_State *);
 static int object_newindex(lua_State *);
 static int object_set(lua_State *);
-static int object_setvar(lua_State *);
+static int object_setkey(lua_State *);
 static int object_state(lua_State *);
 static int object_subscribe(lua_State *);
 static int object_unsubscribe(lua_State *);
@@ -98,12 +98,12 @@ static int stack_object_detach(lua_State *Lua, const obj_read &Handle, object *d
 static int stack_object_exists(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
 static int stack_object_free(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
 static int stack_object_get(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
-static int stack_object_getVar(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getvar); return 1; }
+static int stack_object_getKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getkey); return 1; }
 static int stack_object_init(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
 static int stack_object_lock(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
 static int stack_object_newchild(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
 static int stack_object_set(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
-static int stack_object_setVar(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setvar); return 1; }
+static int stack_object_setKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setkey); return 1; }
 static int stack_object_state(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
 static int stack_object_subscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
 static int stack_object_unsubscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
@@ -193,10 +193,10 @@ inline void build_read_table(object *Def)
    jmp.emplace(OJH_get, stack_object_get);
    jmp.emplace(OJH_new, stack_object_newchild);
    jmp.emplace(OJH_state, stack_object_state);
-   jmp.emplace(OJH_var, stack_object_getVar);
-   jmp.emplace(OJH_getVar, stack_object_getVar);
+   jmp.emplace(OJH_key, stack_object_getKey);
+   jmp.emplace(OJH_getKey, stack_object_getKey);
    jmp.emplace(OJH_set, stack_object_set);
-   jmp.emplace(OJH_setVar, stack_object_setVar);
+   jmp.emplace(OJH_setKey, stack_object_setKey);
    jmp.emplace(OJH_delayCall, stack_object_delayCall);
    jmp.emplace(OJH_exists, stack_object_exists);
    jmp.emplace(OJH_subscribe, stack_object_subscribe);
@@ -1173,10 +1173,10 @@ void register_object_class(lua_State *Lua)
    OJH_get         = simple_hash("get");
    OJH_new         = simple_hash("new");
    OJH_state       = simple_hash("state");
-   OJH_var         = simple_hash("var");
-   OJH_getVar      = simple_hash("getVar");
+   OJH_key         = simple_hash("key");
+   OJH_getKey      = simple_hash("getKey");
    OJH_set         = simple_hash("set");
-   OJH_setVar      = simple_hash("setVar");
+   OJH_setKey      = simple_hash("setKey");
    OJH_delayCall   = simple_hash("delayCall");
    OJH_exists      = simple_hash("exists");
    OJH_subscribe   = simple_hash("subscribe");

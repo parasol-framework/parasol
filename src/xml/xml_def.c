@@ -58,12 +58,12 @@ static const struct ActionArray clXMLActions[] = {
    { AC_Clear, XML_Clear },
    { AC_DataFeed, XML_DataFeed },
    { AC_Free, XML_Free },
-   { AC_GetVar, XML_GetVar },
+   { AC_GetKey, XML_GetKey },
    { AC_Init, XML_Init },
    { AC_NewObject, XML_NewObject },
    { AC_Reset, XML_Reset },
    { AC_SaveToObject, XML_SaveToObject },
-   { AC_SetVar, XML_SetVar },
+   { AC_SetKey, XML_SetKey },
    { 0, NULL }
 };
 

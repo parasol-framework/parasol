@@ -93,13 +93,13 @@ http.acActivate()
     </action>
 
     <action>
-      <name>GetVar</name>
-      <comment>Entries in the HTTP response header can be read as variable fields.</comment>
+      <name>GetKey</name>
+      <comment>Entries in the HTTP response header can be read as key-values.</comment>
     </action>
 
     <action>
-      <name>SetVar</name>
-      <comment>Options to pass in the HTTP method header can be set as variable fields.</comment>
+      <name>SetKey</name>
+      <comment>Options to pass in the HTTP method header can be set as key-values.</comment>
     </action>
 
     <action>

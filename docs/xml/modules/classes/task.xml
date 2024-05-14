@@ -45,12 +45,12 @@
     </action>
 
     <action>
-      <name>GetVar</name>
-      <comment>Retrieves variable field values.</comment>
+      <name>GetKey</name>
+      <comment>Retrieves custom key values.</comment>
     </action>
 
     <action>
-      <name>SetVar</name>
+      <name>SetKey</name>
       <comment>Variable fields are supported for the general storage of program variables.</comment>
     </action>
 

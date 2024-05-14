@@ -92,7 +92,7 @@
       <const name="Focus"/>
       <const name="Free"/>
       <const name="FreeWarning"/>
-      <const name="GetVar"/>
+      <const name="GetKey"/>
       <const name="Hide"/>
       <const name="Init"/>
       <const name="Lock"/>
@@ -122,7 +122,7 @@
       <const name="Seek"/>
       <const name="SelectArea"/>
       <const name="SetField"/>
-      <const name="SetVar"/>
+      <const name="SetKey"/>
       <const name="Show"/>
       <const name="Signal"/>
       <const name="Sort"/>

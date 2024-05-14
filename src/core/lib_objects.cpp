@@ -1036,7 +1036,7 @@ InitObject: Initialises an object so that it is ready for use.
 
 This function initialises objects so that they can be used for their intended purpose. The process of initialisation
 is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to
-this rule only apply to the GetVar() and SetVar() actions.
+this rule only apply to the GetKey() and SetKey() actions.
 
 If the initialisation of an object fails due to a support problem (for example, if a PNG @Picture object attempts to
 load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can

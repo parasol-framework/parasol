@@ -38,16 +38,16 @@ function parseInfo()
    local error, infoIndex = glInfoXML.mtFindTag("/info");
 
    local info = {
-      name        = glInfoXML.var("content:/info/name"),
-      author      = glInfoXML.var("/info/author"),
-      version     = glInfoXML.var("/info/version"),
-      built       = glInfoXML.var("/info/built"),
-      short       = glInfoXML.var("/info/short"),
-      website     = glInfoXML.var("/info/website"),
-      run         = glInfoXML.var("/info/run"),
-      copyright   = glInfoXML.var("/info/copyright"),
-      license     = glInfoXML.var("/info/license"),
-      description = glInfoXML.var("/info/description")
+      name        = glInfoXML.key("content:/info/name"),
+      author      = glInfoXML.key("/info/author"),
+      version     = glInfoXML.key("/info/version"),
+      built       = glInfoXML.key("/info/built"),
+      short       = glInfoXML.key("/info/short"),
+      website     = glInfoXML.key("/info/website"),
+      run         = glInfoXML.key("/info/run"),
+      copyright   = glInfoXML.key("/info/copyright"),
+      license     = glInfoXML.key("/info/license"),
+      description = glInfoXML.key("/info/description")
    }
 
    local error, iArgs = glInfoXML.mtFindTag("/info/args")

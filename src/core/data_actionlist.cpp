@@ -8,7 +8,7 @@ FDEF argsCopyData[]      = { { "Dest", FD_OBJECTPTR  }, { 0, 0 } };
 FDEF argsDataFeed[]      = { { "Object", FD_OBJECTPTR }, { "Datatype", FD_LONG }, { "Buffer", FD_PTR }, { "Size", FD_LONG|FD_PTRSIZE }, { 0, 0 } };
 FDEF argsDragDrop[]      = { { "Source", FD_OBJECTPTR }, { "Item", FD_LONG }, { "Datatype", FD_STR }, { 0, 0 } };
 FDEF argsDraw[]          = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
-FDEF argsGetVar[]        = { { "Field", FD_STR }, { "Buffer",  FD_PTRBUFFER }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
+FDEF argsGetKey[]        = { { "Field", FD_STR }, { "Buffer",  FD_PTRBUFFER }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMove[]          = { { "DeltaX", FD_DOUBLE }, { "DeltaY", FD_DOUBLE }, { "DeltaZ", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMoveToPoint[]   = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsNewChild[]      = { { "NewChild", FD_OBJECTPTR }, { 0, 0 } };
@@ -23,7 +23,7 @@ FDEF argsSaveToObject[]  = { { "Dest", FD_OBJECTPTR }, { "Class", FD_LONG }, { 0
 FDEF argsScroll[]        = { { "DeltaX", FD_DOUBLE }, { "DeltaY", FD_DOUBLE }, { "DeltaZ", FD_DOUBLE }, { 0, 0 } };
 FDEF argsScrollToPoint[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsSeek[]          = { { "Offset", FD_DOUBLE }, { "Position", FD_LONG }, { 0, 0 } };
-FDEF argsSetVar[]        = { { "Field", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
+FDEF argsSetKey[]        = { { "Field", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsUndo[]          = { { "Steps", FD_LONG }, { 0, 0 } };
 FDEF argsWrite[]         = { { "Buffer", FD_PTR|FD_BUFFER }, { "Length", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsSelectArea[]    = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { 0, 0 } };
@@ -44,7 +44,7 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_FOCUS,          0, "Focus", 0 },
    { AHASH_FREE,           0, "Free", 0 },
    { AHASH_SAVESETTINGS,   0, "SaveSettings", 0 },
-   { AHASH_GETVAR,         sizeof(struct acGetVar), "GetVar", argsGetVar },
+   { AHASH_GETKEY,         sizeof(struct acGetKey), "GetKey", argsGetKey },
    { AHASH_DRAGDROP,       sizeof(struct acDragDrop), "DragDrop", argsDragDrop },
    { AHASH_HIDE,           0, "Hide", 0 },
    { AHASH_INIT,           0, "Init", 0 },
@@ -66,7 +66,7 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_SAVETOOBJECT,   sizeof(struct acSaveToObject), "SaveToObject", argsSaveToObject },
    { AHASH_SCROLL,         sizeof(struct acScroll), "Scroll", argsScroll },
    { AHASH_SEEK,           sizeof(struct acSeek), "Seek", argsSeek },
-   { AHASH_SETVAR,         sizeof(struct acSetVar), "SetVar", argsSetVar },
+   { AHASH_SETKEY,         sizeof(struct acSetKey), "SetKey", argsSetKey },
    { AHASH_SHOW,           0, "Show", 0 },
    { AHASH_UNDO,           sizeof(struct acUndo), "Undo", argsUndo },
    { AHASH_UNLOCK,         0, "Unlock", 0 },

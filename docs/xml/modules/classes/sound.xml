@@ -58,10 +58,10 @@ proc.sleep()
     </action>
 
     <action>
-      <name>GetVar</name>
-      <comment>Retrieve custom tag values.</comment>
+      <name>GetKey</name>
+      <comment>Retrieve custom key values.</comment>
       <description>
-<p>The following custom tag values are formally recognised and may be defined automatically when loading sample files:</p>
+<p>The following custom key values are formally recognised and may be defined automatically when loading sample files:</p>
 <types type="Tag">
 <type name="Author">The name of the person or organisation that created the sound sample.</type>
 <type name="Copyright">Copyright details of an audio sample.</type>
@@ -96,7 +96,7 @@ proc.sleep()
     </action>
 
     <action>
-      <name>SetVar</name>
+      <name>SetKey</name>
       <comment>Define custom tags that will be saved with the sample data.</comment>
     </action>
 

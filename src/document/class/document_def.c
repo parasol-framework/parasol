@@ -62,13 +62,13 @@ static const struct ActionArray clDocumentActions[] = {
    { AC_Enable, DOCUMENT_Enable },
    { AC_Focus, DOCUMENT_Focus },
    { AC_Free, DOCUMENT_Free },
-   { AC_GetVar, DOCUMENT_GetVar },
+   { AC_GetKey, DOCUMENT_GetKey },
    { AC_Init, DOCUMENT_Init },
    { AC_NewObject, DOCUMENT_NewObject },
    { AC_Refresh, DOCUMENT_Refresh },
    { AC_SaveToObject, DOCUMENT_SaveToObject },
    { AC_ScrollToPoint, DOCUMENT_ScrollToPoint },
-   { AC_SetVar, DOCUMENT_SetVar },
+   { AC_SetKey, DOCUMENT_SetKey },
    { 0, NULL }
 };
 
