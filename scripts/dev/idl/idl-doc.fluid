@@ -18,6 +18,9 @@ glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
 
+if not AC_GetKey then AC_GetKey = AC_GetVar end // Temporary bridging fix
+if not AC_SetKey then AC_SetKey = AC_SetVar end // Temporary bridging fix
+
 glActionComments = { }
 glActionComments[AC_Activate]       = 'Performs the native action of the object.'
 glActionComments[AC_Clear]          = 'Clears an object\'s data.'
