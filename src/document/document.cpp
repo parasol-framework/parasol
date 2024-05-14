@@ -280,7 +280,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    OBJECTID style_id;
    if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
       char buffer[32];
-      if (acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
+      if (acGetKey(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
          glHighlight.assign(buffer);
       }
    }

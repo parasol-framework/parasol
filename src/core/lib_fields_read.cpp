@@ -294,7 +294,7 @@ string field types.
 
 If the field name refers to a flag or lookup based field type, it is possible to test if a specific flag has been set.
 This is achieved by specifying a dot immediately after the field name, then the name of the flag or lookup to test.
-If the test passes, a value of 1 is returned, otherwise 0.
+If the test passes, a value of `1` is returned, otherwise `0`.
 
 String conversion for flag and lookup based fields is also supported (by default, integer values are returned for
 these field types when no other test is applied).  This feature is enabled by prefixing the field name with a `$` symbol.
@@ -304,8 +304,8 @@ If the field name refers to an array, it is possible to index specific values wi
 after the field name, then the index number to lookup.
 
 To check if a string is defined (rather than retrieving the entire string content which can be time consuming), prefix
-the Field name with a question mark.  A value of 1 will be returned in the Buffer if the string has a minimum length
-of 1 character, otherwise a value of 0 is returned in the Buffer.
+the `Field` name with a question mark.  A value of `1` will be returned in the `Buffer` if the string has a minimum length
+of `1` character, otherwise a value of `0` is returned in the Buffer.
 
 -INPUT-
 obj Object: Pointer to an object.
@@ -497,13 +497,13 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
       return ERR::Okay;
    }
    else {
-      if (CheckAction(Object, AC_GetVar) IS ERR::Okay) {
-         struct acGetVar var = {
-            .Field  = FieldName, // Must use the original field name argument, not the modified fname
-            .Buffer = Buffer,
-            .Size   = BufferSize
+      if (CheckAction(Object, AC_GetKey) IS ERR::Okay) {
+         struct acGetKey var = {
+            FieldName, // Must use the original field name argument, not the modified fname
+            Buffer,
+            BufferSize
          };
-         if (Action(AC_GetVar, Object, &var) IS ERR::Okay) {
+         if (Action(AC_GetKey, Object, &var) IS ERR::Okay) {
             return ERR::Okay;
          }
          else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());

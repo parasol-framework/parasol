@@ -18,7 +18,6 @@
 #define ID_MODULE 0x0e32c72bUL
 #define ID_TIME 0x7c9e7894UL
 #define ID_TIMER 0x106d8b86UL
-#define ID_KEYBOARD 0xbb5d5b76UL
 #define ID_FONT 0x7c96e4fcUL
 #define ID_MUSIC 0x0ff58e86UL
 #define ID_SCRIPT 0x1b600fbaUL

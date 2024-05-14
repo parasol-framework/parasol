@@ -880,7 +880,7 @@ void ui_link::exec(extDocument *Self)
          if (!origin.args.empty()) {
             for (auto &arg : origin.args) {
                if (arg.first.starts_with('_')) { // Global variable setting
-                  acSetVar(script, arg.first.c_str()+1, arg.second.c_str());
+                  acSetKey(script, arg.first.c_str()+1, arg.second.c_str());
                }
                else sa.emplace_back("", arg.second.data());
             }

@@ -421,25 +421,25 @@ static ERR DISPLAY_Free(extDisplay *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Retrieve formatted information from the display.
+GetKey: Retrieve formatted information from the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
+static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
 {
    pf::Log log;
    ULONG colours;
 
    if (!Args) return log.warning(ERR::NullArgs);
-   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR::Args);
+   if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::Args);
 
-   STRING buffer = Args->Buffer;
+   STRING buffer = Args->Value;
    buffer[0] = 0;
 
-   if (StrCompare("resolution(", Args->Field, 11) IS ERR::Okay) {
+   if (StrCompare("resolution(", Args->Key, 11) IS ERR::Okay) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
-      CSTRING str = Args->Field + 11;
+      CSTRING str = Args->Key + 11;
       LONG index = StrToInt(str);
       while ((*str) and (*str != ')') and (*str != ',')) str++;
       if (*str IS ',') str++;
@@ -2051,7 +2051,7 @@ ERR GET_HDensity(extDisplay *Self, LONG *Value)
       pf::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
-         if (acGetVar(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
+         if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
             *Value = StrToInt(strdpi);
             Self->HDensity = *Value; // Store for future use.
             if (!Self->VDensity) Self->VDensity = Self->HDensity;
@@ -2121,7 +2121,7 @@ ERR GET_VDensity(extDisplay *Self, LONG *Value)
       pf::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
-         if (acGetVar(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
+         if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
             *Value = StrToInt(strdpi);
             Self->VDensity = *Value;
             if (!Self->HDensity) Self->HDensity = Self->VDensity;

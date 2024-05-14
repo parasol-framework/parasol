@@ -76,7 +76,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
    inline bool isContent() const { return Attribs[0].Name.empty(); }
    inline bool isTag() const { return !Attribs[0].Name.empty(); }
 
-   inline bool hasChildTags() const { 
+   inline bool hasChildTags() const {
       for (auto &scan : Children) {
          if (!scan.Attribs[0].Name.empty()) return true;
       }

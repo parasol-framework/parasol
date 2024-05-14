@@ -74,8 +74,8 @@
         <param type="CEF" name="Flags" lookup="CEF">Optional flags.</param>
       </input>
       <description>
-<p>Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject action.  The clipboard will ask that the object save its data directly to a cache file, completely removing the need for the client to save the object data to an interim file for the clipboard.</p>
-<p>Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for instance, Picture objects will be put into the <code>CLIPTYPE::IMAGE</code> data category).  If an object's class is not recognised by the clipboard system then the data will be stored in the <code>CLIPTYPE::OBJECT</code> category to signify that there is a class in the system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype parameter with one of the available <code>CLIPTYPE</code> values.</p>
+<p>Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject() action.  The clipboard will ask that the object save its data directly to a cache file, completely removing the need for the client to save the object data to an interim file for the clipboard.</p>
+<p>Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for instance, <class name="Picture">Picture</class> objects will be put into the <code>CLIPTYPE::IMAGE</code> data category).  If an object's class is not recognised by the clipboard system then the data will be stored in the <code>CLIPTYPE::OBJECT</code> category to signify that there is a class in the system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the <code>Datatype</code> parameter with one of the available <code>CLIPTYPE</code> values.</p>
 <p>This method supports groups of objects in a single clip, thus requires an array of object ID's terminated with a zero entry.</p>
 <p>Optional flags that may be passed to this method are the same as those specified in the <method>AddFile</method> method.  The <code>CEF::DELETE</code> flag has no effect on objects.</p>
       </description>
@@ -93,7 +93,7 @@
         <param type="CSTRING" name="String">The text to add to the clipboard.</param>
       </input>
       <description>
-<p>Plain UTF-8 text can be added to the clipboard using the AddText method.</p>
+<p>Plain UTF-8 text can be added to the clipboard using the AddText() method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -110,13 +110,13 @@
         <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
         <param type="LONG" name="Index">If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.</param>
         <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().</param>
-        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If DELETE is set, you need to delete the files after use in order to support the 'cut' operation.</param>
+        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If `DELETE` is set, you need to delete the files after use in order to support the 'cut' operation.</param>
       </input>
       <description>
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
-<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR::OutOfRange is returned.</p>
-<p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
-<p>If this method returns the <code>CEF::DELETE</code> flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
+<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code <code>ERR::OutOfRange</code> is returned.</p>
+<p>On success this method will return a list of files (terminated with a <code>NULL</code> entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting <code>Datatype</code>.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
+<p>If this method returns the <code>CEF::DELETE</code> flag in the <code>Flags</code> parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>
       <result>
         <error code="Okay">A matching clip was found and returned.</error>

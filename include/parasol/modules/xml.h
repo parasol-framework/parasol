@@ -108,7 +108,7 @@ typedef struct XMLTag {
    inline bool isContent() const { return Attribs[0].Name.empty(); }
    inline bool isTag() const { return !Attribs[0].Name.empty(); }
 
-   inline bool hasChildTags() const { 
+   inline bool hasChildTags() const {
       for (auto &scan : Children) {
          if (!scan.Attribs[0].Name.empty()) return true;
       }
@@ -290,10 +290,10 @@ class objXML : public Object {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      auto error = Action(AC_GetVar, this, &args);
-      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
@@ -302,9 +302,9 @@ class objXML : public Object {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC_SetKey, this, &args);
    }
 
    // Customised field setting

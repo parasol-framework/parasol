@@ -401,9 +401,9 @@ static ERR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
 /*********************************************************************************************************************
 
 -ACTION-
-GetVar: Retrieves data from an xml object.
+GetKey: Retrieves data from an xml object.
 
-The XML class uses variable fields for the execution of XPath queries.  Documentation of the XPath standard is out
+The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out
 of the scope for this document, however the following examples illustrate the majority of uses for this query language
 and a number of special instructions that we support:
 
@@ -427,46 +427,46 @@ used interchangeably for lookups and filtering clauses.
 
 *********************************************************************************************************************/
 
-static ERR XML_GetVar(extXML *Self, struct acGetVar *Args)
+static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
    pf::Log log;
    LONG count;
 
    if (!Args) return log.warning(ERR::NullArgs);
-   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
+   if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
-   CSTRING field = Args->Field;
-   Args->Buffer[0] = 0;
+   CSTRING field = Args->Key;
+   Args->Value[0] = 0;
 
    if (StrCompare("count:", field, 6) IS ERR::Okay) {
       if (xmlCount(Self, field+6, &count) IS ERR::Okay) {
-         Args->Buffer[IntToStr(count, Args->Buffer, Args->Size)] = 0;
+         Args->Value[IntToStr(count, Args->Value, Args->Size)] = 0;
          return ERR::Okay;
       }
       else return ERR::Failed;
    }
    else if (StrCompare("exists:", field, 7) IS ERR::Okay) {
-      Args->Buffer[0] = '0';
-      Args->Buffer[1] = 0;
+      Args->Value[0] = '0';
+      Args->Value[1] = 0;
 
       if (Self->findTag(field+7) != ERR::Okay) return ERR::Okay;
 
       if (!Self->Attrib.empty()) {
          for (auto &scan : Self->Cursor->Attribs) {
             if (StrMatch(scan.Name, Self->Attrib) IS ERR::Okay) {
-               Args->Buffer[0] = '1';
+               Args->Value[0] = '1';
                break;
             }
          }
       }
-      else Args->Buffer[0] = '1';
+      else Args->Value[0] = '1';
 
       return ERR::Okay;
    }
    else if (StrCompare("contentexists:", field, 14) IS ERR::Okay) {
-      Args->Buffer[0] = '0';
-      Args->Buffer[1] = 0;
+      Args->Value[0] = '0';
+      Args->Value[1] = 0;
 
       if (Self->findTag(field+14) != ERR::Okay) return ERR::Okay;
 
@@ -475,7 +475,7 @@ static ERR XML_GetVar(extXML *Self, struct acGetVar *Args)
             auto str = scan.Attribs[0].Value.c_str();
             while (*str) {
                if (*str > 0x20) {
-                  Args->Buffer[0] = '1';
+                  Args->Value[0] = '1';
                   return ERR::Okay;
                }
                str++;
@@ -501,7 +501,7 @@ static ERR XML_GetVar(extXML *Self, struct acGetVar *Args)
       if (!Self->Attrib.empty()) { // Extract attribute value
          for (auto &scan : Self->Cursor->Attribs) {
             if (StrMatch(scan.Name, Self->Attrib) IS ERR::Okay) {
-               StrCopy(scan.Value, Args->Buffer, Args->Size);
+               StrCopy(scan.Value, Args->Value, Args->Size);
                return ERR::Okay;
             }
          }
@@ -516,15 +516,15 @@ static ERR XML_GetVar(extXML *Self, struct acGetVar *Args)
          else if (StrCompare("extract:", field, 8) IS ERR::Okay) extract = 2;
          else extract = 0;
 
-         Args->Buffer[0] = 0;
+         Args->Value[0] = 0;
          if (extract IS 1) {
-            return get_content(Self, *Self->Cursor, Args->Buffer, Args->Size);
+            return get_content(Self, *Self->Cursor, Args->Value, Args->Size);
          }
          else if (extract IS 2) {
             STRING str;
             ERR error = xmlSerialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (error IS ERR::Okay) {
-               StrCopy(str, Args->Buffer, Args->Size);
+               StrCopy(str, Args->Value, Args->Size);
                FreeResource(str);
             }
 
@@ -534,7 +534,7 @@ static ERR XML_GetVar(extXML *Self, struct acGetVar *Args)
             if (!Self->Cursor->Children.empty()) {
                LONG j = 0;
                for (auto &scan : Self->Cursor->Children) {
-                  if (!scan.Attribs[0].isContent()) j += StrCopy(scan.Attribs[0].Value, Args->Buffer+j, Args->Size-j);
+                  if (!scan.Attribs[0].isContent()) j += StrCopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
                }
                if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
             }
@@ -1283,11 +1283,11 @@ static ERR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
 /*********************************************************************************************************************
 
 -ACTION-
-SetVar: Sets attributes and content in the XML tree using XPaths,
+SetKey: Sets attributes and content in the XML tree using XPaths.
 
-Use SetVar to add tag attributes and content using XPaths.  The XPath is specified in the Field parameter and the data
-is specified in the Value parameter.  Setting the Value to NULL will remove the attribute or existing content, while an
-empty string will keep an attribute but eliminate any associated data.
+Use SetKey to add tag attributes and content using XPaths.  The XPath is specified in the `Key` parameter and the data
+is specified in the `Value` parameter.  Setting the Value to `NULL` will remove the attribute or existing content, 
+while an empty string will keep an attribute but eliminate any associated data.
 
 It is not possible to add new tags using this action - it is only possible to update existing tags.
 
@@ -1300,14 +1300,14 @@ Search: Failed to find the tag referenced by the XPath.
 
 *********************************************************************************************************************/
 
-static ERR XML_SetVar(extXML *Self, struct acSetVar *Args)
+static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Field)) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Key)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
-   if (Self->findTag(Args->Field) IS ERR::Okay) {
+   if (Self->findTag(Args->Key) IS ERR::Okay) {
       if (!Self->Attrib.empty()) { // Updating or adding an attribute
          unsigned i;
          for (i=0; i < Self->Cursor->Attribs.size(); i++) {
@@ -1332,7 +1332,7 @@ static ERR XML_SetVar(extXML *Self, struct acSetVar *Args)
       return ERR::Okay;
    }
    else {
-      log.msg("Failed to find '%s'", Args->Field);
+      log.msg("Failed to find '%s'", Args->Key);
       return ERR::Search;
    }
 }

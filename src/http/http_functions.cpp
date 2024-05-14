@@ -467,7 +467,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   }
                   else {
                      char buffer[512];
-                     if (acGetVar(Self, "Location", buffer, sizeof(buffer)) IS ERR::Okay) {
+                     if (acGetKey(Self, "Location", buffer, sizeof(buffer)) IS ERR::Okay) {
                         log.msg("MovedPermanently to %s", buffer);
                         if (StrCompare("http:", buffer, 5) IS ERR::Okay) Self->setLocation(buffer);
                         else if (StrCompare("https:", buffer, 6) IS ERR::Okay) Self->setLocation(buffer);

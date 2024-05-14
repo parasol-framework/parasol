@@ -279,12 +279,12 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 
                         j++;
                         if (glArgs[i][j] > 0x20) {
-                           SetVar(run, argbuffer, glArgs[i] + j);
+                           SetKey(run, argbuffer, glArgs[i] + j);
                         }
 
                         i++;
                         while ((glArgs[i]) and (glArgs[i][0] != '}')) {
-                           SetVar(run, argbuffer, glArgs[i]);
+                           SetKey(run, argbuffer, glArgs[i]);
                            i++;
                         }
                      }
@@ -292,11 +292,11 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
                         j++;
                         for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                         if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
-                        SetVar(run, argname, glArgs[i]+j);
+                        SetKey(run, argname, glArgs[i]+j);
                      }
-                     else SetVar(run, argname, glArgs[i]+j);
+                     else SetKey(run, argname, glArgs[i]+j);
                   }
-                  else SetVar(run, argname, "1");
+                  else SetKey(run, argname, "1");
                }
             }
 
@@ -332,12 +332,12 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 
                   j++;
                   if (glArgs[i][j] > 0x20) {
-                     SetVar(glScript, argbuffer, glArgs[i] + j);
+                     SetKey(glScript, argbuffer, glArgs[i] + j);
                   }
 
                   i++;
                   while ((glArgs[i]) and (glArgs[i][0] != '}')) {
-                     SetVar(glScript, argbuffer, glArgs[i]);
+                     SetKey(glScript, argbuffer, glArgs[i]);
                      i++;
                   }
                   if (!glArgs[i]) break;
@@ -347,11 +347,11 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
                   j++;
                   for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                   if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
-                  SetVar(glScript, argname, glArgs[i]+j);
+                  SetKey(glScript, argname, glArgs[i]+j);
                }
-               else SetVar(glScript, argname, glArgs[i]+j);
+               else SetKey(glScript, argname, glArgs[i]+j);
             }
-            else SetVar(glScript, argname, "1");
+            else SetKey(glScript, argname, "1");
          }
       }
 

@@ -622,9 +622,9 @@ static ERR SOUND_Free(extSound *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Retrieve custom tag values.
+GetKey: Retrieve custom key values.
 
-The following custom tag values are formally recognised and may be defined automatically when loading sample files:
+The following custom key values are formally recognised and may be defined automatically when loading sample files:
 
 <types type="Tag">
 <type name="Author">The name of the person or organisation that created the sound sample.</type>
@@ -638,13 +638,13 @@ The following custom tag values are formally recognised and may be defined autom
 
 *********************************************************************************************************************/
 
-static ERR SOUND_GetVar(extSound *Self, struct acGetVar *Args)
+static ERR SOUND_GetKey(extSound *Self, struct acGetKey *Args)
 {
-   if ((!Args) or (!Args->Field)) return ERR::NullArgs;
+   if ((!Args) or (!Args->Key)) return ERR::NullArgs;
 
-   std::string name(Args->Field);
+   std::string name(Args->Key);
    if (Self->Tags.contains(name)) {
-      StrCopy(Self->Tags[name].c_str(), Args->Buffer, Args->Size);
+      StrCopy(Self->Tags[name].c_str(), Args->Value, Args->Size);
       return ERR::Okay;
    }
    else return ERR::UnsupportedField;
@@ -1047,15 +1047,15 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Define custom tags that will be saved with the sample data.
+SetKey: Define custom tags that will be saved with the sample data.
 -END-
 *********************************************************************************************************************/
 
-static ERR SOUND_SetVar(extSound *Self, struct acSetVar *Args)
+static ERR SOUND_SetKey(extSound *Self, struct acSetKey *Args)
 {
-   if ((!Args) or (!Args->Field) or (!Args->Field[0])) return ERR::NullArgs;
+   if ((!Args) or (!Args->Key) or (!Args->Key[0])) return ERR::NullArgs;
 
-   Self->Tags[std::string(Args->Field)] = Args->Value;
+   Self->Tags[std::string(Args->Key)] = Args->Value;
    return ERR::Okay;
 }
 
@@ -1745,13 +1745,13 @@ static const ActionArray clActions[] = {
    { AC_Disable,       SOUND_Disable },
    { AC_Enable,        SOUND_Enable },
    { AC_Free,          SOUND_Free },
-   { AC_GetVar,        SOUND_GetVar },
+   { AC_GetKey,        SOUND_GetKey },
    { AC_Init,          SOUND_Init },
    { AC_NewObject,     SOUND_NewObject },
    { AC_Read,          SOUND_Read },
    { AC_SaveToObject,  SOUND_SaveToObject },
    { AC_Seek,          SOUND_Seek },
-   { AC_SetVar,        SOUND_SetVar },
+   { AC_SetKey,        SOUND_SetKey },
    { 0, NULL }
 };
 

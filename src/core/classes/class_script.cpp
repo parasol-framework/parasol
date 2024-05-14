@@ -12,7 +12,7 @@ The Script class defines a common interface for the purpose of executing scripts
 not include a default parser or execution process of any kind.
 
 To execute a script file, choose a sub-class that matches the language and create the script object.  Set the #Path
-field and then #Activate() the script.  Global input parameters for the script can be defined via the #SetVar()
+field and then #Activate() the script.  Global input parameters for the script can be defined via the #SetKey()
 action.
 
 Note that client scripts may sometimes create objects that are unmanaged by the script object that created them.
@@ -301,24 +301,24 @@ static ERR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Script parameters can be retrieved through this action.
+GetKey: Script parameters can be retrieved through this action.
 -END-
 *********************************************************************************************************************/
 
-static ERR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
+static ERR SCRIPT_GetKey(objScript *Self, struct acGetKey *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return ERR::NullArgs;
+   if ((!Args) or (!Args->Value) or (!Args->Key)) return ERR::NullArgs;
    if (Args->Size < 2) return log.warning(ERR::Args);
 
-   auto it = Self->Vars.find(Args->Field);
+   auto it = Self->Vars.find(Args->Key);
    if (it != Self->Vars.end()) {
-      StrCopy(it->second, Args->Buffer, Args->Size);
+      StrCopy(it->second, Args->Value, Args->Size);
       return ERR::Okay;
    }
    else {
-      Args->Buffer[0] = 0;
+      Args->Value[0] = 0;
       return ERR::UnsupportedField;
    }
 }
@@ -370,22 +370,22 @@ static ERR SCRIPT_Reset(objScript *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Script parameters can be set through this action.
+SetKey: Script parameters can be set through this action.
 -END-
 *********************************************************************************************************************/
 
-static ERR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
+static ERR SCRIPT_SetKey(objScript *Self, struct acSetKey *Args)
 {
    pf::Log log;
 
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
-   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR::NullArgs;
-   if (!Args->Field[0]) return ERR::NullArgs;
+   if ((!Args) or (!Args->Key) or (!Args->Value)) return ERR::NullArgs;
+   if (!Args->Key[0]) return ERR::NullArgs;
 
-   log.trace("%s = %s", Args->Field, Args->Value);
+   log.trace("%s = %s", Args->Key, Args->Value);
 
-   Self->Vars[Args->Field] = Args->Value;
+   Self->Vars[Args->Key] = Args->Value;
    return ERR::Okay;
 }
 
@@ -507,10 +507,10 @@ static ERR GET_Path(objScript *Self, STRING *Value)
 static ERR SET_Path(objScript *Self, CSTRING Value)
 {
    if (Self->Path) {
-      // If the location has already been set, throw the value to SetVar instead.
+      // If the location has already been set, throw the value to SetKey instead.
 
       if ((Value) and (*Value)) {
-         return acSetVar(Self, "Path", Value);
+         return acSetKey(Self, "Path", Value);
       }
    }
    else {
@@ -582,7 +582,7 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
                      }
 
                      if (StrMatch("target", arg) IS ERR::Okay) Self->setTarget(StrToInt(argval));
-                     else acSetVar(Self, arg, argval.c_str());
+                     else acSetKey(Self, arg, argval.c_str());
                   }
                }
             }
@@ -601,8 +601,8 @@ static ERR SET_Name(objScript *Self, CSTRING Name)
 {
    if (Name) {
       SetName(Self, Name);
-      struct acSetVar args = { .Field = "Name", .Value = Name };
-      return SCRIPT_SetVar(Self, &args);
+      struct acSetKey args("Name", Name);
+      return SCRIPT_SetKey(Self, &args);
    }
    else return ERR::Okay;
 }

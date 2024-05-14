@@ -235,10 +235,10 @@ class objDocument : public Object {
    }
    inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
    inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
-   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      auto error = Action(AC_GetVar, this, &args);
-      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
@@ -251,9 +251,9 @@ class objDocument : public Object {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }
-   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC_SetKey, this, &args);
    }
 
    // Customised field setting

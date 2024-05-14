@@ -411,8 +411,8 @@ Z: Close Path
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
-<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 255.0.</p>
-<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
+<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between <code>0.0</code> and <code>255.0</code>.</p>
+<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is <code>NULL</code> then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
 <p>A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An optional Result string can store a reference to the character up to which the IRI was parsed.</p>
     </description>
     <result type="ERR">
@@ -480,9 +480,9 @@ Z: Close Path
       <param type="DOUBLE" name="Y">The scale factor on the y-axis.</param>
     </input>
     <description>
-<p>This function will perform a scale operation on a matrix.  Values of less than 1.0 will shrink the affected vector path, while values greater than 1.0 will enlarge it.</p>
-<p>Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path should then be scaled before being transformed back to its original top-left coordinate.</p>
-<p>The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of -1.0 on the x axis would result in a 1:1 flip across the horizontal.</p>
+<p>This function will perform a scale operation on a matrix.  Values of less than <code>1.0</code> will shrink the affected vector path, while values greater than <code>1.0</code> will enlarge it.</p>
+<p>Scaling is relative to position <code>(0,0)</code>.  If the width and height of the vector path needs to be transformed without affecting its top-left position, the client must translate the path to <code>(0,0)</code> around its center point.  The path should then be scaled before being transformed back to its original top-left coordinate.</p>
+<p>The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of <code>-1.0</code> on the x axis would result in a 1:1 flip across the horizontal.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -500,7 +500,7 @@ Z: Close Path
       <param type="DOUBLE" name="Y">The angle to skew along the vertical.</param>
     </input>
     <description>
-<p>The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix. Valid X and Y values are in the range of -90 &lt; Angle &lt; 90.</p>
+<p>The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix. Valid X and Y values are in the range of <code>-90 &lt; Angle &lt; 90</code>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>

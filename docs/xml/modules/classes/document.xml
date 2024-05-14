@@ -83,8 +83,8 @@
     </action>
 
     <action>
-      <name>GetVar</name>
-      <comment>Script arguments can be retrieved through this action.</comment>
+      <name>GetKey</name>
+      <comment>Retrieves script parameters.</comment>
     </action>
 
     <action>
@@ -103,7 +103,7 @@
     </action>
 
     <action>
-      <name>SetVar</name>
+      <name>SetKey</name>
       <comment>Passes variable parameters to loaded documents.</comment>
     </action>
 

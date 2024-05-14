@@ -1582,7 +1582,7 @@ void parser::tag_call(XMLTag &Tag)
          unsigned index = 0;
          for (unsigned i=2; i < Tag.Attribs.size(); i++) {
             if (Tag.Attribs[i].Name[0] IS '_') { // Global variable setting
-               acSetVar(script, Tag.Attribs[i].Name.c_str()+1, Tag.Attribs[i].Value.c_str());
+               acSetKey(script, Tag.Attribs[i].Name.c_str()+1, Tag.Attribs[i].Value.c_str());
             }
             else if (args[index].Name[0] IS '@') {
                args.emplace_back(Tag.Attribs[i].Name.c_str() + 1, Tag.Attribs[i].Value);
@@ -3320,7 +3320,7 @@ void parser::tag_script(XMLTag &Tag)
       for (unsigned i=1; i < Tag.Attribs.size(); i++) {
          auto tagname = Tag.Attribs[i].Name.c_str();
          if (*tagname IS '$') tagname++;
-         if (*tagname IS '@') acSetVar(script, tagname+1, Tag.Attribs[i].Value.c_str());
+         if (*tagname IS '@') acSetKey(script, tagname+1, Tag.Attribs[i].Value.c_str());
       }
 
       if (InitObject(script) IS ERR::Okay) {
@@ -3510,7 +3510,7 @@ void parser::tag_repeat(XMLTag &Tag)
 
    while (loop_start < loop_end) {
       if (index_name.empty()) m_loop_index = loop_start;
-      else SetVar(Self, index_name.c_str(), std::to_string(loop_start).c_str());
+      else SetKey(Self, index_name.c_str(), std::to_string(loop_start).c_str());
 
       parse_tags(Tag.Children);
       loop_start += step;

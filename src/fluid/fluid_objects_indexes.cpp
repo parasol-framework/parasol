@@ -10,7 +10,7 @@ static int object_newindex(lua_State *Lua)
       if (auto keyname = luaL_checkstring(Lua, 2)) {
          if (auto obj = access_object(def)) {
             ERR error;
-            if (keyname[0] IS '_') error = acSetVar(obj, keyname+1, lua_tostring(Lua, 3));
+            if (keyname[0] IS '_') error = acSetKey(obj, keyname+1, lua_tostring(Lua, 3));
             else {
                auto jt = get_write_table(def);
                if (auto func = jt->find(obj_write(simple_hash(keyname))); func != jt->end()) {
@@ -306,10 +306,10 @@ static int object_get(lua_State *Lua)
          if (!result) lua_pushvalue(Lua, 2); // Push the client's default value
          return 1;
       }
-      else { // Assume this is a custom variable field since FindField() failed
+      else { // Assume this is a custom key since FindField() failed
          char buffer[8192];
 
-         if ((GetVar(obj, fieldname, buffer, sizeof(buffer)) IS ERR::Okay) and (buffer[0])) {
+         if ((GetKey(obj, fieldname, buffer, sizeof(buffer)) IS ERR::Okay) and (buffer[0])) {
             lua_pushstring(Lua, buffer);
          }
          else lua_pushvalue(Lua, 2); // Push the client's default value
@@ -322,18 +322,18 @@ static int object_get(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: value = obj.getVar("Width", [Default])
+// Usage: value = obj.getKey("Width", [Default])
 //
 // As for obj.get(), but explicitly references a custom variable name.
 
-static int object_getvar(lua_State *Lua)
+static int object_getkey(lua_State *Lua)
 {
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
       auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
       ERR error;
       if (auto obj = access_object(def)) {
          char buffer[8192];
-         if ((error = GetVar(obj, fieldname, buffer, sizeof(buffer))) IS ERR::Okay) {
+         if ((error = GetKey(obj, fieldname, buffer, sizeof(buffer))) IS ERR::Okay) {
             lua_pushstring(Lua, buffer);
          }
          release_object(def);
@@ -377,18 +377,18 @@ static int object_set(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: obj.setVar("Width", "Value")
+// Usage: obj.setKey("Width", "Value")
 
-static int object_setvar(lua_State *Lua)
+static int object_setkey(lua_State *Lua)
 {
    auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
       auto value = luaL_optstring(Lua, 2, NULL);
       if (auto obj = access_object(def)) {
-         ERR error = acSetVar(obj, fieldname, value);
+         ERR error = acSetKey(obj, fieldname, value);
          release_object(def);
          lua_pushinteger(Lua, LONG(error));
-         report_action_error(Lua, def, "setVar", error);
+         report_action_error(Lua, def, "setKey", error);
          return 1;
       }
    }
@@ -404,7 +404,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
 
    LONG type = lua_type(Lua, ValueIndex);
 
-   if (FName[0] IS '_') return acSetVar(obj, FName+1, lua_tostring(Lua, ValueIndex));
+   if (FName[0] IS '_') return acSetKey(obj, FName+1, lua_tostring(Lua, ValueIndex));
 
    OBJECTPTR target;
    if (auto field = FindField(obj, StrHash(FName), &target)) {

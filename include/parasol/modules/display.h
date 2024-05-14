@@ -986,10 +986,10 @@ class objDisplay : public Object {
    inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
    inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
    inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
-   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      auto error = Action(AC_GetVar, this, &args);
-      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }

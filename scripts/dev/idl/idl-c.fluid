@@ -137,11 +137,11 @@ glActionStubs = {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
    }]],
-   GetVar = [[
-   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      auto error = Action(AC_GetVar, this, &args);
-      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+   GetKey = [[
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }]],
    MoveToPoint = [[
@@ -168,14 +168,14 @@ glActionStubs = {
    inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    ]],
-   SetVars = [[
-   inline ERR setVars(CSTRING tags, ...) noexcept {
-      struct acSetVar args;
+   SetKeys = [[
+   inline ERR setKeys(CSTRING tags, ...) noexcept {
+      struct acSetKey args;
       va_list list;
       va_start(list, tags);
       while ((args.Field = va_arg(list, STRING)) != TAGEND) {
          args.Value = va_arg(list, STRING);
-         if (Action(AC_SetVar, this, &args) != ERR::Okay) {
+         if (Action(AC_SetKey, this, &args) != ERR::Okay) {
             va_end(list);
             return ERR::Failed;
          }
@@ -216,10 +216,10 @@ glActionStubs = {
       struct acSelectArea area = { X, Y, Width, Height };
       return Action(AC_SelectArea, this, &area);
    }]],
-   SetVar = [[
-   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
+   SetKey = [[
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC_SetKey, this, &args);
    }]],
 }
 

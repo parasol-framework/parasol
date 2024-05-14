@@ -139,7 +139,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_Focus 12
 #define AC_Free 13
 #define AC_SaveSettings 14
-#define AC_GetVar 15
+#define AC_GetKey 15
 #define AC_DragDrop 16
 #define AC_Hide 17
 #define AC_Init 18
@@ -161,7 +161,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_SaveToObject 34
 #define AC_Scroll 35
 #define AC_Seek 36
-#define AC_SetVar 37
+#define AC_SetKey 37
 #define AC_Show 38
 #define AC_Undo 39
 #define AC_Unlock 40
@@ -1436,7 +1436,7 @@ struct Edges {
 #define AHASH_FLUSH 0x0f71fd67
 #define AHASH_FOCUS 0x0f735645
 #define AHASH_FREE 0x7c96f087
-#define AHASH_GETVAR 0xff87a74e
+#define AHASH_GETKEY 0xff87790e
 #define AHASH_DRAGDROP 0xf69e8a58
 #define AHASH_HIDE 0x7c97e2df
 #define AHASH_INIT 0x7c988539
@@ -1458,7 +1458,7 @@ struct Edges {
 #define AHASH_SAVETOOBJECT 0x2878872e
 #define AHASH_SCROLL 0x1b6028b4
 #define AHASH_SEEK 0x7c9dda2d
-#define AHASH_SETVAR 0x1b858eda
+#define AHASH_SETKEY 0x1b85609a
 #define AHASH_SHOW 0x7c9de846
 #define AHASH_TIMER 0x106d8b86
 #define AHASH_UNLOCK 0x20ce3c11
@@ -3035,7 +3035,7 @@ struct acCopyData      { OBJECTPTR Dest; };
 struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
 struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
-struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
+struct acGetKey        { CSTRING Key; STRING Value; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
 struct acNewChild      { OBJECTPTR Object; };
@@ -3051,7 +3051,7 @@ struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
 struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
-struct acSetVar        { CSTRING Field; CSTRING Value; };
+struct acSetKey        { CSTRING Key; CSTRING Value; };
 struct acUndo          { LONG Steps; };
 struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
 
@@ -3101,10 +3101,10 @@ inline ERR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const v
    return Action(AC_DataFeed, Object, &args);
 }
 
-inline ERR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
-   struct acGetVar args = { FieldName, Buffer, Size };
-   ERR error = Action(AC_GetVar, Object, &args);
-   if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+inline ERR acGetKey(OBJECTPTR Object, CSTRING Key, STRING Value, LONG Size) {
+   struct acGetKey args = { Key, Value, Size };
+   ERR error = Action(AC_GetKey, Object, &args);
+   if ((error != ERR::Okay) and (Value)) Value[0] = 0;
    return error;
 }
 
@@ -3175,14 +3175,14 @@ inline ERR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    return Action(AC_Seek, Object, &args);
 }
 
-inline ERR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
-   struct acSetVar args;
+inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
+   struct acSetKey args;
    va_list list;
 
    va_start(list, tags);
-   while ((args.Field = va_arg(list, STRING)) != TAGEND) {
+   while ((args.Key = va_arg(list, STRING)) != TAGEND) {
       args.Value = va_arg(list, STRING);
-      if (Action(AC_SetVar, Object, &args) != ERR::Okay) {
+      if (Action(AC_SetKey, Object, &args) != ERR::Okay) {
          va_end(list);
          return ERR::Failed;
       }
@@ -3223,13 +3223,13 @@ inline ERR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUB
    return Action(AC_SelectArea, Object, &area);
 }
 
-inline ERR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
-   struct acSetVar args = { FieldName, Value };
-   return Action(AC_SetVar, Object, &args);
+inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
+   struct acSetKey args = { Key, Value };
+   return Action(AC_SetKey, Object, &args);
 }
 
-#define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
-#define SetVar(a,b,c)    acSetVar(a,b,c)
+#define GetKey(a,b,c,d)  acGetKey(a,b,c,d)
+#define SetKey(a,b,c)    acSetKey(a,b,c)
 
 // MetaClass class definition
 
@@ -3914,17 +3914,17 @@ class objScript : public Object {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      auto error = Action(AC_GetVar, this, &args);
-      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }
-   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC_SetKey, this, &args);
    }
 
    // Customised field setting
@@ -4077,16 +4077,16 @@ class objTask : public Object {
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR getVar(CSTRING FieldName, STRING Buffer, LONG Size) noexcept {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      auto error = Action(AC_GetVar, this, &args);
-      if ((error != ERR::Okay) and (Buffer)) Buffer[0] = 0;
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR acSetVar(CSTRING FieldName, CSTRING Value) noexcept {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC_SetKey, this, &args);
    }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };

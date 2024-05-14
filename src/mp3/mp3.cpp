@@ -158,28 +158,28 @@ static bool parse_id3v1(objSound *Self)
 
          std::string title(id3.title);
          pf::ltrim(title, " ");
-         SetVar(Self, "Title", title.c_str());
+         SetKey(Self, "Title", title.c_str());
 
          std::string artist(id3.artist);
          pf::ltrim(artist, " ");
-         SetVar(Self, "Author", artist.c_str());
+         SetKey(Self, "Author", artist.c_str());
 
          std::string album(id3.album);
          pf::ltrim(album, " ");
-         SetVar(Self, "Album", album.c_str());
+         SetKey(Self, "Album", album.c_str());
 
          std::string comment(id3.comment);
          pf::ltrim(comment, " ");
-         SetVar(Self, "Description", comment.c_str());
+         SetKey(Self, "Description", comment.c_str());
 
          if (id3.genre <= genre_table.size()) {
-            SetVar(Self, "Genre", genre_table[id3.genre]);
+            SetKey(Self, "Genre", genre_table[id3.genre]);
          }
-         else SetVar(Self, "Genre", "Unknown");
+         else SetKey(Self, "Genre", "Unknown");
 
          if (id3.comment[COMMENT_TRACK] > 0) {
             IntToStr(id3.comment[COMMENT_TRACK], buffer, sizeof(buffer));
-            SetVar(Self, "Track", buffer);
+            SetKey(Self, "Track", buffer);
          }
 
          processed = true;
@@ -253,7 +253,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    if (flags & XING_SCALE) {
       LONG quality = LONG((tag[0] << 24) | (tag[1] << 16) | (tag[2] << 8) | tag[3]);
-      acSetVar(Self, "Quality", std::to_string(quality).c_str());
+      acSetKey(Self, "Quality", std::to_string(quality).c_str());
       tag += 4;
    }
 

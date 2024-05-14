@@ -181,7 +181,7 @@ static DOUBLE global_point_size(void)
          if (style.granted()) {
             char pointsize[20];
             glPointSet = true;
-            if (acGetVar(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
+            if (acGetKey(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
                glDefaultPoint = StrToFloat(pointsize);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;

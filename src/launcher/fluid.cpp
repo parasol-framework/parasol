@@ -55,11 +55,11 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          value = Args[i] + k + 1;
       }
       else if (!Args[i+1]) {
-         SetVar(Script, argname, "1");
+         SetKey(Script, argname, "1");
          continue;
       }
       else if ((Args[i+1][0] IS '-') and (Args[i+1][1] IS '-')) {
-         SetVar(Script, argname, "1");
+         SetKey(Script, argname, "1");
          continue;
       }
       else value = Args[++i];
@@ -72,7 +72,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          LONG arg_index = 0;
          while ((Args[i]) and (Args[i][0] != '}')) {
             snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-            SetVar(Script, argname, Args[i]);
+            SetKey(Script, argname, Args[i]);
             arg_index++;
             i++;
          }
@@ -83,9 +83,9 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          char array_size[16];
          StrCopy(":size", argname+al, sizeof(argbuffer)-al);
          IntToStr(arg_index, array_size, sizeof(array_size));
-         SetVar(Script, argname, array_size);
+         SetKey(Script, argname, array_size);
       }
-      else SetVar(Script, argname, value);
+      else SetKey(Script, argname, value);
    }
 }
 

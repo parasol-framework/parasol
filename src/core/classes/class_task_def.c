@@ -30,10 +30,10 @@ static const struct MethodEntry clTaskMethods[] = {
 static const struct ActionArray clTaskActions[] = {
    { AC_Activate, TASK_Activate },
    { AC_Free, TASK_Free },
-   { AC_GetVar, TASK_GetVar },
+   { AC_GetKey, TASK_GetKey },
    { AC_Init, TASK_Init },
    { AC_NewObject, TASK_NewObject },
-   { AC_SetVar, TASK_SetVar },
+   { AC_SetKey, TASK_SetKey },
    { AC_Write, TASK_Write },
    { 0, NULL }
 };

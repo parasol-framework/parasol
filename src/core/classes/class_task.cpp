@@ -99,11 +99,11 @@ static ERR GET_LaunchPath(extTask *, STRING *);
 static ERR TASK_Activate(extTask *, APTR);
 static ERR TASK_Free(extTask *, APTR);
 static ERR TASK_GetEnv(extTask *, struct taskGetEnv *);
-static ERR TASK_GetVar(extTask *, struct acGetVar *);
+static ERR TASK_GetKey(extTask *, struct acGetKey *);
 static ERR TASK_Init(extTask *, APTR);
 static ERR TASK_NewObject(extTask *, APTR);
 static ERR TASK_SetEnv(extTask *, struct taskSetEnv *);
-static ERR TASK_SetVar(extTask *, struct acSetVar *);
+static ERR TASK_SetKey(extTask *, struct acSetKey *);
 static ERR TASK_Write(extTask *, struct acWrite *);
 
 static ERR TASK_AddArgument(extTask *, struct taskAddArgument *);
@@ -127,9 +127,9 @@ static const FieldDef clFlags[] = {
 static const ActionArray clActions[] = {
    { AC_Activate,      TASK_Activate },
    { AC_Free,          TASK_Free },
-   { AC_GetVar,        TASK_GetVar },
+   { AC_GetKey,        TASK_GetKey },
    { AC_NewObject,     TASK_NewObject },
-   { AC_SetVar,        TASK_SetVar },
+   { AC_SetKey,        TASK_SetKey },
    { AC_Init,          TASK_Init },
    { AC_Write,         TASK_Write },
    { 0, NULL }
@@ -1332,27 +1332,27 @@ static ERR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Retrieves variable field values.
+GetKey: Retrieves custom key values.
 -END-
 *********************************************************************************************************************/
 
-static ERR TASK_GetVar(extTask *Self, struct acGetVar *Args)
+static ERR TASK_GetKey(extTask *Self, struct acGetKey *Args)
 {
    pf::Log log;
    LONG j;
 
-   if ((!Args) or (!Args->Buffer) or (Args->Size <= 0)) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Value) or (Args->Size <= 0)) return log.warning(ERR::NullArgs);
 
-   auto it = Self->Fields.find(Args->Field);
+   auto it = Self->Fields.find(Args->Key);
    if (it != Self->Fields.end()) {
-      for (j=0; (it->second[j]) and (j < Args->Size-1); j++) Args->Buffer[j] = it->second[j];
-      Args->Buffer[j++] = 0;
+      for (j=0; (it->second[j]) and (j < Args->Size-1); j++) Args->Value[j] = it->second[j];
+      Args->Value[j++] = 0;
 
       if (j >= Args->Size) return ERR::BufferOverflow;
       else return ERR::Okay;
    }
 
-   log.warning("The variable \"%s\" does not exist.", Args->Field);
+   log.warning("The variable \"%s\" does not exist.", Args->Key);
 
    return ERR::Okay;
 }
@@ -1639,15 +1639,15 @@ static ERR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Variable fields are supported for the general storage of program variables.
+SetKey: Variable fields are supported for the general storage of program variables.
 -END-
 *********************************************************************************************************************/
 
-static ERR TASK_SetVar(extTask *Self, struct acSetVar *Args)
+static ERR TASK_SetKey(extTask *Self, struct acSetKey *Args)
 {
-   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR::NullArgs;
+   if ((!Args) or (!Args->Key) or (!Args->Value)) return ERR::NullArgs;
 
-   Self->Fields[Args->Field] = Args->Value;
+   Self->Fields[Args->Key] = Args->Value;
    return ERR::Okay;
 }
 

@@ -240,14 +240,14 @@ static ERR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 -METHOD-
 AddObjects: Extract data from objects and add it all to the clipboard.
 
-Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject action.  The
+Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject() action.  The
 clipboard will ask that the object save its data directly to a cache file, completely removing the need for the
 client to save the object data to an interim file for the clipboard.
 
 Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for
-instance, Picture objects will be put into the `CLIPTYPE::IMAGE` data category).  If an object's class is not recognised by
+instance, @Picture objects will be put into the `CLIPTYPE::IMAGE` data category).  If an object's class is not recognised by
 the clipboard system then the data will be stored in the `CLIPTYPE::OBJECT` category to signify that there is a class in the
-system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype
+system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the `Datatype`
 parameter with one of the available `CLIPTYPE` values.
 
 This method supports groups of objects in a single clip, thus requires an array of object ID's terminated
@@ -317,7 +317,7 @@ static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
 -METHOD-
 AddText: Adds a block of text to the clipboard.
 
-Plain UTF-8 text can be added to the clipboard using the AddText method.
+Plain UTF-8 text can be added to the clipboard using the AddText() method.
 
 -INPUT-
 cstr String: The text to add to the clipboard.
@@ -446,15 +446,15 @@ This method returns a list of items that are on the clipboard.  The caller must 
 supports (or zero if all datatypes are recognised).
 
 The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype
-parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR::OutOfRange
+parameter to zero and repeatedly call this method with incremented Index numbers until the error code `ERR::OutOfRange`
 is returned.
 
-On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is
-a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the
+On success this method will return a list of files (terminated with a `NULL` entry) in the Files parameter.  Each file is
+a readable clipboard entry - how the client reads it depends on the resulting `Datatype`.  Additionally, the
 ~Core.IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a
 memory allocation that must be freed with a call to ~Core.FreeResource().
 
-If this method returns the `CEF::DELETE` flag in the Flags parameter, the client must delete the source files after
+If this method returns the `CEF::DELETE` flag in the `Flags` parameter, the client must delete the source files after
 successfully copying the data.  When cutting and pasting files within the file system, using ~Core.MoveFile() is
 recommended as the most efficient method.
 
@@ -462,7 +462,7 @@ recommended as the most efficient method.
 &int(CLIPTYPE) Datatype: Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
 int Index: If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.
 !array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().
-&int(CEF) Flags: Result flags are returned in this parameter.  If DELETE is set, you need to delete the files after use in order to support the 'cut' operation.
+&int(CEF) Flags: Result flags are returned in this parameter.  If `DELETE` is set, you need to delete the files after use in order to support the 'cut' operation.
 
 -ERRORS-
 Okay: A matching clip was found and returned.
