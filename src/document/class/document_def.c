@@ -23,6 +23,7 @@ static const struct FieldDef clDocumentFlags[] = {
 
 FDEF maFeedParser[] = { { "String", FD_STR }, { 0, 0 } };
 FDEF maSelectLink[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { 0, 0 } };
+FDEF maScrollToPoint[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maFindIndex[] = { { "Name", FD_STR }, { "Start", FD_LONG|FD_RESULT }, { "End", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maInsertXML[] = { { "XML", FD_STR }, { "Index", FD_LONG }, { 0, 0 } };
 FDEF maRemoveContent[] = { { "Start", FD_LONG }, { "End", FD_LONG }, { 0, 0 } };
@@ -38,6 +39,7 @@ FDEF maReadContent[] = { { "Format", FD_LONG }, { "Start", FD_LONG }, { "End", F
 static const struct MethodEntry clDocumentMethods[] = {
    { -1, (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct docFeedParser) },
    { -2, (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct docSelectLink) },
+   { -3, (APTR)DOCUMENT_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct docScrollToPoint) },
    { -4, (APTR)DOCUMENT_FindIndex, "FindIndex", maFindIndex, sizeof(struct docFindIndex) },
    { -5, (APTR)DOCUMENT_InsertXML, "InsertXML", maInsertXML, sizeof(struct docInsertXML) },
    { -6, (APTR)DOCUMENT_RemoveContent, "RemoveContent", maRemoveContent, sizeof(struct docRemoveContent) },
@@ -67,7 +69,6 @@ static const struct ActionArray clDocumentActions[] = {
    { AC_NewObject, DOCUMENT_NewObject },
    { AC_Refresh, DOCUMENT_Refresh },
    { AC_SaveToObject, DOCUMENT_SaveToObject },
-   { AC_ScrollToPoint, DOCUMENT_ScrollToPoint },
    { AC_SetKey, DOCUMENT_SetKey },
    { 0, NULL }
 };

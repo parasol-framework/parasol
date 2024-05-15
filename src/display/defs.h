@@ -354,13 +354,10 @@ class extSurface : public objSurface {
    OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
    OBJECTID RevertFocusID;
    LONG     LineWidth;            // Bitmap line width, in bytes
-   LONG     ScrollToX, ScrollToY;
-   LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
    SWIN     WindowType;           // See SWIN constants
    TIMER    RedrawTimer;          // For ScheduleRedraw()
-   TIMER    ScrollTimer;
    SurfaceCallback CallbackCache[4];
    WORD     ScrollProgress;
    WORD     Opacity;

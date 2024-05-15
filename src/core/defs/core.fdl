@@ -85,17 +85,15 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "DATAFEED",     "DEACTIVATE",    "DRAW",      "FLUSH",       "FOCUS",        "FREE",
     "GETKEY",       "DRAGDROP",      "HIDE",      "INIT",        "LOCK",         "LOSTFOCUS",    "MOVE",
     "MOVETOBACK",   "MOVETOFRONT",   "NEWCHILD",  "NEWOWNER",    "NEWOBJECT",    "REDO",         "QUERY",
-    "READ",         "RENAME",        "RESET",     "RESIZE",      "SAVEIMAGE",    "SAVETOOBJECT", "SCROLL",
+    "READ",         "RENAME",        "RESET",     "RESIZE",      "SAVEIMAGE",    "SAVETOOBJECT",
     "SEEK",         "SETKEY",        "SHOW",      "TIMER",       "UNLOCK",       "NEXT",         "PREV",
     "WRITE",        "SETFIELD",      "CLIPBOARD", "REFRESH",     "DISABLE",      "ENABLE",       "REDIMENSION",
-    "MOVETOPOINT",  "SCROLLTOPOINT", "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
+    "MOVETOPOINT",  "SORT",          "SAVESETTINGS", "SIGNAL",
     "UNDO")
 
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "STATIC: Keep the module code in memory",
     "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)")
-
-  flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
   flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
@@ -1889,10 +1887,7 @@ struct acRename        { CSTRING Name; };
 struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
 struct acSeek          { DOUBLE Offset; SEEK Position; };
-struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetKey        { CSTRING Key; CSTRING Value; };
 struct acUndo          { LONG Steps; };
 struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
@@ -1987,16 +1982,6 @@ inline ERR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)
    return Action(AC_Resize, Object, &args);
 }
 
-inline ERR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
-   struct acScroll args = { X, Y, Z };
-   return Action(AC_Scroll, Object, &args);
-}
-
-inline ERR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
-   struct acScrollToPoint args = { X, Y, Z, Flags };
-   return Action(AC_ScrollToPoint, Object, &args);
-}
-
 inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
@@ -2059,11 +2044,6 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
 #define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
 #define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
 #define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
-
-inline ERR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
-   struct acSelectArea area = { X, Y, Width, Height };
-   return Action(AC_SelectArea, Object, &area);
-}
 
 inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
    struct acSetKey args = { Key, Value };
@@ -2454,21 +2434,6 @@ inline ERR acRedimension(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE
 inline ERR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize resize = { Width, Height, Depth };
    return ActionMsg(AC_Resize, ObjectID, &resize);
-}
-
-inline ERR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
-   struct acScrollToPoint scroll = { X, Y, Z, Flags };
-   return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
-}
-
-inline ERR acScroll(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
-   struct acScroll scroll = { X, Y, Z };
-   return ActionMsg(AC_Scroll, ObjectID, &scroll);
-}
-
-inline ERR acSelectArea(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
-   struct acSelectArea area = { X, Y, Width, Height };
-   return ActionMsg(AC_SelectArea, ObjectID, &area);
 }
 
 inline ERR acActivate(OBJECTID ObjectID) { return ActionMsg(AC_Activate, ObjectID, NULL); }

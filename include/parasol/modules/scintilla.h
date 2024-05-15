@@ -97,6 +97,7 @@ DEFINE_ENUM_FLAG_OPERATORS(STF)
 #define MT_SciTrimWhitespace -9
 #define MT_SciGetPos -10
 #define MT_SciReportEvent -11
+#define MT_SciScrollToPoint -12
 
 struct sciSetFont { CSTRING Face;  };
 struct sciReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End;  };
@@ -107,6 +108,7 @@ struct sciGetLine { LONG Line; STRING Buffer; LONG Length;  };
 struct sciReplaceLine { LONG Line; CSTRING String; LONG Length;  };
 struct sciGotoLine { LONG Line;  };
 struct sciGetPos { LONG Line; LONG Column; LONG Pos;  };
+struct sciScrollToPoint { LONG X; LONG Y;  };
 
 inline ERR sciSetFont(APTR Ob, CSTRING Face) noexcept {
    struct sciSetFont args = { Face };
@@ -158,6 +160,11 @@ inline ERR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) noexcept {
 }
 
 #define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
+
+inline ERR sciScrollToPoint(APTR Ob, LONG X, LONG Y) noexcept {
+   struct sciScrollToPoint args = { X, Y };
+   return(Action(MT_SciScrollToPoint, (OBJECTPTR)Ob, &args));
+}
 
 
 class objScintilla : public Object {
@@ -215,10 +222,6 @@ class objScintilla : public Object {
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
-   }
-   inline ERR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
-      struct acScrollToPoint args = { X, Y, Z, Flags };
-      return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
    inline ERR undo(LONG Steps) noexcept {

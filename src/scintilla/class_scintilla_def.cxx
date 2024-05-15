@@ -51,6 +51,7 @@ FDEF maGetLine[] = { { "Line", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Len
 FDEF maReplaceLine[] = { { "Line", FD_LONG }, { "String", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF maGotoLine[] = { { "Line", FD_LONG }, { 0, 0 } };
 FDEF maGetPos[] = { { "Line", FD_LONG }, { "Column", FD_LONG }, { "Pos", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF maScrollToPoint[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clScintillaMethods[] = {
    { -1, (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sciSetFont) },
@@ -64,6 +65,7 @@ static const struct MethodEntry clScintillaMethods[] = {
    { -9, (APTR)SCINTILLA_TrimWhitespace, "TrimWhitespace", 0, 0 },
    { -10, (APTR)SCINTILLA_GetPos, "GetPos", maGetPos, sizeof(struct sciGetPos) },
    { -11, (APTR)SCINTILLA_ReportEvent, "ReportEvent", 0, 0 },
+   { -12, (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sciScrollToPoint) },
    { 0, 0, 0, 0, 0 }
 };
 
@@ -82,7 +84,6 @@ static const struct ActionArray clScintillaActions[] = {
    { AC_NewOwner, SCINTILLA_NewOwner },
    { AC_Redo, SCINTILLA_Redo },
    { AC_SaveToObject, SCINTILLA_SaveToObject },
-   { AC_ScrollToPoint, SCINTILLA_ScrollToPoint },
    { AC_Show, SCINTILLA_Show },
    { AC_Undo, SCINTILLA_Undo },
    { 0, NULL }

@@ -2336,10 +2336,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="SaveImage"/>
       <const name="SaveSettings"/>
       <const name="SaveToObject"/>
-      <const name="Scroll"/>
-      <const name="ScrollToPoint"/>
       <const name="Seek"/>
-      <const name="SelectArea"/>
       <const name="SetField"/>
       <const name="SetKey"/>
       <const name="Show"/>
@@ -3193,13 +3190,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="END">Use an index at the end of the data buffer.</const>
       <const name="RELATIVE">The index is between 0 and 1.0 and relative to the data size.</const>
       <const name="START">Use an index at position zero.</const>
-    </constants>
-
-    <constants lookup="STP" comment="ScrollToPoint flags">
-      <const name="ANIM"/>
-      <const name="X"/>
-      <const name="Y"/>
-      <const name="Z"/>
     </constants>
 
     <constants lookup="STR">

@@ -1295,19 +1295,32 @@ static ERR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
    else return ERR::CreateObject;
 }
 
-//********************************************************************************************************************
-// Scintilla: ScrollToPoint
+/*********************************************************************************************************************
 
-static ERR SCINTILLA_ScrollToPoint(extScintilla *Self, struct acScrollToPoint *Args)
+-METHOD-
+ScrollToPoint: Scrolls text by moving the Page.
+
+This method will scroll text in the Scintilla document by moving the page position.
+
+-INPUT-
+int X: New horizontal position.
+int Y: New vertical position.
+
+-RESULT-
+Okay:
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_ScrollToPoint(extScintilla *Self, struct sciScrollToPoint *Args)
 {
    pf::Log log;
 
-   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", ((Args->Flags & STP::X) != STP::NIL) ? (LONG)Args->X : 0, ((Args->Flags & STP::Y) != STP::NIL) ? (LONG)Args->Y : 0);
+   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", Args->X, Args->Y);
 
    Self->ScrollLocked++;
 
-   if ((Args->Flags & STP::X) != STP::NIL) Self->API->panScrollToX(Args->X);
-   if ((Args->Flags & STP::Y) != STP::NIL) Self->API->panScrollToY(Args->Y);
+   Self->API->panScrollToX(Args->X);
+   Self->API->panScrollToY(Args->Y);
 
    Self->ScrollLocked--;
    return ERR::Okay;

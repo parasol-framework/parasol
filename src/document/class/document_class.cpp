@@ -1140,7 +1140,7 @@ static ERR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *
 /*********************************************************************************************************************
 -ACTION-
 SaveToObject: Use this action to save edited information as an XML document file.
--END-
+
 *********************************************************************************************************************/
 
 static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
@@ -1155,17 +1155,26 @@ static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 }
 
 /*********************************************************************************************************************
--ACTION-
-ScrollToPoint: Scrolls a document object's graphical content.
--END-
+-METHOD-
+ScrollToPoint: Scrolls a document's page to a new position.
+
+Moves the document's #Page to the new position indicated by `(X, Y)`.
+
+-INPUT-
+double X: New horizontal position.
+double Y: New vertical position.
+
+-ERRORS-
+Okay
+
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
+static ERR DOCUMENT_ScrollToPoint(extDocument *Self, struct docScrollToPoint *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if ((Args->Flags & STP::X) != STP::NIL) Self->XPosition = -Args->X;
-   if ((Args->Flags & STP::Y) != STP::NIL) Self->YPosition = -Args->Y;
+   Self->XPosition = -Args->X;
+   Self->YPosition = -Args->Y;
 
    // Validation: coordinates must be negative offsets
 

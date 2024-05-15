@@ -47,14 +47,13 @@ flags("CCF", { comment="Class categories", module="Core" },
     "MULTIMEDIA")
 
 enum("AC", { weak=true, start=1, comment="Action identifiers.", module="Core" },
-    "Signal",       "Activate",       "SelectArea",   "Clear",    "FreeWarning",  "Sort",         "CopyData",
+    "Signal",       "Activate",       "Redimension",  "Clear",    "FreeWarning",  "Sort",         "CopyData",
     "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "SaveSettings",
     "GetKey",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
     "MoveToBack",   "MoveToFront",    "NewChild",     "NewOwner", "NewObject",    "Redo",         "Query",
-    "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "Scroll",
+    "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "MoveToPoint",
     "Seek",         "SetKey",         "Show",         "Undo",     "Unlock",       "Next",         "Prev",
-    "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "Enable",       "Redimension",
-    "MoveToPoint",  "ScrollToPoint",
+    "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "Enable",
     "END")
 
 flags("PERMIT", { comment="Permission flags", module="Core" },

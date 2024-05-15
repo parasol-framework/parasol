@@ -122,16 +122,6 @@ glActionStubs = {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }]],
-   Scroll = [[
-   inline ERR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) noexcept {
-      struct acScroll args = { X, Y, Z };
-      return Action(AC_Scroll, this, &args);
-   }]],
-   ScrollToPoint = [[
-   inline ERR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
-      struct acScrollToPoint args = { X, Y, Z, Flags };
-      return Action(AC_ScrollToPoint, this, &args);
-   }]],
    Undo = [[
    inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };

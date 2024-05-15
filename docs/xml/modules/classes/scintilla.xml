@@ -67,11 +67,6 @@
     </action>
 
     <action>
-      <name>ScrollToPoint</name>
-      <comment>Scrolls the graphics of the targetted object to a specific point inside the parent view.</comment>
-    </action>
-
-    <action>
       <name>Show</name>
       <comment>Makes an object visible to the user.</comment>
     </action>
@@ -177,6 +172,19 @@
       </input>
       <description>
 <p>The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a given Start and End point.  The <code>STF::CASE</code>, <code>STF::SCAN_SELECTION</code> and <code>STF::EXPRESSION</code> are valid flag options for this method (see FindText for details).</p>
+      </description>
+    </method>
+
+    <method>
+      <name>ScrollToPoint</name>
+      <comment>Scrolls text by moving the Page.</comment>
+      <prototype>ERR sciScrollToPoint(OBJECTPTR Object, LONG X, LONG Y)</prototype>
+      <input>
+        <param type="LONG" name="X">New horizontal position.</param>
+        <param type="LONG" name="Y">New vertical position.</param>
+      </input>
+      <description>
+<p>This method will scroll text in the Scintilla document by moving the page position.</p>
       </description>
     </method>
 

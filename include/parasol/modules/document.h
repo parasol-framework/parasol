@@ -96,6 +96,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
 #define MT_docFeedParser -1
 #define MT_docSelectLink -2
+#define MT_docScrollToPoint -3
 #define MT_docFindIndex -4
 #define MT_docInsertXML -5
 #define MT_docRemoveContent -6
@@ -110,6 +111,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
 struct docFeedParser { CSTRING String;  };
 struct docSelectLink { LONG Index; CSTRING Name;  };
+struct docScrollToPoint { DOUBLE X; DOUBLE Y;  };
 struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
 struct docInsertXML { CSTRING XML; LONG Index;  };
 struct docRemoveContent { LONG Start; LONG End;  };
@@ -130,6 +132,11 @@ inline ERR docFeedParser(APTR Ob, CSTRING String) noexcept {
 inline ERR docSelectLink(APTR Ob, LONG Index, CSTRING Name) noexcept {
    struct docSelectLink args = { Index, Name };
    return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
+}
+
+inline ERR docScrollToPoint(APTR Ob, DOUBLE X, DOUBLE Y) noexcept {
+   struct docScrollToPoint args = { X, Y };
+   return(Action(MT_docScrollToPoint, (OBJECTPTR)Ob, &args));
 }
 
 inline ERR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) noexcept {
@@ -246,10 +253,6 @@ class objDocument : public Object {
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
-   }
-   inline ERR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
-      struct acScrollToPoint args = { X, Y, Z, Flags };
-      return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };

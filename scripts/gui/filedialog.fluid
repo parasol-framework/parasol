@@ -107,7 +107,8 @@ gui.dialog.file = function(Options)
 
    self.viewport = self.window:clientViewport({ })
 
-   self.toolbar = gui.toolbar(self.viewport, {
+   self.toolbar = gui.toolbar({
+      target  = self.viewport, 
       x       = 0,
       y       = 0,
       xOffset = 0,

@@ -20,19 +20,16 @@ FDEF argsRename[]        = { { "Name", FD_STR }, { 0, 0 } };
 FDEF argsResize[]        = { { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Depth", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSaveImage[]     = { { "Dest", FD_OBJECTPTR }, { "Class", FD_LONG }, { 0, 0 } };
 FDEF argsSaveToObject[]  = { { "Dest", FD_OBJECTPTR }, { "Class", FD_LONG }, { 0, 0 } };
-FDEF argsScroll[]        = { { "DeltaX", FD_DOUBLE }, { "DeltaY", FD_DOUBLE }, { "DeltaZ", FD_DOUBLE }, { 0, 0 } };
-FDEF argsScrollToPoint[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsSeek[]          = { { "Offset", FD_DOUBLE }, { "Position", FD_LONG }, { 0, 0 } };
 FDEF argsSetKey[]        = { { "Field", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsUndo[]          = { { "Steps", FD_LONG }, { 0, 0 } };
 FDEF argsWrite[]         = { { "Buffer", FD_PTR|FD_BUFFER }, { "Length", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsSelectArea[]    = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { 0, 0 } };
 
 extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { 0, 0, 0, 0 },
    { AHASH_SIGNAL,         0, "Signal", 0 },
    { AHASH_ACTIVATE,       0, "Activate", 0 },
-   { AHASH_SELECTAREA,     sizeof(struct acSelectArea), "SelectArea", argsSelectArea },
+   { AHASH_REDIMENSION,    sizeof(struct acRedimension), "Redimension", argsRedimension },
    { AHASH_CLEAR,          0, "Clear", 0 },
    { AHASH_FREEWARNING,    0, "FreeWarning", 0 },
    { AHASH_SORT,           0, "Sort", 0 },
@@ -64,7 +61,7 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_RESIZE,         sizeof(struct acResize), "Resize", argsResize },
    { AHASH_SAVEIMAGE,      sizeof(struct acSaveImage), "SaveImage", argsSaveImage },
    { AHASH_SAVETOOBJECT,   sizeof(struct acSaveToObject), "SaveToObject", argsSaveToObject },
-   { AHASH_SCROLL,         sizeof(struct acScroll), "Scroll", argsScroll },
+   { AHASH_MOVETOPOINT,    sizeof(struct acMoveToPoint), "MoveToPoint", argsMoveToPoint },
    { AHASH_SEEK,           sizeof(struct acSeek), "Seek", argsSeek },
    { AHASH_SETKEY,         sizeof(struct acSetKey), "SetKey", argsSetKey },
    { AHASH_SHOW,           0, "Show", 0 },
@@ -78,8 +75,5 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_REFRESH,        0, "Refresh", 0 },
    { AHASH_DISABLE,        0, "Disable", 0 },
    { AHASH_ENABLE,         0, "Enable", 0 },
-   { AHASH_REDIMENSION,    sizeof(struct acRedimension), "Redimension", argsRedimension },
-   { AHASH_MOVETOPOINT,    sizeof(struct acMoveToPoint), "MoveToPoint", argsMoveToPoint },
-   { AHASH_SCROLLTOPOINT,  sizeof(struct acScrollToPoint), "ScrollToPoint", argsScrollToPoint },
    { 0, 0, 0, 0 }
 };

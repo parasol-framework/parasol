@@ -76,7 +76,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "NO_HORIZONTAL: Turns off all horizontal movement (applies to the Move action only).",
     "NO_VERTICAL: Turns off all vertical movement (applies to the Move action only).",
     "CURSOR|POINTER: Private - Surface is a mouse cursor",
-    "SCROLL_CONTENT: If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.",
     "AFTER_COPY: Read-only.  Indicates that after-copy mode has been enabled.",
     "FIXED_BUFFER: Passes the NEVER_SHRINK option to the surface bitmap",
     "PERVASIVE_COPY: This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.",

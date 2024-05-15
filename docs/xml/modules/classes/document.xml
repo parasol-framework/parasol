@@ -98,11 +98,6 @@
     </action>
 
     <action>
-      <name>ScrollToPoint</name>
-      <comment>Scrolls a document object's graphical content.</comment>
-    </action>
-
-    <action>
       <name>SetKey</name>
       <comment>Passes variable parameters to loaded documents.</comment>
     </action>
@@ -318,6 +313,22 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ScrollToPoint</name>
+      <comment>Scrolls a document's page to a new position.</comment>
+      <prototype>ERR docScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">New horizontal position.</param>
+        <param type="DOUBLE" name="Y">New vertical position.</param>
+      </input>
+      <description>
+<p>Moves the document's <field>Page</field> to the new position indicated by <code>(X, Y)</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
       </result>
     </method>
 

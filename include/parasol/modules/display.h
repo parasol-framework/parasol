@@ -136,24 +136,23 @@ enum class RNF : ULONG {
    VIDEO = 0x00000800,
    NO_HORIZONTAL = 0x00001000,
    NO_VERTICAL = 0x00002000,
-   CURSOR = 0x00004000,
    POINTER = 0x00004000,
-   SCROLL_CONTENT = 0x00008000,
-   AFTER_COPY = 0x00010000,
-   READ_ONLY = 0x00014040,
-   VOLATILE = 0x00014400,
-   FIXED_BUFFER = 0x00020000,
-   PERVASIVE_COPY = 0x00040000,
-   NO_FOCUS = 0x00080000,
-   FIXED_DEPTH = 0x00100000,
-   TOTAL_REDRAW = 0x00200000,
-   POST_COMPOSITE = 0x00400000,
-   COMPOSITE = 0x00400000,
-   NO_PRECOMPOSITE = 0x00400000,
-   FULL_SCREEN = 0x00800000,
-   IGNORE_FOCUS = 0x01000000,
-   INIT_ONLY = 0x01960e81,
-   ASPECT_RATIO = 0x02000000,
+   CURSOR = 0x00004000,
+   AFTER_COPY = 0x00008000,
+   READ_ONLY = 0x0000c040,
+   VOLATILE = 0x0000c400,
+   FIXED_BUFFER = 0x00010000,
+   PERVASIVE_COPY = 0x00020000,
+   NO_FOCUS = 0x00040000,
+   FIXED_DEPTH = 0x00080000,
+   TOTAL_REDRAW = 0x00100000,
+   POST_COMPOSITE = 0x00200000,
+   NO_PRECOMPOSITE = 0x00200000,
+   COMPOSITE = 0x00200000,
+   FULL_SCREEN = 0x00400000,
+   IGNORE_FOCUS = 0x00800000,
+   INIT_ONLY = 0x00cb0e81,
+   ASPECT_RATIO = 0x01000000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(RNF)
@@ -1482,14 +1481,6 @@ class objSurface : public Object {
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
-   }
-   inline ERR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) noexcept {
-      struct acScroll args = { X, Y, Z };
-      return Action(AC_Scroll, this, &args);
-   }
-   inline ERR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) noexcept {
-      struct acScrollToPoint args = { X, Y, Z, Flags };
-      return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
 

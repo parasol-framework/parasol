@@ -127,7 +127,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 
 #define AC_Signal 1
 #define AC_Activate 2
-#define AC_SelectArea 3
+#define AC_Redimension 3
 #define AC_Clear 4
 #define AC_FreeWarning 5
 #define AC_Sort 6
@@ -159,7 +159,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_Resize 32
 #define AC_SaveImage 33
 #define AC_SaveToObject 34
-#define AC_Scroll 35
+#define AC_MoveToPoint 35
 #define AC_Seek 36
 #define AC_SetKey 37
 #define AC_Show 38
@@ -173,10 +173,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_Refresh 46
 #define AC_Disable 47
 #define AC_Enable 48
-#define AC_Redimension 49
-#define AC_MoveToPoint 50
-#define AC_ScrollToPoint 51
-#define AC_END 52
+#define AC_END 49
 
 // Permission flags
 
@@ -696,18 +693,6 @@ enum class MHF : ULONG {
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(MHF)
-
-// ScrollToPoint flags
-
-enum class STP : ULONG {
-   NIL = 0,
-   X = 0x00000001,
-   Y = 0x00000002,
-   Z = 0x00000004,
-   ANIM = 0x00000008,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(STP)
 
 // MoveToPoint flags
 
@@ -1456,7 +1441,6 @@ struct Edges {
 #define AHASH_RESIZE 0x192fa5b7
 #define AHASH_SAVEIMAGE 0x398f7c57
 #define AHASH_SAVETOOBJECT 0x2878872e
-#define AHASH_SCROLL 0x1b6028b4
 #define AHASH_SEEK 0x7c9dda2d
 #define AHASH_SETKEY 0x1b85609a
 #define AHASH_SHOW 0x7c9de846
@@ -1472,10 +1456,8 @@ struct Edges {
 #define AHASH_ENABLE 0xfb7573ac
 #define AHASH_REDIMENSION 0x08a67fa2
 #define AHASH_MOVETOPOINT 0x48467e29
-#define AHASH_SCROLLTOPOINT 0xe3665f41
 #define AHASH_SORT 0x7c9e066d
 #define AHASH_SAVESETTINGS 0x475f7165
-#define AHASH_SELECTAREA 0xf55e615e
 #define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
 
@@ -3047,10 +3029,7 @@ struct acRename        { CSTRING Name; };
 struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
 struct acSeek          { DOUBLE Offset; SEEK Position; };
-struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetKey        { CSTRING Key; CSTRING Value; };
 struct acUndo          { LONG Steps; };
 struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
@@ -3145,16 +3124,6 @@ inline ERR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)
    return Action(AC_Resize, Object, &args);
 }
 
-inline ERR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
-   struct acScroll args = { X, Y, Z };
-   return Action(AC_Scroll, Object, &args);
-}
-
-inline ERR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
-   struct acScrollToPoint args = { X, Y, Z, Flags };
-   return Action(AC_ScrollToPoint, Object, &args);
-}
-
 inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
@@ -3217,11 +3186,6 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
 #define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
 #define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
 #define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
-
-inline ERR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
-   struct acSelectArea area = { X, Y, Width, Height };
-   return Action(AC_SelectArea, Object, &area);
-}
 
 inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
    struct acSetKey args = { Key, Value };
@@ -4713,21 +4677,6 @@ inline ERR acRedimension(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE
 inline ERR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize resize = { Width, Height, Depth };
    return ActionMsg(AC_Resize, ObjectID, &resize);
-}
-
-inline ERR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
-   struct acScrollToPoint scroll = { X, Y, Z, Flags };
-   return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
-}
-
-inline ERR acScroll(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
-   struct acScroll scroll = { X, Y, Z };
-   return ActionMsg(AC_Scroll, ObjectID, &scroll);
-}
-
-inline ERR acSelectArea(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
-   struct acSelectArea area = { X, Y, Width, Height };
-   return ActionMsg(AC_SelectArea, ObjectID, &area);
 }
 
 inline ERR acActivate(OBJECTID ObjectID) { return ActionMsg(AC_Activate, ObjectID, NULL); }

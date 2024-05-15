@@ -119,21 +119,6 @@ the surface area first).</li>
     </action>
 
     <action>
-      <name>Scroll</name>
-      <comment>Scrolls surface content to a new position.</comment>
-      <description>
-<p>Calling the Scroll action on a surface object with the <code>SCROLL_CONTENT</code> flag set will cause it to move its contents in the requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in the DeltaX, DeltaY and DeltaZ arguments.</p>
-<p>Some objects may support a 'sticky' field that can be set to TRUE to prevent them from being moved.  This feature is present in the Surface class, amongst others.</p>
-<p>If the surface object does not have the <code>SCROLL_CONTENT</code> flag set, the call will flow through to any objects that may be listening for the Scroll action on the surface.</p>
-      </description>
-    </action>
-
-    <action>
-      <name>ScrollToPoint</name>
-      <comment>Moves the content of a surface object to a specific point.</comment>
-    </action>
-
-    <action>
       <name>Show</name>
       <comment>Shows a surface object on the display.</comment>
     </action>
@@ -934,7 +919,6 @@ the surface area first).</li>
       <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
       <const name="READ_ONLY">Synonym for HAS_FOCUS | CURSOR | AFTER_COPY</const>
-      <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
       <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
       <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
       <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>

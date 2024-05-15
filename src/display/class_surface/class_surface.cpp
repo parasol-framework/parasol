@@ -913,7 +913,6 @@ static ERR SURFACE_Focus(extSurface *Self, APTR Void)
 
 static ERR SURFACE_Free(extSurface *Self, APTR Void)
 {
-   if (Self->ScrollTimer) { UpdateTimer(Self->ScrollTimer, 0); Self->ScrollTimer = 0; }
    if (Self->RedrawTimer) { UpdateTimer(Self->RedrawTimer, 0); Self->RedrawTimer = 0; }
 
    if ((Self->Callback) and (Self->Callback != Self->CallbackCache)) {
@@ -2213,81 +2212,6 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
       return log.warning(ERR::Failed);
    }
    else return log.warning(ERR::NewObject);
-}
-
-/*********************************************************************************************************************
-
--ACTION-
-Scroll: Scrolls surface content to a new position.
-
-Calling the Scroll action on a surface object with the `SCROLL_CONTENT` flag set will cause it to move its contents in the
-requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support
-Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in
-the DeltaX, DeltaY and DeltaZ arguments.
-
-Some objects may support a 'sticky' field that can be set to TRUE to prevent them from being moved.  This feature is
-present in the Surface class, amongst others.
-
-If the surface object does not have the `SCROLL_CONTENT` flag set, the call will flow through to any objects that may be
-listening for the Scroll action on the surface.
--END-
-
-*********************************************************************************************************************/
-
-static ERR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
-{
-   if (!Args) return ERR::NullArgs;
-
-   if ((Self->Flags & RNF::SCROLL_CONTENT) != RNF::NIL) {
-      if ((Args->DeltaX >= 1) or (Args->DeltaX <= -1) or (Args->DeltaY >= 1) or (Args->DeltaY <= -1)) {
-         const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-         std::vector<OBJECTID> surfaces;
-         if (auto i = find_surface_list(Self); i != -1) {
-            // Send a move command to each child surface
-            auto level = glSurfaces[i].Level + 1;
-            for (++i; glSurfaces[i].Level >= level; i++) {
-               if (glSurfaces[i].Level IS level) surfaces.push_back(glSurfaces[i].SurfaceID);
-            }
-         }
-
-         struct acMove move = { -Args->DeltaX, -Args->DeltaY, -Args->DeltaZ };
-         for (auto &id : surfaces) QueueAction(AC_Move, id, &move);
-      }
-   }
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
-ScrollToPoint: Moves the content of a surface object to a specific point.
--END-
-*********************************************************************************************************************/
-
-static ERR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Args)
-{
-   if (!Args) return ERR::NullArgs;
-
-   if ((Self->Flags & RNF::SCROLL_CONTENT) != RNF::NIL) {
-      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-      std::vector<OBJECTID> surfaces;
-      if (auto i = find_surface_list(Self); i != -1) {
-         LONG level = glSurfaces[i].Level + 1;
-         for (++i; glSurfaces[i].Level >= level; i++) {
-            if (glSurfaces[i].Level IS level) surfaces.push_back(glSurfaces[i].SurfaceID);
-         }
-      }
-
-      auto flags = MTF::NIL;
-      if ((Args->Flags & STP::X) != STP::NIL) flags |= MTF::X;
-      if ((Args->Flags & STP::Y) != STP::NIL) flags |= MTF::Y;
-      if ((Args->Flags & STP::Z) != STP::NIL) flags |= MTF::Z;
-      if ((Args->Flags & STP::ANIM) != STP::NIL) flags |= MTF::ANIM;
-      struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, flags };
-      for (auto &id : surfaces) QueueAction(AC_MoveToPoint, id, &move);
-   }
-
-   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

@@ -330,25 +330,6 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
       const std::lock_guard<std::recursive_mutex> lock(glInputLock);
       glInputEvents.push_back(msg);
    }
-
-   // Convert wheel mouse usage into scroll messages
-
-   DOUBLE scrollrate = 0;
-   DOUBLE wheel = Input->Values[0];
-   if (wheel > 0) {
-      for (LONG i=1; i <= wheel; i++) scrollrate += Self->WheelSpeed * i;
-   }
-   else {
-      wheel = -wheel;
-      for (LONG i=1; i <= wheel; i++) scrollrate -= Self->WheelSpeed * i;
-   }
-
-   struct acScroll scroll = {
-      .DeltaX = 0,
-      .DeltaY = scrollrate * 0.01, //(wheel * Self->WheelSpeed) / 100
-      .DeltaZ = 0
-   };
-   ActionMsg(AC_Scroll, Self->OverObjectID, &scroll);
 }
 
 //********************************************************************************************************************

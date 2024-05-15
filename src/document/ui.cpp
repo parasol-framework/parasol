@@ -79,7 +79,6 @@ static bool delete_selected(extDocument *Self)
 static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unicode)
 {
    pf::Log log(__FUNCTION__);
-   struct acScroll scroll;
 
    if ((Flags & KQ::PRESSED) IS KQ::NIL) return ERR::Okay;
 
@@ -268,33 +267,57 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
       }
 
       case KEY::PAGE_DOWN:
-         scroll = { 0, Self->VPHeight, 0 };
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
+         Self->YPosition -= Self->VPHeight;
+         if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
+            Self->YPosition = -(Self->PageHeight - Self->VPHeight);
+         }
+         if (Self->YPosition > 0) Self->YPosition = 0;
+         acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::Y);
          break;
 
       case KEY::PAGE_UP:
-         scroll = { 0, -Self->VPHeight, 0 };
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
+         Self->YPosition += Self->VPHeight;
+         if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
+            Self->YPosition = -(Self->PageHeight - Self->VPHeight);
+         }
+         if (Self->YPosition > 0) Self->YPosition = 0;
+         acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::Y);
          break;
 
       case KEY::LEFT:
-         scroll = { -10, 0, 0 };
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
+         Self->XPosition -= 10;
+         if (-Self->XPosition > Self->PageWidth - Self->VPWidth) {
+            Self->XPosition = -(Self->PageWidth - Self->VPWidth);
+         }
+         if (Self->XPosition > 0) Self->XPosition = 0;
+         acMoveToPoint(Self->Page, Self->XPosition, 0, 0, MTF::X);
          break;
 
       case KEY::RIGHT:
-         scroll = { 10, 0, 0 };
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
+         Self->XPosition += 10;
+         if (-Self->XPosition > Self->PageWidth - Self->VPWidth) {
+            Self->XPosition = -(Self->PageWidth - Self->VPWidth);
+         }
+         if (Self->XPosition > 0) Self->XPosition = 0;
+         acMoveToPoint(Self->Page, Self->XPosition, 0, 0, MTF::X);
          break;
 
       case KEY::DOWN:
-         scroll = { 0, 10, 0 };
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
+         Self->YPosition -= 10;
+         if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
+            Self->YPosition = -(Self->PageHeight - Self->VPHeight);
+         }
+         if (Self->YPosition > 0) Self->YPosition = 0;
+         acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::Y);
          break;
 
       case KEY::UP:
-         scroll = { 0, -10, 0 };
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
+         Self->YPosition += 10;
+         if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
+            Self->YPosition = -(Self->PageHeight - Self->VPHeight);
+         }
+         if (Self->YPosition > 0) Self->YPosition = 0;
+         acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::Y);
          break;
 
       default: break; // Ignore unhandled codes
@@ -951,7 +974,7 @@ static bool view_area(extDocument *Self, DOUBLE Left, DOUBLE Top, DOUBLE Right, 
    else view_x = 0;
 
    if ((-view_x != Self->XPosition) or (-view_y != Self->YPosition)) {
-      acScrollToPoint(Self, view_x, view_y, 0, STP::X|STP::Y);
+      docScrollToPoint(Self, view_x, view_y);
       return true;
    }
    else return false;
