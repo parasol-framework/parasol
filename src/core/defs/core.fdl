@@ -1139,7 +1139,7 @@ struct ScriptArg { // For use with scExec
     "GetResource",
     "SetResource",
     "ScanMessages",
-    "StrDatatype",
+    "WaitForObjects",
     "UnloadFile",
     "CreateFolder",
     "LoadFile",
@@ -1179,8 +1179,7 @@ struct ScriptArg { // For use with scExec
     "UTF8CharLength",
     "UTF8ReadValue",
     "UTF8WriteValue",
-    "CopyFile",
-    "WaitForObjects")
+    "CopyFile")
 
   c_insert([=[
 

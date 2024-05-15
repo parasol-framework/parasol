@@ -2055,7 +2055,7 @@ struct CoreBase {
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
    ERR (*_ScanMessages)(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
-   STT (*_StrDatatype)(CSTRING String);
+   ERR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    void (*_UnloadFile)(struct CacheFile * Cache);
    ERR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
    ERR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
@@ -2096,7 +2096,6 @@ struct CoreBase {
    ULONG (*_UTF8ReadValue)(CSTRING String, LONG * Length);
    LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   ERR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 #endif // PARASOL_STATIC
 };
 
@@ -2169,7 +2168,7 @@ inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_Ge
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
-inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
+inline ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline ERR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
@@ -2210,7 +2209,6 @@ inline LONG UTF8CharLength(CSTRING String) { return CoreBase->_UTF8CharLength(St
 inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UTF8ReadValue(String,Length); }
 inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
-inline ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 #else
 extern "C" {
 extern ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
@@ -2278,7 +2276,7 @@ extern ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
 extern LARGE GetResource(RES Resource);
 extern LARGE SetResource(RES Resource, LARGE Value);
 extern ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
-extern STT StrDatatype(CSTRING String);
+extern ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 extern void UnloadFile(struct CacheFile * Cache);
 extern ERR CreateFolder(CSTRING Path, PERMIT Permissions);
 extern ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
@@ -2319,7 +2317,6 @@ extern LONG UTF8CharLength(CSTRING String);
 extern ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 extern ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-extern ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 }
 #endif // PARASOL_STATIC
 #endif

@@ -664,6 +664,36 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 //********************************************************************************************************************
 
+static BYTE datatype(std::string_view String)
+{
+   LONG i = 0;
+   while ((String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
+
+   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
+      for (i+=2; String[i]; i++) {
+         if (((String[i] >= '0') and (String[i] <= '9')) or
+             ((String[i] >= 'A') and (String[i] <= 'F')) or
+             ((String[i] >= 'a') and (String[i] <= 'f')));
+         else return 's';
+      }
+      return 'h';
+   }
+
+   bool is_number = true;
+   bool is_float  = false;
+
+   for (; (String[i]) and (is_number); i++) {
+      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+      if (String[i] IS '.') is_float = true;
+   }
+
+   if ((is_float) and (is_number)) return 'f';
+   else if (is_number) return 'i';
+   else return 's';
+}
+
+//********************************************************************************************************************
+
 static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
@@ -702,14 +732,14 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       Line += n;
 
       if (n > 0) {
-         auto dt = StrDatatype(value.c_str());
-         if (dt IS STT::NUMBER) {
+         auto dt = datatype(value);
+         if (dt IS 'i') {
             lua_pushinteger(Lua, strtoll(value.c_str(), NULL, 0));
          }
-         else if (dt IS STT::FLOAT) {
+         else if (dt IS 'f') {
             lua_pushnumber(Lua, strtod(value.c_str(), NULL));
          }
-         else if (dt IS STT::HEX) {
+         else if (dt IS 'h') {
             lua_pushnumber(Lua, strtoull(value.c_str(), NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {
@@ -727,9 +757,8 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
    return next_line(Line);
 }
 
-/*********************************************************************************************************************
-** Bytecode read & write callbacks.  Returning 1 will stop processing.
-*/
+//********************************************************************************************************************
+// Bytecode read & write callbacks.  Returning 1 will stop processing.
 
 int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {

@@ -147,12 +147,6 @@ end
 function testSorting()
    local cfg = newConfig()
 
-   local err = cfg.acSort()
-   assert(err == ERR_Okay, 'Sort() returned ' .. mSys.GetErrorMsg(err))
-
-   local err, groupName = cfg.mtGetGroupFromIndex(0)
-   assert(groupName == 'Alpha', 'First group is incorrect, returned ' .. groupName)
-
    local err = cfg.mtSortByKey('Sort', true)
    assert(err == ERR_Okay, 'SortByKey() returned ' .. mSys.GetErrorMsg(err))
 

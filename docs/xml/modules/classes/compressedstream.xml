@@ -348,13 +348,6 @@
       <const name="WILDCARD">Allow the use of wildcard characters '|', '?' and '*'.</const>
     </constants>
 
-    <constants lookup="STT" comment="Types for StrDatatype().">
-      <const name="FLOAT">The string represents a floating point number.</const>
-      <const name="HEX">The string represents a hexadecimal number.</const>
-      <const name="NUMBER">The string represents a whole number.</const>
-      <const name="STRING">The string represents plain-text.</const>
-    </constants>
-
     <constants lookup="VLF" comment="VlogF flags">
       <const name="API"/>
       <const name="BRANCH"/>

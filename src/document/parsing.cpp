@@ -702,6 +702,36 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
 
 //********************************************************************************************************************
 
+static BYTE datatype(std::string_view String)
+{
+   LONG i = 0;
+   while ((String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
+
+   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
+      for (i+=2; String[i]; i++) {
+         if (((String[i] >= '0') and (String[i] <= '9')) or
+             ((String[i] >= 'A') and (String[i] <= 'F')) or
+             ((String[i] >= 'a') and (String[i] <= 'f')));
+         else return 's';
+      }
+      return 'h';
+   }
+
+   bool is_number = true;
+   bool is_float  = false;
+
+   for (; (String[i]) and (is_number); i++) {
+      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+      if (String[i] IS '.') is_float = true;
+   }
+
+   if ((is_float) and (is_number)) return 'f';
+   else if (is_number) return 'i';
+   else return 's';
+}
+
+//********************************************************************************************************************
+
 static bool eval_condition(const std::string &String)
 {
    pf::Log log(__FUNCTION__);
@@ -773,12 +803,12 @@ static bool eval_condition(const std::string &String)
       if (condition) {
          // Convert the If->Compare to its specified type
 
-         auto cmp_type  = StrDatatype(String.c_str()+i);
-         auto test_type = StrDatatype(test.c_str());
+         auto cmp_type  = datatype(std::string_view(String.begin()+i, String.end()));
+         auto test_type = datatype(test);
 
-         if (((test_type IS STT::NUMBER) or (test_type IS STT::FLOAT)) and ((cmp_type IS STT::NUMBER) or (cmp_type IS STT::FLOAT))) {
-            auto cmp_float  = StrToFloat(String.c_str()+i);
-            auto test_float = StrToFloat(test);
+         if (((test_type IS 'i') or (test_type IS 'f')) and ((cmp_type IS 'i') or (cmp_type IS 'f'))) {
+            auto cmp_float  = strtod(String.c_str()+i, NULL);
+            auto test_float = strtod(test.c_str(), NULL);
             switch (condition) {
                case COND_NOT_EQUAL:     if (test_float != cmp_float) truth = true; break;
                case COND_EQUAL:         if (test_float IS cmp_float) truth = true; break;
@@ -1438,7 +1468,7 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_link:
             Self->LinkFill = Tag.Attribs[i].Value;
             break;
-            
+
          // This subroutine supports "N" for setting all margins to "N" and "L T R B" for setting individual
          // margins clockwise
 
@@ -1496,11 +1526,11 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_font_fill: // Default font fill
             Self->FontFill = Tag.Attribs[i].Value;
             break;
-            
+
          case HASH_v_link:
             Self->VisitedLinkFill = Tag.Attribs[i].Value;
             break;
-            
+
          case HASH_page_width:
             [[fallthrough]];
          case HASH_width:

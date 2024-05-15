@@ -1857,21 +1857,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrDatatype</name>
-    <category>Strings</category>
-    <comment>Determines the data type of a string.</comment>
-    <prototype>STT StrDatatype(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">The string that you want to analyse.</param>
-    </input>
-    <description>
-<p>This function analyses a string and returns its data type.  Valid return values are <code>STT::FLOAT</code> for floating point numbers, <code>STT::NUMBER</code> for whole numbers, <code>STT::HEX</code> for hexadecimal (e.g. 0x1) and <code>STT::STRING</code> for any other string type. In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
-<p>Any white-space at the start of the string will be skipped.</p>
-    </description>
-    <result type="STT" lookup="STT">Returns FLOAT, NUMBER, HEX or STRING.</result>
-  </function>
-
-  <function>
     <name>StrHash</name>
     <category>Strings</category>
     <comment>Convert a string into a 32-bit hash.</comment>
@@ -1882,7 +1867,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our platform and is therefore guaranteed to be compatible with all areas that make use of hashed values.</p>
-<p>Hashing is case insensitive by default.  If case sensitive hashing is desired, please set CaseSensitive to TRUE when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a case insensitive hash of the same string.</p>
+<p>Hashing is case insensitive by default.  If case sensitive hashing is desired, set CaseSensitive to TRUE when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a case insensitive hash of the same string.</p>
     </description>
     <result type="ULONG">The 32-bit hash is returned.</result>
   </function>

@@ -411,62 +411,12 @@ ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrDatatype: Determines the data type of a string.
-
-This function analyses a string and returns its data type.  Valid return values are `STT::FLOAT` for floating point
-numbers, `STT::NUMBER` for whole numbers, `STT::HEX` for hexadecimal (e.g. 0x1) and `STT::STRING` for any other string type.
-In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification
-characters, such as a decimal point or negative sign.
-
-Any white-space at the start of the string will be skipped.
-
--INPUT-
-cstr String: The string that you want to analyse.
-
--RESULT-
-int(STT): Returns FLOAT, NUMBER, HEX or STRING.
-
-*********************************************************************************************************************/
-
-STT StrDatatype(CSTRING String)
-{
-   if (!String) return STT::NIL;
-
-   while ((*String) and (*String <= 0x20)) String++; // Skip white-space
-
-   LONG i;
-   if ((String[0] IS '0') and (String[1] IS 'x')) {
-      for (i=2; String[i]; i++) {
-         if (((String[i] >= '0') and (String[i] <= '9')) or
-             ((String[i] >= 'A') and (String[i] <= 'F')) or
-             ((String[i] >= 'a') and (String[i] <= 'f')));
-         else return STT::STRING;
-      }
-      return STT::HEX;
-   }
-
-   bool is_number = true;
-   bool is_float  = false;
-
-   for (i=0; (String[i]) and (is_number); i++) {
-      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
-      if (String[i] IS '.') is_float = true;
-   }
-
-   if ((is_float) and (is_number)) return STT::FLOAT;
-   else if (is_number) return STT::NUMBER;
-   else return STT::STRING;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 StrHash: Convert a string into a 32-bit hash.
 
 This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our
 platform and is therefore guaranteed to be compatible with all areas that make use of hashed values.
 
-Hashing is case insensitive by default.  If case sensitive hashing is desired, please set CaseSensitive to TRUE
+Hashing is case insensitive by default.  If case sensitive hashing is desired, set CaseSensitive to TRUE
 when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a
 case insensitive hash of the same string.
 

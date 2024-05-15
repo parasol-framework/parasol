@@ -67,7 +67,7 @@ ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
 LARGE GetResource(RES Resource);
 LARGE SetResource(RES Resource, LARGE Value);
 ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
-STT StrDatatype(CSTRING String);
+ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 void UnloadFile(struct CacheFile * Cache);
 ERR CreateFolder(CSTRING Path, PERMIT Permissions);
 ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
@@ -108,6 +108,5 @@ LONG UTF8CharLength(CSTRING String);
 ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 
 } // extern c

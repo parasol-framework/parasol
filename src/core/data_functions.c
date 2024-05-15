@@ -88,7 +88,6 @@ FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "V
 FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_LONG }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Path", FD_STR }, { "Icon", FD_STR }, { "Label", FD_STR }, { "Device", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
@@ -180,7 +179,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetResource, "GetResource", argsGetResource },
    { (APTR)SetResource, "SetResource", argsSetResource },
    { (APTR)ScanMessages, "ScanMessages", argsScanMessages },
-   { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
+   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
@@ -221,7 +220,6 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
-   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { NULL, NULL, NULL }
 };
 
