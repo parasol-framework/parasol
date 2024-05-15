@@ -65,7 +65,6 @@ glActionComments[AC_Seek]           = 'Move the read/write marker to a new posit
 glActionComments[AC_SetField]       = 'Private.  For use by the Core only.'
 glActionComments[AC_SetKey]         = 'Sets custom key values that are not defined by an object\'s structure.'
 glActionComments[AC_Show]           = 'Makes an object visible to the user.'
-glActionComments[AC_Sort]           = 'Sorts object content into ascending order (by default).'
 glActionComments[AC_Undo]           = 'Reverses the last operation.'
 glActionComments[AC_Unlock]         = 'Remove a lock from an object.'
 glActionComments[AC_Write]          = 'Writes data to objects that provide storage or output services.'

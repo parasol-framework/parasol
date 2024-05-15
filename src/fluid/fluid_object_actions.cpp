@@ -71,7 +71,6 @@ static int obj_jump_empty(lua_State *Lua, const obj_read &Handle, object *def) {
 static int obj_jump_signal(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Signal); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
 static int obj_jump_activate(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushcclosure(Lua, action_activate, 1); return 1; }
 static int obj_jump_clear(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Clear); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_sort(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Sort); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
 static int obj_jump_copydata(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_CopyData); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
 static int obj_jump_datafeed(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_DataFeed); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
 static int obj_jump_deactivate(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Deactivate); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
@@ -118,7 +117,7 @@ static std::array<obj_read::JUMP *, AC_END> glJumpActions = {
    obj_jump_redimension,
    obj_jump_clear,
    obj_jump_empty, // FreeWarning
-   obj_jump_sort,
+   obj_jump_enable,
    obj_jump_copydata,
    obj_jump_datafeed,
    obj_jump_deactivate,
@@ -159,6 +158,5 @@ static std::array<obj_read::JUMP *, AC_END> glJumpActions = {
    obj_jump_setfield,
    obj_jump_clipboard,
    obj_jump_refresh,
-   obj_jump_disable,
-   obj_jump_enable
+   obj_jump_disable   
 };

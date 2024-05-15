@@ -595,26 +595,6 @@ static ERR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
 }
 
 /*********************************************************************************************************************
--ACTION-
-Sort: Sorts config groups into alphabetical order.
--END-
-*********************************************************************************************************************/
-
-static ERR CONFIG_Sort(extConfig *Self, APTR Void)
-{
-   pf::Log log;
-
-   log.branch("Sorting by group name.");
-
-   std::sort(Self->Groups->begin(), Self->Groups->end(),
-      [](const ConfigGroup &a, const ConfigGroup &b ) {
-      return a.first < b.first;
-   });
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
 
 -METHOD-
 SortByKey: Sorts config data using a sequence of sort instructions.
@@ -623,7 +603,7 @@ The SortByKey method sorts the groups of a config object by key values (the name
 
 -INPUT-
 cstr Key: The name of the key to sort on.
-int Descending: Set to TRUE if a descending sort is required.
+int Descending: Set to true if a descending sort is required.
 
 -ERRORS-
 Okay
@@ -634,7 +614,14 @@ NoData
 
 static ERR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 {
-   if ((!Args) or (!Args->Key)) return CONFIG_Sort(Self, NULL);  // If no args are provided then use the default Sort action instead
+   if ((!Args) or (!Args->Key)) { // Sort by group name if no args provided.
+      std::sort(Self->Groups->begin(), Self->Groups->end(),
+         [](const ConfigGroup &a, const ConfigGroup &b ) {
+         return a.first < b.first;
+      });
+
+      return ERR::Okay;
+   }
 
    pf::Log log;
 

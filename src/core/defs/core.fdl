@@ -1915,7 +1915,6 @@ inline ERR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
 inline ERR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
 inline ERR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
-inline ERR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
 inline ERR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {

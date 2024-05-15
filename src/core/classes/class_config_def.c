@@ -40,7 +40,6 @@ static const struct ActionArray clConfigActions[] = {
    { AC_NewObject, CONFIG_NewObject },
    { AC_SaveSettings, CONFIG_SaveSettings },
    { AC_SaveToObject, CONFIG_SaveToObject },
-   { AC_Sort, CONFIG_Sort },
    { 0, NULL }
 };
 

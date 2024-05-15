@@ -74,11 +74,6 @@ print('The Action class is located at ' .. str)
       <comment>Saves configuration data to an object, using standard config text format.</comment>
     </action>
 
-    <action>
-      <name>Sort</name>
-      <comment>Sorts config groups into alphabetical order.</comment>
-    </action>
-
   </actions>
 
   <methods>
@@ -216,7 +211,7 @@ print('The Action class is located at ' .. str)
       <prototype>ERR cfgSortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of the key to sort on.</param>
-        <param type="LONG" name="Descending">Set to TRUE if a descending sort is required.</param>
+        <param type="LONG" name="Descending">Set to true if a descending sort is required.</param>
       </input>
       <description>
 <p>The SortByKey method sorts the groups of a config object by key values (the named key value should be present in every group).</p>

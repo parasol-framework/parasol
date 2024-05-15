@@ -130,7 +130,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_Redimension 3
 #define AC_Clear 4
 #define AC_FreeWarning 5
-#define AC_Sort 6
+#define AC_Enable 6
 #define AC_CopyData 7
 #define AC_DataFeed 8
 #define AC_Deactivate 9
@@ -172,8 +172,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 #define AC_Clipboard 45
 #define AC_Refresh 46
 #define AC_Disable 47
-#define AC_Enable 48
-#define AC_END 49
+#define AC_END 48
 
 // Permission flags
 
@@ -3057,7 +3056,6 @@ inline ERR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
 inline ERR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
 inline ERR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
-inline ERR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
 inline ERR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
@@ -3750,7 +3748,6 @@ class objConfig : public Object {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERR sort() noexcept { return Action(AC_Sort, this, NULL); }
 
    // Customised field setting
 

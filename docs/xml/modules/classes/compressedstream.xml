@@ -122,7 +122,6 @@
       <const name="SetKey"/>
       <const name="Show"/>
       <const name="Signal"/>
-      <const name="Sort"/>
       <const name="Undo"/>
       <const name="Unlock"/>
       <const name="Write"/>

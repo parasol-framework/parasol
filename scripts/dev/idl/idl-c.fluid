@@ -46,7 +46,6 @@ glActionStubs = {
    Reset        = "   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }",
    SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }",
    Show         = "   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }",
-   Sort         = "   inline ERR sort() noexcept { return Action(AC_Sort, this, NULL); }",
    Unlock       = "   inline ERR unlock() noexcept { return Action(AC_Unlock, this, NULL); }",
 
    CopyData = [[

@@ -1,29 +1,5 @@
 --[[
-The gui.button API creates and manages buttons in the user interface.
-
-Basic template for creating a new button:
-
-   require 'gui/button'
-   my_button = gui.button({ Options... })
-
-Valid options to use when creating the button are as follows:
-
-  target:     Required.  Refers to a viewport that will contain the button.
-  icon:       An optional icon to display alongside the text.
-  text:       A label to display in the button.
-  events:     A table of event triggers.  Supported events: activate, show, focus, lostFocus, cursorEntry, cursorExit, enable, disable
-  width:      Width of the button (including any label).
-  x:          The x coordinate of the button.
-  xOffset:    X offset, if not defining x.
-  y:          The y coordinate of the button.
-  yOffset:    Y offset, if not defining y.
-
-  :disable()
-    Disable user interactivity.
-
-  :enable()
-    Enable user interactivity.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
