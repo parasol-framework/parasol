@@ -17,7 +17,7 @@ struct FUNIT {
 
    // With field
 
-   FUNIT(FIELD pField, DOUBLE pValue) : field_id(pField), value(pValue) { }
+   FUNIT(FIELD pField, DOUBLE pValue) : field_id(pField), value(pValue), type(DU::NIL) { }
    
    FUNIT(FIELD pField, const std::string &pValue, DOUBLE pMin = -DBL_MAX) : 
       FUNIT(pValue.c_str(), pMin) { field_id = pField; }
