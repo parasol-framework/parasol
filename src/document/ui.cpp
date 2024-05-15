@@ -974,7 +974,9 @@ static bool view_area(extDocument *Self, DOUBLE Left, DOUBLE Top, DOUBLE Right, 
    else view_x = 0;
 
    if ((-view_x != Self->XPosition) or (-view_y != Self->YPosition)) {
-      docScrollToPoint(Self, view_x, view_y);
+      Self->XPosition = -view_x;
+      Self->YPosition = -view_y;
+      acMoveToPoint(Self->Page, -view_x, -view_y, 0, MTF::X|MTF::Y);
       return true;
    }
    else return false;

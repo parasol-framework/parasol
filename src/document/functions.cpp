@@ -963,7 +963,17 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
       // Get the vertical position of the index and scroll to it
 
       auto &esc_index = Self->Stream.lookup<bc_index>(start);
-      docScrollToPoint(Self, 0, esc_index.y - 4);
+
+      Self->XPosition = 0;
+      Self->YPosition = -(esc_index.y - 4);
+
+      if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
+         Self->YPosition = -(Self->PageHeight - Self->VPHeight);
+      }
+
+      if (Self->YPosition > 0) Self->YPosition = 0;
+
+      acMoveToPoint(Self->Page, 0, Self->YPosition, 0, MTF::X|MTF::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());
 }

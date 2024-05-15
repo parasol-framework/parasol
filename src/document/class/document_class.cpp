@@ -1155,43 +1155,6 @@ static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 }
 
 /*********************************************************************************************************************
--METHOD-
-ScrollToPoint: Scrolls a document's page to a new position.
-
-Moves the document's #Page to the new position indicated by `(X, Y)`.
-
--INPUT-
-double X: New horizontal position.
-double Y: New vertical position.
-
--ERRORS-
-Okay
-
-*********************************************************************************************************************/
-
-static ERR DOCUMENT_ScrollToPoint(extDocument *Self, struct docScrollToPoint *Args)
-{
-   if (!Args) return ERR::NullArgs;
-
-   Self->XPosition = -Args->X;
-   Self->YPosition = -Args->Y;
-
-   // Validation: coordinates must be negative offsets
-
-   if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
-      Self->YPosition = -(Self->PageHeight - Self->VPHeight);
-   }
-
-   if (Self->YPosition > 0) Self->YPosition = 0;
-   if (Self->XPosition > 0) Self->XPosition = 0;
-
-   //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
-
-   acMoveToPoint(Self->Page, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
 
 -METHOD-
 SelectLink: Selects links in the document.
