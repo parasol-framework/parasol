@@ -509,9 +509,10 @@ void ActionList(struct ActionTable **List, LONG *Size)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ActionMsg: Execute an action or method by way of object ID.
+ActionMsg: Execute an action or method by way of object UID.
 
-Use ActionMsg() to execute an action when only the object ID is known.
+Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison 
+to #Action(), as the object pointer will need to be resolved before making the call.
 
 -INPUT-
 int Action: The ID of the action or method to be executed.
@@ -519,10 +520,8 @@ oid Object: The target object.
 ptr Args:   The parameter structure required by Action.
 
 -ERRORS-
-Okay: The action was either executed or queued for another thread.
+Okay: The action was executed successfully.
 NullArgs:
-OutOfRange:
-Failed: Failed to build buffered arguments.
 -END-
 
 *********************************************************************************************************************/

@@ -602,7 +602,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                      }
                      else error = ERR::AllocMemory;
                   }
-                  else ActionMsg(AC_Activate, Self->UID, NULL);
+                  else acActivate(Self);
 
                   return ERR::Okay;
                }

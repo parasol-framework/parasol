@@ -168,7 +168,7 @@ struct FunctionField argsResize[] = {
   <function>
     <name>ActionMsg</name>
     <category>Objects</category>
-    <comment>Execute an action or method by way of object ID.</comment>
+    <comment>Execute an action or method by way of object UID.</comment>
     <prototype>ERR ActionMsg(LONG Action, OBJECTID Object, APTR Args)</prototype>
     <input>
       <param type="LONG" name="Action">The ID of the action or method to be executed.</param>
@@ -176,12 +176,10 @@ struct FunctionField argsResize[] = {
       <param type="APTR" name="Args">The parameter structure required by Action.</param>
     </input>
     <description>
-<p>Use ActionMsg() to execute an action when only the object ID is known.</p>
+<p>Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison to <action>Action</action>, as the object pointer will need to be resolved before making the call.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
