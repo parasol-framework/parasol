@@ -37,7 +37,7 @@ ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
 void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
-ERR StrReadLocale(CSTRING Key, CSTRING * Value);
+ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERR ProcessMessages(PMF Flags, LONG TimeOut);
 ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
@@ -107,6 +107,5 @@ LONG UTF8PrevLength(CSTRING String, LONG Offset);
 LONG UTF8CharLength(CSTRING String);
 ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
-ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 
 } // extern c

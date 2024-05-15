@@ -105,7 +105,6 @@ void CloseCore(void)
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
    if (!glCrashStatus) { // This code is only safe to execute if the process hasn't crashed.
-      if (glLocale) { FreeResource(glLocale); glLocale = NULL; } // Allocated by StrReadLocale()
       if (glTime) { FreeResource(glTime); glTime = NULL; }
 
       // Removing objects that are tracked to the task before the first expunge will make for a cleaner exit.

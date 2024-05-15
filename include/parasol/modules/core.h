@@ -2025,7 +2025,7 @@ struct CoreBase {
    ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
    ERR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
-   ERR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
+   ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
    ERR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
@@ -2095,7 +2095,6 @@ struct CoreBase {
    LONG (*_UTF8CharLength)(CSTRING String);
    ULONG (*_UTF8ReadValue)(CSTRING String, LONG * Length);
    LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
-   ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 #endif // PARASOL_STATIC
 };
 
@@ -2138,7 +2137,7 @@ inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { retu
 inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
-inline ERR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
+inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
@@ -2208,7 +2207,6 @@ inline LONG UTF8PrevLength(CSTRING String, LONG Offset) { return CoreBase->_UTF8
 inline LONG UTF8CharLength(CSTRING String) { return CoreBase->_UTF8CharLength(String); }
 inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UTF8ReadValue(String,Length); }
 inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
-inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 #else
 extern "C" {
 extern ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
@@ -2246,7 +2244,7 @@ extern ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 extern ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 extern ERR NewObject(LARGE ClassID, NF Flags, APTR Object);
 extern void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
-extern ERR StrReadLocale(CSTRING Key, CSTRING * Value);
+extern ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 extern ERR ProcessMessages(PMF Flags, LONG TimeOut);
 extern ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
@@ -2316,7 +2314,6 @@ extern LONG UTF8PrevLength(CSTRING String, LONG Offset);
 extern LONG UTF8CharLength(CSTRING String);
 extern ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
-extern ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 }
 #endif // PARASOL_STATIC
 #endif

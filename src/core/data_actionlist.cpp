@@ -32,7 +32,7 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_REDIMENSION,    sizeof(struct acRedimension), "Redimension", argsRedimension },
    { AHASH_CLEAR,          0, "Clear", 0 },
    { AHASH_FREEWARNING,    0, "FreeWarning", 0 },
-   { AHASH_SORT,           0, "Sort", 0 },
+   { AHASH_ENABLE,         0, "Enable", 0 },
    { AHASH_COPYDATA,       sizeof(struct acCopyData), "CopyData", argsCopyData },
    { AHASH_DATAFEED,       sizeof(struct acDataFeed), "DataFeed", argsDataFeed },
    { AHASH_DEACTIVATE,     0, "Deactivate", 0 },
@@ -74,6 +74,5 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_CLIPBOARD,      sizeof(struct acClipboard), "Clipboard", argsClipboard },
    { AHASH_REFRESH,        0, "Refresh", 0 },
    { AHASH_DISABLE,        0, "Disable", 0 },
-   { AHASH_ENABLE,         0, "Enable", 0 },
    { 0, 0, 0, 0 }
 };

@@ -1873,39 +1873,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrReadLocale</name>
-    <category>Strings</category>
-    <comment>Read system locale information.</comment>
-    <prototype>ERR StrReadLocale(CSTRING Key, CSTRING * Value)</prototype>
-    <input>
-      <param type="CSTRING" name="Key">The name of a locale value to read.</param>
-      <param type="CSTRING *" name="Value">A pointer to the retrieved string value will be returned in this parameter.</param>
-    </input>
-    <description>
-<p>Use this function to read system-wide locale information.  Settings are usually preset according to the user's location, but the user also has the power to override individual key value.  The internal nature of this function varies by host system.  If locale information is not readily available then the locale values will be derived from <code>user:config/locale.cfg</code>.</p>
-<p>Available key values are as follows:</p>
-<types>
-<type name="Language">Three letter ISO code indicating the user's preferred language, e.g. 'eng'</type>
-<type name="ShortDate">Short date format, e.g. 'dd/mm/yyyy'</type>
-<type name="LongDate">Long date format, e.g. 'Dddd, d Mmm yyyy'</type>
-<type name="FileDate">File date format, e.g. 'dd-mm-yy hh:nn'</type>
-<type name="Time">Basic time format, e.g. hh:nn</type>
-<type name="CurrencySymbol">Currency symbol, e.g. '$'</type>
-<type name="Decimal">Decimal place symbol, e.g. '.'</type>
-<type name="Thousands">Thousands symbol, e.g. ','</type>
-<type name="Positive">Positive symbol - typically blank or '+'</type>
-<type name="Negative">Negative symbol, e.g. '-'</type>
-</types>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="NoData">No data is available for use.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Monitor action calls made against an object.</comment>

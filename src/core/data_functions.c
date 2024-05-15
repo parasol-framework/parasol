@@ -89,7 +89,6 @@ FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_L
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Path", FD_STR }, { "Icon", FD_STR }, { "Label", FD_STR }, { "Device", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
-FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
@@ -149,7 +148,7 @@ const struct Function glFunctions[] = {
    { (APTR)MemoryPtrInfo, "MemoryPtrInfo", argsMemoryPtrInfo },
    { (APTR)NewObject, "NewObject", argsNewObject },
    { (APTR)NotifySubscribers, "NotifySubscribers", argsNotifySubscribers },
-   { (APTR)StrReadLocale, "StrReadLocale", argsStrReadLocale },
+   { (APTR)CopyFile, "CopyFile", argsCopyFile },
    { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
@@ -219,7 +218,6 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8CharLength, "UTF8CharLength", argsUTF8CharLength },
    { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
-   { (APTR)CopyFile, "CopyFile", argsCopyFile },
    { NULL, NULL, NULL }
 };
 

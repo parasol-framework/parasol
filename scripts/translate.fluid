@@ -8,7 +8,8 @@ string.translateRefresh = function()
    string._ttable = { }
    local err, language
    catch(function()
-      err, language = mSys.StrReadLocale("language")
+      -- TODO: Get the user's preferred language from the host system
+      --err, language = mSys.StrReadLocale("language")
    end)
    if (not language) or (language == 'eng') then return end
 

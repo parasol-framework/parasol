@@ -64,7 +64,6 @@ OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
 OBJECTPTR clFluid = NULL;
 struct ActionTable *glActions = NULL;
-static char glLocale[4] = "eng";
 std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 std::unordered_map<std::string, ULONG> glStructSizes;
 
@@ -295,13 +294,6 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    for (ACTIONID action_id=1; glActions[action_id].Name; action_id++) {
       glActionLookup[glActions[action_id].Name] = action_id;
-   }
-
-   // Get the user's language for translation purposes
-
-   CSTRING str;
-   if (StrReadLocale("Language", &str) IS ERR::Okay) {
-      StrCopy(str, glLocale, sizeof(glLocale));
    }
 
    return create_fluid();

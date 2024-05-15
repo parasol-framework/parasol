@@ -92,8 +92,10 @@ function flags(Prefix, Options, ...)
             local key, comment
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.+):%s+(.+)$')
-               if (key != nil) and (mSys.StrDatatype(key) != STT_STRING) then
-                  key = tonumber(key)
+               if (key != nil) then
+                  if (key:find('^0x%d+$')) or (key:find('^%d+$')) then
+                     key = tonumber(key)
+                  end
                end
             end
 
@@ -173,7 +175,7 @@ function const(Prefix, Options, ...)
             end
             if (val == nil) then val = v end
 
-            if (mSys.StrDatatype(val) != STT_STRING) then
+            if (string.find(val, '^0x%d+$')) or (string.find(val, '^%d+$')) then
                val = tonumber(val)
             end
 

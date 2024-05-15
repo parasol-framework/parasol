@@ -1109,7 +1109,7 @@ struct ScriptArg { // For use with scExec
     "MemoryPtrInfo",
     "NewObject",
     "NotifySubscribers",
-    "StrReadLocale",
+    "CopyFile",
     "UTF8ValidEncoding",
     "ProcessMessages",
     "IdentifyFile",
@@ -1178,8 +1178,7 @@ struct ScriptArg { // For use with scExec
     "UTF8PrevLength",
     "UTF8CharLength",
     "UTF8ReadValue",
-    "UTF8WriteValue",
-    "CopyFile")
+    "UTF8WriteValue")
 
   c_insert([=[
 
