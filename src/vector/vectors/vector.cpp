@@ -1001,8 +1001,8 @@ If the Callback returns `ERR::Terminate`, then no further coordinates will be pr
 
 -INPUT-
 ptr(func) Callback: A function to call with the path coordinates.
-double Scale: Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.
-int Transform: Set to TRUE if all transforms applicable to the vector should be applied to the path.
+double Scale: Set to `1.0` (recommended) to trace the path at a scale of 1 to 1.
+int Transform: Set to `true` if all transforms applicable to the vector should be applied to the path.
 
 -ERRORS-
 Okay:
@@ -2333,13 +2333,13 @@ and @VectorWave are able to take full advantage of this feature.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_Transition(extVector *Self, objVectorTransition **Value)
+static ERR VECTOR_GET_Transition(extVector *Self, extVectorTransition **Value)
 {
    *Value = Self->Transition;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
+static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
 {
    pf::Log log;
 

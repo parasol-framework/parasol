@@ -919,6 +919,8 @@ function class(Name, Options, Spec, Private, Custom)
       for _, v in pairs(Options.references) do
          if nz(glCustomTypes[v]) then
             cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
+         elseif nz(glStructures[v]) then
+            class.references['STRUCT:' .. v] = true
          else
             print('Reference to lookup ' .. v .. ' not found.')
          end

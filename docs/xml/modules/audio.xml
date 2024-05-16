@@ -144,11 +144,11 @@
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Sample">A sample handle allocated from <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class>.</param>
+      <param type="LONG" name="Sample">A sample handle allocated from <class name="Audio" method="AddSample">Audio.AddSample()</class> or <class name="Audio" method="AddStream">Audio.AddStream()</class>.</param>
     </input>
     <description>
 <p>This function will associate a sound sample with the channel identified by Handle.  The client should follow this by setting configuration details (e.g. volume and pan values).</p>
-<p>The referenced Sample must have been added to the audio server via the <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class> methods.</p>
+<p>The referenced Sample must have been added to the audio server via the <class name="Audio" method="AddSample">Audio.AddSample()</class> or <class name="Audio" method="AddStream">Audio.AddStream()</class> methods.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>

@@ -400,7 +400,7 @@ the surface area first).</li>
       <type lookup="PTC">PTC</type>
       <description>
 <p>The Cursor field provides a convenient way of setting the pointer's cursor image in a single operation.  The mouse pointer will automatically switch to the specified cursor image when it enters the surface area.</p>
-<p>The available cursor image settings are listed in the <class name="Pointer" index="CursorID">Pointer:CursorID</class> documentation.</p>
+<p>The available cursor image settings are listed in the <class name="Pointer" field="CursorID">Pointer.CursorID</class> documentation.</p>
 <p>The Cursor field may be written with valid cursor names or their ID's, as you prefer.</p>
 <types lookup="PTC"/>
       </description>

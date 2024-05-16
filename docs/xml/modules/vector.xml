@@ -39,6 +39,7 @@
       <class>VectorShape</class>
       <class>VectorSpiral</class>
       <class>VectorText</class>
+      <class>VectorTransition</class>
       <class>VectorViewport</class>
       <class>VectorWave</class>
     </classes>

@@ -3,7 +3,7 @@
 -CLASS-
 VectorText: Extends the Vector class with support for generating text.
 
-To create text along a path, set the #Vector.Morph field with a reference to any @Vector object that generates a path.  The
+To create text along a path, set the @Vector.Morph field with a reference to any @Vector object that generates a path.  The
 following extract illustrates the SVG equivalent of this feature:
 
 <pre>

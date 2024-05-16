@@ -172,7 +172,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 }
 </pre>
 <p>The resulting Field structure is immutable.</p>
-<p>Note: To lookup the field definition of a MetaClass, use the MetaClass:FindField() method.</p>
+<p>Note: To lookup the field definition of a MetaClass, use the MetaClass.FindField() method.</p>
     <h3>Result</h3><p>Returns a pointer to the field descriptor, otherwise NULL if not found.</p><div class="footer copyright">Core module documentation © Paul Manias 1996-2024</div></div><div class="docs-content" style="display:none;" id="FindObject"><h1>FindObject()</h1><p class="lead">Searches for objects by name.</p><div class="panel panel-info"><div class="panel-heading"><samp>ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID)</samp></div><div class="panel-body"><table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Name</td><td>The name of an object to search for.</td></tr><tr><td>ClassID</td><td>Optional.  Set to a class ID to filter the results down to a specific class type.</td></tr><tr><td><a onclick="showPage('FOF');">Flags</a></td><td>Optional flags.</td></tr><tr><td>ObjectID</td><td>An object id variable for storing the result.</td></tr></tbody></table></div></div><h3>Description</h3>
 <p>The FindObject() function searches for all objects that match a given name and can filter by class.</p>
 <p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>

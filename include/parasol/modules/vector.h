@@ -12,6 +12,7 @@
 #include <parasol/modules/picture.h>
 
 class objVectorColour;
+class objVectorTransition;
 class objVectorScene;
 class objVectorImage;
 class objVectorPattern;
@@ -612,6 +613,18 @@ class objVectorColour : public Object {
       return ERR::Okay;
    }
 
+};
+
+// VectorTransition class definition
+
+#define VER_VECTORTRANSITION (1.000000)
+
+class objVectorTransition : public Object {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORTRANSITION;
+   static constexpr CSTRING CLASS_NAME = "VectorTransition";
+
+   using create = pf::Create<objVectorTransition>;
 };
 
 // VectorScene class definition

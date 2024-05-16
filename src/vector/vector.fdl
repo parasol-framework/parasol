@@ -367,12 +367,21 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
-  class("VectorColour", { src="defs/colour.cpp", comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values" }, [[
+  class("VectorColour", {
+    src="defs/colour.cpp",
+    comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values"
+  }, [[
    double Red
    double Green
    double Blue
    double Alpha
   ]])
+
+  class('VectorTransition', {
+    src='defs/transition.cpp',
+    references={ 'Transition' },
+    comment="Transitions are used to gradually apply transforms over distance."
+  })
 
   methods("vectorscene", "Sc", {
     { id=1, name="AddDef" },

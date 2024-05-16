@@ -33,7 +33,7 @@ Transitions are most effective when used in conjunction with the morph feature i
 
 // Applies the correct transform when given a relative Index position between 0.0 and 1.0
 
-void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine &Transform)
+void apply_transition(extVectorTransition *Self, DOUBLE Index, agg::trans_affine &Transform)
 {
    if (Index <= Self->Stops[0].Offset) {
       Transform.multiply(*Self->Stops[0].AGGTransform);
@@ -75,7 +75,7 @@ void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine
 //********************************************************************************************************************
 // Accurately interpolate the transform for Index and apply it to the coordinate (X,Y).
 
-void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
+void apply_transition_xy(extVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
 {
    if (Index <= Self->Stops[0].Offset) {
       Self->Stops[0].AGGTransform->transform(X, Y);
@@ -110,7 +110,7 @@ void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
 
 //********************************************************************************************************************
 
-static ERR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
+static ERR set_stop_transform(extVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
    pf::Log log;
 
@@ -135,7 +135,7 @@ static ERR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, C
 
 //********************************************************************************************************************
 
-static ERR TRANSITION_Free(objVectorTransition *Self, APTR Void)
+static ERR TRANSITION_Free(extVectorTransition *Self, APTR Void)
 {
    for (auto i=0; i < Self->TotalStops; i++) {
       delete Self->Stops[i].AGGTransform;
@@ -147,7 +147,7 @@ static ERR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TRANSITION_Init(objVectorTransition *Self, APTR Void)
+static ERR TRANSITION_Init(extVectorTransition *Self, APTR Void)
 {
    pf::Log log;
    if (Self->TotalStops < 2) return log.warning(ERR::FieldNotSet);
@@ -156,7 +156,7 @@ static ERR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
+static ERR TRANSITION_NewObject(extVectorTransition *Self, APTR Void)
 {
    Self->Dirty = true;
    return ERR::Okay;
@@ -171,14 +171,11 @@ A valid transition object must consist of at least two stop points in order to t
 This is achieved by setting the Stops field with an array of Transition structures that define each stop point with
 a transform string.  The Transition structure consists of the following fields:
 
-<fields>
-<field name="Offset" type="DOUBLE">An offset in the range of 0 to 1.0.</field>
-<field name="Transform" type="STRING">A transform string, as per SVG guidelines.</field>
-</fields>
+<struct lookup="Transition"/>
 
 *********************************************************************************************************************/
 
-static ERR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
+static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, LONG Elements)
 {
    pf::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {
@@ -230,7 +227,7 @@ ERR init_transition(void) // The transition is a definition type for creating tr
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clTransitionActions),
       fl::Fields(clTransitionFields),
-      fl::Size(sizeof(objVectorTransition)),
+      fl::Size(sizeof(extVectorTransition)),
       fl::Path(MOD_PATH));
 
    return clVectorTransition ? ERR::Okay : ERR::AddClass;

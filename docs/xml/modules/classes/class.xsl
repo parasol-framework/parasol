@@ -86,9 +86,20 @@
     <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/methods/method[name=$methodName]/comment"/></xsl:attribute><xsl:attribute name="href">#tm-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>
 
   <xsl:template match="class">
-    <a><xsl:attribute name="href"><xsl:value-of select="@name"/>.html<xsl:if test="@index">?index=<xsl:value-of select="@index"/></xsl:if></xsl:attribute><xsl:value-of select="@name"/>
-      <xsl:if test="@index">&#8658;<xsl:value-of select="@index"/></xsl:if>
-    </a>
+    <xsl:variable name="class_name"><xsl:value-of select="@name"/></xsl:variable>
+    <xsl:variable name="class_lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+
+    <xsl:choose>
+      <xsl:when test="@field">
+        <a><xsl:attribute name="href"><xsl:value-of select="$class_lower"/>.html#tf-<xsl:value-of select="@field"/></xsl:attribute><xsl:value-of select="@name"/>&#8658;<xsl:value-of select="@field"/></a>
+      </xsl:when>
+      <xsl:when test="@method">
+        <a><xsl:attribute name="href"><xsl:value-of select="$class_lower"/>.html#tm-<xsl:value-of select="@method"/></xsl:attribute><xsl:value-of select="@name"/>&#8658;<xsl:value-of select="@method"/>()</a>
+      </xsl:when>
+      <xsl:otherwise>
+        <a><xsl:attribute name="href"><xsl:value-of select="$class_lower"/>.html</xsl:attribute><xsl:value-of select="@name"/></a>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <xsl:template match="list">
@@ -198,6 +209,7 @@
                   <xsl:apply-templates/>
                 </xsl:for-each>
 
+                <xsl:if test="/book/fields/field">
                 <h3>Structure</h3>
                 <p>The <xsl:value-of select="info/name"/> class consists of the following fields:</p>
                 <table class="table table-hover">
@@ -252,6 +264,7 @@
                     </xsl:for-each>
                   </tbody>
                 </table>
+                </xsl:if>
 
                 <xsl:if test="/book/actions/action">
                   <h3>Actions</h3>
@@ -414,7 +427,7 @@
                           <li>Extensions<ul><li><a href="scintilla.html">Scintilla</a></li><li><a href="scintillasearch.html">ScintillaSearch</a></li></ul></li>
                           <li>Graphics<ul><li><a href="bitmap.html">Bitmap</a></li><li><a href="clipboard.html">Clipboard</a></li><li><a href="display.html">Display</a></li><li><a href="document.html">Document</a></li><li><a href="font.html">Font</a></li><li><a href="picture.html">Picture</a></li><li><a href="pointer.html">Pointer</a></li><li><a href="surface.html">Surface</a></li><li><a href="svg.html">SVG</a></li></ul></li>
                           <li>Network<ul><li><a href="clientsocket.html">ClientSocket</a></li><li><a href="http.html">HTTP</a></li><li><a href="netsocket.html">NetSocket</a></li><li><a href="proxy.html">Proxy</a></li></ul></li>
-                          <li>Vectors<ul><li><a href="vector.html">Vector</a></li><li><a href="vectorclip.html">VectorClip</a></li><li><a href="vectorcolour.html">VectorColour</a></li><li><a href="vectorellipse.html">VectorEllipse</a></li><li><a href="vectorfilter.html">VectorFilter</a></li><li><a href="vectorgradient.html">VectorGradient</a></li><li><a href="vectorimage.html">VectorImage</a></li><li><a href="vectorpath.html">VectorPath</a></li><li><a href="vectorpattern.html">VectorPattern</a></li><li><a href="vectorpolygon.html">VectorPolygon</a></li><li><a href="vectorrectangle.html">VectorRectangle</a></li><li><a href="vectorscene.html">VectorScene</a></li><li><a href="vectorshape.html">VectorShape</a></li><li><a href="vectorspiral.html">VectorSpiral</a></li><li><a href="vectortext.html">VectorText</a></li><li><a href="vectorviewport.html">VectorViewport</a></li><li><a href="vectorwave.html">VectorWave</a></li></ul></li>
+                          <li>Vectors<ul><li><a href="vector.html">Vector</a></li><li><a href="vectorclip.html">VectorClip</a></li><li><a href="vectorcolour.html">VectorColour</a></li><li><a href="vectorellipse.html">VectorEllipse</a></li><li><a href="vectorfilter.html">VectorFilter</a></li><li><a href="vectorgradient.html">VectorGradient</a></li><li><a href="vectorgroup.html">VectorGroup</a></li><li><a href="vectorimage.html">VectorImage</a></li><li><a href="vectorpath.html">VectorPath</a></li><li><a href="vectorpattern.html">VectorPattern</a></li><li><a href="vectorpolygon.html">VectorPolygon</a></li><li><a href="vectorrectangle.html">VectorRectangle</a></li><li><a href="vectorscene.html">VectorScene</a></li><li><a href="vectorshape.html">VectorShape</a></li><li><a href="vectorspiral.html">VectorSpiral</a></li><li><a href="vectortext.html">VectorText</a></li><li><a href="vectortransition.html">VectorTransition</a></li><li><a href="vectorviewport.html">VectorViewport</a></li><li><a href="vectorwave.html">VectorWave</a></li></ul></li>
                         </ul>
                       </div>
                     </div>

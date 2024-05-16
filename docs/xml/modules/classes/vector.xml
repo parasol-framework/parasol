@@ -249,8 +249,8 @@
       <prototype>ERR vecTrace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
-        <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
-        <param type="LONG" name="Transform">Set to TRUE if all transforms applicable to the vector should be applied to the path.</param>
+        <param type="DOUBLE" name="Scale">Set to <code>1.0</code> (recommended) to trace the path at a scale of 1 to 1.</param>
+        <param type="LONG" name="Transform">Set to <code>true</code> if all transforms applicable to the vector should be applied to the path.</param>
       </input>
       <description>
 <p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
@@ -413,7 +413,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field assigns a graphics filter to the rendering pipeline of the vector.  The filter must initially be created using the <class name="VectorFilter">VectorFilter</class> class and added to a VectorScene using <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class>.  The filter can then be referenced by ID in the Filter field of any vector object.  Please refer to the <class name="VectorFilter">VectorFilter</class> class for further details on filter configuration.</p>
+<p>This field assigns a graphics filter to the rendering pipeline of the vector.  The filter must initially be created using the <class name="VectorFilter">VectorFilter</class> class and added to a VectorScene using <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class>.  The filter can then be referenced by ID in the Filter field of any vector object.  Please refer to the <class name="VectorFilter">VectorFilter</class> class for further details on filter configuration.</p>
 <p>The Filter value can be in the format <code>ID</code> or <code>url(<field>ID</field>)</code> according to client preference.</p>
       </description>
     </field>

@@ -303,7 +303,7 @@ struct TransitionStop { // Passed to the Stops field.
    agg::trans_affine *AGGTransform;
 };
 
-class objVectorTransition : public Object {
+class extVectorTransition : public objVectorTransition {
    public:
    LONG TotalStops; // Total number of stops registered.
 
@@ -390,7 +390,7 @@ class extVector : public objVector {
    extVectorFilter     *Filter;
    extVectorViewport   *ParentView;
    extVectorClip       *ClipMask;
-   objVectorTransition *Transition;
+   extVectorTransition *Transition;
    extVector           *Morph;
    extVector           *AppendPath;
    DashedStroke        *DashArray;
@@ -572,8 +572,8 @@ extern ERR init_turbulencefx(void);
 extern ERR init_vectorscene(void);
 
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
-extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
-extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
+extern void apply_transition(extVectorTransition *, DOUBLE, agg::trans_affine &);
+extern void apply_transition_xy(extVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
 extern void calc_full_boundary(extVector *, TClipRectangle<DOUBLE> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
 extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);

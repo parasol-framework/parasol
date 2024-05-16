@@ -300,12 +300,6 @@ function substituteReferences(String, Class)
       end
    end)
 
-   -- Substitute external field references, identified as #Module.Field.
-
-   String = String:gsub('#([A-Z]%w+)%.([A-Z]%w*)', function(Module, Field)
-      return '<field module="' .. Module .. '">' .. Field .. '</field>'
-   end)
-
    -- Substitute external function references, identified as ~Module.Function()
 
    String = String:gsub('~([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ModuleName, FunctionName)
@@ -327,23 +321,23 @@ function substituteReferences(String, Class)
    String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ClassName, MethodName)
       if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
          -- TODO: Check that the method name is valid according to the class spec
-         return '<class name="' .. ClassName .. '" index="' .. MethodName .. '()">' .. ClassName .. ':' .. MethodName .. '()</class>'
+         return '<class name="' .. ClassName .. '" method="' .. MethodName .. '">' .. ClassName .. '.' .. MethodName .. '()</class>'
       else
          print('Unrecognised method/action reference @' .. ClassName .. '.' .. MethodName .. '()')
       end
    end)
 
-   -- Substitute external field references, identified as @File.Size
+   -- Substitute external field references, identified as @File.Size or #File.Size
 
-   String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
+   String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
       local meta = mSys.FindClass(mSys.StrHash(ClassName, false), 0)
       if (meta) then
          local err, field, src = meta.mtFindField(mSys.StrHash(FieldName))
          if (field != nil) then
-            return '<class name="' .. ClassName .. '" index="' .. FieldName .. '">' .. ClassName .. ':' .. FieldName .. '</class>'
+            return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
          else
             print('Failed to find field ' .. ClassName .. '.' .. FieldName)
-            return '<class name="' .. ClassName .. '" index="' .. FieldName .. '">_' .. ClassName .. ':' .. FieldName .. '_</class>'
+            return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">_' .. ClassName .. '.' .. FieldName .. '_</class>'
          end
       else
          print('Unrecognised field reference @' .. ClassName .. '.' .. FieldName)

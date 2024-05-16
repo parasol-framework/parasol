@@ -403,7 +403,7 @@ static ERR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
 -FIELD-
 Style: Selects an alternative wave style.
 
-NOT YET IMPLEMENTED
+NOT IMPLEMENTED
 
 By default, waves are generated in the style of a sine wave.  Alternative styles can be selected by setting this field.
 

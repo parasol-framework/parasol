@@ -688,7 +688,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 }
 </pre>
 <p>The resulting Field structure is immutable.</p>
-<p>Note: To lookup the field definition of a MetaClass, use the <class name="MetaClass" index="FindField()">MetaClass:FindField()</class> method.</p>
+<p>Note: To lookup the field definition of a MetaClass, use the <class name="MetaClass" method="FindField">MetaClass.FindField()</class> method.</p>
     </description>
     <result type="struct Field *">Returns a pointer to the field descriptor, otherwise NULL if not found.</result>
   </function>
