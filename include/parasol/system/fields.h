@@ -405,7 +405,7 @@
 #define FID_TotalClients 0xc62a03fbLL
 #define FID_Clients 0xcc179277LL
 #define FID_CurrentClient 0xf784f947LL
-#define FID_UserData 0xfe13525eLL
+#define FID_ClientData 0x3901055eLL
 #define FID_Sequence 0x0c15489eLL
 #define FID_NoDrawing 0x92ea90eeLL
 #define FID_FrameCount 0xefa2ec19LL

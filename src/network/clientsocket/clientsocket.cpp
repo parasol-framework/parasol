@@ -500,7 +500,7 @@ static const FieldArray clClientSocketFields[] = {
    { "Prev",        FDF_OBJECT|FDF_R, NULL, NULL, ID_CLIENTSOCKET },
    { "Next",        FDF_OBJECT|FDF_R, NULL, NULL, ID_CLIENTSOCKET },
    { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
-   { "UserData",    FDF_POINTER|FDF_R },
+   { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },
    { "MsgLen",      FDF_LONG|FDF_R },

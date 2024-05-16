@@ -7,7 +7,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
 
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, LONG(State), CurrentContext()->UID);
 
-   auto Self = (extHTTP *)Socket->UserData; //(extHTTP *)CurrentContext();
+   auto Self = (extHTTP *)Socket->ClientData; //(extHTTP *)CurrentContext();
    if (Self->Class->ClassID != ID_HTTP) { log.warning(ERR::SystemCorrupt); return; }
 
    if (State IS NTC::CONNECTING) {
@@ -157,7 +157,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
    static const LONG CHUNK_LENGTH_OFFSET = 16;
    static const LONG CHUNK_TAIL = 2; // CRLF
 
-   auto Self = (extHTTP *)Socket->UserData;
+   auto Self = (extHTTP *)Socket->ClientData;
    if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR::SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, LONG(Self->CurrentState));
@@ -362,7 +362,7 @@ static ERR socket_incoming(objNetSocket *Socket)
 {
    pf::Log log("http_incoming");
    LONG len;
-   auto Self = (extHTTP *)Socket->UserData;
+   auto Self = (extHTTP *)Socket->ClientData;
 
    log.msg("Context: %d", CurrentContext()->UID);
 

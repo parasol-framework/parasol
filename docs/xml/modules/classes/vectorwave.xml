@@ -110,7 +110,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>NOT YET IMPLEMENTED</p>
+<p>NOT IMPLEMENTED</p>
 <p>By default, waves are generated in the style of a sine wave.  Alternative styles can be selected by setting this field.</p>
       </description>
     </field>

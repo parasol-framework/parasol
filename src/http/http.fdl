@@ -8,36 +8,46 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2024", version=1.0 }, funct
   c_include("<parasol/modules/network.h>")
 
   enum("HOM", { type="int", start=0, comment="Output mode." },
-    "DATA_FEED",
-    "READ_WRITE|READ|WRITE")
+    "DATA_FEED: Use the DataFeed() action to send data to the targeted object.",
+    "READ_WRITE|READ|WRITE: Use the Write() action to send data to the targeted object.")
 
   enum("HGS", { type="int", start=0, comment="Options for defining an HTTP object's state." },
    "READING_HEADER: The default state - this value will be indicated when no data is being written to the server and the client is waiting for a complete header from the server.",
    "AUTHENTICATING: If authentication is requested from the server, the HTTP object will enter this state.",
    "AUTHENTICATED: Following successful authentication, this state value will be set.",
-   "SENDING_CONTENT: During the uploading of data to the server (e.g. POST), the HTTP object will remain in this state.",
-   "SEND_COMPLETE: On successful completion of the send phase, the state changes to SEND_COMPLETE.  Successful completion requires either that the number of bytes indicated in ContentLength have been sent, or ERR::Terminate has been returned by the callback functions.",
+   "SENDING_CONTENT: During the uploading of data to the server (e.g. `POST`), the HTTP object will remain in this state.",
+   "SEND_COMPLETE: On successful completion of the send phase, the state changes to `SEND_COMPLETE`.  Successful completion requires either that the number of bytes indicated in #ContentLength have been sent, or `ERR::Terminate` has been returned by the callback functions.",
    "READING_CONTENT: The client will remain in this state when the server is sending data to the client.",
    // 'Finished' codes start from HGS_COMPLETED
    "COMPLETED: This state indicates that the HTTP request was completed in a normal manner.",
-   "TERMINATED: If an HTTP command failes to complete normally - for instance if the connection is broken before completion - then the state is set to TERMINATED.",
+   "TERMINATED: If an HTTP command fails to complete normally - for instance if the connection is broken before completion - then the state is set to `TERMINATED`.",
    "END: Private")
 
   enum("HTM", { type="int", start=0, comment="The HTTP Method to use when the object is activated." },
     "GET: Retrieves files from the HTTP server.  The Path field will indicate which file to retrieve.",
     "POST: Sends information to the HTTP server.",
-    "PUT: Uploads a file to the HTTP server.  The data will be drawn from a source defined in the File or Object fields.",
-    "HEAD: A HEAD request is equivalent to a GET without the content.",
-    "DELETE: Deletes a file from the HTTP server, location indicated by the Path field.",
-    "TRACE",
-    "MK_COL",
-    "B_COPY",
-    "B_DELETE",
-    "B_MOVE",
-    "B_PROP_FIND",
-    "B_PROP_PATCH",
-    "COPY", "LOCK", "MOVE", "NOTIFY", "OPTIONS", "POLL", "PROP_FIND", "PROP_PATCH", "SEARCH", "SUBSCRIBE", "UNLOCK",
-    "UNSUBSCRIBE")
+    "PUT: Uploads a file to the HTTP server.  The data will be read from the #InputFile or #InputObject references.",
+    "HEAD: A HEAD request is equivalent to a `GET` without the content.",
+    "DELETE: Deletes a file from the HTTP server, location indicated by the #Path field.",
+    "OPTIONS: Request permitted communication options for a given URL or server.",
+    "TRACE: Perform a message loop-back test along the path to the target resource.",
+    "MKCOL: WebDAV instruction.",
+    "BCOPY: WebDAV instruction.",
+    "BDELETE: WebDAV instruction.",
+    "BMOVE: WebDAV instruction.",
+    "BPROPFIND: WebDAV instruction.",
+    "BPROPPATCH: WebDAV instruction.",
+    "COPY: WebDAV instruction.",
+    "LOCK: WebDAV instruction.",
+    "MOVE: WebDAV instruction.",
+    "NOTIFY: WebDAV instruction.",
+    "POLL: WebDAV instruction.",
+    "PROPFIND: WebDAV instruction.",
+    "PROPPATCH: WebDAV instruction.",
+    "SEARCH: WebDAV instruction.",
+    "SUBSCRIBE: WebDAV instruction.",
+    "UNLOCK: WebDAV instruction.",
+    "UNSUBSCRIBE: WebDAV instruction.")
 
   const("HTS", { type="int", comment="HTTP status codes" }, {
     CONTINUE             = 100,
@@ -85,15 +95,15 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2024", version=1.0 }, funct
   flags("HTF", { comment="HTTP flags" },
     "RESUME: Enables resuming when downloading content.  Only applies when a file is being targeted and the file already exists.",
     "MESSAGE: When activating child objects, send delayed messages to postpone execution rather than making direct calls.",
-    "MOVED: Read-only.  Indicates that the HTTP source was moved (HTS_MovedPermanently).",
-    "REDIRECTED: Read-only.  Indicates that the HTTP request was redirected (HTS_TempRedirect).",
-    "NO_HEAD: Do not send a HEAD prior to executing a PUT or POST (removes the authentication check).",
+    "MOVED: Read-only.  Indicates that the HTTP source was moved (`HTS::MOVED_PERMANENTLY`).",
+    "REDIRECTED: Read-only.  Indicates that the HTTP request was redirected (`HTS::TEMP_REDIRECT`).",
+    "NO_HEAD: Do not send a `HEAD` prior to executing a `PUT` or `POST` (removes the authentication check).",
     "NO_DIALOG: Turn off the username/password dialog.",
     "RAW: Forcibly turns off chunk detection and chunk handling on incoming data.  Also turns off automatic chunk encoding for outgoing data.",
     "DEBUG_SOCKET: Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.",
-    "RECV_BUFFER: Enables buffering of all received HTTP content into a local buffer.  The buffer information can be read at any time during and after the transaction through the RecvBuffer field.  Note that this option should only be used for limited data transfers to avoid excessive memory usage.",
+    "RECV_BUFFER: Enables buffering of all received HTTP content into a local buffer.  The buffer information can be read at any time during and after the transaction through the #RecvBuffer field.  Note that this option should only be used for limited data transfers to avoid excessive memory usage.",
     "LOG_ALL: Print extra log messages during HTTP processing.",
-    "SSL: Force SSL connectivity, irrespective of the HTTP port.  Note that this flag is automatically set (and remains set for all future transfers) if the Port field is set to 443.")
+    "SSL: Force SSL connectivity, irrespective of the HTTP port.  Note that this flag is automatically set (and remains set for all future transfers) if the #Port field is set to `443`.")
 
   class("HTTP", { src="http.cpp", output="http_def.c" }, [[
    double DataTimeout     # Timeout for receiving data, measured in seconds
@@ -102,12 +112,12 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2024", version=1.0 }, funct
    large ContentLength    # Content length as reported in the content length response field, -1 if streamed or unknown
    large Size             # Content size to use when uploading data
    str Host               # Host / Domain
-   str Realm
+   str Realm              # The realm names the protection space of a set of credentials.
    str Path               # Path for file retrieval
    str OutputFile         # Target file for downloaded content
    str InputFile          # Source file for uploads
    str UserAgent          # User agent to pass in the HTTP headers
-   ptr UserData           # User-specific data for the HTTP object
+   ptr ClientData         # Client-specific data for the HTTP object
    oid InputObject        # An object to send HTTP content
    oid OutputObject       # An object to receive HTTP content
    int(HTM) Method        # HTTP Request: GET, HEAD, POST, PUT..

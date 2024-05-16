@@ -46,21 +46,21 @@ enum class HTM : LONG {
    PUT = 2,
    HEAD = 3,
    DELETE = 4,
-   TRACE = 5,
-   MK_COL = 6,
-   B_COPY = 7,
-   B_DELETE = 8,
-   B_MOVE = 9,
-   B_PROP_FIND = 10,
-   B_PROP_PATCH = 11,
-   COPY = 12,
-   LOCK = 13,
-   MOVE = 14,
-   NOTIFY = 15,
-   OPTIONS = 16,
+   OPTIONS = 5,
+   TRACE = 6,
+   MKCOL = 7,
+   BCOPY = 8,
+   BDELETE = 9,
+   BMOVE = 10,
+   BPROPFIND = 11,
+   BPROPPATCH = 12,
+   COPY = 13,
+   LOCK = 14,
+   MOVE = 15,
+   NOTIFY = 16,
    POLL = 17,
-   PROP_FIND = 18,
-   PROP_PATCH = 19,
+   PROPFIND = 18,
+   PROPPATCH = 19,
    SEARCH = 20,
    SUBSCRIBE = 21,
    UNLOCK = 22,
@@ -154,7 +154,7 @@ class objHTTP : public Object {
    STRING   OutputFile;      // To download HTTP content to a file, set a file path here.
    STRING   InputFile;       // To upload HTTP content from a file, set a file path here.
    STRING   UserAgent;       // Specifies the name of the user-agent string that is sent in HTTP requests.
-   APTR     UserData;        // An unused field value that is useful for storing private data.
+   APTR     ClientData;      // This unused field value can be used for storing private data.
    OBJECTID InputObjectID;   // Allows data to be sent from an object on execution of a POST command.
    OBJECTID OutputObjectID;  // Incoming data can be sent to the object referenced in this field.
    HTM      Method;          // The HTTP instruction to execute is defined here (defaults to GET).
@@ -241,7 +241,7 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setHost(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -253,7 +253,7 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -271,12 +271,12 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setUserAgent(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setUserData(APTR Value) noexcept {
-      this->UserData = Value;
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
       return ERR::Okay;
    }
 
@@ -328,13 +328,13 @@ class objHTTP : public Object {
 
    inline ERR setCurrentState(const HGS Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    template <class T> inline ERR setProxyServer(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[34];
+      auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -345,31 +345,31 @@ class objHTTP : public Object {
 
    inline ERR setBufferSize(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[32];
+      auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setAuthCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setContentType(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[33];
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setLocation(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 

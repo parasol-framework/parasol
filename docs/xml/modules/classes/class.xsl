@@ -13,7 +13,7 @@
                   <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
                 </xsl:when>
                 <xsl:otherwise>
-                  <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+                  <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
                 </xsl:otherwise>
               </xsl:choose>
             </xsl:for-each>
@@ -26,7 +26,7 @@
           <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
-              <tr><th class="col-md-1"><xsl:value-of select="$prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="$prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -45,7 +45,7 @@
           <thead><tr><th class="col-md-1">Field</th><th>Type</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/structs/struct[@name=$prefix]/field">
-              <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="@type"/></td><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="@type"/></td><td><xsl:apply-templates select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -245,7 +245,7 @@
                             </xsl:otherwise>
                           </xsl:choose>
                         </span></td>
-                        <td><xsl:value-of select="comment"/></td>
+                        <td><xsl:apply-templates select="comment"/></td>
                       </tr>
                       <xsl:if test="description">
                         <tr class="no-hover">
@@ -284,7 +284,7 @@
                             </xsl:choose>
                           </td>
                           <th class="col-md-1"><a href="actions.html"><xsl:value-of select="name"/></a></th>
-                          <td><xsl:value-of select="comment"/></td>
+                          <td><xsl:apply-templates select="comment"/></td>
                         </tr>
                         <xsl:if test="description">
                           <tr class="no-hover">
@@ -302,14 +302,14 @@
                                       <table class="table table-sm borderless">
                                         <tbody>
                                           <xsl:for-each select="result/error">
-                                            <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:value-of select="."/></td></tr>
+                                            <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:apply-templates select="."/></td></tr>
                                           </xsl:for-each>
                                         </tbody>
                                       </table>
                                     </xsl:when>
                                     <xsl:when test="result">
                                       <h3>Result</h3>
-                                      <p><xsl:value-of select="result/."/></p>
+                                      <p><xsl:apply-templates select="result/."/></p>
                                     </xsl:when>
                                   </xsl:choose>
                                 </div>
@@ -332,7 +332,7 @@
                         <tr data-toggle="collapse" data-target="_" class="clickable">
                           <xsl:attribute name="data-target">#fl-<xsl:value-of select="name"/></xsl:attribute>
                           <th class="col-md-1 text-primary"><xsl:value-of select="name"/></th>
-                          <td><a><xsl:attribute name="id">tm-<xsl:value-of select="name"/></xsl:attribute></a><xsl:value-of select="comment"/></td>
+                          <td><a><xsl:attribute name="id">tm-<xsl:value-of select="name"/></xsl:attribute></a><xsl:apply-templates select="comment"/></td>
                         </tr>
                         <tr class="no-hover">
                           <td colspan="2" class="hiddenRow">
@@ -352,10 +352,10 @@
                                           <xsl:for-each select="input/param">
                                             <xsl:choose>
                                               <xsl:when test="@lookup">
-                                                <tr><td><a href="#"><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:value-of select="."/></td></tr>
+                                                <tr><td><a href="#"><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
                                               </xsl:when>
                                               <xsl:otherwise>
-                                                <tr><td><xsl:value-of select="@name"/></td><td><xsl:value-of select="."/></td></tr>
+                                                <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
                                               </xsl:otherwise>
                                             </xsl:choose>
                                           </xsl:for-each>
@@ -377,14 +377,14 @@
                                     <table class="table table-sm borderless">
                                       <tbody>
                                         <xsl:for-each select="result/error">
-                                          <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:value-of select="."/></td></tr>
+                                          <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:apply-templates select="."/></td></tr>
                                         </xsl:for-each>
                                       </tbody>
                                     </table>
                                   </xsl:when>
                                   <xsl:when test="result">
                                     <h3>Result</h3>
-                                    <p><xsl:value-of select="result/."/></p>
+                                    <p><xsl:apply-templates select="result/."/></p>
                                   </xsl:when>
                                 </xsl:choose>
                               </div>

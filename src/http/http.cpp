@@ -9,7 +9,7 @@ that is distributed with this package.  Please refer to it for further informati
 HTTP: Provides a complete working implementation of HTTP.
 
 The HTTP class provides a way of interacting with servers that support the HTTP protocol.  Supported HTTP methods
-include GET, POST, PUT, DELETE, COPY, MOVE, MKCOL and more.  The following features are included:
+include `GET`, `POST`, `PUT`, `DELETE`, `COPY`, `MOVE`, `MKCOL` and more.  The following features are included:
 
 <list type="unsorted">
 <li>Handling of errors and HTTP status codes.</li>
@@ -26,9 +26,9 @@ action.
 
 <header>Sending Content</>
 
-There are a variety of ways to send content to a server when using methods such as PUT and POST.  Content can be sent
-from objects by setting the #InputObject field.  To send content from files, set the #InputFile field.  To send string
-content, use an #InputFile location that starts with 'string:' followed by the text to send.
+There are a variety of ways to send content to a server when using methods such as `PUT` and `POST`.  Content can be
+sent from objects by setting the #InputObject field.  To send content from files, set the #InputFile field.  To send
+string content, use an #InputFile location that starts with `string:` followed by the text to send.
 
 <header>Receiving Content</>
 
@@ -63,7 +63,7 @@ http.acActivate()
 </pre>
 
 Note that the target object needs to support the datatype that you specify, or it will ignore the incoming data.  The
-default datatype is RAW (binary format), but the most commonly supported datatype is TEXT.
+default datatype is `RAW` (binary format), but the most commonly supported datatype is `TEXT`.
 
 The third method is to use function callbacks.  Refer to the #Incoming field for further information on receiving
 data through callbacks.
@@ -75,7 +75,7 @@ a data transfer, consider using a timer to read from the #Index periodically.
 
 <header>SSL Support (HTTPS)</>
 
-Secure sockets are supported and can be enabled by setting the #Port to 443 prior to connection, or by using https://
+Secure sockets are supported and can be enabled by setting the #Port to 443 prior to connection, or by using `https://`
 in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled
 transparently.
 
@@ -339,7 +339,7 @@ the HTTP object will be deactivated (for further details, refer to the #Deactiva
 Successful interpretation of the HTTP request at the server will result in a response being received, followed by file
 data (if applicable). The HTTP response code will be stored in the #Status field.  The HTTP object will
 automatically parse the response data and store the received values in the HTTP object as variable fields.  It is
-possible to be alerted to the complete receipt of a response by listening to the #State field, or waiting for
+possible to be alerted to the complete receipt of a response by listening to the #CurrentState field, or waiting for
 the Deactivate action to kick in.
 
 Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by
@@ -352,8 +352,8 @@ On completion of an HTTP request, the #Deactivate() action is called, regardless
 Okay:   The HTTP get operation was successfully started.
 Failed: The HTTP get operation failed immediately for an unspecified reason.
 File:   Failed to create a target file if the File field was set.
-Write:   Failed to write data to the HTTP NetSocket.
-CreateObject: Failed to create a NetSocket object.
+Write:  Failed to write data to the HTTP @NetSocket.
+CreateObject: Failed to create a @NetSocket object.
 HostNotFound: DNS resolution of the domain name in the URI failed.
 -END-
 
@@ -445,7 +445,7 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
       else if (Self->Method IS HTM::LOCK) {
 
       }
-      else if (Self->Method IS HTM::MK_COL) {
+      else if (Self->Method IS HTM::MKCOL) {
          set_http_method(Self, "MKCOL", cmd);
       }
       else if (Self->Method IS HTM::MOVE) {
@@ -636,7 +636,7 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
       auto flags = (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
 
       if (!(Self->Socket = objNetSocket::create::integral(
-            fl::UserData(Self),
+            fl::ClientData(Self),
             fl::Incoming((CPTR)socket_incoming),
             fl::Feedback((CPTR)socket_feedback),
             fl::Flags(flags)))) {
@@ -925,7 +925,7 @@ static ERR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
 BufferSize: Indicates the preferred buffer size for data operations.
 
 The default buffer size for HTTP data operations is indicated here.  It affects the size of the temporary buffer that
-is used for storing outgoing data (PUT and POST operations).
+is used for storing outgoing data (`PUT` and `POST` operations).
 
 Note that the actual buffer size may not reflect the exact size that you set here.
 
@@ -944,7 +944,7 @@ static ERR SET_BufferSize(extHTTP *Self, LONG Value)
 ConnectTimeout: The initial connection timeout value, measured in seconds.
 
 The timeout for connect operations is specified here.  In the event of a timeout, the HTTP object will be deactivated
-and the #Error field will be updated to a value of ERR::TimeOut.
+and the #Error field will be updated to a value of `ERR::TimeOut`.
 
 The timeout value is measured in seconds.
 
@@ -952,19 +952,19 @@ The timeout value is measured in seconds.
 ContentLength: The byte length of incoming or outgoing content.
 
 HTTP servers will return a ContentLength value in their response headers when retrieving information.  This value is
-defined here once the response header is processed.  The ContentLength may be set to -1 if the content is being
+defined here once the response header is processed.  The ContentLength may be set to `-1` if the content is being
 streamed from the server.
 
 Note that if posting data to a server with an #InputFile or #InputObject as the source, the #Size field will have
-priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set directly
-and a setting of -1 can be used for streaming.
+priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set
+directly and a setting of `-1` can be used for streaming.
 
 -FIELD-
-ContentType: Defines the content-type for PUT and POST methods.
+ContentType: Defines the content-type for `PUT` and `POST` methods.
 
-The ContentType should be set prior to sending a PUT or POST request.  If NULL, the default content type for POST
-methods will be set to 'application/x-www-form-urlencoded'.  For PUT requests the default of 'application/binary' will
-be applied.
+The ContentType should be set prior to sending a `PUT` or `POST` request.  If `NULL`, the default content type for
+`POST` methods will be set to `application/x-www-form-urlencoded`.  For `PUT` requests the default of
+`application/binary` will be applied.
 
 *********************************************************************************************************************/
 
@@ -984,12 +984,70 @@ static ERR SET_ContentType(extHTTP *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
+CurrentState: Indicates the current state of an HTTP object during its interaction with an HTTP server.
+
+The CurrentState is a readable field that tracks the current state of the client in its relationship with the target HTTP
+server.  The default state is `READING_HEADER`.  Changes to the state can be monitored through the #StateChanged field.
+
+On completion of an HTTP request, the state will be changed to either `COMPLETED` or `TERMINATED`.
+
+*********************************************************************************************************************/
+
+static ERR SET_CurrentState(extHTTP *Self, HGS Value)
+{
+   pf::Log log;
+
+   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR::OutOfRange);
+
+   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
+
+   if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
+      Self->CurrentState = Value;
+      if (Self->Socket) QueueAction(AC_Deactivate, Self->UID);
+   }
+   else Self->CurrentState = Value;
+
+   if (Self->StateChanged.defined()) {
+      ERR error;
+      if (Self->StateChanged.isC()) {
+         auto routine = (ERR (*)(extHTTP *, HGS, APTR))Self->StateChanged.Routine;
+         error = routine(Self, Self->CurrentState, Self->StateChanged.Meta);
+      }
+      else if (Self->StateChanged.isScript()) {
+         if (scCall(Self->StateChanged, std::to_array<ScriptArg>({
+            { "HTTP", Self->UID, FD_OBJECTID },
+            { "State", LONG(Self->CurrentState) }
+         }), error) != ERR::Okay) error = ERR::Terminate;
+      }
+      else error = ERR::Okay;
+
+      if (error > ERR::ExceptionThreshold) SET_ERROR(log, Self, error);
+
+      if (error IS ERR::Terminate) {
+         if (Self->CurrentState IS HGS::SENDING_CONTENT) {
+            // Stop sending and expect a response from the server.  If the client doesn't care about the response
+            // then a subsequent ERR::Terminate code can be returned on notification of this state change.
+            SET_CurrentState(Self, HGS::SEND_COMPLETE);
+         }
+         else if ((Self->CurrentState != HGS::TERMINATED) and (Self->CurrentState != HGS::COMPLETED)) {
+            log.branch("State changing to HGS::COMPLETED (ERR::Terminate received).");
+            SET_CurrentState(Self, HGS::COMPLETED);
+         }
+      }
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 DataTimeout: The data timeout value, relevant when receiving or sending data.
 
 A timeout for send and receive operations is required to prevent prolonged waiting during data transfer operations.
 This is essential when interacting with servers that stream data with indeterminate content lengths.  It should be
 noted that a timeout does not necessarily indicate failure if the content is being streamed from the server
-(#ContentLength is set to -1).
+(#ContentLength is set to `-1`).
 
 In the event of a timeout, the HTTP object will be deactivated and the #Error field will be updated to a value
 of `ERR::TimeOut`.
@@ -999,8 +1057,8 @@ The timeout value is measured in seconds.
 -FIELD-
 Datatype: The default datatype format to use when passing data to a target object.
 
-When streaming downloaded content to an object, the default datatype is RAW (binary mode).  An alternative is to send
-the data as TEXT or XML by changing the Datatype field value.
+When streaming downloaded content to an object, the default datatype is `RAW` (binary mode).  An alternative is to
+send the data as `TEXT` or `XML` by changing the Datatype field value.
 
 The receiving object can identify the data as HTTP information by checking the class ID of the sender.
 
@@ -1008,7 +1066,7 @@ The receiving object can identify the data as HTTP information by checking the c
 Error: The error code received for the most recently executed HTTP command.
 
 On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful
-then the value will be zero (ERR::Okay). It should be noted that certain error codes may not necessarily indicate
+then the value will be zero (`ERR::Okay`). It should be noted that certain error codes may not necessarily indicate
 failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content.  For genuine HTML
 error codes, see the #Status field.
 
@@ -1070,8 +1128,8 @@ static ERR SET_Incoming(extHTTP *Self, FUNCTION *Value)
 -FIELD-
 Index: Indicates download progress in terms of bytes received.
 
-If an HTTP GET request is executed, the Index field will reflect the number of bytes that have been received.  This
-field is updated continuously until either the download is complete or cancelled.
+If an HTTP `GET` request is executed, the Index field will reflect the number of bytes that have been received.
+This field is updated continuously until either the download is complete or cancelled.
 
 The Index value will always start from zero when downloading, even in resume mode.
 
@@ -1080,9 +1138,9 @@ The Index field can be monitored for changes so that progress during send and re
 -FIELD-
 InputFile: To upload HTTP content from a file, set a file path here.
 
-HTTP content can be streamed from a source file when a POST command is executed. To do so, set the InputFile field to
-the file path that contains the source data.  The path is not opened or checked for validity until the POST command is
-executed by the HTTP object.
+HTTP content can be streamed from a source file when a `POST` command is executed. To do so, set the InputFile
+field to the file path that contains the source data.  The path is not opened or checked for validity until the
+`POST` command is executed by the HTTP object.
 
 An alternative is to set the #InputObject for abstracting the data source.
 
@@ -1122,10 +1180,10 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-InputObject: Allows data to be sent from an object on execution of a POST command.
+InputObject: Allows data to be sent from an object on execution of a `POST` command.
 
-HTTP content can be streamed from a source object when a POST command is executed.  To do so, set the InputObject to an
-object that supports the #Read() action.  The provided object ID is not checked for validity until the POST
+HTTP content can be streamed from a source object when a `POST` command is executed.  To do so, set the InputObject
+to an object that supports the #Read() action.  The provided object ID is not checked for validity until the `POST`
 command is executed by the HTTP object.
 
 -FIELD-
@@ -1133,11 +1191,10 @@ Location: A valid HTTP URI must be specified here.
 
 The URI of the HTTP source must be specified here.  The string must start with `http://` or `https://`, followed by the
 host name, HTTP path and port number if required. The values mentioned will be broken down and stored in the
-#Host, #Path and #Port fields respectively.  Note that if the port is not defined in the URI, the Port field is reset
-to the default (80 for HTTP or 443 for HTTPS).
+#Host, #Path and #Port fields respectively.  Note that if the port is not defined in the URI, the #Port field is reset
+to the default (`80` for HTTP or `443` for HTTPS).
 
-If desired, you can elect to set the #Host, #Path and #Port fields separately if setting a
-URI string is inconvenient.
+An alternative to setting the Location is to set the #Host, #Path and #Port separately.
 -END-
 
 *********************************************************************************************************************/
@@ -1242,7 +1299,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Method: The HTTP instruction to execute is defined here (defaults to GET).
+Method: The HTTP instruction to execute is defined here (defaults to `GET`).
 
 *********************************************************************************************************************/
 
@@ -1262,7 +1319,7 @@ ObjectMode: The access mode used when passing data to a targeted object.
 
 This field is relevant when the #OutputObject field has been set for receiving incoming data. The method of
 communication used against the target object can be defined through the ObjectMode. The default setting is
-DATA::FEED, which passes data through the data feed system (see also the #Datatype to define the type of data being
+`DATA::FEED`, which passes data through the data feed system (see also the #Datatype to define the type of data being
 sent to the object).  The alternative method is `READ_WRITE`, which uses the Write action to send data to the targeted
 object.
 
@@ -1273,8 +1330,8 @@ Outgoing data can be managed manually by providing the HTTP object with an outgo
 for the callback routine is `ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
 `function(HTTP, Buffer, BufferSize)`.
 
-Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of
-bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.
+Outgoing content is placed in the `Buffer` address and must not exceed the indicated `BufferSize`.  The total number of
+bytes placed in the `Buffer` must be indicated in the Result parameter before the callback routine returns.
 
 If an error code of `ERR::Terminate` is returned by the callback routine, any remaining data will be sent and the transfer
 will be treated as having completed successfully.  Use `ERR::TimeOut` if data cannot be returned in a reasonable time
@@ -1310,8 +1367,8 @@ static ERR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
 OutputFile: To download HTTP content to a file, set a file path here.
 
 HTTP content can be streamed to a target file during transfer.  To do so, set the OutputFile field to the destination
-file name that will receive data.  If the file already exists, it will be overwritten unless the RESUME flag has been
-set in the #Flags field.
+file name that will receive data.  If the file already exists, it will be overwritten unless the `RESUME` flag has
+been set in the #Flags field.
 
 *********************************************************************************************************************/
 
@@ -1331,7 +1388,7 @@ HTTP content can be streamed to a target object during incoming data transfers. 
 object that supports data feeds and/or the #Write() action. The type of method used for passing data to the
 output object is determined by the setting in the #ObjectMode field.
 
-The provided object ID is not checked for validity until the POST command is executed by the HTTP object.
+The provided object ID is not checked for validity until the `POST` command is executed by the HTTP object.
 
 -FIELD-
 Password: The password to use when authenticating access to the server.
@@ -1340,7 +1397,7 @@ A password may be preset if authorisation is required against the HTTP server fo
 Note that if authorisation is required and no username and password has been preset, the HTTP object will automatically
 present a dialog box to the user to request the relevant information.
 
-A 401 status code is returned in the event of an authorisation failure.
+A `401` status code is returned in the event of an authorisation failure.
 
 *********************************************************************************************************************/
 
@@ -1360,7 +1417,7 @@ Path: The HTTP path targeted at the host server.
 The path to target at the host server is specified here.  If no path is set, the server root will be targeted.  It is
 not necessary to set the path if one has been specified in the #Location.
 
-If spaces are discovered in the path, they will be converted to the '%20' HTTP escape code automatically.  No other
+If spaces are discovered in the path, they will be converted to the `%20` HTTP escape code automatically.  No other
 automatic conversions are operated when setting the Path field.
 
 *********************************************************************************************************************/
@@ -1423,14 +1480,14 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
 -FIELD-
 Port: The HTTP port to use when targeting a server.
 
-The Port to target at the HTTP server is defined here.  The default for HTTP requests is port 80.  To change the port
+The Port to target at the HTTP server is defined here.  The default for HTTP requests is port `80`.  To change the port
 number, set the #Location.
 
 -FIELD-
 ProxyPort: The port to use when communicating with the proxy server.
 
 If the ProxyServer field has been set, the ProxyPort must be set to the port number used by the proxy server for all
-requests.  By default the ProxyPort is set to 8080 which is commonly used for proxy communications.
+requests.  By default the ProxyPort is set to `8080` which is commonly used for proxy communications.
 
 -FIELD-
 ProxyServer: The targeted HTTP server is specified here, either by name or IP address.
@@ -1453,8 +1510,8 @@ static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 -FIELD-
 Realm: Identifies the realm during HTTP authentication.
 
-During the user authentication process, a realm name may be returned by the HTTP server.  The Realm field will reflect
-this name string.
+During the user authentication process, a realm name may be returned by the HTTP server and this will be reflected
+here.
 
 *********************************************************************************************************************/
 
@@ -1470,8 +1527,8 @@ static ERR SET_Realm(extHTTP *Self, CSTRING Value)
 -FIELD-
 RecvBuffer: Refers to a data buffer that is used to store all incoming content.
 
-If the RECV_BUFFER flag is set, all content received from the HTTP server will be stored in a managed buffer
-that is referred to by this field.  This field can be read at any time.  It will be set to  NULL if no data has been
+If the `RECV_BUFFER` flag is set, all content received from the HTTP server will be stored in a managed buffer
+that is referred to by this field.  This field can be read at any time.  It will be set to `NULL` if no data has been
 received. The buffer address and all content is reset whenever the HTTP object is activated.
 
 The buffer is null-terminated if you wish to use it as a string.
@@ -1488,77 +1545,19 @@ static ERR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
 /*********************************************************************************************************************
 
 -FIELD-
-Size: Set this field to define the length of a data transfer when issuing a POST command.
+Size: Set this field to define the length of a data transfer when issuing a `POST` command.
 
-Prior to the execution of a POST command it is recommended that you set the Size field to explicitly define the length
-of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the
-transfer by reading the size from the source file or object.
-
--FIELD-
-CurrentState: Indicates the current state of an HTTP object during its interaction with an HTTP server.
-
-The CurrentState is a readable field that tracks the current state of the client in its relationship with the target HTTP
-server.  The default state is `READING_HEADER`.  Changes to the state can be monitored through the #StateChanged field.
-
-On completion of an HTTP request, the state will be changed to either `COMPLETED` or `TERMINATED`.
-
-*********************************************************************************************************************/
-
-static ERR SET_CurrentState(extHTTP *Self, HGS Value)
-{
-   pf::Log log;
-
-   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR::OutOfRange);
-
-   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
-
-   if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
-      Self->CurrentState = Value;
-      if (Self->Socket) QueueAction(AC_Deactivate, Self->UID);
-   }
-   else Self->CurrentState = Value;
-
-   if (Self->StateChanged.defined()) {
-      ERR error;
-      if (Self->StateChanged.isC()) {
-         auto routine = (ERR (*)(extHTTP *, HGS, APTR))Self->StateChanged.Routine;
-         error = routine(Self, Self->CurrentState, Self->StateChanged.Meta);
-      }
-      else if (Self->StateChanged.isScript()) {
-         if (scCall(Self->StateChanged, std::to_array<ScriptArg>({
-            { "HTTP", Self->UID, FD_OBJECTID },
-            { "State", LONG(Self->CurrentState) }
-         }), error) != ERR::Okay) error = ERR::Terminate;
-      }
-      else error = ERR::Okay;
-
-      if (error > ERR::ExceptionThreshold) SET_ERROR(log, Self, error);
-
-      if (error IS ERR::Terminate) {
-         if (Self->CurrentState IS HGS::SENDING_CONTENT) {
-            // Stop sending and expect a response from the server.  If the client doesn't care about the response
-            // then a subsequent ERR::Terminate code can be returned on notification of this state change.
-            SET_CurrentState(Self, HGS::SEND_COMPLETE);
-         }
-         else if ((Self->CurrentState != HGS::TERMINATED) and (Self->CurrentState != HGS::COMPLETED)) {
-            log.branch("State changing to HGS::COMPLETED (ERR::Terminate received).");
-            SET_CurrentState(Self, HGS::COMPLETED);
-         }
-      }
-   }
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
+Prior to the execution of a `POST` command it is recommended that you set the Size field to explicitly define the
+length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of
+the transfer by reading the size from the source file or object.
 
 -FIELD-
 StateChanged: A callback routine can be defined here for monitoring changes to the HTTP state.
 
-Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an
+Define a callback routine in StateChanged in order to receive notifications of any change to the #CurrentState of an
 HTTP object.  The format for the routine is `ERR Function(*HTTP, HGS State)`.
 
-If an error code of ERR::Terminate is returned by the callback routine, the currently executing HTTP request will be
+If an error code of `ERR::Terminate` is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
 
 *********************************************************************************************************************/
@@ -1593,7 +1592,7 @@ Status: Indicates the HTTP status code returned on completion of an HTTP request
 -FIELD-
 UserAgent: Specifies the name of the user-agent string that is sent in HTTP requests.
 
-This field describe the 'user-agent' value that will be sent in HTTP requests.  The default value is 'Parasol Client'.
+This field describe the `user-agent` value that will be sent in HTTP requests.  The default value is `Parasol Client`.
 
 *********************************************************************************************************************/
 
@@ -1607,7 +1606,7 @@ static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-UserData: An unused field value that is useful for storing private data.
+ClientData: This unused field value can be used for storing private data.
 
 -FIELD-
 Username: The username to use when authenticating access to the server.
@@ -1645,7 +1644,7 @@ static const FieldArray clFields[] = {
    { "OutputFile",     FDF_STRING|FDF_RW, NULL, SET_OutputFile },
    { "InputFile",      FDF_STRING|FDF_RW, NULL, SET_InputFile },
    { "UserAgent",      FDF_STRING|FDF_RW, NULL, SET_UserAgent },
-   { "UserData",       FDF_POINTER|FDF_RW },
+   { "ClientData",     FDF_POINTER|FDF_RW },
    { "InputObject",    FDF_OBJECTID|FDF_RW },
    { "OutputObject",   FDF_OBJECTID|FDF_RW },
    { "Method",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_Method, &clHTTPMethod },

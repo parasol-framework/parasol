@@ -35,7 +35,7 @@ namespace pf {
 
 //********************************************************************************************************************
 
-template <class T = double> struct POINT { 
+template <class T = double> struct POINT {
    T x, y;
 
    constexpr POINT<T> & operator += (const POINT &Other) {
@@ -45,9 +45,9 @@ template <class T = double> struct POINT {
    }
 };
 
-template <class T = double> bool operator==(const POINT<T> &a, const POINT<T> &b) { 
+template <class T = double> bool operator==(const POINT<T> &a, const POINT<T> &b) {
    return (a.x == b.x) and (a.y == b.y);
-} 
+}
 
 template <class T = double> T operator-(const POINT<T> A, const POINT<T> &B) {
    if (A == B) return 0;
@@ -164,7 +164,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
 // pointer to ensure that termination is safe, even if the original resource gets terminated elsewhere.
 //
 // For locally scoped allocations only; this class does not support reference counting.
-// 
+//
 // Usage: pf::LocalResource resource(thing)
 
 template <class T>
@@ -180,7 +180,7 @@ class LocalResource {
 };
 
 //********************************************************************************************************************
-// Enhanced version of LocalResource that features reference counting and is usable for object resources.  The use of 
+// Enhanced version of LocalResource that features reference counting and is usable for object resources.  The use of
 // GuardedObject is considered essential for interoperability with the C++ class destruction model.
 
 template <class T = Object, class C = std::atomic_int>
@@ -276,7 +276,7 @@ class GuardedObject {
 };
 
 //********************************************************************************************************************
-// As for GuardedObject, but works with any resource type.  The reason why these two managers exist with duplicated 
+// As for GuardedObject, but works with any resource type.  The reason why these two managers exist with duplicated
 // functionality is because GuardedObject may be enhanced with more integration with the Core in future.
 
 template <class T = void, class C = std::atomic_int>
@@ -516,7 +516,7 @@ constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWid
 constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
+constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, Value); }
 constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
 constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
 constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }

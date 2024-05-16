@@ -687,8 +687,8 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
 //********************************************************************************************************************
 
 static const FieldArray clNetLookupFields[] = {
-   { "UserData", FDF_LARGE|FDF_RW },
-   { "Flags",    FDF_LONG|FDF_FLAGS|FDF_RW },
+   { "ClientData", FDF_LARGE|FDF_RW },
+   { "Flags",      FDF_LONG|FDF_FLAGS|FDF_RW },
    // Virtual fields
    { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
    { "HostName",  FDF_STRING|FDF_R, GET_HostName },

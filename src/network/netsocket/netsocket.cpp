@@ -1198,9 +1198,9 @@ You can read the total number of connections from this field.
 In client mode, this field is always set to zero.
 
 -FIELD-
-UserData: A user-defined pointer that can be useful in action notify events.
+ClientData: A client-defined value that can be useful in action notify events.
 
-This is a free-entry field value that can store user data for future reference.
+This is a free-entry field value that can store client data for future reference.
 
 -FIELD-
 ValidCert: Indicates certificate validity if the socket is encrypted with a certificate.
@@ -1478,7 +1478,7 @@ static const FieldDef clValidCert[] = {
 
 static const FieldArray clSocketFields[] = {
    { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
-   { "UserData",         FDF_POINTER|FDF_RW },
+   { "ClientData",         FDF_POINTER|FDF_RW },
    { "Address",          FDF_STRING|FDF_RI, NULL, SET_Address },
    { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_State, &clNetSocketState },
    { "Error",            FDF_LONG|FDF_R },
