@@ -805,7 +805,8 @@ function struct(Name, Options, Def, Append)
          end
 
          if nz(f.comment) then
-            table.insert(out, string.format('%-' .. max_len .. 's // %s', left, f.comment))
+            local clean_comment = f.comment:gsub('`', '')
+            table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
             table.insert(out, left)
@@ -1515,7 +1516,8 @@ function outputClassHeader(class, Private, Custom)
                end
 
                if nz(f.comment) then
-                  output(string.format('%-' .. max_len .. 's // %s', left, f.comment))
+                  local clean_comment = f.comment:gsub('`', '')
+                  output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
                else
                   output(left)
                end

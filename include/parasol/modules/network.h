@@ -148,7 +148,7 @@ struct NetClient {
    struct NetClient * Prev;    // Previous client in the chain
    objNetSocket * NetSocket;   // Reference to the parent socket
    objClientSocket * Sockets;  // Pointer to a list of sockets opened with this client.
-   APTR UserData;              // Free for user data storage.
+   APTR ClientData;            // Free for user data storage.
    LONG TotalSockets;          // Count of all created sockets
 };
 
@@ -191,7 +191,7 @@ class objClientSocket : public Object {
    objClientSocket * Prev;       // Previous socket in the chain
    objClientSocket * Next;       // Next socket in the chain
    struct NetClient * Client;    // Parent client structure
-   APTR     UserData;            // Free for user data storage.
+   APTR     ClientData;          // Free for user data storage.
    FUNCTION Outgoing;            // Callback for data being sent over the socket
    FUNCTION Incoming;            // Callback for data being received from the socket
    LONG     MsgLen;              // Length of the current incoming message
@@ -405,8 +405,8 @@ class objNetLookup : public Object {
 
    using create = pf::Create<objNetLookup>;
 
-   LARGE UserData;    // Optional user data storage
-   NLF   Flags;       // Optional flags
+   LARGE ClientData;    // Optional user data storage
+   NLF   Flags;         // Optional flags
 
    // Action stubs
 
@@ -414,8 +414,8 @@ class objNetLookup : public Object {
 
    // Customised field setting
 
-   inline ERR setUserData(const LARGE Value) noexcept {
-      this->UserData = Value;
+   inline ERR setClientData(const LARGE Value) noexcept {
+      this->ClientData = Value;
       return ERR::Okay;
    }
 
@@ -496,7 +496,7 @@ class objNetSocket : public Object {
    using create = pf::Create<objNetSocket>;
 
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
-   APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
+   APTR   ClientData;             // A client-defined value that can be useful in action notify events.
    STRING Address;                // An IP address or domain name to connect to.
    NTC    State;                  // The current connection state of the netsocket object.
    ERR    Error;                  // Information about the last error that occurred during a NetSocket operation
@@ -562,8 +562,8 @@ class objNetSocket : public Object {
 
    // Customised field setting
 
-   inline ERR setUserData(APTR Value) noexcept {
-      this->UserData = Value;
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
       return ERR::Okay;
    }
 
@@ -609,19 +609,19 @@ class objNetSocket : public Object {
 
    inline ERR setSocketHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -633,8 +633,8 @@ class objNetSocket : public Object {
 
 };
 
-inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR::Okay;
+inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR ClientData) {
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::ClientData(ClientData)))) return ERR::Okay;
    else return ERR::CreateObject;
 }
 #ifdef PARASOL_STATIC

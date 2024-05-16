@@ -217,6 +217,16 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>ClientData</name>
+      <comment>A client-defined value that can be useful in action notify events.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>APTR</type>
+      <description>
+<p>This is a free-entry field value that can store client data for future reference.</p>
+      </description>
+    </field>
+
+    <field>
       <name>ClientLimit</name>
       <comment>The maximum number of clients that can be connected to a server socket.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -351,16 +361,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
-      <name>UserData</name>
-      <comment>A user-defined pointer that can be useful in action notify events.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>APTR</type>
-      <description>
-<p>This is a free-entry field value that can store user data for future reference.</p>
-      </description>
-    </field>
-
-    <field>
       <name>ValidCert</name>
       <comment>Indicates certificate validity if the socket is encrypted with a certificate.</comment>
       <access read="G">Get</access>
@@ -402,7 +402,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
       <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
-      <field name="UserData" type="APTR">Free for user data storage.</field>
+      <field name="ClientData" type="APTR">Free for user data storage.</field>
       <field name="TotalSockets" type="LONG">Count of all created sockets</field>
     </struct>
 

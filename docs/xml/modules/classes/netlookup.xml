@@ -133,6 +133,13 @@
     </field>
 
     <field>
+      <name>ClientData</name>
+      <comment>Optional user data storage</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>BIGINT</type>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Optional flags</comment>
       <access read="R" write="W">Read/Write</access>
@@ -150,13 +157,6 @@
       <description>
 <p>The name of the most recently resolved host is readable from this field.</p>
       </description>
-    </field>
-
-    <field>
-      <name>UserData</name>
-      <comment>Optional user data storage</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
     </field>
 
   </fields>
