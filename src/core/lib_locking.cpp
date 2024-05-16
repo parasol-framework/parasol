@@ -201,9 +201,9 @@ call to ~ReleaseMemory() within the same code block.
 
 -INPUT-
 mem Memory:       The ID of the memory block that you want to access.
-int(MEM) Flags:   Set to READ, WRITE or READ_WRITE according to requirements.
-int MilliSeconds: The millisecond interval to wait before a timeout occurs.  Do not set below 40ms for consistent operation.
-&ptr Result:      Must point to an APTR variable that will store the resolved address.
+int(MEM) Flags:   Set to `READ`, `WRITE` or `READ_WRITE` according to requirements.
+int MilliSeconds: The millisecond interval to wait before a timeout occurs.  Use at least 40ms for best results.
+&ptr Result:      Must refer to an APTR for storing the resolved address.
 
 -ERRORS-
 Okay
@@ -296,7 +296,7 @@ direct calls to AccessObject().  The following example illustrates lock acquisit
 
 -INPUT-
 oid Object: The unique ID of the target object.
-int MilliSeconds: The limit in milliseconds before a timeout occurs.  The maximum limit is 60000, and 100 is recommended.
+int MilliSeconds: The limit in milliseconds before a timeout occurs.  The maximum limit is `60000`, and `100` is recommended.
 &obj Result: A pointer storage variable that will store the resulting object address.
 
 -ERRORS-
@@ -354,7 +354,7 @@ If it is guaranteed that an object is not being shared between threads, object l
 
 -INPUT-
 obj Object: The address of the object to lock.
-int MilliSeconds: The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.
+int MilliSeconds: The total number of milliseconds to wait before giving up.  If `-1`, the function will wait indefinitely.
 
 -ERRORS-
 Okay:
@@ -469,7 +469,7 @@ ReleaseMemory: Releases a lock from a memory based resource.
 Category: Memory
 
 Successful calls to ~AccessMemory() must be paired with a call to ReleaseMemory() so that the memory can be made
-available to other processes.  By releasing the resource, the access count will decrease, and if applicable a
+available to other processes.  Releasing the resource decreases the access count, and if applicable a
 thread that is in the queue for access may then be able to acquire a lock.
 
 -INPUT-

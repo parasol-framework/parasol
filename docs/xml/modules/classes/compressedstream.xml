@@ -427,7 +427,7 @@
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
-      <field name="Object" type="OBJECTPTR"></field>
+      <field name="Object" type="OBJECTPTR">Reference to an object to monitor.</field>
     </struct>
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">

@@ -1,4 +1,5 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <!-- python3 -m http.server -d /parasol/docs/xml -->
   <xsl:output doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" media-type="application/html+xml" encoding="utf-8" omit-xml-declaration="yes" indent="no"/>
 
   <xsl:template match="constants">
@@ -8,7 +9,7 @@
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="const">
-              <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -19,7 +20,7 @@
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
-              <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -36,7 +37,7 @@
             <xsl:for-each select="type">
               <xsl:choose>
                 <xsl:when test="../@lookup">
-                  <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+                  <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
                 </xsl:when>
                 <xsl:otherwise>
                   <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
@@ -52,7 +53,7 @@
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
-              <tr><th><xsl:value-of select="../@lookup"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -67,6 +68,19 @@
       <xsl:copy-of select="@*"/>
       <xsl:apply-templates select="*|text()" />
     </xsl:copy>
+  </xsl:template>
+
+  <xsl:template match="function">
+    <xsl:choose>
+      <xsl:when test="@module">
+        <xsl:variable name="mod_name"><xsl:value-of select="@module"/></xsl:variable>
+        <xsl:variable name="mod_lower" select="translate($mod_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <a><xsl:attribute name="href"><xsl:value-of select="$mod_lower"/>.html?page=<xsl:value-of select="."/></xsl:attribute><xsl:value-of select="."/>()</a>
+      </xsl:when>
+      <xsl:otherwise>
+        <a><xsl:attribute name="href">?page=<xsl:value-of select="."/></xsl:attribute><xsl:value-of select="."/>()</a>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <xsl:template match="list">
@@ -201,10 +215,10 @@
                               <xsl:for-each select="input/param">
                                 <xsl:choose>
                                   <xsl:when test="@lookup">
-                                    <tr><td><a><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:value-of select="."/></td></tr>
+                                    <tr><td><a><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
                                   </xsl:when>
                                   <xsl:otherwise>
-                                    <tr><td><xsl:value-of select="@name"/></td><td><xsl:value-of select="."/></td></tr>
+                                    <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
                                   </xsl:otherwise>
                                 </xsl:choose>
                               </xsl:for-each>
@@ -226,7 +240,7 @@
                       <table class="table table-sm borderless">
                         <tbody>
                           <xsl:for-each select="result/error">
-                            <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:value-of select="."/></td></tr>
+                            <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:apply-templates select="."/></td></tr>
                           </xsl:for-each>
                         </tbody>
                       </table>
@@ -251,7 +265,7 @@
                     <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="const">
-                        <tr><td><xsl:value-of select="../@lookup"/>_<xsl:value-of select="@name"/></td><td><xsl:value-of select="."/></td></tr>
+                        <tr><td><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></td><td><xsl:value-of select="."/></td></tr>
                       </xsl:for-each>
                     </tbody>
                   </table>

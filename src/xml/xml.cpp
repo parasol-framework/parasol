@@ -1366,7 +1366,7 @@ AllocMemory:
 
 *********************************************************************************************************************/
 
-static ERR XML_SortXML(extXML *Self, struct xmlSort *Args)
+static ERR XML_Sort(extXML *Self, struct xmlSort *Args)
 {
    pf::Log log;
 

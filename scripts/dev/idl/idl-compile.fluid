@@ -93,7 +93,7 @@ function flags(Prefix, Options, ...)
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.+):%s+(.+)$')
                if (key != nil) then
-                  if (key:find('^0x%d+$')) or (key:find('^%d+$')) then
+                  if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
                      key = tonumber(key)
                   end
                end
@@ -175,7 +175,7 @@ function const(Prefix, Options, ...)
             end
             if (val == nil) then val = v end
 
-            if (string.find(val, '^0x%d+$')) or (string.find(val, '^%d+$')) then
+            if (string.find(val, '^0x%d+$')) or (string.find(val, '^[+-]?%d+$')) then
                val = tonumber(val)
             end
 

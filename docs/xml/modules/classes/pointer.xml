@@ -39,7 +39,7 @@
       <access read="R">Read</access>
       <type>OBJECTID</type>
       <description>
-<p>If the pointer is anchored to a surface through <function module="Display">SetCursor</function>, this field will refer to the surface that holds the anchor.</p>
+<p>If the pointer is anchored to a surface through <function>SetCursor</function>, this field will refer to the surface that holds the anchor.</p>
       </description>
     </field>
 
@@ -102,7 +102,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>OBJECTID</type>
       <description>
-<p>If the pointer is currently owned by an object, this field will refer to that object ID.  Pointer ownership is managed by the <function module="Display">SetCursor</function> function.</p>
+<p>If the pointer is currently owned by an object, this field will refer to that object ID.  Pointer ownership is managed by the <function>SetCursor</function> function.</p>
       </description>
     </field>
 

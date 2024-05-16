@@ -49,8 +49,8 @@ using namespace pf;
 -FUNCTION-
 AllocateID: Generates unique ID's for general purposes.
 
-This function generates unique ID's that can be used in other Core functions.  A type ID is required and the resulting
-number will be unique to that type only.
+This function generates unique ID's that can be used in other Core functions.  A `Type` indicator is required and the 
+resulting number will be unique to that `Type` only.
 
 ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.
 

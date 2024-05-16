@@ -53,7 +53,7 @@
       <param type="OBJECTPTR" name="VectorPath">The target VectorPath object.</param>
     </input>
     <description>
-<p>Any path originating from <function module="Vector">GeneratePath</function>, <function module="Vector">GenerateEllipse</function> or <function module="Vector">GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with ~FreeResource() if it is no longer required.</p>
+<p>Any path originating from <function>GeneratePath</function>, <function>GenerateEllipse</function> or <function>GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with ~FreeResource() if it is no longer required.</p>
 <p>This method is particularly useful when paths need to be generated or changed in real-time and the alternative of processing the path as a string is detrimental to performance.</p>
     </description>
     <result type="ERR">
@@ -228,7 +228,7 @@ A: Arc
 Z: Close Path
 </pre>
 <p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
-<p>If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <function module="Vector">MoveTo</function> and <function module="Vector">LineTo</function> for custom path generation.</p>
+<p>If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <function>MoveTo</function> and <function>LineTo</function> for custom path generation.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -391,7 +391,7 @@ Z: Close Path
     <description>
 <p>This function parses a sequence of transform instructions and applies them to a matrix.</p>
 <p>The string must be written using SVG guidelines for the transform attribute.  For example, <code>skewX(20) rotate(45 50 50)</code> would be valid.  Transform instructions are applied in reverse, as per the standard.</p>
-<p>Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function. If existing matrix values need to be retained, create a fresh matrix and use <function module="Vector">Multiply</function> to combine them.</p>
+<p>Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function. If existing matrix values need to be retained, create a fresh matrix and use <function>Multiply</function> to combine them.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -446,7 +446,7 @@ Z: Close Path
       <param type="APTR" name="Path">The vector path to rewind.</param>
     </input>
     <description>
-<p>Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as <function module="Vector">LineTo</function> would result in the first vertex being modified.</p>
+<p>Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as <function>LineTo</function> would result in the first vertex being modified.</p>
 <p>If the referenced Path is empty, this function does nothing.</p>
     </description>
   </function>

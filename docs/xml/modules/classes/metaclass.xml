@@ -15,7 +15,7 @@
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most of the interesting structural data can be gleaned from the <field>Fields</field> array.</p>
-<p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function module="Core">FindClass</function> function.  The <function module="Core">CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>
+<p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function>FindClass</function> function.  The <function>CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>
 <p>Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside executable programs.  For information on the creation of classes, refer to the Class Development Guide for a complete run-down on class development.</p></description>
     <source>
       <file path="../classes/">class_metaclass.cpp</file>
@@ -28,7 +28,7 @@
       <comment>Search a class definition for a specific field.</comment>
       <prototype>ERR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
       <input>
-        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function module="Core">StrHash</function> function.</param>
+        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function>StrHash</function> function.</param>
         <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
         <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.</param>
       </input>
@@ -103,7 +103,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <field>Name</field> using <function module="Core">StrHash</function>.</p>
+<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <field>Name</field> using <function>StrHash</function>.</p>
       </description>
     </field>
 
@@ -229,7 +229,7 @@
       <type>LONG []</type>
       <description>
 <p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
-<p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
+<p>The resulting array must be terminated with <function>FreeResource</function> after use.</p>
       </description>
     </field>
 

@@ -1026,9 +1026,8 @@ enum class NF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(NF)
 
-#define MAX_FILENAME 256
-
 #define MAX_NAME_LEN 31
+#define MAX_FILENAME 256
 
 // Reserved message ID's that are handled internally.
 
@@ -1717,7 +1716,7 @@ class FloatRect {
 #include <stdlib.h> // strtol(), strtod()
 
 struct ObjectSignal {
-   OBJECTPTR Object;
+   OBJECTPTR Object;    // Reference to an object to monitor.
 };
 
 struct ResourceManager {

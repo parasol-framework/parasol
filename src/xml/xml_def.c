@@ -40,7 +40,7 @@ static const struct MethodEntry clXMLMethods[] = {
    { -2, (APTR)XML_Serialise, "Serialise", maSerialise, sizeof(struct xmlSerialise) },
    { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xmlInsertXML) },
    { -4, (APTR)XML_GetContent, "GetContent", maGetContent, sizeof(struct xmlGetContent) },
-   { -5, (APTR)XML_SortXML, "Sort", maSort, sizeof(struct xmlSort) },
+   { -5, (APTR)XML_Sort, "Sort", maSort, sizeof(struct xmlSort) },
    { -6, (APTR)XML_RemoveTag, "RemoveTag", maRemoveTag, sizeof(struct xmlRemoveTag) },
    { -7, (APTR)XML_MoveTags, "MoveTags", maMoveTags, sizeof(struct xmlMoveTags) },
    { -8, (APTR)XML_GetAttrib, "GetAttrib", maGetAttrib, sizeof(struct xmlGetAttrib) },

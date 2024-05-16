@@ -39,13 +39,13 @@
     <prototype>ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
-      <param type="MEM" name="Flags" lookup="MEM">Set to READ, WRITE or READ_WRITE according to requirements.</param>
-      <param type="LONG" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Do not set below 40ms for consistent operation.</param>
-      <param type="APTR *" name="Result">Must point to an APTR variable that will store the resolved address.</param>
+      <param type="MEM" name="Flags" lookup="MEM">Set to <code>READ</code>, <code>WRITE</code> or <code>READ_WRITE</code> according to requirements.</param>
+      <param type="LONG" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Use at least 40ms for best results.</param>
+      <param type="APTR *" name="Result">Must refer to an APTR for storing the resolved address.</param>
     </input>
     <description>
 <p>Call AccessMemory() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other threads.</p>
-<p>Memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function module="Core">ReleaseMemory</function> within the same code block.</p>
+<p>Memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function>ReleaseMemory</function> within the same code block.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -64,13 +64,13 @@
     <prototype>ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The unique ID of the target object.</param>
-      <param type="LONG" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is 60000, and 100 is recommended.</param>
+      <param type="LONG" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is <code>60000</code>, and <code>100</code> is recommended.</param>
       <param type="OBJECTPTR *" name="Result">A pointer storage variable that will store the resulting object address.</param>
     </input>
     <description>
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use it simultaneously.</p>
 <p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR::TimeOut</code> error code.  If successful, <code>ERR::Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
-<p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
+<p>It is crucial that calls to AccessObject() are followed with a call to <function>ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function>ReleaseObject</function> correctly.</p>
 <p>It is recommended that C++ developers use the <code>ScopedObjectLock</code> class to acquire object locks rather than making direct calls to AccessObject().  The following example illustrates lock acquisition within a 1 second time limit:</p>
 <pre>{
    pf::ScopedObjectLock<OBJECTPTR> obj(my_object_id, 1000);
@@ -115,8 +115,8 @@
 
 2b. Window-&gt;move(30, 15, 0);
 </pre>
-<p>If the class of an object does not support the action ID, an error code of <code>ERR::NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function module="Core">CheckAction</function> function.</p>
-<p>In circumstances where an object ID is known without its pointer, the use of <function module="Core">ActionMsg</function> or <function module="Core">QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
+<p>If the class of an object does not support the action ID, an error code of <code>ERR::NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function>CheckAction</function> function.</p>
+<p>In circumstances where an object ID is known without its pointer, the use of <function>ActionMsg</function> or <function>QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -197,9 +197,9 @@ struct FunctionField argsResize[] = {
       <param type="LONG" name="Key">An optional key value to be passed to the callback routine.</param>
     </input>
     <description>
-<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function module="Core">Action</function> function for general information on action execution.</p>
+<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
 <p>To receive feedback of the action's completion, use the Callback parameter and supply a function.  The function prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)</code></p>
-<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the Callback routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function module="Core">ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
+<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the Callback routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
 <p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if ActionThread() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
 <p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
     </description>
@@ -245,11 +245,11 @@ struct FunctionField argsResize[] = {
     </input>
     <description>
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
-<p>During a call to <function module="Core">ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
+<p>During a call to <function>ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The Routine parameter must point to the function handler, which will follow this definition:</p>
 <pre>ERR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 <p>The handler must return <code>ERR::Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR::NothingDone</code> if the message has been ignored or <code>ERR::Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR::Terminate</code> to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
-<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function module="Core">FreeResource</function> once it is no longer required.</p>
+<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function>FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -282,11 +282,11 @@ struct FunctionField argsResize[] = {
     <input>
       <param type="LONG" name="Size">The size of the memory block.</param>
       <param type="MEM" name="Flags" lookup="MEM">Optional flags.</param>
-      <param type="APTR *" name="Address">Set this argument to refer to an APTR type to store an address reference to the allocated memory block.</param>
-      <param type="MEMORYID *" name="ID">Set this argument to refer to a MEMORYID type to store a unique ID reference to the allocated memory block.</param>
+      <param type="APTR *" name="Address">Refer to an <code>APTR</code> to store the address of the allocated memory block.</param>
+      <param type="MEMORYID *" name="ID">Refer to a <code>MEMORYID</code> to store the UID of the allocated memory block.</param>
     </input>
     <description>
-<p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte Size, optional Flags and a variable to store the resulting Address and/or ID of the memory block. Here is an example:</p>
+<p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte <code>Size</code>, optional <code>Flags</code> and a variable to store the resulting <code>Address</code> and/or <code>ID</code> of the memory block. For example:</p>
 <pre>
 APTR address;
 if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
@@ -297,7 +297,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
 <types lookup="MEM"/>
 <p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.</p>
-<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block.  This means that before freeing the memory block the client must call <function module="Core">ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
+<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function>AccessMemory</function> to lock the memory block.  This means that before freeing the memory block the client must call <function>ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
 <p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM::NO_CLEAR</code> flag.</p>
     </description>
     <result type="ERR">
@@ -318,7 +318,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <param type="IDTYPE" name="Type" lookup="IDTYPE">The type of ID that is required.</param>
     </input>
     <description>
-<p>This function generates unique ID's that can be used in other Core functions.  A type ID is required and the resulting number will be unique to that type only.</p>
+<p>This function generates unique ID's that can be used in other Core functions.  A <code>Type</code> indicator is required and the resulting number will be unique to that <code>Type</code> only.</p>
 <p>ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.</p>
     </description>
     <result type="LONG">A unique ID matching the requested type will be returned.  This function can return zero if the Type is unrecognised, or if an internal error occurred.</result>
@@ -337,7 +337,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>This function will analyse a path and determine the type of file that the path is referring to.  For instance, a path of <code>user:documents/</code> would indicate a folder reference.  A path of <code>system:</code> would be recognised as a volume. A path of <code>user:documents/copyright.txt</code> would be recognised as a file.</p>
 <p>Ambiguous references are analysed to get the correct type - for example <code>user:documents/helloworld</code> could refer to a folder or file, so the path is analysed to check the file type.  On exceptional occasions where the path could be interpreted as either a folder or a file, preference is given to the folder.</p>
 <p>File path approximation is supported if the Path is prefixed with a <code>~</code> character (e.g. <code>~pictures:photo</code> could be matched to <code>photo.jpg</code> in the same folder).</p>
-<p>To check if a volume name is valid, call <function module="Core">ResolvePath</function> first and then pass the resulting path to this function.</p>
+<p>To check if a volume name is valid, call <function>ResolvePath</function> first and then pass the resulting path to this function.</p>
 <p>If the queried path does not exist, a fail code is returned.  This behaviour makes the AnalysePath() function a good candidate for testing the validity of a path string.</p>
     </description>
     <result type="ERR">
@@ -399,7 +399,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <param type="LONG" name="EventSize">The size of the Event structure, in bytes.</param>
     </input>
     <description>
-<p>Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An Event structure is required that must start with a 64-bit EventID acquired from <function module="Core">GetEventID</function>, followed by any required data that is relevant to that event.  The C/C++ template is as follows:</p>
+<p>Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An Event structure is required that must start with a 64-bit EventID acquired from <function>GetEventID</function>, followed by any required data that is relevant to that event.  The C/C++ template is as follows:</p>
 <pre>typedef struct rkEvent {
    EVENTID EventID;
    // Data follows
@@ -463,7 +463,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <param type="OBJECTID" name="Object">The object identity to verify.</param>
     </input>
     <description>
-<p>The CheckObjectExists() function verifies the presence of any object created by <function module="Core">NewObject</function>.</p>
+<p>The CheckObjectExists() function verifies the presence of any object created by <function>NewObject</function>.</p>
     </description>
     <result type="ERR">
       <error code="True">Operation successful.</error>
@@ -534,7 +534,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     </input>
     <description>
 <p>This function creates new folders.  You are required to specify the full path of the new folder.  Standard permission flags can be passed to determine the new permissions to set against the newly created Dir(s).  If no permission flags are passed, only the current user will have access to the new folder (assuming that the file system supports security settings on the given media).  This function will create multiple folders if the complete path does not exist at the time of the call.</p>
-<p>On Unix systems you can define the owner and group ID's for the new folder by calling the <function module="Core">SetDefaultPermissions</function> function prior to CreateFolder().</p>
+<p>On Unix systems you can define the owner and group ID's for the new folder by calling the <function>SetDefaultPermissions</function> function prior to CreateFolder().</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -557,7 +557,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <description>
 <p>Use the CreateLink() function to create symbolic links on Unix file systems. The link connects a new file created at From to an existing file referenced at To. The To link is allowed to be relative to the From location - for instance, you can link <code>documents:myfiles/newlink.txt</code> to <code>../readme.txt</code> or <code>folder/readme.txt</code>. The <code>..</code> path component must be used when making references to parent folders.</p>
 <p>The permission flags for the link are inherited from the file that you are linking to.  If the file location referenced at From already exists as a file or folder, the function will fail with an ERR::FileExists error code.</p>
-<p>This function does not automatically create folders in circumstances where new folders are required to complete the From link.  You will need to call <function module="Core">CreateFolder</function> to ensure that the necessary paths exist beforehand.  If the file referenced at To does not exist, the link will be created without error, but any attempts to open the link will fail until the target file or folder exists.</p>
+<p>This function does not automatically create folders in circumstances where new folders are required to complete the From link.  You will need to call <function>CreateFolder</function> to ensure that the necessary paths exist beforehand.  If the file referenced at To does not exist, the link will be created without error, but any attempts to open the link will fail until the target file or folder exists.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -607,7 +607,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     </input>
     <description>
 <p>This function will delete a file or folder when given a valid file location.  The current user must have delete access to the given file. When deleting folders, all content will be scanned and deleted recursively. Individual deletion failures are ignored, although an error will be returned if the top-level folder still contains content on its deletion.</p>
-<p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function module="Core">ResolvePath</function> first.</p>
+<p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function>ResolvePath</function> first.</p>
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
@@ -662,11 +662,11 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <comment>Returns all class objects for a given class ID.</comment>
     <prototype>objMetaClass * FindClass(CLASSID ClassID)</prototype>
     <input>
-      <param type="CLASSID" name="ClassID">A class ID such as one retrieved from <function module="Core">ResolveClassName</function>.</param>
+      <param type="CLASSID" name="ClassID">A class ID such as one retrieved from <function>ResolveClassName</function>.</param>
     </input>
     <description>
 <p>This function will find a specific class by ID and return its <class name="MetaClass">MetaClass</class>.  If the class is not in memory, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the class will be returned.  In any event of failure, NULL is returned.</p>
-<p>If the ID of a named class is not known, call <function module="Core">ResolveClassName</function> first and pass the resulting ID to this function.</p>
+<p>If the ID of a named class is not known, call <function>ResolveClassName</function> first and pass the resulting ID to this function.</p>
     </description>
     <result type="objMetaClass *">Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.</result>
   </function>
@@ -765,10 +765,10 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <comment>Returns a message structure if called from an action that was executed by the message system.</comment>
     <prototype>struct Message * GetActionMsg()</prototype>
     <description>
-<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function module="Core">ProcessMessages</function> function.  In all other cases a NULL pointer is returned.</p>
-<p>The Message structure reflects the contents of a standard <function module="Core">GetMessage</function> call.  Of particular interest may be the Time field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
+<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a NULL pointer is returned.</p>
+<p>The Message structure reflects the contents of a standard <function>GetMessage</function> call.  Of particular interest may be the Time field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
     </description>
-    <result type="struct Message *">A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the <function module="Core">GetMessage</function> function.</result>
+    <result type="struct Message *">A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the <function>GetMessage</function> function.</result>
   </function>
 
   <function>
@@ -835,7 +835,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 <pre>GetField(Object, FID_X|TLONG, &amp;x);
 GetField(Object, FID_Y|TLONG, &amp;y);
 </pre>
-<p>As GetField() is based on field ID's that reflect field names ("FID's"), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the <function module="Core">StrHash</function> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
+<p>As GetField() is based on field ID's that reflect field names ("FID's"), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the <function>StrHash</function> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
 <p>The type of the Result parameter must be OR'd into the Field parameter.  When reading a field you must give consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
 <types>
@@ -866,7 +866,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG *" name="Elements">The total number of elements in the array will be returned in this parameter.</param>
     </input>
     <description>
-<p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the <function module="Core">GetField</function> function, which does not support returning the array length.</p>
+<p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the <function>GetField</function> function, which does not support returning the array length.</p>
 <p>This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it is standard practice not to count the null terminator in the total returned by Elements.</p>
 <p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TLONG</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
     </description>
@@ -1064,7 +1064,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system or application.</p>
 <p>This function will first determine if the requested file has already been cached.  If this is true then the <struct>CacheFile</struct> structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into a new buffer.</p>
 <p>File content will be loaded into a readable memory buffer that is referenced by the Data field of the <struct>CacheFile</struct> structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the <struct>CacheFile</struct> meta data.</p>
-<p>Calls to LoadFile() must be matched with a call to <function module="Core">UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
+<p>Calls to LoadFile() must be matched with a call to <function>UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1081,11 +1081,11 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <prototype>ERR LockObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The address of the object to lock.</param>
-      <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
+      <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If <code>-1</code>, the function will wait indefinitely.</param>
     </input>
     <description>
-<p>Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
-<p>Be aware that while this function is faster than <function module="Core">AccessObject</function>, it is unsafe if other threads could terminate the object without a suitable barrier in place.</p>
+<p>Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical behaviour to that of <function>AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function>ReleaseObject</function> to unlock the object.</p>
+<p>Be aware that while this function is faster than <function>AccessObject</function>, it is unsafe if other threads could terminate the object without a suitable barrier in place.</p>
 <p>If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.</p>
     </description>
     <result type="ERR">
@@ -1192,15 +1192,15 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <comment>Creates new objects.</comment>
     <prototype>ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object)</prototype>
     <input>
-      <param type="LARGE" name="ClassID">A class ID from "system/register.h" or generated by <function module="Core">ResolveClassName</function>.</param>
+      <param type="LARGE" name="ClassID">A class ID from "system/register.h" or generated by <function>ResolveClassName</function>.</param>
       <param type="NF" name="Flags" lookup="NF">Optional flags.</param>
       <param type="OBJECTPTR *" name="Object">Pointer to an address variable that will store a reference to the new object.</param>
     </input>
     <description>
 <p>The NewObject() function is used to create new objects and register them for use within the Core.  After creating a new object, the client can proceed to set the object's field values and initialise it with <action>Init</action> so that it can be used as intended.</p>
-<p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in their documentation and the <code>parasol/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function module="Core">ResolveClassName</function> function.</p>
-<p>A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function module="Core">SetOwner</function> function.</p>
-<p>To destroy an object, call <function module="Core">FreeResource</function>.</p>
+<p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in their documentation and the <code>parasol/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function>ResolveClassName</function> function.</p>
+<p>A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function>SetOwner</function> function.</p>
+<p>To destroy an object, call <function>FreeResource</function>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1239,7 +1239,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="struct DirInfo **" name="Info">A DirInfo structure will be returned in the pointer referenced here.</param>
     </input>
     <description>
-<p>The OpenDir() function is used to open a folder for scanning via the <function module="Core">ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function module="Core">ScanDir</function>.  Once the scanning process is complete, call the <function module="Core">FreeResource</function> function.</p>
+<p>The OpenDir() function is used to open a folder for scanning via the <function>ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function>ScanDir</function>.  Once the scanning process is complete, call the <function>FreeResource</function> function.</p>
 <p>When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined, the scanner will return file and folder names only.  Only a subset of the available <code>RDF</code> flags may be used, namely <code>SIZE</code>, <code>DATE</code>, <code>PERMISSIONS</code>, <code>FILE</code>, <code>FOLDER</code>, <code>QUALIFY</code>, <code>TAGS</code>.</p>
     </description>
     <result type="ERR">
@@ -1274,7 +1274,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>The ProcessMessages() function is used to process the task's message queue.  Messages are dispatched to message handlers in the order in which they arrived and the queue is emptied so that space is available for more messages.</p>
 <p>Responding to incoming messages is a vital process - the queue is the standard means of communication between your task and the rest of the system and other tasks within it.  Failing to call the ProcessMessages() function on a regular basis may cause a back-log of messages to be generated, as well as causing problems with areas such as the graphical interface. If an area of your program is likely to loop continuously for a measurable period of time without returning, consider calling ProcessMessages() at a rate of 50 times per second to ensure that incoming messages are processed.</p>
-<p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function module="Core">AddMsgHandler</function> function.  If a message handler returns the error code <code>ERR::Terminate</code>, then ProcessMessages() will stop processing the queue and returns immediately with <code>ERR::Okay</code>.</p>
+<p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function>AddMsgHandler</function> function.  If a message handler returns the error code <code>ERR::Terminate</code>, then ProcessMessages() will stop processing the queue and returns immediately with <code>ERR::Okay</code>.</p>
 <p>If a message with a <code>MSGID_QUIT</code> ID is found on the queue, then the function returns immediately with the error code ERR::Terminate.  The program must respond to the terminate request by exiting immediately.</p>
     </description>
     <result type="ERR">
@@ -1296,7 +1296,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.</p>
-<p>The action will be executed on the next cycle of <function module="Core">ProcessMessages</function> in line with the FIFO order of queued messages.</p>
+<p>The action will be executed on the next cycle of <function>ProcessMessages</function> in line with the FIFO order of queued messages.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1413,7 +1413,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="MEMORYID" name="MemoryID">A reference to a memory resource for release.</param>
     </input>
     <description>
-<p>Successful calls to <function module="Core">AccessMemory</function> must be paired with a call to ReleaseMemory() so that the memory can be made available to other processes.  By releasing the resource, the access count will decrease, and if applicable a thread that is in the queue for access may then be able to acquire a lock.</p>
+<p>Successful calls to <function>AccessMemory</function> must be paired with a call to ReleaseMemory() so that the memory can be made available to other processes.  Releasing the resource decreases the access count, and if applicable a thread that is in the queue for access may then be able to acquire a lock.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1432,7 +1432,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="OBJECTPTR" name="Object">Pointer to the object to be released.</param>
     </input>
     <description>
-<p>Release a lock previously obtained from <function module="Core">AccessObject</function> or <function module="Core">LockObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
+<p>Release a lock previously obtained from <function>AccessObject</function> or <function>LockObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
     </description>
   </function>
 
@@ -1460,7 +1460,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>This function will resolve a class name to its unique ID.</p>
-<p>Class ID's are used by functions such as <function module="Core">NewObject</function> for fast processing.</p>
+<p>Class ID's are used by functions such as <function>NewObject</function> for fast processing.</p>
     </description>
     <result type="CLASSID">Returns the class ID identified from the class name, or NULL if the class could not be found.</result>
   </function>
@@ -1533,7 +1533,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="struct DirInfo *" name="Info">Pointer to a DirInfo structure for storing scan results.</param>
     </input>
     <description>
-<p>The ScanDir() function is used to scan for files and folders in a folder that you have opened using the <function module="Core">OpenDir</function> function. The ScanDir() function is intended to be used in a simple loop, returning a single item for each function call that you make.  The following code sample illustrates typical usage:</p>
+<p>The ScanDir() function is used to scan for files and folders in a folder that you have opened using the <function>OpenDir</function> function. The ScanDir() function is intended to be used in a simple loop, returning a single item for each function call that you make.  The following code sample illustrates typical usage:</p>
 <pre>DirInfo *info;
 if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
    while (!ScanDir(info)) {
@@ -1586,13 +1586,13 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <comment>Add a message to the local message queue.</comment>
     <prototype>ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
+      <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function>AllocateID</function>.</param>
       <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.</param>
       <param type="LONG" name="Size">The byte-size of the data being written to the message queue.</param>
     </input>
     <description>
-<p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function module="Core">AllocateID</function>.</p>
+<p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function>AllocateID</function>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1612,12 +1612,12 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
       <param type="LONG" name="Elements">The number of elements listed in the Array.</param>
     </input>
     <description>
-<p>The SetArray() function is used as an alternative to <function module="Core">SetField</function> for the purpose of writing arrays to objects.</p>
+<p>The SetArray() function is used as an alternative to <function>SetField</function> for the purpose of writing arrays to objects.</p>
 <p>The following code segment illustrates how to write an array to an object field:</p>
 <pre>LONG array[100];
 SetArray(Object, FID_Table|TLONG, array, 100);
 </pre>
-<p>An indicator of the type of the elements in the Array must be OR'd into the Field parameter.  Available field types are listed in <function module="Core">SetField</function>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
+<p>An indicator of the type of the elements in the Array must be OR'd into the Field parameter.  Available field types are listed in <function>SetField</function>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1647,7 +1647,7 @@ auto ctx = SetContext(display);
 SetContext(ctx);
 FreeResource(display-&gt;UID);
 </pre>
-<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When <function module="Core">FreeResource</function> is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
+<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When <function>FreeResource</function> is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
 <pre>InitObject(display);
 auto ctx = SetContext(display);
 
@@ -1697,7 +1697,7 @@ FreeResource(memory);  // Reference is no longer valid
 <pre>SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
-<p>Fields are referenced as hashed UID's calculated from the <function module="Core">StrHash</function> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
+<p>Fields are referenced as hashed UID's calculated from the <function>StrHash</function> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
 <p>The type of the Value parameter must be OR'd into the Field parameter.  If the provided type does not match that of the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be converted to a numeric value automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
 <types>
@@ -1711,7 +1711,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <type name="TVAR">A pointer to a Variable structure.</type>
 </types>
 <p>There is no requirement for the client to have a working knowledge of the target object's field configuration in order to write information to it.</p>
-<p>To set a field with a fixed-size array, please use the <function module="Core">SetArray</function> function.</p>
+<p>To set a field with a fixed-size array, please use the <function>SetArray</function> function.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1798,7 +1798,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>The SetResourcePath() function changes the default locations of the Core's resource paths.</p>
-<p>To read a resource path, use the <function module="Core">GetSystemState</function> function.</p>
+<p>To read a resource path, use the <function>GetSystemState</function> function.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1899,8 +1899,8 @@ SetField(Object, FID_Statement|TSTR, "string");
    }
 }
 </pre>
-<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR::Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, <function module="Core">CurrentContext</function> can be used to get a reference to the object that initiated the subscription.</p>
-<p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.  Subscriptions are not resource tracked, so it is critical to match the original call with an unsubscription.</p>
+<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR::Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, <function>CurrentContext</function> can be used to get a reference to the object that initiated the subscription.</p>
+<p>To terminate an action subscription, use the <function>UnsubscribeAction</function> function.  Subscriptions are not resource tracked, so it is critical to match the original call with an unsubscription.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1922,8 +1922,8 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="APTR *" name="Handle">Pointer to an address that will receive the event handle.</param>
     </input>
     <description>
-<p>Use the SubscribeEvent() function to listen for system events.  An EventID (obtainable from <function module="Core">GetEventID</function>) must be provided, as well as a reference to a function that will be called each time that the event is broadcast.</p>
-<p>An event handle will be returned in the Handle parameter to identify the subscription.  This must be retained to later unsubscribe from the event with the <function module="Core">UnsubscribeEvent</function> function.</p>
+<p>Use the SubscribeEvent() function to listen for system events.  An EventID (obtainable from <function>GetEventID</function>) must be provided, as well as a reference to a function that will be called each time that the event is broadcast.</p>
+<p>An event handle will be returned in the Handle parameter to identify the subscription.  This must be retained to later unsubscribe from the event with the <function>UnsubscribeEvent</function> function.</p>
 <p>The format for the Callback function is <code>Function(APTR Custom, APTR Event, LONG Size)</code>, where 'Event' is the event structure that matches to the subscribed EventID.</p>
     </description>
     <result type="ERR">
@@ -1946,9 +1946,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>This function creates a new timer subscription that will be called at regular intervals for the calling object.</p>
 <p>A callback function must be provided that follows this prototype: <code>ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)</code></p>
-<p>The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime parameter is set to the <function module="Core">PreciseTime</function> value just prior to the Callback being called.  The callback function can return <code>ERR::Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR::Terminate)</code> to perform the equivalent of this behaviour.</p>
-<p>To change the interval, call <function module="Core">UpdateTimer</function> with the new value.  To release a timer subscription, call <function module="Core">UpdateTimer</function> with the resulting SubscriptionID and an Interval of zero.</p>
-<p>Timer management is provisioned by the <function module="Core">ProcessMessages</function> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
+<p>The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime parameter is set to the <function>PreciseTime</function> value just prior to the Callback being called.  The callback function can return <code>ERR::Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR::Terminate)</code> to perform the equivalent of this behaviour.</p>
+<p>To change the interval, call <function>UpdateTimer</function> with the new value.  To release a timer subscription, call <function>UpdateTimer</function> with the resulting SubscriptionID and an Interval of zero.</p>
+<p>Timer management is provisioned by the <function>ProcessMessages</function> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -2127,7 +2127,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="struct CacheFile *" name="Cache">A pointer to a CacheFile structure returned from LoadFile().</param>
     </input>
     <description>
-<p>This function unloads cached files that have been previously loaded with the <function module="Core">LoadFile</function> function.</p>
+<p>This function unloads cached files that have been previously loaded with the <function>LoadFile</function> function.</p>
     </description>
   </function>
 
@@ -2141,7 +2141,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="LONG" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
     </input>
     <description>
-<p>The UnsubscribeAction() function will terminate subscriptions made by <function module="Core">SubscribeAction</function>.</p>
+<p>The UnsubscribeAction() function will terminate subscriptions made by <function>SubscribeAction</function>.</p>
 <p>To terminate multiple subscriptions in a single call, set the Action parameter to zero.</p>
     </description>
     <result type="ERR">
@@ -2160,7 +2160,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="APTR" name="Handle">An event handle returned from SubscribeEvent()</param>
     </input>
     <description>
-<p>Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle returned from the <function module="Core">SubscribeEvent</function> function must be provided.</p>
+<p>Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle returned from the <function>SubscribeEvent</function> function must be provided.</p>
     </description>
   </function>
 
@@ -2198,7 +2198,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="DOUBLE" name="Interval">The new interval for the timer (measured in seconds), or zero to remove.</param>
     </input>
     <description>
-<p>This function complements <function module="Core">SubscribeTimer</function>.  It can change the interval for an existing timer subscription, or remove it if the Interval is set to zero.</p>
+<p>This function complements <function>SubscribeTimer</function>.  It can change the interval for an existing timer subscription, or remove it if the Interval is set to zero.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -2219,7 +2219,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="struct ObjectSignal *" name="ObjectSignals">A null-terminated array of objects to monitor for signals.</param>
     </input>
     <description>
-<p>The WaitForObjects() function acts as a front-end to <function module="Core">ProcessMessages</function>, with the capability of being able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action. Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are signalled or a time-out occurs.</p>
+<p>The WaitForObjects() function acts as a front-end to <function>ProcessMessages</function>, with the capability of being able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action. Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are signalled or a time-out occurs.</p>
 <p>Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the object will not be monitored.</p>
     </description>
     <result type="ERR">
@@ -2860,6 +2860,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="MAX">
+      <const name="FILENAME"/>
       <const name="NAME_LEN"/>
     </constants>
 
@@ -3427,7 +3428,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
-      <field name="Object" type="OBJECTPTR"></field>
+      <field name="Object" type="OBJECTPTR">Reference to an object to monitor.</field>
     </struct>
 
     <struct name="RGB16" comment="16-bit RGB colour value.">

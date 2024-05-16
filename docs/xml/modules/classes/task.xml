@@ -18,7 +18,7 @@
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
 <p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR::Okay then the executable program was run successfully.</p>
-<p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p></description>
+<p>To find the task object that represents the active process, use the <function>CurrentTask</function> function to quickly retrieve it.</p></description>
     <source>
       <file path="../classes/">class_task.cpp</file>
     </source>

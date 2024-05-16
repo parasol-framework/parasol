@@ -39,7 +39,7 @@
       <param type="LONG" name="Handle">The target channel.</param>
     </input>
     <description>
-<p>Use this function to end a buffered command sequence that was started by <function module="Audio">MixStartSequence</function>.</p>
+<p>Use this function to end a buffered command sequence that was started by <function>MixStartSequence</function>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -165,7 +165,7 @@
       <param type="LONG" name="Handle">The target channel.</param>
     </input>
     <description>
-<p>Use this function to initiate the buffering of mix commands, up until a call to <function module="Audio">MixEndSequence</function> is made.  The buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals as determined by <function module="Audio">MixRate</function>.</p>
+<p>Use this function to initiate the buffering of mix commands, up until a call to <function>MixEndSequence</function> is made.  The buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals as determined by <function>MixRate</function>.</p>
 <p>This feature can be used to implement complex sound mixes and digital music players.</p>
     </description>
     <result type="ERR">

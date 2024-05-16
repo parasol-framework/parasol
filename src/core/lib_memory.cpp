@@ -32,8 +32,8 @@ using namespace pf;
 AllocMemory: Allocates a new memory block on the heap.
 
 The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define
-the minimum byte Size, optional Flags and a variable to store the resulting Address and/or ID of the memory block.
-Here is an example:
+the minimum byte `Size`, optional `Flags` and a variable to store the resulting `Address` and/or `ID` of the memory block.
+For example:
 
 <pre>
 APTR address;
@@ -60,8 +60,8 @@ blocks it may be wise to turn off this feature, achieved by setting the `MEM::NO
 -INPUT-
 int Size:     The size of the memory block.
 int(MEM) Flags: Optional flags.
-&ptr Address: Set this argument to refer to an APTR type to store an address reference to the allocated memory block.
-&mem ID:      Set this argument to refer to a MEMORYID type to store a unique ID reference to the allocated memory block.
+&ptr Address: Refer to an `APTR` to store the address of the allocated memory block.
+&mem ID:      Refer to a `MEMORYID` to store the UID of the allocated memory block.
 
 -ERRORS-
 Okay:

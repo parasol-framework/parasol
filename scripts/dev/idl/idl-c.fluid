@@ -447,7 +447,7 @@ function flags(Prefix, Options, ...)
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.-):%s+(.+)$')
                if (key != nil) then
-                  if (key:find('^0x%d+$')) or (key:find('^%d+$')) then
+                  if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
                      key = tonumber(key)
                   end
                end

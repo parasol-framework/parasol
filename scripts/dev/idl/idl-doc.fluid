@@ -57,7 +57,7 @@ glActionComments[AC_Redo]           = 'Reverse a previous call to the Undo actio
 glActionComments[AC_Refresh]        = 'Refreshes the state of an object.'
 glActionComments[AC_Rename]         = 'Renames an object.'
 glActionComments[AC_Reset]          = 'Resets an object to its original state.'
-glActionComments[AC_Resize]         = 'Resizes objects that are represented by  two or three dimensional graphics.'
+glActionComments[AC_Resize]         = 'Resizes objects that are represented by two or three dimensional graphics.'
 glActionComments[AC_SaveImage]      = 'Saves an object\'s image to a destination object.'
 glActionComments[AC_SaveSettings]   = 'Saves object settings to a physical storage location.'
 glActionComments[AC_SaveToObject]   = 'Saves an object\'s data to a destination object.'
@@ -310,11 +310,7 @@ function substituteReferences(String, Class)
 
    String = String:gsub('~([A-Z]%w+)%(%)', function(FunctionName)
       if (glFunctionLookup[FunctionName] != nil) then
-         if nz(glModule.name) then
-            return '<function module="' .. glModule.name .. '">' .. FunctionName .. '</function>'
-         else
-            return '<function>' .. FunctionName .. '</function>'
-         end
+         return '<function>' .. FunctionName .. '</function>'
       else
          print('Unrecognised function reference ~' .. FunctionName .. '()')
       end
@@ -324,7 +320,7 @@ function substituteReferences(String, Class)
 
    String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ClassName, MethodName)
       if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
-         -- TODO: Check that the method name is valid according to the class blueprint
+         -- TODO: Check that the method name is valid according to the class spec
          return '<class name="' .. ClassName .. '" index="' .. MethodName .. '()">' .. ClassName .. ':' .. MethodName .. '()</class>'
       else
          print('Unrecognised method/action reference @' .. ClassName .. '.' .. MethodName .. '()')
@@ -357,6 +353,8 @@ function substituteReferences(String, Class)
          print('Unrecognised class name reference @' .. ClassName)
       end
    end)
+
+   String = String:gsub('`(.-)`', '<code>%1</code>')
 
    return String
 end

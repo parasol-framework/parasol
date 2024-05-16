@@ -287,9 +287,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     }
   )
 
-  const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not necessarily including path)
-
-  const("MAX", nil, { NAME_LEN = 31 }) -- Refer to the 'Object' struct for more info on the NAME_LEN value
+  const("MAX", { }, {
+     FILENAME = 256, -- Maximum length for file names (not necessarily including path)
+     NAME_LEN = 31   -- Refer to the 'Object' struct for more info on the NAME_LEN value
+  })
 
   const("MSGID", { comment="Reserved message ID's that are handled internally." }, {
      QUIT             = 1000,   -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
@@ -781,7 +782,7 @@ class FloatRect {
 ]])
 
   struct("ObjectSignal", { comment="Required in calls to WaitForObjects()." }, [[
-     obj Object
+     obj Object # Reference to an object to monitor.
   ]])
 
   struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM::MANAGED flag.", restrict="c" }, [[

@@ -499,7 +499,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </input>
     <description>
 <p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
-<p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function module="Display">UnlockBitmap</function> function.</p>
+<p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function>UnlockBitmap</function> function.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -516,8 +516,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should send movement signals to.</param>
     </input>
     <description>
-<p>The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface referenced in the Surface parameter.  The pointer will not move unless the <function module="Display">SetCursorPos</function> function is called. The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200 microseconds.</p>
-<p>The anchor can be released at any time by calling the <function module="Display">UnlockCursor</function> function.</p>
+<p>The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface referenced in the Surface parameter.  The pointer will not move unless the <function>SetCursorPos</function> function is called. The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200 microseconds.</p>
+<p>The anchor can be released at any time by calling the <function>UnlockCursor</function> function.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -589,7 +589,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="OBJECTID" name="Owner">The ownership ID that was given in the initial call to SetCursor().</param>
     </input>
     <description>
-<p>Use the RestoreCursor() function to undo an earlier call to <function module="Display">SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function module="Display">SetCursor</function>.</p>
+<p>Use the RestoreCursor() function to undo an earlier call to <function>SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function>SetCursor</function>.</p>
 <p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTC::NOCHANGE</code>.</p>
     </description>
     <result type="ERR">
@@ -651,7 +651,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>To change the cursor image, set the Cursor or Name parameters to define the new image.  Valid cursor ID's and their equivalent names are listed in the documentation for the Cursor field.  If the ObjectID field is set to a valid surface, then the cursor image will switch back to the default setting once the pointer moves outside of its region.  If both the Cursor and Name parameters are NULL, the cursor image will remain unchanged from its current image.</p>
 <p>The SetCursor() function accepts the following flags in the Flags parameter:</p>
 <types lookup="CRF"/>
-<p>The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <function module="Display">RestoreCursor</function> is called.</p>
+<p>The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <function>RestoreCursor</function> is called.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -798,7 +798,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </input>
     <description>
 <p>The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited to device events that are linked to the display (i.e. events from track pads, mouse pointers, graphics tablets and touch screens).  Keyboard devices are not included.</p>
-<p>The client is required to remove the subscription with <function module="Display">UnsubscribeInput</function> once tracking is no longer required.</p>
+<p>The client is required to remove the subscription with <function>UnsubscribeInput</function> once tracking is no longer required.</p>
 <p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.</p>
 <p>A callback is required for receiving the input events.  The following C++ code illustrates a method for processing events in the callback:</p>
 <pre>ERR consume_input_events(const InputEvent *Events, LONG Handle)
@@ -848,7 +848,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
     </input>
     <description>
-<p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function module="Display">LockBitmap</function>.</p>
+<p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function>LockBitmap</function>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -884,7 +884,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="LONG" name="Handle">Reference to a handle returned by SubscribeInput().</param>
     </input>
     <description>
-<p>This function removes an input subscription that has been created with <function module="Display">SubscribeInput</function>.</p>
+<p>This function removes an input subscription that has been created with <function>SubscribeInput</function>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
