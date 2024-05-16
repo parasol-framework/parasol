@@ -10,7 +10,7 @@
             <xsl:for-each select="type">
               <xsl:choose>
                 <xsl:when test="../@prefix">
-                  <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+                  <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
                 </xsl:when>
                 <xsl:otherwise>
                   <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
@@ -26,7 +26,7 @@
           <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
-              <tr><th class="col-md-1"><xsl:value-of select="$prefix"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="$prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -65,8 +65,19 @@
 
   <xsl:template match="text()"><xsl:value-of select="."/></xsl:template>
 
-  <xsl:template match="field"><xsl:variable name="fieldName"><xsl:value-of select="node()"/></xsl:variable>
-    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/fields/field[name=$fieldName]/comment"/></xsl:attribute><xsl:attribute name="href">#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a></xsl:template>
+  <xsl:template match="field">
+    <xsl:variable name="fieldName"><xsl:value-of select="node()"/></xsl:variable>
+    <xsl:choose>
+      <xsl:when test="@module">
+        <xsl:variable name="mod_name"><xsl:value-of select="@module"/></xsl:variable>
+        <xsl:variable name="mod_lower" select="translate($mod_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <a><xsl:attribute name="href"><xsl:value-of select="$mod_lower"/>.html#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+      </xsl:when>
+      <xsl:otherwise>
+        <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/fields/field[name=$fieldName]/comment"/></xsl:attribute><xsl:attribute name="href">#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
 
   <xsl:template match="action"><xsl:variable name="actionName"><xsl:value-of select="node()"/></xsl:variable>
     <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/actions/action[name=$actionName]/comment"/></xsl:attribute><xsl:attribute name="href">#ta-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>

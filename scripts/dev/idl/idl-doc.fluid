@@ -278,7 +278,7 @@ function substituteReferences(String, Class)
       end
    end)
 
-   -- Substitute field references, identified as #FieldName.
+   -- Substitute field references, identified as #Field.
 
    String = String:gsub('#([A-Z]%w*)', function(Field)
       if (Class == nil) then
@@ -298,6 +298,12 @@ function substituteReferences(String, Class)
 
          print('Unrecognised ' .. Class.name .. ' field "' .. Field .. '"')
       end
+   end)
+
+   -- Substitute external field references, identified as #Module.Field.
+
+   String = String:gsub('#([A-Z]%w+)%.([A-Z]%w*)', function(Module, Field)
+      return '<field module="' .. Module .. '">' .. Field .. '</field>'
    end)
 
    -- Substitute external function references, identified as ~Module.Function()

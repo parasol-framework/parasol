@@ -795,7 +795,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
       <param type="ERR" name="Error">The error code to lookup.</param>
     </input>
     <description>
-<p>The GetErrorMsg() function converts error codes into human readable strings.  If the Code is invalid, a string of "Unknown error code" is returned.</p>
+<p>The GetErrorMsg() function converts error codes into human readable strings.  If the <code>Error</code> is invalid, a string of "Unknown error code" is returned.</p>
     </description>
     <result type="CSTRING">A human readable string for the error code is returned.  By default error codes are returned in English, however if a translation table exists for the user's own language, the string will be translated.</result>
   </function>
@@ -970,7 +970,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.</p>
-<p>C++ developers should use the GetResourcePtr() macro if a resource identifier is known to return a pointer.</p>
+<p>C++ developers should use the <code>GetResourcePtr()</code> macro if a resource identifier is known to return a pointer.</p>
     </description>
     <result type="LARGE">Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, NULL is returned.</result>
   </function>
@@ -1386,8 +1386,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <prototype>ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data)</prototype>
     <input>
       <param type="HOSTHANDLE" name="FD">The file descriptor that is to be watched.</param>
-      <param type="RFD" name="Flags" lookup="RFD">Set to at least one of READ, WRITE, EXCEPT, REMOVE.</param>
-      <param type="void (*Routine)(HOSTHANDLE, APTR)" name="Routine">The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".</param>
+      <param type="RFD" name="Flags" lookup="RFD">Set to at least one of <code>READ</code>, <code>WRITE</code>, <code>EXCEPT</code>, <code>REMOVE</code>.</param>
+      <param type="void (*Routine)(HOSTHANDLE, APTR)" name="Routine">The routine that will read from the descriptor when data is detected on it.  The template for the function is <code>void Routine(LONG FD, APTR Data)</code>.</param>
       <param type="APTR" name="Data">User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.</param>
     </input>
     <description>
@@ -1395,7 +1395,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the program to hang if not handled carefully.</p>
 <p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the <code>RFD::READ</code> flag to apply the Routine to the read callback and <code>RFD::WRITE</code> for the write callback.  If neither flag is specified, <code>RFD::READ</code> is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD::REMOVE</code>.</p>
 <p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
-<p>Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
+<p>Call the <code>DeregisterFD()</code> macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1779,7 +1779,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources are supported:</p>
 <types lookup="RES" type="Resource">
-<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</type>
+<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on <function>AllocMemory</function>.  The Value specifies the memory limit in bytes.</type>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
 </types>
@@ -2238,10 +2238,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     <prototype>void WaitTime(LONG Seconds, LONG MicroSeconds)</prototype>
     <input>
       <param type="LONG" name="Seconds">The number of seconds to wait for.</param>
-      <param type="LONG" name="MicroSeconds">The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - 1/1000000.  The value cannot exceed 999999.</param>
+      <param type="LONG" name="MicroSeconds">The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - <code>1/1000000</code>.  The value cannot exceed <code>999999</code>.</param>
     </input>
     <description>
-<p>This function waits for a period of time as specified by the Seconds and MicroSeconds arguments.  While waiting, your task will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
+<p>This function waits for a period of time as specified by the <code>Seconds</code> and <code>MicroSeconds</code> parameters.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
 <p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
     </description>
   </function>

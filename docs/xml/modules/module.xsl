@@ -9,7 +9,7 @@
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="const">
-              <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -20,7 +20,7 @@
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
-              <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -37,10 +37,10 @@
             <xsl:for-each select="type">
               <xsl:choose>
                 <xsl:when test="../@lookup">
-                  <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+                  <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
                 </xsl:when>
                 <xsl:otherwise>
-                  <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+                  <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
                 </xsl:otherwise>
               </xsl:choose>
             </xsl:for-each>
@@ -53,7 +53,7 @@
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
-              <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+              <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
             </xsl:for-each>
           </tbody>
         </table>
@@ -247,7 +247,7 @@
                     </xsl:when>
                     <xsl:when test="result">
                       <h3>Result</h3>
-                      <p><xsl:value-of select="result/."/></p>
+                      <p><xsl:apply-templates select="result/."/></p>
                     </xsl:when>
                   </xsl:choose>
 
@@ -260,12 +260,12 @@
                 <div class="docs-content" style="display:none;">
                   <xsl:attribute name="id"><xsl:value-of select="@lookup"/></xsl:attribute>
                   <h1><xsl:value-of select="@lookup"/> Type</h1>
-                  <p class="lead"><xsl:value-of select="@comment"/></p>
+                  <p class="lead"><xsl:apply-templates select="@comment"/></p>
                   <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
                     <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="const">
-                        <tr><td><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></td><td><xsl:value-of select="."/></td></tr>
+                        <tr><td><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
                       </xsl:for-each>
                     </tbody>
                   </table>
@@ -278,7 +278,7 @@
                 <div class="docs-content" style="display:none;">
                   <xsl:attribute name="id">struct-<xsl:value-of select="@name"/></xsl:attribute>
                   <h1><xsl:value-of select="@name"/> Structure</h1>
-                  <p class="lead"><xsl:value-of select="@comment"/></p>
+                  <p class="lead"><xsl:apply-templates select="@comment"/></p>
                   <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
                     <thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead>
                     <tbody>
@@ -286,7 +286,7 @@
                         <tr>
                           <td><xsl:value-of select="@name"/></td>
                           <td><span class="text-nowrap"><xsl:value-of select="@type"/></span></td>
-                          <td><xsl:value-of select="."/></td>
+                          <td><xsl:apply-templates select="."/></td>
                         </tr>
                       </xsl:for-each>
                     </tbody>

@@ -71,7 +71,7 @@ ERR CMDOpen(OBJECTPTR Module)
 ApplyPath: Copy a pre-generated or custom path to a VectorPath object.
 
 Any path originating from ~GeneratePath(), ~GenerateEllipse() or ~GenerateRectangle() can be applied to a VectorPath
-object by calling ApplyPath().  The source Path can then be deallocated with ~FreeResource() if it is no longer required.
+object by calling ApplyPath().  The source Path can then be deallocated with ~Core.FreeResource() if it is no longer required.
 
 This method is particularly useful when paths need to be generated or changed in real-time and the alternative of
 processing the path as a string is detrimental to performance.
@@ -293,7 +293,7 @@ LONG vecGetVertex(SimpleVector *Vector, double *X, double *Y)
 GenerateEllipse: Generates an elliptical path.
 
 Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path
-parameter.  The path must be manually deallocated with ~FreeResource() once it is no longer required.
+parameter.  The path must be manually deallocated with ~Core.FreeResource() once it is no longer required.
 
 -INPUT-
 double CX: Horizontal center point of the ellipse.
@@ -367,7 +367,7 @@ ERR vecGenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices
 GenerateRectangle: Generate a rectangular path at (x,y) with size (width,height).
 
 Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path
-parameter.  The path must be manually deallocated with ~FreeResource() once it is no longer required.
+parameter.  The path must be manually deallocated with ~Core.FreeResource() once it is no longer required.
 
 -INPUT-
 double X: The horizontal position of the rectangle.
@@ -408,7 +408,7 @@ GeneratePath: Generates a path from an SVG path command sequence, or an empty pa
 
 This function will generate a vector path from a sequence of fixed point coordinates and curve instructions.  The
 resulting path can then be passed to vector functions that receive a Path parameter.  The path must be manually
-deallocated with ~FreeResource() once it is no longer required.
+deallocated with ~Core.FreeResource() once it is no longer required.
 
 The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path
 element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are

@@ -53,7 +53,7 @@
       <param type="OBJECTPTR" name="VectorPath">The target VectorPath object.</param>
     </input>
     <description>
-<p>Any path originating from <function>GeneratePath</function>, <function>GenerateEllipse</function> or <function>GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with ~FreeResource() if it is no longer required.</p>
+<p>Any path originating from <function>GeneratePath</function>, <function>GenerateEllipse</function> or <function>GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with <function module="Core">FreeResource</function> if it is no longer required.</p>
 <p>This method is particularly useful when paths need to be generated or changed in real-time and the alternative of processing the path as a string is detrimental to performance.</p>
     </description>
     <result type="ERR">
@@ -195,7 +195,7 @@
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
     </input>
     <description>
-<p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with ~FreeResource() once it is no longer required.</p>
+<p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -213,7 +213,7 @@
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
     </input>
     <description>
-<p>This function will generate a vector path from a sequence of fixed point coordinates and curve instructions.  The resulting path can then be passed to vector functions that receive a Path parameter.  The path must be manually deallocated with ~FreeResource() once it is no longer required.</p>
+<p>This function will generate a vector path from a sequence of fixed point coordinates and curve instructions.  The resulting path can then be passed to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Core">FreeResource</function> once it is no longer required.</p>
 <p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
 <p>The following commands are supported:</p>
 <pre>M: Move To
@@ -249,7 +249,7 @@ Z: Close Path
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
     </input>
     <description>
-<p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with ~FreeResource() once it is no longer required.</p>
+<p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>

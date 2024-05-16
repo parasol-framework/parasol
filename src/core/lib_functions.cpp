@@ -107,7 +107,7 @@ objTask * CurrentTask(void)
 GetErrorMsg: Translates error codes into human readable strings.
 Category: Logging
 
-The GetErrorMsg() function converts error codes into human readable strings.  If the Code is invalid, a string of
+The GetErrorMsg() function converts error codes into human readable strings.  If the `Error` is invalid, a string of
 "Unknown error code" is returned.
 
 -INPUT-
@@ -388,7 +388,7 @@ GetResource: Retrieves miscellaneous resource identifiers.
 The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the
 Resource identifier for the full list of available resource codes and their meaning.
 
-C++ developers should use the GetResourcePtr() macro if a resource identifier is known to return a pointer.
+C++ developers should use the `GetResourcePtr()` macro if a resource identifier is known to return a pointer.
 
 -INPUT-
 int(RES) Resource: The ID of the resource that you want to obtain.
@@ -601,12 +601,12 @@ The capabilities of this function and FD handling in general is developed to sui
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
 restrictions do not apply, except to sockets.
 
-Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.
+Call the `DeregisterFD()` macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.
 
 -INPUT-
 hhandle FD: The file descriptor that is to be watched.
-int(RFD) Flags: Set to at least one of READ, WRITE, EXCEPT, REMOVE.
-fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".
+int(RFD) Flags: Set to at least one of `READ`, `WRITE`, `EXCEPT`, `REMOVE`.
+fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is `void Routine(LONG FD, APTR Data)`.
 ptr Data: User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.
 
 -ERRORS-
@@ -754,7 +754,7 @@ The SetResource() function is used to manipulate miscellaneous system resources.
 are supported:
 
 <types lookup="RES" type="Resource">
-<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</>
+<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on ~AllocMemory().  The Value specifies the memory limit in bytes.</>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
 </>
@@ -1002,16 +1002,16 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
 -FUNCTION-
 WaitTime: Waits for a specified amount of seconds and/or microseconds.
 
-This function waits for a period of time as specified by the Seconds and MicroSeconds arguments.  While waiting, your
-task will continue to process incoming messages in order to prevent the process' message queue from developing a
-back-log.
+This function waits for a period of time as specified by the `Seconds` and `MicroSeconds` parameters.  While waiting, 
+your process will continue to process incoming messages in order to prevent the process' message queue from 
+developing a back-log.
 
 WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a
 `MSGID_QUIT` message is sent to the task's message queue.
 
 -INPUT-
 int Seconds:      The number of seconds to wait for.
-int MicroSeconds: The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - 1/1000000.  The value cannot exceed 999999.
+int MicroSeconds: The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - `1/1000000`.  The value cannot exceed `999999`.
 
 -END-
 
