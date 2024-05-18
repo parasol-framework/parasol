@@ -174,7 +174,7 @@ penalty.
 static ERR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
    if (Value) {
-      if (Value->Class->ClassID IS ID_VECTORPATTERN) {
+      if (Value->classID() IS ID_VECTORPATTERN) {
          Self->Inherit = Value;
       }
       else return ERR::InvalidValue;
@@ -188,9 +188,9 @@ static ERR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 Matrices: A linked list of transform matrices that have been applied to the pattern.
 
 All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is
-represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.
+represented by a !VectorMatrix structure, and are linked in the order in which they were applied to the pattern.
 
-&VectorMatrix
+!VectorMatrix
 
 *********************************************************************************************************************/
 

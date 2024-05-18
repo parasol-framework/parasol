@@ -90,7 +90,7 @@ static void validate_tree(extVector *Vector)
 
 static ERR set_parent(extVector *Self, OBJECTPTR Owner)
 {
-   if ((Owner->Class->ClassID != ID_VECTORSCENE) and (Owner->Class->BaseClassID != ID_VECTOR)) {
+   if ((Owner->classID() != ID_VECTORSCENE) and (Owner->Class->BaseClassID != ID_VECTOR)) {
       return ERR::UnsupportedOwner;
    }
 
@@ -301,7 +301,7 @@ static ERR VECTOR_Free(extVector *Self, APTR Void)
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
-      if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
+      if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       else ((extVector *)Self->Parent)->Child = Self->Next;
    }
 
@@ -472,7 +472,7 @@ static ERR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds.height();
       return ERR::Okay;
    }
-   else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
+   else if (Self->classID() IS ID_VECTORVIEWPORT) {
       if (Self->dirty()) gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
@@ -503,7 +503,7 @@ static ERR VECTOR_Init(extVector *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Class->ClassID IS ID_VECTOR) {
+   if (Self->classID() IS ID_VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR::Failed;
    }
@@ -529,7 +529,7 @@ static ERR VECTOR_Init(extVector *Self, APTR Void)
          if (Self->ParentView) {
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
          }
-         else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
+         else if (Self->classID() IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[(extVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
          }
          glResizeSubscriptions.erase(Self);
@@ -593,7 +593,7 @@ static ERR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
    pf::Log log;
 
-   if (!Self->Class->ClassID) return ERR::Okay;
+   if (!Self->classID()) return ERR::Okay;
 
    // Modifying the owner after the root vector has been established is not permitted.
    // The client should instead create a new object under the target and transfer the field values.
@@ -695,7 +695,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
    if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
-   if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
+   if (Self->classID() IS ID_VECTORVIEWPORT) {
       auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
 
       agg::vertex_d w, x, y, z;
@@ -706,7 +706,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
       if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR::Okay;
    }
-   else if (Self->Class->ClassID IS ID_VECTORRECTANGLE) {
+   else if (Self->classID() IS ID_VECTORRECTANGLE) {
       agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
 
       t_path.rewind(0);
@@ -723,7 +723,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
       auto path = Self->Bounds.as_path(Self->Transform);
       if (get_bounds(path).hit_test(Args->X, Args->Y)) {
-         if ((Self->DisableHitTesting) or (Self->Class->ClassID IS ID_VECTORTEXT)) return ERR::Okay;
+         if ((Self->DisableHitTesting) or (Self->classID() IS ID_VECTORTEXT)) return ERR::Okay;
          else {
             // Full hit testing using the true path.  TODO: Find out if there are more optimal hit testing methods.
 
@@ -783,7 +783,7 @@ static ERR VECTOR_Push(extVector *Self, struct vecPush *Args)
 
       if (!Self->Prev) { // Reconfigure the parent's child relationship
          if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
-         else if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
+         else if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       }
       else Self->Prev->Next = Self;
    }
@@ -796,7 +796,7 @@ static ERR VECTOR_Push(extVector *Self, struct vecPush *Args)
 
       if (!Self->Prev) {
          if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
-         else if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
+         else if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       }
 
       Self->Prev = scan; // Vector is ahead of scan
@@ -830,9 +830,7 @@ Use this method to receive feedback for events that have affected the state of a
 To remove an existing subscription, call this method again with the same Callback and an empty Mask.
 Alternatively have the callback function return `ERR::Terminate`.
 
-The synopsis for the Callback is:
-
-`ERR callback(*Vector, FM Event)`
+The prototype for the Callback is `ERR callback(*Vector, FM Event)`
 
 -INPUT-
 int(FM) Mask: Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.
@@ -880,17 +878,15 @@ the clipping area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
-To remove an existing subscription, call this method again with the same Callback and an empty Mask.
+To remove an existing subscription, call this method again with the same `Callback` and an empty `Mask`.
 Alternatively have the function return `ERR::Terminate`.
 
 Please refer to gfxSubscribeInput() for further information on event management and message handling.
 
-The synopsis for the Callback is:
-
-`ERR callback(*Vector, *InputEvent)`
+The prototype for the `Callback` is `ERR callback(*Vector, *InputEvent)`
 
 -INPUT-
-flags(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
+flags(JTYPE) Mask: Combine `JTYPE` flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
 ptr(func) Callback: Reference to a function that will receive input messages.
 
 -ERRORS-
@@ -947,8 +943,8 @@ The SubscribeKeyboard method provides a callback mechanism for handling keyboard
 vector or one of its children has the user focus.  It is a pre-requisite that the associated @VectorScene has been
 linked to a @Surface.
 
-The prototype for the callback is as follows, whereby Qualifers are `KQ` flags and the Code is a `K` constant
-representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are
+The prototype for the callback is as follows, whereby `Qualifers` are `KQ` flags and the Code is a `K` constant
+representing the raw key value.  The `Unicode` value is the resulting character when the qualifier and code are
 translated through the user's keymap.
 
 `ERR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);`
@@ -1724,7 +1720,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
       }
       return ERR::Okay;
    }
-   else if (Value->Class->ClassID IS ID_VECTORCLIP) {
+   else if (Value->classID() IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_clipmask));
@@ -1742,9 +1738,9 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 Matrices: A linked list of transform matrices that have been applied to the vector.
 
 All transforms that have been allocated via ~Vector.NewMatrix() can be read from the Matrices field.  Each transform is
-represented by the `VectorMatrix` structure, and are linked in the order in which they are added to the vector.
+represented by the !VectorMatrix structure, and are linked in the order in which they are added to the vector.
 
-&VectorMatrix
+!VectorMatrix
 
 -FIELD-
 MiterLimit: Imposes a limit on the ratio of the miter length to the StrokeWidth.
@@ -1841,7 +1837,7 @@ static ERR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
 -FIELD-
 Next: The next vector in the branch, or NULL.
 
-The Next value refers to the next vector in the branch.  If the value is NULL, the vector is positioned at the end of
+The Next value refers to the next vector in the branch.  If the value is `NULL`, the vector is positioned at the end of
 the branch.
 
 The Next value can be set to another vector at any time, on the condition that both vectors share the same owner.  If
@@ -1850,7 +1846,7 @@ updates to the #Parent and #Prev fields.
 
 -ERRORS-
 InvalidObject: The value is not a member of the Vector class.
-InvalidValue: The provided value is either NULL or refers to itself.
+InvalidValue: The provided value is either `NULL` or refers to itself.
 UnsupportedOwner: The referenced vector does not share the same owner.
 
 *********************************************************************************************************************/
@@ -1873,7 +1869,7 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
       Self->Parent = Value->Parent;
-      if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
+      if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       else if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
@@ -1977,7 +1973,7 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
 
    if (Self->Parent) { // Detach from the parent
-      if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) {
+      if (Self->Parent->classID() IS ID_VECTORSCENE) {
          ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
          Self->Next->Parent = Self->Parent;
       }
@@ -2002,12 +1998,8 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 -FIELD-
 ResizeEvent: A callback to trigger when the host viewport is resized.
 
-Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as
-follows:
-
-<pre>
-void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Meta)
-</pre>
+Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is
+`void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Meta)`
 
 The dimension values refer to the current location and size of the viewport.
 
@@ -2350,7 +2342,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
       }
       return ERR::Okay;
    }
-   else if (Value->Class->ClassID IS ID_VECTORTRANSITION) {
+   else if (Value->classID() IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_transition));

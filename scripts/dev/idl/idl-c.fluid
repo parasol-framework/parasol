@@ -466,7 +466,7 @@ function flags(Prefix, Options, ...)
                      error("Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   end
                end
-               if (comment == nil) then comment = 'Synonym for ' .. key:gsub('|',' | ') end
+               if (comment == nil) then comment = 'Synonym for `' .. key:gsub('|',' | ') .. '`' end
             end
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }

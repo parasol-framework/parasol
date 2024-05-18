@@ -65,7 +65,7 @@ print('The Action class is located at ' .. str)
       <name>SaveSettings</name>
       <comment>Saves data to the file that the configuration data was loaded from.</comment>
       <description>
-<p>This action will save the configuration data back to its original file source (assuming the <field>Path</field> remains unchanged).</p>
+<p>This action will save the configuration data back to its original file source (assuming the <fl>Path</fl> remains unchanged).</p>
       </description>
     </action>
 
@@ -285,7 +285,7 @@ print('The Action class is located at ' .. str)
 <li>!Program, Application, Game</li>
 <li>!Apple, Banana</li>
 </list>
-<p>To create a filter based on key names, refer to the <field>KeyFilter</field> field.</p>
+<p>To create a filter based on key names, refer to the <fl>KeyFilter</fl> field.</p>
       </description>
     </field>
 
@@ -303,13 +303,8 @@ print('The Action class is located at ' .. str)
 <li>Path = documents:</li>
 <li>Name = Parasol</li>
 </list>
-<p>You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this use the exclamation character as shown in these examples:</p>
-<list type="unsorted">
-<li>!Group = Sun, Light</li>
-<li>!Path = documents:</li>
-<li>!Name = Parasol</li>
-</list>
-<p>To create a filter based on group names, refer to the <field>GroupFilter</field> field.</p>
+<p>Filters can be inversed by prefixing the key with the <code>!</code> character.</p>
+<p>To create a filter based on group names, refer to the <fl>GroupFilter</fl> field.</p>
       </description>
     </field>
 

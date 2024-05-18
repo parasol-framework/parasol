@@ -131,11 +131,11 @@
       <name>Show</name>
       <comment>Presents a display object to the user.</comment>
       <description>
-<p>This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the <field>X</field> and <field>Y</field> fields.  In Parasol's native platform, the user's screen display will be altered to match the required resolution and the graphics of the display's <field>Bitmap</field> object will take up the entirety of the screen.</p>
-<p>If the <code>BORDERLESS</code> flag has been set in the <field>Flags</field> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>
-<p>In Microsoft Windows, the <field>LeftMargin</field>, <field>RightMargin</field>, <field>TopMargin</field> and <field>BottomMargin</field> fields will be updated to reflect the position of the client area within the hosted window.  In X11 these field values are all set to zero.</p>
+<p>This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the <fl>X</fl> and <fl>Y</fl> fields.  In Parasol's native platform, the user's screen display will be altered to match the required resolution and the graphics of the display's <fl>Bitmap</fl> object will take up the entirety of the screen.</p>
+<p>If the <code>BORDERLESS</code> flag has been set in the <fl>Flags</fl> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>
+<p>In Microsoft Windows, the <fl>LeftMargin</fl>, <fl>RightMargin</fl>, <fl>TopMargin</fl> and <fl>BottomMargin</fl> fields will be updated to reflect the position of the client area within the hosted window.  In X11 these field values are all set to zero.</p>
 <p>If the window is minimised at the time this action is called, the window will be restored to its original position if the code for the host platform supports this capability.</p>
-<p>The <code>VISIBLE</code> flag in the <field>Flags</field> field will be set if the Show operation is successful.</p>
+<p>The <code>VISIBLE</code> flag in the <fl>Flags</fl> field will be set if the Show operation is successful.</p>
       </description>
     </action>
 
@@ -196,7 +196,7 @@
       <description>
 <p>The SetGamma method controls the gamma correction levels for the display.  Gamma levels for the red, green and blue colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the minimum value is 0.0 and the maximum value is 100.</p>
 <p>Optional flags include <code>GMF::SAVE</code>.  This option will save the requested settings as the user default when future displays are opened.</p>
-<p>If you would like to know the default gamma correction settings for a display, please refer to the <field>Gamma</field> field.</p>
+<p>If you would like to know the default gamma correction settings for a display, please refer to the <fl>Gamma</fl> field.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -317,7 +317,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>This field defines the horizontal offset for the <field>Bitmap</field>, which is positioned 'behind' the display. To achieve hardware scrolling, call the <action>Move</action> action on the Bitmap in order to change this value and update the display.</p>
+<p>This field defines the horizontal offset for the <fl>Bitmap</fl>, which is positioned 'behind' the display. To achieve hardware scrolling, call the <action>Move</action> action on the Bitmap in order to change this value and update the display.</p>
       </description>
     </field>
 
@@ -327,7 +327,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>This field defines the vertical offset for the <field>Bitmap</field>, which is positioned 'behind' the display. If you want to achieve hardware scrolling, you will need to call the Move action on the Bitmap in order to change this value and update the display.</p>
+<p>This field defines the vertical offset for the <fl>Bitmap</fl>, which is positioned 'behind' the display. If you want to achieve hardware scrolling, you will need to call the Move action on the Bitmap in order to change this value and update the display.</p>
       </description>
     </field>
 
@@ -463,7 +463,7 @@
       <type>INT</type>
       <description>
 <p>This field defines the height of a display.  This is known as the 'viewport' that the bitmap data is displayed through. If the height exceeds allowable limits, it will be restricted to a value that the display hardware can handle.</p>
-<p>If the display is hosted, the height reflects the internal height of the host window.  On some hosted systems, the true height of the window can be calculated by reading the <field>TopMargin</field> and <field>BottomMargin</field> fields.</p>
+<p>If the display is hosted, the height reflects the internal height of the host window.  On some hosted systems, the true height of the window can be calculated by reading the <fl>TopMargin</fl> and <fl>BottomMargin</fl> fields.</p>
       </description>
     </field>
 
@@ -473,7 +473,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>On full-screen displays, the video data area can exceed the height of the screen display.  The InsideHeight reflects the height of the video data in pixels.  If this feature is not in use or is unavailable, the InsideWidth is equal to the display <field>Height</field>.</p>
+<p>On full-screen displays, the video data area can exceed the height of the screen display.  The InsideHeight reflects the height of the video data in pixels.  If this feature is not in use or is unavailable, the InsideWidth is equal to the display <fl>Height</fl>.</p>
       </description>
     </field>
 
@@ -483,7 +483,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>On full-screen displays, the video data area can exceed the width of the screen display.  The InsideWidth reflects the width of the video data in pixels.  If this feature is not in use or is unavailable, the InsideWidth is equal to the display <field>Width</field>.</p>
+<p>On full-screen displays, the video data area can exceed the width of the screen display.  The InsideWidth reflects the width of the video data in pixels.  If this feature is not in use or is unavailable, the InsideWidth is equal to the display <fl>Width</fl>.</p>
       </description>
     </field>
 
@@ -654,7 +654,7 @@
       <type>INT</type>
       <description>
 <p>This field defines the width of a display.  This is known as the 'viewport' that the bitmap data is displayed through. If the width exceeds allowable limits, it will be restricted to a value that the display hardware can handle.</p>
-<p>If the display is hosted, the width reflects the internal width of the host window.  On some hosted systems, the true width of the window can be calculated by reading the <field>LeftMargin</field> and <field>RightMargin</field> fields.</p>
+<p>If the display is hosted, the width reflects the internal width of the host window.  On some hosted systems, the true width of the window can be calculated by reading the <fl>LeftMargin</fl> and <fl>RightMargin</fl> fields.</p>
       </description>
     </field>
 
@@ -676,7 +676,7 @@
       <type>INT</type>
       <description>
 <p>The X field defines the horizontal hardware coordinate for a display.  This field should be set to zero unless the screen requires adjustment.  Most hardware drivers and output devices do not support this feature.</p>
-<p>On hosted displays, prior to initialisation the coordinate will reflect the position of the display window when it is created.  After initialisation, the coordinate is altered to reflect the absolute position of the client area of the display window.  The <field>LeftMargin</field> can be used to determine the actual position of the host window.</p>
+<p>On hosted displays, prior to initialisation the coordinate will reflect the position of the display window when it is created.  After initialisation, the coordinate is altered to reflect the absolute position of the client area of the display window.  The <fl>LeftMargin</fl> can be used to determine the actual position of the host window.</p>
 <p>To adjust the position of the display, use the <action>MoveToPoint</action> action rather than setting this field directly.</p>
       </description>
     </field>
@@ -688,7 +688,7 @@
       <type>INT</type>
       <description>
 <p>The Y field defines the vertical hardware coordinate for a display.  This field should be set to zero unless the screen requires adjustment.  Most hardware drivers and output devices do not support this feature.</p>
-<p>On hosted displays, prior to initialisation the coordinate will reflect the position of the display window  when it is created.  After initialisation, the coordinate is altered to reflect the absolute position of the client area of the display window.  The <field>TopMargin</field> can be used to determine the actual position of the host window.</p>
+<p>On hosted displays, prior to initialisation the coordinate will reflect the position of the display window  when it is created.  After initialisation, the coordinate is altered to reflect the absolute position of the client area of the display window.  The <fl>TopMargin</fl> can be used to determine the actual position of the host window.</p>
 <p>To adjust the position of the display, use the <action>MoveToPoint</action> action rather than setting this field directly.</p>
       </description>
     </field>
@@ -734,7 +734,7 @@
       <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
       <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
       <const name="POWERSAVE">Power saving is active (read-only).</const>
-      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
+      <const name="READ_ONLY">Synonym for <code>MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</code></const>
       <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
     </constants>

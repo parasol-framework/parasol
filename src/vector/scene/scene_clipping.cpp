@@ -193,7 +193,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
    if (!m_clip->Viewport->Matrices) {
       if (vecNewMatrix(m_clip->Viewport, NULL, false) != ERR::Okay) return;
    }
-   
+
    auto &matrix = m_clip->Viewport->Matrices;
    auto &t = m_shape->Transform;
 
@@ -204,8 +204,8 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
    matrix->TranslateX = t.tx;
    matrix->TranslateY = t.ty;
 
-   if (m_shape->Class->ClassID IS ID_VECTORTEXT) {
-      // This feels a bit hacky and might not necessarily be right... but it does get around the 
+   if (m_shape->classID() IS ID_VECTORTEXT) {
+      // This feels a bit hacky and might not necessarily be right... but it does get around the
       // issue of VectorText's positioning around the baseline and having path bounds in negative space.
       matrix->TranslateX = 0;
       matrix->TranslateY = 0;
@@ -227,7 +227,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
    agg::path_storage clip_bound_path = m_clip->Bounds.as_path();
    auto clip_bound_final = get_bounds(clip_bound_path);
 
-   resize_bitmap(F2T(clip_bound_final.left), F2T(clip_bound_final.top), 
+   resize_bitmap(F2T(clip_bound_final.left), F2T(clip_bound_final.top),
       F2T(clip_bound_final.right) + 2, F2T(clip_bound_final.bottom) + 2);
 
    // Every child vector of the VectorClip that exports a path will be rendered to the mask.

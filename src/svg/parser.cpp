@@ -57,7 +57,7 @@ void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
    if (!m_fill.empty())   Vector->set(FID_Fill, m_fill);
    if (!m_stroke.empty()) Vector->set(FID_Stroke, m_stroke);
    if (m_stroke_width)    Vector->set(FID_StrokeWidth, m_stroke_width);
-   if (Vector->Class->ClassID IS ID_VECTORTEXT) {
+   if (Vector->classID() IS ID_VECTORTEXT) {
       if (!m_font_family.empty()) Vector->set(FID_Face, m_font_family);
       if (!m_font_size.empty())   Vector->set(FID_FontSize, m_font_size);
       if (m_font_weight) Vector->set(FID_Weight, m_font_weight);
@@ -65,7 +65,7 @@ void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
    if (m_fill_opacity >= 0.0) Vector->set(FID_FillOpacity, m_fill_opacity);
    if (m_opacity >= 0.0) Vector->set(FID_Opacity, m_opacity);
 
-   if (Vector->Class->ClassID != ID_VECTORTEXT) {
+   if (Vector->classID() != ID_VECTORTEXT) {
       if (m_path_quality != RQ::AUTO) Vector->set(FID_PathQuality, LONG(m_path_quality));
    }
 }
@@ -147,7 +147,7 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
          case SVF_SET:              xtag_set(Self, State, child, Tag, Vector); break;
          case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
          case SVF_TEXTPATH:
-            if (Vector->Class->ClassID IS ID_VECTORTEXT) {
+            if (Vector->classID() IS ID_VECTORTEXT) {
                if (!child.Children.empty()) {
                   auto buffer = child.getContent();
                   if (!buffer.empty()) {
@@ -1786,7 +1786,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
 
             case SVF_XLINK_HREF: src = val; break;
             case SVF_ID:     id = val; break;
-            // Applying (x,y) values as a texture offset here appears to be a mistake because <use> will deep-clone 
+            // Applying (x,y) values as a texture offset here appears to be a mistake because <use> will deep-clone
             // the values also.  SVG documentation is silent on the validity of (x,y) values when an image
             // is in the <defs> area, so a W3C test may be needed to settle the matter.
             case SVF_X:      /*FUNIT(FID_X, val).set(image);*/ break;
@@ -2139,7 +2139,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
    }
 
    if ((flags & (VMF::Y_MIN|VMF::Y_MID|VMF::Y_MAX)) IS VMF::NIL) {
-      if (Parent->Class->ClassID IS ID_VECTORTEXT) flags |= VMF::Y_MIN;
+      if (Parent->classID() IS ID_VECTORTEXT) flags |= VMF::Y_MIN;
       else flags |= VMF::Y_MID;
    }
 
@@ -2198,9 +2198,9 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    if ((StrMatch("symbol", tagref->name()) IS ERR::Okay) or (StrMatch("svg", tagref->name()) IS ERR::Okay)) {
       // SVG spec requires that we create a VectorGroup and then create a Viewport underneath that.  However if there
       // are no attributes to apply to the group then there is no sense in creating an empty one.
-      
+
       // TODO: We should be using the same replace-and-expand tag method that is applied for group
-      // handling, as seen further below in this routine. 
+      // handling, as seen further below in this routine.
 
       objVector *viewport = NULL;
 
@@ -2408,7 +2408,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
          // SVF_DOWNLOAD, SVF_PING, SVF_REL, SVF_HREFLANG, SVF_TYPE, SVF_REFERRERPOLICY
       }
    }
-   
+
    // Vectors within <a> will be assigned to a group purely because it's easier for us to manage them that way.
 
    objVector *group;
@@ -2416,7 +2416,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       SetOwner(group, Parent);
 
       process_children(Self, State, Tag, group);
-   
+
       pf::vector<ChildEntry> list;
       if (ListChildren(group->UID, &list) IS ERR::Okay) {
          for (auto &child : list) {
@@ -2425,7 +2425,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
          }
          Self->Links.emplace_back(std::move(link));
       }
-   
+
       if ((!Self->Links.empty()) and (group->init() IS ERR::Okay)) Vector = group;
       else FreeResource(group);
    }
@@ -2473,7 +2473,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    // If initialising to a VectorScene, prefer to use its existing viewport if there is one.
 
    objVectorViewport *viewport;
-   if ((Parent->Class->ClassID IS ID_VECTORSCENE) and (((objVectorScene *)Parent)->Viewport)) {
+   if ((Parent->classID() IS ID_VECTORSCENE) and (((objVectorScene *)Parent)->Viewport)) {
       viewport = ((objVectorScene *)Parent)->Viewport;
    }
    else {
@@ -2707,7 +2707,7 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
 }
 
 //********************************************************************************************************************
-// The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the 
+// The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the
 // existing <animate> tag.
 
 static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
@@ -2757,25 +2757,25 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
             break;
 
          case SVF_ROTATE:
-            // Post-multiplies a supplemental transformation matrix onto the CTM of the target element to apply a 
-            // rotation transformation about the origin of the current user coordinate system. The rotation 
-            // transformation is applied after the supplemental translation transformation that is computed due to 
+            // Post-multiplies a supplemental transformation matrix onto the CTM of the target element to apply a
+            // rotation transformation about the origin of the current user coordinate system. The rotation
+            // transformation is applied after the supplemental translation transformation that is computed due to
             // the 'path' attribute.
             //
-            // auto: The object is rotated over time by the angle of the direction (i.e., directional tangent 
+            // auto: The object is rotated over time by the angle of the direction (i.e., directional tangent
             // vector) of the motion path.
             //
-            // auto-reverse: Indicates that the object is rotated over time by the angle of the direction (i.e., 
+            // auto-reverse: Indicates that the object is rotated over time by the angle of the direction (i.e.,
             // directional tangent vector) of the motion path plus 180 degrees.
             //
-            // <number>: Indicates that the target element has a constant rotation transformation applied to it, 
+            // <number>: Indicates that the target element has a constant rotation transformation applied to it,
             // where the rotation angle is the specified number of degrees.
 
             if (iequals("auto", value)) anim.auto_rotate = ART::AUTO;
             else if (iequals("auto-reverse", value)) anim.auto_rotate = ART::AUTO_REVERSE;
-            else { 
-               anim.auto_rotate = ART::FIXED; 
-               anim.rotate = strtod(value.c_str(), NULL); 
+            else {
+               anim.auto_rotate = ART::FIXED;
+               anim.rotate = strtod(value.c_str(), NULL);
             }
             break;
 
@@ -2826,7 +2826,7 @@ static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector
       log.trace("%s = %.40s", name.c_str(), value.c_str());
 
       if (auto error = set_property(Self, Vector, StrHash(name), Tag, State, value); error != ERR::Okay) {
-         if (Vector->Class->ClassID != ID_VECTORGROUP) {
+         if (Vector->classID() != ID_VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
                name.c_str(), value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
          }
@@ -3021,7 +3021,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
    // Ignore stylesheet attributes
    if (Hash IS SVF_CLASS) return ERR::Okay;
 
-   switch(Vector->Class->ClassID) {
+   switch(Vector->classID()) {
       case ID_VECTORVIEWPORT:
          switch (Hash) {
             // The following 'view-*' fields are for defining the SVG view box

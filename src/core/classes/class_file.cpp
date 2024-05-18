@@ -112,7 +112,7 @@ static ERR set_permissions(extFile *, PERMIT);
 
 /*********************************************************************************************************************
 -ACTION-
-Activate: Opens the file.  Performed automatically if NEW, READ or WRITE flags were specified on initialisation.
+Activate: Opens the file.  Performed automatically if `NEW`, `READ` or `WRITE` flags were specified on initialisation.
 -END-
 *********************************************************************************************************************/
 
@@ -251,8 +251,8 @@ static ERR FILE_Activate(extFile *Self, APTR Void)
 BufferContent: Reads all file content into a local memory buffer.
 
 File content may be buffered at any time by calling the BufferContent method.  This will allocate a buffer that matches
-the current file size and the file's content will be read into that buffer.  The BUFFER flag is set in the file object
-and a pointer to the content is referenced in the file's Buffer field.  Standard file operations such as read, write
+the current file size and the file's content will be read into that buffer.  The `BUFFER` flag is set in the file object
+and a pointer to the content is referenced in the file's #Buffer field.  Standard file operations such as read, write
 and seek have the same effect when a file is in buffer mode.
 
 Once a file has been buffered, the original file handle and any locks on that file are returned to the system.
@@ -376,7 +376,7 @@ ptr(func) Callback: Optional callback for receiving feedback during the operatio
 Okay: The file data was copied successfully.
 NullArgs:
 Args:
-FieldNotSet: The Path field has not been set in the file object.
+FieldNotSet: The #Path field has not been set in the file object.
 Failed:
 Read: Data could not be read from the source path.
 Write: Data could not be written to the destination path.
@@ -563,12 +563,12 @@ field to the desired buffer size.  A file path is not required unless the buffer
 initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.
 
 Strings can also be loaded into file buffers for read/write access.  This is achieved by specifying the
-#Path `string:Data\0`, where Data is a sequence of characters to be loaded into a virtual memory space.
+#Path `string:Data\0`, where `Data` is a sequence of characters to be loaded into a virtual memory space.
 
 -ERRORS-
 Okay:
 MissingPath:
-SetField: An error occurred while updating the Path field.
+SetField: An error occurred while updating the #Path field.
 FileNotFound:
 ResolvePath:
 Search: The file could not be found.
@@ -796,7 +796,7 @@ ptr(func) Callback: Optional callback for receiving feedback during the operatio
 Okay: The File was moved successfully.
 NullArgs
 Args
-FieldNotSet: The Path field has not been set in the file object.
+FieldNotSet: The #Path field has not been set in the file object.
 Failed
 
 *********************************************************************************************************************/
@@ -896,7 +896,7 @@ If a file object represents a folder, calling the Next() method will retrieve me
 in the folder's index.  This information will be returned as a new File object that is partially initialised (the file
 will not be opened, but information such as size, timestamps and permissions will be retrievable).
 
-If desired, the resulting file object can be opened by setting the READ or WRITE bits in #Flags and then
+If desired, the resulting file object can be opened by setting the `READ` or `WRITE` bits in #Flags and then
 calling the #Activate() action.
 
 It is the responsibility of the caller to free the resulting File object once it is no longer required.
@@ -977,7 +977,7 @@ bytes read from the file data.  The `FL::READ` bit in the #Flags field must have
 or the call will fail.
 
 It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g.
-if the end of the file has been reached.  The Result parameter will be returned as zero in such cases.  Check the
+if the end of the file has been reached.  The `Result` parameter will be returned as zero in such cases.  Check the
 current #Position against the #Size to confirm that the end has been reached.
 
 -ERRORS-
@@ -985,8 +985,8 @@ Okay: The file information was read into the buffer.
 Args
 NullArgs
 NotInitialised
-OutOfRange: Invalid Length parameter.
-FileReadFlag: The FL::READ flag was not specified on initialisation.
+OutOfRange: Invalid `Length` parameter.
+FileReadFlag: The `FL::READ` flag was not specified on initialisation.
 ExpectedFolder: The file object refers to a folder.
 Failed: The file object refers to a folder, or the object is corrupt.
 -END-
@@ -1073,7 +1073,7 @@ increase the #Position field by the amount of bytes read from the file.  You mus
 the #Flags field when you initialised the file, or the call will fail.
 
 The line buffer is managed internally, so there is no need for you to free the result string.  This method returns
-ERR::NoData when it runs out of information to read from the file.
+`ERR::NoData` when it runs out of information to read from the file.
 
 -INPUT-
 &str Result: The resulting string is returned in this parameter.
@@ -1081,7 +1081,7 @@ ERR::NoData when it runs out of information to read from the file.
 -ERRORS-
 Okay: The file information was read into the buffer.
 Args
-FileReadFlag: The FL::READ flag was not specified on initialisation.
+FileReadFlag: The `FL::READ` flag was not specified on initialisation.
 Failed: The file object refers to a folder.
 ObjectCorrupt: The internal file handle is missing.
 BufferOverflow: The line is too long for the read routine (4096 byte limit).
@@ -1326,13 +1326,13 @@ SetDate: Sets the date on a file.
 The SetDate method provides a convenient way to set the date and time information for a file object.  Date information
 is set in a human readable year, month, day, hour, minute and second format for your convenience.
 
-Depending on the filesystem type, multiple forms of datestamp may be supported.  The default datestamp, FDT_MODIFIED
+Depending on the filesystem type, multiple forms of datestamp may be supported.  The default datestamp, `FDT::MODIFIED`
 defines the time at which the file data was last altered.  Other types include the date on which the file was created
 and the date it was last archived (backed up).  The following types are supported by the Type argument:
 
 <types lookup="FDT"/>
 
-If the specified datestamp is not supported by the filesystem, ERR::NoSupport is returned by this method.
+If the specified datestamp is not supported by the filesystem, `ERR::NoSupport` is returned by this method.
 
 -INPUT-
 int Year: Year (-ve for BC, +ve for AD).
@@ -1419,9 +1419,9 @@ writing data to the file object.  Although it is possible to call the Read and W
 will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers
 will allow in software.
 
-A single file object can support read or write streams (pass `FL::READ` or `FL::WRITE` in the Flags parameter).  However,
-only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with
-the #StopStream() method and then restarted with StartStream.
+A single file object can support read or write streams (pass `FL::READ` or `FL::WRITE` in the `Flags` parameter).
+However, only one of the two can be active at any time.  To switch between read and write modes, the stream must be
+stopped with the #StopStream() method and then restarted with StartStream.
 
 A stream can be limited by setting the Length parameter to a non-zero value.
 
@@ -1431,7 +1431,7 @@ that new data has been written to the file cache.  The Buffer parameter of the r
 a private address that contains the data that was received from the stream and the Result indicates the amount of new
 data available.
 
-When writing to a stream, AC_Read notifications will be received to indicate that the stream is ready to accept more
+When writing to a stream, `AC_Read` notifications will be received to indicate that the stream is ready to accept more
 data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the
 #Write() action.
 
@@ -1439,7 +1439,7 @@ A stream can be cancelled at any time by calling #StopStream().
 
 -INPUT-
 oid Subscriber: Reference to an object that will receive streamed data notifications.
-int(FL) Flags: Use READ for incoming data, WRITE for outgoing data.
+int(FL) Flags: Use `READ` for incoming data, `WRITE` for outgoing data.
 int Length: Limits the total amount of data to be streamed.
 
 -ERRORS-
@@ -1485,24 +1485,24 @@ static ERR FILE_StopStream(extFile *Self, APTR Void)
 -METHOD-
 Watch: Monitors files and folders for file system events.
 
-The WatchFile() function configures event based reporting for changes to any file or folder in the file system.
+The Watch() method configures event based reporting for changes to any file or folder in the file system.
 The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to
 support most of the current feature set.
 
 The path that will be monitored is determined by the File object's #Path field.  Both files and folders
 are supported as targets.
 
-The optional MFF Flags are used to filter events to those that are desired for monitoring.
+The optional !MFF Flags are used to filter events to those that are desired for monitoring.
 
-The client must provide a Callback that will be triggered when a monitored event is triggered.  The Callback must
+The client must provide a `Callback` that will be triggered when a monitored event is triggered.  The `Callback` must
 follow the format `ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)`
 
-Each event will be delivered in the sequence that they are originally raised.  The Flags parameter will reflect the
-specific event that has occurred.  The Custom parameter is identical to the Custom argument originally passed to this
-method.  The Path is a string that is relative to the File's #Path field.
+Each event will be delivered in the sequence that they are originally raised.  The `Flags` parameter will reflect the
+specific event that has occurred.  The `Custom` parameter is identical to the `Custom` argument originally passed to this
+method.  The `Path` is a string that is relative to the File's #Path field.
 
-If the callback routine returns ERR::Terminate, the watch will be disabled.  It is also possible to disable an existing
-watch by calling this method with no parameters, or by setting the Flags parameter to 0.
+If the callback routine returns `ERR::Terminate`, the watch will be disabled.  It is also possible to disable an existing
+watch by calling this method with no parameters, or by setting the `Flags` parameter to `0`.
 
 -INPUT-
 ptr(func) Callback: The routine that will be called when a file change is triggered by the system.
@@ -1592,7 +1592,7 @@ NullArgs:
 ReallocMemory:
 ExpectedFile:
 ObjectCorrupt:
-FileWriteFlag: The FL::WRITE flag was not specified when initialising the file.
+FileWriteFlag: The `FL::WRITE` flag was not specified when initialising the file.
 LimitedSuccess: Only some of the data was written to the file.  Check the Result parameter to see how much data was written.
 -END-
 
@@ -1697,7 +1697,7 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
 -FIELD-
 Buffer: Points to the internal data buffer if the file content is held in memory.
 
-If a file has been created with an internal buffer (by setting the BUFFER flag on creation), this field will point to
+If a file has been created with an internal buffer (by setting the `BUFFER` flag on creation), this field will point to
 the address of that buffer.  The size of the buffer will match the #Size field.
 
 *********************************************************************************************************************/
@@ -1712,14 +1712,12 @@ static ERR GET_Buffer(extFile *Self, APTR *Value, LONG *Elements)
 /*********************************************************************************************************************
 
 -FIELD-
-Created: The creation date stamp of the file.
+Created: The creation date stamp for the file.
 
-The Date field allows you to obtain the time at which the file was last date-stamped, or you can use it to set a new
-file date.  By default, the 'modification date' is targeted by this field's support routine.  Please note that if the
-file is open for writing, then date-stamped, then written; the file system driver will normally change the date stamp
-to the time at which the file was last modified.
+The Created field returns the time at which the file was first created, if supported by the filesystem.  If not
+supported directly, the most recent 'modification date' is normally returned.
 
-To simplify time management, information is read and set via a &DateTime structure.
+To simplify time management, information is read and set via a !DateTime structure.
 
 *********************************************************************************************************************/
 
@@ -1794,7 +1792,7 @@ The Date field reflects the time at which the file was last modified.  It can al
 date.  Please note that if the file is open for writing, then date-stamped, then modified; the file system driver
 will overwrite the previously defined date stamp with the time at which the file was last written.
 
-Information is read and set using a standard &DateTime structure.
+Information is read and set using a standard !DateTime structure.
 
 *********************************************************************************************************************/
 
@@ -2644,20 +2642,19 @@ static ERR SET_Size(extFile *Self, LARGE Size)
 /*********************************************************************************************************************
 
 -FIELD-
-Static: Set to TRUE if a file object should be static.
+Static: Set to `true` if a file object should be static.
 
 This field applies when a file object has been created in an object script.  By default, a file object will
-auto-terminate when a closing tag is received.  If the object must remain live, set this field to TRUE.
+auto-terminate when a closing tag is received.  If the object must remain live, set this field to `true`.
 
 -FIELD-
 Target: Specifies a surface ID to target for user feedback and dialog boxes.
 
-User feedback can be enabled for certain file operations by setting the Target field to a valid surface ID (for
-example, the Desktop object) or zero for the default target for new windows.  This field is set to -1 by default, in
-order to disable this feature.
+User feedback can be enabled for certain file operations by setting the Target field to a valid surface ID, or zero
+for the default target for new windows.  This field is set to `-1` by default, in order to disable this feature.
 
 If set correctly, operations such as file deletion or copying will pop-up a progress box after a certain amount of time
-has elapsed during the operation.  The dialog box will also provide the user with a Cancel option to terminate the
+has elapsed during the operation.  The dialog box will also provide the user with a cancel option to terminate the
 process early.
 
 -FIELD-
@@ -2733,7 +2730,7 @@ case the ID has been changed after initialisation of the file object.
 You can also change the user ID of a file by writing an integer value to this field.  This can only be done
 post-initialisation or an error code will be returned.
 
-If the filesystem does not support user ID's, ERR::NoSupport is returned.
+If the filesystem does not support user ID's, `ERR::NoSupport` is returned.
 -END-
 *********************************************************************************************************************/
 

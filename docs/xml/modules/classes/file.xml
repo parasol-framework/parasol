@@ -15,7 +15,7 @@
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The File class provides extensive support for file management and I/O.  The class supports the notion of individual file compression and file finding capabilities.  Since all File objects are tracked, there is no chance of the system leaving locked files behind after a program exits.  Folder management is also integrated into this class to ease the management of both file types.</p>
-<p>To read or write to a file, set the <field>Path</field> of the file as well as the correct I/O file flags before initialisation. See the <field>Flags</field> field for information on the available I/O flags.  Functionality for read and write operations is provided through the <action>Read</action> and <action>Write</action> actions.  The <action>Seek</action> action can be used to change the read/write position in a file.</p></description>
+<p>To read or write to a file, set the <fl>Path</fl> of the file as well as the correct I/O file flags before initialisation. See the <fl>Flags</fl> field for information on the available I/O flags.  Functionality for read and write operations is provided through the <action>Read</action> and <action>Write</action> actions.  The <action>Seek</action> action can be used to change the read/write position in a file.</p></description>
     <source>
       <file path="../classes/">class_file.cpp</file>
     </source>
@@ -24,14 +24,14 @@
   <actions>
     <action>
       <name>Activate</name>
-      <comment>Opens the file.  Performed automatically if NEW, READ or WRITE flags were specified on initialisation.</comment>
+      <comment>Opens the file.  Performed automatically if <code>NEW</code>, <code>READ</code> or <code>WRITE</code> flags were specified on initialisation.</comment>
     </action>
 
     <action>
       <name>DataFeed</name>
       <comment>Data can be streamed to any file as a method of writing content.</comment>
       <description>
-<p>Streaming data of any type to a file will result in the content being written to the file at the current seek <field>Position</field>.</p>
+<p>Streaming data of any type to a file will result in the content being written to the file at the current seek <fl>Position</fl>.</p>
       </description>
     </action>
 
@@ -39,19 +39,19 @@
       <name>Init</name>
       <comment>Initialises a file.</comment>
       <description>
-<p>This action will prepare a file or folder at the given <field>Path</field> for use.</p>
+<p>This action will prepare a file or folder at the given <fl>Path</fl> for use.</p>
 <p>To create a new file from scratch, specify the <code>NEW</code> flag.  This will overwrite any file that exists at the target path.</p>
-<p>To read and write data to the file, specify the <code>READ</code> and/or <code>WRITE</code> modes in the <field>Flags</field> field prior to initialisation. If a file is read-only and the <code>WRITE</code> and <code>READ</code> flags are set in combination, the <code>WRITE</code> flag will be dropped and initialisation will continue as normal.</p>
+<p>To read and write data to the file, specify the <code>READ</code> and/or <code>WRITE</code> modes in the <fl>Flags</fl> field prior to initialisation. If a file is read-only and the <code>WRITE</code> and <code>READ</code> flags are set in combination, the <code>WRITE</code> flag will be dropped and initialisation will continue as normal.</p>
 <p>If neither of the <code>NEW</code>, <code>READ</code> or <code>WRITE</code> flags are specified, the file object is prepared and queried from disk (if it exists), but will not be opened.  It will be necessary to <action>Activate</action> the file in order to open it.</p>
 <p>The File class supports RAM based file buffering - this is activated by using the <code>BUFFER</code> flag and setting the Size field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.</p>
-<p>Strings can also be loaded into file buffers for read/write access.  This is achieved by specifying the <field>Path</field> <code>string:Data\0</code>, where Data is a sequence of characters to be loaded into a virtual memory space.</p>
+<p>Strings can also be loaded into file buffers for read/write access.  This is achieved by specifying the <fl>Path</fl> <code>string:Data\0</code>, where <code>Data</code> is a sequence of characters to be loaded into a virtual memory space.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Search">The file could not be found.</error>
         <error code="FileNotFound">File not found.</error>
         <error code="NoPermission">Permission was denied when accessing or creating the file.</error>
-        <error code="SetField">An error occurred while updating the Path field.</error>
+        <error code="SetField">An error occurred while updating the <fl>Path</fl> field.</error>
         <error code="MissingPath">The object is missing a setting in the Path or Location field.</error>
         <error code="ResolvePath">A volume could not be resolved.</error>
       </result>
@@ -66,15 +66,15 @@
       <name>Read</name>
       <comment>Reads data from a file.</comment>
       <description>
-<p>Reads data from a file into the given buffer.  Increases the value in the <field>Position</field> field by the amount of bytes read from the file data.  The <code>FL::READ</code> bit in the <field>Flags</field> field must have been set on file initialisation, or the call will fail.</p>
-<p>It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g. if the end of the file has been reached.  The Result parameter will be returned as zero in such cases.  Check the current <field>Position</field> against the <field>Size</field> to confirm that the end has been reached.</p>
+<p>Reads data from a file into the given buffer.  Increases the value in the <fl>Position</fl> field by the amount of bytes read from the file data.  The <code>FL::READ</code> bit in the <fl>Flags</fl> field must have been set on file initialisation, or the call will fail.</p>
+<p>It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g. if the end of the file has been reached.  The <code>Result</code> parameter will be returned as zero in such cases.  Check the current <fl>Position</fl> against the <fl>Size</fl> to confirm that the end has been reached.</p>
       </description>
       <result>
         <error code="Okay">The file information was read into the buffer.</error>
         <error code="Failed">The file object refers to a folder, or the object is corrupt.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">Invalid Length parameter.</error>
-        <error code="FileReadFlag">The FL::READ flag was not specified on initialisation.</error>
+        <error code="OutOfRange">Invalid <code>Length</code> parameter.</error>
+        <error code="FileReadFlag">The <code>FL::READ</code> flag was not specified on initialisation.</error>
         <error code="NotInitialised">The object has not been initialised.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="ExpectedFolder">The file object refers to a folder.</error>
@@ -100,13 +100,13 @@
       <name>Write</name>
       <comment>Writes data to a file.</comment>
       <description>
-<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the <code>FL::WRITE</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
+<p>Writes data from the provided buffer into the file, then updates the <fl>Position</fl> field to reflect the new read/write position.  You must have set the <code>FL::WRITE</code> bit in the <fl>Flags</fl> field when you initialised the file, or the call will fail.</p>
       </description>
       <result>
         <error code="Okay">All of the data was written to the file.</error>
         <error code="LimitedSuccess">Only some of the data was written to the file.  Check the Result parameter to see how much data was written.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="FileWriteFlag">The FL::WRITE flag was not specified when initialising the file.</error>
+        <error code="FileWriteFlag">The <code>FL::WRITE</code> flag was not specified when initialising the file.</error>
         <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
         <error code="ReallocMemory">The reallocation of a memory block failed.</error>
         <error code="ExpectedFile">The operation expected a path to a file.</error>
@@ -122,7 +122,7 @@
       <comment>Reads all file content into a local memory buffer.</comment>
       <prototype>ERR flBufferContent(OBJECTPTR Object)</prototype>
       <description>
-<p>File content may be buffered at any time by calling the BufferContent method.  This will allocate a buffer that matches the current file size and the file's content will be read into that buffer.  The BUFFER flag is set in the file object and a pointer to the content is referenced in the file's Buffer field.  Standard file operations such as read, write and seek have the same effect when a file is in buffer mode.</p>
+<p>File content may be buffered at any time by calling the BufferContent method.  This will allocate a buffer that matches the current file size and the file's content will be read into that buffer.  The <code>BUFFER</code> flag is set in the file object and a pointer to the content is referenced in the file's <fl>Buffer</fl> field.  Standard file operations such as read, write and seek have the same effect when a file is in buffer mode.</p>
 <p>Once a file has been buffered, the original file handle and any locks on that file are returned to the system. Physical operations on the file object such as delete, rename and attribute settings no longer have meaning when applied to a buffered file.  It is not possible to drop the buffer and return the file object to its original state once buffering has been enabled.</p>
       </description>
       <result>
@@ -142,7 +142,7 @@
       </input>
       <description>
 <p>This method is used to copy the data of a file object to another location.  All of the data will be copied, effectively creating a clone of the original file information.  The file object must have been initialised with the <code>FL::READ</code> flag, or the copy operation will not work (this restriction does not apply to directories).  If a matching file name already exists at the destination path, it will be over-written with the new data.</p>
-<p>The <field>Position</field> field will be reset as a result of calling this method.</p>
+<p>The <fl>Position</fl> field will be reset as a result of calling this method.</p>
 <p>When copying directories with this method, the entire folder structure (i.e. all of the folder contents) will be copied to the new location.  If an error occurs when copying a sub-folder or file, the procedure will be aborted and an error code will be returned.</p>
       </description>
       <result>
@@ -151,7 +151,7 @@
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="Read">Data could not be read from the source path.</error>
         <error code="Write">Data could not be written to the destination path.</error>
-        <error code="FieldNotSet">The Path field has not been set in the file object.</error>
+        <error code="FieldNotSet">The <fl>Path</fl> field has not been set in the file object.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="Loop">Performing the copy would cause infinite recursion.</error>
         <error code="ResolvePath">A volume could not be resolved.</error>
@@ -191,13 +191,13 @@
       </input>
       <description>
 <p>This method is used to move the data of a file to another location.  If the file object represents a folder, then the folder and all of its contents will be moved.  The file object must have been initialised with the <code>FL::READ</code> flag, or the move operation will not work (this restriction does not apply to directories).  If a file already exists at the destination path then it will be over-written with the new data.</p>
-<p>The <field>Position</field> field will be reset as a result of calling this method.</p>
+<p>The <fl>Position</fl> field will be reset as a result of calling this method.</p>
       </description>
       <result>
         <error code="Okay">The File was moved successfully.</error>
         <error code="Failed">General failure.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="FieldNotSet">The Path field has not been set in the file object.</error>
+        <error code="FieldNotSet">The <fl>Path</fl> field has not been set in the file object.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -211,7 +211,7 @@
       </input>
       <description>
 <p>If a file object represents a folder, calling the Next() method will retrieve meta information about the next file in the folder's index.  This information will be returned as a new File object that is partially initialised (the file will not be opened, but information such as size, timestamps and permissions will be retrievable).</p>
-<p>If desired, the resulting file object can be opened by setting the READ or WRITE bits in <field>Flags</field> and then calling the <action>Activate</action> action.</p>
+<p>If desired, the resulting file object can be opened by setting the <code>READ</code> or <code>WRITE</code> bits in <fl>Flags</fl> and then calling the <action>Activate</action> action.</p>
 <p>It is the responsibility of the caller to free the resulting File object once it is no longer required.</p>
 <p>The file index can be reset by calling the <action>Reset</action> action.</p>
       </description>
@@ -231,15 +231,15 @@
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
-<p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <field>Position</field> field by the amount of bytes read from the file.  You must have set the <code>FL::READ</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
-<p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns ERR::NoData when it runs out of information to read from the file.</p>
+<p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <fl>Position</fl> field by the amount of bytes read from the file.  You must have set the <code>FL::READ</code> bit in the <fl>Flags</fl> field when you initialised the file, or the call will fail.</p>
+<p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns <code>ERR::NoData</code> when it runs out of information to read from the file.</p>
       </description>
       <result>
         <error code="Okay">The file information was read into the buffer.</error>
         <error code="Failed">The file object refers to a folder.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NoData">There is no more data left to read.</error>
-        <error code="FileReadFlag">The FL::READ flag was not specified on initialisation.</error>
+        <error code="FileReadFlag">The <code>FL::READ</code> flag was not specified on initialisation.</error>
         <error code="ObjectCorrupt">The internal file handle is missing.</error>
         <error code="BufferOverflow">The line is too long for the read routine (4096 byte limit).</error>
       </result>
@@ -260,9 +260,9 @@
       </input>
       <description>
 <p>The SetDate method provides a convenient way to set the date and time information for a file object.  Date information is set in a human readable year, month, day, hour, minute and second format for your convenience.</p>
-<p>Depending on the filesystem type, multiple forms of datestamp may be supported.  The default datestamp, FDT_MODIFIED defines the time at which the file data was last altered.  Other types include the date on which the file was created and the date it was last archived (backed up).  The following types are supported by the Type argument:</p>
+<p>Depending on the filesystem type, multiple forms of datestamp may be supported.  The default datestamp, <code>FDT::MODIFIED</code> defines the time at which the file data was last altered.  Other types include the date on which the file was created and the date it was last archived (backed up).  The following types are supported by the Type argument:</p>
 <types lookup="FDT"/>
-<p>If the specified datestamp is not supported by the filesystem, ERR::NoSupport is returned by this method.</p>
+<p>If the specified datestamp is not supported by the filesystem, <code>ERR::NoSupport</code> is returned by this method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -279,15 +279,15 @@
       <prototype>ERR flStartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
       <input>
         <param type="OBJECTID" name="Subscriber">Reference to an object that will receive streamed data notifications.</param>
-        <param type="FL" name="Flags" lookup="FL">Use READ for incoming data, WRITE for outgoing data.</param>
+        <param type="FL" name="Flags" lookup="FL">Use <code>READ</code> for incoming data, <code>WRITE</code> for outgoing data.</param>
         <param type="LONG" name="Length">Limits the total amount of data to be streamed.</param>
       </input>
       <description>
 <p>If a file object is a stream (indicated by the <code>STREAM</code> flag), the StartStream method should be used for reading or writing data to the file object.  Although it is possible to call the Read and Write actions on streamed files, they will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers will allow in software.</p>
-<p>A single file object can support read or write streams (pass <code>FL::READ</code> or <code>FL::WRITE</code> in the Flags parameter).  However, only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with the <method>StopStream</method> method and then restarted with StartStream.</p>
+<p>A single file object can support read or write streams (pass <code>FL::READ</code> or <code>FL::WRITE</code> in the <code>Flags</code> parameter). However, only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with the <method>StopStream</method> method and then restarted with StartStream.</p>
 <p>A stream can be limited by setting the Length parameter to a non-zero value.</p>
 <p>If the StartStream request is successful, the file object will return action notifications to the Subscriber to indicate activity on the file stream.  When reading from a stream, <code>AC_Write</code> notifications will be received to indicate that new data has been written to the file cache.  The Buffer parameter of the reported acWrite structure may refer to a private address that contains the data that was received from the stream and the Result indicates the amount of new data available.</p>
-<p>When writing to a stream, AC_Read notifications will be received to indicate that the stream is ready to accept more data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the <action>Write</action> action.</p>
+<p>When writing to a stream, <code>AC_Read</code> notifications will be received to indicate that the stream is ready to accept more data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the <action>Write</action> action.</p>
 <p>A stream can be cancelled at any time by calling <method>StopStream</method>.</p>
       </description>
       <result>
@@ -321,12 +321,12 @@
         <param type="MFF" name="Flags" lookup="MFF">Filter events to those indicated in these flags.</param>
       </input>
       <description>
-<p>The WatchFile() function configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
-<p>The path that will be monitored is determined by the File object's <field>Path</field> field.  Both files and folders are supported as targets.</p>
-<p>The optional MFF Flags are used to filter events to those that are desired for monitoring.</p>
-<p>The client must provide a Callback that will be triggered when a monitored event is triggered.  The Callback must follow the format <code>ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)</code></p>
-<p>Each event will be delivered in the sequence that they are originally raised.  The Flags parameter will reflect the specific event that has occurred.  The Custom parameter is identical to the Custom argument originally passed to this method.  The Path is a string that is relative to the File's <field>Path</field> field.</p>
-<p>If the callback routine returns ERR::Terminate, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the Flags parameter to 0.</p>
+<p>The Watch() method configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
+<p>The path that will be monitored is determined by the File object's <fl>Path</fl> field.  Both files and folders are supported as targets.</p>
+<p>The optional <lk>MFF</lk> Flags are used to filter events to those that are desired for monitoring.</p>
+<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)</code></p>
+<p>Each event will be delivered in the sequence that they are originally raised.  The <code>Flags</code> parameter will reflect the specific event that has occurred.  The <code>Custom</code> parameter is identical to the <code>Custom</code> argument originally passed to this method.  The <code>Path</code> is a string that is relative to the File's <fl>Path</fl> field.</p>
+<p>If the callback routine returns <code>ERR::Terminate</code>, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the <code>Flags</code> parameter to <code>0</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -344,18 +344,18 @@
       <access read="G">Get</access>
       <type>BYTE *</type>
       <description>
-<p>If a file has been created with an internal buffer (by setting the BUFFER flag on creation), this field will point to the address of that buffer.  The size of the buffer will match the <field>Size</field> field.</p>
+<p>If a file has been created with an internal buffer (by setting the <code>BUFFER</code> flag on creation), this field will point to the address of that buffer.  The size of the buffer will match the <fl>Size</fl> field.</p>
       </description>
     </field>
 
     <field>
       <name>Created</name>
-      <comment>The creation date stamp of the file.</comment>
+      <comment>The creation date stamp for the file.</comment>
       <access read="G" write="W">Get/Write</access>
       <type>APTR</type>
       <description>
-<p>The Date field allows you to obtain the time at which the file was last date-stamped, or you can use it to set a new file date.  By default, the 'modification date' is targeted by this field's support routine.  Please note that if the file is open for writing, then date-stamped, then written; the file system driver will normally change the date stamp to the time at which the file was last modified.</p>
-<p>To simplify time management, information is read and set via a <struct>DateTime</struct> structure.</p>
+<p>The Created field returns the time at which the file was first created, if supported by the filesystem.  If not supported directly, the most recent 'modification date' is normally returned.</p>
+<p>To simplify time management, information is read and set via a <st>DateTime</st> structure.</p>
       </description>
     </field>
 
@@ -366,7 +366,7 @@
       <type>APTR</type>
       <description>
 <p>The Date field reflects the time at which the file was last modified.  It can also be used to set a new modification date.  Please note that if the file is open for writing, then date-stamped, then modified; the file system driver will overwrite the previously defined date stamp with the time at which the file was last written.</p>
-<p>Information is read and set using a standard <struct>DateTime</struct> structure.</p>
+<p>Information is read and set using a standard <st>DateTime</st> structure.</p>
       </description>
     </field>
 
@@ -408,7 +408,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>This field returns the name of the best icon to use when representing the file to the user, for instance in a file list.  The icon style is determined by analysing the File's <field>Path</field>.</p>
+<p>This field returns the name of the best icon to use when representing the file to the user, for instance in a file list.  The icon style is determined by analysing the File's <fl>Path</fl>.</p>
 <p>The resulting string is returned in the format <code>icons:category/name</code> and can be opened with the <class name="Picture">Picture</class> class.</p>
       </description>
     </field>
@@ -463,7 +463,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The ResolvedPath will return a resolved copy of the <field>Path</field> string.  The resolved path will be in a format that is native to the host platform.  Please refer to the <function>ResolvePath</function> function for further information.</p>
+<p>The ResolvedPath will return a resolved copy of the <fl>Path</fl> string.  The resolved path will be in a format that is native to the host platform.  Please refer to the <function>ResolvePath</function> function for further information.</p>
       </description>
     </field>
 
@@ -479,11 +479,11 @@
 
     <field>
       <name>Static</name>
-      <comment>Set to TRUE if a file object should be static.</comment>
+      <comment>Set to <code>true</code> if a file object should be static.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>This field applies when a file object has been created in an object script.  By default, a file object will auto-terminate when a closing tag is received.  If the object must remain live, set this field to TRUE.</p>
+<p>This field applies when a file object has been created in an object script.  By default, a file object will auto-terminate when a closing tag is received.  If the object must remain live, set this field to <code>true</code>.</p>
       </description>
     </field>
 
@@ -493,8 +493,8 @@
       <access read="R" write="W">Read/Write</access>
       <type>OBJECTID</type>
       <description>
-<p>User feedback can be enabled for certain file operations by setting the Target field to a valid surface ID (for example, the Desktop object) or zero for the default target for new windows.  This field is set to -1 by default, in order to disable this feature.</p>
-<p>If set correctly, operations such as file deletion or copying will pop-up a progress box after a certain amount of time has elapsed during the operation.  The dialog box will also provide the user with a Cancel option to terminate the process early.</p>
+<p>User feedback can be enabled for certain file operations by setting the Target field to a valid surface ID, or zero for the default target for new windows.  This field is set to <code>-1</code> by default, in order to disable this feature.</p>
+<p>If set correctly, operations such as file deletion or copying will pop-up a progress box after a certain amount of time has elapsed during the operation.  The dialog box will also provide the user with a cancel option to terminate the process early.</p>
       </description>
     </field>
 
@@ -504,7 +504,7 @@
       <access read="G">Get</access>
       <type>BIGINT</type>
       <description>
-<p>The TimeStamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <field>Date</field> field.</p>
+<p>The TimeStamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <fl>Date</fl> field.</p>
       </description>
     </field>
 
@@ -516,7 +516,7 @@
       <description>
 <p>The user ID assigned to a file can be read from this field.  The ID is retrieved from the file system in real time in case the ID has been changed after initialisation of the file object.</p>
 <p>You can also change the user ID of a file by writing an integer value to this field.  This can only be done post-initialisation or an error code will be returned.</p>
-<p>If the filesystem does not support user ID's, ERR::NoSupport is returned.</p>
+<p>If the filesystem does not support user ID's, <code>ERR::NoSupport</code> is returned.</p>
       </description>
     </field>
 
@@ -553,8 +553,8 @@
       <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DEEP">Receive notifications from sub-folders (Windows only).</const>
       <const name="DELETE">Existing file deleted</const>
-      <const name="FILE">File identifier; if passed to Watch() then indicates a preference for file events only.</const>
-      <const name="FOLDER">Folder identifier; if passed to Watch() then indicates a preference for folder events only.</const>
+      <const name="FILE">File identifier; if passed to <class name="File" method="Watch">File.Watch()</class> then indicates a preference for file events only.</const>
+      <const name="FOLDER">Folder identifier; if passed to <class name="File" method="Watch">File.Watch()</class> then indicates a preference for folder events only.</const>
       <const name="MODIFY">File modified via write or truncation.</const>
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="OPENED">Existing file was opened.</const>
@@ -566,20 +566,20 @@
     </constants>
 
     <constants lookup="PERMIT" comment="Permission flags">
-      <const name="ALL_DELETE">Synonym for EVERYONE_DELETE</const>
-      <const name="ALL_EXEC">Synonym for EVERYONE_EXEC</const>
-      <const name="ALL_READ">Synonym for EVERYONE_READ</const>
-      <const name="ALL_WRITE">Synonym for EVERYONE_WRITE</const>
+      <const name="ALL_DELETE">Synonym for <code>EVERYONE_DELETE</code></const>
+      <const name="ALL_EXEC">Synonym for <code>EVERYONE_EXEC</code></const>
+      <const name="ALL_READ">Synonym for <code>EVERYONE_READ</code></const>
+      <const name="ALL_WRITE">Synonym for <code>EVERYONE_WRITE</code></const>
       <const name="ARCHIVE">Marks the file for future backup.  The flag should be cleared after the backup has succeeded.</const>
-      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the WRITE flag.</const>
-      <const name="EVERYONE_ACCESS">Synonym for EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</const>
-      <const name="EVERYONE_DELETE">Synonym for DELETE | GROUP_DELETE | OTHERS_DELETE</const>
-      <const name="EVERYONE_EXEC">Synonym for EXEC | GROUP_EXEC | OTHERS_EXEC</const>
-      <const name="EVERYONE_READ">Synonym for READ | GROUP_READ | OTHERS_READ</const>
-      <const name="EVERYONE_READWRITE">Synonym for EVERYONE_READ | EVERYONE_WRITE</const>
-      <const name="EVERYONE_WRITE">Synonym for WRITE | GROUP_WRITE | OTHERS_WRITE</const>
+      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the <code>WRITE</code> flag.</const>
+      <const name="EVERYONE_ACCESS">Synonym for <code>EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</code></const>
+      <const name="EVERYONE_DELETE">Synonym for <code>DELETE | GROUP_DELETE | OTHERS_DELETE</code></const>
+      <const name="EVERYONE_EXEC">Synonym for <code>EXEC | GROUP_EXEC | OTHERS_EXEC</code></const>
+      <const name="EVERYONE_READ">Synonym for <code>READ | GROUP_READ | OTHERS_READ</code></const>
+      <const name="EVERYONE_READWRITE">Synonym for <code>EVERYONE_READ | EVERYONE_WRITE</code></const>
+      <const name="EVERYONE_WRITE">Synonym for <code>WRITE | GROUP_WRITE | OTHERS_WRITE</code></const>
       <const name="EXEC">User/Owner can execute.</const>
-      <const name="GROUP">Synonym for GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</const>
+      <const name="GROUP">Synonym for <code>GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</code></const>
       <const name="GROUPID">Allows executables to run with a set group id.</const>
       <const name="GROUP_DELETE">Group members can delete.</const>
       <const name="GROUP_EXEC">Group members can execute.</const>
@@ -589,18 +589,18 @@
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
-      <const name="OTHERS">Synonym for OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</const>
+      <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>
       <const name="OTHERS_DELETE">Others can delete.</const>
       <const name="OTHERS_EXEC">Others can execute.</const>
       <const name="OTHERS_READ">Others can read.</const>
       <const name="OTHERS_WRITE">Others can write.</const>
       <const name="PASSWORD">File is password protected.</const>
       <const name="READ">User/Owner has read access.  This will not allow compiled code to be executed.</const>
-      <const name="USER">Synonym for READ | WRITE | EXEC | DELETE</const>
+      <const name="USER">Synonym for <code>READ | WRITE | EXEC | DELETE</code></const>
       <const name="USERID">Allows executables to run with a set user id.</const>
-      <const name="USER_EXEC">Synonym for EXEC</const>
-      <const name="USER_READ">Synonym for READ</const>
-      <const name="USER_WRITE">Synonym for WRITE</const>
+      <const name="USER_EXEC">Synonym for <code>EXEC</code></const>
+      <const name="USER_READ">Synonym for <code>READ</code></const>
+      <const name="USER_WRITE">Synonym for <code>WRITE</code></const>
       <const name="WRITE">User/Owner can write.</const>
     </constants>
 

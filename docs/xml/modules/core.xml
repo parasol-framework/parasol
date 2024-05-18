@@ -96,12 +96,12 @@
     <comment>This function is responsible for executing action routines.</comment>
     <prototype>ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters)</prototype>
     <input>
-      <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here (e.g. AC_Query).</param>
+      <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here (e.g. <code>AC_Query</code>).</param>
       <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
       <param type="APTR" name="Parameters">If the action or method is documented as taking parameters, point to the relevant parameter structure here.</param>
     </input>
     <description>
-<p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Action List document. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
+<p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Parasol Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
 <pre>1. Action(AC_Activate, Picture, NULL);
 
@@ -115,7 +115,7 @@
 
 2b. Window-&gt;move(30, 15, 0);
 </pre>
-<p>If the class of an object does not support the action ID, an error code of <code>ERR::NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function>CheckAction</function> function.</p>
+<p>If the class of an object does not support the <code>Action</code> ID, an error code of <code>ERR::NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function>CheckAction</function> function.</p>
 <p>In circumstances where an object ID is known without its pointer, the use of <function>ActionMsg</function> or <function>QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
     </description>
     <result type="ERR">
@@ -133,12 +133,12 @@
     <comment>Returns a pointer to the global action table.</comment>
     <prototype>void ActionList(struct ActionTable ** Actions, LONG * Size)</prototype>
     <input>
-      <param type="struct ActionTable **" name="Actions">A pointer to the Core's action table (struct ActionTable *) is returned. Please note that the first entry in the ActionTable list has all fields driven to NULL, because valid action ID's start from one, not zero.  The final action in the list is also terminated with NULL fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.</param>
+      <param type="struct ActionTable **" name="Actions">A pointer to the Core's action table <code>struct ActionTable *</code> is returned. Please note that the first entry in the <code>ActionTable</code> list has all fields driven to <code>NULL</code>, because valid action ID's start from one, not zero.  The final action in the list is also terminated with <code>NULL</code> fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.</param>
       <param type="LONG *" name="Size">Total number of elements in the returned list.</param>
     </input>
     <description>
 <p>This function returns an array of all actions supported by the Core, including name, arguments and structure size.  The ID of each action is indicated by its index within the array.</p>
-<p>The Name field specifies the name of the action.  The Args field refers to the action's argument definition structure, which lists the argument names and their relevant types.  This is matched by the Size field, which indicates the byte-size of the action's related argument structure.  If the action does not support arguments, the Args and Size fields will be set to NULL.  The following illustrates two argument definition examples:</p>
+<p>The <code>Name</code> field specifies the name of the action.  The <code>Args</code> field refers to the action's argument definition structure, which lists the argument names and their relevant types.  This is matched by the <code>Size</code> field, which indicates the byte-size of the action's related argument structure.  If the action does not support arguments, the <code>Args</code> and <code>Size</code> fields will be set to <code>NULL</code>.  The following illustrates two argument definition examples:</p>
 <pre>struct FunctionField argsCopyData[] = {
    { "Destination", FD_LONG  },
    { NULL, 0 }
@@ -158,9 +158,9 @@ struct FunctionField argsResize[] = {
 <type name="PTR">A standard address space pointer.</type>
 <type name="STRING">A pointer to a null-terminated string.</type>
 <type name="DOUBLE">A 64-bit floating point value.</type>
-<type name="OBJECT">This flag is sometimes set in conjunction with the FD_LONG type.  It indicates that the argument refers to an object ID.</type>
-<type name="PTRSIZE">This argument type can only be used if it follows an FD_PTR type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous FD_PTR argument.</type>
-<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a LONG field in which the function will store a result, the correct argument definition will be FD_RESULT|FD_LONG|FD_PTR. To make the definition of these argument types easier, FD_PTRRESULT and FD_LONGRESULT macros are also available for use.</type>
+<type name="OBJECT">This flag is sometimes set in conjunction with the <code>FD_LONG</code> type.  It indicates that the argument refers to an object ID.</type>
+<type name="PTRSIZE">This argument type can only be used if it follows an <code>FD_PTR</code> type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous <code>FD_PTR</code> argument.</type>
+<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a <code>LONG</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_LONG|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_LONGRESULT</code> macros are also available for use.</type>
 </types>
     </description>
   </function>
@@ -192,14 +192,14 @@ struct FunctionField argsResize[] = {
     <input>
       <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here.</param>
       <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
-      <param type="APTR" name="Args">If the action or method is documented as taking parameters, point to the relevant parameter structure here.  Pre-defined parameter structures are obtained from the "system/actions.h" include file.</param>
+      <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
       <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
-      <param type="LONG" name="Key">An optional key value to be passed to the callback routine.</param>
+      <param type="LONG" name="Key">An optional key value to be passed to the <code>Callback</code> routine.</param>
     </input>
     <description>
 <p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
-<p>To receive feedback of the action's completion, use the Callback parameter and supply a function.  The function prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)</code></p>
-<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the Callback routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
+<p>To receive feedback of the action's completion, use the <code>Callback</code> parameter and supply a function.  The prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)</code></p>
+<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the <code>Callback</code> routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
 <p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if ActionThread() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
 <p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
     </description>
@@ -216,15 +216,15 @@ struct FunctionField argsResize[] = {
   <function>
     <name>AddInfoTag</name>
     <category>Files</category>
-    <comment>Adds new tags to FileInfo structures.</comment>
+    <comment>Adds new tags to <st>FileInfo</st> structures.</comment>
     <prototype>ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value)</prototype>
     <input>
-      <param type="struct FileInfo *" name="Info">Pointer to a valid FileInfo structure.</param>
+      <param type="struct FileInfo *" name="Info">Pointer to a valid <st>FileInfo</st> structure.</param>
       <param type="CSTRING" name="Name">The name of the tag.</param>
-      <param type="CSTRING" name="Value">The value to associate with the tag name.  If NULL, any existing tag with a matching Name will be removed.</param>
+      <param type="CSTRING" name="Value">The value to associate with the tag name.  If <code>NULL</code>, any existing tag with a matching <code>Name</code> will be removed.</param>
     </input>
     <description>
-<p>This function adds file tags to FileInfo structures.  It is intended for use by the FileSystem module and related drivers only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio in an MP3 file.</p>
+<p>This function adds file tags to <st>FileInfo</st> structures.  It is intended for use by the Core and external drivers only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio in an MP3 file.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -331,12 +331,12 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <prototype>ERR AnalysePath(CSTRING Path, LOC * Type)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path to analyse.</param>
-      <param type="LOC *" name="Type" lookup="LOC">The result will be stored in the LONG variable referred to by this argument.  The return types are DIRECTORY, FILE and VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.</param>
+      <param type="LOC *" name="Type" lookup="LOC">The result will be stored in the variable referred to by this parameter.  The return types are <code>DIRECTORY</code>, <code>FILE</code> and <code>VOLUME</code>.  Set this parameter to <code>NULL</code> if you are only interested in checking if the file exists.</param>
     </input>
     <description>
 <p>This function will analyse a path and determine the type of file that the path is referring to.  For instance, a path of <code>user:documents/</code> would indicate a folder reference.  A path of <code>system:</code> would be recognised as a volume. A path of <code>user:documents/copyright.txt</code> would be recognised as a file.</p>
 <p>Ambiguous references are analysed to get the correct type - for example <code>user:documents/helloworld</code> could refer to a folder or file, so the path is analysed to check the file type.  On exceptional occasions where the path could be interpreted as either a folder or a file, preference is given to the folder.</p>
-<p>File path approximation is supported if the Path is prefixed with a <code>~</code> character (e.g. <code>~pictures:photo</code> could be matched to <code>photo.jpg</code> in the same folder).</p>
+<p>File path approximation is supported if the <code>Path</code> is prefixed with a <code>~</code> character (e.g. <code>~pictures:photo</code> could be matched to <code>photo.jpg</code> in the same folder).</p>
 <p>To check if a volume name is valid, call <function>ResolvePath</function> first and then pass the resulting path to this function.</p>
 <p>If the queried path does not exist, a fail code is returned.  This behaviour makes the AnalysePath() function a good candidate for testing the validity of a path string.</p>
     </description>
@@ -446,7 +446,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <param type="MEMORYID" name="ID">The ID of the memory block that will be checked.</param>
     </input>
     <description>
-<p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its ID.</p>
+<p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its <code>ID</code>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -514,7 +514,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the copy operation, a &amp;FileFeedback structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -530,7 +530,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <prototype>ERR CreateFolder(CSTRING Path, PERMIT Permissions)</prototype>
     <input>
       <param type="CSTRING" name="Path">The location of the folder.</param>
-      <param type="PERMIT" name="Permissions" lookup="PERMIT">Security permissions to apply to the created Dir(s).  Set to NULL if only the current user should have access.</param>
+      <param type="PERMIT" name="Permissions" lookup="PERMIT">Security permissions to apply to the created Dir(s).  Set to <code>NULL</code> if only the current user should have access.</param>
     </input>
     <description>
 <p>This function creates new folders.  You are required to specify the full path of the new folder.  Standard permission flags can be passed to determine the new permissions to set against the newly created Dir(s).  If no permission flags are passed, only the current user will have access to the new folder (assuming that the file system supports security settings on the given media).  This function will create multiple folders if the complete path does not exist at the time of the call.</p>
@@ -579,9 +579,9 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <prototype>OBJECTPTR CurrentContext()</prototype>
     <description>
 <p>This function returns a pointer to the object that has the current context.  Context is primarily used to manage resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to the correct object.</p>
-<p>To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be needed.</p>
+<p>To get the parent context (technically the 'context of the current context'), use <code>GetParentContext()</code>, which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be needed.</p>
     </description>
-    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.</result>
+    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  Cannot return <code>NULL</code> except in the initial start-up and late shut-down sequence of the Core.</result>
   </function>
 
   <function>
@@ -608,10 +608,8 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <description>
 <p>This function will delete a file or folder when given a valid file location.  The current user must have delete access to the given file. When deleting folders, all content will be scanned and deleted recursively. Individual deletion failures are ignored, although an error will be returned if the top-level folder still contains content on its deletion.</p>
 <p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function>ResolvePath</function> first.</p>
-<p>The Callback parameter can be set with a function that matches this prototype:</p>
-<p>
-<code>LONG Callback(struct FileFeedback *)</code></p>
-<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
+<p>The Callback parameter can be set with a function that matches the prototype <code>LONG Callback(struct FileFeedback *)</code>.</p>
+<p>Prior to the deletion of any file, a &amp;FileFeedback structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -665,10 +663,10 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <param type="CLASSID" name="ClassID">A class ID such as one retrieved from <function>ResolveClassName</function>.</param>
     </input>
     <description>
-<p>This function will find a specific class by ID and return its <class name="MetaClass">MetaClass</class>.  If the class is not in memory, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the class will be returned.  In any event of failure, NULL is returned.</p>
+<p>This function will find a specific class by ID and return its <class name="MetaClass">MetaClass</class>.  If the class is not in memory, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the class will be returned.  In any event of failure, <code>NULL</code> is returned.</p>
 <p>If the ID of a named class is not known, call <function>ResolveClassName</function> first and pass the resulting ID to this function.</p>
     </description>
-    <result type="objMetaClass *">Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.</result>
+    <result type="objMetaClass *">Returns a pointer to the <class name="MetaClass">MetaClass</class> structure that has been found as a result of the search, or <code>NULL</code> if no matching class was found.</result>
   </function>
 
   <function>
@@ -731,7 +729,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
     <description>
-<p>This function will free any resource that originates from AllocMemory(), using its ID for identification.  C++ headers also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we do recommend the use of IDs to improve memory safety).</p>
+<p>This function will free any resource that originates from AllocMemory(), using its <code>ID</code> for identification.  C++ headers also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we do recommend the use of IDs to improve memory safety).</p>
 <p>In some circumstances the termination of the block will not take place immediately.  If the block is locked then it will be marked for deletion and not be collected until the lock count reaches zero.</p>
 <p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that code has over-written the memory boundaries.  All caught errors are reported to the application log and warrant priority attention.</p>
     </description>
@@ -765,10 +763,10 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <comment>Returns a message structure if called from an action that was executed by the message system.</comment>
     <prototype>struct Message * GetActionMsg()</prototype>
     <description>
-<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a NULL pointer is returned.</p>
-<p>The Message structure reflects the contents of a standard <function>GetMessage</function> call.  Of particular interest may be the Time field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
+<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a <code>NULL</code> pointer is returned.</p>
+<p>The <st>Message</st> structure reflects the contents of a standard <function>GetMessage</function> call.  Of particular interest may be the <code>Time</code> field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
     </description>
-    <result type="struct Message *">A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the <function>GetMessage</function> function.</result>
+    <result type="struct Message *">A <st>Message</st> structure is returned if the function is called in valid circumstances, otherwise <code>NULL</code>.  The <st>Message</st> structure's fields are described in the <function>GetMessage</function> function.</result>
   </function>
 
   <function>
@@ -781,7 +779,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     </input>
     <description>
 <p>Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to retrieve the class of an object without having to gain exclusive access to the object first.</p>
-<p>Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID field in the object header.</p>
+<p>Note that if the object's pointer is already known, the quickest way to learn of its class is to call the <code>classID()</code> C++ method.</p>
     </description>
     <result type="CLASSID">Returns the base class ID of the object or zero if failure.</result>
   </function>
@@ -940,9 +938,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="OBJECTID" name="Object">The ID of the object to lookup.</param>
     </input>
     <description>
-<p>This function translates object ID's to their respective address pointers.</p>
+<p>This function translates an object ID to its respective address pointer.</p>
     </description>
-    <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to an object.</result>
+    <result type="OBJECTPTR">The address of the object is returned, or <code>NULL</code> if the ID does not relate to an object.</result>
   </function>
 
   <function>
@@ -955,7 +953,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the owner of an object if only the ID is known.</p>
-<p>If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.</p>
+<p>If the object address is already known then the fastest means of retrieval is via the <code>ownerID()</code> C++ class method.</p>
     </description>
     <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.</result>
   </function>
@@ -1062,8 +1060,8 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system or application.</p>
-<p>This function will first determine if the requested file has already been cached.  If this is true then the <struct>CacheFile</struct> structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into a new buffer.</p>
-<p>File content will be loaded into a readable memory buffer that is referenced by the Data field of the <struct>CacheFile</struct> structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the <struct>CacheFile</struct> meta data.</p>
+<p>This function will first determine if the requested file has already been cached.  If this is true then the CacheFile structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated as a cache miss and the file will be loaded into a new buffer.</p>
+<p>File content will be loaded into a readable memory buffer that is referenced by the Data field of the CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files. Other pieces of information about the file can be derived from the CacheFile meta data.</p>
 <p>Calls to LoadFile() must be matched with a call to <function>UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     </description>
     <result type="ERR">
@@ -1104,17 +1102,17 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <prototype>ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size)</prototype>
     <input>
       <param type="MEMORYID" name="ID">Pointer to a valid memory ID.</param>
-      <param type="struct MemInfo *" name="MemInfo">Pointer to a MemInfo structure.</param>
-      <param type="LONG" name="Size">Size of the MemInfo structure.</param>
+      <param type="struct MemInfo *" name="MemInfo">Pointer to a <st>MemInfo</st> structure.</param>
+      <param type="LONG" name="Size">Size of the <st>MemInfo</st> structure.</param>
     </input>
     <description>
-<p>This function returns the attributes of a memory block, including the start address, parent object, memory ID, size and flags.  The following code segment illustrates correct use of this function:</p>
+<p>This function returns the attributes of a memory block, including the start address, parent object, memory ID, size and flags.  The following example illustrates correct use of this function:</p>
 <pre>MemInfo info;
 if (!MemoryIDInfo(memid, &amp;info)) {
    log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
 }
 </pre>
-<p>If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.</p>
+<p>If the call fails, the <st>MemInfo</st> structure's fields will be driven to <code>NULL</code> and an error code is returned.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1132,8 +1130,8 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     <prototype>ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size)</prototype>
     <input>
       <param type="APTR" name="Address">Pointer to a valid memory area.</param>
-      <param type="struct MemInfo *" name="MemInfo">Pointer to a MemInfo structure to be filled out.</param>
-      <param type="LONG" name="Size">Size of the MemInfo structure.</param>
+      <param type="struct MemInfo *" name="MemInfo">Pointer to a <st>MemInfo</st> structure to be populated.</param>
+      <param type="LONG" name="Size">Size of the <st>MemInfo</st> structure.</param>
     </input>
     <description>
 <p>This function can be used to get details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
@@ -1142,7 +1140,7 @@ if (!MemoryPtrInfo(ptr, &amp;info)) {
    log.msg("Address %p is %d bytes large.", info.Start, info.Size);
 }
 </pre>
-<p>If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
+<p>If the call to MemoryPtrInfo() fails then the <st>MemInfo</st> structure's fields will be driven to <code>NULL</code> and an error code will be returned.</p>
 <p>Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search routine.  We recommend that calls to this function are avoided unless circumstances absolutely require it.</p>
     </description>
     <result type="ERR">
@@ -1177,7 +1175,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the move operation, a &amp;FileFeedback structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1223,8 +1221,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="ERR" name="Error">The error code that is associated with the action result.</param>
     </input>
     <description>
-<p>This function can be used by classes that need total control over notification management.  The system default for notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of the original values.</p>
-<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
+<p>This function can be used by classes that need total control over notification management.  It allows an action to notify its subscribers manually, rather than deferring to the system default of notifying on return.</p>
+<p>Another useful feature is that parameter values can be customised for the recipients.</p>
+<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this, the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
     </description>
   </function>
 
@@ -1295,7 +1294,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="APTR" name="Args">The relevant argument structure for the Action, or NULL if not required.</param>
     </input>
     <description>
-<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.</p>
+<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied <code>Action</code> and <code>Args</code> will be combined into a message for the queue.  This function then returns immediately.</p>
 <p>The action will be executed on the next cycle of <function>ProcessMessages</function> in line with the FIFO order of queued messages.</p>
     </description>
     <result type="ERR">
@@ -1361,13 +1360,13 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <comment>Reallocates memory blocks.</comment>
     <prototype>ERR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID)</prototype>
     <input>
-      <param type="APTR" name="Memory">Pointer to a memory block obtained from AllocMemory().</param>
+      <param type="APTR" name="Memory">Pointer to a memory block obtained from <function>AllocMemory</function>.</param>
       <param type="ULONG" name="Size">The size of the new memory block.</param>
-      <param type="APTR *" name="Address">Point to an APTR variable to store the resulting pointer to the new memory block.</param>
-      <param type="MEMORYID *" name="ID">Point to a MEMORYID variable to store the resulting memory block's unique ID.</param>
+      <param type="APTR *" name="Address">Point to an <code>APTR</code> variable to store the resulting pointer to the new memory block.</param>
+      <param type="MEMORYID *" name="ID">Point to a <code>MEMORYID</code> variable to store the resulting memory block's unique ID.</param>
     </input>
     <description>
-<p>This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you wish. The data of your original memory block will be copied over to the new block.  If the new block is of a larger size, the left-over bytes will be filled with zero-byte values. If the new block is smaller, you will lose some of the original data.</p>
+<p>This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you wish.  The data of your original memory block will be copied over to the new block.  If the new block is of a larger size, the left-over bytes will be populated with zero-byte values. If the new block is smaller, you will lose some of the original data.</p>
 <p>The original block will be destroyed as a result of calling this function unless the reallocation process fails, in which case your existing memory block will remain valid.</p>
     </description>
     <result type="ERR">
@@ -1439,13 +1438,14 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   <function>
     <name>ResolveClassID</name>
     <category>Objects</category>
-    <comment>Converts a valid class ID to its equivalent name.</comment>
+    <comment>Resolve a valid CLASSID to its name.</comment>
     <prototype>CSTRING ResolveClassID(CLASSID ID)</prototype>
     <input>
       <param type="CLASSID" name="ID">The ID of the class that needs to be resolved.</param>
     </input>
     <description>
-<p>This function will resolve a valid class ID to its equivalent name.  The name is resolved by scanning the class database, so the class must be registered in the database for this function to return successfully. Registration is achieved by loading the module that hosts the class, after which the class is permanently saved in the database.</p>
+<p>This function will resolve a valid class ID to its equivalent name.  The name is resolved by checking the class database, so the class must be registered in the database for this function to return successfully.</p>
+<p>Registration is achieved by ensuring that the class is compiled into the build.</p>
     </description>
     <result type="CSTRING">Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".</result>
   </function>
@@ -1453,14 +1453,13 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   <function>
     <name>ResolveClassName</name>
     <category>Objects</category>
-    <comment>Resolves any class name to a unique identification ID.</comment>
+    <comment>Resolves any class name to a CLASSID UID.</comment>
     <prototype>CLASSID ResolveClassName(CSTRING Name)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of the class that requires resolution.</param>
     </input>
     <description>
-<p>This function will resolve a class name to its unique ID.</p>
-<p>Class ID's are used by functions such as <function>NewObject</function> for fast processing.</p>
+<p>This function will resolve a class <code>Name</code> to its CLASSID UID and verifies that the class is installed.  It is case insensitive.</p>
     </description>
     <result type="CLASSID">Returns the class ID identified from the class name, or NULL if the class could not be found.</result>
   </function>
@@ -1474,9 +1473,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="LONG" name="Group">The group ID.</param>
     </input>
     <description>
-<p>This function converts group ID's obtained from the file system into their corresponding names.  If the group ID is invalid then NULL will be returned.</p>
+<p>This function converts group ID's obtained from the file system into their corresponding names.  If the <code>Group</code> ID is invalid then <code>NULL</code> will be returned.</p>
     </description>
-    <result type="CSTRING">The group name is returned, or NULL if the ID cannot be resolved.</result>
+    <result type="CSTRING">The group name is returned, or <code>NULL</code> if the ID cannot be resolved.</result>
   </function>
 
   <function>
@@ -1519,9 +1518,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="LONG" name="User">The user ID.</param>
     </input>
     <description>
-<p>This function converts user ID's obtained from the file system into their corresponding names.  If the user ID is invalid then NULL will be returned.</p>
+<p>This function converts user ID's obtained from the file system into their corresponding names.  If the <code>User</code> ID is invalid then NULL will be returned.</p>
     </description>
-    <result type="CSTRING">The user name is returned, or NULL if the ID cannot be resolved.</result>
+    <result type="CSTRING">The user name is returned, or <code>NULL</code> if the ID cannot be resolved.</result>
   </function>
 
   <function>
@@ -1677,7 +1676,7 @@ FreeResource(memory);  // Reference is no longer valid
     </input>
     <description>
 <p>By default, user, group and permission information for new files is inherited either from the system defaults or from the file source in copy operations.  Use this function to override this behaviour with new default values.  All threads of the process will be affected.</p>
-<p>To revert behaviour to the default settings, set the User and/or Group values to -1 and the Permissions value to zero.</p>
+<p>To revert behaviour to the default settings, set the User and/or <code>Group</code> values to -1 and the <code>Permissions</code> value to zero.</p>
     </description>
   </function>
 
@@ -1758,7 +1757,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <li>The object's class will then receive notification via the <action>NewOwner</action> action.</li>
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
 </list>
-<p>If the Object does not support the NewOwner action, or the Owner does not support the NewChild action, then the process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.</p>
+<p>If the <code>Object</code> does not support the NewOwner action, or the Owner does not support the NewChild action, then the process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1844,9 +1843,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function compares two strings against each other.  If the strings match then it returns <code>ERR::Okay</code>, otherwise it returns <code>ERR::False</code>.  By default the function is not case sensitive, but you can turn on case sensitivity by specifying the <code>STR::CASE</code> flag.</p>
-<p>If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, <code>ERR::Okay</code> will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
-<p>If the Length is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, <code>ERR::False</code> will be returned.</p>
-<p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an <code>ERR::Okay</code> code only on the condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has been set to 0.</p>
+<p>If you set the <code>Length</code> to 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, <code>ERR::Okay</code> will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
+<p>If the <code>Length</code> is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, <code>ERR::False</code> will be returned.</p>
+<p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an <code>ERR::Okay</code> code only on the condition that both strings are of matching lengths.  This flag is typically specified if the <code>Length</code> argument has been set to 0.</p>
 <p>If the <code>STR::WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
     </description>
     <result type="ERR">
@@ -1863,11 +1862,11 @@ SetField(Object, FID_Statement|TSTR, "string");
     <prototype>ULONG StrHash(CSTRING String, LONG CaseSensitive)</prototype>
     <input>
       <param type="CSTRING" name="String">Reference to a string that will be processed.</param>
-      <param type="LONG" name="CaseSensitive">Set to TRUE to enable case sensitivity.</param>
+      <param type="LONG" name="CaseSensitive">Set to <code>true</code> to enable case sensitivity.</param>
     </input>
     <description>
 <p>This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our platform and is therefore guaranteed to be compatible with all areas that make use of hashed values.</p>
-<p>Hashing is case insensitive by default.  If case sensitive hashing is desired, set CaseSensitive to TRUE when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a case insensitive hash of the same string.</p>
+<p>Hashing is case insensitive by default.  If case sensitive hashing is desired, set <code>CaseSensitive</code> to <code>true</code> when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a case insensitive hash of the same string.</p>
     </description>
     <result type="ULONG">The 32-bit hash is returned.</result>
   </function>
@@ -2300,10 +2299,10 @@ SetField(Object, FID_Statement|TSTR, "string");
 
     <constants lookup="ALIGN" comment="Universal values for alignment of graphics and text">
       <const name="BOTTOM">Align to bottom</const>
-      <const name="CENTER">Synonym for HORIZONTAL | VERTICAL</const>
+      <const name="CENTER">Synonym for <code>HORIZONTAL | VERTICAL</code></const>
       <const name="HORIZONTAL">Align to horizontal center</const>
       <const name="LEFT">Align to left</const>
-      <const name="MIDDLE">Synonym for HORIZONTAL | VERTICAL</const>
+      <const name="MIDDLE">Synonym for <code>HORIZONTAL | VERTICAL</code></const>
       <const name="RIGHT">Align to right</const>
       <const name="TOP">Align to top</const>
       <const name="VERTICAL">Align to vertical center</const>
@@ -2333,7 +2332,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
-      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
+      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (<function module="Core">SetOwner</function> will not work either).</const>
       <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
     </constants>
 
@@ -2391,7 +2390,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="SOFTWARE">Device is virtual/software defined</const>
       <const name="TAPE">Tape/Stream style device</const>
       <const name="TEMPORARY">All storage is temporary</const>
-      <const name="USB">Removable USB storage device.  May be further qualified by DEVICE_HARDDISK, DEVICE_FLOPPYDISK etc</const>
+      <const name="USB">Removable USB storage device.  May be further qualified by <code>HARDDISK</code>, <code>FLOPPYDISK</code> etc</const>
       <const name="WRITE">Device is writeable</const>
     </constants>
 
@@ -2400,7 +2399,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
       <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
       <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
-      <const name="FIXED_RADIUS">Synonym for FIXED_RADIUS_X | FIXED_RADIUS_Y</const>
+      <const name="FIXED_RADIUS">Synonym for <code>FIXED_RADIUS_X | FIXED_RADIUS_Y</code></const>
       <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
       <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
       <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
@@ -2409,14 +2408,14 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
       <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
       <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
-      <const name="HEIGHT">Synonym for FIXED_HEIGHT | SCALED_HEIGHT</const>
-      <const name="HEIGHT_FLAGS">Synonym for FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</const>
-      <const name="HORIZONTAL_FLAGS">Synonym for FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</const>
+      <const name="HEIGHT">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT</code></const>
+      <const name="HEIGHT_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
+      <const name="HORIZONTAL_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</code></const>
       <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
       <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
       <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
       <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
-      <const name="SCALED_RADIUS">Synonym for SCALED_RADIUS_X | SCALED_RADIUS_Y</const>
+      <const name="SCALED_RADIUS">Synonym for <code>SCALED_RADIUS_X | SCALED_RADIUS_Y</code></const>
       <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
       <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
       <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
@@ -2425,16 +2424,16 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
       <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
       <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
-      <const name="STATUS_CHANGE">Synonym for STATUS_CHANGE_H | STATUS_CHANGE_V</const>
+      <const name="STATUS_CHANGE">Synonym for <code>STATUS_CHANGE_H | STATUS_CHANGE_V</code></const>
       <const name="STATUS_CHANGE_H"/>
       <const name="STATUS_CHANGE_V"/>
-      <const name="VERTICAL_FLAGS">Synonym for FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</const>
-      <const name="WIDTH">Synonym for FIXED_WIDTH | SCALED_WIDTH</const>
-      <const name="WIDTH_FLAGS">Synonym for FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</const>
-      <const name="X">Synonym for FIXED_X | SCALED_X</const>
-      <const name="X_OFFSET">Synonym for FIXED_X_OFFSET | SCALED_X_OFFSET</const>
-      <const name="Y">Synonym for FIXED_Y | SCALED_Y</const>
-      <const name="Y_OFFSET">Synonym for FIXED_Y_OFFSET | SCALED_Y_OFFSET</const>
+      <const name="VERTICAL_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</code></const>
+      <const name="WIDTH">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH</code></const>
+      <const name="WIDTH_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="X">Synonym for <code>FIXED_X | SCALED_X</code></const>
+      <const name="X_OFFSET">Synonym for <code>FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="Y">Synonym for <code>FIXED_Y | SCALED_Y</code></const>
+      <const name="Y_OFFSET">Synonym for <code>FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
     </constants>
 
     <constants lookup="DRL" comment="Compass directions.">
@@ -2483,13 +2482,13 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="FD" comment="Field descriptors.">
-      <const name="ALLOC">CLASSDEF Indicates the returned value is a dynamic allocation that needs to be manually freed (by default is a memory pointer, can be an object if combined with FD_OBJECT)</const>
-      <const name="ARRAY">Indicates an array of values.  Follow with ARRAYSIZE if used in a function.</const>
-      <const name="ARRAYSIZE">FUNCDEF Overrides FD_LOOKUP.  Pair with ARRAY to indicate total elements in the array.  It is preferred that any null terminator is not counted.  If ARRAYSIZE not specified, ARRAY must be null-terminated.</const>
-      <const name="BUFFER">FUNCDEF Overrides FD_WRITE.  Indicates a buffer that can be filled with data by the function if paired with RESULT; must be paired with BUFSIZE in second argument.</const>
-      <const name="BUFSIZE">FUNCDEF Overrides FD_LOOKUP.  Pair with BUFFER to indicate the byte size of the buffer memory.</const>
+      <const name="ALLOC">CLASSDEF Indicates the returned value is a dynamic allocation that needs to be manually freed (by default is a memory pointer, can be an object if combined with <code>FD_OBJECT</code>)</const>
+      <const name="ARRAY">Indicates an array of values.  Follow with <code>ARRAYSIZE</code> if used in a function.</const>
+      <const name="ARRAYSIZE">FUNCDEF Overrides <code>LOOKUP</code>.  Pair with <code>ARRAY</code> to indicate total elements in the array.  It is preferred that any null terminator is not counted.  If <code>ARRAYSIZE</code> not specified, <code>ARRAY</code> must be null-terminated.</const>
+      <const name="BUFFER">FUNCDEF Overrides <code>WRITE</code>.  Indicates a buffer that can be filled with data by the function if paired with <code>RESULT</code>; must be paired with <code>BUFSIZE</code> in second argument.</const>
+      <const name="BUFSIZE">FUNCDEF Overrides <code>LOOKUP</code>.  Pair with <code>BUFFER</code> to indicate the byte size of the buffer memory.</const>
       <const name="BYTE">8 bit integer.</const>
-      <const name="CPP">Use the C++ variant of the indicated type, e.g. ARRAY is a std::vector.</const>
+      <const name="CPP">Use the C++ variant of the indicated type, e.g. <code>ARRAY</code> is a <code>std::vector</code>.</const>
       <const name="CUSTOM"/>
       <const name="DOUBLE">64 bit float.</const>
       <const name="DOUBLERESULT">For actions and methods</const>
@@ -2497,8 +2496,8 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="FLAGS">CLASSDEF</const>
       <const name="FLOAT">32 bit float.  Not valid for use in class definitions.</const>
       <const name="FUNCTION">Intended for callbacks, uses the rkFunction structure.</const>
-      <const name="FUNCTIONPTR">Synonym for PTR | FUNCTION</const>
-      <const name="I">Synonym for INIT</const>
+      <const name="FUNCTIONPTR">Synonym for <code>PTR | FUNCTION</code></const>
+      <const name="I">Synonym for <code>INIT</code></const>
       <const name="INIT">CLASSDEF</const>
       <const name="INTEGRAL">CLASSDEF Pointer to an object that is integral to the class</const>
       <const name="LARGE">64 bit integer.</const>
@@ -2507,40 +2506,40 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="LONGRESULT">For actions and methods</const>
       <const name="LOOKUP">CLASSDEF</const>
       <const name="OBJECT">Supplementary, can be used with longs (for IDs) or pointers</const>
-      <const name="OBJECTID">Synonym for LONG | OBJECT</const>
-      <const name="OBJECTPTR">Synonym for PTR | OBJECT</const>
+      <const name="OBJECTID">Synonym for <code>LONG | OBJECT</code></const>
+      <const name="OBJECTPTR">Synonym for <code>PTR | OBJECT</code></const>
       <const name="POINTER">Pointer (32 or 64 bit).</const>
-      <const name="PRIVATE">Synonym for SYSTEM</const>
-      <const name="PTR">Synonym for POINTER</const>
-      <const name="PTRBUFFER">The next argument should be LONG|BUFSIZE</const>
+      <const name="PRIVATE">Synonym for <code>SYSTEM</code></const>
+      <const name="PTR">Synonym for <code>POINTER</code></const>
+      <const name="PTRBUFFER">The next argument should be <code>LONG|BUFSIZE</code></const>
       <const name="PTRRESULT">Use for pointer-based value results only</const>
-      <const name="PTRSIZE">Synonym for BUFSIZE</const>
+      <const name="PTRSIZE">Synonym for <code>BUFSIZE</code></const>
       <const name="PTR_DOUBLERESULT">Use for pointer-based value results only.</const>
       <const name="PTR_LARGERESULT">Use for pointer-based value results only.</const>
       <const name="PTR_LONGRESULT">Use for pointer-based value results only.</const>
-      <const name="R">Synonym for READ</const>
+      <const name="R">Synonym for <code>READ</code></const>
       <const name="READ">CLASSDEF</const>
       <const name="REQUIRED">CLASSDEF The field must be defined by the client prior to object initialisation.</const>
       <const name="RESOURCE">The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid.</const>
-      <const name="RESULT">FUNCDEF Overrides FD_READ</const>
-      <const name="RGB">Supplementary, if a long type then format is 0xAARRGGBB, if pointer then refers to an RGB structure.</const>
-      <const name="RI">Synonym for READ | INIT</const>
-      <const name="RW">Synonym for READ | WRITE</const>
+      <const name="RESULT">FUNCDEF Overrides <code>READ</code></const>
+      <const name="RGB">Supplementary, if a long type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</const>
+      <const name="RI">Synonym for <code>READ | INIT</code></const>
+      <const name="RW">Synonym for <code>READ | WRITE</code></const>
       <const name="SCALED">Supplementary, indicates a float value for multiplicative scaling.</const>
-      <const name="STR">Synonym for STRING</const>
+      <const name="STR">Synonym for <code>STRING</code></const>
       <const name="STRING">Pointer to a string.</const>
-      <const name="STRRESULT">Synonym for STR | RESULT</const>
-      <const name="STRUCT">Supplementary, defines the field as a structure reference.  MUST be combined with FD_POINTER.  If used in a class, it is possible to name the structure definition in field-&gt;Arg</const>
+      <const name="STRRESULT">Synonym for <code>STR | RESULT</code></const>
+      <const name="STRUCT">Supplementary, defines the field as a structure reference.  MUST be combined with <code>FD_POINTER</code>.  If used in a class, it is possible to name the structure definition in field-&gt;Arg</const>
       <const name="SYNONYM">CLASSDEF Use to declare fields that duplicate the functionality of another field.</const>
       <const name="SYSTEM">CLASSDEF System, internal and private fields.</const>
-      <const name="TAGS">FUNCDEF Overrides FD_INIT</const>
+      <const name="TAGS">FUNCDEF Overrides <code>INIT</code></const>
       <const name="UNSIGNED">Supplementary, integer value is unsigned.</const>
       <const name="VARIABLE">Supports multiple primitive types (long, double, large or pointer).</const>
-      <const name="VARTAGS">FUNCDEF Overrides FD_FLAGS.  Use for 64-bit taglists that require value definitions, e.g. TDOUBLE, TLONG etc.</const>
+      <const name="VARTAGS">FUNCDEF Overrides <code>FLAGS</code>.  Use for 64-bit taglists that require value definitions, e.g. <code>TDOUBLE</code>, <code>TLONG</code> etc.</const>
       <const name="VIRTUAL">CLASSDEF Ensures that the field has no physical representation in the structure.</const>
       <const name="VOID"/>
       <const name="VOLATILE">[Not yet allocated a bit]  Used on result pointers, usually strings, to indicate that the consecutive reads will overwrite the content of previous return values.  This indicates to scripting languages to make a copy of the data before the next interaction with the object.</const>
-      <const name="W">Synonym for WRITE</const>
+      <const name="W">Synonym for <code>WRITE</code></const>
       <const name="WORD">16 bit integer.</const>
       <const name="WRITE">CLASSDEF</const>
     </constants>
@@ -2592,15 +2591,15 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="IDTYPE" comment="Types for AllocateID()">
-      <const name="FUNCTION">Function ID's are used to track FUNCTION types and are assigned to the function ID field.</const>
+      <const name="FUNCTION">Function ID's are used to track <code>FUNCTION</code> types and are assigned to the function ID field.</const>
       <const name="GLOBAL">Global ID's have no specific association with anything.</const>
       <const name="MESSAGE">Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.</const>
     </constants>
 
     <constants lookup="JET" comment="JET constants are documented in GetInputEvent()">
       <const name="ABS_XY">The X, Y values are defined as absolute coordinates, relative to the top-left of the display.</const>
-      <const name="ANALOG2_XY">As for ANALOG_XY, this type covers a second analog stick if present.</const>
-      <const name="ANALOG2_Z">As for ANALOG_Z, this type covers a second analog stick if present.</const>
+      <const name="ANALOG2_XY">As for <code>ANALOG_XY</code>, this type covers a second analog stick if present.</const>
+      <const name="ANALOG2_Z">As for <code>ANALOG_Z</code>, this type covers a second analog stick if present.</const>
       <const name="ANALOG_XY">Position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
       <const name="ANALOG_Z">3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.</const>
       <const name="BUTTON_1">Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
@@ -2805,15 +2804,15 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="KQ" comment="Special qualifier flags">
-      <const name="ALT">Synonym for L_ALT | R_ALT</const>
-      <const name="ALTGR">Synonym for R_ALT</const>
+      <const name="ALT">Synonym for <code>L_ALT | R_ALT</code></const>
+      <const name="ALTGR">Synonym for <code>R_ALT</code></const>
       <const name="CAPS_LOCK">Caps-Lock is on</const>
-      <const name="COMMAND">Synonym for L_COMMAND | R_COMMAND</const>
-      <const name="CONTROL">Synonym for L_CONTROL | R_CONTROL</const>
-      <const name="CTRL">Synonym for L_CONTROL | R_CONTROL</const>
+      <const name="COMMAND">Synonym for <code>L_COMMAND | R_COMMAND</code></const>
+      <const name="CONTROL">Synonym for <code>L_CONTROL | R_CONTROL</code></const>
+      <const name="CTRL">Synonym for <code>L_CONTROL | R_CONTROL</code></const>
       <const name="DEAD_KEY">This key will be affected by a previously pressed dead-key</const>
-      <const name="INFO">Synonym for REPEAT | RELEASED | PRESSED | NOT_PRINTABLE | CAPS_LOCK</const>
-      <const name="INSTRUCTION_KEYS">Synonym for ALT | CONTROL</const>
+      <const name="INFO">Synonym for <code>REPEAT | RELEASED | PRESSED | NOT_PRINTABLE | CAPS_LOCK</code></const>
+      <const name="INSTRUCTION_KEYS">Synonym for <code>ALT | CONTROL</code></const>
       <const name="L_ALT">Left Alt is held</const>
       <const name="L_COMMAND">Left Logo/Special</const>
       <const name="L_CONTROL">Control Key is held</const>
@@ -2823,7 +2822,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="NUM_LOCK">NumLock is on</const>
       <const name="NUM_PAD">Identifies numeric keypad keys</const>
       <const name="PRESSED">Key is being held or tapped</const>
-      <const name="QUALIFIERS">Synonym for SHIFT | COMMAND | ALT | CONTROL</const>
+      <const name="QUALIFIERS">Synonym for <code>SHIFT | COMMAND | ALT | CONTROL</code></const>
       <const name="RELEASED">The key is being released</const>
       <const name="REPEAT">This is a repeated key</const>
       <const name="R_ALT">Right Alt is held</const>
@@ -2832,7 +2831,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="R_CTRL">Control Key is held</const>
       <const name="R_SHIFT">Right Shift is held</const>
       <const name="SCR_LOCK">Scroll Lock is on</const>
-      <const name="SHIFT">Synonym for L_SHIFT | R_SHIFT</const>
+      <const name="SHIFT">Synonym for <code>L_SHIFT | R_SHIFT</code></const>
     </constants>
 
     <constants lookup="LAYOUT" comment="Universal values for alignment of graphic layouts in documents.">
@@ -2868,16 +2867,16 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="AUDIO">The memory space is reserved by an audio device such as a sound card.</const>
       <const name="CALLER">This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</const>
       <const name="CODE">Set if the memory will contain executable program code.</const>
-      <const name="DATA">The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM.</const>
+      <const name="DATA">The default type, <code>DATA</code>, is used to indicate a standard memory allocation from system RAM.</const>
       <const name="HIDDEN">Hidden blocks are not recorded and are excluded from resource tracking.</const>
-      <const name="MANAGED">Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.</const>
+      <const name="MANAGED">Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a <code>ResourceManager</code> structure, which is included as part of the block's declared Size.  The <code>Free()</code> callback will be called when the block is removed.</const>
       <const name="NO_BLOCK">Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.</const>
       <const name="NO_BLOCKING">Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.</const>
       <const name="NO_CLEAR">Do not clear the memory on allocation (saves time).</const>
       <const name="NO_LOCK">For AllocMemory() only, indicates that the (private) memory block should not be locked on return.</const>
       <const name="NO_POOL">Gives a hint to the allocator to allocate the block outside of the memory pool.</const>
       <const name="READ">The memory is explicitly marked as readable.</const>
-      <const name="READ_WRITE">Synonym for READ | WRITE</const>
+      <const name="READ_WRITE">Synonym for <code>READ | WRITE</code></const>
       <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
       <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>
       <const name="TMP_LOCK">Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.</const>
@@ -2892,8 +2891,8 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="CREATE">New file/link created or renamed in folder.</const>
       <const name="DEEP">Receive notifications from sub-folders (Windows only).</const>
       <const name="DELETE">Existing file deleted</const>
-      <const name="FILE">File identifier; if passed to Watch() then indicates a preference for file events only.</const>
-      <const name="FOLDER">Folder identifier; if passed to Watch() then indicates a preference for folder events only.</const>
+      <const name="FILE">File identifier; if passed to <class name="File" method="Watch">File.Watch()</class> then indicates a preference for file events only.</const>
+      <const name="FOLDER">Folder identifier; if passed to <class name="File" method="Watch">File.Watch()</class> then indicates a preference for folder events only.</const>
       <const name="MODIFY">File modified via write or truncation.</const>
       <const name="MOVED">Existing file moved or renamed.</const>
       <const name="OPENED">Existing file was opened.</const>
@@ -2917,7 +2916,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="MOVE" comment="Generic flags for controlling movement.">
-      <const name="ALL">Synonym for DOWN | UP | LEFT | RIGHT</const>
+      <const name="ALL">Synonym for <code>DOWN | UP | LEFT | RIGHT</code></const>
       <const name="DOWN"/>
       <const name="LEFT"/>
       <const name="RIGHT"/>
@@ -2927,8 +2926,8 @@ SetField(Object, FID_Statement|TSTR, "string");
     <constants lookup="MSF" comment="Message flags.">
       <const name="ADD">The default behaviour - this will add the message to the end of the queue.</const>
       <const name="MESSAGE_ID">The Type parameter refers to a unique message ID rather than a message type for this call.</const>
-      <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR::Okay.</const>
-      <const name="UPDATE">If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
+      <const name="NO_DUPLICATE">If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</const>
+      <const name="UPDATE">If the <code>Type</code> parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
       <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
     </constants>
 
@@ -2966,13 +2965,13 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="FREE_ON_UNLOCK">Read-only indicator for when the object is marked for deletion.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
-      <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
-      <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.</const>
+      <const name="MESSAGE">Action has been called against the object through the message system (managed by <function module="Core">ProcessMessages</function>).</const>
+      <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using <code>UNIQUE</code>.</const>
       <const name="PRIVATE"/>
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
-      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR::ObjectExists.  This flag works in conjunction with the Name argument.</const>
+      <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, <function module="Core">NewObject</function> will return <code>ERR::ObjectExists</code>.  This flag works in conjunction with the <code>Name</code> parameter.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.</const>
     </constants>
 
@@ -2993,20 +2992,20 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="PERMIT" comment="Permission flags">
-      <const name="ALL_DELETE">Synonym for EVERYONE_DELETE</const>
-      <const name="ALL_EXEC">Synonym for EVERYONE_EXEC</const>
-      <const name="ALL_READ">Synonym for EVERYONE_READ</const>
-      <const name="ALL_WRITE">Synonym for EVERYONE_WRITE</const>
+      <const name="ALL_DELETE">Synonym for <code>EVERYONE_DELETE</code></const>
+      <const name="ALL_EXEC">Synonym for <code>EVERYONE_EXEC</code></const>
+      <const name="ALL_READ">Synonym for <code>EVERYONE_READ</code></const>
+      <const name="ALL_WRITE">Synonym for <code>EVERYONE_WRITE</code></const>
       <const name="ARCHIVE">Marks the file for future backup.  The flag should be cleared after the backup has succeeded.</const>
-      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the WRITE flag.</const>
-      <const name="EVERYONE_ACCESS">Synonym for EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</const>
-      <const name="EVERYONE_DELETE">Synonym for DELETE | GROUP_DELETE | OTHERS_DELETE</const>
-      <const name="EVERYONE_EXEC">Synonym for EXEC | GROUP_EXEC | OTHERS_EXEC</const>
-      <const name="EVERYONE_READ">Synonym for READ | GROUP_READ | OTHERS_READ</const>
-      <const name="EVERYONE_READWRITE">Synonym for EVERYONE_READ | EVERYONE_WRITE</const>
-      <const name="EVERYONE_WRITE">Synonym for WRITE | GROUP_WRITE | OTHERS_WRITE</const>
+      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the <code>WRITE</code> flag.</const>
+      <const name="EVERYONE_ACCESS">Synonym for <code>EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</code></const>
+      <const name="EVERYONE_DELETE">Synonym for <code>DELETE | GROUP_DELETE | OTHERS_DELETE</code></const>
+      <const name="EVERYONE_EXEC">Synonym for <code>EXEC | GROUP_EXEC | OTHERS_EXEC</code></const>
+      <const name="EVERYONE_READ">Synonym for <code>READ | GROUP_READ | OTHERS_READ</code></const>
+      <const name="EVERYONE_READWRITE">Synonym for <code>EVERYONE_READ | EVERYONE_WRITE</code></const>
+      <const name="EVERYONE_WRITE">Synonym for <code>WRITE | GROUP_WRITE | OTHERS_WRITE</code></const>
       <const name="EXEC">User/Owner can execute.</const>
-      <const name="GROUP">Synonym for GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</const>
+      <const name="GROUP">Synonym for <code>GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</code></const>
       <const name="GROUPID">Allows executables to run with a set group id.</const>
       <const name="GROUP_DELETE">Group members can delete.</const>
       <const name="GROUP_EXEC">Group members can execute.</const>
@@ -3016,18 +3015,18 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
-      <const name="OTHERS">Synonym for OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</const>
+      <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>
       <const name="OTHERS_DELETE">Others can delete.</const>
       <const name="OTHERS_EXEC">Others can execute.</const>
       <const name="OTHERS_READ">Others can read.</const>
       <const name="OTHERS_WRITE">Others can write.</const>
       <const name="PASSWORD">File is password protected.</const>
       <const name="READ">User/Owner has read access.  This will not allow compiled code to be executed.</const>
-      <const name="USER">Synonym for READ | WRITE | EXEC | DELETE</const>
+      <const name="USER">Synonym for <code>READ | WRITE | EXEC | DELETE</code></const>
       <const name="USERID">Allows executables to run with a set user id.</const>
-      <const name="USER_EXEC">Synonym for EXEC</const>
-      <const name="USER_READ">Synonym for READ</const>
-      <const name="USER_WRITE">Synonym for WRITE</const>
+      <const name="USER_EXEC">Synonym for <code>EXEC</code></const>
+      <const name="USER_READ">Synonym for <code>READ</code></const>
+      <const name="USER_WRITE">Synonym for <code>WRITE</code></const>
       <const name="WRITE">User/Owner can write.</const>
     </constants>
 
@@ -3075,11 +3074,11 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="PERMISSIONS">Get permission/security information.</const>
       <const name="QUALIFIED">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
       <const name="QUALIFY">Return fully qualified folder names (i.e. trailing slash or colon for each name).</const>
-      <const name="READ_ALL">Synonym for SIZE | DATE | PERMISSIONS | FILES | FOLDERS</const>
+      <const name="READ_ALL">Synonym for <code>SIZE | DATE | PERMISSIONS | FILES | FOLDERS</code></const>
       <const name="READ_ONLY">Read-only (not permissions related and might indicate read-only media).</const>
       <const name="SIZE">Retrieve the byte size of each file.</const>
       <const name="STREAM">Path is connected via a stream, e.g. network connection.</const>
-      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.</const>
+      <const name="TAGS">Receive additional information for each file, such as comments, author and copyright.  The results are stored in the <code>Tags</code> field of each file.</const>
       <const name="TIME">Retrieve the date stamp of each file.</const>
       <const name="VIRTUAL">Path is to a virtual device.</const>
       <const name="VOLUME">Feedback only - indicates a volume.</const>
@@ -3097,7 +3096,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
       <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
-      <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
+      <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
       <const name="STATIC_BUILD">Returns true if the runtime is a statically linked build.</const>
@@ -3118,9 +3117,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="RP" comment="Path types for SetResourcePath()">
-      <const name="MODULE_PATH">An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
+      <const name="MODULE_PATH">An alternative path leading to the system modules (normally <code>system:modules/</code>).  Introduced for platforms such as Android, where modules are stored in asset folders.</const>
       <const name="ROOT_PATH">Overrides the root path, which defaults to the location at which Parasol is installed.</const>
-      <const name="SYSTEM_PATH">The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.</const>
+      <const name="SYSTEM_PATH">The path of the <code>system:</code> volume, which otherwise defaults to <code>[root]:system/</code>.</const>
     </constants>
 
     <constants lookup="RSF" comment="Flags for ResolvePath()">
@@ -3177,7 +3176,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="LOG_ALL">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
       <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
       <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
-      <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>
+      <const name="QUIET">Setting this flag will divert all process output to <code>/dev/null</code> or the nearest equivalent for non-Unix systems.</const>
       <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
       <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
       <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
@@ -3277,11 +3276,11 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
+      <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see <code>PERMIT</code> flags.</field>
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
       <field name="OthersID" type="LONG">Original others ID</field>
-      <field name="Flags" type="FL" lookup="FL">FL flags</field>
+      <field name="Flags" type="FL" lookup="FL"><code>FL</code> flags</field>
       <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
     </struct>
@@ -3335,17 +3334,17 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
       <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
-      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERR SetField(*Object, APTR Value);</field>
+      <field name="Name" type="CSTRING">The name of the field, e.g. <code>Width</code></field>
+      <field name="GetField" type="APTR"><code>void GetField(*Object, APTR Result);</code></field>
+      <field name="SetField" type="APTR"><code>ERR SetField(*Object, APTR Value);</code></field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
@@ -3360,14 +3359,14 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
       <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
-      <field name="FeedbackID" type="FBK" lookup="FBK">Set to one of the FBK values</field>
+      <field name="FeedbackID" type="FBK" lookup="FBK">Set to one of the <code>FBK</code> values</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
     </struct>
 
     <struct name="FileInfo" comment="Returned by GetFileInfo()">
       <field name="Size" type="LARGE">The size of the file's content.</field>
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
-      <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
+      <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Standard permission flags.</field>
@@ -3407,7 +3406,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Y" type="DOUBLE">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from</field>
       <field name="Type" type="JET" lookup="JET">JET constant that describes the event</field>
-      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object</field>
+      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given <code>Type</code> (see <code>JTYPE</code> flags).  Automatically defined when delivered to the pointer object</field>
       <field name="Mask" type="JTYPE" lookup="JTYPE">Mask to use for checking against subscribers</field>
     </struct>
 
@@ -3421,10 +3420,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="Message" comment="Message header.">
-      <field name="Time" type="LARGE">A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().</field>
-      <field name="UID" type="LONG">A unique identifier automatically created by SendMessage().</field>
+      <field name="Time" type="LARGE">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
+      <field name="UID" type="LONG">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
       <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
-      <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
+      <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</field>
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
@@ -3458,9 +3457,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
-      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
+      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
-      <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
+      <field name="Stage" type="LONG">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
     </struct>
 
     <struct name="Variable">
@@ -3478,16 +3477,16 @@ SetField(Object, FID_Statement|TSTR, "string");
 
     <struct name="dcDeviceInput">
       <field name="Values" type="DOUBLE" size="2">The value(s) associated with the Type</field>
-      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="Timestamp" type="LARGE"><function module="Core">PreciseTime</function> of the recorded input</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
-      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object</field>
-      <field name="Type" type="JET" lookup="JET">JET constant</field>
+      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given <code>Type</code>.  Automatically defined when delivered to the pointer object</field>
+      <field name="Type" type="JET" lookup="JET"><code>JET</code> constant</field>
     </struct>
 
     <struct name="dcKeyEntry" comment="Data feed structure for Keypress">
       <field name="Flags" type="LONG">Shift/Control/CapsLock...</field>
       <field name="Value" type="LONG">ASCII value of the key A/B/C/D...</field>
-      <field name="Timestamp" type="LARGE">PreciseTime() at which the keypress was recorded</field>
+      <field name="Timestamp" type="LARGE"><function module="Core">PreciseTime</function> at which the keypress was recorded</field>
       <field name="Unicode" type="LONG">Unicode value for pre-calculated key translations</field>
     </struct>
 

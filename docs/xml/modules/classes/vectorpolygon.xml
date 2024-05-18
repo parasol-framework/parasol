@@ -16,7 +16,7 @@
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
 <p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>
-<p>To create a polyline, set the <field>Closed</field> field to FALSE (defaults to TRUE).  To create a line, set the Closed field to FALSE and set only two points (<field>X1</field>,<field>Y1</field>) and (<field>X2</field>,<field>Y2</field>)</p></description>
+<p>To create a polyline, set the <fl>Closed</fl> field to FALSE (defaults to TRUE).  To create a line, set the <fl>Closed</fl> field to <code>false</code> and set only two points (<fl>X1</fl>,<fl>Y1</fl>) and (<fl>X2</fl>,<fl>Y2</fl>)</p></description>
     <source>
       <file path="vectors/">polygon.cpp</file>
     </source>
@@ -25,11 +25,11 @@
   <fields>
     <field>
       <name>Closed</name>
-      <comment>If TRUE, the polygon will be closed between the start and end points.</comment>
+      <comment>If <code>true</code>, the polygon will be closed between the start and end points.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Set the Closed field to TRUE to ensure that the polygon is closed between the start and end points.  This behaviour is the default.  If FALSE, the polygon will not be closed, which results in the equivalent of the SVG polyline type.</p>
+<p>Set the Closed field to <code>true</code> to ensure that the polygon is closed between the start and end points.  This behaviour is the default.  If <code>false</code>, the polygon will not be closed, which results in the equivalent of the SVG polyline type.</p>
       </description>
     </field>
 
@@ -59,7 +59,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>APTR []</type>
       <description>
-<p>The PointsArray field can be set with a <struct>VectorPoint</struct> array that defines the shape of a polygon.  A minimum of two points is required for the shape to be valid.  The <struct>VectorPoint</struct> structure consists of the following fields:</p>
+<p>The PointsArray field can be set with a <st>VectorPoint</st> array that defines the shape of a polygon.  A minimum of two points is required for the shape to be valid.  The <st>VectorPoint</st> structure consists of the following fields:</p>
 <struct lookup="VectorPoint"/>
       </description>
     </field>
@@ -70,7 +70,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <field>Points</field> array.  The minimum value is 2.</p>
+<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <fl>Points</fl> array.  The minimum value is 2.</p>
       </description>
     </field>
 

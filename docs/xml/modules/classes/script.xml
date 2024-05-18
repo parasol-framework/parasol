@@ -15,7 +15,7 @@
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does not include a default parser or execution process of any kind.</p>
-<p>To execute a script file, choose a sub-class that matches the language and create the script object.  Set the <field>Path</field> field and then <action>Activate</action> the script.  Global input parameters for the script can be defined via the <action>SetKey</action> action.</p>
+<p>To execute a script file, choose a sub-class that matches the language and create the script object.  Set the <fl>Path</fl> field and then <action>Activate</action> the script.  Global input parameters for the script can be defined via the <action>SetKey</action> action.</p>
 <p>Note that client scripts may sometimes create objects that are unmanaged by the script object that created them. Terminating the script will not remove objects that are outside its resource hierarchy.</p></description>
     <source>
       <file path="../classes/">class_script.cpp</file>
@@ -52,8 +52,8 @@
       <prototype>ERR scCallback(OBJECTPTR Object, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error)</prototype>
       <input>
         <param type="LARGE" name="ProcedureID">An identifier for the target procedure.</param>
-        <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure.</param>
-        <param type="LONG" name="TotalArgs">The total number of arguments in the Args parameter.</param>
+        <param type="const struct ScriptArg *" name="Args">Optional CSV string containing parameters to pass to the procedure.</param>
+        <param type="LONG" name="TotalArgs">The total number of parameters in the Args parameter.</param>
         <param type="ERR *" name="Error">The error code returned from the script, if any.</param>
       </input>
       <description>
@@ -88,14 +88,13 @@
       <prototype>ERR scExec(OBJECTPTR Object, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Procedure">The name of the procedure to execute, or NULL for the default entry point.</param>
-        <param type="const struct ScriptArg *" name="Args">Optional CSV string containing arguments to pass to the procedure (applies to script-based Exec only).</param>
-        <param type="LONG" name="TotalArgs">Total number of script arguments provided.</param>
+        <param type="const struct ScriptArg *" name="Args">Optional parameters to pass to the procedure.</param>
+        <param type="LONG" name="TotalArgs">Total number of <code>Args</code> provided.</param>
       </input>
       <description>
-<p>Use the Exec method to execute a named procedure in a script, optionally passing that procedure a series of arguments. This method has two different interfaces - one for scripting, which takes parameters as a CSV string, and another for C/C++, which takes parameters in a serialised array.</p>
-<p>The behaviour of the execution process matches that of the <action>Activate</action> action and will return the same error codes in the event of failure.  If the procedure returns results, they will be available from the <field>Results</field> field after execution.</p>
-<p>If parameters will be passed to the procedure in script (e.g. Fluid), they must be specified as a Comma Separated Value list in the Args string. Exec will interpret all the values as a string type.  Double or single quotes should be used to encapsulate string values (use two quotes in sequence as a means of an escape character).  Values should instead be set as named variables in the script object.</p>
-<p>If parameters will be passed to the procedure in C/C++ or similar compiled language, they must be specified as an array of ScriptArg structures.  The following example illustrates such a list:</p>
+<p>Use the Exec() method to execute a named procedure in a script, optionally passing that procedure a series of parameters.</p>
+<p>The behaviour of this process matches that of the <action>Activate</action> action and will return the same error codes in the event of failure.  If the <code>Procedure</code> returns results, they will be available from the <fl>Results</fl> field after execution.</p>
+<p>Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:</p>
 <pre>
 struct ScriptArg args[] = {
    { "Object",       FD_OBJECTID, { .Long = Self-&gt;UID } },
@@ -116,12 +115,11 @@ struct ScriptArg {
    };
 };
 </pre>
-<p>The Field Descriptor (FD) specified in the Type must be a match to whatever value is defined in the union.  For instance if the Long field is defined then an FD_LONG Type must be used.  Supplementary field definition information, e.g. FD_OBJECT, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Class Development Guide.</p>
-<p>The C/C++ interface for Exec also requires a hidden third argument that is not specified in this documentation.  The argument, TotalArgs, must reflect the total number of entries in the Args array.</p>
+<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Long</code> field is defined then an <code>FD_LONG</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Parasol Wiki.</p>
       </description>
       <result>
         <error code="Okay">The procedure was executed.</error>
-        <error code="Args">The TotalArgs value is invalid.</error>
+        <error code="Args">The <code>TotalArgs</code> value is invalid.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -135,7 +133,7 @@ struct ScriptArg {
         <param type="LARGE *" name="ProcedureID">The computed ID will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method will convert a procedure name to a unique reference that will be recognised by the script as a direct reference to that procedure.  The ID can be used to create new FUNCTION definitions, for example:</p>
+<p>This method will convert a procedure name to a unique reference that will be recognised by the script as a direct reference to that procedure.  The ID can be used to create new <code>FUNCTION</code> definitions, for example:</p>
 <pre>FUNCTION callback;
 SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </pre>
@@ -205,7 +203,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The Language value indicates the language in which the source script was written.  The default setting is ENG, the code for international English.</p>
+<p>The Language value indicates the language in which the source script was written.  The default setting is <code>ENG</code>, the code for international English.</p>
       </description>
     </field>
 
@@ -225,10 +223,9 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>A script file can be loaded by setting the Path to its location.  The path must be defined prior to the initialisation process, or alternatively the client can define the <field>Statement</field> field.</p>
-<p>Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first, surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following string illustrates the format used:</p>
-<pre>dir:location;procedure;arg1=val1,arg2,arg3=val2</pre>
-<p>A target for the script may be specified by using the 'target' argument in the parameter list (value must refer to a valid existing object).</p>
+<p>A script file can be loaded by setting the Path to its location.  The path must be defined prior to the initialisation process, or alternatively the client can define the <fl>Statement</fl> field.</p>
+<p>Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first, surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following string illustrates the format used: <code>dir:location;procedure;arg1=val1,arg2,arg3=val2</code></p>
+<p>A target for the script may be specified by using the 'target' parameter in the parameter list (value must refer to a valid existing object).</p>
       </description>
     </field>
 
@@ -238,7 +235,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a specific routine whenever the script is activated with the Activate action.</p>
+<p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a specific routine whenever the script is activated with the <action>Activate</action> action.</p>
 <p>If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is executed by default.</p>
       </description>
     </field>
@@ -276,11 +273,11 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 
     <field>
       <name>TotalArgs</name>
-      <comment>Reflects the total number of arguments used in a script object.</comment>
+      <comment>Reflects the total number of parameters used in a script object.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected in the value of this field.</p>
+<p>The total number of parameters that have been set in a script object through the unlisted field mechanism are reflected in the value of this field.</p>
       </description>
     </field>
 

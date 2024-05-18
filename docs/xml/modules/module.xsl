@@ -70,6 +70,16 @@
     </xsl:copy>
   </xsl:template>
 
+  <xsl:template match="st"> <!-- Struct reference -->
+    <xsl:variable name="structName"><xsl:value-of select="node()"/></xsl:variable>
+    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$structName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=struct-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+  </xsl:template>
+
+  <xsl:template match="lk"> <!-- Type reference -->
+    <xsl:variable name="typeName"><xsl:value-of select="node()"/></xsl:variable>
+    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$typeName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+  </xsl:template>
+
   <xsl:template match="function">
     <xsl:choose>
       <xsl:when test="@module">
@@ -251,7 +261,7 @@
                     </xsl:when>
                   </xsl:choose>
 
-                  <div class="footer copyright"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
+                  <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
               </xsl:for-each> <!-- End of function scan -->
 
@@ -265,11 +275,11 @@
                     <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="const">
-                        <tr><td><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
+                        <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
                       </xsl:for-each>
                     </tbody>
                   </table>
-                  <div class="footer copyright"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
+                  <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
               </xsl:for-each> <!-- End of type scan -->
 
@@ -284,16 +294,16 @@
                     <tbody>
                       <xsl:for-each select="field">
                         <tr>
-                          <td><xsl:value-of select="@name"/></td>
+                          <th><xsl:value-of select="@name"/></th>
                           <td><span class="text-nowrap"><xsl:value-of select="@type"/></span></td>
                           <td><xsl:apply-templates select="."/></td>
                         </tr>
                       </xsl:for-each>
                     </tbody>
                   </table>
-                  <div class="footer copyright"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
+                  <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
-              </xsl:for-each> <!-- End of type scan -->
+              </xsl:for-each> <!-- End of struct scan -->
 
             </div> <!-- End of core content -->
 
@@ -351,6 +361,19 @@
                       </div>
                     </div>
                   </xsl:for-each>
+
+                  <div class="panel panel-success">
+                    <div class="panel-heading">
+                      <h4 class="panel-title"><a data-toggle="collapse" data-parent="#accordion" href="#constants">Constants</a></h4>
+                    </div>
+                    <div id="constants" class="panel-collapse collapse">
+                      <div class="panel-body">
+                        <ul class="list-unstyled">
+                          <xsl:for-each select="types/constants"><xsl:sort select="@lookup"/><li><a><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@lookup"/></a></li></xsl:for-each>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
 
                   <div class="panel panel-success">
                     <div class="panel-heading">

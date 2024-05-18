@@ -33,7 +33,7 @@
 
     <action>
       <name>Disable</name>
-      <comment>Disables the target <field>Surface</field>.</comment>
+      <comment>Disables the target <fl>Surface</fl>.</comment>
     </action>
 
     <action>
@@ -43,7 +43,7 @@
 
     <action>
       <name>Enable</name>
-      <comment>Enables the target <field>Surface</field>.</comment>
+      <comment>Enables the target <fl>Surface</fl>.</comment>
     </action>
 
     <action>
@@ -254,7 +254,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The CursorCol and <field>CursorRow</field> fields reflect the current row and column of the user's text cursor.  The values are updated every time that the cursor is moved.  Use <field>EventCallback</field> and listen for the event SEF_CURSOR_POS to receive updates on changes to CursorCol and <field>CursorRow</field>.</p>
+<p>The CursorCol and <fl>CursorRow</fl> fields reflect the current row and column of the user's text cursor.  The values are updated every time that the cursor is moved.  Use <fl>EventCallback</fl> and listen for the event SEF_CURSOR_POS to receive updates on changes to CursorCol and <fl>CursorRow</fl>.</p>
       </description>
     </field>
 
@@ -271,7 +271,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The <field>CursorCol</field> and CursorRow fields reflect the current row and column of the user's text cursor.  The values are updated every time that the cursor is moved.  Use <field>EventCallback</field> and listen for the event SEF_CURSOR_POS to receive updates on changes to <field>CursorCol</field> and CursorRow.</p>
+<p>The <fl>CursorCol</fl> and CursorRow fields reflect the current row and column of the user's text cursor.  The values are updated every time that the cursor is moved.  Use <fl>EventCallback</fl> and listen for the event SEF_CURSOR_POS to receive updates on changes to <fl>CursorCol</fl> and CursorRow.</p>
       </description>
     </field>
 
@@ -281,9 +281,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <field>EventFlags</field> so that you can select the type of notifications that will be received.</p>
+<p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <fl>EventFlags</fl> so that you can select the type of notifications that will be received.</p>
 <p>The callback function must be in the format <code>Function(*Scintilla, LARGE EventFlag)</code>.</p>
-<p>The EventFlag value will indicate the event that occurred.  Please see the <field>EventFlags</field> field for a list of supported events and additional details.</p>
+<p>The EventFlag value will indicate the event that occurred.  Please see the <fl>EventFlags</fl> field for a list of supported events and additional details.</p>
       </description>
     </field>
 
@@ -293,7 +293,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="SEF">SEF</type>
       <description>
-<p>To receive event notifications, set <field>EventCallback</field> with a function reference and the EventFlags field with a mask that indicates the events that need to be received.</p>
+<p>To receive event notifications, set <fl>EventCallback</fl> with a function reference and the EventFlags field with a mask that indicates the events that need to be received.</p>
 <types lookup="SEF"/>
       </description>
     </field>
@@ -304,7 +304,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set this field with a reference to a callback function to receive notifications when the user drops a file onto the Scintilla object's surface.  The synopsis for the callback function is <code>ERR Function(*Scintilla, CSTRING Path)</code></p>
+<p>Set this field with a reference to a callback function to receive notifications when the user drops a file onto the Scintilla object's surface.  The prototype for the callback function is <code>ERR Function(*Scintilla, CSTRING Path)</code></p>
 <p>If multiple files are dropped, the callback will be repeatedly called until all of the file paths have been reported.</p>
       </description>
     </field>
@@ -325,7 +325,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>OBJECTID</type>
       <description>
-<p>By default, the user focus is managed by monitoring the target <field>Surface</field> for changes (for instance, clicking on or away from the surface will result in a focus state change).  If another object should be monitored for focus state changes, it can be defined here prior to initialisation.</p>
+<p>By default, the user focus is managed by monitoring the target <fl>Surface</fl> for changes (for instance, clicking on or away from the surface will result in a focus state change).  If another object should be monitored for focus state changes, it can be defined here prior to initialisation.</p>
       </description>
     </field>
 
@@ -403,7 +403,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field is identical to the <field>Path</field> field, with the exception that it does not update the content of a scintilla object if it is set after initialisation.  This may be useful if the origin of the currently loaded content needs to be changed without causing a load operation.</p>
+<p>This field is identical to the <fl>Path</fl> field, with the exception that it does not update the content of a scintilla object if it is set after initialisation.  This may be useful if the origin of the currently loaded content needs to be changed without causing a load operation.</p>
       </description>
     </field>
 
@@ -414,7 +414,7 @@
       <type>CSTRING</type>
       <description>
 <p>To load data from a text file into a scintilla object, set the Path field.</p>
-<p>If the Path is set after initialisation, the existing content will be cleared and data loaded from the location that you specify.  To change the path without automatically loading from the source file, set the <field>Origin</field> field instead.</p>
+<p>If the Path is set after initialisation, the existing content will be cleared and data loaded from the location that you specify.  To change the path without automatically loading from the source file, set the <fl>Origin</fl> field instead.</p>
       </description>
     </field>
 
@@ -489,11 +489,11 @@
 
     <field>
       <name>Visible</name>
-      <comment>If TRUE, indicates the Scintilla object is visible in the target <field>Surface</field>.</comment>
+      <comment>If TRUE, indicates the Scintilla object is visible in the target <fl>Surface</fl>.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>This field is set to TRUE if the Scintilla object is visible in the target <field>Surface</field>.  To control visibility, please use the <action>Show</action> and <action>Hide</action> actions appropriately.  This field can be set to FALSE prior to initialisation if the Scintilla object should start in a hidden state.</p>
+<p>This field is set to TRUE if the Scintilla object is visible in the target <fl>Surface</fl>.  To control visibility, please use the <action>Show</action> and <action>Hide</action> actions appropriately.  This field can be set to FALSE prior to initialisation if the Scintilla object should start in a hidden state.</p>
       </description>
     </field>
 

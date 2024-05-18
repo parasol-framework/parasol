@@ -28,7 +28,7 @@
         <param type="STF" name="Flags" lookup="STF">Optional flags.</param>
       </input>
       <description>
-<p>Call Find to initiate a string search within the targeted <field>Scintilla</field> object.  The method will scan for the first instance of the <field>Text</field> string sequence and return its position in Pos.  The Flags parameter defines special options that affect the search process.</p>
+<p>Call Find to initiate a string search within the targeted <fl>Scintilla</fl> object.  The method will scan for the first instance of the <fl>Text</fl> string sequence and return its position in Pos.  The Flags parameter defines special options that affect the search process.</p>
 <p>To find subsequent string matches, call one of either the <method>Next</method> or <method>Prev</method> methods.</p>
       </description>
     </method>
@@ -41,7 +41,7 @@
         <param type="LONG *" name="Pos">The byte-position of the discovered string sequence is returned here.</param>
       </input>
       <description>
-<p>Use Next to continue a search after calling the <method>Find</method> method.  If a string sequence matching that of <field>Text</field> is discovered, its byte position will be returned in the Pos parameter.  If a new match is not discovered then ERR::Search is returned to indicate an end to the search.</p>
+<p>Use Next to continue a search after calling the <method>Find</method> method.  If a string sequence matching that of <fl>Text</fl> is discovered, its byte position will be returned in the <code>Pos</code> parameter.  If a new match is not discovered then <code>ERR::Search</code> is returned to indicate an end to the search.</p>
       </description>
     </method>
 
@@ -53,7 +53,7 @@
         <param type="LONG *" name="Pos">The byte-position of the discovered string is returned here.</param>
       </input>
       <description>
-<p>The Prev method operates under the same circumstances as <method>Next</method>, except that the search will be in reverse.  Please refer to <method>Next</method> for further information.</p>
+<p>The Prev() method operates under the same circumstances as <method>Next</method>, except that the search will be in reverse.  Please refer to <method>Next</method> for further information.</p>
       </description>
     </method>
 

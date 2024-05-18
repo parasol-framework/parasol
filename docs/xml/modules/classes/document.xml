@@ -414,9 +414,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <field>EventMask</field> so that notifications are limited to those of interest.</p>
+<p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <fl>EventMask</fl> so that notifications are limited to those of interest.</p>
 <p>The callback function prototype is <code>ERR Function(*Document, DEF EventFlag, KEYVALUE *EventData)</code>.</p>
-<p>The EventFlag value will indicate the event that occurred.  Please see the <field>EventMask</field> field for a list of supported events and additional details.</p>
+<p>The EventFlag value will indicate the event that occurred.  Please see the <fl>EventMask</fl> field for a list of supported events and additional details.</p>
 <p>Error codes returned from the callback will normally be discarded, however in some cases ERR::Skip can be returned in order to prevent the event from being processed any further.</p>
       </description>
     </field>
@@ -427,7 +427,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="DEF">DEF</type>
       <description>
-<p>To receive event notifications, set <field>EventCallback</field> with a function reference and the EventMask field with a mask that indicates the events that need to be received.</p>
+<p>To receive event notifications, set <fl>EventCallback</fl> with a function reference and the EventMask field with a mask that indicates the events that need to be received.</p>
 <types lookup="DEF"/>
       </description>
     </field>
@@ -468,7 +468,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field is identical to the <field>Path</field> field, with the exception that it does not update the content of a document object if it is set after initialisation.  This may be useful if the location of a loaded document needs to be changed without causing a load operation.</p>
+<p>This field is identical to the <fl>Path</fl> field, with the exception that it does not update the content of a document object if it is set after initialisation.  This may be useful if the location of a loaded document needs to be changed without causing a load operation.</p>
       </description>
     </field>
 
@@ -575,7 +575,7 @@
       <description>
 <p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is usually set to the location of the parasol-gui program).</p>
 <p>The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be determined - in which case an empty string is returned.</p>
-<p>You can manually change the working path by setting the <field>Origin</field> field without affecting the loaded document.</p>
+<p>You can manually change the working path by setting the <fl>Origin</fl> field without affecting the loaded document.</p>
       </description>
     </field>
 
@@ -608,7 +608,7 @@
     <constants lookup="DEF" comment="Event flags for selectively receiving events from the Document object.">
       <const name="LINK_ACTIVATED">The user has interacted with a hyperlink.  This event can be cancelled by returning ERR::Skip.</const>
       <const name="ON_CLICK">The user has interacted with an element that has an on-click definition.</const>
-      <const name="ON_CROSSING">Synonym for ON_CROSSING_IN | ON_CROSSING_OUT</const>
+      <const name="ON_CROSSING">Synonym for <code>ON_CROSSING_IN | ON_CROSSING_OUT</code></const>
       <const name="ON_CROSSING_IN">The mouse pointer has crossed into an element.</const>
       <const name="ON_CROSSING_OUT">The mouse pointer has crossed out of an element.</const>
       <const name="ON_MOTION">The user has triggered a motion event in an element that supports motion monitoring.</const>

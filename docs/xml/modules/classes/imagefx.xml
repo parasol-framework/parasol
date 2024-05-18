@@ -17,7 +17,7 @@
 <p>The ImageFX class will render a source image into a given rectangle within the current user coordinate system.  The client has the option of providing a pre-allocated Bitmap or the path to a <class name="Picture">Picture</class> file as the source.</p>
 <p>If a pre-allocated <class name="Bitmap">Bitmap</class> is to be used, it must be created under the ownership of the ImageFX object, and this must be done prior to initialisation.  It is required that the bitmap uses 32 bits per pixel and that the alpha channel is enabled.</p>
 <p>If a source picture file is referenced, it will be upscaled to meet the requirements automatically as needed.</p>
-<p>Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y, Width and Height.  The placement and scaling of the referenced image is controlled by the <field>AspectRatio</field> field.</p></description>
+<p>Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y, Width and Height.  The placement and scaling of the referenced image is controlled by the <fl>AspectRatio</fl> field.</p></description>
     <source>
       <file path="filters/">filter_image.cpp</file>
     </source>
@@ -49,7 +49,7 @@
       <type>OBJECTPTR</type>
       <description>
 <p>Reading the Bitmap field will return the <class name="Bitmap">Bitmap</class> that is being used as the image source.  Note that if a custom Bitmap is to be used, the correct way to do this as to assign it to the ImageFX object via ownership rules.</p>
-<p>If a picture image has been processed by setting the <field>Path</field>, the Bitmap will refer to the content that has been processed.</p>
+<p>If a picture image has been processed by setting the <fl>Path</fl>, the Bitmap will refer to the content that has been processed.</p>
       </description>
     </field>
 

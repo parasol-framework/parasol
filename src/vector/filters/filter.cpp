@@ -160,8 +160,8 @@ static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VS
    if (SourceType IS VSF::GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp); error != ERR::Okay) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
-         gfxCopyArea(sg, bmp, BAF::NIL, sg->Clip.Left, sg->Clip.Top, 
-            sg->Clip.Right - sg->Clip.Left, sg->Clip.Bottom - sg->Clip.Top, 
+         gfxCopyArea(sg, bmp, BAF::NIL, sg->Clip.Left, sg->Clip.Top,
+            sg->Clip.Right - sg->Clip.Left, sg->Clip.Bottom - sg->Clip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
       }
    }
@@ -579,7 +579,7 @@ static ERR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 
 static ERR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 {
-   if (Args->NewOwner->Class->ClassID IS ID_VECTORSCENE) {
+   if (Args->NewOwner->classID() IS ID_VECTORSCENE) {
       Self->Scene = (extVectorScene *)Args->NewOwner;
    }
    return ERR::Okay;

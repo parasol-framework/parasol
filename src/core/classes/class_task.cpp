@@ -597,14 +597,14 @@ the task arguments.  For instance `&gt;C:\output.txt` will redirect both stderr 
 `c:\output.txt`.  The use of `1&gt;` to redirect stdout and `2&gt;` to redirect stderr
 independently of each other is also acceptable.
 
-When running a DOS program in Microsoft Windows, the SHELL flag can be set in the #Flags field to prevent the
+When running a DOS program in Microsoft Windows, the `SHELL` flag can be set in the #Flags field to prevent the
 DOS window from appearing.  The DOS window will also be hidden if the stdout or stderr pipes are redirected.
 
 -ERRORS-
 Okay
 FieldNotSet: The Location field has not been set.
 Failed
-TimeOut:     Can be returned if the WAIT flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.
+TimeOut:     Can be returned if the `WAIT` flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.
 -END-
 
 *********************************************************************************************************************/
@@ -1128,7 +1128,7 @@ static ERR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 -METHOD-
 Expunge: Forces a Task to expunge unused code.
 
-The Expunge method releases all loaded libraries that are no longer in use by the active process.
+The Expunge() method releases all loaded libraries that are no longer in use by the active process.
 
 -ERRORS-
 Okay
@@ -1198,7 +1198,7 @@ static ERR TASK_Free(extTask *Self, APTR Void)
 GetEnv: Retrieves environment variables for the active process.
 
 On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the
-Name string.  If there is no matching variable, `ERR::DoesNotExist` is returned.
+`Name` string.  If there is no matching variable, `ERR::DoesNotExist` is returned.
 
 In Windows, it is possible to look up registry keys if the string starts with one of the following (in all other
 cases, the system's environment variables are queried):
@@ -1482,10 +1482,10 @@ static ERR TASK_NewObject(extTask *Self, APTR Void)
 -METHOD-
 Quit: Sends a quit message to a task.
 
-The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the
+The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the
 destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
 `MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task
-can be killed outright with the Free action.
+can be killed outright with the Free() action.
 
 -ERRORS-
 Okay
@@ -1521,8 +1521,9 @@ static ERR TASK_Quit(extTask *Self, APTR Void)
 -METHOD-
 SetEnv: Sets environment variables for the active process.
 
-On platforms that support environment variables, SetEnv() is used for defining values for named variables.  A Name and
-accompanying Value string are required.  If the Value is NULL, the environment variable is removed if it already exists.
+On platforms that support environment variables, SetEnv() is used for defining values for named variables.  A `Name`
+and accompanying `Value` string are required.  If the `Value` is `NULL`, the environment variable is removed if it
+already exists.
 
 In Windows, it is possible to set registry keys if the string starts with one of the following (in all other cases, the
 system's environment variables are queried):
@@ -1657,7 +1658,7 @@ static ERR TASK_SetKey(extTask *Self, struct acSetKey *Args)
 Write: Send raw data to a launched process' stdin descriptor.
 
 If a process is successfully launched with the `PIPE` set in #Flags, data can be sent to its stdin pipe by calling the
-Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the
+Write() action.  Setting the `Buffer` parameter to `NULL` will result in the pipe being closed (this will signal to the
 process that no more data is incoming).
 
 *********************************************************************************************************************/
@@ -1760,7 +1761,7 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
 ExitCallback: The callback is activated when the process is terminated.
 
 The ExitCallback field can be set with a function reference that will be called when the executed process is
-terminated.  The callback must follow the synopsis `Function(*Task)`.
+terminated.  The callback must follow the prototype `Function(*Task)`.
 
 Please keep in mind that if the Task is freed when the process is still executing, the ExitCallback routine will not be
 called on termination because the Task object no longer exists for the control of the process.
@@ -1789,7 +1790,7 @@ static ERR SET_ExitCallback(extTask *Self, FUNCTION *Value)
 ErrorCallback: This callback returns incoming data from STDERR.
 
 The ErrorCallback field can be set with a function reference that will be called when an active process sends data via
-STDERR.  The callback must follow the synopsis `Function(*Task, APTR Data, LONG Size)`
+STDERR.  The callback must follow the prototype `Function(*Task, APTR Data, LONG Size)`
 
 The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be
 indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.
@@ -1819,7 +1820,7 @@ InputCallback: This callback returns incoming data from STDIN.
 
 The InputCallback field is available for use only when the Task object represents the current process.
 The referenced function will be called when process receives data from STDIN.  The callback must follow the
-synopsis `Function(*Task, APTR Data, LONG Size, ERR Status)`
+prototype `Function(*Task, APTR Data, LONG Size, ERR Status)`
 
 The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
 by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.
@@ -1870,7 +1871,7 @@ static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
 OutputCallback: This callback returns incoming data from STDOUT.
 
 The OutputCallback field can be set with a function reference that will be called when an active process sends data via
-STDOUT.  The callback must follow the synopsis `Function(*Task, APTR Data, LONG Size)`
+STDOUT.  The callback must follow the prototype `Function(*Task, APTR Data, LONG Size)`
 
 The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
 by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.
@@ -2039,7 +2040,7 @@ static ERR SET_Parameters(extTask *Self, const pf::vector<std::string> *Value, L
 -FIELD-
 ProcessID: Reflects the process ID when an executable is launched.
 
-If a task object launches an executable file via Activate(), the ProcessID will be set to the 'pid' that was assigned
+If a task object launches an executable file via #Activate(), the ProcessID will be set to the 'pid' that was assigned
 to the new process by the host system.  At all other times the ProcessID is set to zero.
 
 -FIELD-
@@ -2163,7 +2164,7 @@ static ERR SET_Priority(extTask *Self, LONG Value)
 ReturnCode: The task's return code can be retrieved following execution.
 
 Once a process has completed execution then its return code can be read from this field.  If process is still running,
-the error code ERR::TaskStillExists will be returned.
+the error code `ERR::TaskStillExists` will be returned.
 
 -ERRORS-
 Okay

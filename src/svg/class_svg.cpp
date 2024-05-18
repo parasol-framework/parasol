@@ -558,14 +558,14 @@ to terminate the SVG object without impacting the resources it created.
 
 static ERR SET_Target(extSVG *Self, OBJECTPTR Value)
 {
-   if (Value->Class->ClassID IS ID_VECTORSCENE) {
+   if (Value->classID() IS ID_VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
       auto owner = Value->Owner;
-      while ((owner) and (owner->Class->ClassID != ID_VECTORSCENE)) {
+      while ((owner) and (owner->classID() != ID_VECTORSCENE)) {
          owner = owner->Owner;
       }
 

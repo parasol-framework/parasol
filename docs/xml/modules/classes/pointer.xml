@@ -49,7 +49,7 @@
       <access read="R">Read</access>
       <type class="Bitmap">*Bitmap</type>
       <description>
-<p>The pointer graphic can be changed to a custom image if the <code>PTC::CUSTOM</code> <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
+<p>The pointer graphic can be changed to a custom image if the <code>PTC::CUSTOM</code> <fl>CursorID</fl> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
       </description>
     </field>
 

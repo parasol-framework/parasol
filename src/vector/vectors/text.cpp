@@ -727,7 +727,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    // Setting the Font with a reference to an external font object will copy across the configuration of
    // that font.  It is recommended that the external font is initialised beforehand.
 
-   if (Value->Class->BaseClassID IS ID_FONT) {
+   if (Value->baseClassID() IS ID_FONT) {
       auto other = (objFont *)Value;
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
@@ -740,7 +740,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
    }
-   else if (Value->Class->ClassID IS ID_VECTORTEXT) {
+   else if (Value->classID() IS ID_VECTORTEXT) {
       auto other = (extVectorText *)Value;
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }

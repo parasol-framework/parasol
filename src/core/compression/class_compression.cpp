@@ -1644,14 +1644,14 @@ matches the Path parameter string in conjunction with the options in Flags.  The
 ~Core.StrCompare() function - in particular `STR::CASE`, `STR::MATCH_LEN` and `STR::WILDCARD` are the most
 useful.
 
-Please refer to the #Scan() method for a break-down of the CompressedItem structure that is returned by this
+Please refer to the #Scan() method for a break-down of the !CompressedItem structure that is returned by this
 method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If
 persistent values are required, copy the resulting structure immediately after the call.
 
 -INPUT-
 cstr Path: Search for a specific item or items, using wildcards.
-int(STR) Flags: String comparison flags used by StrCompare().
-&struct(*CompressedItem) Item: The discovered item is returned in this parameter, or NULL if the search failed.
+int(STR) Flags: String comparison flags used by ~Core.StrCompare().
+&struct(*CompressedItem) Item: The discovered item is returned in this parameter, or `NULL` if the search failed.
 
 -ERRORS-
 Okay
@@ -1936,22 +1936,22 @@ static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *Ar
 -METHOD-
 Scan: Scan the archive's index of compressed data.
 
-Use the Scan method to search an archive's list of items.  Optional filtering can be applied using the Folder parameter
-to limit results to those within a folder, and Filter parameter to apply wildcard matching to item names.  Each item
-that is discovered during the scan will be passed to the function referenced in the Callback parameter.  If the
-Callback function returns ERR::Terminate, the scan will stop immediately.  The synopsis of the callback function is
-`ERR Function(*Compression, *CompressedItem)`.
+Use the Scan() method to search an archive's list of items.  Optional filtering can be applied using the `Folder` parameter
+to limit results to those within a folder, and `Filter` parameter to apply wildcard matching to item names.  Each item
+that is discovered during the scan will be passed to the function referenced in the `Callback` parameter.  If the
+`Callback` function returns `ERR::Terminate`, the scan will stop immediately.  The prototype of the `Callback`
+function is `ERR Function(*Compression, *CompressedItem)`.
 
-The &CompressedItem structure consists of the following fields:
+The !CompressedItem structure consists of the following fields:
 
-&CompressedItem
+!CompressedItem
 
-To search for a single item with a path and name already known, please use the #Find() method instead.
+To search for a single item with a path and name already known, use the #Find() method instead.
 
 -INPUT-
 cstr Folder: If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.
-cstr Filter: Search for a specific item or items by name, using wildcards.  If NULL or an empty string, all items will be scanned.
-ptr(func) Callback: This callback function will be called with a pointer to a CompressedItem structure.
+cstr Filter: Search for a specific item or items by name, using wildcards.  If `NULL` or an empty string, all items will be scanned.
+ptr(func) Callback: This callback function will be called with a pointer to a !CompressedItem structure.
 
 -ERRORS-
 Okay

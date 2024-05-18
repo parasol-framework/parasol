@@ -8,16 +8,16 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Sound: Plays and records sound samples in a variety of different data formats.
 
-The Sound class provides a simple API for programs to load and play audio sample files. By default all
-loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound
-class extensions, if available.
+The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of
+sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions,
+if available.
 
 Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum
 buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the #Stream
 field.
 
 The following example illustrates playback of a sound sample that is one octave higher than its normal frequency.
-The subscription to the OnStop callback will result in the program waking once the sample has finished
+The subscription to the #OnStop callback will result in the program waking once the sample has finished
 playback.
 
 <pre>
@@ -39,7 +39,7 @@ proc.sleep()
 **********************************************************************************************************************
 
 NOTE: Ideally individual samples should always be played through the host's audio capabilities and not our internal
-mixer.  The mixer is buffered and therefore always has a delay, whereas the host drivers should be able to play
+mixer.  Our mixer is buffered and therefore always has a delay, whereas the host drivers should be able to play
 individual samples with more immediacy.
 
 *********************************************************************************************************************/
@@ -1061,7 +1061,7 @@ static ERR SOUND_SetKey(extSound *Self, struct acSetKey *Args)
 
 /*********************************************************************************************************************
 -FIELD-
-Active: Returns TRUE if the sound sample is being played back.
+Active: Returns `true` if the sound sample is being played back.
 -END-
 *********************************************************************************************************************/
 
@@ -1108,7 +1108,7 @@ Audio: Refers to the audio object/device to use for playback.
 Set this field if a specific @Audio object should be targeted when playing the sound sample.
 
 -FIELD-
-BitsPerSample: Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+BitsPerSample: Indicates the sample rate of the audio sample, typically `8` or `16` bit.
 
 -FIELD-
 BytesPerSecond: The flow of bytes-per-second when the sample is played at normal frequency.
@@ -1416,7 +1416,7 @@ Octave: The octave to use for sample playback.
 
 The Octave field determines the octave to use when playing back a sound sample.  The default setting is zero, which
 represents the octave at which the sound was sampled.  Setting a negative octave will lower the playback rate, while
-positive values raise the playback rate.  The minimum octave setting is -5 and the highest setting is +5.
+positive values raise the playback rate.  The minimum octave setting is `-5` and the highest setting is `+5`.
 
 The octave can also be adjusted by setting the #Note field.  Setting the Octave field directly is useful if
 you need to quickly double or halve the playback rate.
@@ -1435,12 +1435,8 @@ static ERR SOUND_SET_Octave(extSound *Self, LONG Value)
 -FIELD-
 OnStop: This callback is triggered when sample playback stops.
 
-Set OnStop to a callback function to receive an event trigger when sample playback stops.  The synopsis for the
-function is as follows:
-
-<pre>
-void OnStop(*Sound)
-</pre>
+Set OnStop to a callback function to receive an event trigger when sample playback stops.  The prototype for the
+function is `void OnStop(*Sound)`.
 
 The timing of this event does not guarantee precision, but should be accurate to approximately 1/100th of a second
 in most cases.
@@ -1475,7 +1471,7 @@ Pan: Determines the horizontal position of a sound when played through stereo sp
 
 The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers.
 The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum
-value is -1.0 to force play through the left speaker and the maximum value is 1.0 for the right speaker.
+value is `-1.0` to force play through the left speaker and the maximum value is `1.0` for the right speaker.
 
 *********************************************************************************************************************/
 

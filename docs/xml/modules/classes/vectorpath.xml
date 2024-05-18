@@ -40,7 +40,7 @@
       <prototype>ERR vpAddCommand(OBJECTPTR Object, struct PathCommand * Commands, LONG Size)</prototype>
       <input>
         <param type="struct PathCommand *" name="Commands">Array of commands to add to the path.</param>
-        <param type="LONG" name="Size">The size of the Command buffer, in bytes.</param>
+        <param type="LONG" name="Size">The size of the <code>Commands</code> buffer, in bytes.</param>
       </input>
       <description>
 <p>This method will add a series of commands to the end of a Vector's existing path sequence.  The commands must be provided as a sequential array.  No checks will be performed to confirm the validity of the sequence.</p>
@@ -57,7 +57,7 @@
         <param type="struct PathCommand **" name="Command">The requested command will be returned in this parameter.</param>
       </input>
       <description>
-<p>Calling GetCommand will return a direct pointer to the command identified at Index.  The pointer will remain valid for as long as the VectorPath is not modified.</p>
+<p>Calling GetCommand() will return a direct pointer to the command identified at <code>Index</code>.  The pointer will remain valid for as long as the <class name="VectorPath">VectorPath</class> is not modified.</p>
       </description>
     </method>
 
@@ -70,7 +70,7 @@
         <param type="LONG" name="Total">The total number of commands to remove, starting from the given Index.</param>
       </input>
       <description>
-<p>This method will remove a series of commands from the current path, starting at the given Index.  The total number of commands to remove is indicated by the Total parameter.</p>
+<p>This method will remove a series of commands from the current path, starting at the given <code>Index</code>.  The total number of commands to remove is indicated by the <code>Total</code> parameter.</p>
       </description>
     </method>
 
@@ -84,7 +84,7 @@
         <param type="LONG" name="Size">The size of the Command buffer, in bytes.</param>
       </input>
       <description>
-<p>Use SetCommand to copy one or more commands into an existing path.</p>
+<p>Use SetCommand() to copy one or more commands into an existing path.</p>
       </description>
     </method>
 
@@ -97,7 +97,7 @@
         <param type="LONG" name="Size">The byte size of the Commands buffer.</param>
       </input>
       <description>
-<p>Use SetCommandList to copy a series of path commands to a VectorPath object.  All existing commands will be cleared as a result of this process.</p>
+<p>Use SetCommandList() to copy a series of path commands to a <class name="VectorPath">VectorPath</class> object.  All existing commands will be cleared as a result of this process.</p>
 <p>NOTE: This method is not compatible with Fluid calls.</p>
       </description>
     </method>
@@ -111,8 +111,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRUCT []</type>
       <description>
-<p>Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the control points of the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
-<p>This field can also be written at any time with a new array of PathCommand structures.  Doing so will clear the existing path, if any.</p>
+<p>Read the Commands field to obtain a direct pointer to the <code>PathCommand</code> array.  This will allow the control points of the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
+<p>This field can also be written at any time with a new array of <code>PathCommand</code> structures.  Doing so will clear the existing path, if any.</p>
       </description>
     </field>
 
@@ -132,7 +132,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
+<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element <code>d</code> attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
 <p>The following commands are supported:</p>
 <pre>M: Move To
 L: Line To
@@ -146,7 +146,7 @@ A: Arc
 Z: Close Path
 </pre>
 <p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
-<p>To terminate a path without joining it to the first coordinate, omit the 'Z' from the end of the sequence.</p>
+<p>To terminate a path without joining it to the first coordinate, omit the <code>Z</code> from the end of the sequence.</p>
       </description>
     </field>
 
@@ -156,7 +156,7 @@ Z: Close Path
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The total number of points defined in the path <field>Sequence</field> is reflected in this field.  Modifying the total directly is permitted, although this should be used for shrinking the list because expansion will create uninitialised command entries.</p>
+<p>The total number of points defined in the path <fl>Sequence</fl> is reflected in this field.  Modifying the total directly is permitted, although this should be used for shrinking the list because expansion will create uninitialised command entries.</p>
       </description>
     </field>
 

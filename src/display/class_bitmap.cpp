@@ -811,7 +811,7 @@ static ERR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
-   if ((Args->Dest->Class->ClassID != ID_BITMAP)) return log.warning(ERR::Args);
+   if ((Args->Dest->classID() != ID_BITMAP)) return log.warning(ERR::Args);
 
    auto target = (extBitmap *)Args->Dest;
 
@@ -1846,7 +1846,7 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
-   if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_DISPLAY)) goto setfields;
+   if ((Self->Owner) and (Self->Owner->classID() IS ID_DISPLAY)) goto setfields;
 
 #ifdef __xwindows__
 

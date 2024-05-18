@@ -171,7 +171,7 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 -FUNCTION-
 CheckMemoryExists: Checks if a memory block still exists.
 
-Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its ID.
+Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its `ID`.
 
 -INPUT-
 mem ID: The ID of the memory block that will be checked.
@@ -196,9 +196,9 @@ ERR CheckMemoryExists(MEMORYID MemoryID)
 -FUNCTION-
 FreeResource: Frees resources originating from AllocMemory().
 
-This function will free any resource that originates from AllocMemory(), using its ID for identification.  C++ headers
-also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we
-do recommend the use of IDs to improve memory safety).
+This function will free any resource that originates from AllocMemory(), using its `ID` for identification.  C++
+headers also include a variant of this function that allows a direct memory pointer to be used as the identifier
+(however we do recommend the use of IDs to improve memory safety).
 
 In some circumstances the termination of the block will not take place immediately.  If the block is locked then
 it will be marked for deletion and not be collected until the lock count reaches zero.
@@ -291,7 +291,7 @@ ERR FreeResource(MEMORYID MemoryID)
 MemoryIDInfo: Returns information on memory ID's.
 
 This function returns the attributes of a memory block, including the start address, parent object, memory ID, size
-and flags.  The following code segment illustrates correct use of this function:
+and flags.  The following example illustrates correct use of this function:
 
 <pre>
 MemInfo info;
@@ -300,12 +300,12 @@ if (!MemoryIDInfo(memid, &info)) {
 }
 </pre>
 
-If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.
+If the call fails, the !MemInfo structure's fields will be driven to `NULL` and an error code is returned.
 
 -INPUT-
 mem ID: Pointer to a valid memory ID.
-buf(struct(MemInfo)) MemInfo:  Pointer to a MemInfo structure.
-structsize Size: Size of the MemInfo structure.
+buf(struct(MemInfo)) MemInfo:  Pointer to a !MemInfo structure.
+structsize Size: Size of the !MemInfo structure.
 
 -ERRORS-
 Okay
@@ -358,7 +358,7 @@ if (!MemoryPtrInfo(ptr, &info)) {
 }
 </pre>
 
-If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code
+If the call to MemoryPtrInfo() fails then the !MemInfo structure's fields will be driven to `NULL` and an error code
 will be returned.
 
 Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search
@@ -366,8 +366,8 @@ routine.  We recommend that calls to this function are avoided unless circumstan
 
 -INPUT-
 ptr Address:  Pointer to a valid memory area.
-buf(struct(MemInfo)) MemInfo: Pointer to a MemInfo structure to be filled out.
-structsize Size: Size of the MemInfo structure.
+buf(struct(MemInfo)) MemInfo: Pointer to a !MemInfo structure to be populated.
+structsize Size: Size of the !MemInfo structure.
 
 -ERRORS-
 Okay
@@ -412,19 +412,19 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
 -FUNCTION-
 ReallocMemory: Reallocates memory blocks.
 
-This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you wish.
-The data of your original memory block will be copied over to the new block.  If the new block is of a larger size, the
-left-over bytes will be filled with zero-byte values. If the new block is smaller, you will lose some of the original
-data.
+This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you
+wish.  The data of your original memory block will be copied over to the new block.  If the new block is of a
+larger size, the left-over bytes will be populated with zero-byte values. If the new block is smaller, you will
+lose some of the original data.
 
 The original block will be destroyed as a result of calling this function unless the reallocation process fails, in
 which case your existing memory block will remain valid.
 
 -INPUT-
-ptr Memory:   Pointer to a memory block obtained from AllocMemory().
+ptr Memory:   Pointer to a memory block obtained from ~AllocMemory().
 uint Size:    The size of the new memory block.
-!ptr Address: Point to an APTR variable to store the resulting pointer to the new memory block.
-&mem ID:      Point to a MEMORYID variable to store the resulting memory block's unique ID.
+!ptr Address: Point to an `APTR` variable to store the resulting pointer to the new memory block.
+&mem ID:      Point to a `MEMORYID` variable to store the resulting memory block's unique ID.
 
 -ERRORS-
 Okay

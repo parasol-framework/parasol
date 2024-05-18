@@ -31,7 +31,7 @@ immediately sent.
 
 <header>Server-Client Connections</>
 
-To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the #Port value
+To accept incoming client connections, create a NetSocket object with the `SERVER` flag set and define the #Port value
 on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the
 `MULTICONNECT` flag.
 
@@ -108,13 +108,13 @@ Pre-Condition: Must be in a connection state of `NTC::DISCONNECTED`
 Post-Condition: If this method returns `ERR::Okay`, will be in state `NTC::CONNECTING`.
 
 -INPUT-
-cstr Address: String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")
+cstr Address: String containing either a domain name (e.g. `www.google.com`) or an IP address (e.g. `123.123.123.123`)
 int Port: Remote port to connect to.
 
 -ERRORS-
 Okay: The NetSocket connecting process was successfully started.
 Args: Address was NULL, or Port was not in the required range.
-InvalidState: The NetSocket was not in the state NTC::DISCONNECTED.
+InvalidState: The NetSocket was not in the state `NTC::DISCONNECTED`.
 HostNotFound: Host name resolution failed.
 Failed: The connect failed for some other reason.
 -END-
@@ -384,7 +384,7 @@ static ERR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
 -METHOD-
 GetLocalIPAddress: Returns the IP address that the socket is locally bound to.
 
-This method performs the POSIX equivalent of getsockname().  It returns the current address to which the NetSocket
+This method performs the POSIX equivalent of `getsockname()`.  It returns the current address to which the NetSocket
 is bound.
 
 -INPUT-
@@ -587,7 +587,7 @@ static ERR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
 -ACTION-
 Read: Read information from the socket.
 
-The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection
+The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection
 is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all
 other return codes indicate permanent failure and the socket connection will be closed when the action returns.
 
@@ -633,7 +633,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 ReadMsg: Read a message from the socket.
 
 This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with
-the WriteMsg method will conform to this protocol, thus simplifying message transfers between programs based on the
+the #WriteMsg() method will conform to this protocol, thus simplifying message transfers between programs based on the
 core platform at either point of the network link.
 
 This method never returns a successful error code unless an entire message has been received from the sender.
@@ -648,7 +648,7 @@ This method never returns a successful error code unless an entire message has b
 Okay: A complete message has been read and indicated in the result parameters.
 Args
 NullArgs
-LimitedSuccess: Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.
+LimitedSuccess: Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the `Length` parameter.
 NoData: No new data was found for the socket.
 BadData: The message header or tail was invalid, or the message length exceeded internally imposed limits.
 AllocMemory: A message buffer could not be allocated.
@@ -783,8 +783,8 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 Write: Writes data to the socket.
 
 Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any
-data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the
-software queue are governed by the #MsgLimit field setting.
+data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on
+the software queue are governed by the #MsgLimit field setting.
 
 Do not use this action if in server mode.  Instead, write to the @ClientSocket object that will receive the data.
 
@@ -938,9 +938,9 @@ can be used to determine how a TCP connection was closed.
 <type name="ERR::Okay">The connection was closed gracefully.  All data sent by the peer has been received.</>
 <type name="ERR::Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</>
 <type name="ERR::TimeOut">The connect operation timed out.</>
-<type name="ERR::ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</>
-<type name="ERR::NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</>
-<type name="ERR::HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</>
+<type name="ERR::ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to `ERR::Failed`.</>
+<type name="ERR::NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to `ERR::Failed`.</>
+<type name="ERR::HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to `ERR::Failed`.</>
 <type name="ERR::Failed">An unspecified error occurred.</>
 </>
 
@@ -995,7 +995,7 @@ The NetSocket parameter refers to the NetSocket object.  The Context refers to t
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
-If the callback function returns ERR::Terminate then the Incoming field will be cleared and the function will no
+If the callback function returns `ERR::Terminate` then the Incoming field will be cleared and the function will no
 longer be called.  All other error codes are ignored.
 
 *********************************************************************************************************************/
@@ -1033,7 +1033,7 @@ The function must be in the format `ERR Outgoing(*NetSocket, OBJECTPTR Context)`
 The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.
 
 To send data to the NetSocket object, call the #Write() action.  If the callback function returns
-ERR::Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error
+`ERR::Terminate` then the Outgoing field will be cleared and the function will no longer be called.  All other error
 codes are ignored.
 
 The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).
@@ -1333,7 +1333,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
    extNetSocket *Socket;
    objClientSocket *ClientSocket;
 
-   if (SocketObject->Class->ClassID IS ID_CLIENTSOCKET) {
+   if (SocketObject->classID() IS ID_CLIENTSOCKET) {
       ClientSocket = (objClientSocket *)SocketObject;
       Socket = (extNetSocket *)ClientSocket->Client->NetSocket;
    }

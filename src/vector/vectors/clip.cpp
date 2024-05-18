@@ -13,15 +13,15 @@ objects within the same scene.  If optimum drawing efficiency is required, we re
 referenced by one vector only.  This will reduce the frequency of path recomputation and redrawing of the clipping
 path.
 
-The SVG standard makes a distinction between clipping paths and masks.  Consequently, this distinction also exists 
-in the VectorClip design, and by default VectorClip objects will operate in path clipping mode.  This means that 
-the clipping path is constructed as a solid filled area, and stroke instructions are completely ignored.  To create 
-more complex masks, such as one with a filled gradient, use the `VCLF::APPLY_FILLS` option in #Flags.  If stroking 
+The SVG standard makes a distinction between clipping paths and masks.  Consequently, this distinction also exists
+in the VectorClip design, and by default VectorClip objects will operate in path clipping mode.  This means that
+the clipping path is constructed as a solid filled area, and stroke instructions are completely ignored.  To create
+more complex masks, such as one with a filled gradient, use the `VCLF::APPLY_FILLS` option in #Flags.  If stroking
 operations are required, define `VCLF::APPLY_STROKES`.
 
 Finally, for the purposes of UI development it may often be beneficial to set #Units to `VUNIT::BOUNDING_BOX` so that
 the clipping path is sized to match the target vector.  A viewbox size of `0 0 1 1` is applied by default, but if a
-1:1 match to the target vector is preferred, set the #Viewport @VectorViewport.ViewWidth and 
+1:1 match to the target vector is preferred, set the #Viewport @VectorViewport.ViewWidth and
 @VectorViewport.ViewHeight to match the target vector's dimensions.
 
 -END-
@@ -48,7 +48,7 @@ static ERR CLIP_Init(extVectorClip *Self, APTR Void)
 
    // A viewport hosts the shapes for determining the clipping path.
 
-   if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORSCENE)) {
+   if ((Self->Owner) and (Self->Owner->classID() IS ID_VECTORSCENE)) {
       if ((Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
             fl::Owner(Self->ownerID()),
             fl::Visibility(VIS::HIDDEN),

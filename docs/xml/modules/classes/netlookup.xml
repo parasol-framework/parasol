@@ -41,7 +41,7 @@
       </input>
       <description>
 <p>BlockingResolveAddress() performs an IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process requires contact with a DNS server and this will cause the routine to block until a response is received.</p>
-<p>The results can be read from the <field>HostName</field> field or received via the <field>Callback</field> function.</p>
+<p>The results can be read from the <fl>HostName</fl> field or received via the <fl>Callback</fl> function.</p>
       </description>
       <result>
         <error code="Okay">The IP address was resolved successfully.</error>
@@ -60,7 +60,7 @@
       </input>
       <description>
 <p>BlockingResolveName() performs a domain name resolution, converting a domain name to its official host name and IP addresses.  The resolution process requires contact with a DNS server and the function will block until a response is received or a timeout occurs.</p>
-<p>The results can be read from the <field>Addresses</field> field or received via the <field>Callback</field> function.</p>
+<p>The results can be read from the <fl>Addresses</fl> field or received via the <fl>Callback</fl> function.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -78,7 +78,7 @@
         <param type="CSTRING" name="Address">IP address to be resolved, e.g. "123.111.94.82".</param>
       </input>
       <description>
-<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <field>Callback</field> function will be called on completion of the process.</p>
+<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <fl>Callback</fl> function will be called on completion of the process.</p>
 <p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveAddress</method> method.</p>
       </description>
       <result>
@@ -97,7 +97,7 @@
         <param type="CSTRING" name="HostName">The host name to be resolved.</param>
       </input>
       <description>
-<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses. The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <field>Callback</field> function will be called on completion of the process.</p>
+<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses. The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <fl>Callback</fl> function will be called on completion of the process.</p>
 <p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveName</method> method.</p>
       </description>
       <result>
@@ -128,7 +128,7 @@
       <type>FUNCTION</type>
       <description>
 <p>The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype is <code>Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)</code>.</p>
-<p>The Fluid prototype is as follows, with results readable from the <field>HostName</field> and <field>Addresses</field> fields: <code>function(NetLookup, Error)</code>.</p>
+<p>The Fluid prototype is as follows, with results readable from the <fl>HostName</fl> and <fl>Addresses</fl> fields: <code>function(NetLookup, Error)</code>.</p>
       </description>
     </field>
 

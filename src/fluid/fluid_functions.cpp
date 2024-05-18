@@ -253,7 +253,7 @@ int fcmd_catch(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// The event callback will be called with the following synopsis:
+// The event callback will be called with the following prototype:
 //
 // function callback(EventID, Args)
 //

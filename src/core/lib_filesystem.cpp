@@ -290,16 +290,16 @@ ERR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 /*********************************************************************************************************************
 
 -FUNCTION-
-AddInfoTag: Adds new tags to FileInfo structures.
+AddInfoTag: Adds new tags to !FileInfo structures.
 
-This function adds file tags to FileInfo structures.  It is intended for use by the FileSystem module and related
-drivers only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio
+This function adds file tags to !FileInfo structures.  It is intended for use by the Core and external drivers
+only.  Tags allow extended attributes to be associated with a file, for example the number of seconds of audio
 in an MP3 file.
 
 -INPUT-
-struct(FileInfo) Info: Pointer to a valid FileInfo structure.
+struct(FileInfo) Info: Pointer to a valid !FileInfo structure.
 cstr Name: The name of the tag.
-cstr Value: The value to associate with the tag name.  If NULL, any existing tag with a matching Name will be removed.
+cstr Value: The value to associate with the tag name.  If `NULL`, any existing tag with a matching `Name` will be removed.
 
 -ERRORS-
 Okay:
@@ -331,7 +331,7 @@ Ambiguous references are analysed to get the correct type - for example `user:do
 folder or file, so the path is analysed to check the file type.  On exceptional occasions where the path could be
 interpreted as either a folder or a file, preference is given to the folder.
 
-File path approximation is supported if the Path is prefixed with a `~` character (e.g. `~pictures:photo` could be
+File path approximation is supported if the `Path` is prefixed with a `~` character (e.g. `~pictures:photo` could be
 matched to `photo.jpg` in the same folder).
 
 To check if a volume name is valid, call ~ResolvePath() first and then pass the resulting path to this
@@ -342,10 +342,10 @@ candidate for testing the validity of a path string.
 
 -INPUT-
 cstr Path: The path to analyse.
-&int(LOC) Type: The result will be stored in the LONG variable referred to by this argument.  The return types are DIRECTORY, FILE and VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.
+&int(LOC) Type: The result will be stored in the variable referred to by this parameter.  The return types are `DIRECTORY`, `FILE` and `VOLUME`.  Set this parameter to `NULL` if you are only interested in checking if the file exists.
 
 -ERRORS-
-Okay: The path was analysed and the result is stored in the Type variable.
+Okay: The path was analysed and the result is stored in the `Type` variable.
 NullArgs:
 DoesNotExist:
 
@@ -501,14 +501,14 @@ ERR fs_samefile(CSTRING Path1, CSTRING Path2)
 -FUNCTION-
 ResolveGroupID: Converts a group ID to its corresponding name.
 
-This function converts group ID's obtained from the file system into their corresponding names.  If the group ID is
-invalid then NULL will be returned.
+This function converts group ID's obtained from the file system into their corresponding names.  If the `Group` ID is
+invalid then `NULL` will be returned.
 
 -INPUT-
 int Group: The group ID.
 
 -RESULT-
-cstr: The group name is returned, or NULL if the ID cannot be resolved.
+cstr: The group name is returned, or `NULL` if the ID cannot be resolved.
 
 *********************************************************************************************************************/
 
@@ -538,14 +538,14 @@ CSTRING ResolveGroupID(LONG GroupID)
 -FUNCTION-
 ResolveUserID: Converts a user ID to its corresponding name.
 
-This function converts user ID's obtained from the file system into their corresponding names.  If the user ID is
+This function converts user ID's obtained from the file system into their corresponding names.  If the `User` ID is
 invalid then NULL will be returned.
 
 -INPUT-
 int User: The user ID.
 
 -RESULT-
-cstr: The user name is returned, or NULL if the ID cannot be resolved.
+cstr: The user name is returned, or `NULL` if the ID cannot be resolved.
 
 *********************************************************************************************************************/
 
@@ -705,9 +705,7 @@ failures are ignored, although an error will be returned if the top-level folder
 This function does not allow for the approximation of file names.  To approximate a file location, open it as a @File
 object or use ~ResolvePath() first.
 
-The Callback parameter can be set with a function that matches this prototype:
-
-`LONG Callback(struct FileFeedback *)`
+The Callback parameter can be set with a function that matches the prototype `LONG Callback(struct FileFeedback *)`.
 
 Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
 callback must return a constant value that can potentially affect file processing.  Valid values are `FFR::Okay` (delete
@@ -760,7 +758,7 @@ By default, user, group and permission information for new files is inherited ei
 the file source in copy operations.  Use this function to override this behaviour with new default values.  All
 threads of the process will be affected.
 
-To revert behaviour to the default settings, set the User and/or Group values to -1 and the Permissions value to zero.
+To revert behaviour to the default settings, set the User and/or `Group` values to -1 and the `Permissions` value to zero.
 
 -INPUT-
 int User: User ID to apply to new files.
@@ -866,13 +864,13 @@ LoadFile: Loads files into a local cache for fast file processing.
 The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system
 or application.
 
-This function will first determine if the requested file has already been cached.  If this is true then the &CacheFile
+This function will first determine if the requested file has already been cached.  If this is true then the !CacheFile
 structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated
 as a cache miss and the file will be loaded into a new buffer.
 
 File content will be loaded into a readable memory buffer that is referenced by the Data field of the
-&CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
-Other pieces of information about the file can be derived from the &CacheFile meta data.
+!CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
+Other pieces of information about the file can be derived from the !CacheFile meta data.
 
 Calls to LoadFile() must be matched with a call to ~UnloadFile() to decrement the cache counter. When the counter
 returns to zero, the file can be unloaded from the cache during the next resource collection phase.
@@ -880,13 +878,13 @@ returns to zero, the file can be unloaded from the cache during the next resourc
 -INPUT-
 cstr Path: The location of the file to be cached.
 int(LDF) Flags: Optional flags are specified here.
-&resource(CacheFile) Cache: A pointer to a CacheFile structure is returned here if successful.
+&resource(CacheFile) Cache: A pointer to a !CacheFile structure is returned here if successful.
 
 -ERRORS-
 Okay: The file was cached successfully.
 NullArgs:
 AllocMemory:
-Search: If CHECK_EXISTS is specified, this failure indicates that the file is not cached.
+Search: If `CHECK_EXISTS` is specified, this failure indicates that the file is not cached.
 -END-
 
 *********************************************************************************************************************/
@@ -973,7 +971,7 @@ On Unix systems you can define the owner and group ID's for the new folder by ca
 
 -INPUT-
 cstr Path: The location of the folder.
-int(PERMIT) Permissions: Security permissions to apply to the created Dir(s).  Set to NULL if only the current user should have access.
+int(PERMIT) Permissions: Security permissions to apply to the created Dir(s).  Set to `NULL` if only the current user should have access.
 
 -ERRORS-
 Okay:

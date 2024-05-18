@@ -648,7 +648,7 @@ static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
    pf::Log log;
 
    if (!Self->Viewport) {
-      if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_VECTORVIEWPORT)) {
+      if ((Self->Owner) and (Self->Owner->classID() IS ID_VECTORVIEWPORT)) {
          Self->Viewport = (objVectorViewport *)Self->Owner;
       }
       else return log.warning(ERR::UnsupportedOwner);
@@ -656,7 +656,7 @@ static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    if (!Self->Focus) Self->Focus = Self->Viewport;
 
-   if (Self->Focus->Class->ClassID != ID_VECTORVIEWPORT) {
+   if (Self->Focus->classID() != ID_VECTORVIEWPORT) {
       return log.warning(ERR::WrongObjectType);
    }
 

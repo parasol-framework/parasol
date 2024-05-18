@@ -508,7 +508,7 @@ Callback: A function reference that will be called when the thread is started.
 Set a function reference here to receive a notification when the thread finishes processing.  The
 callback will be executed in the context of the main program loop to minimise resource locking issues.
 
-The synopsis for the callback routine is `void Callback(objThread *Thread)`.
+The prototype for the callback routine is `void Callback(objThread *Thread)`.
 
 *********************************************************************************************************************/
 
@@ -560,7 +560,7 @@ Lookup: THF
 -FIELD-
 Routine: A function reference that will be called when the thread is started.
 
-The routine that will be executed when the thread is activated must be specified here.  The function synopsis is
+The routine that will be executed when the thread is activated must be specified here.  The function prototype is
 `ERR routine(objThread *Thread)`.
 
 When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has

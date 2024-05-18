@@ -14,8 +14,8 @@
     <include>modules/svg.h</include>
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The SVG class provides support for parsing SVG statements into a scene graph that consists of <class name="Vector">Vector</class> objects and related constructs.  The generated scene graph is accessible via the <field>Scene</field> and <field>Viewport</field> fields.</p>
-<p>It is possible to parse SVG documents directly to the UI.  Set the <field>Target</field> field with a vector to contain the SVG content and it will be structured in the existing scene graph.</p>
+<p>The SVG class provides support for parsing SVG statements into a scene graph that consists of <class name="Vector">Vector</class> objects and related constructs.  The generated scene graph is accessible via the <fl>Scene</fl> and <fl>Viewport</fl> fields.</p>
+<p>It is possible to parse SVG documents directly to the UI.  Set the <fl>Target</fl> field with a vector to contain the SVG content and it will be structured in the existing scene graph.</p>
 <p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.</p></description>
     <source>
       <file>class_svg.cpp</file>
@@ -27,8 +27,8 @@
       <name>Activate</name>
       <comment>Initiates playback of SVG animations.</comment>
       <description>
-<p>SVG documents that use animation features will remain static until they are activated with this action.  The animation code will be processed in the background at the pre-defined <field>FrameRate</field>.  The <field>Scene</field> will be redrawn automatically as each frame is processed.</p>
-<p>The client can hook into the animation cycle by setting the <field>FrameCallback</field> with a suitable function.</p>
+<p>SVG documents that use animation features will remain static until they are activated with this action.  The animation code will be processed in the background at the pre-defined <fl>FrameRate</fl>.  The <fl>Scene</fl> will be redrawn automatically as each frame is processed.</p>
+<p>The client can hook into the animation cycle by setting the <fl>FrameCallback</fl> with a suitable function.</p>
       </description>
     </action>
 
@@ -41,7 +41,7 @@
       <name>Init</name>
       <comment>Initialise the SVG object.</comment>
       <description>
-<p>Initialising an SVG object will load an SVG source file if a <field>Path</field> has been specified.  The default behaviour is to generate the content in a local <field>Scene</field> object, or alternatively the content can be redirected to an external <class name="VectorScene">VectorScene</class> referred to by <field>Target</field>.</p>
+<p>Initialising an SVG object will load an SVG source file if a <fl>Path</fl> has been specified.  The default behaviour is to generate the content in a local <fl>Scene</fl> object, or alternatively the content can be redirected to an external <class name="VectorScene">VectorScene</class> referred to by <fl>Target</fl>.</p>
       </description>
     </action>
 
@@ -49,7 +49,7 @@
       <name>SaveImage</name>
       <comment>Saves the SVG document as a PNG image.</comment>
       <description>
-<p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the PageWidth and PageHeight of the <field>Scene</field>, or if not defined then the default of 1920x1080 is applied.</p>
+<p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the PageWidth and PageHeight of the <fl>Scene</fl>, or if not defined then the default of 1920x1080 is applied.</p>
 <p>The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG is recommended in particular because it supports an alpha channel.</p>
       </description>
     </action>
@@ -164,7 +164,7 @@
       <access read="G">Get</access>
       <type>OBJECTPTR</type>
       <description>
-<p>The Scene is a read-only field that assists in quickly finding the <class name="VectorScene">VectorScene</class> that owns the <field>Target</field> object.</p>
+<p>The Scene is a read-only field that assists in quickly finding the <class name="VectorScene">VectorScene</class> that owns the <fl>Target</fl> object.</p>
       </description>
     </field>
 
@@ -174,7 +174,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>SVG data can be loaded from a string by specifying it here prior to initialisation.  If the <field>Path</field> field has been defined, it will take precedent and the Statement is ignored.</p>
+<p>SVG data can be loaded from a string by specifying it here prior to initialisation.  If the <fl>Path</fl> field has been defined, it will take precedent and the Statement is ignored.</p>
 <p>Alternatively the <action>DataFeed</action> action can be used to parse data on-the-fly after the SVG object is initialised.</p>
       </description>
     </field>

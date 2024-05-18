@@ -80,12 +80,12 @@
       <description>
 <p>The following dimension flags are supported:</p>
 <types lookup="DMF">
-<type name="FIXED_CENTER_X">The <field>CenterX</field> value is a fixed coordinate.</type>
-<type name="FIXED_CENTER_Y">The <field>CenterY</field> value is a fixed coordinate.</type>
-<type name="FIXED_RADIUS">The <field>Radius</field> value is a fixed coordinate.</type>
-<type name="SCALED_CENTER_X">The <field>CenterX</field> value is a scaled coordinate.</type>
-<type name="SCALED_CENTER_Y">The <field>CenterY</field> value is a scaled coordinate.</type>
-<type name="SCALED_RADIUS">The <field>Radius</field> value is a scaled coordinate.</type>
+<type name="FIXED_CENTER_X">The <fl>CenterX</fl> value is a fixed coordinate.</type>
+<type name="FIXED_CENTER_Y">The <fl>CenterY</fl> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS">The <fl>Radius</fl> value is a fixed coordinate.</type>
+<type name="SCALED_CENTER_X">The <fl>CenterX</fl> value is a scaled coordinate.</type>
+<type name="SCALED_CENTER_Y">The <fl>CenterY</fl> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS">The <fl>Radius</fl> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
@@ -178,7 +178,7 @@
       <type>INT</type>
       <description>
 <p>If set to a value greater than one, the Repeat field will cause the generated shape to be replicated multiple times at consistent intervals leading to the center point.</p>
-<p>The Repeat value cannot be set in conjunction with <field>Spiral</field>.</p>
+<p>The Repeat value cannot be set in conjunction with <fl>Spiral</fl>.</p>
       </description>
     </field>
 

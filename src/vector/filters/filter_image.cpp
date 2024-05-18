@@ -161,7 +161,7 @@ static ERR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
    pf::Log log;
 
-   if (Args->Object->Class->ClassID IS ID_BITMAP) {
+   if (Args->Object->classID() IS ID_BITMAP) {
       if (!Self->Bitmap) {
          if (((objBitmap *)Args->Object)->BytesPerPixel IS 4) Self->Bitmap = (objBitmap *)Args->Object;
          else log.warning("Attached bitmap ignored; BPP of %d != 4", ((objBitmap *)Args->Object)->BytesPerPixel);

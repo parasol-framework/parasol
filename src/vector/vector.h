@@ -1027,7 +1027,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
    //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
 
    if (Vector.LineJoin) {
-      if (Vector.Class->ClassID IS ID_VECTORPOLYGON) {
+      if (Vector.classID() IS ID_VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
                case agg::miter_join:        Stroke.line_cap(agg::square_cap); break;

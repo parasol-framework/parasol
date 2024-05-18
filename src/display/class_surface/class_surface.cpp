@@ -394,7 +394,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
    OBJECTID surface_id = GetOwnerID(DisplayID);
    extSurface *surface;
    if (AccessObject(surface_id, 4000, &surface) IS ERR::Okay) {
-      if (surface->Class->ClassID IS ID_SURFACE) {
+      if (surface->classID() IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
             surface->Y = Y;
@@ -953,7 +953,7 @@ static ERR SURFACE_Free(extSurface *Self, APTR Void)
    // Give the focus to the parent if our object has the primary focus.  Do not apply this technique to surface objects
    // acting as windows, as the window class has its own focus management code.
 
-   if (Self->hasFocus() and (Self->Owner) and (Self->Owner->Class->ClassID != ID_WINDOW)) {
+   if (Self->hasFocus() and (Self->Owner) and (Self->Owner->classID() != ID_WINDOW)) {
       if (Self->ParentID) acFocus(Self->ParentID);
    }
 

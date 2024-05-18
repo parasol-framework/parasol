@@ -16,7 +16,7 @@
     <description>
 <p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its main purpose is to draw the scene to a target <class name="Bitmap">Bitmap</class> or <class name="Surface">Surface</class> provided by the client.</p>
 <p>Vector scenes are created by initialising multiple Vector objects such as <class name="VectorPath">VectorPath</class> and <class name="VectorViewport">VectorViewport</class> and positioning them within a vector tree.  The VectorScene must lie at the root.</p>
-<p>The default mode of operation is for scenes to be manually drawn, for which the client must set the target <field>Bitmap</field> and call the <action>Draw</action> action as required.  Automated drawing can be enabled by setting the target <field>Surface</field> prior to initialisation.  In automated mode the <field>PageWidth</field> and <field>PageHeight</field> will reflect the dimensions of the target surface at all times.</p>
+<p>The default mode of operation is for scenes to be manually drawn, for which the client must set the target <fl>Bitmap</fl> and call the <action>Draw</action> action as required.  Automated drawing can be enabled by setting the target <fl>Surface</fl> prior to initialisation.  In automated mode the <fl>PageWidth</fl> and <fl>PageHeight</fl> will reflect the dimensions of the target surface at all times.</p>
 <p>Vector definitions can be saved and loaded from permanent storage by using the <class name="SVG">SVG</class> class.</p></description>
     <source>
       <file path="scene/">scene.cpp</file>
@@ -28,8 +28,8 @@
       <name>Draw</name>
       <comment>Renders the scene to a bitmap.</comment>
       <description>
-<p>The Draw action will render the scene to the target <field>Bitmap</field> immediately.  If <field>Bitmap</field> is NULL, an error will be returned.</p>
-<p>In addition, the <field>RenderTime</field> field will be updated if the <code>RENDER_TIME</code> flag is defined.</p>
+<p>The Draw action will render the scene to the target <fl>Bitmap</fl> immediately.  If <fl>Bitmap</fl> is NULL, an error will be returned.</p>
+<p>In addition, the <fl>RenderTime</fl> field will be updated if the <code>RENDER_TIME</code> flag is defined.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -167,7 +167,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>This value defines the pixel height of the page that contains the vector scene graph.  If the <code>RESIZE</code> <field>Flags</field> option is used then the viewport will be scaled to fit within the page.</p>
+<p>This value defines the pixel height of the page that contains the vector scene graph.  If the <code>RESIZE</code> <fl>Flags</fl> option is used then the viewport will be scaled to fit within the page.</p>
       </description>
     </field>
 
@@ -177,7 +177,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>This value defines the pixel width of the page that contains the vector scene graph.  If the <code>RESIZE</code> <field>Flags</field> option is used then the viewport will be scaled to fit within the page.</p>
+<p>This value defines the pixel width of the page that contains the vector scene graph.  If the <code>RESIZE</code> <fl>Flags</fl> option is used then the viewport will be scaled to fit within the page.</p>
       </description>
     </field>
 

@@ -225,7 +225,7 @@ Calling this method will also result in the path being recomputed for the next r
 
 -INPUT-
 buf(struct(*PathCommand)) Commands: Array of commands to add to the path.
-bufsize Size: The size of the Command buffer, in bytes.
+bufsize Size: The size of the `Commands` buffer, in bytes.
 
 -RESULT-
 Okay
@@ -257,8 +257,8 @@ static ERR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
 -METHOD-
 GetCommand: Retrieve a specific command from the path sequence.
 
-Calling GetCommand will return a direct pointer to the command identified at Index.  The pointer will remain valid
-for as long as the VectorPath is not modified.
+Calling GetCommand() will return a direct pointer to the command identified at `Index`.  The pointer will remain valid
+for as long as the @VectorPath is not modified.
 
 -INPUT-
 int Index: The index of the command to retrieve.
@@ -287,8 +287,8 @@ static ERR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
 -METHOD-
 RemoveCommand: Remove at least one command from the path sequence.
 
-This method will remove a series of commands from the current path, starting at the given Index.  The total number of
-commands to remove is indicated by the Total parameter.
+This method will remove a series of commands from the current path, starting at the given `Index`.  The total number 
+of commands to remove is indicated by the `Total` parameter.
 
 -INPUT-
 int Index: The index of the command to remove.
@@ -323,7 +323,7 @@ static ERR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand 
 -METHOD-
 SetCommand: Copies one or more commands into an existing path.
 
-Use SetCommand to copy one or more commands into an existing path.
+Use SetCommand() to copy one or more commands into an existing path.
 
 -INPUT-
 int Index: The index of the command that is to be set.
@@ -359,8 +359,8 @@ static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
 -METHOD-
 SetCommandList: The fastest available mechanism for setting a series of path instructions.
 
-Use SetCommandList to copy a series of path commands to a VectorPath object.  All existing commands
-will be cleared as a result of this process.
+Use SetCommandList() to copy a series of path commands to a @VectorPath object.  All existing commands will be 
+cleared as a result of this process.
 
 NOTE: This method is not compatible with Fluid calls.
 
@@ -402,11 +402,11 @@ static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandLis
 -FIELD-
 Commands: Direct pointer to the PathCommand array.
 
-Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the control points of
+Read the Commands field to obtain a direct pointer to the `PathCommand` array.  This will allow the control points of
 the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call
 #Flush() to register the changes for the next redraw.
 
-This field can also be written at any time with a new array of PathCommand structures.  Doing so will clear the
+This field can also be written at any time with a new array of `PathCommand` structures.  Doing so will clear the
 existing path, if any.
 
 *********************************************************************************************************************/
@@ -464,7 +464,7 @@ static ERR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
 Sequence: A sequence of points and instructions that will define the path.
 
 The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path
-element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are
+element `d` attribute, but also provides some additional features that are present in the vector engine.  Commands are
 case insensitive.
 
 The following commands are supported:
@@ -485,7 +485,7 @@ Z: Close Path
 The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate
 of the previous command).
 
-To terminate a path without joining it to the first coordinate, omit the 'Z' from the end of the sequence.
+To terminate a path without joining it to the first coordinate, omit the `Z` from the end of the sequence.
 
 *********************************************************************************************************************/
 

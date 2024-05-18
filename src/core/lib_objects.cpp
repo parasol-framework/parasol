@@ -109,8 +109,8 @@ static ERR object_free(Object *Object)
       return ERR::InUse;
    }
 
-   if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
-   else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->ownerID());
+   if (Object->classID() IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
+   else if (Object->classID() IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->ownerID());
    else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->ownerID());
    else log.branch("Owner: %d", Object->ownerID());
 
@@ -300,7 +300,7 @@ static void free_children(OBJECTPTR Object)
 
             if (!mem.Object->defined(NF::FREE_ON_UNLOCK)) {
                if (mem.Object->defined(NF::INTEGRAL)) {
-                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->classID()), Object->className(), Object->UID);
                }
                FreeResource(mem.Object);
             }
@@ -345,7 +345,7 @@ Action: This function is responsible for executing action routines.
 
 This function is the key entry point for executing actions and method routines.  An action is a predefined function
 call that can be called on any object, while a method is a function call that is specific to a class implementation.
-You can find a complete list of available actions and their associated details in the Action List document.
+You can find a complete list of available actions and their associated details in the Parasol Wiki.
 The actions and methods supported by any class will be referenced in their auto-generated documentation.
 
 Here are two examples that demonstrate how to make an action call.  The first performs an activation, which
@@ -369,14 +369,14 @@ In all cases, action calls in C++ can be simplified by using their corresponding
 2b. Window->move(30, 15, 0);
 </pre>
 
-If the class of an object does not support the action ID, an error code of `ERR::NoSupport` is returned.  To test
+If the class of an object does not support the `Action` ID, an error code of `ERR::NoSupport` is returned.  To test
 an object to see if its class supports an action, use the ~CheckAction() function.
 
 In circumstances where an object ID is known without its pointer, the use of ~ActionMsg() or ~QueueAction() may be
 desirable to avoid acquiring an object lock.
 
 -INPUT-
-int(AC) Action: An action or method ID must be specified here (e.g. AC_Query).
+int(AC) Action: An action or method ID must be specified here (e.g. `AC_Query`).
 obj Object:     A pointer to the object that is going to perform the action.
 ptr Parameters: If the action or method is documented as taking parameters, point to the relevant parameter structure here.
 
@@ -462,10 +462,10 @@ ActionList: Returns a pointer to the global action table.
 This function returns an array of all actions supported by the Core, including name, arguments and structure
 size.  The ID of each action is indicated by its index within the array.
 
-The Name field specifies the name of the action.  The Args field refers to the action's argument definition structure,
-which lists the argument names and their relevant types.  This is matched by the Size field, which indicates the
-byte-size of the action's related argument structure.  If the action does not support arguments, the Args and Size
-fields will be set to NULL.  The following illustrates two argument definition examples:
+The `Name` field specifies the name of the action.  The `Args` field refers to the action's argument definition structure,
+which lists the argument names and their relevant types.  This is matched by the `Size` field, which indicates the
+byte-size of the action's related argument structure.  If the action does not support arguments, the `Args` and `Size`
+fields will be set to `NULL`.  The following illustrates two argument definition examples:
 
 <pre>
 struct FunctionField argsCopyData[] = {
@@ -489,13 +489,13 @@ The argument types that can be used by actions are limited to those listed in th
 <type name="PTR">A standard address space pointer.</>
 <type name="STRING">A pointer to a null-terminated string.</>
 <type name="DOUBLE">A 64-bit floating point value.</>
-<type name="OBJECT">This flag is sometimes set in conjunction with the FD_LONG type.  It indicates that the argument refers to an object ID.</>
-<type name="PTRSIZE">This argument type can only be used if it follows an FD_PTR type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous FD_PTR argument.</>
-<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a LONG field in which the function will store a result, the correct argument definition will be FD_RESULT|FD_LONG|FD_PTR. To make the definition of these argument types easier, FD_PTRRESULT and FD_LONGRESULT macros are also available for use.</>
+<type name="OBJECT">This flag is sometimes set in conjunction with the `FD_LONG` type.  It indicates that the argument refers to an object ID.</>
+<type name="PTRSIZE">This argument type can only be used if it follows an `FD_PTR` type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous `FD_PTR` argument.</>
+<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a `LONG` field in which the function will store a result, the correct argument definition will be `FD_RESULT|FD_LONG|FD_PTR`. To make the definition of these argument types easier, `FD_PTRRESULT` and `FD_LONGRESULT` macros are also available for use.</>
 </>
 
 -INPUT-
-&array(struct(ActionTable)) Actions: A pointer to the Core's action table (struct ActionTable *) is returned. Please note that the first entry in the ActionTable list has all fields driven to NULL, because valid action ID's start from one, not zero.  The final action in the list is also terminated with NULL fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.
+&array(struct(ActionTable)) Actions: A pointer to the Core's action table `struct ActionTable *` is returned. Please note that the first entry in the `ActionTable` list has all fields driven to `NULL`, because valid action ID's start from one, not zero.  The final action in the list is also terminated with `NULL` fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.
 &arraysize Size: Total number of elements in the returned list.
 
 *********************************************************************************************************************/
@@ -511,7 +511,7 @@ void ActionList(struct ActionTable **List, LONG *Size)
 -FUNCTION-
 ActionMsg: Execute an action or method by way of object UID.
 
-Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison 
+Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison
 to #Action(), as the object pointer will need to be resolved before making the call.
 
 -INPUT-
@@ -549,10 +549,10 @@ This function follows the same principles of execution as the Action() function,
 action in parallel via a dynamically allocated thread.  Please refer to the ~Action() function for general
 information on action execution.
 
-To receive feedback of the action's completion, use the Callback parameter and supply a function.  The function
+To receive feedback of the action's completion, use the `Callback` parameter and supply a function.  The
 prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)`
 
-It is crucial that the target object is not destroyed while the thread is executing.  Use the Callback routine to
+It is crucial that the target object is not destroyed while the thread is executing.  Use the `Callback` routine to
 receive notification of the thread's completion and then free the object if desired.  The callback will be processed
 in the next call to ~ProcessMessages(), so as to maintain an orderly execution process within the application.
 
@@ -565,9 +565,9 @@ at its most effective when used to perform lengthy processes such as the loading
 -INPUT-
 int(AC) Action: An action or method ID must be specified here.
 obj Object: A pointer to the object that is going to perform the action.
-ptr Args: If the action or method is documented as taking parameters, point to the relevant parameter structure here.  Pre-defined parameter structures are obtained from the "system/actions.h" include file.
+ptr Args: If the action or method is documented as taking parameters, provide the correct parameter structure here.
 ptr(func) Callback: This function will be called after the thread has finished executing the action.
-int Key: An optional key value to be passed to the callback routine.
+int Key: An optional key value to be passed to the `Callback` routine.
 
 -ERRORS-
 Okay
@@ -678,7 +678,7 @@ int Action: A registered action ID.
 Okay: The object supports the specified action.
 False: The action is not supported.
 NullArgs:
-LostClass: The object has lost its class reference (object corrupt).
+LostClass:
 
 *********************************************************************************************************************/
 
@@ -688,7 +688,7 @@ ERR CheckAction(OBJECTPTR Object, LONG ActionID)
 
    if (Object) {
       if (!Object->Class) return ERR::False;
-      else if (Object->Class->ClassID IS ID_METACLASS) {
+      else if (Object->classID() IS ID_METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR::Okay;
          else return ERR::False;
       }
@@ -747,12 +747,12 @@ This function returns a pointer to the object that has the current context.  Con
 resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to
 the correct object.
 
-To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is
+To get the parent context (technically the 'context of the current context'), use `GetParentContext()`, which is
 implemented as a macro.  This is used in method and action routines where the context of the object's caller may be
 needed.
 
 -RESULT-
-obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.
+obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return `NULL` except in the initial start-up and late shut-down sequence of the Core.
 
 *********************************************************************************************************************/
 
@@ -768,7 +768,7 @@ FindClass: Returns all class objects for a given class ID.
 
 This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal
 dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded
-into memory and the class will be returned.  In any event of failure, NULL is returned.
+into memory and the class will be returned.  In any event of failure, `NULL` is returned.
 
 If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
 
@@ -776,7 +776,7 @@ If the ID of a named class is not known, call ~ResolveClassName() first and pass
 cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
 
 -RESULT-
-obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
+obj(MetaClass): Returns a pointer to the @MetaClass structure that has been found as a result of the search, or `NULL` if no matching class was found.
 
 *********************************************************************************************************************/
 
@@ -842,7 +842,7 @@ int(FOF) Flags: Optional flags.
 &oid ObjectID:  An object id variable for storing the result.
 
 -ERRORS-
-Okay: At least one matching object was found and stored in the ObjectID.
+Okay: At least one matching object was found and stored in the `ObjectID`.
 Args:
 Search: No objects matching the given name could be found.
 LockFailed:
@@ -907,7 +907,7 @@ ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result
 
          for (auto it=list.rbegin(); it != list.rend(); it++) {
             auto obj = *it;
-            if ((obj->Class->ClassID IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
+            if ((obj->classID() IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
                *Result = obj->UID;
                return ERR::Okay;
             }
@@ -925,13 +925,13 @@ GetActionMsg: Returns a message structure if called from an action that was exec
 
 This function is for use by action and method support routines only.  It will return a Message structure if the
 action currently under execution has been called directly from the ~ProcessMessages() function.  In all other
-cases a NULL pointer is returned.
+cases a `NULL` pointer is returned.
 
-The Message structure reflects the contents of a standard ~GetMessage() call.  Of particular interest may be
-the Time field, which indicates the time-stamp at which the action message was originally sent to the object.
+The !Message structure reflects the contents of a standard ~GetMessage() call.  Of particular interest may be
+the `Time` field, which indicates the time-stamp at which the action message was originally sent to the object.
 
 -RESULT-
-resource(Message): A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the ~GetMessage() function.
+resource(Message): A !Message structure is returned if the function is called in valid circumstances, otherwise `NULL`.  The !Message structure's fields are described in the ~GetMessage() function.
 
 *********************************************************************************************************************/
 
@@ -953,8 +953,8 @@ GetClassID: Returns the class ID of an ID-referenced object.
 Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
 retrieve the class of an object without having to gain exclusive access to the object first.
 
-Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
-field in the object header.
+Note that if the object's pointer is already known, the quickest way to learn of its class is to call the `classID()`
+C++ method.
 
 -INPUT-
 oid Object: The object to be examined.
@@ -975,13 +975,13 @@ CLASSID GetClassID(OBJECTID ObjectID)
 -FUNCTION-
 GetObjectPtr: Returns a direct pointer for any object ID.
 
-This function translates object ID's to their respective address pointers.
+This function translates an object ID to its respective address pointer.
 
 -INPUT-
 oid Object: The ID of the object to lookup.
 
 -RESULT-
-obj: The address of the object is returned, or NULL if the ID does not relate to an object.
+obj: The address of the object is returned, or `NULL` if the ID does not relate to an object.
 
 *********************************************************************************************************************/
 
@@ -1008,7 +1008,7 @@ GetOwnerID: Returns the unique ID of an object's owner.
 This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the
 owner of an object if only the ID is known.
 
-If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.
+If the object address is already known then the fastest means of retrieval is via the `ownerID()` C++ class method.
 
 -INPUT-
 oid Object: The ID of an object to query.
@@ -1139,7 +1139,7 @@ ERR InitObject(OBJECTPTR Object)
             LONG i = 0;
             for (auto & [ id, class_ptr ] : glClassMap) {
                if (i >= LONG(sublist.size())-1) break;
-               if ((Object->Class->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->Class->ClassID)) {
+               if ((Object->classID() IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->classID())) {
                   sublist[i++] = class_ptr;
                }
             }
@@ -1170,7 +1170,7 @@ ERR InitObject(OBJECTPTR Object)
    else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
       if (IdentifyFile(path, &class_id, &subclass_id) IS ERR::Okay) {
-         if ((class_id IS Object->Class->ClassID) and (subclass_id)) {
+         if ((class_id IS Object->classID()) and (subclass_id)) {
             log.msg("Searching for subclass $%.8x", subclass_id);
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
@@ -1231,7 +1231,7 @@ ERR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 
          if (auto child = mem->second.Object) {
             if (!child->defined(NF::INTEGRAL)) {
-               List->emplace_back(child->UID, child->Class->ClassID);
+               List->emplace_back(child->UID, child->classID());
             }
          }
       }
@@ -1385,14 +1385,13 @@ ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 -FUNCTION-
 NotifySubscribers: Used to send notification messages to action subscribers.
 
-This function can be used by classes that need total control over notification management.  The system default for
-notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient
-if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios
-to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of
-the original values.
+This function can be used by classes that need total control over notification management.  It allows an action to
+notify its subscribers manually, rather than deferring to the system default of notifying on return.
+
+Another useful feature is that parameter values can be customised for the recipients.
 
 NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it
-normally would, thus causing duplication.  To prevent this the client must logical-or the return code of
+normally would, thus causing duplication.  To prevent this, the client must logical-or the return code of
 the action function with `ERR::Notified`, e.g. `ERR::Okay|ERR::Notified`.
 
 -INPUT-
@@ -1462,8 +1461,8 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERR Err
 -FUNCTION-
 QueueAction: Delay the execution of an action by adding the call to the message queue.
 
-Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and
-the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.
+Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied `Action` and
+`Args` will be combined into a message for the queue.  This function then returns immediately.
 
 The action will be executed on the next cycle of ~ProcessMessages() in line with the FIFO order of queued messages.
 
@@ -1547,11 +1546,10 @@ ERR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ResolveClassName: Resolves any class name to a unique identification ID.
+ResolveClassName: Resolves any class name to a CLASSID UID.
 
-This function will resolve a class name to its unique ID.
-
-Class ID's are used by functions such as ~NewObject() for fast processing.
+This function will resolve a class `Name` to its CLASSID UID and verifies that the class is installed.  It is case
+insensitive.
 
 -INPUT-
 cstr Name: The name of the class that requires resolution.
@@ -1578,12 +1576,12 @@ CLASSID ResolveClassName(CSTRING ClassName)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ResolveClassID: Converts a valid class ID to its equivalent name.
+ResolveClassID: Resolve a valid CLASSID to its name.
 
-This function will resolve a valid class ID to its equivalent name.  The name is resolved by scanning the
+This function will resolve a valid class ID to its equivalent name.  The name is resolved by checking the
 class database, so the class must be registered in the database for this function to return successfully.
-Registration is achieved by loading the module that hosts the class, after which the class is permanently saved
-in the database.
+
+Registration is achieved by ensuring that the class is compiled into the build.
 
 -INPUT-
 cid ID: The ID of the class that needs to be resolved.
@@ -1618,7 +1616,7 @@ Internally, setting a new owner will cause three things to happen:
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
 </list>
 
-If the Object does not support the NewOwner action, or the Owner does not support the NewChild action, then the
+If the `Object` does not support the NewOwner action, or the Owner does not support the NewChild action, then the
 process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.
 
 -INPUT-

@@ -1882,7 +1882,7 @@ ERR DISPLAY_Show(extDisplay *Self, APTR Void)
    if (FindObject("SystemPointer", ID_POINTER, FOF::NIL, &pointer_id) != ERR::Okay) {
       if (NewObject(ID_POINTER, NF::UNTRACKED, &pointer) IS ERR::Okay) {
          SetName(pointer, "SystemPointer");
-         if ((Self->Owner) and (Self->Owner->Class->ClassID IS ID_SURFACE)) pointer->setSurface(Self->Owner->UID);
+         if ((Self->Owner) and (Self->Owner->classID() IS ID_SURFACE)) pointer->setSurface(Self->Owner->UID);
 
          #ifdef __ANDROID__
             AConfiguration *config;

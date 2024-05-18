@@ -1045,7 +1045,7 @@ static ERR SCINTILLA_NewOwner(extScintilla *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
       auto obj = Args->NewOwner;
-      while ((obj) and (obj->Class->ClassID != ID_SURFACE)) {
+      while ((obj) and (obj->classID() != ID_SURFACE)) {
          obj = obj->Owner;
       }
       if (obj) Self->SurfaceID = obj->UID;
@@ -1551,7 +1551,7 @@ static ERR SET_CursorColour(extScintilla *Self, RGB8 *Value)
 FileDrop: A callback for receiving drag and drop file notifications.
 
 Set this field with a reference to a callback function to receive notifications when the user drops a file onto the
-Scintilla object's surface.  The synopsis for the callback function is `ERR Function(*Scintilla, CSTRING Path)`
+Scintilla object's surface.  The prototype for the callback function is `ERR Function(*Scintilla, CSTRING Path)`
 
 If multiple files are dropped, the callback will be repeatedly called until all of the file paths have been reported.
 

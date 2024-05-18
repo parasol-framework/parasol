@@ -65,7 +65,7 @@
 
   <xsl:template match="text()"><xsl:value-of select="."/></xsl:template>
 
-  <xsl:template match="field">
+  <xsl:template match="fl">
     <xsl:variable name="fieldName"><xsl:value-of select="node()"/></xsl:variable>
     <xsl:choose>
       <xsl:when test="@module">
@@ -77,6 +77,16 @@
         <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/fields/field[name=$fieldName]/comment"/></xsl:attribute><xsl:attribute name="href">#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
       </xsl:otherwise>
     </xsl:choose>
+  </xsl:template>
+
+  <xsl:template match="st"> <!-- Struct reference -->
+    <xsl:variable name="structName"><xsl:value-of select="node()"/></xsl:variable>
+    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$structName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=struct-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+  </xsl:template>
+
+  <xsl:template match="lk"> <!-- Type reference -->
+    <xsl:variable name="typeName"><xsl:value-of select="node()"/></xsl:variable>
+    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$typeName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
   </xsl:template>
 
   <xsl:template match="action"><xsl:variable name="actionName"><xsl:value-of select="node()"/></xsl:variable>
@@ -202,7 +212,7 @@
         <div id="container-body" class="container"> <!-- Use container-fluid if you want full width -->
           <div id="row-body" class="row">
             <div class="col-sm-9">
-              <div class="docs-content" id="default-page">
+              <div class="docs-content" style="display:none;" id="default-page">
                 <div class="page-header"><h1><xsl:value-of select="/book/info/name"/> Class</h1></div>
                 <p class="lead"><xsl:value-of select="/book/info/comment"/></p>
                 <xsl:for-each select="/book/info/description">
@@ -395,8 +405,49 @@
                     </tbody>
                   </table>
                 </xsl:if>
+                <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> class documentation © <xsl:value-of select="/book/info/copyright"/></div>
               </div>
-              <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
+
+              <!-- TYPES -->
+              <xsl:for-each select="types/constants">
+                <div class="docs-content" style="display:none;">
+                  <xsl:attribute name="id"><xsl:value-of select="@lookup"/></xsl:attribute>
+                  <h1><xsl:value-of select="@lookup"/> Type</h1>
+                  <p class="lead"><xsl:apply-templates select="@comment"/></p>
+                  <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                    <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
+                    <tbody>
+                      <xsl:for-each select="const">
+                        <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+                      </xsl:for-each>
+                    </tbody>
+                  </table>
+                  <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
+                </div>
+              </xsl:for-each> <!-- End of type scan -->
+
+              <!-- STRUCTURES -->
+              <xsl:for-each select="structs/struct">
+                <div class="docs-content" style="display:none;">
+                  <xsl:attribute name="id">struct-<xsl:value-of select="@name"/></xsl:attribute>
+                  <h1><xsl:value-of select="@name"/> Structure</h1>
+                  <p class="lead"><xsl:apply-templates select="@comment"/></p>
+                  <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                    <thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead>
+                    <tbody>
+                      <xsl:for-each select="field">
+                        <tr>
+                          <th><xsl:value-of select="@name"/></th>
+                          <td><span class="text-nowrap"><xsl:value-of select="@type"/></span></td>
+                          <td><xsl:apply-templates select="."/></td>
+                        </tr>
+                      </xsl:for-each>
+                    </tbody>
+                  </table>
+                  <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> class documentation © <xsl:value-of select="/book/info/copyright"/></div>
+                </div>
+              </xsl:for-each> <!-- End of struct scan -->
+
             </div> <!-- End of core content -->
 
             <!-- SIDEBAR -->

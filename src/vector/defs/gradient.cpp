@@ -379,7 +379,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
 {
    if (Value) {
-      if (Value->Class->ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
+      if (Value->classID() IS ID_VECTORGRADIENT) Self->Inherit = Value;
       else return ERR::InvalidValue;
    }
    else Self->Inherit = NULL;
@@ -391,9 +391,9 @@ static ERR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient
 Matrices: A linked list of transform matrices that have been applied to the gradient.
 
 All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is
-represented by a VectorMatrix structure, and are linked in the order in which they were applied to the gradient.
+represented by a !VectorMatrix structure, and are linked in the order in which they were applied to the gradient.
 
-&VectorMatrix
+!VectorMatrix
 
 *********************************************************************************************************************/
 

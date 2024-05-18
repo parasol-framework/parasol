@@ -14,7 +14,7 @@
     <include>modules/lightingfx.h</include>
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The lighting effect class applies a diffuse or specular lighting effect to the alpha channel of an input bitmap, which functions as a bump map.  The output is an RGBA representation of the light effect.  If no light <field>Colour</field> is specified by the client then the output will be in grey scale.</p>
+<p>The lighting effect class applies a diffuse or specular lighting effect to the alpha channel of an input bitmap, which functions as a bump map.  The output is an RGBA representation of the light effect.  If no light <fl>Colour</fl> is specified by the client then the output will be in grey scale.</p>
 <p>For diffuse lighting, the resulting RGBA image is computed as follows:</p>
 <pre>Dr = kd * N.L * Lr
 Dg = kd * N.L * Lg
@@ -83,7 +83,7 @@ Lr,Lg,Lb = RGB components of light
       </input>
       <description>
 <p>This method applies a pointed light configuration to the lighting effect.  It will override any previously defined light source setting.</p>
-<p>A point light sends light out from the specified (X, Y, Z) location equally in all directions.  A light bulb or open flame is a good example of a point light.  The intensity of the light can be controlled by altering the alpha component of the light <field>Colour</field>.</p>
+<p>A point light sends light out from the specified (X, Y, Z) location equally in all directions.  A light bulb or open flame is a good example of a point light.  The intensity of the light can be controlled by altering the alpha component of the light <fl>Colour</fl>.</p>
       </description>
     </method>
 
@@ -166,7 +166,7 @@ Lr,Lg,Lb = RGB components of light
       <type>DOUBLE</type>
       <description>
 <p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) for dx in the surface normal calculation formulas.</p>
-<p>By specifying value(s) for <field>UnitX</field>, the kernel becomes defined in a scalable, abstract coordinate system.  If <field>UnitX</field> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResX and <field>UnitX</field>.</p>
+<p>By specifying value(s) for <fl>UnitX</fl>, the kernel becomes defined in a scalable, abstract coordinate system.  If <fl>UnitX</fl> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResX and <fl>UnitX</fl>.</p>
       </description>
     </field>
 
@@ -177,7 +177,7 @@ Lr,Lg,Lb = RGB components of light
       <type>DOUBLE</type>
       <description>
 <p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) for dy in the surface normal calculation formulas.</p>
-<p>By specifying value(s) for <field>UnitY</field>, the kernel becomes defined in a scalable, abstract coordinate system.  If <field>UnitY</field> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResY and <field>UnitY</field>.</p>
+<p>By specifying value(s) for <fl>UnitY</fl>, the kernel becomes defined in a scalable, abstract coordinate system.  If <fl>UnitY</fl> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResY and <fl>UnitY</fl>.</p>
       </description>
     </field>
 

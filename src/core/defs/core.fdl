@@ -48,8 +48,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("MSF", { comment="Message flags." },
      "WAIT: Wait before inserting the message if the queue is at maximum capacity.",
-     "UPDATE: If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.",
-     "NO_DUPLICATE: If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR::Okay.",
+     "UPDATE: If the `Type` parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.",
+     "NO_DUPLICATE: If the `Type` parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with `ERR::Okay`.",
      "ADD: The default behaviour - this will add the message to the end of the queue.",
      "ADDRESS: Internal flag that changes the behaviour of the input parameters so that queues can be processed by address rather than ID.",
      "MESSAGE_ID: The Type parameter refers to a unique message ID rather than a message type for this call.")
@@ -75,7 +75,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "PRIVILEGED: During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.",
     "SHELL: Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.",
     "LOG_ALL: Additional debug messages will be printed during normal usage of the task class when this flag is set.",
-    "QUIET: Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.",
+    "QUIET: Setting this flag will divert all process output to `/dev/null` or the nearest equivalent for non-Unix systems.",
     "DETACHED: Forces new task to be detached from the parent.",
     "ATTACHED: Forces new task to be attached to the parent (child will close when parent closes).",
     "PIPE: Enable the output pipe to the launched process so that it can read data.")
@@ -150,8 +150,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "OPENED: Existing file was opened.",
     "CLOSED: An opened file has been closed.",
     "UNMOUNT: Host filesystem was unmounted.",
-    "FOLDER: Folder identifier; if passed to Watch() then indicates a preference for folder events only.",
-    "FILE: File identifier; if passed to Watch() then indicates a preference for file events only.",
+    "FOLDER: Folder identifier; if passed to @File.Watch() then indicates a preference for folder events only.",
+    "FILE: File identifier; if passed to @File.Watch() then indicates a preference for file events only.",
     "SELF: Event applies to the monitored folder and not a contained item",
     "DEEP: Receive notifications from sub-folders (Windows only).")
 
@@ -191,7 +191,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "FOLDERS|FOLDER: Read all folders/volumes in the folder.",
     "VOLUME: Feedback only - indicates a volume.",
     "LINK: Feedback only - file/folder is actually a link to another location.",
-    "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the Tags field of each file.",
+    "TAGS: Receive additional information for each file, such as comments, author and copyright.  The results are stored in the `Tags` field of each file.",
     "HIDDEN: Feedback only - file/folder is hidden.",
     "QUALIFY|QUALIFIED: Return fully qualified folder names (i.e. trailing slash or colon for each name).",
     "VIRTUAL: Path is to a virtual device.",
@@ -279,10 +279,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SUPPRESS_LOG: Private.  Turns off the initial log message.",
     "COLLECT: Marked for garbage collection.",
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
-    "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
+    "MESSAGE: Action has been called against the object through the message system (managed by ~Core.ProcessMessages()).",
     "SIGNALLED: The object has been signalled and is awaiting processing.",
-    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR::ObjectExists.  This flag works in conjunction with the Name argument.",
-      NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.",
+    { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, ~Core.NewObject() will return `ERR::ObjectExists`.  This flag works in conjunction with the `Name` parameter.",
+      NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using `UNIQUE`.",
       PRIVATE = 0
     }
   )
@@ -310,7 +310,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   enum("IDTYPE", { type="int", start=1, comment="Types for AllocateID()" },
     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
     "GLOBAL: Global ID's have no specific association with anything.",
-    "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
+    "FUNCTION: Function ID's are used to track `FUNCTION` types and are assigned to the function ID field."
   )
 
   enum("TSTATE", { type="char", comment="Indicates the state of a process." },
@@ -326,7 +326,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "USER_ID: Internal",
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
-    "PRIVILEGED: This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).",
+    "PRIVILEGED: This is set to `true` if the process has elevated privileges (such as superuser or administrative rights).",
     "CORE_IDL: Refers to the Core module's compressed IDL string.",
     "PARENT_CONTEXT: Read-only pointer to the parent object of the current context.",
     "LOG_LEVEL: The current level of log detail (larger numbers indicate more detail).",
@@ -347,13 +347,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
-    "MODULE_PATH: An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.",
-    "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
+    "MODULE_PATH: An alternative path leading to the system modules (normally `system:modules/`).  Introduced for platforms such as Android, where modules are stored in asset folders.",
+    "SYSTEM_PATH: The path of the `system:` volume, which otherwise defaults to `[root]:system/`.",
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
   flags("CLF", { comment="Flags for the MetaClass." },
     "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
-    "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
+    "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (~Core.SetOwner() will not work either).")
 
   flags("CNF", { comment="Flags for the Config class." },
     "STRIP_QUOTES: Removes quotes from key values that are quote-encapsulated.",
@@ -786,7 +786,7 @@ class FloatRect {
   ]])
 
   struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM::MANAGED flag.", restrict="c" }, [[
-     cstr Name            # The name of the resource.
+     cstr Name             # The name of the resource.
      fptr(error ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
@@ -851,9 +851,9 @@ class FloatRect {
   ]])
 
   struct("FieldArray", { comment="Used to construct class blueprints for the MetaClass." }, [[
-    cstr   Name      # The name of the field, e.g. "Width"
-    ptr    GetField  # void GetField(*Object, APTR Result);
-    ptr    SetField  # ERR SetField(*Object, APTR Value);
+    cstr   Name      # The name of the field, e.g. `Width`
+    ptr    GetField  # `void GetField(*Object, APTR Result);`
+    ptr    SetField  # `ERR SetField(*Object, APTR Value);`
     maxint Arg       # Can be a pointer or an integer value
     uint   Flags     # Special flags that describe the field
   ]],
@@ -872,9 +872,9 @@ class FloatRect {
   ]])
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
-    cstr Platform      # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
+    cstr Platform      # String-based field indicating the user's platform.  Currently returns `Native`, `Windows`, `OSX` or `Linux`.
     hhandle ConsoleFD  # Internal
-    int  Stage         # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
+    int  Stage         # The current operating stage.  `-1` = Initialising, `0` indicates normal operating status; `1` means that the program is shutting down; `2` indicates a program restart; `3` is for mode switches.
   ]])
 
   struct("Variable", { }, [[
@@ -904,7 +904,7 @@ class FloatRect {
 
   struct("MethodEntry", { restrict="c" }, [[
     int  MethodID   # Unique method identifier
-    ptr  Routine    # The method entry point, defined as ERR (*Routine)(OBJECTPTR, APTR);
+    ptr  Routine    # The method entry point, defined as `ERR (*Routine)(OBJECTPTR, APTR);`
     cstr Name       # Name of the method
     cstruct(*FunctionField) Args  # List of parameters accepted by the method
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
@@ -928,10 +928,10 @@ class FloatRect {
   ]])
 
   struct("Message", { comment="Message header." }, [[
-     large Time  # A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
-     int UID     # A unique identifier automatically created by SendMessage().
+     large Time  # A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
+     int UID     # A unique identifier automatically created by ~Core.SendMessage().
      int Type    # A message type identifier as defined by the client.
-     int Size    # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
+     int Size    # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.
   ]])
 
   struct("MemInfo", { type="meminfo" }, [[
@@ -980,11 +980,11 @@ class FloatRect {
     large CompressedSize          # Compressed size of the file
     struct(*CompressedItem) Next  # Used only if this is a linked-list.
     cstr Path                     # Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-    int(PERMIT) Permissions       # Original permissions - see PERMIT flags.
+    int(PERMIT) Permissions       # Original permissions - see `PERMIT` flags.
     int  UserID                   # Original user ID
     int  GroupID                  # Original group ID
     int  OthersID                 # Original others ID
-    int(FL) Flags                 # FL flags
+    int(FL) Flags                 # `FL` flags
     struct(DateTime) Created      # Date and time of the file's creation.
     struct(DateTime) Modified     # Date and time last modified.
   ]],
@@ -995,7 +995,7 @@ class FloatRect {
   struct("FileInfo", { comment="Returned by GetFileInfo()" }, [[
     large Size                 # The size of the file's content.
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
-    struct(*FileInfo) Next     # Next structure in the list, or NULL.
+    struct(*FileInfo) Next     # Next structure in the list, or `NULL`.
     str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
     int(RDF) Flags             # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
@@ -1034,7 +1034,7 @@ class FloatRect {
     large Position      # Current seek position within the file if moving or copying
     str Path            # Path to the file
     str Dest            # Destination file/path if moving or copying
-    int(FBK) FeedbackID # Set to one of the FBK values
+    int(FBK) FeedbackID # Set to one of the `FBK` values
     char(32) Reserved   # Reserved in case of future expansion
   ]])
 
@@ -1043,8 +1043,8 @@ class FloatRect {
     fptr(error ptr ptr) GetValue # A virtual function that will retrieve the value for this field.
     ptr SetValue       # A virtual function that will set the value for this field.
     fptr(error obj struct(*Field) int cptr int) WriteValue # An internal function for writing to this field.
-    cstr Name          # The English name for the field, e.g. "Width"
-    uint FieldID       # Provides a fast way of finding fields, e.g. FID_WIDTH
+    cstr Name          # The English name for the field, e.g. `Width`
+    uint FieldID       # Provides a fast way of finding fields, e.g. `FID_Width`
     ushort Offset      # Field offset within the object
     ushort Index       # Field array index
     uint Flags         # Special flags that describe the field
@@ -1595,6 +1595,8 @@ struct Object { // Must be 64-bit aligned
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass();
    inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
+   inline CLASSID classID();
+   inline CLASSID baseClassID();
    inline NF flags() { return Flags; }
 
    CSTRING className();
@@ -2075,6 +2077,8 @@ inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
 
 c_insert([[
 inline bool Object::isSubClass() { return Class->ClassID != Class->BaseClassID; }
+inline CLASSID Object::classID() { return Class->ClassID; }
+inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
 ]])
 
   class("StorageDevice", { src="../classes/class_storagedevice.cpp" }, [[
@@ -2100,7 +2104,7 @@ inline bool Object::isSubClass() { return Class->ClassID != Class->BaseClassID; 
   class("File", { version=1.2, src="../classes/class_file.cpp", output="../classes/class_file_def.c" }, [[
     large     Position  # The current read/write byte position in a file.
     int(FL)   Flags     # File flags and options.
-    int       Static    # Set to TRUE if a file object should be static.
+    int       Static    # Set to `true` if a file object should be static.
     oid       Target    # Specifies a surface ID to target for user feedback and dialog boxes.
     ptr(char) Buffer    # Points to the internal data buffer if the file content is held in memory.
   ]])

@@ -1310,13 +1310,13 @@ struct dcAudio {
 struct dcKeyEntry {
    LONG  Flags;        // Shift/Control/CapsLock...
    LONG  Value;        // ASCII value of the key A/B/C/D...
-   LARGE Timestamp;    // PreciseTime() at which the keypress was recorded
+   LARGE Timestamp;    // ~Core.PreciseTime() at which the keypress was recorded
    LONG  Unicode;      // Unicode value for pre-calculated key translations
 };
 
 struct dcDeviceInput {
    DOUBLE   Values[2];  // The value(s) associated with the Type
-   LARGE    Timestamp;  // PreciseTime() of the recorded input
+   LARGE    Timestamp;  // ~Core.PreciseTime() of the recorded input
    OBJECTID DeviceID;   // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
    JTYPE    Flags;      // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
    JET      Type;       // JET constant
@@ -1779,7 +1779,7 @@ struct ModHeader {
 };
 
 struct FieldArray {
-   CSTRING Name;    // The name of the field, e.g. "Width"
+   CSTRING Name;    // The name of the field, e.g. Width
    APTR    GetField; // void GetField(*Object, APTR Result);
    APTR    SetField; // ERR SetField(*Object, APTR Value);
    MAXINT  Arg;     // Can be a pointer or an integer value
@@ -1796,7 +1796,7 @@ struct FieldDef {
 };
 
 struct SystemState {
-   CSTRING Platform;        // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
+   CSTRING Platform;        // String-based field indicating the user's platform.  Currently returns Native, Windows, OSX or Linux.
    HOSTHANDLE ConsoleFD;    // Internal
    LONG    Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
@@ -1844,10 +1844,10 @@ struct ChildEntry {
 };
 
 struct Message {
-   LARGE Time;    // A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
-   LONG  UID;     // A unique identifier automatically created by SendMessage().
+   LARGE Time;    // A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
+   LONG  UID;     // A unique identifier automatically created by ~Core.SendMessage().
    LONG  Type;    // A message type identifier as defined by the client.
-   LONG  Size;    // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
+   LONG  Size;    // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.
 };
 
 typedef struct MemInfo {
@@ -1952,8 +1952,8 @@ struct Field {
    ERR (*GetValue)(APTR, APTR);                                                // A virtual function that will retrieve the value for this field.
    APTR    SetValue;                                                           // A virtual function that will set the value for this field.
    ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG);     // An internal function for writing to this field.
-   CSTRING Name;                                                               // The English name for the field, e.g. "Width"
-   ULONG   FieldID;                                                            // Provides a fast way of finding fields, e.g. FID_WIDTH
+   CSTRING Name;                                                               // The English name for the field, e.g. Width
+   ULONG   FieldID;                                                            // Provides a fast way of finding fields, e.g. FID_Width
    UWORD   Offset;                                                             // Field offset within the object
    UWORD   Index;                                                              // Field array index
    ULONG   Flags;                                                              // Special flags that describe the field
@@ -2730,6 +2730,8 @@ struct Object { // Must be 64-bit aligned
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass();
    inline OBJECTID ownerID() { return Owner ? Owner->UID : 0; }
+   inline CLASSID classID();
+   inline CLASSID baseClassID();
    inline NF flags() { return Flags; }
 
    CSTRING className();
@@ -3323,6 +3325,8 @@ class objMetaClass : public Object {
 };
 
 inline bool Object::isSubClass() { return Class->ClassID != Class->BaseClassID; }
+inline CLASSID Object::classID() { return Class->ClassID; }
+inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
 
 // StorageDevice class definition
 
@@ -3427,7 +3431,7 @@ class objFile : public Object {
 
    LARGE    Position; // The current read/write byte position in a file.
    FL       Flags;    // File flags and options.
-   LONG     Static;   // Set to TRUE if a file object should be static.
+   LONG     Static;   // Set to true if a file object should be static.
    OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
    BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
 

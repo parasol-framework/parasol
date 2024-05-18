@@ -89,7 +89,7 @@ NullArgs
 ERR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
-   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR::Args;
+   if (VectorPath->classID() != ID_VECTORPATH) return ERR::Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 
@@ -884,7 +884,7 @@ next:
       if (!Scene) return log.warning(ERR::NullArgs);
 
       if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->Class->ClassID != ID_VECTORSCENE) return log.warning(ERR::InvalidObject);
+      else if (Scene->classID() != ID_VECTORSCENE) return log.warning(ERR::InvalidObject);
 
       if (Scene->HostScene) Scene = Scene->HostScene;
 
@@ -897,16 +897,16 @@ next:
 
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
-            if (def->Class->ClassID IS ID_VECTORGRADIENT) {
+            if (def->classID() IS ID_VECTORGRADIENT) {
                Painter->Gradient = (objVectorGradient *)def;
             }
-            else if (def->Class->ClassID IS ID_VECTORIMAGE) {
+            else if (def->classID() IS ID_VECTORIMAGE) {
                Painter->Image = (objVectorImage *)def;
             }
-            else if (def->Class->ClassID IS ID_VECTORPATTERN) {
+            else if (def->classID() IS ID_VECTORPATTERN) {
                Painter->Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->Class->ClassID);
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->classID());
 
             // Check for combinations like url(#this)+url(#that)
 

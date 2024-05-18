@@ -58,7 +58,7 @@
 
     <field>
       <name>Picture</name>
-      <comment>Refers to a <class name="Picture">Picture</class> from which the source <field>Bitmap</field> is acquired.</comment>
+      <comment>Refers to a <class name="Picture">Picture</class> from which the source <fl>Bitmap</fl> is acquired.</comment>
       <access read="R" write="S">Read/Set</access>
       <type class="Picture">*Picture</type>
       <description>
@@ -72,32 +72,32 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the available space.  It is secondary to the application of <field>AspectRatio</field>.  The default setting is <code>CLIP</code>, which prevents the image from being tiled.</p>
+<p>The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the available space.  It is secondary to the application of <fl>AspectRatio</fl>.  The default setting is <code>CLIP</code>, which prevents the image from being tiled.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
 
     <field>
       <name>Units</name>
-      <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
+      <comment>Declares the coordinate system to use for the <fl>X</fl> and <fl>Y</fl> values.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is <code>BOUNDING_BOX</code>.</p>
+<p>This field declares the coordinate system that is used for values in the <fl>X</fl> and <fl>Y</fl> fields.  The default is <code>BOUNDING_BOX</code>.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
 
     <field>
       <name>X</name>
-      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
+      <comment>Apply a horizontal offset to the image, the origin of which is determined by the <fl>Units</fl> value.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>DOUBLE</type>
     </field>
 
     <field>
       <name>Y</name>
-      <comment>Apply a vertical offset to the image, the origin of which is determined by the <field>Units</field> value.</comment>
+      <comment>Apply a vertical offset to the image, the origin of which is determined by the <fl>Units</fl> value.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>DOUBLE</type>
     </field>

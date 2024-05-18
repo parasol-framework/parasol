@@ -6,16 +6,16 @@ void anim_value::perform()
    pf::Log log;
 
    if ((end_time) and (!freeze)) return;
-      
+
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (vector->Class->ClassID IS ID_VECTORGROUP) {
-         // Groups are a special case because they act as a placeholder and aren't guaranteed to propagate all 
+      if (vector->classID() IS ID_VECTORGROUP) {
+         // Groups are a special case because they act as a placeholder and aren't guaranteed to propagate all
          // attributes to their children.
 
          // Note that group attributes do not override values that are defined by the client.
 
-         for (auto &child : tag->Children) {            
+         for (auto &child : tag->Children) {
             if (!child.isTag()) continue;
             // Any tag producing a vector object can theoretically be subject to animation.
             if (auto si = child.attrib("_id")) {
@@ -53,7 +53,7 @@ void anim_value::set_value(objVector &Vector)
          switch (hash) {
             case SVF_DX: Vector.set(FID_DX, get_string()); return;
             case SVF_DY: Vector.set(FID_DY, get_string()); return;
-               
+
             case SVF_TEXT_ANCHOR:
                switch(StrHash(get_string())) {
                   case SVF_START:   Vector.set(FID_Align, LONG(ALIGN::LEFT)); return;
@@ -62,10 +62,10 @@ void anim_value::set_value(objVector &Vector)
                   case SVF_INHERIT: Vector.set(FID_Align, LONG(ALIGN::NIL)); return;
                }
                break;
-               
+
             case SVF_ROTATE: Vector.set(FID_Rotate, get_string()); return;
             case SVF_STRING: Vector.set(FID_String, get_string()); return;
-               
+
             case SVF_KERNING:        Vector.set(FID_Kerning, get_string()); return; // Spacing between letters, default=1.0
             case SVF_LETTER_SPACING: Vector.set(FID_LetterSpacing, get_string()); return;
             case SVF_PATHLENGTH:     Vector.set(FID_PathLength, get_string()); return;
@@ -83,7 +83,7 @@ void anim_value::set_value(objVector &Vector)
       case SVF_COLOR: {
          // The 'color' attribute directly targets the currentColor value.  Changes to the currentColor should result
          // in downstream users being affected - most likely fill and stroke references.
-         // 
+         //
          // TODO: Correct implementation requires inspection of the XML tags.  If the parent Vector is a group, its
          // children will need to be checked for currentColor references.
          auto val = get_colour_value(Vector, FID_FillColour);
@@ -127,7 +127,7 @@ void anim_value::set_value(objVector &Vector)
       case SVF_STROKE_WIDTH:
          Vector.set(FID_StrokeWidth, get_numeric_value(Vector, FID_StrokeWidth));
          return;
-         
+
       case SVF_STROKE_LINEJOIN:
          switch(StrHash(get_string())) {
             case SVF_MITER: Vector.set(FID_LineJoin, LONG(VLJ::MITER)); return;
@@ -159,7 +159,7 @@ void anim_value::set_value(objVector &Vector)
          return;
 
       case SVF_STROKE_OPACITY:          Vector.set(FID_StrokeOpacity, get_numeric_value(Vector, FID_StrokeOpacity)); break;
-         
+
       case SVF_STROKE_MITERLIMIT:       Vector.set(FID_MiterLimit, get_string()); break;
       case SVF_STROKE_MITERLIMIT_THETA: Vector.set(FID_MiterLimitTheta, get_string()); break;
       case SVF_STROKE_INNER_MITERLIMIT: Vector.set(FID_InnerMiterLimit, get_string()); break;
@@ -205,7 +205,7 @@ void anim_value::set_value(objVector &Vector)
       case SVF_CY:
          Vector.set(FID_CY, get_dimension(Vector, FID_CY));
          return;
-    
+
       case SVF_XOFFSET:
          Vector.set(FID_XOffset, get_dimension(Vector, FID_XOffset));
          return;
@@ -213,7 +213,7 @@ void anim_value::set_value(objVector &Vector)
       case SVF_YOFFSET:
          Vector.set(FID_YOffset, get_dimension(Vector, FID_YOffset));
          return;
-                    
+
       case SVF_X1:
          Vector.set(FID_X1, get_dimension(Vector, FID_X1));
          return;

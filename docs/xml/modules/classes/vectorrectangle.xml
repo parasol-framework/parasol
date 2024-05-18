@@ -29,18 +29,18 @@
       <description>
 <p>The following dimension flags are supported:</p>
 <types lookup="DMF">
-<type name="FIXED_HEIGHT">The <field>Height</field> value is a fixed coordinate.</type>
-<type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
-<type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
-<type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
-<type name="FIXED_RADIUS_X">The <field>RoundX</field> value is a fixed coordinate.</type>
-<type name="FIXED_RADIUS_Y">The <field>RoundY</field> value is a fixed coordinate.</type>
-<type name="SCALED_HEIGHT">The <field>Height</field> value is a scaled coordinate.</type>
-<type name="SCALED_WIDTH">The <field>Width</field> value is a scaled coordinate.</type>
-<type name="SCALED_X">The <field>X</field> value is a scaled coordinate.</type>
-<type name="SCALED_Y">The <field>Y</field> value is a scaled coordinate.</type>
-<type name="SCALED_RADIUS_X">The <field>RoundX</field> value is a scaled coordinate.</type>
-<type name="SCALED_RADIUS_Y">The <field>RoundY</field> value is a scaled coordinate.</type>
+<type name="FIXED_HEIGHT">The <fl>Height</fl> value is a fixed coordinate.</type>
+<type name="FIXED_WIDTH">The <fl>Width</fl> value is a fixed coordinate.</type>
+<type name="FIXED_X">The <fl>X</fl> value is a fixed coordinate.</type>
+<type name="FIXED_Y">The <fl>Y</fl> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS_X">The <fl>RoundX</fl> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS_Y">The <fl>RoundY</fl> value is a fixed coordinate.</type>
+<type name="SCALED_HEIGHT">The <fl>Height</fl> value is a scaled coordinate.</type>
+<type name="SCALED_WIDTH">The <fl>Width</fl> value is a scaled coordinate.</type>
+<type name="SCALED_X">The <fl>X</fl> value is a scaled coordinate.</type>
+<type name="SCALED_Y">The <fl>Y</fl> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS_X">The <fl>RoundX</fl> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS_Y">The <fl>RoundY</fl> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
@@ -81,8 +81,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE []</type>
       <description>
-<p>Set the Rounding field if all four corners of the rectangle need to be precisely controlled.  Four X,Y sizing pairs must be provided in sequence, with the first describing the top-left corner and proceeding in clockwise fashion. Each pair of values is equivalent to a <field>RoundX</field>,<field>RoundY</field> definition for that corner only.</p>
-<p>By default, values will be treated as fixed pixel units.  They can be changed to scaled values by defining the <code>DMF_SCALED_RADIUS_X</code> and/or <code>DMF_SCALED_RADIUS_Y</code> flags in the <field>Dimensions</field> field.  The scale is calculated against the rectangle's diagonal.</p>
+<p>Set the Rounding field if all four corners of the rectangle need to be precisely controlled.  Four X,Y sizing pairs must be provided in sequence, with the first describing the top-left corner and proceeding in clockwise fashion. Each pair of values is equivalent to a <fl>RoundX</fl>,<fl>RoundY</fl> definition for that corner only.</p>
+<p>By default, values will be treated as fixed pixel units.  They can be changed to scaled values by defining the <code>DMF_SCALED_RADIUS_X</code> and/or <code>DMF_SCALED_RADIUS_Y</code> flags in the <fl>Dimensions</fl> field.  The scale is calculated against the rectangle's diagonal.</p>
       </description>
     </field>
 

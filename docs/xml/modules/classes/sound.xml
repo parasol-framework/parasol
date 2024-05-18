@@ -16,9 +16,9 @@
     <include>modules/sound.h</include>
     <copyright>Paul Manias © 2002-2024</copyright>
     <description>
-<p>The Sound class provides a simple API for programs to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions, if available.</p>
-<p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <field>Stream</field> field.</p>
-<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the OnStop callback will result in the program waking once the sample has finished playback.</p>
+<p>The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions, if available.</p>
+<p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <fl>Stream</fl> field.</p>
+<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the <fl>OnStop</fl> callback will result in the program waking once the sample has finished playback.</p>
 <pre>local snd = obj.new('sound', {
    path = 'audio:samples/doorbell.wav',
    note = 'C6',
@@ -78,7 +78,7 @@ proc.sleep()
       <name>Read</name>
       <comment>Read decoded audio from the sound sample.</comment>
       <description>
-<p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <field>Position</field> value.</p>
+<p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <fl>Position</fl> value.</p>
       </description>
     </action>
 
@@ -91,7 +91,7 @@ proc.sleep()
       <name>Seek</name>
       <comment>Moves the cursor position for reading data.</comment>
       <description>
-<p>Use Seek to move the read cursor within the decoded audio stream and update <field>Position</field>.  This will affect the Read action.  If the sample is in active playback at the time of the call, the playback position will also be moved.</p>
+<p>Use Seek to move the read cursor within the decoded audio stream and update <fl>Position</fl>.  This will affect the Read action.  If the sample is in active playback at the time of the call, the playback position will also be moved.</p>
       </description>
     </action>
 
@@ -105,7 +105,7 @@ proc.sleep()
   <fields>
     <field>
       <name>Active</name>
-      <comment>Returns TRUE if the sound sample is being played back.</comment>
+      <comment>Returns <code>true</code> if the sound sample is being played back.</comment>
       <access read="G">Get</access>
       <type>INT</type>
     </field>
@@ -122,7 +122,7 @@ proc.sleep()
 
     <field>
       <name>BitsPerSample</name>
-      <comment>Indicates the sample rate of the audio sample, typically 8 or 16 bit.</comment>
+      <comment>Indicates the sample rate of the audio sample, typically <code>8</code> or <code>16</code> bit.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
     </field>
@@ -181,7 +181,7 @@ proc.sleep()
       <type>INT</type>
       <description>
 <p>This field specifies the frequency of the sampled sound data.  If the frequency cannot be determined from the source, this value will be zero.</p>
-<p>Note that if the playback frequency needs to be altered, set the <field>Playback</field> field.</p>
+<p>Note that if the playback frequency needs to be altered, set the <fl>Playback</fl> field.</p>
       </description>
     </field>
 
@@ -202,7 +202,7 @@ proc.sleep()
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>This field specifies the length of the sample data in bytes.  To get the length of the sample in seconds, divide this value by the <field>BytesPerSecond</field> field.</p>
+<p>This field specifies the length of the sample data in bytes.  To get the length of the sample in seconds, divide this value by the <fl>BytesPerSecond</fl> field.</p>
       </description>
     </field>
 
@@ -212,7 +212,7 @@ proc.sleep()
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>When using looped samples (via the <code>SDF::LOOP</code> flag), set the LoopEnd field if the sample should end at a position that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be less or equal to the length of the sample and greater than the <field>LoopStart</field> value.</p>
+<p>When using looped samples (via the <code>SDF::LOOP</code> flag), set the LoopEnd field if the sample should end at a position that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be less or equal to the length of the sample and greater than the <fl>LoopStart</fl> value.</p>
       </description>
     </field>
 
@@ -222,7 +222,7 @@ proc.sleep()
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>When using looped samples (via the <code>SDF::LOOP</code> flag), set the LoopStart field if the sample should begin at a position other than zero.  The LoopStart value is specified in bytes and must be less than the length of the sample and the <field>LoopEnd</field> value.</p>
+<p>When using looped samples (via the <code>SDF::LOOP</code> flag), set the LoopStart field if the sample should begin at a position other than zero.  The LoopStart value is specified in bytes and must be less than the length of the sample and the <fl>LoopEnd</fl> value.</p>
 <p>Note that the LoopStart variable does not affect the position at which playback occurs for the first time - it only affects the restart position when the end of the sample is reached.</p>
       </description>
     </field>
@@ -233,7 +233,7 @@ proc.sleep()
       <access read="G" write="S">Get/Set</access>
       <type lookup="NOTE">STRING</type>
       <description>
-<p>Set the Note field to alter the playback frequency of a sound sample.  Setting this field as opposed to the <field>Playback</field> frequency will assure that the sample is played at a correctly scaled tone.</p>
+<p>Set the Note field to alter the playback frequency of a sound sample.  Setting this field as opposed to the <fl>Playback</fl> frequency will assure that the sample is played at a correctly scaled tone.</p>
 <p>The Note field can be set using either string or integer based format.  If using the integer format, the chosen value will reflect the position on a musical keyboard.  A value of zero refers to the middle C key.  Each octave is measured in sets of 12 notes, so a value of 24 would indicate a C note at 3 times normal playback.  To play at lower values, simply choose a negative integer to slow down sample playback.</p>
 <p>Setting the Note field with the string format is useful if human readability is valuable.  The correct format is <code>KEY OCTAVE SHARP</code>.  Here are some examples: <code>C5, D7#, G2, E3S</code>.</p>
 <p>The middle C key for this format is <code>C5</code>.  The maximum octave that you can achieve for the string format is 9 and the lowest is 0.  Use either the <code>S</code> character or the <code>#</code> character for referral to a sharp note.</p>
@@ -247,8 +247,8 @@ proc.sleep()
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>The Octave field determines the octave to use when playing back a sound sample.  The default setting is zero, which represents the octave at which the sound was sampled.  Setting a negative octave will lower the playback rate, while positive values raise the playback rate.  The minimum octave setting is -5 and the highest setting is +5.</p>
-<p>The octave can also be adjusted by setting the <field>Note</field> field.  Setting the Octave field directly is useful if you need to quickly double or halve the playback rate.</p>
+<p>The Octave field determines the octave to use when playing back a sound sample.  The default setting is zero, which represents the octave at which the sound was sampled.  Setting a negative octave will lower the playback rate, while positive values raise the playback rate.  The minimum octave setting is <code>-5</code> and the highest setting is <code>+5</code>.</p>
+<p>The octave can also be adjusted by setting the <fl>Note</fl> field.  Setting the Octave field directly is useful if you need to quickly double or halve the playback rate.</p>
       </description>
     </field>
 
@@ -258,9 +258,7 @@ proc.sleep()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set OnStop to a callback function to receive an event trigger when sample playback stops.  The synopsis for the function is as follows:</p>
-<pre>void OnStop(*Sound)
-</pre>
+<p>Set OnStop to a callback function to receive an event trigger when sample playback stops.  The prototype for the function is <code>void OnStop(*Sound)</code>.</p>
 <p>The timing of this event does not guarantee precision, but should be accurate to approximately 1/100th of a second in most cases.</p>
       </description>
     </field>
@@ -271,7 +269,7 @@ proc.sleep()
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is -1.0 to force play through the left speaker and the maximum value is 1.0 for the right speaker.</p>
+<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is <code>-1.0</code> to force play through the left speaker and the maximum value is <code>1.0</code> for the right speaker.</p>
       </description>
     </field>
 
@@ -355,7 +353,7 @@ proc.sleep()
     </constants>
 
     <constants lookup="SDF" comment="Sound flags">
-      <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
+      <const name="LOOP">Enables sample looping. The <fl>LoopStart</fl> and <fl>LoopEnd</fl> fields determine where the looping area lies within the sample data.</const>
       <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
       <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
       <const name="STEREO">Indicates that the sound has multiple audio channels.</const>

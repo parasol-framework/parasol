@@ -747,7 +747,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
       }
 
-      if (shape->Class->ClassID IS ID_VECTORVIEWPORT) {
+      if (shape->classID() IS ID_VECTORVIEWPORT) {
          if ((shape->Child) or (shape->InputSubscriptions) or (shape->Fill[0].Pattern)) {
             auto view = (extVectorViewport *)shape;
 
@@ -1019,28 +1019,28 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       mRaster.reset();
       mRaster.add_path(mPath);
 
-      if (FillStyle->Class->ClassID IS ID_VECTORCOLOUR) {
+      if (FillStyle->classID() IS ID_VECTORCOLOUR) {
          auto colour = (objVectorColour *)FillStyle;
          agg::renderer_scanline_aa_solid solid(mRenderer);
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
       }
-      else if (FillStyle->Class->ClassID IS ID_VECTORIMAGE) {
+      else if (FillStyle->classID() IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*FillStyle;
          fill_image(state, bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
-      else if (FillStyle->Class->ClassID IS ID_VECTORGRADIENT) {
+      else if (FillStyle->classID() IS ID_VECTORGRADIENT) {
          extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
          fill_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster);
       }
-      else if (FillStyle->Class->ClassID IS ID_VECTORPATTERN) {
+      else if (FillStyle->classID() IS ID_VECTORPATTERN) {
          fill_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
       else log.warning("The FillStyle is not supported.");
    }
 
    if ((StrokeWidth > 0) and (StrokeStyle)) {
-      if (StrokeStyle->Class->ClassID IS ID_VECTORGRADIENT) {
+      if (StrokeStyle->classID() IS ID_VECTORGRADIENT) {
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
@@ -1048,18 +1048,18 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          extVectorGradient &gradient = (extVectorGradient &)*StrokeStyle;
          fill_gradient(state, bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster);
       }
-      else if (StrokeStyle->Class->ClassID IS ID_VECTORPATTERN) {
+      else if (StrokeStyle->classID() IS ID_VECTORPATTERN) {
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
          fill_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
-      else if (StrokeStyle->Class->ClassID IS ID_VECTORIMAGE) {
+      else if (StrokeStyle->classID() IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;
          agg::conv_transform<agg::path_storage, agg::trans_affine> path(mPath, transform);
          stroke_brush(state, image, mRenderer, path, StrokeWidth);
       }
-      else if (StrokeStyle->Class->ClassID IS ID_VECTORCOLOUR) {
+      else if (StrokeStyle->classID() IS ID_VECTORCOLOUR) {
          agg::renderer_scanline_aa_solid solid(mRenderer);
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();

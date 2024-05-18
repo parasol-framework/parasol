@@ -143,18 +143,18 @@ of the possible variations there are a number of sample formats, as illustrated 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
 endian format, logical-or the SampleFormat value with `SFM::F_BIG_ENDIAN`.
 
-It is also possible to supply loop information with the sample data.  This is achieved by configuring the &AudioLoop
+It is also possible to supply loop information with the sample data.  This is achieved by configuring the !AudioLoop
 structure:
 
-&AudioLoop
+!AudioLoop
 
-The types that can be specified in the LoopMode field are:
+The types that can be specified in the `LoopMode` field are:
 
-&LOOP
+!LOOP
 
-The Loop1Type and Loop2Type fields alter the style of the loop.  These can be set to the following:
+The `Loop1Type` and `Loop2Type` fields alter the style of the loop.  These can be set to the following:
 
-&LTYPE
+!LTYPE
 
 -INPUT-
 func OnStop: This optional callback function will be called when the stream stops playing.
@@ -162,7 +162,7 @@ int(SFM) SampleFormat: Indicates the format of the sample data that you are addi
 buf(ptr) Data: Points to the address of the sample data.
 bufsize DataSize: Size of the sample data, in bytes.
 struct(*AudioLoop) Loop: Optional sample loop information.
-structsize LoopSize: Must be set to sizeof(AudioLoop) if Loop is defined.
+structsize LoopSize: Must be set to `sizeof(AudioLoop)` if `Loop` is defined.
 &int Result: The resulting sample handle will be returned in this parameter.
 
 -ERRORS-
@@ -234,14 +234,15 @@ ERR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 AddStream: Adds a new sample-stream to an Audio object for channel-based playback.
 
 Use AddStream to load large sound samples to an Audio object, allowing it to play those samples on the client
-machine without over-provisioning available resources.  For small samples under 256k consider using AddSample instead.
+machine without over-provisioning available resources.  For small samples under 256k consider using #AddSample()
+instead.
 
-The data source used for a stream will need to be provided by a client provided Callback function.  The synopsis is
-`LONG callback(LONG SampleHandle, LONG Offset, UBYTE *Buffer, LONG BufferSize)`.
+The data source used for a stream will need to be provided by a client provided `Callback` function.  The prototype
+is `LONG callback(LONG SampleHandle, LONG Offset, UBYTE *Buffer, LONG BufferSize)`.
 
-The Offset reflects the retrieval point of the decoded data and is measured in bytes.  The Buffer and BufferSize reflect
-the target for the decoded data.  The function must return the total number of bytes that were written to the Buffer.
-If an error occurs, return zero.
+The `Offset` reflects the retrieval point of the decoded data and is measured in bytes.  The `Buffer` and
+`BufferSize` reflect the target for the decoded data.  The function must return the total number of bytes that were
+written to the `Buffer`. If an error occurs, return zero.
 
 When creating a new stream, pay attention to the audio format that is being used for the sample data.
 It is important to differentiate between 8-bit, 16-bit, mono and stereo, but also be aware of whether or not the data
@@ -251,18 +252,18 @@ variations there are a number of sample formats, as illustrated in the following
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with the flag `SFM::F_BIG_ENDIAN`.
+endian format, logical-or the `SampleFormat` value with the flag `SFM::F_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping
-formats via the &AudioLoop structure:
+formats via the !AudioLoop structure:
 
-&AudioLoop
+!AudioLoop
 
-There are three types of loop modes that can be specified in the LoopMode field:
+There are three types of loop modes that can be specified in the `LoopMode` field:
 
-&LOOP
+!LOOP
 
-The Loop1Type and Loop2Type fields normally determine the style of the loop, however only unidirectional looping is
+The `Loop1Type` and `Loop2Type` fields normally determine the style of the loop, however only unidirectional looping is
 currently supported for streams.  For that reason, set the type variables to either `LTYPE::NIL` or
 `LTYPE::UNIDIRECTIONAL`.
 
@@ -272,8 +273,8 @@ func OnStop: This optional callback function will be called when the stream stop
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
 int PlayOffset: Offset the playing position by this byte index.
-struct(*AudioLoop) Loop: Refers to sample loop information, or NULL if no loop is required.
-structsize LoopSize: Must be set to sizeof(AudioLoop).
+struct(*AudioLoop) Loop: Refers to sample loop information, or `NULL` if no loop is required.
+structsize LoopSize: Must be set to `sizeof(AudioLoop)`.
 &int Result: The resulting sample handle will be returned in this parameter.
 
 -ERRORS-
@@ -599,12 +600,11 @@ static ERR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 -METHOD-
 RemoveSample: Removes a sample from the global sample list and deallocates its resources.
 
-Remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is
-permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle
-number.
+Remove an allocated sample by calling the RemoveSample method.  Removed samples are permanently deleted from the
+audio server and it is not possible to reallocate the sample against the same `Handle` value.
 
-Sample handles can be reused by the API after being removed.  Clearing any old references to sample handles after use
-is therefore recommended.
+Sample handles can be reused by the API after being removed.  Clearing references to stale sample handles on the
+client side is recommended.
 
 -INPUT-
 int Handle: The handle of the sample that requires removal.
@@ -754,11 +754,11 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 -METHOD-
 SetSampleLength: Sets the byte length of a streaming sample.
 
-This function will update the byte length of a steaming sample.  Although it is possible to manually stop a stream at
-any point, setting the length is a preferable means to stop playback as it ensures complete accuracy when a sample's
-output is buffered.
+This function will update the byte length of a streaming `Sample`.  Although it is possible to manually stop a stream
+at any point, setting the length is a preferable means to stop playback as it ensures complete accuracy when a
+sample's output is buffered.
 
-Setting a Length of -1 indicates that the stream should be played indefinitely.
+Setting a `Length` of `-1` indicates that the stream should be played indefinitely.
 
 -INPUT-
 int Sample: A sample handle from AddStream().
@@ -801,12 +801,12 @@ To change volume and mixer levels, use the SetVolume method.  It is possible to 
 available mixers and for different channels per mixer - for instance you may set different volumes for left and right
 speakers.  Support is also provided for special options such as muting.
 
-To set the volume for a mixer, use its index or set its name (to change the Master volume, use a name of `Master`).
+To set the volume for a mixer, use its index or set its name (to change the master volume, use a name of `Master`).
 
-A target Channel such as the left (0) or right (1) speaker can be specified.  Set the Channel to -1 if all channels
-should be the same value.
+A target `Channel` such as the left `0` or right `1` speaker can be specified.  Set the `Channel` to `-1` if all
+channels should be the same value.
 
-The new mixer value is set in the Volume field.
+The new mixer value is set in the `Volume` field.
 
 Optional flags may be set as follows:
 
@@ -816,14 +816,14 @@ Optional flags may be set as follows:
 int Index: The index of the mixer that you want to set.
 cstr Name: If the correct index number is unknown, the name of the mixer may be set here.
 int(SVF) Flags: Optional flags.
-int Channel: A specific channel to modify (e.g. 0 for left, 1 for right).  If -1, all channels are affected.
-double Volume: The volume to set for the mixer, from 0 - 1.0.  If -1, the current volume values are retained.
+int Channel: A specific channel to modify (e.g. `0` for left, `1` for right).  If `-1`, all channels are affected.
+double Volume: The volume to set for the mixer, from 0 to 1.0.  If `-1`, the current volume values are retained.
 
 -ERRORS-
 Okay: The new volume was applied successfully.
 Args
 NullArgs
-OutOfRange: The Volume or Index is out of the acceptable range.
+OutOfRange: The `Volume` or `Index` is out of the acceptable range.
 -END-
 
 *********************************************************************************************************************/
@@ -1031,8 +1031,8 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 -FIELD-
 BitDepth: The bit depth affects the overall quality of audio input and output.
 
-This field manages the bit depth for audio mixing and output.  Valid bit depths are 8, 16 and 24, with 16 being the
-recommended value for CD quality playback.
+This field manages the bit depth for audio mixing and output.  Valid bit depths are `8`, `16` and `24`, with `16`
+being the recommended value for CD quality playback.
 
 *********************************************************************************************************************/
 
@@ -1052,7 +1052,7 @@ Device: The name of the audio device used by this audio object.
 
 A host platform may have multiple audio devices installed, but a given audio object can represent only one device
 at a time.  A new audio object will always represent the default device initially.  Choose a different device by
-setting the Device field to a valid alternative.
+setting the `Device` field to a valid alternative.
 
 The default device can always be referenced with a name of `default`.
 
@@ -1090,7 +1090,7 @@ publicly available flags:
 InputRate: Determines the frequency to use when recording audio data.
 
 The InputRate determines the frequency to use when recording audio data from a Line-In connection or microphone.  In
-most cases, this value should be set to 44100 for CD quality audio.
+most cases, this value should be set to `44100` for CD quality audio.
 
 The InputRate can only be set prior to initialisation, further attempts to set the field will be ignored.  On some
 platforms, it may not be possible to set an InputRate that is different to the #OutputRate.  In such a case, the value
@@ -1100,7 +1100,7 @@ of the InputRate shall be ignored.
 MasterVolume: The master volume to use for audio playback.
 
 The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as
-a value between 0 and 1.0.
+a value between `0` and `1.0`.
 
 *********************************************************************************************************************/
 
@@ -1145,8 +1145,8 @@ static ERR GET_MixerLag(extAudio *Self, DOUBLE *Value)
 -FIELD-
 Mute:  Mutes all audio output.
 
-Audio output can be muted at any time by setting this value to TRUE.  To restart audio output after muting, set the
-field to FALSE.  Muting does not disable the audio system, which is achieved by calling #Deactivate().
+Audio output can be muted at any time by setting this value to `true`.  To restart audio output after muting, set the
+field to `false`.  Muting does not disable the audio system, which is achieved by calling #Deactivate().
 
 *********************************************************************************************************************/
 
@@ -1180,7 +1180,7 @@ static ERR SET_Mute(extAudio *Self, LONG Value)
 OutputRate: Determines the frequency to use for the output of audio data.
 
 The OutputRate determines the frequency of the audio data that will be output to the audio speakers.  In most cases,
-this value should be set to 44100 for CD quality audio.
+this value should be set to `44100` for CD quality audio.
 
 The OutputRate can only be set prior to initialisation, further attempts to set the field will be ignored.
 
@@ -1199,9 +1199,9 @@ static ERR SET_OutputRate(extAudio *Self, LONG Value)
 -FIELD-
 Periods: Defines the number of periods that make up the internal audio buffer.
 
-The internal audio buffer is split into periods with each period being a certain byte size.  The minimum period is 2
-and the maximum is 16.  This field is supplemented with the #PeriodSize, which indicates the byte size of each
-period.  The total size of the audio buffer is calculated as the number of Periods multiplied by the PeriodSize value.
+The internal audio buffer is split into periods with each period being a certain byte size.  The minimum period is `2`
+and the maximum is `16`.  This field is supplemented with the #PeriodSize, which indicates the byte size of each
+period.  The total size of the audio buffer is calculated as the number of Periods multiplied by the #PeriodSize value.
 
 The minimum period size is 1K and maximum 16K.
 
@@ -1237,12 +1237,13 @@ static ERR SET_PeriodSize(extAudio *Self, LONG Value)
 -FIELD-
 Quality: Determines the quality of the audio mixing.
 
-Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and
-100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following
-flags being automatically adjusted in the audio object: `ADF::FILTER_LOW`, `ADF::FILTER_HIGH` and `ADF::OVER_SAMPLING`.
+Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low
+quality) and 100 (high quality).  A setting between 70 and 80 is recommended.  Setting a Quality value
+results in the following flags being automatically adjusted in the audio object: `ADF::FILTER_LOW`,
+`ADF::FILTER_HIGH` and `ADF::OVER_SAMPLING`.
 
 In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is
-of low quality.
+of low quality and will not benefit from high quality output.
 
 *********************************************************************************************************************/
 
@@ -1263,7 +1264,7 @@ static ERR SET_Quality(extAudio *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Stereo: Set to TRUE for stereo output and FALSE for mono output.
+Stereo: Set to `true` for stereo output and `false` for mono output.
 
 -END-
 

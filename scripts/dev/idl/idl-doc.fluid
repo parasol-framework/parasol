@@ -162,9 +162,9 @@ function extractParagraph(Input, Caller, References)
       local line = string.trim(lines[i])
       if nz(line) then
          local action
-         if (line:match('^&(%w*)$') != nil) then
+         if (line:match('^!(%w*)$') != nil) then
             action = 'insert'
-            line = line:gsub('&(%w*)', function(Lookup)
+            line = line:gsub('!(%w*)', function(Lookup)
                if (glStructures[Lookup]) then
                   if References then
                      References['STRUCT:' .. Lookup] = 1
@@ -177,6 +177,7 @@ function extractParagraph(Input, Caller, References)
                   return '<types lookup="' .. Lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
+                  --print(debug.traceback())
                end
             end)
          elseif (line:match('^<pre>.-') != nil) or (line:match('^<h%d>.-') != nil) or
@@ -246,21 +247,25 @@ end
 -- Use # to refer to class actions, fields, methods.
 -- Use ~ for external function and module references.
 -- Use @ to refer to external classes and items.
--- Use & to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
+-- Use ! to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
 --   definition will be pulled in to that section.
 
 function substituteReferences(String, Class)
    -- Substitute struct insertion requests
 
-   String = String:gsub('&([A-Z]%w*)', function(Lookup)
+   String = String:gsub('!([A-Z]%w*)([\n%s])', function(Lookup, Whitespace)
       if (glStructures[Lookup]) then
+         if (glStructures[Lookup].restrict == 'c') then return Lookup .. Whitespace end
+
          if Class then Class.references['STRUCT:' .. Lookup] = 1 end
-         return '<struct>' .. Lookup .. '</struct>'
+
+         return '<st>' .. Lookup .. '</st>' .. Whitespace
       elseif (glCustomTypes[Lookup]) then
          if Class then Class.references['TYPE:' .. Lookup] = 1 end
-         return '<type>' .. Lookup .. '</type>'
+         return '<lk>' .. Lookup .. '</lk>' .. Whitespace
       else
-         print('Unrecognised struct or constant "' .. Lookup .. '"')
+         print('Unrecognised struct or constant "!' .. Lookup .. '"')
+         --print(debug.traceback())
       end
    end)
 
@@ -287,9 +292,9 @@ function substituteReferences(String, Class)
             if (Field:match('[A-Z0-9]+') != nil) then return end
          end
 
-         return '<field>' .. Field .. '</field>'
+         return '<fl>' .. Field .. '</fl>'
       elseif (Class.lookupFields) and (Class.lookupFields[Field]) then
-         return '<field>' .. Field .. '</field>'
+         return '<fl>' .. Field .. '</fl>'
       else
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() == 6) or (Field:len() == 8) then
@@ -641,7 +646,7 @@ function docFunction(Function)
    if nz(Function.category)  then out = out .. '    <category>' .. Function.category .. '</category>\n' end
    if nz(Function.version)   then out = out .. '    <version>' .. Function.version .. '</version>\n' end
    if nz(Function.synonym)   then out = out .. '    <synonym>' .. Function.synonym .. '</synonym>\n' end
-   if nz(Function.comment)   then out = out .. '    <comment>' .. Function.comment:escXML() .. '</comment>\n' end
+   if nz(Function.comment)   then out = out .. '    <comment>' .. substituteReferences(Function.comment:escXML()) .. '</comment>\n' end
    if nz(Function.prototype) then out = out .. '    <prototype>' .. Function.docPrototype:escXML() .. '</prototype>\n' end
    if nz(Function.id)        then out = out .. '    <id>' .. Function.id .. '</id>\n' end
 
@@ -805,7 +810,7 @@ function docStructures(References)
             end
 
             out = out .. "      <field name=\"" .. f.name .. "\" type=\"" .. type:escXML() .. '"' .. prototype .. ref .. arraySize .. ">"
-            if nz(f.comment) then out = out .. f.comment:escXML() end
+            if nz(f.comment) then out = out .. substituteReferences(f.comment:escXML()) end
             out = out .. '</field>\n'
          end
          out = out .. '    </struct>\n\n'

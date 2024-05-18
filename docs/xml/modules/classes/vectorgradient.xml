@@ -114,7 +114,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>APTR</type>
       <description>
-<p>All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the gradient.</p>
+<p>All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is represented by a <st>VectorMatrix</st> structure, and are linked in the order in which they were applied to the gradient.</p>
 <struct lookup="VectorMatrix"/>
       </description>
     </field>
@@ -125,8 +125,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <field>ID</field> field if that has been defined previously.</p>
-<p>If NumericID is set by the client, then any value in <field>ID</field> will be immediately cleared.</p>
+<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <fl>ID</fl> field if that has been defined previously.</p>
+<p>If NumericID is set by the client, then any value in <fl>ID</fl> will be immediately cleared.</p>
       </description>
     </field>
 
@@ -168,7 +168,7 @@
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>This read-only field indicates the total number of stops that have been defined in the <field>Stops</field> array.</p>
+<p>This read-only field indicates the total number of stops that have been defined in the <fl>Stops</fl> array.</p>
       </description>
     </field>
 

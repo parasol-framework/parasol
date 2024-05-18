@@ -14,7 +14,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
    Level = Level + 1;
 
    while (Vector) {
-      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
+      if (Vector->classID() IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, ((objVectorScene *)Vector)->Viewport, Level);
       }
@@ -542,7 +542,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             auto view = Self->Scene->Viewport;
-            while ((view) and (view->Class->ClassID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
+            while ((view) and (view->classID() != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
             if (view) view->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)));
          }
       }

@@ -15,8 +15,8 @@
     <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
-<p>To create a new bitmap object, you need to specify its <field>Width</field> and <field>Height</field> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
-<p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the <code>BLIT</code> or <code>VIDEO</code> flags are specified in the <field>DataFlags</field> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
+<p>To create a new bitmap object, you need to specify its <fl>Width</fl> and <fl>Height</fl> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
+<p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the <code>BLIT</code> or <code>VIDEO</code> flags are specified in the <fl>DataFlags</fl> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
 <p>If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality provided by the Vector module.</p>
 <p>To save the image of a bitmap, either copy its image to a <class name="Picture">Picture</class> object, or use the SaveImage action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
     <source>
@@ -29,7 +29,7 @@
       <name>Clear</name>
       <comment>Clears a bitmap's image to black.</comment>
       <description>
-<p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <field>BkgdRGB</field> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
+<p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <fl>BkgdRGB</fl> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
 <p>If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.</p>
       </description>
     </action>
@@ -61,8 +61,8 @@
       <name>Init</name>
       <comment>Initialises a bitmap.</comment>
       <description>
-<p>This action will initialise a bitmap object so that it is ready for use.  If the bitmap <field>Data</field> field has not been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is dependent on the bitmap <field>DataFlags</field> field.  If you have not specified a memory type, you will get a default of <code>MEM::DATA</code>.  For a display compatible bitmap use <code>MEM::VIDEO</code>.  If you just want to store a bitmap in fast writeable memory, use <code>MEM::TEXTURE</code>.</p>
-<p>This action will not work unless you have defined the <field>Width</field> and <field>Height</field> fields of the bitmap at a minimum.</p>
+<p>This action will initialise a bitmap object so that it is ready for use.  If the bitmap <fl>Data</fl> field has not been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is dependent on the bitmap <fl>DataFlags</fl> field.  If you have not specified a memory type, you will get a default of <code>MEM::DATA</code>.  For a display compatible bitmap use <code>MEM::VIDEO</code>.  If you just want to store a bitmap in fast writeable memory, use <code>MEM::TEXTURE</code>.</p>
+<p>This action will not work unless you have defined the <fl>Width</fl> and <fl>Height</fl> fields of the bitmap at a minimum.</p>
       </description>
     </action>
 
@@ -76,7 +76,7 @@
       <comment>Fills a bitmap with pre-initialised/default values prior to initialisation.</comment>
       <description>
 <p>This action will pre-initialise a bitmap object so that all the fields are filled out with default values.  It stops short of allocating the bitmap's memory.</p>
-<p>For this action to work properly you must have defined the Width and Height fields of the bitmap before making the Query.  This function is intelligent enough to fill out the fields based on the information you have given it, e.g. if you set the <field>BytesPerPixel</field> field to 2 then it will determine that the bitmap is a 16 bit, 64k colour bitmap.</p>
+<p>For this action to work properly you must have defined the Width and Height fields of the bitmap before making the Query.  This function is intelligent enough to fill out the fields based on the information you have given it, e.g. if you set the <fl>BytesPerPixel</fl> field to 2 then it will determine that the bitmap is a 16 bit, 64k colour bitmap.</p>
       </description>
     </action>
 
@@ -90,7 +90,7 @@
       <comment>Resizes a bitmap object's dimensions.</comment>
       <description>
 <p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained by this process.</p>
-<p>The image data is cleared with <field>BkgdRGB</field> if the <code>CLEAR</code> flag is defined in <field>Flags</field>.</p>
+<p>The image data is cleared with <fl>BkgdRGB</fl> if the <code>CLEAR</code> flag is defined in <fl>Flags</fl>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -133,7 +133,7 @@
       <description>
 <p>A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <method>Decompress</method> method is called to restore the bitmap to its original state.</p>
-<p>The <code>BMF::COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
+<p>The <code>BMF::COMPRESSED</code> bit will be set in the <fl>Flags</fl> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -150,7 +150,7 @@
       <prototype>ERR bmpConvertToLinear(OBJECTPTR Object)</prototype>
       <description>
 <p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
-<p>The <field>ColourSpace</field> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>LINEAR_RGB</code>.</p>
+<p>The <fl>ColourSpace</fl> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <fl>ColourSpace</fl> is already set to <code>LINEAR_RGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
       <result>
@@ -167,7 +167,7 @@
       <prototype>ERR bmpConvertToRGB(OBJECTPTR Object)</prototype>
       <description>
 <p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
-<p>The <field>ColourSpace</field> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>SRGB</code>.</p>
+<p>The <fl>ColourSpace</fl> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <fl>ColourSpace</fl> is already set to <code>SRGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
       <result>
@@ -224,7 +224,7 @@
       <comment>Reverses the conversion process performed by Premultiply().</comment>
       <prototype>ERR bmpDemultiply(OBJECTPTR Object)</prototype>
       <description>
-<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <field>Flags</field>.</p>
+<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <fl>Flags</fl>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -357,7 +357,7 @@
       <type>BYTE []</type>
       <description>
 <p>The default background colour for a bitmap is black.  To change it, set this field with the new RGB colour.  The background colour is used in operations that require a default colour, such as when clearing the bitmap.</p>
-<p>The <field>BkgdIndex</field> will be updated as a result of setting this field.</p>
+<p>The <fl>BkgdIndex</fl> will be updated as a result of setting this field.</p>
       </description>
     </field>
 
@@ -367,7 +367,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>The bitmap's background colour is defined in this field as a colour index.  It is recommended that the <field>Bkgd</field> field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set directly.</p>
+<p>The bitmap's background colour is defined in this field as a colour index.  It is recommended that the <fl>Bkgd</fl> field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set directly.</p>
       </description>
     </field>
 
@@ -384,7 +384,7 @@
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>The ByteWidth of the bitmap is calculated directly from the bitmap's <field>Width</field> and <field>Type</field> settings. Under no circumstances should you attempt to calculate this value in advance, as it is heavily dependent on the bitmap's <field>Type</field>.</p>
+<p>The ByteWidth of the bitmap is calculated directly from the bitmap's <fl>Width</fl> and <fl>Type</fl> settings. Under no circumstances should you attempt to calculate this value in advance, as it is heavily dependent on the bitmap's <fl>Type</fl>.</p>
 <p>The formulas used to calculate the value of this field are:</p>
 <pre>Planar      = Width/8
 Chunky/8    = Width
@@ -393,7 +393,7 @@ Chunky/16   = Width * 2
 Chunky/24   = Width * 3
 Chunky/32   = Width * 4
 </pre>
-<p>If you would like to know the total byte width per line including any padded bytes that may lie at the end of each line, please refer to the <field>LineMod</field> field.</p>
+<p>If you would like to know the total byte width per line including any padded bytes that may lie at the end of each line, please refer to the <fl>LineMod</fl> field.</p>
       </description>
     </field>
 
@@ -403,7 +403,7 @@ Chunky/32   = Width * 4
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>If you need to find out how many bytes are involved in the makeup of each pixel you will need to read this field.  The maximum number of bytes you can typically expect is 4 and the minimum is 1.  If a planar bitmap is being used then you should refer to the <field>BitsPerPixel</field> field, which should yield more useful information.</p>
+<p>If you need to find out how many bytes are involved in the makeup of each pixel you will need to read this field.  The maximum number of bytes you can typically expect is 4 and the minimum is 1.  If a planar bitmap is being used then you should refer to the <fl>BitsPerPixel</fl> field, which should yield more useful information.</p>
       </description>
     </field>
 
@@ -522,8 +522,8 @@ unpackAlpha(Colour)
       <access read="R" write="I">Read/Init</access>
       <type lookup="MEM">MEM</type>
       <description>
-<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the <code>MEM::DATA</code>, <code>MEM::VIDEO</code> and <code>MEM::TEXTURE</code> memory flags.</p>
-<p>Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the bitmap <field>Data</field> field directly with these bitmap types.  To circumvent this problem please use the <action>Lock</action> action to enable read access when you require it.</p>
+<p>This field determines the type of memory that will be allocated for the <fl>Data</fl> field during the initialisation process. This field accepts the <code>MEM::DATA</code>, <code>MEM::VIDEO</code> and <code>MEM::TEXTURE</code> memory flags.</p>
+<p>Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the bitmap <fl>Data</fl> field directly with these bitmap types.  To circumvent this problem please use the <action>Lock</action> action to enable read access when you require it.</p>
 <types lookup="MEM"/>
       </description>
     </field>
@@ -549,7 +549,7 @@ unpackAlpha(Colour)
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
 <p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
 <p>The Data parameter must point to a location within the Bitmap's graphical address space. The new pixel value must be defined in the RGB parameter.</p>
-<p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <field>Data</field> field directly.</p>
+<p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <fl>Data</fl> field directly.</p>
       </description>
     </field>
 
@@ -674,7 +674,7 @@ unpackAlpha(Colour)
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
 <p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
 <p>The Data parameter must point to a location within the Bitmap's graphical address space. The pixel value will be returned in the RGB parameter.</p>
-<p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <field>Data</field> field directly.</p>
+<p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <fl>Data</fl> field directly.</p>
       </description>
     </field>
 
@@ -686,7 +686,7 @@ unpackAlpha(Colour)
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
 <p>The prototype of the ReadUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>
-<p>The pixel value will be returned in the RGB parameter.  It should be noted that as this function converts the pixel value into RGB format, <field>ReadUCPixel</field> or <field>ReadUCRIndex</field> should be used as faster alternatives if the pixel value does not need to be de-constructed into its RGB components.</p>
+<p>The pixel value will be returned in the RGB parameter.  It should be noted that as this function converts the pixel value into RGB format, <fl>ReadUCPixel</fl> or <fl>ReadUCRIndex</fl> should be used as faster alternatives if the pixel value does not need to be de-constructed into its RGB components.</p>
       </description>
     </field>
 
@@ -703,7 +703,7 @@ unpackAlpha(Colour)
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied during graphics operations.  It is recommended that the <field>TransRGB</field> field is used for altering the bitmap transparency unless efficiency requires that the transparency is set directly.</p>
+<p>The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied during graphics operations.  It is recommended that the <fl>TransRGB</fl> field is used for altering the bitmap transparency unless efficiency requires that the transparency is set directly.</p>
 <p>NOTE: This field should never be set if the bitmap utilises alpha transparency.</p>
       </description>
     </field>

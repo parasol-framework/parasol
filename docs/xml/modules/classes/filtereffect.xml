@@ -41,7 +41,7 @@
       <access read="R">Read</access>
       <type lookup="DMF">INT</type>
       <description>
-<p>Dimension flags are automatically defined when setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields.</p>
+<p>Dimension flags are automatically defined when setting the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields.</p>
 <types lookup="DMF"/>
       </description>
     </field>
@@ -62,7 +62,7 @@
       <access read="R" write="S">Read/Set</access>
       <type class="FilterEffect">*FilterEffect</type>
       <description>
-<p>If another effect should be used as a source input, it must be referenced here.  The <field>SourceType</field> will be automatically set to <code>REFERENCE</code> as a result.</p>
+<p>If another effect should be used as a source input, it must be referenced here.  The <fl>SourceType</fl> will be automatically set to <code>REFERENCE</code> as a result.</p>
 <p>This field is the SVG equivalent to <code>in</code>.  If the Input is not defined by the client then it will default to the previous effect if available, otherwise the source graphic is used.</p>
       </description>
     </field>
@@ -73,7 +73,7 @@
       <access read="R" write="S">Read/Set</access>
       <type class="FilterEffect">*FilterEffect</type>
       <description>
-<p>If another effect should be used as a mixed source input, it must be referenced here.  The <field>MixType</field> will be automatically set to <code>REFERENCE</code> as a result.</p>
+<p>If another effect should be used as a mixed source input, it must be referenced here.  The <fl>MixType</fl> will be automatically set to <code>REFERENCE</code> as a result.</p>
 <p>This field is the SVG equivalent to <code>in2</code>.  It does nothing if the effect does not supported a mixed source input.</p>
       </description>
     </field>
@@ -84,7 +84,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSF">VSF</type>
       <description>
-<p>Some effects support a secondary mix input for compositing, such as the <class name="CompositeFX">CompositeFX</class> class.  If the mixing source is a reference to another effect, set the <field>Mix</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
+<p>Some effects support a secondary mix input for compositing, such as the <class name="CompositeFX">CompositeFX</class> class.  If the mixing source is a reference to another effect, set the <fl>Mix</fl> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
 <types lookup="VSF"/>
       </description>
     </field>
@@ -109,7 +109,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSF">VSF</type>
       <description>
-<p>If an effect requires an input source for processing, it must be specified here.  If the source is a reference to another effect, set the <field>Input</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
+<p>If an effect requires an input source for processing, it must be specified here.  If the source is a reference to another effect, set the <fl>Input</fl> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
 <types lookup="VSF"/>
       </description>
     </field>

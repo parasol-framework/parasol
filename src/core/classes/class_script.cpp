@@ -106,8 +106,8 @@ Private
 
 -INPUT-
 large ProcedureID: An identifier for the target procedure.
-cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
-int TotalArgs: The total number of arguments in the Args parameter.
+cstruct(*ScriptArg) Args: Optional CSV string containing parameters to pass to the procedure.
+int TotalArgs: The total number of parameters in the Args parameter.
 &error Error: The error code returned from the script, if any.
 
 -ERRORS-
@@ -159,21 +159,13 @@ static ERR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 -METHOD-
 Exec: Executes a procedure in the script.
 
-Use the Exec method to execute a named procedure in a script, optionally passing that procedure a series of arguments.
-This method has two different interfaces - one for scripting, which takes parameters as a CSV string, and another for
-C/C++, which takes parameters in a serialised array.
+Use the Exec() method to execute a named procedure in a script, optionally passing that procedure a series of 
+parameters.
 
-The behaviour of the execution process matches that of the #Activate() action and will return the same error
-codes in the event of failure.  If the procedure returns results, they will be available from the #Results
-field after execution.
+The behaviour of this process matches that of the #Activate() action and will return the same error codes in the 
+event of failure.  If the `Procedure` returns results, they will be available from the #Results field after execution.
 
-If parameters will be passed to the procedure in script (e.g. Fluid), they must be specified as a Comma Separated Value
-list in the Args string. Exec will interpret all the values as a string type.  Double or single quotes should be used to
-encapsulate string values (use two quotes in sequence as a means of an escape character).  Values should instead be
-set as named variables in the script object.
-
-If parameters will be passed to the procedure in C/C++ or similar compiled language, they must be specified as an array
-of ScriptArg structures.  The following example illustrates such a list:
+Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:
 
 <pre>
 struct ScriptArg args[] = {
@@ -198,23 +190,20 @@ struct ScriptArg {
 };
 </>
 
-The Field Descriptor (FD) specified in the Type must be a match to whatever value is defined in the union.  For instance
-if the Long field is defined then an FD_LONG Type must be used.  Supplementary field definition information, e.g.
-FD_OBJECT, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
-documented in detail in the Class Development Guide.
-
-The C/C++ interface for Exec also requires a hidden third argument that is not specified in this documentation.  The
-argument, TotalArgs, must reflect the total number of entries in the Args array.
+The Field Descriptor `FD` specified in the `Type` must be a match to whatever value is defined in the union.  For instance
+if the `Long` field is defined then an `FD_LONG` `Type` must be used.  Supplementary field definition information, e.g.
+`FD_OBJECT`, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
+documented in detail in the Parasol Wiki.
 
 -INPUT-
 cstr Procedure: The name of the procedure to execute, or NULL for the default entry point.
-cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure (applies to script-based Exec only).
-int TotalArgs: Total number of script arguments provided.
+cstruct(*ScriptArg) Args: Optional parameters to pass to the procedure.
+int TotalArgs: Total number of `Args` provided.
 
 -ERRORS-
 Okay: The procedure was executed.
 NullArgs
-Args: The TotalArgs value is invalid.
+Args: The `TotalArgs` value is invalid.
 -END-
 
 *********************************************************************************************************************/
@@ -268,7 +257,7 @@ static ERR SCRIPT_Free(objScript *Self, APTR Void)
 GetProcedureID: Converts a procedure name to an ID.
 
 This method will convert a procedure name to a unique reference that will be recognised by the script as a direct
-reference to that procedure.  The ID can be used to create new FUNCTION definitions, for example:
+reference to that procedure.  The ID can be used to create new `FUNCTION` definitions, for example:
 
 <pre>
 FUNCTION callback;
@@ -276,7 +265,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </pre>
 
 Resolving a procedure will often result in the Script maintaining an ongoing reference for it.  To discard the
-reference, call <method>DerefProcedure</> once access to the procedure is no longer required.  Alternatively,
+reference, call #DerefProcedure() once access to the procedure is no longer required.  Alternatively,
 destroying the script will also dereference all procedures.
 
 -INPUT-
@@ -360,7 +349,7 @@ static ERR SCRIPT_NewObject(objScript *Self, APTR Void)
 }
 
 // If reset, the script will be reloaded from the original file location the next time an activation occurs.  All
-// arguments are also reset.
+// parameters are also reset.
 
 static ERR SCRIPT_Reset(objScript *Self, APTR Void)
 {
@@ -461,7 +450,7 @@ Lookup: SCF
 -FIELD-
 Language: Indicates the language (locale) that the source script is written in.
 
-The Language value indicates the language in which the source script was written.  The default setting is ENG, the
+The Language value indicates the language in which the source script was written.  The default setting is `ENG`, the
 code for international English.
 
 *********************************************************************************************************************/
@@ -488,11 +477,9 @@ process, or alternatively the client can define the #Statement field.
 
 Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first,
 surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following
-string illustrates the format used:
+string illustrates the format used: `dir:location;procedure;arg1=val1,arg2,arg3=val2`
 
-<pre>dir:location;procedure;arg1=val1,arg2,arg3=val2</>
-
-A target for the script may be specified by using the 'target' argument in the parameter list (value must refer to a
+A target for the script may be specified by using the 'target' parameter in the parameter list (value must refer to a
 valid existing object).
 -END-
 
@@ -651,7 +638,7 @@ Procedure: Specifies a procedure to be executed from within a script.
 
 Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main'
 area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a
-specific routine whenever the script is activated with the Activate action.
+specific routine whenever the script is activated with the #Activate() action.
 
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
 executed by default.
@@ -763,9 +750,9 @@ This field can refer to the target object that new objects at the root of the sc
 field is not set, the root-level objects in the script will be initialised to the script's owner.
 
 -FIELD-
-TotalArgs: Reflects the total number of arguments used in a script object.
+TotalArgs: Reflects the total number of parameters used in a script object.
 
-The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected
+The total number of parameters that have been set in a script object through the unlisted field mechanism are reflected
 in the value of this field.
 -END-
 *********************************************************************************************************************/

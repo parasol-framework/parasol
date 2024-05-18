@@ -245,15 +245,15 @@ This function compares two strings against each other.  If the strings match the
 returns `ERR::False`.  By default the function is not case sensitive, but you can turn on case sensitivity by
 specifying the `STR::CASE` flag.
 
-If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all
+If you set the `Length` to 0, the function will compare both strings for differences until a string terminates.  If all
 characters matched up until the termination, `ERR::Okay` will be returned regardless of whether or not one of the strings
 happened to be longer than the other.
 
-If the Length is not 0, then the comparison will stop once the specified number of characters to match has been
+If the `Length` is not 0, then the comparison will stop once the specified number of characters to match has been
 reached.  If one of the strings terminates before the specified Length is matched, `ERR::False` will be returned.
 
 If the `STR::MATCH_LEN` flag is specified, you can force the function into returning an `ERR::Okay` code only on the
-condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has
+condition that both strings are of matching lengths.  This flag is typically specified if the `Length` argument has
 been set to 0.
 
 If the `STR::WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
@@ -416,13 +416,13 @@ StrHash: Convert a string into a 32-bit hash.
 This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our
 platform and is therefore guaranteed to be compatible with all areas that make use of hashed values.
 
-Hashing is case insensitive by default.  If case sensitive hashing is desired, set CaseSensitive to TRUE
+Hashing is case insensitive by default.  If case sensitive hashing is desired, set `CaseSensitive` to `true`
 when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a
 case insensitive hash of the same string.
 
 -INPUT-
 cstr String: Reference to a string that will be processed.
-int CaseSensitive: Set to TRUE to enable case sensitivity.
+int CaseSensitive: Set to `true` to enable case sensitivity.
 
 -RESULT-
 uint: The 32-bit hash is returned.

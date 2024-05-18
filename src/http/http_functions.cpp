@@ -8,7 +8,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, LONG(State), CurrentContext()->UID);
 
    auto Self = (extHTTP *)Socket->ClientData; //(extHTTP *)CurrentContext();
-   if (Self->Class->ClassID != ID_HTTP) { log.warning(ERR::SystemCorrupt); return; }
+   if (Self->classID() != ID_HTTP) { log.warning(ERR::SystemCorrupt); return; }
 
    if (State IS NTC::CONNECTING) {
       log.msg("Waiting for connection...");
@@ -158,7 +158,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
    static const LONG CHUNK_TAIL = 2; // CRLF
 
    auto Self = (extHTTP *)Socket->ClientData;
-   if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR::SystemCorrupt);
+   if (Self->classID() != ID_HTTP) return log.warning(ERR::SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, LONG(Self->CurrentState));
 
@@ -366,7 +366,7 @@ static ERR socket_incoming(objNetSocket *Socket)
 
    log.msg("Context: %d", CurrentContext()->UID);
 
-   if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR::SystemCorrupt);
+   if (Self->classID() != ID_HTTP) return log.warning(ERR::SystemCorrupt);
 
    if (Self->CurrentState >= HGS::COMPLETED) {
       // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message

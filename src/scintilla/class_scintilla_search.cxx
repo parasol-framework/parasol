@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file 
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -174,9 +173,9 @@ static ERR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->Scintilla) { // Find our parent surface
+   if (!Self->Scintilla) { // Find our parent
       auto obj = Self->Owner;
-      while ((obj) and (obj->Class->ClassID = ID_SCINTILLA)) {
+      while ((obj) and (obj->classID() != ID_SCINTILLA)) {
          obj = obj->Owner;
       }
       if (obj) Self->Scintilla = (objScintilla *)obj;
@@ -194,8 +193,8 @@ static ERR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 Next: Continues a text search.
 
 Use Next to continue a search after calling the #Find() method.  If a string sequence matching that of #Text is
-discovered, its byte position will be returned in the Pos parameter.  If a new match is not discovered then ERR::Search
-is returned to indicate an end to the search.
+discovered, its byte position will be returned in the `Pos` parameter.  If a new match is not discovered then 
+`ERR::Search` is returned to indicate an end to the search.
 
 -INPUT-
 &int Pos: The byte-position of the discovered string sequence is returned here.
@@ -301,7 +300,7 @@ static ERR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 -METHOD-
 Prev: Continues a text search in reverse.
 
-The Prev method operates under the same circumstances as #Next(), except that the search will be in reverse.  Please
+The Prev() method operates under the same circumstances as #Next(), except that the search will be in reverse.  Please
 refer to #Next() for further information.
 
 -INPUT-

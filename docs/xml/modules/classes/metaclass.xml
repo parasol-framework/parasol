@@ -14,9 +14,10 @@
     <include>modules/metaclass.h</include>
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
-<p>The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most of the interesting structural data can be gleaned from the <field>Fields</field> array.</p>
+<p>The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most of the interesting structural data can be gleaned from the <fl>Fields</fl> array.</p>
 <p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function>FindClass</function> function.  The <function>CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>
-<p>Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside executable programs.  For information on the creation of classes, refer to the Class Development Guide for a complete run-down on class development.</p></description>
+<p>Classes are typically declared in modules, but declaring a new class within an application is feasible also.</p>
+<p>Further discussion on classes and their technical aspects can be found in the Parasol Wiki.</p></description>
     <source>
       <file path="../classes/">class_metaclass.cpp</file>
     </source>
@@ -30,11 +31,11 @@
       <input>
         <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function>StrHash</function> function.</param>
         <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
-        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.</param>
+        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the <code>Field</code> (which can match the caller), or <code>NULL</code> if the field was not found.</param>
       </input>
       <description>
-<p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
-<p>If the field is present in an integral class, a reference to that class will be returned in the Source parameter.</p>
+<p>This method checks if a class has defined a given field by scanning its blueprint for a matching <code>ID</code>.  If found, a direct pointer to the <code>Field</code> struct will be returned to the client.</p>
+<p>In some clases the field might not be present in the main class spec, but does appear in an integral class.  In that case, a reference to the class will be returned in the Source parameter.</p>
       </description>
     </method>
 
@@ -72,7 +73,7 @@
    { 0, NULL }
 };
 </pre>
-<p>Never define method ID's in an action list - the <field>Methods</field> field is provided for this purpose.</p>
+<p>Never define method ID's in an action list - the <fl>Methods</fl> field is provided for this purpose.</p>
       </description>
     </field>
 
@@ -82,7 +83,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class will represent.  Class ID's are generated as a hash from the class <field>Name</field>, so if this field is undefined then it is generated from the Name automatically.</p>
+<p>Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class will represent.  Class ID's are generated as a hash from the class <fl>Name</fl>, so if this field is undefined then it is generated from the Name automatically.</p>
       </description>
     </field>
 
@@ -103,7 +104,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <field>Name</field> using <function>StrHash</function>.</p>
+<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <fl>Name</fl> using <function>StrHash</function>.</p>
       </description>
     </field>
 
@@ -291,7 +292,7 @@
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
-      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
+      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (<function module="Core">SetOwner</function> will not work either).</const>
       <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
     </constants>
 
@@ -302,17 +303,17 @@
       <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
       <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
-      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERR SetField(*Object, APTR Value);</field>
+      <field name="Name" type="CSTRING">The name of the field, e.g. <code>Width</code></field>
+      <field name="GetField" type="APTR"><code>void GetField(*Object, APTR Result);</code></field>
+      <field name="SetField" type="APTR"><code>ERR SetField(*Object, APTR Value);</code></field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>

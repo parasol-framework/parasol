@@ -17,8 +17,8 @@
     <copyright>Paul Manias © 2001-2024</copyright>
     <description>
 <p>The XML class provides functionality to create and maintain XML data files.  It is capable of parsing and validating XML files with or without correct structure, and can perform optional parsing behaviours such as stripping comments during processing.</p>
-<p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>
-<p>Successfully processed data can be read back by scanning the array referenced in the <field>Tags</field> field.  The array contains an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.  C++ developers are recommended to interact with <field>Tags</field> directly, which is represented as <code>pf::vector&lt;XMLTag&gt;</code>.  Note that adding new Tags is a volatile action that can destabilise the object (taking a complete copy of the tags may be warranted instead).</p></description>
+<p>Data can be loaded into an XML object either by specifying a file <fl>Path</fl> or by giving it an XML <fl>Statement</fl>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>
+<p>Successfully processed data can be read back by scanning the array referenced in the <fl>Tags</fl> field.  The array contains an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this information, refer to the <fl>Tags</fl> field.  C++ developers are recommended to interact with <fl>Tags</fl> directly, which is represented as <code>pf::vector&lt;XMLTag&gt;</code>.  Note that adding new Tags is a volatile action that can destabilise the object (taking a complete copy of the tags may be warranted instead).</p></description>
     <source>
       <file>xml.cpp</file>
     </source>
@@ -457,7 +457,7 @@
       <type>INT</type>
       <description>
 <p>When using any XML function that creates an XML string (e.g. SaveToObject), the XML object will include the entire XML tree by default.  Defining the Start value will restrict processing to a specific tag and its children.</p>
-<p>The Start field currently affects the <action>SaveToObject</action> action and the <field>Statement</field> field.</p>
+<p>The Start field currently affects the <action>SaveToObject</action> action and the <fl>Statement</fl> field.</p>
       </description>
     </field>
 
@@ -469,7 +469,7 @@
       <description>
 <p>Set the Statement field to parse an XML formatted data string through the object.  If this field is set after initialisation then the XML object will clear any existing data first.</p>
 <p>Be aware that setting this field with an invalid statement will result in an empty XML object.</p>
-<p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the <field>Start</field> field.  The string result is an allocation that must be freed.</p>
+<p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the <fl>Start</fl> field.  The string result is an allocation that must be freed.</p>
       </description>
     </field>
 

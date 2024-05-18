@@ -30,9 +30,9 @@ cmp = obj.new('compression', { path='temp:result.zip' } )
 err = cmp.mtDecompressFile('*.def', 'temp:')
 </pre>
 <p>It is strongly advised that Compression objects are created for the purpose of either writing to, or reading from the target archive.  The class is not designed for both purposes simultaneously, particularly due to considerations for maximising operational speed.</p>
-<p>If data is to be encrypted or decrypted, set the <field>Password</field> field with a null-terminated encryption string. If the password for an encrypted file, errors will be returned when trying to decompress the information (the source archive may be reported as a corrupted file).</p>
+<p>If data is to be encrypted or decrypted, set the <fl>Password</fl> field with a null-terminated encryption string. If the password for an encrypted file, errors will be returned when trying to decompress the information (the source archive may be reported as a corrupted file).</p>
 <p>To list the contents of an archive, use the <method>Scan</method> method.</p>
-<p>To adjust the level of compression used to pack each file, set the <field>CompressionLevel</field> field to a value between 0 and 100%.</p>
+<p>To adjust the level of compression used to pack each file, set the <fl>CompressionLevel</fl> field to a value between 0 and 100%.</p>
 <p>This code is based on the work of Jean-loup Gailly and Mark Adler.</p></description>
     <source>
       <file path="../compression/">class_compression.cpp</file>
@@ -139,7 +139,7 @@ if (!error) {
    }
 }
 </pre>
-<p>Please note that, depending on the type of algorithm, this method will not always write data to the output buffer.  The algorithm may store a copy of the input and wait for more data for efficiency reasons.  Any unwritten data will be resolved when the stream is terminated with <method>CompressStreamEnd</method>.  To check if data was output by this function, either set a flag in the callback function or compare the <field>TotalOutput</field> value to its original setting before CompressStream was called.</p>
+<p>Please note that, depending on the type of algorithm, this method will not always write data to the output buffer.  The algorithm may store a copy of the input and wait for more data for efficiency reasons.  Any unwritten data will be resolved when the stream is terminated with <method>CompressStreamEnd</method>.  To check if data was output by this function, either set a flag in the callback function or compare the <fl>TotalOutput</fl> value to its original setting before CompressStream was called.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -175,7 +175,7 @@ if (!error) {
       <comment>Initialises a new compression stream.</comment>
       <prototype>ERR cmpCompressStreamStart(OBJECTPTR Object)</prototype>
       <description>
-<p>The level of compression is determined by the <field>CompressionLevel</field> field value.</p>
+<p>The level of compression is determined by the <fl>CompressionLevel</fl> field value.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -215,7 +215,7 @@ if (!error) {
       <description>
 <p>Use the DecompressFile method to decompress a file or files to a destination folder.  The exact path name of the compressed file is required for extraction unless using wildcards.  A single asterisk in the Path parameter will extract all files in a compression object.</p>
 <p>When specifying the Dest parameter, it is recommended that you specify a folder location by using a forward slash at the end of the string.  If this is omitted, the destination will be interpreted as a file name.  If the destination file already exists, it will be overwritten by the decompressed data.</p>
-<p>This method sends feedback at regular intervals during decompression.  For further information on receiving feedback, please refer to the <field>Feedback</field> field.</p>
+<p>This method sends feedback at regular intervals during decompression.  For further information on receiving feedback, please refer to the <fl>Feedback</fl> field.</p>
       </description>
       <result>
         <error code="Okay">The file was successfully extracted.</error>
@@ -241,7 +241,7 @@ if (!error) {
       </input>
       <description>
 <p>The DecompressObject method will decompress a file to a target object, using a series of <action>Write</action> calls.</p>
-<p>This method sends feedback at regular intervals during decompression.  For further information on receiving feedback, please refer to the <field>Feedback</field> field.</p>
+<p>This method sends feedback at regular intervals during decompression.  For further information on receiving feedback, please refer to the <fl>Feedback</fl> field.</p>
 <p>Note that if decompressing to a <class name="File">File</class> object, the seek position will point to the end of the file after this method returns.  Reset the seek position to zero if the decompressed data needs to be read back.</p>
       </description>
       <result>
@@ -317,12 +317,12 @@ if (!error) {
       <prototype>ERR cmpFind(OBJECTPTR Object, CSTRING Path, STR Flags, struct CompressedItem ** Item)</prototype>
       <input>
         <param type="CSTRING" name="Path">Search for a specific item or items, using wildcards.</param>
-        <param type="STR" name="Flags" lookup="STR">String comparison flags used by StrCompare().</param>
-        <param type="struct CompressedItem **" name="Item">The discovered item is returned in this parameter, or NULL if the search failed.</param>
+        <param type="STR" name="Flags" lookup="STR">String comparison flags used by <function module="Core">StrCompare</function>.</param>
+        <param type="struct CompressedItem **" name="Item">The discovered item is returned in this parameter, or <code>NULL</code> if the search failed.</param>
       </input>
       <description>
 <p>Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that matches the Path parameter string in conjunction with the options in Flags.  The options match those in the <function module="Core">StrCompare</function> function - in particular <code>STR::CASE</code>, <code>STR::MATCH_LEN</code> and <code>STR::WILDCARD</code> are the most useful.</p>
-<p>Please refer to the <method>Scan</method> method for a break-down of the CompressedItem structure that is returned by this method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
+<p>Please refer to the <method>Scan</method> method for a break-down of the <st>CompressedItem</st> structure that is returned by this method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -356,14 +356,14 @@ if (!error) {
       <prototype>ERR cmpScan(OBJECTPTR Object, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)</prototype>
       <input>
         <param type="CSTRING" name="Folder">If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.</param>
-        <param type="CSTRING" name="Filter">Search for a specific item or items by name, using wildcards.  If NULL or an empty string, all items will be scanned.</param>
-        <param type="FUNCTION *" name="Callback">This callback function will be called with a pointer to a CompressedItem structure.</param>
+        <param type="CSTRING" name="Filter">Search for a specific item or items by name, using wildcards.  If <code>NULL</code> or an empty string, all items will be scanned.</param>
+        <param type="FUNCTION *" name="Callback">This callback function will be called with a pointer to a <st>CompressedItem</st> structure.</param>
       </input>
       <description>
-<p>Use the Scan method to search an archive's list of items.  Optional filtering can be applied using the Folder parameter to limit results to those within a folder, and Filter parameter to apply wildcard matching to item names.  Each item that is discovered during the scan will be passed to the function referenced in the Callback parameter.  If the Callback function returns ERR::Terminate, the scan will stop immediately.  The synopsis of the callback function is <code>ERR Function(*Compression, *CompressedItem)</code>.</p>
-<p>The <struct>CompressedItem</struct> structure consists of the following fields:</p>
+<p>Use the Scan() method to search an archive's list of items.  Optional filtering can be applied using the <code>Folder</code> parameter to limit results to those within a folder, and <code>Filter</code> parameter to apply wildcard matching to item names.  Each item that is discovered during the scan will be passed to the function referenced in the <code>Callback</code> parameter.  If the <code>Callback</code> function returns <code>ERR::Terminate</code>, the scan will stop immediately.  The prototype of the <code>Callback</code> function is <code>ERR Function(*Compression, *CompressedItem)</code>.</p>
+<p>The <st>CompressedItem</st> structure consists of the following fields:</p>
 <struct lookup="CompressedItem"/>
-<p>To search for a single item with a path and name already known, please use the <method>Find</method> method instead.</p>
+<p>To search for a single item with a path and name already known, use the <method>Find</method> method instead.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -403,8 +403,8 @@ if (!error) {
       <description>
 <p>To receive feedback during any de/compression process, set a callback routine in this field. The format for the callback routine is <code>ERR Function(*Compression, *CompressionFeedback)</code>.</p>
 <p>For object classes, the object that initiated the de/compression process can be learned by calling the Core's <function module="Core">CurrentContext</function> function.</p>
-<p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR::Skip</code> and the entire process can be cancelled by returning ERR::Terminate.  All other error codes are ignored.</p>
-<p>The <struct>CompressionFeedback</struct> structure consists of the following fields:</p>
+<p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR::Skip</code> and the entire process can be cancelled by returning <code>ERR::Terminate</code>.  All other error codes are ignored.</p>
+<p>The <st>CompressionFeedback</st> structure consists of the following fields:</p>
 <struct lookup="CompressionFeedback"/>
       </description>
     </field>
@@ -435,7 +435,7 @@ if (!error) {
       <access read="R" write="I">Read/Init</access>
       <type>OBJECTID</type>
       <description>
-<p>If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.</p>
+<p>If this field is set to a valid object ID, text messages will be sent to that object when the compression object is used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.</p>
 <p>The target object must be capable of processing incoming text from data channels.</p>
       </description>
     </field>
@@ -520,20 +520,20 @@ if (!error) {
     </constants>
 
     <constants lookup="PERMIT" comment="Permission flags">
-      <const name="ALL_DELETE">Synonym for EVERYONE_DELETE</const>
-      <const name="ALL_EXEC">Synonym for EVERYONE_EXEC</const>
-      <const name="ALL_READ">Synonym for EVERYONE_READ</const>
-      <const name="ALL_WRITE">Synonym for EVERYONE_WRITE</const>
+      <const name="ALL_DELETE">Synonym for <code>EVERYONE_DELETE</code></const>
+      <const name="ALL_EXEC">Synonym for <code>EVERYONE_EXEC</code></const>
+      <const name="ALL_READ">Synonym for <code>EVERYONE_READ</code></const>
+      <const name="ALL_WRITE">Synonym for <code>EVERYONE_WRITE</code></const>
       <const name="ARCHIVE">Marks the file for future backup.  The flag should be cleared after the backup has succeeded.</const>
-      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the WRITE flag.</const>
-      <const name="EVERYONE_ACCESS">Synonym for EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</const>
-      <const name="EVERYONE_DELETE">Synonym for DELETE | GROUP_DELETE | OTHERS_DELETE</const>
-      <const name="EVERYONE_EXEC">Synonym for EXEC | GROUP_EXEC | OTHERS_EXEC</const>
-      <const name="EVERYONE_READ">Synonym for READ | GROUP_READ | OTHERS_READ</const>
-      <const name="EVERYONE_READWRITE">Synonym for EVERYONE_READ | EVERYONE_WRITE</const>
-      <const name="EVERYONE_WRITE">Synonym for WRITE | GROUP_WRITE | OTHERS_WRITE</const>
+      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the <code>WRITE</code> flag.</const>
+      <const name="EVERYONE_ACCESS">Synonym for <code>EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</code></const>
+      <const name="EVERYONE_DELETE">Synonym for <code>DELETE | GROUP_DELETE | OTHERS_DELETE</code></const>
+      <const name="EVERYONE_EXEC">Synonym for <code>EXEC | GROUP_EXEC | OTHERS_EXEC</code></const>
+      <const name="EVERYONE_READ">Synonym for <code>READ | GROUP_READ | OTHERS_READ</code></const>
+      <const name="EVERYONE_READWRITE">Synonym for <code>EVERYONE_READ | EVERYONE_WRITE</code></const>
+      <const name="EVERYONE_WRITE">Synonym for <code>WRITE | GROUP_WRITE | OTHERS_WRITE</code></const>
       <const name="EXEC">User/Owner can execute.</const>
-      <const name="GROUP">Synonym for GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</const>
+      <const name="GROUP">Synonym for <code>GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</code></const>
       <const name="GROUPID">Allows executables to run with a set group id.</const>
       <const name="GROUP_DELETE">Group members can delete.</const>
       <const name="GROUP_EXEC">Group members can execute.</const>
@@ -543,18 +543,18 @@ if (!error) {
       <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
       <const name="NETWORK">File is hosted on another machine.</const>
       <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
-      <const name="OTHERS">Synonym for OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</const>
+      <const name="OTHERS">Synonym for <code>OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</code></const>
       <const name="OTHERS_DELETE">Others can delete.</const>
       <const name="OTHERS_EXEC">Others can execute.</const>
       <const name="OTHERS_READ">Others can read.</const>
       <const name="OTHERS_WRITE">Others can write.</const>
       <const name="PASSWORD">File is password protected.</const>
       <const name="READ">User/Owner has read access.  This will not allow compiled code to be executed.</const>
-      <const name="USER">Synonym for READ | WRITE | EXEC | DELETE</const>
+      <const name="USER">Synonym for <code>READ | WRITE | EXEC | DELETE</code></const>
       <const name="USERID">Allows executables to run with a set user id.</const>
-      <const name="USER_EXEC">Synonym for EXEC</const>
-      <const name="USER_READ">Synonym for READ</const>
-      <const name="USER_WRITE">Synonym for WRITE</const>
+      <const name="USER_EXEC">Synonym for <code>EXEC</code></const>
+      <const name="USER_READ">Synonym for <code>READ</code></const>
+      <const name="USER_WRITE">Synonym for <code>WRITE</code></const>
       <const name="WRITE">User/Owner can write.</const>
     </constants>
 
@@ -572,11 +572,11 @@ if (!error) {
       <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
+      <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see <code>PERMIT</code> flags.</field>
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
       <field name="OthersID" type="LONG">Original others ID</field>
-      <field name="Flags" type="FL" lookup="FL">FL flags</field>
+      <field name="Flags" type="FL" lookup="FL"><code>FL</code> flags</field>
       <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
     </struct>

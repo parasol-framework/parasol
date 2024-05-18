@@ -26,7 +26,7 @@ flags("DEVICE", { bits=64, module="Core" },
     "TEMPORARY: All storage is temporary",
     "MEMORY: Device is RAM, ROM, WORM, NVRAM, flashdisk or other form of memory.  Does not guarantee a fast connection as it could be over a slow USB 1.1 connection for example",
     "MODEM: Device is a modem.",
-    "USB: Removable USB storage device.  May be further qualified by DEVICE_HARDDISK, DEVICE_FLOPPYDISK etc",
+    "USB: Removable USB storage device.  May be further qualified by `HARDDISK`, `FLOPPYDISK` etc",
     "PRINTER_3D: Device is a three dimensional printer.",
     "SCANNER_3D: Device is a three dimensional scanner.")
 
@@ -60,7 +60,7 @@ flags("PERMIT", { comment="Permission flags", module="Core" },
     "READ: User/Owner has read access.  This will not allow compiled code to be executed.",
     "WRITE: User/Owner can write.",
     "EXEC: User/Owner can execute.",
-    "DELETE: Owner can delete.  If the file system does not support this, deletion is enabled via the WRITE flag.",
+    "DELETE: Owner can delete.  If the file system does not support this, deletion is enabled via the `WRITE` flag.",
     "GROUP_READ: Group members can read.",
     "GROUP_WRITE: Group members can write.",
     "GROUP_EXEC: Group members can execute.",
@@ -126,7 +126,7 @@ flags("KQ", { comment="Special qualifier flags", module="Core" },
 )
 
 flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.", module="Core" },
-    "MANAGED: Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.",
+    "MANAGED: Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a `ResourceManager` structure, which is included as part of the block's declared Size.  The `Free()` callback will be called when the block is removed.",
     "VIDEO: The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.",
     "TEXTURE: The memory space is reserved by a video driver for hosting texture graphics.",
     "AUDIO: The memory space is reserved by an audio device such as a sound card.",
@@ -140,7 +140,7 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     "EXCLUSIVE: Internal - Used for lock management.",
     "DELETE: Internal - The memory block is marked for deletion.",
     "NO_BLOCK|NO_BLOCKING: Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.",
-    { DATA          = "0: The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM." },
+    { DATA          = "0: The default type, `DATA`, is used to indicate a standard memory allocation from system RAM." },
     { READ          = "0x00010000: The memory is explicitly marked as readable." },
     { WRITE         = "0x00020000: The memory is explicitly marked as writeable." },
     { NO_CLEAR      = "0x00040000: Do not clear the memory on allocation (saves time)." },
@@ -214,8 +214,8 @@ enum("JET", { type="int", start=1, comment="JET constants are documented in GetI
     "RIGHT_BUMPER_2: Gamepad right-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.",
     "ANALOG_XY: Position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.",
     "ANALOG_Z: 3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.",
-    "ANALOG2_XY: As for ANALOG_XY, this type covers a second analog stick if present.",
-    "ANALOG2_Z: As for ANALOG_Z, this type covers a second analog stick if present.",
+    "ANALOG2_XY: As for `ANALOG_XY`, this type covers a second analog stick if present.",
+    "ANALOG2_Z: As for `ANALOG_Z`, this type covers a second analog stick if present.",
     "WHEEL: Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.",
     "WHEEL_TILT: Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0",
     "PEN_TILT_XY: For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.",
@@ -243,32 +243,32 @@ flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   { STRING     = "0x00800000: Pointer to a string." },
   { WORD       = "0x00400000: 16 bit integer." },
   { SCALED     = "0x00200000: Supplementary, indicates a float value for multiplicative scaling." },
-  { RGB        = "0x00080000: Supplementary, if a long type then format is 0xAARRGGBB, if pointer then refers to an RGB structure." },
+  { RGB        = "0x00080000: Supplementary, if a long type then format is `0xAARRGGBB`, if pointer then refers to an RGB structure." },
   { UNSIGNED   = "0x00040000: Supplementary, integer value is unsigned." },
   { SYNONYM    = "0x00020000: CLASSDEF Use to declare fields that duplicate the functionality of another field." },
   { SYSTEM     = "0x00010000: CLASSDEF System, internal and private fields." },
   { CUSTOM     =  0x00008000 },
-  { CPP        = "0x00004000: Use the C++ variant of the indicated type, e.g. ARRAY is a std::vector." },
+  { CPP        = "0x00004000: Use the C++ variant of the indicated type, e.g. `ARRAY` is a `std::vector`." },
   { RESOURCE   = "0x00002000: The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid." },
-  { ARRAY      = "0x00001000: Indicates an array of values.  Follow with ARRAYSIZE if used in a function." },
+  { ARRAY      = "0x00001000: Indicates an array of values.  Follow with `ARRAYSIZE` if used in a function." },
   { INIT       = "0x00000400: CLASSDEF" },
   { WRITE      = "0x00000200: CLASSDEF" },
   { READ       = "0x00000100: CLASSDEF" },
   { LOOKUP     = "0x00000080: CLASSDEF" },
   { FLAGS      = "0x00000040: CLASSDEF" },
-  { ALLOC      = "0x00000020: CLASSDEF Indicates the returned value is a dynamic allocation that needs to be manually freed (by default is a memory pointer, can be an object if combined with FD_OBJECT)" },
-  { STRUCT     = "0x00000010: Supplementary, defines the field as a structure reference.  MUST be combined with FD_POINTER.  If used in a class, it is possible to name the structure definition in field->Arg" },
+  { ALLOC      = "0x00000020: CLASSDEF Indicates the returned value is a dynamic allocation that needs to be manually freed (by default is a memory pointer, can be an object if combined with `FD_OBJECT`)" },
+  { STRUCT     = "0x00000010: Supplementary, defines the field as a structure reference.  MUST be combined with `FD_POINTER`.  If used in a class, it is possible to name the structure definition in field->Arg" },
   { VIRTUAL    = "0x00000008: CLASSDEF Ensures that the field has no physical representation in the structure." },
   { REQUIRED   = "0x00000004: CLASSDEF The field must be defined by the client prior to object initialisation." },
   { INTEGRAL   = "0x00000002: CLASSDEF Pointer to an object that is integral to the class" },
   { OBJECT     = "0x00000001: Supplementary, can be used with longs (for IDs) or pointers" },
   { ERROR      = "0x00000800: FUNCDEF" },
-  { TAGS       = "0x00000400: FUNCDEF Overrides FD_INIT" },
-  { BUFFER     = "0x00000200: FUNCDEF Overrides FD_WRITE.  Indicates a buffer that can be filled with data by the function if paired with RESULT; must be paired with BUFSIZE in second argument." },
-  { RESULT     = "0x00000100: FUNCDEF Overrides FD_READ" },
-  { BUFSIZE    = "0x00000080: FUNCDEF Overrides FD_LOOKUP.  Pair with BUFFER to indicate the byte size of the buffer memory." },
-  { ARRAYSIZE  = "0x00000080: FUNCDEF Overrides FD_LOOKUP.  Pair with ARRAY to indicate total elements in the array.  It is preferred that any null terminator is not counted.  If ARRAYSIZE not specified, ARRAY must be null-terminated." },
-  { VARTAGS    = "0x00000040: FUNCDEF Overrides FD_FLAGS.  Use for 64-bit taglists that require value definitions, e.g. TDOUBLE, TLONG etc." },
+  { TAGS       = "0x00000400: FUNCDEF Overrides `INIT`" },
+  { BUFFER     = "0x00000200: FUNCDEF Overrides `WRITE`.  Indicates a buffer that can be filled with data by the function if paired with `RESULT`; must be paired with `BUFSIZE` in second argument." },
+  { RESULT     = "0x00000100: FUNCDEF Overrides `READ`" },
+  { BUFSIZE    = "0x00000080: FUNCDEF Overrides `LOOKUP`.  Pair with `BUFFER` to indicate the byte size of the buffer memory." },
+  { ARRAYSIZE  = "0x00000080: FUNCDEF Overrides `LOOKUP`.  Pair with `ARRAY` to indicate total elements in the array.  It is preferred that any null terminator is not counted.  If `ARRAYSIZE` not specified, `ARRAY` must be null-terminated." },
+  { VARTAGS    = "0x00000040: FUNCDEF Overrides `FLAGS`.  Use for 64-bit taglists that require value definitions, e.g. `TDOUBLE`, `TLONG` etc." },
   { VOLATILE   = "0x00000000: [Not yet allocated a bit]  Used on result pointers, usually strings, to indicate that the consecutive reads will overwrite the content of previous return values.  This indicates to scripting languages to make a copy of the data before the next interaction with the object." },
   { PRIVATE       = "SYSTEM" },
   { STR           = "STRING" },
@@ -278,7 +278,7 @@ flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   { FUNCTIONPTR   = "PTR|FUNCTION" },
   { OBJECTPTR     = "PTR|OBJECT" },
   { OBJECTID      = "LONG|OBJECT" },
-  { PTRBUFFER     = "PTR|BUFFER: The next argument should be LONG|BUFSIZE" },
+  { PTRBUFFER     = "PTR|BUFFER: The next argument should be `LONG|BUFSIZE`" },
   { STRRESULT     = "STR|RESULT" },
   { PTRRESULT     = "PTR|RESULT: Use for pointer-based value results only" },
   { LONGRESULT    = "LONG|RESULT: For actions and methods" },
@@ -306,7 +306,7 @@ flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
     double Y          # Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
     oid DeviceID      # The hardware device that this event originated from
     int(JET) Type     # JET constant that describes the event
-    int(JTYPE) Flags  # Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
+    int(JTYPE) Flags  # Broad descriptors for the given `Type` (see `JTYPE` flags).  Automatically defined when delivered to the pointer object
     int(JTYPE) Mask   # Mask to use for checking against subscribers
   ]])
 
@@ -323,16 +323,16 @@ flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   struct("dcKeyEntry", { comment="Data feed structure for Keypress", module="Core" }, [[
     int   Flags      # Shift/Control/CapsLock...
     int   Value      # ASCII value of the key A/B/C/D...
-    large Timestamp  # PreciseTime() at which the keypress was recorded
+    large Timestamp  # ~Core.PreciseTime() at which the keypress was recorded
     int   Unicode    # Unicode value for pre-calculated key translations
   ]])
 
   struct("dcDeviceInput", { module="Core" }, [[
     double(2) Values  # The value(s) associated with the Type
-    large  Timestamp  # PreciseTime() of the recorded input
+    large  Timestamp  # ~Core.PreciseTime() of the recorded input
     oid    DeviceID   # The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-    int(JTYPE) Flags  # Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
-    int(JET) Type     # JET constant
+    int(JTYPE) Flags  # Broad descriptors for the given `Type`.  Automatically defined when delivered to the pointer object
+    int(JET) Type     # `JET` constant
   ]])
 
   struct("DateTime", { comment="Generic structure for date-time management.", module="Core" }, [[

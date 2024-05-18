@@ -399,7 +399,7 @@ AccessObject: The source configuration object could not be accessed.
 static ERR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
    if ((!Args) or (!Args->Source)) return ERR::NullArgs;
-   if (Args->Source->Class->ClassID != ID_CONFIG) return ERR::Args;
+   if (Args->Source->classID() != ID_CONFIG) return ERR::Args;
 
    auto src = (extConfig *)Args->Source;
    merge_groups(Self->Groups[0], src->Groups[0]);
@@ -734,14 +734,7 @@ Here are some examples:
 <li>Name = Parasol</li>
 </>
 
-You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this
-use the exclamation character as shown in these examples:
-
-<list type="unsorted">
-<li>!Group = Sun, Light</li>
-<li>!Path = documents:</li>
-<li>!Name = Parasol</li>
-</>
+Filters can be inversed by prefixing the key with the `!` character.
 
 To create a filter based on group names, refer to the #GroupFilter field.
 

@@ -109,7 +109,7 @@ CSTRING get_name(OBJECTPTR Vector)
 {
    if (!Vector) return "NULL";
 
-   switch(Vector->Class->ClassID) {
+   switch(Vector->classID()) {
       case ID_VECTORCLIP:      return "Clip";
       case ID_VECTORRECTANGLE: return "Rectangle";
       case ID_VECTORELLIPSE:   return "Ellipse";
@@ -122,7 +122,7 @@ CSTRING get_name(OBJECTPTR Vector)
       case ID_VECTORWAVE:      return "Wave";
    }
 
-   switch(Vector->Class->BaseClassID) {
+   switch(Vector->baseClassID()) {
       case ID_VECTORCOLOUR:    return "Colour";
       case ID_VECTORFILTER:    return "Filter";
       case ID_VECTORGRADIENT:  return "Gradient";
@@ -346,7 +346,7 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
    for (; Vector; Vector=(extVector *)Vector->Next) {
       if (Vector->dirty()) gen_vector_path(Vector);
 
-      if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+      if (Vector->classID() != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          if (Vector->BasePath.total_vertices()) {
             DOUBLE stroke = 0;
             if (IncludeTransforms) {

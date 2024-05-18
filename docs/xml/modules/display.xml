@@ -1096,7 +1096,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
       <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
       <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
-      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
+      <const name="INIT_ONLY">Synonym for <code>HOST | TRANSPARENT | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</code></const>
       <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
       <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
       <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
@@ -1104,7 +1104,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
       <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
-      <const name="READ_ONLY">Synonym for HAS_FOCUS | CURSOR | AFTER_COPY</const>
+      <const name="READ_ONLY">Synonym for <code>HAS_FOCUS | CURSOR | AFTER_COPY</code></const>
       <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
       <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
       <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
@@ -1112,7 +1112,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
       <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
       <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
-      <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
+      <const name="VOLATILE">Synonym for <code>PRECOPY | AFTER_COPY | CURSOR</code></const>
       <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
     </constants>
 
@@ -1136,7 +1136,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
       <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
       <const name="POWERSAVE">Power saving is active (read-only).</const>
-      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
+      <const name="READ_ONLY">Synonym for <code>MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</code></const>
       <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
     </constants>

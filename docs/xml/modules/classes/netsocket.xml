@@ -15,22 +15,22 @@
     <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The NetSocket class provides a simple way of managing TCP/IP socket communications.  Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
-<p>The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily through callback fields - connection alerts are managed by <field>Feedback</field>, incoming data is received through <field>Incoming</field> and readiness for outgoing data is supported by <field>Outgoing</field>.</p>
+<p>The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily through callback fields - connection alerts are managed by <fl>Feedback</fl>, incoming data is received through <fl>Incoming</fl> and readiness for outgoing data is supported by <fl>Outgoing</fl>.</p>
 <header>Client-Server Connections</header>
 <p>After a connection has been established, data may be written using any of the following methods:</p>
 <list type="unsorted">
 <li>Write directly to the socket with either the <action>Write</action> action or <method>WriteMsg</method> method.</li>
-<li>Subscribe to the socket by referring to a routine in the <field>Outgoing</field> field.  The routine will be called to
+<li>Subscribe to the socket by referring to a routine in the <fl>Outgoing</fl> field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </list>
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <header>Server-Client Connections</header>
-<p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
-<p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
-<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
-<p>Information on all active connections can be read from the <field>Clients</field> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
+<p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <fl>Port</fl> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
+<p>When a new connection is detected, the <fl>Feedback</fl> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
+<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <fl>Feedback</fl> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
+<p>Information on all active connections can be read from the <fl>Clients</fl> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
 <p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
-<p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
+<p>All data that is received from client sockets will be passed to the <fl>Incoming</fl> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
     <source>
       <file path="netsocket/">netsocket.cpp</file>
     </source>
@@ -53,7 +53,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Read</name>
       <comment>Read information from the socket.</comment>
       <description>
-<p>The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure and the socket connection will be closed when the action returns.</p>
+<p>The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure and the socket connection will be closed when the action returns.</p>
       </description>
       <result>
         <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
@@ -67,7 +67,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Write</name>
       <comment>Writes data to the socket.</comment>
       <description>
-<p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <field>MsgLimit</field> field setting.</p>
+<p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <fl>MsgLimit</fl> field setting.</p>
 <p>Do not use this action if in server mode.  Instead, write to the <class name="ClientSocket">ClientSocket</class> object that will receive the data.</p>
 <p>It is possible to write to a socket in advance of any connection being made. The netsocket will queue the data and automatically send it once the first connection has been made.</p>
       </description>
@@ -81,12 +81,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <comment>Connects a NetSocket to an address.</comment>
       <prototype>ERR nsConnect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
       <input>
-        <param type="CSTRING" name="Address">String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")</param>
+        <param type="CSTRING" name="Address">String containing either a domain name (e.g. <code>www.google.com</code>) or an IP address (e.g. <code>123.123.123.123</code>)</param>
         <param type="LONG" name="Port">Remote port to connect to.</param>
       </input>
       <description>
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
-<p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <field>State</field> field to respond to changes to the connection state.</p>
+<p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <fl>State</fl> field to respond to changes to the connection state.</p>
 <p>Pre-Condition: Must be in a connection state of <code>NTC::DISCONNECTED</code></p>
 <p>Post-Condition: If this method returns <code>ERR::Okay</code>, will be in state <code>NTC::CONNECTING</code>.</p>
       </description>
@@ -94,7 +94,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
         <error code="Failed">The connect failed for some other reason.</error>
         <error code="Args">Address was NULL, or Port was not in the required range.</error>
-        <error code="InvalidState">The NetSocket was not in the state NTC::DISCONNECTED.</error>
+        <error code="InvalidState">The NetSocket was not in the state <code>NTC::DISCONNECTED</code>.</error>
         <error code="HostNotFound">Host name resolution failed.</error>
       </result>
     </method>
@@ -107,7 +107,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
-<p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <field>Feedback</field> is defined, a <code>DISCONNECTED</code> state message will also be issued for each socket connection.</p>
+<p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued for each socket connection.</p>
 <p>If only one socket connection needs to be disconnected, please use <method>DisconnectSocket</method>.</p>
       </description>
       <result>
@@ -124,7 +124,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <param type="objClientSocket *" name="Socket">The client socket to be disconnected.</param>
       </input>
       <description>
-<p>This method will disconnect a socket connection for a given client.  If <field>Feedback</field> is defined, a <code>DISCONNECTED</code> state message will also be issued.</p>
+<p>This method will disconnect a socket connection for a given client.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -140,7 +140,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <param type="struct IPAddress *" name="Address">Pointer to an IPAddress structure which will be set to the result of the query if successful.</param>
       </input>
       <description>
-<p>This method performs the POSIX equivalent of getsockname().  It returns the current address to which the NetSocket is bound.</p>
+<p>This method performs the POSIX equivalent of <code>getsockname()</code>.  It returns the current address to which the NetSocket is bound.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -160,13 +160,13 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
       </input>
       <description>
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the WriteMsg method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
+<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
 <p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
       </description>
       <result>
         <error code="Okay">A complete message has been read and indicated in the result parameters.</error>
         <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
-        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</error>
+        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the <code>Length</code> parameter.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NoData">No new data was found for the socket.</error>
         <error code="AllocMemory">A message buffer could not be allocated.</error>
@@ -252,9 +252,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <type name="ERR::Okay">The connection was closed gracefully.  All data sent by the peer has been received.</type>
 <type name="ERR::Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</type>
 <type name="ERR::TimeOut">The connect operation timed out.</type>
-<type name="ERR::ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</type>
-<type name="ERR::NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</type>
-<type name="ERR::HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to ERR::Failed.</type>
+<type name="ERR::ConnectionRefused">The connection was refused by the remote host.  Note: This error will not occur on Windows, and instead the Error field will be set to <code>ERR::Failed</code>.</type>
+<type name="ERR::NetworkUnreachable">The network was unreachable.  Note: This error will not occur on Windows, and instead the Error field will be set to <code>ERR::Failed</code>.</type>
+<type name="ERR::HostUnreachable">No path to host was found.  Note: This error will not occur on Windows, and instead the Error field will be set to <code>ERR::Failed</code>.</type>
 <type name="ERR::Failed">An unspecified error occurred.</type>
 </types>
       </description>
@@ -266,9 +266,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Refer to a custom function in this field and it will be called whenever the <field>State</field> of the socket (such as connection or disconnection) changes.</p>
+<p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
 <p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, LONG State)</code></p>
-<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <field>State</field> field.</p>
+<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
       </description>
     </field>
 
@@ -290,7 +290,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
 <p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
-<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns ERR::Terminate then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
 
@@ -320,7 +320,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
 <p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.</p>
-<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns ERR::Terminate then the Outgoing field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns <code>ERR::Terminate</code> then the Outgoing field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
 <p>The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).</p>
       </description>
     </field>

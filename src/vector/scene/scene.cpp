@@ -169,15 +169,15 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    OBJECTPTR def = Args->Def;
 
-   if ((def->Class->ClassID IS ID_VECTORSCENE) or
-       (def->Class->BaseClassID IS ID_VECTOR) or
-       (def->Class->ClassID IS ID_VECTORGRADIENT) or
-       (def->Class->ClassID IS ID_VECTORIMAGE) or
-       (def->Class->ClassID IS ID_VECTORPATH) or
-       (def->Class->ClassID IS ID_VECTORPATTERN) or
-       (def->Class->BaseClassID IS ID_VECTORFILTER) or
-       (def->Class->ClassID IS ID_VECTORTRANSITION) or
-       (def->Class->ClassID IS ID_VECTORCLIP)) {
+   if ((def->classID() IS ID_VECTORSCENE) or
+       (def->baseClassID() IS ID_VECTOR) or
+       (def->classID() IS ID_VECTORGRADIENT) or
+       (def->classID() IS ID_VECTORIMAGE) or
+       (def->classID() IS ID_VECTORPATH) or
+       (def->classID() IS ID_VECTORPATTERN) or
+       (def->baseClassID() IS ID_VECTORFILTER) or
+       (def->classID() IS ID_VECTORTRANSITION) or
+       (def->classID() IS ID_VECTORCLIP)) {
       // The use of this object as a definition is valid.
    }
    else return log.warning(ERR::InvalidObject);

@@ -40,7 +40,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled, then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled, then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <fl>Units</fl> setting.</p>
       </description>
     </field>
 
@@ -60,7 +60,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>APTR</type>
       <description>
-<p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.</p>
+<p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a <st>VectorMatrix</st> structure, and are linked in the order in which they were applied to the pattern.</p>
 <struct lookup="VectorMatrix"/>
       </description>
     </field>
@@ -81,7 +81,7 @@
       <access read="R">Read</access>
       <type class="VectorScene">*VectorScene</type>
       <description>
-<p>The VectorPattern class allocates a <class name="VectorScene">VectorScene</class> in this field and inherits its functionality.  In addition, a <class name="VectorViewport">VectorViewport</class> class will be assigned to the scene and is referenced in the <field>Viewport</field> field for managing the vectors that will be rendered.</p>
+<p>The VectorPattern class allocates a <class name="VectorScene">VectorScene</class> in this field and inherits its functionality.  In addition, a <class name="VectorViewport">VectorViewport</class> class will be assigned to the scene and is referenced in the <fl>Viewport</fl> field for managing the vectors that will be rendered.</p>
       </description>
     </field>
 
@@ -112,7 +112,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE, which allows the pattern image to be persistently cached.</p>
+<p>This field declares the coordinate system that is used for values in the <fl>X</fl> and <fl>Y</fl> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE, which allows the pattern image to be persistently cached.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -133,7 +133,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled, the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is scaled, the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <fl>Units</fl> setting.</p>
       </description>
     </field>
 

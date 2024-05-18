@@ -52,7 +52,7 @@
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>This read-only field indicates the total number of stops that have been defined in the <field>Stops</field> array.</p>
+<p>This read-only field indicates the total number of stops that have been defined in the <fl>Stops</fl> array.</p>
       </description>
     </field>
 

@@ -1,5 +1,5 @@
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ArchiveName: Apply an archive name to the object, allowing it to be used as a named object in the file system.
@@ -8,7 +8,7 @@ Setting the ArchiveName will allow a Compression object's files to be accessible
 This is achieved through use of the `archive:` volume, which is a file system extension included in the Compression
 module.  Please refer to the @FileArchive class for further information on this feature.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_ArchiveName(extCompression *Self, CSTRING Value)
 {
@@ -21,7 +21,7 @@ static ERR SET_ArchiveName(extCompression *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 CompressionLevel: The compression level to use when compressing data.
@@ -30,7 +30,7 @@ The level of compression that is used when compressing data is determined by the
 between 0 for no compression and 100 for maximum compression.  The speed of compression decreases with higher values,
 but the compression ratio will improve.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_CompressionLevel(extCompression *Self, LONG Value)
 {
@@ -40,7 +40,7 @@ static ERR SET_CompressionLevel(extCompression *Self, LONG Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Feedback: Provides feedback during the de/compression process.
@@ -52,13 +52,13 @@ For object classes, the object that initiated the de/compression process can be 
 ~Core.CurrentContext() function.
 
 During the processing of multiple files, any individual file can be skipped by returning `ERR::Skip` and the entire
-process can be cancelled by returning ERR::Terminate.  All other error codes are ignored.
+process can be cancelled by returning `ERR::Terminate`.  All other error codes are ignored.
 
-The &CompressionFeedback structure consists of the following fields:
+The !CompressionFeedback structure consists of the following fields:
 
-&CompressionFeedback
+!CompressionFeedback
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR GET_Feedback(extCompression *Self, FUNCTION **Value)
 {
@@ -82,7 +82,7 @@ static ERR SET_Feedback(extCompression *Self, FUNCTION *Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -92,7 +92,7 @@ Header: Private.  The first 32 bytes of a compression object's file header.
 
 This field is only of use to sub-classes that need to examine the first 32 bytes of a compressed file's header.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR GET_Header(extCompression *Self, UBYTE **Header)
 {
@@ -100,14 +100,14 @@ static ERR GET_Header(extCompression *Self, UBYTE **Header)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Path: Set if the compressed data originates from, or is to be saved to a file source.
 
 To load or create a new file archive, set the Path field to the path of that file.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR GET_Path(extCompression *Self, CSTRING *Value)
 {
@@ -127,7 +127,7 @@ static ERR SET_Path(extCompression *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MinOutputSize: Indicates the minimum output buffer size that will be needed during de/compression.
@@ -139,7 +139,7 @@ failing to allocate enough buffer space is extremely likely to result in overflo
 -FIELD-
 Output: Resulting messages will be sent to the object referred to in this field.
 
-If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is
+If this field is set to a valid object ID, text messages will be sent to that object when the compression object is
 used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.
 
 The target object must be capable of processing incoming text from data channels.
@@ -154,7 +154,7 @@ It is recommended that the Password is set before or immediately after initialis
 of an existing archive, create a new compression object with the desired password and transfer the existing data
 across to it.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR GET_Password(extCompression *Self, CSTRING *Value)
 {
@@ -173,7 +173,7 @@ static ERR SET_Password(extCompression *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Permissions: Default permissions for decompressed files are defined here.
@@ -184,7 +184,7 @@ over-ridden by setting the Permissions field.  Valid permission flags are outlin
 -FIELD-
 Size: Indicates the size of the source archive, in bytes.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR GET_Size(extCompression *Self, LARGE *Value)
 {
@@ -193,7 +193,7 @@ static ERR GET_Size(extCompression *Self, LARGE *Value)
    else return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 SegmentSize: Private. Splits the compressed file if it surpasses a set byte limit.
@@ -208,7 +208,7 @@ If you would like to know the total number of bytes that have been compressed in
 field.  This will tell you the maximum byte count used if every file were to be decompressed.  Header and tail
 information that may identify the compressed data is not included in the total.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR GET_UncompressedSize(extCompression *Self, LARGE *Value)
 {
@@ -220,7 +220,7 @@ static ERR GET_UncompressedSize(extCompression *Self, LARGE *Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WindowBits: Special option for certain compression formats.
@@ -234,7 +234,7 @@ the algorithm will not output the traditional zlib header information.
 To support GZIP decompression, please set the WindowBits value to 47.
 -END-
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_WindowBits(extCompression *Self, LONG Value)
 {

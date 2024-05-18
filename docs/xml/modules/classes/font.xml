@@ -19,8 +19,8 @@
 <p>The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format.  Truetype fonts are not supported (refer to the <class name="VectorText">VectorText</class> class for this feature).</p>
 <p>Bitmap fonts must be stored in the <code>fonts:fixed/</code> directory in order to be recognised.  The process of font installation and file management is managed by functions supplied in the Font module.</p>
 <p>The Font class includes full support for the unicode character set through its support for UTF-8.  This gives you the added benefit of being able to support international character sets with ease, but you must be careful not to use character codes above #127 without being sure that they follow UTF-8 guidelines.  Find out more about UTF-8 at this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.</p>
-<p>Initialisation of a new font object can be as simple as declaring its <field>Point</field> size and <field>Face</field> name.  Font objects can be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles of the same font, create a font object for every style that requires support.  Basic settings such as colour, the font string and text positioning are not affected by these limitations.</p>
-<p>To draw a font string to a Bitmap object, start by setting the <field>Bitmap</field> and <field>String</field> fields.  The <field>X</field> and <field>Y</field> fields determine string positioning and you can also use the <field>Align</field> field to position a string to the right or center of the surface area.</p>
+<p>Initialisation of a new font object can be as simple as declaring its <fl>Point</fl> size and <fl>Face</fl> name.  Font objects can be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles of the same font, create a font object for every style that requires support.  Basic settings such as colour, the font string and text positioning are not affected by these limitations.</p>
+<p>To draw a font string to a Bitmap object, start by setting the <fl>Bitmap</fl> and <fl>String</fl> fields.  The <fl>X</fl> and <fl>Y</fl> fields determine string positioning and you can also use the <fl>Align</fl> field to position a string to the right or center of the surface area.</p>
 <p>To clarify the terminology used in this documentation, please note the definitions for the following terms:</p>
 <list type="unsorted">
 <li>'Point' determines the size of a font.  The value is relative only to other point sizes of the same font face, i.e. two faces at the same point size are not necessarily the same height.</li>
@@ -40,7 +40,7 @@
       <name>Draw</name>
       <comment>Draws a font to a Bitmap.</comment>
       <description>
-<p>Draws a font to a target Bitmap, starting at the coordinates of <field>X</field> and <field>Y</field>, using the characters in the font <field>String</field>.</p>
+<p>Draws a font to a target Bitmap, starting at the coordinates of <fl>X</fl> and <fl>Y</fl>, using the characters in the font <fl>String</fl>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -68,7 +68,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>If the <code>VERTICAL</code> or <code>TOP</code> alignment options are used in the <field>Align</field> field, the AlignHeight should be set so that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target <field>Bitmap</field>'s height will be used when computing alignment.</p>
+<p>If the <code>VERTICAL</code> or <code>TOP</code> alignment options are used in the <fl>Align</fl> field, the AlignHeight should be set so that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target <fl>Bitmap</fl>'s height will be used when computing alignment.</p>
       </description>
     </field>
 
@@ -78,7 +78,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>If the <code>HORIZONTAL</code> or <code>RIGHT</code> alignment options are used in the <field>Align</field> field, the AlignWidth should be set so that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target <field>Bitmap</field>'s width will be used when computing alignment.</p>
+<p>If the <code>HORIZONTAL</code> or <code>RIGHT</code> alignment options are used in the <fl>Align</fl> field, the AlignWidth should be set so that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target <fl>Bitmap</fl>'s width will be used when computing alignment.</p>
       </description>
     </field>
 
@@ -88,7 +88,7 @@
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>The Ascent value reflects the total number of pixels above the baseline, including the <field>Leading</field> value.</p>
+<p>The Ascent value reflects the total number of pixels above the baseline, including the <fl>Leading</fl> value.</p>
       </description>
     </field>
 
@@ -122,7 +122,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The EndX and EndY fields reflect the final coordinate of the font <field>String</field>, following the most recent call to the <action>Draw</action> action.</p>
+<p>The EndX and EndY fields reflect the final coordinate of the font <fl>String</fl>, following the most recent call to the <action>Draw</action> action.</p>
       </description>
     </field>
 
@@ -132,7 +132,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The EndX and EndY fields reflect the final coordinate of the font <field>String</field>, following the most recent call to the <action>Draw</action> action.</p>
+<p>The EndX and EndY fields reflect the final coordinate of the font <fl>String</fl>, following the most recent call to the <action>Draw</action> action.</p>
       </description>
     </field>
 
@@ -200,7 +200,7 @@ Charter:120%::255,128,255
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>The point size of the font is expressed in this field as a pixel measurement.  It does not not include the leading value (refer to <field>Ascent</field> if leading is required).</p>
+<p>The point size of the font is expressed in this field as a pixel measurement.  It does not not include the leading value (refer to <fl>Ascent</fl> if leading is required).</p>
 <p>The height is calculated on initialisation and can be read at any time.</p>
       </description>
     </field>
@@ -326,7 +326,7 @@ Charter:120%::255,128,255
       <type>INT</type>
       <description>
 <p>The TabSize value controls the interval between tabs, measured in characters.</p>
-<p>The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font <field>String</field>.</p>
+<p>The default tab size is 8 and the TabSize only comes into effect when tab characters are used in the font <fl>String</fl>.</p>
       </description>
     </field>
 

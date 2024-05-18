@@ -3059,7 +3059,7 @@ void parser::tag_object(XMLTag &Tag)
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
-                        if (objxml->Class->ClassID IS ID_XML) {
+                        if (objxml->classID() IS ID_XML) {
                            if (!xmlSerialise(objxml, 0, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
                               acDataXML(object, content.c_str());
                            }
@@ -3128,14 +3128,14 @@ void parser::tag_object(XMLTag &Tag)
          }
          else {
             escobj.object_id = object->UID;
-            escobj.class_id  = object->Class->ClassID;
+            escobj.class_id  = object->classID();
             escobj.in_line = false;
             if (Self->CurrentObject) escobj.owned = true;
 
             // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
             // This section is intended to confirm the graphical state of the object.
 
-            if (object->Class->ClassID IS ID_VECTOR) {
+            if (object->classID() IS ID_VECTOR) {
                //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
                //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Inline = true;
             }
@@ -3144,7 +3144,7 @@ void parser::tag_object(XMLTag &Tag)
             m_stream->emplace(Index, escobj);
 
             if (Self->ObjectCache) {
-               switch (object->Class->ClassID) {
+               switch (object->classID()) {
                   // The following class types can be cached
                   case ID_XML:
                   case ID_FILE:

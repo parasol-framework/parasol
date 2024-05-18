@@ -10,7 +10,7 @@ void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVecto
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
    for (auto node=Vector; node; node=(extVector *)node->Next) {
-      if (node->Class->ClassID IS ID_VECTORVIEWPORT) {
+      if (node->classID() IS ID_VECTORVIEWPORT) {
          auto vp = (extVectorViewport *)node;
 
          if (vp->dirty()) gen_vector_path(vp);

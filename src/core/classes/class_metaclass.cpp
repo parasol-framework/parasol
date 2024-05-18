@@ -17,9 +17,9 @@ A number of functions are available in the Core for the purpose of class managem
 of MetaClass objects, which you can search by calling the ~FindClass() function.  The ~CheckAction() function
 provides a way of checking if a particular pre-defined action is supported by a class.
 
-Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside
-executable programs.  For information on the creation of classes, refer to the Class Development Guide for a
-complete run-down on class development.
+Classes are typically declared in modules, but declaring a new class within an application is feasible also.
+
+Further discussion on classes and their technical aspects can be found in the Parasol Wiki.
 
 -END-
 
@@ -196,14 +196,16 @@ void init_metaclass(void)
 -METHOD-
 FindField: Search a class definition for a specific field.
 
-This method checks if a class has defined a given field by scanning its blueprint for a matching ID.
+This method checks if a class has defined a given field by scanning its blueprint for a matching `ID`.  If found,
+a direct pointer to the `Field` struct will be returned to the client.
 
-If the field is present in an integral class, a reference to that class will be returned in the Source parameter.
+In some clases the field might not be present in the main class spec, but does appear in an integral class.  In that
+case, a reference to the class will be returned in the Source parameter.
 
 -INPUT-
 int ID: The field ID to search for.  Field names can be converted to ID's by using the ~StrHash() function.
 &struct(*Field) Field: Pointer to the field if discovered, otherwise NULL.
-&obj(MetaClass) Source: Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.
+&obj(MetaClass) Source: Pointer to the class that is associated with the `Field` (which can match the caller), or `NULL` if the field was not found.
 
 -RESULT-
 Okay
@@ -313,7 +315,7 @@ ERR CLASS_Init(extMetaClass *Self, APTR Void)
 
    auto ctx = tlContext;
    while (ctx != &glTopContext) {
-      if (ctx->object()->Class->ClassID IS ID_ROOTMODULE) {
+      if (ctx->object()->classID() IS ID_ROOTMODULE) {
          Self->Root = (RootModule *)ctx->object();
          break;
       }
@@ -711,7 +713,7 @@ static ERR GET_Objects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
       for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (object = (OBJECTPTR)mem.Address)) {
-            if (Self->Class->ClassID IS object->Class->ClassID) {
+            if (Self->classID() IS object->classID()) {
                objlist.push_back(object->UID);
             }
          }
@@ -1039,7 +1041,7 @@ static ERR OBJECT_GetClass(OBJECTPTR Self, extMetaClass **Value)
 
 static ERR OBJECT_GetClassID(OBJECTPTR Self, CLASSID *Value)
 {
-   *Value = Self->Class->ClassID;
+   *Value = Self->classID();
    return ERR::Okay;
 }
 

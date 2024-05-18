@@ -70,7 +70,7 @@
       <type>INT</type>
       <description>
 <p>Set the CharLimit field to limit the number of characters that can appear in the string.  The minimum possible value is 0 for no characters.  If the object is in edit mode then the user will be unable to extend the string beyond the limit.</p>
-<p>Note that it is valid for the <field>String</field> length to exceed the limit if set manually.  Only the display of the string characters will be affected by the CharLimit value.</p>
+<p>Note that it is valid for the <fl>String</fl> length to exceed the limit if set manually.  Only the display of the string characters will be affected by the CharLimit value.</p>
       </description>
     </field>
 
@@ -96,7 +96,7 @@
       <description>
 <p>If a single value is provided, it represents the new relative X coordinate for the current text position for rendering the glyphs corresponding to the first character within this element or any of its descendants.  The current text position is shifted along the x-axis of the current user coordinate system by the provided value before the first character's glyphs are rendered.</p>
 <p>If a series of values is provided, then the values represent incremental shifts along the x-axis for the current text position before rendering the glyphs corresponding to the first n characters within this element or any of its descendants. Thus, before the glyphs are rendered corresponding to each character, the current text position resulting from drawing the glyphs for the previous character within the current ‘text’ element is shifted along the X axis of the current user coordinate system by length.</p>
-<p>If more characters exist than values, then for each of these extra characters: (a) if an ancestor Text object specifies a relative X coordinate for the given character via a <field>DX</field> field, then the current text position is shifted along the x-axis of the current user coordinate system by that amount (nearest ancestor has precedence), else (b) no extra shift along the x-axis occurs.</p>
+<p>If more characters exist than values, then for each of these extra characters: (a) if an ancestor Text object specifies a relative X coordinate for the given character via a <fl>DX</fl> field, then the current text position is shifted along the x-axis of the current user coordinate system by that amount (nearest ancestor has precedence), else (b) no extra shift along the x-axis occurs.</p>
       </description>
     </field>
 
@@ -106,7 +106,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE []</type>
       <description>
-<p>This field follows the same rules described in <field>DX</field>.</p>
+<p>This field follows the same rules described in <fl>DX</fl>.</p>
       </description>
     </field>
 
@@ -136,7 +136,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>Use DisplaySize to retrieve the <field>FontSize</field> in actual display pixels, after DPI conversion has been taken into account. For example, if <field>FontSize</field> is set to <code>16</code> in a 96 DPI environment, the resulting value is <code>12</code> after performing the calculation <code>16 * 72 / 96</code>.</p>
+<p>Use DisplaySize to retrieve the <fl>FontSize</fl> in actual display pixels, after DPI conversion has been taken into account. For example, if <fl>FontSize</fl> is set to <code>16</code> in a 96 DPI environment, the resulting value is <code>12</code> after performing the calculation <code>16 * 72 / 96</code>.</p>
       </description>
     </field>
 
@@ -286,7 +286,7 @@
       <type>OBJECTID</type>
       <description>
 <p>This property enables word-wrapping in which the text will conform to the path of a <class name="Vector">Vector</class> shape.  Internally this is achieved by rendering the vector path as a mask and then fitting the text within the mask without crossing its boundaries.</p>
-<p>This feature is computationally expensive and the use of <field>InlineSize</field> is preferred if the text can be wrapped to a rectangular area.</p>
+<p>This feature is computationally expensive and the use of <fl>InlineSize</fl> is preferred if the text can be wrapped to a rectangular area.</p>
       </description>
     </field>
 
@@ -296,7 +296,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>OBJECTID</type>
       <description>
-<p>This property can be used in conjunction with <field>ShapeInside</field> to further restrict the content area that is available for word-wrapping.  It has no effect if <field>ShapeInside</field> is undefined.</p>
+<p>This property can be used in conjunction with <fl>ShapeInside</fl> to further restrict the content area that is available for word-wrapping.  It has no effect if <fl>ShapeInside</fl> is undefined.</p>
       </description>
     </field>
 
@@ -323,11 +323,11 @@
 
     <field>
       <name>TextWidth</name>
-      <comment>The pixel width of the widest line in the <field>String</field> field.</comment>
+      <comment>The pixel width of the widest line in the <fl>String</fl> field.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field will return the pixel width of the widest line in the <field>String</field> field.  The result is not modified by transforms.</p>
+<p>This field will return the pixel width of the widest line in the <fl>String</fl> field.  The result is not modified by transforms.</p>
       </description>
     </field>
 
@@ -345,7 +345,7 @@
       <type>INT</type>
       <description>
 <p>The weight value determines the level of boldness in the text.  A default value of 400 will render the text in its normal state.  Lower values between 100 to 300 render the text in a light format, while high values in the range of 400 - 900 result in boldness.</p>
-<p>Please note that setting the Weight will give it priority over the <field>FontStyle</field> value.</p>
+<p>Please note that setting the Weight will give it priority over the <fl>FontStyle</fl> value.</p>
       </description>
     </field>
 

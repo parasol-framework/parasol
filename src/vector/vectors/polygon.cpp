@@ -9,8 +9,8 @@ The VectorPolygon class provides support for three different types of vector:
 * Open polygons consisting of at least 3 points (a 'polyline' in SVG).
 * Single lines consisting of two points only (a 'line' in SVG).
 
-To create a polyline, set the #Closed field to FALSE (defaults to TRUE).  To create a line, set the Closed
-field to FALSE and set only two points (#X1,#Y1) and (#X2,#Y2)
+To create a polyline, set the #Closed field to FALSE (defaults to TRUE).  To create a line, set the #Closed
+field to `false` and set only two points (#X1,#Y1) and (#X2,#Y2)
 
 -END-
 
@@ -246,10 +246,10 @@ static ERR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 
 /*********************************************************************************************************************
 -FIELD-
-Closed: If TRUE, the polygon will be closed between the start and end points.
+Closed: If `true`, the polygon will be closed between the start and end points.
 
-Set the Closed field to TRUE to ensure that the polygon is closed between the start and end points.  This behaviour is
-the default.  If FALSE, the polygon will not be closed, which results in the equivalent of the SVG polyline type.
+Set the Closed field to `true` to ensure that the polygon is closed between the start and end points.  This behaviour is
+the default.  If `false`, the polygon will not be closed, which results in the equivalent of the SVG polyline type.
 
 *********************************************************************************************************************/
 
@@ -298,10 +298,10 @@ static ERR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
 -FIELD-
 PointsArray: A series of numbered pairs that define the polygon.
 
-The PointsArray field can be set with a &VectorPoint array that defines the shape of a polygon.  A minimum of two
-points is required for the shape to be valid.  The &VectorPoint structure consists of the following fields:
+The PointsArray field can be set with a !VectorPoint array that defines the shape of a polygon.  A minimum of two
+points is required for the shape to be valid.  The !VectorPoint structure consists of the following fields:
 
-&VectorPoint
+!VectorPoint
 
 *********************************************************************************************************************/
 

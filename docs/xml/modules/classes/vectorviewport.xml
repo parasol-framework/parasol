@@ -15,8 +15,8 @@
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
-<p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields will determine the position and clipping of the displayed content (the 'target area').  The <field>ViewX</field>, <field>ViewY</field>, <field>ViewWidth</field> and <field>ViewHeight</field> fields declare the viewbox ('source area') that will be sampled for the target.</p>
-<p>To configure the scaling and alignment method that is applied to the viewport content, set the <field>AspectRatio</field> field.</p></description>
+<p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields will determine the position and clipping of the displayed content (the 'target area').  The <fl>ViewX</fl>, <fl>ViewY</fl>, <fl>ViewWidth</fl> and <fl>ViewHeight</fl> fields declare the viewbox ('source area') that will be sampled for the target.</p>
+<p>To configure the scaling and alignment method that is applied to the viewport content, set the <fl>AspectRatio</fl> field.</p></description>
     <source>
       <file path="vectors/">viewport.cpp</file>
     </source>
@@ -124,8 +124,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. Altering the overflow state affects both the X and Y axis.  To set either axis independently, set <field>OverflowX</field> and <field>OverflowY</field>.</p>
-<p>If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
+<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. Altering the overflow state affects both the X and Y axis.  To set either axis independently, set <fl>OverflowX</fl> and <fl>OverflowY</fl>.</p>
+<p>If the viewport's <fl>AspectRatio</fl> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
       </description>
     </field>
 
@@ -135,7 +135,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
+<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <fl>AspectRatio</fl> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
 <p>This option controls the x axis only.</p>
       </description>
     </field>
@@ -146,7 +146,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
+<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <fl>AspectRatio</fl> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
 <p>This option controls the y axis only.</p>
       </description>
     </field>
@@ -157,7 +157,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
       </description>
     </field>
 
@@ -167,7 +167,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<fl>X</fl>,<fl>Y</fl>) and (<fl>Width</fl>,<fl>Height</fl>).</p>
       </description>
     </field>
 
@@ -177,7 +177,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<fl>X</fl>,<fl>Y</fl>) and (<fl>Width</fl>,<fl>Height</fl>).</p>
       </description>
     </field>
 
@@ -187,7 +187,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<fl>X</fl>,<fl>Y</fl>) and (<fl>Width</fl>,<fl>Height</fl>).</p>
       </description>
     </field>
 
@@ -208,7 +208,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
 
@@ -219,7 +219,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
 
@@ -230,7 +230,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
 
@@ -241,7 +241,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
 

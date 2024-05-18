@@ -284,12 +284,12 @@ static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
    for (unsigned i=0; Args->Objects[i]; i++) {
       pf::ScopedObjectLock<Object> object(Args->Objects[i], 5000);
       if (object.granted()) {
-         if (!classid) classid = object.obj->Class->ClassID;
+         if (!classid) classid = object.obj->classID();
 
-         if (classid IS object.obj->Class->ClassID) { // The client may not mix and match classes.
+         if (classid IS object.obj->classID()) { // The client may not mix and match classes.
             if (datatype IS CLIPTYPE::NIL) {
-               if (object.obj->Class->ClassID IS ID_PICTURE) datatype = CLIPTYPE::IMAGE;
-               else if (object.obj->Class->ClassID IS ID_SOUND) datatype = CLIPTYPE::AUDIO;
+               if (object.obj->classID() IS ID_PICTURE) datatype = CLIPTYPE::IMAGE;
+               else if (object.obj->classID() IS ID_SOUND) datatype = CLIPTYPE::AUDIO;
                else datatype = CLIPTYPE::OBJECT;
             }
 
