@@ -159,6 +159,48 @@
 
   </fields>
   <types>
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS">Synonym for <code>FIXED_RADIUS_X | FIXED_RADIUS_Y</code></const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="HEIGHT">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT</code></const>
+      <const name="HEIGHT_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
+      <const name="HORIZONTAL_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</code></const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS">Synonym for <code>SCALED_RADIUS_X | SCALED_RADIUS_Y</code></const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE">Synonym for <code>STATUS_CHANGE_H | STATUS_CHANGE_V</code></const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+      <const name="VERTICAL_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</code></const>
+      <const name="WIDTH">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH</code></const>
+      <const name="WIDTH_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="X">Synonym for <code>FIXED_X | SCALED_X</code></const>
+      <const name="X_OFFSET">Synonym for <code>FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="Y">Synonym for <code>FIXED_Y | SCALED_Y</code></const>
+      <const name="Y_OFFSET">Synonym for <code>FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
+    </constants>
+
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
       <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
       <const name="PAD">Scale the graphic to the object bounds.</const>

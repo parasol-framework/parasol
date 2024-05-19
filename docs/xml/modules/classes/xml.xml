@@ -58,7 +58,7 @@
 
     <action>
       <name>SaveToObject</name>
-      <comment>Saves XML data to a storage object (e.g. file).</comment>
+      <comment>Saves XML data to a storage object (e.g. <class name="File">File</class>).</comment>
     </action>
 
     <action>
@@ -88,7 +88,7 @@
         <param type="LONG *" name="Result">The total number of matching tags is returned here.</param>
       </input>
       <description>
-<p>This method will count all tags that match a given XPath and return the value in the Result parameter.</p>
+<p>This method will count all tags that match a given <code>XPath</code> and return the value in the <code>Result</code> parameter.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -104,7 +104,7 @@
         <param type="CSTRING" name="XPath">Refers to a valid XPath string.</param>
       </input>
       <description>
-<p>The Filter method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the XML tree, or for reducing the memory footprint of large trees.</p>
+<p>The Filter() method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the XML tree, or for reducing the memory footprint of large trees.</p>
 <p>Data that has been filtered out by this method is permanently removed.</p>
       </description>
       <result>
@@ -121,11 +121,11 @@
       <input>
         <param type="CSTRING" name="XPath">An XPath string.</param>
         <param type="FUNCTION *" name="Callback">Optional reference to a function that should be called for each matching tag.</param>
-        <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
+        <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a <code>Callback</code> is defined).</param>
       </input>
       <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The prototype for the callback function is <code>ERR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
-<p>The Callback routine can terminate the search early by returning <code>ERR::Terminate</code>.  All other error codes are ignored.</p>
+<p>This method will return the first tag that matches the search string specified in <code>XPath</code>.  Optionally, if the <code>XPath</code> uses wildcards or would match multiple tags, a <code>Callback</code> function may be passed that will be called for each matching tag that is discovered.  The prototype for the callback function is <code>ERR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
+<p>The <code>Callback</code> routine can terminate the search early by returning <code>ERR::Terminate</code>.  All other error codes are ignored.</p>
       </description>
       <result>
         <error code="Okay">A matching tag was found.</error>
@@ -141,12 +141,12 @@
       <prototype>ERR xmlGetAttrib(OBJECTPTR Object, LONG Index, CSTRING Attrib, CSTRING * Value)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the XML tag to search.</param>
-        <param type="CSTRING" name="Attrib">The name of the attribute to search for (case insensitive).  If NULL or an empty string, the tag name is returned as the result.</param>
-        <param type="CSTRING *" name="Value">The value of the attribute is returned here, or NULL if the named attribute does not exist.</param>
+        <param type="CSTRING" name="Attrib">The name of the attribute to search for (case insensitive).  If <code>NULL</code> or an empty string, the tag name is returned as the result.</param>
+        <param type="CSTRING *" name="Value">The value of the attribute is returned here, or <code>NULL</code> if the named attribute does not exist.</param>
       </input>
       <description>
-<p>The GetAttrib method scans a tag for a specific attribute and returns it. A tag index and name of the required attribute must be specified.  If found, the attribute value is returned in the Value parameter.</p>
-<p>It is recommended that C/C++ programs bypass this method and access the XMLAttrib structure directly.</p>
+<p>The GetAttrib method scans a tag for a specific attribute and returns it. A tag index and name of the required attribute must be specified.  If found, the attribute value is returned in the <code>Value</code> parameter.</p>
+<p>It is recommended that C/C++ programs bypass this method and access the <st>XMLAttrib</st> structure directly.</p>
       </description>
       <result>
         <error code="Okay">The attribute was found.</error>
@@ -162,7 +162,7 @@
       <input>
         <param type="LONG" name="Index">Index of a tag that contains content.</param>
         <param type="STRING" name="Buffer">Pointer to a buffer that will receive the string data.</param>
-        <param type="LONG" name="Length">The length of the Buffer in bytes.</param>
+        <param type="LONG" name="Length">The length of the <code>Buffer</code> in bytes.</param>
       </input>
       <description>
 <p>The GetContent method is used to extract the string content from an XML tag.  It will extract content that is immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to <method>Serialise</method> for deep extraction).  Consider the following structure:</p>
@@ -172,7 +172,7 @@
   friend!
 &lt;/body&gt;
 </pre>
-<p>This will produce the result "Hello friend!" and omit everything encapsulated within the bold tag.</p>
+<p>This will produce the result <code>Hello friend!</code> and omit everything encapsulated within the bold tag.</p>
       </description>
       <result>
         <error code="Okay">The content string was successfully extracted.</error>
@@ -184,14 +184,14 @@
 
     <method>
       <name>GetTag</name>
-      <comment>Returns a pointer to the XMLTag structure for a given tag index.</comment>
+      <comment>Returns a pointer to the <st>XMLTag</st> structure for a given tag index.</comment>
       <prototype>ERR xmlGetTag(OBJECTPTR Object, LONG Index, struct XMLTag ** Result)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the tag that is being retrieved.</param>
-        <param type="struct XMLTag **" name="Result">The XMLTag is returned in this parameter.</param>
+        <param type="struct XMLTag **" name="Result">The <st>XMLTag</st> is returned in this parameter.</param>
       </input>
       <description>
-<p>This method will return the XMLTag structure for a given tag Index.  The Index is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
+<p>This method will return the <st>XMLTag</st> structure for a given tag <code>Index</code>.  The <code>Index</code> is checked to ensure it is valid prior to retrieval, and an <code>ERR::OutOfRange</code> error will be returned if it is invalid.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -206,12 +206,12 @@
       <prototype>ERR xmlInsertContent(OBJECTPTR Object, LONG Index, XMI Where, CSTRING Content, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the target XML tag.</param>
-        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</param>
         <param type="CSTRING" name="Content">The content to insert.</param>
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertContent method will insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
+<p>The InsertContent method will insert content strings into any position within the XML tree.  A content string must be provided in the <code>Content</code> parameter and the target insertion point is specified in the <code>Index</code> parameter. An insertion point relative to the target index must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using a <code>Where</code> value of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
 <p>To modify existing content, call <method>SetAttrib</method> instead.</p>
       </description>
       <result>
@@ -227,12 +227,12 @@
       <prototype>ERR xmlInsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">The new data will target the tag specified here.</param>
-        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD or CHILD_END for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> or <code>CHILD_END</code> for a child insert.</param>
         <param type="CSTRING" name="XML">An XML statement to parse.</param>
         <param type="LONG *" name="Result">The resulting tag index.</param>
       </input>
       <description>
-<p>The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using a Insert value of <code>XMI::CHILD</code>.  Use <code>XMI::CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
+<p>The InsertXML() method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using a <code>Where</code> value of <code>XMI::CHILD</code>.  Use <code>XMI::CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">The statement was added successfully.</error>
@@ -249,16 +249,16 @@
       <prototype>ERR xmlInsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XPath string that refers to the target insertion point.</param>
-        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</param>
         <param type="CSTRING" name="XML">The statement to process.</param>
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI::CHILD</code> or <code>XMI::CHILD_END</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
+<p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid <code>XPath</code> location string.  An insertion point relative to the <code>XPath</code> target must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI::CHILD</code> or <code>XMI::CHILD_END</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Search">The XPath could not be resolved.</error>
+        <error code="Search">The <code>XPath</code> could not be resolved.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -271,11 +271,11 @@
         <param type="LONG" name="Index">Index of the source tag to be moved.</param>
         <param type="LONG" name="Total">The total number of sibling tags to be moved from the source index.  Minimum value of 1.</param>
         <param type="LONG" name="DestIndex">The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.</param>
-        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</param>
       </input>
       <description>
 <p>This method is used to move XML tags within the XML tree structure.  It supports the movement of single and groups of tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the target tag.  All child tags of the source will be included in the move.</p>
-<p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
+<p>An insertion point relative to the target index must be specified in the <code>Where</code> parameter.  The source tag can be inserted as a child of the destination by using a <code>Where</code> of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">Tags were moved successfully.</error>
@@ -295,7 +295,7 @@
       </input>
       <description>
 <p>The RemoveTag method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
-<p>This method is capable of deleting multiple tags if the Total parameter is set to a value greater than 1.  Each consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is exhausted. This is useful for mass delete operations.</p>
+<p>This method is capable of deleting multiple tags if the <code>Total</code> parameter is set to a value greater than 1.  Each consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is exhausted. This is useful for mass delete operations.</p>
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
@@ -316,8 +316,8 @@
       </input>
       <description>
 <p>The RemoveXPath method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
-<p>Individual tag attributes can also be removed if an attribute is referenced at the end of the XPath.</p>
-<p>The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the Total is reached.</p>
+<p>Individual tag attributes can also be removed if an attribute is referenced at the end of the <code>XPath</code>.</p>
+<p>The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the <code>Limit</code> is reached.</p>
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
@@ -333,7 +333,7 @@
       <prototype>ERR xmlSerialise(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</param>
-        <param type="XMF" name="Flags" lookup="XMF">Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.</param>
+        <param type="XMF" name="Flags" lookup="XMF">Use <code>INCLUDE_SIBLINGS</code> to include siblings of the tag found at Index.</param>
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
@@ -354,20 +354,20 @@
       <prototype>ERR xmlSetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the tag that is to be updated.</param>
-        <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.</param>
-        <param type="CSTRING" name="Name">String containing the new name for the attribute.  If NULL, the name will not be changed.  If Attrib is XMS_UPDATE or XMS_UPDATE_ONLY, the Name is used to find the attribute.</param>
-        <param type="CSTRING" name="Value">String containing the new value for the attribute.  If NULL, the attribute is removed.</param>
+        <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to <code>NEW</code>, <code>UPDATE</code> or <code>UPDATE_ONLY</code>.</param>
+        <param type="CSTRING" name="Name">String containing the new name for the attribute.  If <code>NULL</code>, the name will not be changed.  If Attrib is <code>UPDATE</code> or <code>UPDATE_ONLY</code>, the <code>Name</code> is used to find the attribute.</param>
+        <param type="CSTRING" name="Value">String containing the new value for the attribute.  If <code>NULL</code>, the attribute is removed.</param>
       </input>
       <description>
 <p>This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.</p>
-<p>The data for the attribute is defined in the Name and Value parameters.  Use an empty string if no data is to be associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL, an error will be returned.</p>
-<p>NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the Value string will determine the content.</p>
+<p>The data for the attribute is defined in the <code>Name</code> and <code>Value</code> parameters.  Use an empty string if no data is to be associated with the attribute.  Set the <code>Value</code> pointer to <code>NULL</code> to remove the attribute. If both <code>Name</code> and <code>Value</code> are <code>NULL</code>, an error will be returned.</p>
+<p>NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to <code>NULL</code> and the <code>Value</code> string will determine the content.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Search">The attribute, identified by Name, could not be found.</error>
+        <error code="Search">The attribute, identified by <code>Name</code>, could not be found.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">The Index or Attrib value is out of range.</error>
+        <error code="OutOfRange">The <code>Index</code> or <code>Attrib</code> value is out of range.</error>
         <error code="ReadOnly">The XML object is read-only.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -378,17 +378,17 @@
       <comment>Sorts XML tags to your specifications.</comment>
       <prototype>ERR xmlSort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
       <input>
-        <param type="CSTRING" name="XPath">Sort everything under the specified tag, or NULL to sort the entire top level.</param>
+        <param type="CSTRING" name="XPath">Sort everything under the specified tag, or <code>NULL</code> to sort the entire top level.</param>
         <param type="CSTRING" name="Sort">Pointer to a sorting instruction string.</param>
         <param type="XSF" name="Flags" lookup="XSF">Optional flags.</param>
       </input>
       <description>
-<p>The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An XPath is required that refers to the tag containing each item that will be sorted.  To sort the root level, use an XPath of NULL.</p>
-<p>The Sort parameter is used to specify a list of sorting instructions.  The format for the Sort string is <code>Tag:Attrib,Tag:Attrib,...</code>.  The Tag indicates the tag name that should be identified for sorting each node, and child tags are supported for this purpose.  Wildcard filtering is allowed and a Tag value of <code>*</code> will match every tag at the requested XPath level.  The optional Attrib value names the attribute containing the sort string.  To sort on content, do not define an Attrib value (use the format <code>Tag,Tag,...</code>).</p>
+<p>The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An <code>XPath</code> is required that refers to the tag containing each item that will be sorted.  To sort the root level, use an <code>XPath</code> of <code>NULL</code>.</p>
+<p>The <code>Sort</code> parameter is used to specify a list of sorting instructions.  The format for the <code>Sort</code> string is <code>Tag:Attrib,Tag:Attrib,...</code>.  The <code>Tag</code> indicates the tag name that should be identified for sorting each node, and child tags are supported for this purpose.  Wildcard filtering is allowed and a <code>Tag</code> value of <code>*</code> will match every tag at the requested <code>XPath</code> level.  The optional <code>Attrib</code> value names the attribute containing the sort string.  To sort on content, do not define an <code>Attrib</code> value (use the format <code>Tag,Tag,...</code>).</p>
       </description>
       <result>
         <error code="Okay">The XML object was successfully sorted.</error>
-        <error code="Search">The provided XPath failed to locate a tag.</error>
+        <error code="Search">The provided <code>XPath</code> failed to locate a tag.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
@@ -435,7 +435,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>This field can be set to TRUE prior to initialisation of an XML object that will use an existing data source.  It prevents modifications to the XML object.  If the data originates from a file path, the data may be cached to optimise parsing where the same data is used across multiple XML objects.</p>
+<p>This field can be set to <code>true</code> prior to initialisation of an XML object that will use an existing data source.  It prevents modifications to the XML object.  If the data originates from a file path, the data may be cached to optimise parsing where the same data is used across multiple XML objects.</p>
       </description>
     </field>
 
@@ -479,8 +479,8 @@
       <access read="G">Get</access>
       <type>STRUCT []</type>
       <description>
-<p>The successful parsing of XML data will make the information available via the Tags array.  The array is presented as a series of XMLTag structures.</p>
-<p>Each XMLTag will also have at least one attribute set in the Attribs array.  The first attribute will either reflect the tag name or a content string if the Name is undefined.  The Children array provides access to all child elements.</p>
+<p>The successful parsing of XML data will make the information available via the Tags array.  The array is presented as a series of <st>XMLTag</st> structures.</p>
+<p>Each <st>XMLTag</st> will also have at least one attribute set in the <code>Attribs</code> array.  The first attribute will either reflect the tag name or a content string if the <code>Name</code> is undefined.  The <code>Children</code> array provides access to all child elements.</p>
 <p>Developers may treat the entire tag hierarchy as readable, but writes should be accomplished with the available XML methods.</p>
       </description>
     </field>
@@ -490,19 +490,19 @@
     <constants lookup="XMF" comment="Standard flags for the XML class.">
       <const name="ALL_CONTENT">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
       <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
-      <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
+      <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (<action>GetXMLString</action> only)</const>
       <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="LOG_ALL">Print extra log messages.</const>
-      <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
+      <const name="NEW">Creates an empty XML object on initialisation - if the <fl>Path</fl> field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
       <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
-      <const name="STRIP_CDATA">Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.</const>
+      <const name="STRIP_CDATA">Do not echo <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
-      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.</const>
+      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</const>
     </constants>
 
     <constants lookup="XMI" comment="Tag insertion options.">
@@ -513,18 +513,23 @@
     </constants>
 
     <constants lookup="XMS" comment="For SetAttrib()">
-      <const name="NEW">Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.  Use XMS_DEFINE if this is undesirable.</const>
-      <const name="UPDATE">As for XMS_UPDATE_ONLY, but if the attribute does not exist, it will be created.</const>
-      <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  ERR_Search is returned if the attribute cannot be found.</const>
+      <const name="NEW">Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.</const>
+      <const name="UPDATE">As for <code>UPDATE_ONLY</code>, but if the attribute does not exist, it will be created.</const>
+      <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  <code>ERR::Search</code> is returned if the attribute cannot be found.</const>
     </constants>
 
     <constants lookup="XSF" comment="Options for the Sort method.">
-      <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.</const>
+      <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the <code>Attrib</code> field.</const>
       <const name="DESC">Sort in descending order.</const>
     </constants>
 
   </types>
   <structs>
+    <struct name="XMLAttrib" typeName="XMLATTRIB">
+      <field name="Name" type="std::string">Name of the attribute</field>
+      <field name="Value" type="std::string">Value of the attribute</field>
+    </struct>
+
     <struct name="XMLTag" typeName="XMLTAG">
       <field name="ID" type="LONG">Unique ID assigned to the tag on creation</field>
       <field name="ParentID" type="LONG">Unique ID of the parent tag</field>

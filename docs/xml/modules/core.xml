@@ -2844,7 +2844,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="RIGHT">The text boundary is extended to the right edge of the page.</const>
       <const name="SQUARE">The default.  Text will clip around the image's border</const>
       <const name="TIGHT">Text wraps to the shape of the image (alpha blended/masked images only)</const>
-      <const name="TILE">The graphic will be tiled.  Tiled graphics also meet the LAYOUT_BACKGROUND criteria (no wrapping).</const>
+      <const name="TILE">The graphic will be tiled.  Tiled graphics also meet the <code>BACKGROUND</code> criteria (no wrapping).</const>
       <const name="WIDE">The text boundary is extended to the left and right edges of the page.</const>
     </constants>
 
@@ -3452,7 +3452,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="RGBPalette">
-      <field name="AmtColours" type="LONG">Amount of Colours</field>
+      <field name="AmtColours" type="LONG">Total colours</field>
       <field name="Col" type="struct RGB8" size="256">RGB Palette</field>
     </struct>
 

@@ -316,14 +316,14 @@ DragCallback: Receiver for drag requests originating from the viewport.
 
 Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the
 user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded
-dragging, have the callback set the viewport's X and Y values to match the incoming coordinates, then redraw the scene.
+dragging, have the callback set the viewport's #X and #Y values to match the incoming coordinates, then redraw the scene.
 
-The prototype for the callback function is as follows, where OriginX and OriginY refer to the (X,Y) position of the
-vector at initiation of the drag.
+The prototype for the callback function is as follows, where `OriginX` and `OriginY` refer to the (#X,#Y) position of 
+the vector at initiation of the drag.
 
 `void function(*VectorViewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY)`
 
-Setting this field to NULL will turn off the callback.
+Setting this field to `NULL` will turn off the callback.
 
 It is required that the parent @VectorScene is associated with a @Surface for this feature to work.
 
@@ -506,7 +506,8 @@ static ERR VIEW_SET_OverflowY(extVectorViewport *Self, VOF Value)
 ViewHeight: The height of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by `(X,Y)` and 
+`(Width,Height)`.
 
 *********************************************************************************************************************/
 
@@ -667,8 +668,8 @@ static ERR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
 -FIELD-
 X: Positions the viewport on the x-axis.
 
-The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
-fixed or scaled pixel units.
+The display position targeted by the viewport is declared by the (#X,#Y) field values.  Coordinates can be expressed 
+as fixed or scaled pixel units.
 
 If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value
 are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's
@@ -726,12 +727,12 @@ static ERR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
 -FIELD-
 XOffset: Positions the viewport on the x-axis.
 
-The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
-fixed or scaled pixel units.
+The display position targeted by the viewport is declared by the (#X,#Y) field values.  Coordinates can be expressed 
+as fixed or scaled pixel units.
 
-If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value
-are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's
-width.
+If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If the #X and XOffset 
+values are defined together, the width of the viewport is computed on-the-fly and will change in response to the 
+parent's width.
 
 *********************************************************************************************************************/
 
@@ -788,10 +789,10 @@ static ERR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
 -FIELD-
 Y: Positions the viewport on the y-axis.
 
-The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
+The display position targeted by the viewport is declared by the (#X,#Y) field values.  Coordinates can be expressed as
 fixed or scaled pixel units.
 
-If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are
+If an offset from the edge of the parent is desired, the #YOffset must be defined.  If the Y and #YOffset values are
 defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's
 height.
 
@@ -847,10 +848,10 @@ static ERR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
 -FIELD-
 YOffset: Positions the viewport on the y-axis.
 
-The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
+The display position targeted by the viewport is declared by the (#X,#Y) field values.  Coordinates can be expressed as
 fixed or scaled pixel units.
 
-If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are
+If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a #Y and YOffset value are
 defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's
 height.
 

@@ -159,7 +159,7 @@ ParseSymbol: Generate a vector scene graph from an SVG symbol, targeting a viewp
 ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for
 utilising symbols in a way that is akin to running macros as required by the program.
 
-The Name must refer to a symbol that has been declared in the loaded document.  A @VectorViewport must be provided
+The `Name` must refer to a symbol that has been declared in the loaded document.  A @VectorViewport must be provided
 for the symbol's generated content to target.
 
 -INPUT-
@@ -195,11 +195,11 @@ static ERR SVG_ParseSymbol(extSVG *Self, struct svgParseSymbol *Args)
 -METHOD-
 Render: Render the scene to a target Bitamp.
 
-This method will render the vector scene directly to a target bitmap at coordinates (X,Y) and scaled to the desired
-(Width,Height).
+This method will render the vector scene directly to a target bitmap at coordinates `(X,Y)` and scaled to the desired
+`(Width,Height)`.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target bitmap.
+obj(Bitmap) Bitmap: The target @Bitmap.
 int X: Target X coordinate.
 int Y: Target Y coordinate.
 int Width: Target page width.
@@ -244,9 +244,10 @@ static ERR SVG_Render(extSVG *Self, struct svgRender *Args)
 SaveImage: Saves the SVG document as a PNG image.
 
 This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is
-determined by the PageWidth and PageHeight of the #Scene, or if not defined then the default of 1920x1080 is applied.
+determined by the @VectorScene.PageWidth and @VectorScene.PageHeight of the #Scene, or if not defined, the 
+default of 1920x1080 is applied.
 
-The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG
+The image will be saved in PNG format by default, but can be changed by specifying an alternate `ClassID`.  PNG
 is recommended in particular because it supports an alpha channel.
 
 -END-
@@ -383,7 +384,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 /*********************************************************************************************************************
 
 -FIELD-
-Colour: Defines the default fill to use for 'currentColor' references.
+Colour: Defines the default fill to use for `currentColor` references.
 
 Set the Colour value to alter the default fill that is used for `currentColor` references.  Typically a standard RGB
 painter fill reference should be used for this purpose, e.g. `rgb(255,255,255)`.  It is however, also acceptable to use
@@ -587,7 +588,7 @@ Title: The title of the SVG document.
 
 The title of an SVG document is declared with a title element that can embedded anywhere in the document.  In cases
 where a title has been specified, it will be possible to read it from this field.  If no title is in the document then
-NULL will be returned.
+`NULL` will be returned.
 
 *********************************************************************************************************************/
 
@@ -603,8 +604,8 @@ static ERR SET_Title(extSVG *Self, CSTRING Value)
 -FIELD-
 Viewport: Returns the first viewport created by an SVG document.
 
-This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.  NULL
-is returned if an SVG document has not been successfully parsed yet.
+This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.  
+`NULL` is returned if an SVG document has not been successfully parsed yet.
 -END-
 
 *********************************************************************************************************************/

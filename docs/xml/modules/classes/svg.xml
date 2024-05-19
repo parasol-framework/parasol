@@ -49,8 +49,8 @@
       <name>SaveImage</name>
       <comment>Saves the SVG document as a PNG image.</comment>
       <description>
-<p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the PageWidth and PageHeight of the <fl>Scene</fl>, or if not defined then the default of 1920x1080 is applied.</p>
-<p>The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG is recommended in particular because it supports an alpha channel.</p>
+<p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> of the <fl>Scene</fl>, or if not defined, the default of 1920x1080 is applied.</p>
+<p>The image will be saved in PNG format by default, but can be changed by specifying an alternate <code>ClassID</code>.  PNG is recommended in particular because it supports an alpha channel.</p>
       </description>
     </action>
 
@@ -72,7 +72,7 @@
       </input>
       <description>
 <p>ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for utilising symbols in a way that is akin to running macros as required by the program.</p>
-<p>The Name must refer to a symbol that has been declared in the loaded document.  A <class name="VectorViewport">VectorViewport</class> must be provided for the symbol's generated content to target.</p>
+<p>The <code>Name</code> must refer to a symbol that has been declared in the loaded document.  A <class name="VectorViewport">VectorViewport</class> must be provided for the symbol's generated content to target.</p>
       </description>
     </method>
 
@@ -81,14 +81,14 @@
       <comment>Render the scene to a target Bitamp.</comment>
       <prototype>ERR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
       <input>
-        <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
+        <param type="objBitmap *" name="Bitmap">The target <class name="Bitmap">Bitmap</class>.</param>
         <param type="LONG" name="X">Target X coordinate.</param>
         <param type="LONG" name="Y">Target Y coordinate.</param>
         <param type="LONG" name="Width">Target page width.</param>
         <param type="LONG" name="Height">Target page height.</param>
       </input>
       <description>
-<p>This method will render the vector scene directly to a target bitmap at coordinates (X,Y) and scaled to the desired (Width,Height).</p>
+<p>This method will render the vector scene directly to a target bitmap at coordinates <code>(X,Y)</code> and scaled to the desired <code>(Width,Height)</code>.</p>
       </description>
     </method>
 
@@ -97,7 +97,7 @@
   <fields>
     <field>
       <name>Colour</name>
-      <comment>Defines the default fill to use for 'currentColor' references.</comment>
+      <comment>Defines the default fill to use for <code>currentColor</code> references.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
@@ -197,7 +197,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>The title of an SVG document is declared with a title element that can embedded anywhere in the document.  In cases where a title has been specified, it will be possible to read it from this field.  If no title is in the document then NULL will be returned.</p>
+<p>The title of an SVG document is declared with a title element that can embedded anywhere in the document.  In cases where a title has been specified, it will be possible to read it from this field.  If no title is in the document then <code>NULL</code> will be returned.</p>
       </description>
     </field>
 
@@ -207,7 +207,7 @@
       <access read="G">Get</access>
       <type>OBJECTPTR</type>
       <description>
-<p>This field simplifies the process of finding the first <class name="VectorViewport">VectorViewport</class> that was created by a loaded SVG document.  NULL is returned if an SVG document has not been successfully parsed yet.</p>
+<p>This field simplifies the process of finding the first <class name="VectorViewport">VectorViewport</class> that was created by a loaded SVG document. <code>NULL</code> is returned if an SVG document has not been successfully parsed yet.</p>
       </description>
     </field>
 
@@ -215,7 +215,7 @@
   <types>
     <constants lookup="SVF" comment="SVG flags.">
       <const name="ALPHA">Generate an alpha channel in the rendered image.</const>
-      <const name="AUTOSCALE">In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  PageWidth and PageHeight must be set in Vector for this.</const>
+      <const name="AUTOSCALE">In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  The <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> must be set for this.</const>
     </constants>
 
   </types>

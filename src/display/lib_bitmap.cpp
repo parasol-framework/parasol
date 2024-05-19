@@ -221,10 +221,10 @@ fastest method available.  Bitmaps may be of a different type (e.g. bit depth), 
 penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap
 objects.
 
-If the `TRANSPARENT` flag is set in the source object, all colours that match the ColourIndex field will be ignored in
-the copy operation.
+If the `TRANSPARENT` flag is set in the source object, all colours that match the @Bitmap.TransIndex field will be
+ignored in the copy operation.
 
-To enable dithering, pass `BAF::DITHER` in the Flags argument.  The drawing algorithm will use dithering if the source
+To enable dithering, pass `BAF::DITHER` in the Flags parameter.  The drawing algorithm will use dithering if the source
 needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set `BAF::BLEND` (the source bitmap
 will also need to have the `BMF::ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
 
@@ -247,9 +247,9 @@ int YDest:  The vertical position to copy the area to.
 
 -ERRORS-
 Okay:
-NullArgs: The DestBitmap argument was not specified.
+NullArgs: The `Dest` parameter was not specified.
 Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the blit.
-InvalidState: The LINEAR flag was used when at least one bitmap is using a linear colourspace.
+InvalidState: The `LINEAR` flag was used when at least one bitmap is using a linear colourspace.
 -END-
 
 *********************************************************************************************************************/
@@ -1137,10 +1137,10 @@ ERR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y, L
 CopyRawBitmap: Copies graphics data from an arbitrary surface to a bitmap.
 
 This function will copy data from a described surface to a destination bitmap object.  You are required to provide the
-function with a full description of the source in a `BitmapSurface` structure.
+function with a full description of the source in a !BitmapSurface structure.
 
-The X, Y, Width and Height parameters define the area from the source that you wish to copy.  The XDest and
-YDest parameters define the top left corner that you will blit the graphics to in the destination.
+The `X`, `Y`, `Width` and `Height` parameters define the area from the source that you wish to copy.  The `XDest` and
+`YDest` parameters define the top left corner that you will blit the graphics to in the destination.
 
 -INPUT-
 struct(*BitmapSurface) Surface: Description of the surface source.
@@ -1574,10 +1574,10 @@ ERR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
 DrawRectangle: Draws rectangles, both filled and unfilled.
 
 This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position
-(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF::FILL` then
+(X, Y) with dimensions determined by the specified `Width` and `Height`.  If the `Flags` parameter defines `BAF::FILL` then
 the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by
-the pixel value in the Colour argument.  Blending is not enabled unless the `BAF::BLEND` flag is defined and an alpha
-value is present in the Colour.
+the pixel value in the `Colour` parameter.  Blending is not enabled unless the `BAF::BLEND` flag is defined and an alpha
+value is present in the `Colour`.
 
 -INPUT-
 ext(Bitmap) Bitmap: Pointer to the target @Bitmap.
@@ -1586,7 +1586,7 @@ int Y:       The top-most coordinate of the rectangle.
 int Width:   The width of the rectangle.
 int Height:  The height of the rectangle.
 uint Colour: The colour value to use for the rectangle.
-int(BAF) Flags: Use FILL to fill the rectangle.  Use of BLEND will enable blending.
+int(BAF) Flags: Use `FILL` to fill the rectangle.  Use of `BLEND` will enable blending.
 
 *********************************************************************************************************************/
 
@@ -1845,9 +1845,9 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 /*********************************************************************************************************************
 
 -FUNCTION-
-DrawRGBPixel: Draws a 24 bit pixel to a bitmap.
+DrawRGBPixel: Draws a 24 bit pixel to a @Bitmap.
 
-This function draws an RGB colour to the (X, Y) position of a target bitmap.  The function will check the given
+This function draws an !RGB8 colour to the `(X, Y)` position of a target @Bitmap.  The function will check the given
 coordinates to ensure that the pixel is inside the bitmap's clipping area.
 
 -INPUT-
@@ -1870,7 +1870,7 @@ void gfxDrawRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 -FUNCTION-
 DrawPixel: Draws a single pixel to a bitmap.
 
-This function draws a pixel to the coordinates X, Y on a bitmap with a colour determined by the Colour index.
+This function draws a pixel to the coordinates `(X, Y)` on a bitmap with a colour determined by the `Colour` index.
 This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.
 
 -INPUT-
@@ -1899,7 +1899,7 @@ colours.
 
 -INPUT-
 ext(Bitmap) Bitmap: Pointer to a bitmap object.
-int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.
+int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.  If set to neither, the function does nothing.
 
 *********************************************************************************************************************/
 
@@ -1911,30 +1911,13 @@ void gfxFlipBitmap(extBitmap *Bitmap, FLIP Orientation)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetColourFormat: Generates the values for a ColourFormat structure for a given bit depth.
+GetColourFormat: Generates the values for a !ColourFormat structure for a given bit depth.
 
-This function will generate the values for a `ColourFormat` structure, for either a given bit depth or
-customised colour bit values.  The `ColourFormat` structure is used by internal bitmap routines to pack and unpack bit
+This function will generate the values for a !ColourFormat structure, for either a given bit depth or
+customised colour bit values.  The !ColourFormat structure is used by internal bitmap routines to pack and unpack bit
 values to and from bitmap memory.
 
-<pre>
-struct ColourFormat {
-   UBYTE  RedShift;    // Right shift value (applies only to 15/16 bit formats for eliminating redundant bits)
-   UBYTE  BlueShift;
-   UBYTE  GreenShift;
-   UBYTE  AlphaShift;
-   UBYTE  RedMask;     // The unshifted mask value (ranges from 0x00 to 0xff)
-   UBYTE  GreenMask;
-   UBYTE  BlueMask;
-   UBYTE  AlphaMask;
-   UBYTE  RedPos;      // Left shift/positional value
-   UBYTE  GreenPos;
-   UBYTE  BluePos;
-   UBYTE  AlphaPos;
-};
-</pre>
-
-The `ColourFormat` structure is supported by the following macros for packing and unpacking colour bit values:
+The !ColourFormat structure is supported by the following macros for packing and unpacking colour bit values:
 
 <pre>
 Colour = CFPackPixel(Format,Red,Green,Blue)
@@ -1947,9 +1930,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 </pre>
 
 -INPUT-
-struct(*ColourFormat) Format: Pointer to an empty ColourFormat structure.
+struct(*ColourFormat) Format: Pointer to an empty !ColourFormat structure.
 int BitsPerPixel: The depth that you would like to generate colour values for.  Ignored if mask values are set.
-int RedMask:      Red component bit mask value.  Set this value to zero if the BitsPerPixel argument is used.
+int RedMask:      Red component bit mask value.  Set this value to zero if the `BitsPerPixel` parameter is used.
 int GreenMask:    Green component bit mask value.
 int BlueMask:     Blue component bit mask value.
 int AlphaMask:    Alpha component bit mask value.
@@ -2022,16 +2005,16 @@ void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LONG Green
 -FUNCTION-
 ReadRGBPixel: Reads a pixel's colour from the target bitmap.
 
-This function reads a pixel from a bitmap surface and returns the value in an RGB structure that remains good up until
+This function reads a pixel from a bitmap surface and returns the value in an !RGB8 structure that remains good up until
 the next call to this function.  Zero is returned in the alpha component if the pixel is out of bounds.
 
-This function is thread-safe if the target Bitmap is locked.
+This function is thread-safe if the target @Bitmap is locked.
 
 -INPUT-
 ext(Bitmap) Bitmap: Pointer to a bitmap object.
 int X: The horizontal coordinate of the pixel.
 int Y: The vertical coordinate of the pixel.
-&struct(RGB8) RGB: The colour values will be stored in this RGB structure.
+&struct(RGB8) RGB: The colour values will be stored in this !RGB8 structure.
 
 *********************************************************************************************************************/
 
@@ -2054,7 +2037,7 @@ void gfxReadRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
 -FUNCTION-
 ReadPixel: Reads a pixel's colour from the target bitmap.
 
-This function reads a pixel from a bitmap area and returns its colour index (if the Bitmap is indexed with a palette)
+This function reads a pixel from a bitmap area and returns its colour index (if the @Bitmap is indexed with a palette)
 or its packed pixel value.  Zero is returned if the pixel is out of bounds.
 
 -INPUT-
@@ -2083,7 +2066,7 @@ The Resample() function provides a means for resampling a bitmap to a new colour
 bit depth of the image. It uses dithering so as to retain the quality of the image when down-sampling.  This function
 is generally used to 'pre-dither' true colour bitmaps in preparation for copying to bitmaps with lower colour quality.
 
-You are required to supply a ColourFormat structure that describes the colour format that you would like to apply to
+You are required to supply a !ColourFormat structure that describes the colour format that you would like to apply to
 the bitmap's image data.
 
 -INPUT-
@@ -2117,7 +2100,7 @@ Each clipping region that you set is assigned a Number, starting from zero which
 set a new clip region you must specify the number of the region that you wish to set.  If you attempt to 'skip'
 regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5, the routine will set region 4 instead.
 If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last
-region that you want in your list and set the Terminate argument to TRUE to kill the regions specified beyond it.
+region that you want in your list and set the `Terminate` parameter to `true` to kill the regions specified beyond it.
 
 The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target Bitmap will be updated to reflect the overall
 area that is covered by the clipping regions that have been set.
@@ -2129,7 +2112,7 @@ int Left:      The horizontal start of the clip region.
 int Top:       The vertical start of the clip region.
 int Right:     The right-most edge of the clip region.
 int Bottom:    The bottom-most edge of the clip region.
-int Terminate: Set to TRUE if this is the last clip region in the list, otherwise FALSE.
+int Terminate: Set to `true` if this is the last clip region in the list, otherwise `false`.
 
 *********************************************************************************************************************/
 
@@ -2156,7 +2139,7 @@ The Sync() function will wait for all current video operations to complete befor
 safe to write to video memory with the CPU, preventing any possibility of clashes with the onboard graphics chip.
 
 -INPUT-
-ext(Bitmap) Bitmap: Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.
+ext(Bitmap) Bitmap: Pointer to the bitmap that you want to synchronise or `NULL` to sleep on the graphics accelerator.
 -END-
 
 *********************************************************************************************************************/

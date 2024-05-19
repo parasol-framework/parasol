@@ -191,7 +191,7 @@ static ERR XML_Clear(extXML *Self, APTR Void)
 -METHOD-
 Count: Count all tags that match a given XPath.
 
-This method will count all tags that match a given XPath and return the value in the Result parameter.
+This method will count all tags that match a given `XPath` and return the value in the `Result` parameter.
 
 -INPUT-
 cstr XPath: The XPath on which to perform the count.
@@ -267,7 +267,7 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 -METHOD-
 Filter: Filters the XML data down to a single tag and its children.
 
-The Filter method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted
+The Filter() method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted
 tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the
 XML tree, or for reducing the memory footprint of large trees.
 
@@ -301,16 +301,17 @@ static ERR XML_Filter(extXML *Self, struct xmlFilter *Args)
 -METHOD-
 FindTag: Searches for a tag via XPath.
 
-This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses
-wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag
-that is discovered.  The prototype for the callback function is `ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
+This method will return the first tag that matches the search string specified in `XPath`.  Optionally, if the 
+`XPath` uses wildcards or would match multiple tags, a `Callback` function may be passed that will be called for 
+each matching tag that is discovered.  The prototype for the callback function is 
+`ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
 
-The Callback routine can terminate the search early by returning `ERR::Terminate`.  All other error codes are ignored.
+The `Callback` routine can terminate the search early by returning `ERR::Terminate`.  All other error codes are ignored.
 
 -INPUT-
 cstr XPath: An XPath string.
 ptr(func) Callback: Optional reference to a function that should be called for each matching tag.
-&int Result: The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).
+&int Result: The index of the first matching tag is returned in this parameter (not valid if a `Callback` is defined).
 
 -ERRORS-
 Okay: A matching tag was found.
@@ -356,14 +357,14 @@ static ERR XML_Free(extXML *Self, APTR Void)
 GetAttrib: Retrieves the value of an XML attribute.
 
 The GetAttrib method scans a tag for a specific attribute and returns it. A tag index and name of the required
-attribute must be specified.  If found, the attribute value is returned in the Value parameter.
+attribute must be specified.  If found, the attribute value is returned in the `Value` parameter.
 
-It is recommended that C/C++ programs bypass this method and access the XMLAttrib structure directly.
+It is recommended that C/C++ programs bypass this method and access the !XMLAttrib structure directly.
 
 -INPUT-
 int Index: The index of the XML tag to search.
-cstr Attrib: The name of the attribute to search for (case insensitive).  If NULL or an empty string, the tag name is returned as the result.
-&cstr Value: The value of the attribute is returned here, or NULL if the named attribute does not exist.
+cstr Attrib: The name of the attribute to search for (case insensitive).  If `NULL` or an empty string, the tag name is returned as the result.
+&cstr Value: The value of the attribute is returned here, or `NULL` if the named attribute does not exist.
 
 -ERRORS-
 Okay: The attribute was found.
@@ -566,12 +567,12 @@ immediately embedded within the XML tag and will not perform deep analysis of th
 &lt;/body&gt;
 </pre>
 
-This will produce the result "Hello friend!" and omit everything encapsulated within the bold tag.
+This will produce the result `Hello friend!` and omit everything encapsulated within the bold tag.
 
 -INPUT-
 int Index: Index of a tag that contains content.
 buf(str) Buffer: Pointer to a buffer that will receive the string data.
-bufsize Length: The length of the Buffer in bytes.
+bufsize Length: The length of the `Buffer` in bytes.
 
 -ERRORS-
 Okay: The content string was successfully extracted.
@@ -606,7 +607,7 @@ is no longer required.
 
 -INPUT-
 int Index: Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.
-int(XMF) Flags: Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.
+int(XMF) Flags: Use `INCLUDE_SIBLINGS` to include siblings of the tag found at Index.
 !str Result: The resulting string is returned in this parameter.
 
 -ERRORS-
@@ -663,14 +664,14 @@ static ERR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetTag: Returns a pointer to the XMLTag structure for a given tag index.
+GetTag: Returns a pointer to the !XMLTag structure for a given tag index.
 
-This method will return the XMLTag structure for a given tag Index.  The Index is checked to ensure it is valid prior
-to retrieval, and an `ERR::OutOfRange` error will be returned if it is invalid.
+This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid 
+prior to retrieval, and an `ERR::OutOfRange` error will be returned if it is invalid.
 
 -INPUT-
 int Index:  The index of the tag that is being retrieved.
-&struct(*XMLTag) Result: The XMLTag is returned in this parameter.
+&struct(*XMLTag) Result: The !XMLTag is returned in this parameter.
 
 -ERRORS-
 Okay
@@ -735,16 +736,16 @@ static ERR XML_Init(extXML *Self, APTR Void)
 InsertContent: Inserts XML content into the XML tree.
 
 The InsertContent method will insert content strings into any position within the XML tree.  A content string
-must be provided in the Content parameter and the target insertion point is specified in the Index parameter.
-An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be
-inserted as a child of the target by using a Where value of `XMI::CHILD`.  To insert behind or after the target, use
+must be provided in the `Content` parameter and the target insertion point is specified in the `Index` parameter.
+An insertion point relative to the target index must be specified in the `Where` parameter.  The new tags can be
+inserted as a child of the target by using a `Where` value of `XMI::CHILD`.  To insert behind or after the target, use
 `XMI::PREV` or `XMI::NEXT`.
 
 To modify existing content, call #SetAttrib() instead.
 
 -INPUT-
 int Index: Identifies the target XML tag.
-int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.
+int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag.  Use `CHILD` for a child insert.
 cstr Content: The content to insert.
 &int Result: The index of the new tag is returned here.
 
@@ -798,15 +799,15 @@ static ERR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 -METHOD-
 InsertXML: Parse an XML string and insert it in the XML tree.
 
-The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
+The InsertXML() method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index
-parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags
-can be inserted as a child of the target by using a Insert value of `XMI::CHILD`.  Use `XMI::CHILD_END` to insert at the end
+parameter.  An insertion point relative to the target index must be specified in the `Where` parameter.  The new tags
+can be inserted as a child of the target by using a `Where` value of `XMI::CHILD`.  Use `XMI::CHILD_END` to insert at the end
 of the child list.  To insert behind or after the target, use `XMI::PREV` or `XMI::NEXT`.
 
 -INPUT-
 int Index: The new data will target the tag specified here.
-int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD or CHILD_END for a child insert.
+int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag.  Use `CHILD` or `CHILD_END` for a child insert.
 cstr XML: An XML statement to parse.
 &int Result: The resulting tag index.
 
@@ -869,20 +870,20 @@ InsertXPath: Inserts an XML statement in an XML tree.
 
 The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid
-XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The
+`XPath` location string.  An insertion point relative to the `XPath` target must be specified in the `Where` parameter.  The
 new tags can be inserted as a child of the target by using an Insert value of `XMI::CHILD` or `XMI::CHILD_END`.  To insert
 behind or after the target, use `XMI::PREV` or `XMI::NEXT`.
 
 -INPUT-
 cstr XPath: An XPath string that refers to the target insertion point.
-int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.
+int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag.  Use `CHILD` for a child insert.
 cstr XML: The statement to process.
 &int Result: The index of the new tag is returned here.
 
 -ERRORS-
 Okay
 NullArgs
-Search: The XPath could not be resolved.
+Search: The `XPath` could not be resolved.
 
 *********************************************************************************************************************/
 
@@ -915,15 +916,15 @@ This method is used to move XML tags within the XML tree structure.  It supports
 tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the
 target tag.  All child tags of the source will be included in the move.
 
-An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be
-inserted as a child of the destination by using a Where of `XMI::CHILD`.  To insert behind or after the target, use
+An insertion point relative to the target index must be specified in the `Where` parameter.  The source tag can be
+inserted as a child of the destination by using a `Where` of `XMI::CHILD`.  To insert behind or after the target, use
 `XMI::PREV` or `XMI::NEXT`.
 
 -INPUT-
 int Index: Index of the source tag to be moved.
 int Total: The total number of sibling tags to be moved from the source index.  Minimum value of 1.
 int DestIndex: The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.
-int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.
+int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag.  Use `CHILD` for a child insert.
 
 -ERRORS-
 Okay: Tags were moved successfully.
@@ -1021,7 +1022,7 @@ RemoveTag: Removes tag(s) from the XML structure.
 The RemoveTag method is used to remove one or more tags from an XML structure.  Child tags will automatically be
 discarded as a consequence of using this method, in order to maintain a valid XML structure.
 
-This method is capable of deleting multiple tags if the Total parameter is set to a value greater than 1.  Each
+This method is capable of deleting multiple tags if the `Total` parameter is set to a value greater than 1.  Each
 consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is
 exhausted. This is useful for mass delete operations.
 
@@ -1085,9 +1086,9 @@ RemoveXPath: Removes tag(s) from the XML structure, using an xpath lookup.
 The RemoveXPath method is used to remove one or more tags from an XML structure.  Child tags will automatically be
 discarded as a consequence of using this method, in order to maintain a valid XML structure.
 
-Individual tag attributes can also be removed if an attribute is referenced at the end of the XPath.
+Individual tag attributes can also be removed if an attribute is referenced at the end of the `XPath`.
 
-The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the Total is reached.
+The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the `Limit` is reached.
 
 This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.
 
@@ -1165,7 +1166,7 @@ static ERR XML_Reset(extXML *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-SaveToObject: Saves XML data to a storage object (e.g. file).
+SaveToObject: Saves XML data to a storage object (e.g. @File).
 -END-
 *********************************************************************************************************************/
 
@@ -1196,26 +1197,26 @@ SetAttrib: Adds, updates and removes XML attributes.
 
 This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.
 
-The data for the attribute is defined in the Name and Value parameters.  Use an empty string if no data is to be
-associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL,
+The data for the attribute is defined in the `Name` and `Value` parameters.  Use an empty string if no data is to be
+associated with the attribute.  Set the `Value` pointer to `NULL` to remove the attribute. If both `Name` and `Value` are `NULL`,
 an error will be returned.
 
-NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a
-value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the
-Value string will determine the content.
+NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value 
+declaration.  However, if the tag represents content within its parent, then the Name must be set to `NULL` and the
+`Value` string will determine the content.
 
 -INPUT-
 int Index: Identifies the tag that is to be updated.
-int(XMS) Attrib: Either the index number of the attribute that is to be updated, or set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.
-cstr Name: String containing the new name for the attribute.  If NULL, the name will not be changed.  If Attrib is XMS_UPDATE or XMS_UPDATE_ONLY, the Name is used to find the attribute.
-cstr Value: String containing the new value for the attribute.  If NULL, the attribute is removed.
+int(XMS) Attrib: Either the index number of the attribute that is to be updated, or set to `NEW`, `UPDATE` or `UPDATE_ONLY`.
+cstr Name: String containing the new name for the attribute.  If `NULL`, the name will not be changed.  If Attrib is `UPDATE` or `UPDATE_ONLY`, the `Name` is used to find the attribute.
+cstr Value: String containing the new value for the attribute.  If `NULL`, the attribute is removed.
 
 -ERRORS-
 Okay
 NullArgs
 Args
-OutOfRange: The Index or Attrib value is out of range.
-Search: The attribute, identified by Name, could not be found.
+OutOfRange: The `Index` or `Attrib` value is out of range.
+Search: The attribute, identified by `Name`, could not be found.
 ReadOnly: The XML object is read-only.
 -END-
 
@@ -1342,24 +1343,24 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 -METHOD-
 Sort: Sorts XML tags to your specifications.
 
-The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An XPath is required
-that refers to the tag containing each item that will be sorted.  To sort the root level, use an XPath of NULL.
+The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An `XPath` is required
+that refers to the tag containing each item that will be sorted.  To sort the root level, use an `XPath` of `NULL`.
 
-The Sort parameter is used to specify a list of sorting instructions.  The format for the Sort string is
-`Tag:Attrib,Tag:Attrib,...`.  The Tag indicates the tag name that should be identified for sorting each node, and
-child tags are supported for this purpose.  Wildcard filtering is allowed and a Tag value of `*` will match every
-tag at the requested XPath level.  The optional Attrib value names the attribute containing the sort string.  To
-sort on content, do not define an Attrib value (use the format `Tag,Tag,...`).
+The `Sort` parameter is used to specify a list of sorting instructions.  The format for the `Sort` string is
+`Tag:Attrib,Tag:Attrib,...`.  The `Tag` indicates the tag name that should be identified for sorting each node, and
+child tags are supported for this purpose.  Wildcard filtering is allowed and a `Tag` value of `*` will match every
+tag at the requested `XPath` level.  The optional `Attrib` value names the attribute containing the sort string.  To
+sort on content, do not define an `Attrib` value (use the format `Tag,Tag,...`).
 
 -INPUT-
-cstr XPath: Sort everything under the specified tag, or NULL to sort the entire top level.
+cstr XPath: Sort everything under the specified tag, or `NULL` to sort the entire top level.
 cstr Sort: Pointer to a sorting instruction string.
 int(XSF) Flags: Optional flags.
 
 -ERRORS-
 Okay: The XML object was successfully sorted.
 NullArgs
-Search: The provided XPath failed to locate a tag.
+Search: The provided `XPath` failed to locate a tag.
 ReadOnly
 AllocMemory:
 -END-
@@ -1557,7 +1558,7 @@ difference.
 -FIELD-
 ReadOnly: Prevents modifications and enables caching for a loaded XML data source.
 
-This field can be set to TRUE prior to initialisation of an XML object that will use an existing data source.  It
+This field can be set to `true` prior to initialisation of an XML object that will use an existing data source.  It
 prevents modifications to the XML object.  If the data originates from a file path, the data may be cached to optimise
 parsing where the same data is used across multiple XML objects.
 
@@ -1696,10 +1697,10 @@ static ERR SET_Statement(extXML *Self, CSTRING Value)
 Tags: Points to an array of tags loaded into an XML object.
 
 The successful parsing of XML data will make the information available via the Tags array.  The array is presented as
-a series of XMLTag structures.
+a series of !XMLTag structures.
 
-Each XMLTag will also have at least one attribute set in the Attribs array.  The first attribute will either reflect
-the tag name or a content string if the Name is undefined.  The Children array provides access to all child elements.
+Each !XMLTag will also have at least one attribute set in the `Attribs` array.  The first attribute will either reflect
+the tag name or a content string if the `Name` is undefined.  The `Children` array provides access to all child elements.
 
 Developers may treat the entire tag hierarchy as readable, but writes should be accomplished with the
 available XML methods.

@@ -323,13 +323,13 @@ script.  If the script is cached, the variable settings will be available on the
 -INPUT-
 obj Script: Pointer to a Fluid script.
 cstr Name: The name of the variable to set.
-int(FD) Type: A valid field type must be indicated, e.g. FD_STRING, FD_POINTER, FD_LONG, FD_DOUBLE, FD_LARGE.
-tags Variable: A variable that matches the indicated Type.
+int(FD) Type: A valid field type must be indicated, e.g. `FD_STRING`, `FD_POINTER`, `FD_LONG`, `FD_DOUBLE`, `FD_LARGE`.
+tags Variable: A variable that matches the indicated `Type`.
 
 -ERRORS-
 Okay: The variable was defined successfully.
 Args:
-FieldTypeMismatch: A valid field type was not specified in the Type parameter.
+FieldTypeMismatch: A valid field type was not specified in the `Type` parameter.
 ObjectCorrupt: Privately maintained memory has become inaccessible.
 -END-
 

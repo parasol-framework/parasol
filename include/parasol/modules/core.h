@@ -1370,7 +1370,7 @@ struct RGB32 {
 };
 
 struct RGBPalette {
-   LONG AmtColours;         // Amount of Colours
+   LONG AmtColours;         // Total colours
    struct RGB8 Col[256];    // RGB Palette
 };
 

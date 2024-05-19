@@ -98,11 +98,11 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded dragging, have the callback set the viewport's X and Y values to match the incoming coordinates, then redraw the scene.</p>
-<p>The prototype for the callback function is as follows, where OriginX and OriginY refer to the (X,Y) position of the vector at initiation of the drag.</p>
+<p>Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded dragging, have the callback set the viewport's <fl>X</fl> and <fl>Y</fl> values to match the incoming coordinates, then redraw the scene.</p>
+<p>The prototype for the callback function is as follows, where <code>OriginX</code> and <code>OriginY</code> refer to the (<fl>X</fl>,<fl>Y</fl>) position of the vector at initiation of the drag.</p>
 <p>
 <code>void function(*VectorViewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY)</code></p>
-<p>Setting this field to NULL will turn off the callback.</p>
+<p>Setting this field to <code>NULL</code> will turn off the callback.</p>
 <p>It is required that the parent <class name="VectorScene">VectorScene</class> is associated with a <class name="Surface">Surface</class> for this feature to work.</p>
       </description>
     </field>
@@ -157,7 +157,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by <code>(X,Y)</code> and <code>(Width,Height)</code>.</p>
       </description>
     </field>
 
@@ -207,7 +207,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
@@ -218,8 +218,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If the <fl>X</fl> and XOffset values are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
 
@@ -229,8 +229,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If the Y and <fl>YOffset</fl> values are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
 
@@ -240,8 +240,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If a <fl>Y</fl> and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
 
@@ -262,6 +262,48 @@
       <const name="Y_MAX">Align to the bottom.</const>
       <const name="Y_MID">Align to the vertical center.</const>
       <const name="Y_MIN">Align to the top.</const>
+    </constants>
+
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS">Synonym for <code>FIXED_RADIUS_X | FIXED_RADIUS_Y</code></const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="HEIGHT">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT</code></const>
+      <const name="HEIGHT_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
+      <const name="HORIZONTAL_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</code></const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS">Synonym for <code>SCALED_RADIUS_X | SCALED_RADIUS_Y</code></const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE">Synonym for <code>STATUS_CHANGE_H | STATUS_CHANGE_V</code></const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+      <const name="VERTICAL_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</code></const>
+      <const name="WIDTH">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH</code></const>
+      <const name="WIDTH_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="X">Synonym for <code>FIXED_X | SCALED_X</code></const>
+      <const name="X_OFFSET">Synonym for <code>FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="Y">Synonym for <code>FIXED_Y | SCALED_Y</code></const>
+      <const name="Y_OFFSET">Synonym for <code>FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
     </constants>
 
   </types>

@@ -21,7 +21,7 @@ called under exclusive conditions, and it is not recommended that you call metho
 system.
 
 By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard
-memory (this is the default type).  If the `BLIT` or `VIDEO` flags are specified in the #DataFlags field then the
+memory (this is the default type).  If the `TEXTURE` or `VIDEO` flags are specified in the #DataFlags field then the
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
@@ -149,7 +149,7 @@ static void DrawRGBPixelPlanar(objBitmap *, LONG X, LONG Y, RGB8 *);
 
 static ERR GET_Handle(extBitmap *, APTR *);
 
-static ERR SET_Bkgd(extBitmap *, RGB8 *);
+static ERR SET_BkgdRGB(extBitmap *, RGB8 *);
 static ERR SET_BkgdIndex(extBitmap *, LONG);
 static ERR SET_Trans(extBitmap *, RGB8 *);
 static ERR SET_TransIndex(extBitmap *, LONG);
@@ -291,7 +291,7 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       return ERR::Okay;
    }
    else if ((Bitmap->DataFlags & MEM::TEXTURE) != MEM::NIL) {
-      // Using the CPU on BLIT bitmaps is banned - it is considered to be poor programming.  Instead,
+      // Using the CPU on TEXTURE bitmaps is banned - it is considered to be poor programming.  Instead,
       // MEM::DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
 
       return log.warning(ERR::NoSupport);
@@ -928,10 +928,10 @@ static ERR BITMAP_Draw(extBitmap *Self, APTR Void)
 -METHOD-
 DrawRectangle: Draws rectangles, both filled and unfilled.
 
-This method draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y)
-with dimensions determined by the specified Width and Height.  If the Fill argument is set to TRUE then the rectangle
-will be filled, otherwise the rectangle's outline will be drawn.  The colour of the rectangle is determined by the
-pixel value in the Colour argument.
+This method draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position `(X, Y)`
+with dimensions determined by the specified `Width` and `Height`.  If the `Flags` parameter sets the `FILL` flag then
+the rectangle will be filled, otherwise the rectangle's outline will be drawn.  The colour of the rectangle is
+determined by the pixel value in the `Colour` parameter.
 
 -INPUT-
 int X: The left-most coordinate of the rectangle.
@@ -939,7 +939,7 @@ int Y: The top-most coordinate of the rectangle.
 int Width:  The width of the rectangle.
 int Height: The height of the rectangle.
 uint Colour: The colour index to use for the rectangle.
-int(BAF) Flags:  Supports FILL and BLEND.
+int(BAF) Flags:  Supports `FILL` and `BLEND`.
 
 -ERRORS-
 Okay
@@ -962,7 +962,7 @@ Flip: Flips a bitmap around the horizontal or vertical axis.
 This method is used to flip bitmap images on their horizontal or vertical axis.
 
 -INPUT-
-int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.
+int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.
 
 -ERRORS-
 Okay
@@ -1017,7 +1017,7 @@ static ERR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
 -ACTION-
 Flush: Flushes pending graphics operations and returns when the accelerator is idle.
 
-The Flush action is provided for you to ensure that your graphics operations are synchronised with the graphics
+The Flush() action is provided for you to ensure that your graphics operations are synchronised with the graphics
 accelerator.  Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
 result in corruption in the bitmap's graphics display.
 
@@ -1095,8 +1095,8 @@ static ERR BITMAP_Free(extBitmap *Self, APTR Void)
 -METHOD-
 GetColour: Converts Red, Green, Blue components into a single colour value.
 
-The GetColour method is used to convert Red, Green and Blue colour components into a single colour index that can be
-used for directly writing colours to the bitmap.  The result is returned in the Colour parameter.
+The GetColour method is used to convert `Red`, `Green`, `Blue` and `Alpha` colour components into a single colour
+index that can be used for directly writing colours to the bitmap.  The result is returned in the `Colour` parameter.
 
 -INPUT-
 int Red:    Red component from 0 - 255.
@@ -1135,13 +1135,13 @@ static ERR BITMAP_GetColour(extBitmap *Self, struct bmpGetColour *Args)
 -ACTION-
 Init: Initialises a bitmap.
 
-This action will initialise a bitmap object so that it is ready for use.  If the bitmap #Data field has not been
-specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is
-dependent on the bitmap #DataFlags field.  If you have not specified a memory type, you will get a default of
-`MEM::DATA`.  For a display compatible bitmap use `MEM::VIDEO`.  If you just want to store a bitmap in fast writeable
-memory, use `MEM::TEXTURE`.
+This action will initialise a bitmap object so that it is ready for use, which primarily means that a suitable area of
+memory is reserved for drawing.  If the #Data field has not already been defined, a new memory block will be allocated
+for the bitmap region.  The type of memory that is allocated is dependent on the #DataFlags field, which defaults to
+`MEM::DATA`.  To request video RAM, use `MEM::VIDEO`.  To store graphics data in fast write-able memory, use
+`MEM::TEXTURE`.
 
-This action will not work unless you have defined the #Width and #Height fields of the bitmap at a minimum.
+The Init() action requires that the #Width and #Height fields are defined at minimum.
 
 *********************************************************************************************************************/
 
@@ -1379,7 +1379,7 @@ static ERR BITMAP_Init(extBitmap *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-Lock: Locks the bitmap surface so that you can manipulate the graphics directly.
+Lock: Locks the bitmap surface for direct read/write access.
 -END-
 *********************************************************************************************************************/
 
@@ -1578,14 +1578,14 @@ static ERR BITMAP_Premultiply(extBitmap *Self, APTR Void)
 /*********************************************************************************************************************
 
 -ACTION-
-Query: Fills a bitmap with pre-initialised/default values prior to initialisation.
+Query: Populates a bitmap with pre-initialised/default values prior to initialisation.
 
-This action will pre-initialise a bitmap object so that all the fields are filled out with default values.  It stops
+This action will pre-initialise a bitmap object so that its fields are populated with default values.  It stops
 short of allocating the bitmap's memory.
 
-For this action to work properly you must have defined the Width and Height fields of the bitmap before making the
-Query.  This function is intelligent enough to fill out the fields based on the information you have given it, e.g. if
-you set the #BytesPerPixel field to 2 then it will determine that the bitmap is a 16 bit, 64k colour bitmap.
+This action requires that the #Width and #Height fields of the bitmap are defined at minimum.  Populating the bitmap
+fields is done on a best efforts basis, e.g. if the #BytesPerPixel is set to 2 then it will be determined
+that the bitmap is a 16 bit, 64k colour bitmap.
 
 *********************************************************************************************************************/
 
@@ -1779,7 +1779,7 @@ static ERR BITMAP_Read(extBitmap *Self, struct acRead *Args)
 -ACTION-
 Resize: Resizes a bitmap object's dimensions.
 
-Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained by
+Resizing a bitmap will change its #Width, #Height and optionally #BitsPerPixel.  Existing image data is not retained by
 this process.
 
 The image data is cleared with #BkgdRGB if the `CLEAR` flag is defined in #Flags.
@@ -2176,7 +2176,7 @@ int Left:      The horizontal start of the clip region.
 int Top:       The vertical start of the clip region.
 int Right:     The right-most edge of the clip region.
 int Bottom:    The bottom-most edge of the clip region.
-int Terminate: Set to TRUE if this is the last clip region in the list, otherwise FALSE.
+int Terminate: Set to `true` if this is the last clip region in the list, otherwise `false`.
 
 -ERRORS-
 Okay
@@ -2240,7 +2240,7 @@ The BitsPerPixel field clarifies exactly how many bits are being used to manage 
 includes any 'special' bits that are in use, e.g. alpha-channel bits.
 
 -FIELD-
-Bkgd: The bitmap's background colour is defined here in RGB format.
+BkgdRGB: The bitmap's background colour is defined here in RGB format.
 
 The default background colour for a bitmap is black.  To change it, set this field with the new RGB colour.  The
 background colour is used in operations that require a default colour, such as when clearing the bitmap.
@@ -2249,7 +2249,7 @@ The #BkgdIndex will be updated as a result of setting this field.
 
 *********************************************************************************************************************/
 
-static ERR SET_Bkgd(extBitmap *Self, RGB8 *Value)
+static ERR SET_BkgdRGB(extBitmap *Self, RGB8 *Value)
 {
    Self->BkgdRGB = *Value;
 
@@ -2268,7 +2268,7 @@ static ERR SET_Bkgd(extBitmap *Self, RGB8 *Value)
 -FIELD-
 BkgdIndex: The bitmap's background colour is defined here as a colour index.
 
-The bitmap's background colour is defined in this field as a colour index.  It is recommended that the #Bkgd
+The bitmap's background colour is defined in this field as a colour index.  It is recommended that the #BkgdRGB
 field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set
 directly.
 
@@ -2287,9 +2287,9 @@ static ERR SET_BkgdIndex(extBitmap *Self, LONG Index)
 -FIELD-
 BytesPerPixel: The number of bytes per pixel.
 
-If you need to find out how many bytes are involved in the makeup of each pixel you will need to read this field.  The
-maximum number of bytes you can typically expect is 4 and the minimum is 1.  If a planar bitmap is being used then you
-should refer to the #BitsPerPixel field, which should yield more useful information.
+This field reflects the number of bytes used to construct one pixel.  The maximum number of bytes a client can typically
+expect is 4 and the minimum is 1.  If the graphics type is planar then refer to the #BitsPerPixel field, which should
+yield more useful information.
 
 -FIELD-
 ByteWidth: The width of the bitmap, in bytes.
@@ -2308,8 +2308,7 @@ Chunky/24   = Width * 3
 Chunky/32   = Width * 4
 </pre>
 
-If you would like to know the total byte width per line including any padded bytes that may lie at the end of each line,
-please refer to the #LineMod field.
+To learn the total byte-width per line including any additional padded bytes, refer to the #LineMod field.
 
 -FIELD-
 ClipBottom: The bottom-most edge of  bitmap's clipping region.
@@ -2342,6 +2341,9 @@ top-most edge of all clipping regions that have been set or altered through the 
 -FIELD-
 Clip: Defines the bitmap's clipping region.
 
+The Clip field is a short-hand reference for the #ClipLeft, #ClipTop, #ClipRight and #ClipBottom fields, returning
+all four values as a single !ClipRectangle structure.
+
 *********************************************************************************************************************/
 
 static ERR GET_Clip(extBitmap *Self, ClipRectangle **Value)
@@ -2364,21 +2366,7 @@ ColourFormat: Describes the colour format used to construct each bitmap pixel.
 The ColourFormat field points to a structure that defines the colour format used to construct each bitmap pixel.  It
 only applies to bitmaps that use 2-bytes per colour value or better.  The structure consists of the following fields:
 
-<struct lookup="ColourFormat">
-<field type="UBYTE" name="RedShift">Right shift value for the red component (applies only to 15/16 bit formats for eliminating redundant bits).</>
-<field type="UBYTE" name="BlueShift">Right shift value for the blue component.</>
-<field type="UBYTE" name="GreenShift">Right shift value for the green component.</>
-<field type="UBYTE" name="AlphaShift">Right shift value for the alpha component.</>
-<field type="UBYTE" name="RedMask">The unshifted mask value for the red component (ranges from 0x00 to 0xff).</>
-<field type="UBYTE" name="GreenMask">The unshifted mask value for the green component.</>
-<field type="UBYTE" name="BlueMask">The unshifted mask value for the blue component.</>
-<field type="UBYTE" name="AlphaMask">The unshifted mask value for the alpha component.</>
-<field type="UBYTE" name="RedPos">Left shift/positional value for the red component.</>
-<field type="UBYTE" name="GreenPos">Left shift/positional value for the green component.</>
-<field type="UBYTE" name="BluePos">Left shift/positional value for the blue component.</>
-<field type="UBYTE" name="AlphaPos">Left shift/positional value for the alpha component.</>
-<field type="UBYTE" name="BitsPerPixel"> Number of bits per pixel for this format.</>
-</>
+!ColourFormat
 
 The following C++ methods can called on any bitmap in order to build colour values from individual RGB components:
 
@@ -2453,7 +2441,7 @@ This field accepts the `MEM::DATA`, `MEM::VIDEO` and `MEM::TEXTURE` memory flags
 
 Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically
 read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the
-bitmap #Data field directly with these bitmap types.  To circumvent this problem please use the #Lock() action
+bitmap #Data field directly with these bitmap types.  To circumvent this problem use the #Lock() action
 to enable read access when you require it.
 
 -FIELD-
@@ -2465,7 +2453,7 @@ be performed (meaning it is possible to supply invalid coordinates that would re
 
 The prototype of the DrawUCPixel function is `Function(*Bitmap, LONG X, LONG Y, ULONG Colour)`.
 
-The new pixel value must be defined in the Colour parameter.
+The new pixel value must be defined in the `Colour` parameter.
 
 -FIELD-
 DrawUCRIndex: Points to a C function that draws pixels to the bitmap in RGB format.
@@ -2477,7 +2465,7 @@ will be performed (meaning it is possible to supply an invalid address that woul
 The prototype of the DrawUCRIndex function is `Function(*Bitmap, UBYTE *Data, RGB8 *RGB)`.
 
 The Data parameter must point to a location within the Bitmap's graphical address space. The new pixel value must be
-defined in the RGB parameter.
+defined in the `RGB` parameter.
 
 Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is
 more efficient to index the Bitmap's #Data field directly.
@@ -2491,7 +2479,7 @@ be performed (meaning it is possible to supply invalid coordinates that would re
 
 The prototype of the DrawUCRPixel function is `Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)`.
 
-The new pixel value must be defined in the RGB parameter.
+The new pixel value must be defined in the `RGB` parameter.
 
 -FIELD-
 Flags: Optional flags.
@@ -2615,8 +2603,8 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 -FIELD-
 PlaneMod: The differential between each bitmap plane.
 
-This field specifies the distance (in bytes) between each bitplane.  For non-planar types like CHUNKY, this field will
-actually reflect the total size of the bitmap.  The calculation used for PLANAR types is `ByteWidth * Height`.
+This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field will
+actually reflect the total size of the bitmap.  The calculation used for `PLANAR` types is `ByteWidth * Height`.
 
 -FIELD-
 Position: The current read/write data position.
@@ -2633,8 +2621,8 @@ will be performed (meaning it is possible to supply an invalid address that woul
 
 The prototype of the ReadUCRIndex function is `Function(*Bitmap, UBYTE *Data, RGB8 *RGB)`.
 
-The Data parameter must point to a location within the Bitmap's graphical address space. The pixel value will be
-returned in the RGB parameter.
+The `Data` parameter must point to a location within the Bitmap's graphical address space. The pixel value will be
+returned in the `RGB` parameter.
 
 Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is
 more efficient to index the Bitmap's #Data field directly.
@@ -2648,7 +2636,7 @@ will be performed (meaning it is possible to supply invalid X/Y coordinates that
 
 The prototype of the ReadUCPixel function is `Function(*Bitmap, LONG X, LONG Y, LONG *Index)`.
 
-The pixel value will be returned in the Index parameter.
+The pixel value will be returned in the `Index` parameter.
 
 -FIELD-
 ReadUCRPixel: Points to a C function that reads pixels from the bitmap in RGB format.
@@ -2721,7 +2709,7 @@ static ERR SET_TransIndex(extBitmap *Self, LONG Index)
 -FIELD-
 Type: Defines the data type of the bitmap.
 
-This field defines the graphics data type - either PLANAR (required for 1-bit bitmaps) or CHUNKY (the default).
+This field defines the graphics data type - either `PLANAR` (required for 1-bit bitmaps) or `CHUNKY` (the default).
 
 -FIELD-
 Width: The width of the bitmap, in pixels.
@@ -2922,7 +2910,7 @@ static const FieldArray clBitmapFields[] = {
    { "Opacity",       FDF_LONG|FDF_RW },
    { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
    { "TransRGB",      FDF_RGB|FDF_RW, NULL, SET_Trans },
-   { "Bkgd",          FDF_RGB|FDF_RW, NULL, SET_Bkgd },
+   { "BkgdRGB",       FDF_RGB|FDF_RW, NULL, SET_BkgdRGB },
    { "BkgdIndex",     FDF_LONG|FDF_RW, NULL, SET_BkgdIndex },
    { "ColourSpace",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
    // Virtual fields

@@ -110,7 +110,7 @@ flags("LAYOUT", { comment="Universal values for alignment of graphic layouts in 
     "EMBEDDED: Graphic is embedded in the text stream (treated as a character).  The height of the line can be extended to match the height of the graphic in this mode.",
     "LOCK: Lock the position of the graphic to the top left of the view and not the scrolling position of the page.",
     "IGNORE_CURSOR: The object has a fixed X/Y position, unrelated to the cursor",
-    "TILE: The graphic will be tiled.  Tiled graphics also meet the LAYOUT_BACKGROUND criteria (no wrapping).",
+    "TILE: The graphic will be tiled.  Tiled graphics also meet the `BACKGROUND` criteria (no wrapping).",
     { WIDE = "RIGHT|LEFT: The text boundary is extended to the left and right edges of the page." },
     { SQUARE = "0: The default.  Text will clip around the image's border" })
 
@@ -154,7 +154,7 @@ struct("RGB32", { comment="32-bit RGB colour value." }, [[
   ]])
 
 struct("RGBPalette", { }, [[
-    int AmtColours              # Amount of Colours
+    int AmtColours              # Total colours
     array(struct(RGB8),256) Col # RGB Palette
   ]])
 

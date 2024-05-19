@@ -604,7 +604,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   class('VectorEllipse', { base='Vector', src='vectors/ellipse.cpp' })
 
-  class('VectorViewport', { base='Vector', references={ 'VOF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
+  class('VectorViewport', { base='Vector', references={ 'VOF', 'DMF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
 
   functionNames("vec",
     "DrawPath",

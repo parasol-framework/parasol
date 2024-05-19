@@ -582,7 +582,7 @@ class objBitmap : public Object {
    LONG    YOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
    LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
    struct RGB8 TransRGB;                                             // The transparent colour of the bitmap, in RGB format.
-   struct RGB8 BkgdRGB;                                              // Background colour (for clearing, resizing)
+   struct RGB8 BkgdRGB;                                              // The bitmap's background colour is defined here in RGB format.
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
    CS      ColourSpace;                                              // Defines the colour space for RGB values.
    public:
@@ -744,7 +744,7 @@ class objBitmap : public Object {
 
    inline ERR setData(UBYTE * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -768,7 +768,7 @@ class objBitmap : public Object {
 
    inline ERR setClip(struct ClipRectangle * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -829,6 +829,12 @@ class objBitmap : public Object {
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
+   inline ERR setBkgdRGB(const struct RGB8 * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
    inline ERR setBkgdIndex(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
@@ -862,12 +868,6 @@ class objBitmap : public Object {
       auto target = this;
       auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setBkgd(const BYTE * Value, LONG Elements) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[23];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERR setHandle(APTR Value) noexcept {

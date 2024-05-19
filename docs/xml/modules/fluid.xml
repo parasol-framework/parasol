@@ -19,8 +19,8 @@
     <input>
       <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
       <param type="CSTRING" name="Name">The name of the variable to set.</param>
-      <param type="LONG" name="Type" lookup="FD">A valid field type must be indicated, e.g. FD_STRING, FD_POINTER, FD_LONG, FD_DOUBLE, FD_LARGE.</param>
-      <param type="..." name="Variable">A variable that matches the indicated Type.</param>
+      <param type="LONG" name="Type" lookup="FD">A valid field type must be indicated, e.g. <code>FD_STRING</code>, <code>FD_POINTER</code>, <code>FD_LONG</code>, <code>FD_DOUBLE</code>, <code>FD_LARGE</code>.</param>
+      <param type="..." name="Variable">A variable that matches the indicated <code>Type</code>.</param>
     </input>
     <description>
 <p>The SetVariable() function provides a method for setting global variables in a Fluid script prior to execution of that script.  If the script is cached, the variable settings will be available on the next activation.</p>

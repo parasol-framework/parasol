@@ -64,7 +64,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "TRANSPARENT: Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.",
     "STICK_TO_BACK: Enable if the surface object must stick to the back of its container.",
     "STICK_TO_FRONT: Enable if the surface object must stick to the front of its container.",
-    "VISIBLE: If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.",
+    "VISIBLE: If a surface object is visible to the user, the `VISIBLE` flag will be set.  If the flag is not set, the surface object is hidden.",
     "STICKY: Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.",
     "GRAB_FOCUS: Helps application windows manage the user's focus within the window",
     "HAS_FOCUS: Read-only.  If set, this flag indicates that the surface object currently has the focus.",
@@ -73,11 +73,11 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "HOST: Define host on initialisation to create a container that can host surfaces from other processes.",
     "PRECOPY: Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.",
     "VIDEO|WRITE_ONLY: Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.",
-    "NO_HORIZONTAL: Turns off all horizontal movement (applies to the Move action only).",
-    "NO_VERTICAL: Turns off all vertical movement (applies to the Move action only).",
+    "NO_HORIZONTAL: Turns off all horizontal movement (applies to the `Move()` action only).",
+    "NO_VERTICAL: Turns off all vertical movement (applies to the `Move()` action only).",
     "CURSOR|POINTER: Private - Surface is a mouse cursor",
     "AFTER_COPY: Read-only.  Indicates that after-copy mode has been enabled.",
-    "FIXED_BUFFER: Passes the NEVER_SHRINK option to the surface bitmap",
+    "FIXED_BUFFER: Passes the `NEVER_SHRINK` option to the surface bitmap",
     "PERVASIVE_COPY: This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.",
     "NO_FOCUS: Prevents any kind of focussing on this object; no circumvention is possible",
     "FIXED_DEPTH: The target buffer always remains at the same depth",
@@ -85,7 +85,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "COMPOSITE|NO_PRECOMPOSITE|POST_COMPOSITE: Do not copy background information into the surface buffer - composite on the fly instead",
     "FULL_SCREEN: Allow the surface to open as a new screen display",
     "IGNORE_FOCUS: Focus is diverted directly to the parent",
-    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.",
+    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by @Surface.MinWidth and @Surface.MinHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
@@ -112,25 +112,25 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
      "MMB: Release the cursor after the middle mouse button is held and released.",
      "RMB: Release the cursor after the right mouse button is held and released.",
      "RESTRICT: Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.",
-     "BUFFER: Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.",
-     "NO_BUTTONS: Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down."
+     "BUFFER: Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the ~Display.SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the `ANCHOR` option.",
+     "NO_BUTTONS: Set the cursor only on the condition that the user is not holding down any buttons.  `ERR::NothingDone` is returned if the user has a button held down."
   )
 
   flags("BAF", { comment="Instructions for basic graphics operations." },
     { DITHER = "0x1: Perform dithering if the colour formats differ between the source and destination." },
     { BLEND  = "0x2: Enable alpha blending to the destination if the source supports an alpha channel." },
-    { FILL   = "0x1: For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture." },
-    { COPY   = "0x4: Special CopyArea() option that avoids blending when the destination pixel is empty." },
+    { FILL   = "0x1: For primitive operations such as ~Display.DrawRectangle(), this will fill the shape with a solid colour or texture." },
+    { COPY   = "0x4: Special ~Display.CopyArea() option that avoids blending when the destination pixel is empty." },
     { LINEAR = "0x8: Use linear interpolation to improve the quality of alpha blending." }
   )
 
   flags("CSRF", { comment="Flags for CopySurface()." },
     "TRANSPARENT: Enable transparent copying, whereby colours matching the source's Colour field will be ignored.",
     "ALPHA: Enable alpha blending if the source is in 32-bit colour format with an alpha channel.",
-    "TRANSLUCENT: Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.",
-    "DEFAULT_FORMAT: Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.",
+    "TRANSLUCENT: Perform a translucent copy operation, using the strength value specified in the @Surface.Opacity field.",
+    "DEFAULT_FORMAT: Ignore the colour format defined in the source surface (if any) and generate a default format based on the `BitsPerPixel` value.",
     "CLIP: Enable clipping of the source coordinates.",
-    "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
+    "OFFSET: Adjust X and Y coordinates by the offset values defined in the @Surface.XOffset and @Surface.YOffset fields.")
 
   enum("BMP", { type="int", start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
@@ -140,10 +140,10 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "BLANK_PALETTE: Forces a blank/black palette on initialisation.",
     "COMPRESSED: The bitmap data is compressed.",
     "NO_DATA: Do not allocate memory in the Data field on initialisation.",
-    "TRANSPARENT: Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().",
-    "MASK: Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.",
+    "TRANSPARENT: Indicates that the bitmap utilises a transparent colour.  This is automatically set if the @Bitmap.TransIndex or @Bitmap.TransRGB is defined, and support exists in functions such as ~Display.CopyArea().",
+    "MASK: Declare the @Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the @Bitmap.BitsPerPixel field on initialisation.",
     "INVERSE_ALPHA: Indicates reverse alpha blending, higher values are transparent.",
-    "QUERIED: Automatically set after a Query on the bitmap.",
+    "QUERIED: Automatically set after a `Query()` on the bitmap.",
     "CLEAR: Clear graphics on initialisation and when resizing.",
     "USER: This user flag can be used to tag bitmaps with special meaning.  Not used internally.",
     "ACCELERATED_2D: 2D video acceleration is available.",
@@ -151,7 +151,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "ALPHA_CHANNEL: For 32-bit images, indicates that an alpha channel is present.",
     "NEVER_SHRINK: Ignore resize requests that would shrink the size of the bitmap.",
     "X11_DGA: Private DGA indicator.",
-    "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via acResize()).",
+    "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via `Resize()`).",
     "NO_BLEND: Drawing routines that support this flag will not blend pixels.",
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
@@ -313,13 +313,13 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     int   LineWidth      # The distance between bitmap lines, measured in bytes.
     uchar BitsPerPixel   # The number of bits per pixel (8, 15, 16, 24, 32).
     uchar BytesPerPixel  # The number of bytes per pixel (1, 2, 3, 4).
-    uchar Opacity        # Opacity level of the source if CSRF::TRANSLUCENT is used.
+    uchar Opacity        # Opacity level of the source if `CSRF::TRANSLUCENT` is used.
     uchar Version        # Version of this structure.
-    int   Colour         # Colour index to use if CSRF::TRANSPARENT is used.
-    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
+    int   Colour         # Colour index to use if `CSRF::TRANSPARENT` is used.
+    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if `CSRF::CLIP` is used.
     short XOffset        # Offset all X coordinate references by the given value.
     short YOffset        # Offset all Y coordinate references by the given value.
-    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
+    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use `CSRF::DEFAULT_FORMAT`.
   ]])
 
   methods("Bitmap", "Bmp", {
@@ -336,7 +336,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     { id=13, name="ConvertToRGB" }
   })
 
-  class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
+  class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c", references={ "ColourFormat" } }, [[
     struct(*RGBPalette) Palette          # Pointer to the Bitmap's palette
     struct(*ColourFormat) ColourFormat   # Pointer to colour information
     fptr(void obj(Bitmap) int int uint) DrawUCPixel
@@ -347,7 +347,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     fptr(void obj(Bitmap) ptr(uchar) struct(*RGB8)) DrawUCRIndex
     ptr(uchar) Data             # Pointer to bitmap data area
     int   Width                 # Width
-    int   ByteWidth             # ByteWidth (not including padding - see LineWidth)
+    int   ByteWidth             # Byte width (not including padding - see `LineWidth`)
     int   Height                # Height
     int(BMP) Type               # Bitmap type
     int   LineWidth             # Line differential in bytes
@@ -364,7 +364,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     int   XOffset               # Horizontal offset to apply to graphics coordinates
     int   YOffset               # Vertical offset to apply to graphics coordinates
     int   Opacity               # Opacity setting to use in drawing operations
-    struct(RGB8) TransRGB       # The transparent colour of the bitmap, in RGB format.
+    struct(RGB8) TransRGB       # The transparent colour of the bitmap, in !RGB8 format.
     struct(RGB8) BkgdRGB        # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.
     int(CS) ColourSpace         # Defines the colour space for RGB values.

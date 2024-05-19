@@ -75,8 +75,8 @@
     </input>
     <description>
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
-<p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
-<p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF::ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
+<p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the <class name="Bitmap" field="TransIndex">Bitmap.TransIndex</class> field will be ignored in the copy operation.</p>
+<p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags parameter.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF::ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
 <p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF::LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR::InvalidState</code> will be returned if that is the case).</p>
     </description>
     <result type="ERR">
@@ -104,8 +104,8 @@
       <param type="LONG" name="YDest">Vertical destination coordinate.</param>
     </input>
     <description>
-<p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a <code>BitmapSurface</code> structure.</p>
-<p>The X, Y, Width and Height parameters define the area from the source that you wish to copy.  The XDest and YDest parameters define the top left corner that you will blit the graphics to in the destination.</p>
+<p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a <st>BitmapSurface</st> structure.</p>
+<p>The <code>X</code>, <code>Y</code>, <code>Width</code> and <code>Height</code> parameters define the area from the source that you wish to copy.  The <code>XDest</code> and <code>YDest</code> parameters define the top left corner that you will blit the graphics to in the destination.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -153,14 +153,14 @@
       <param type="ULONG" name="Colour">The colour value to use for the pixel.</param>
     </input>
     <description>
-<p>This function draws a pixel to the coordinates X, Y on a bitmap with a colour determined by the Colour index. This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.</p>
+<p>This function draws a pixel to the coordinates <code>(X, Y)</code> on a bitmap with a colour determined by the <code>Colour</code> index. This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.</p>
     </description>
   </function>
 
   <function>
     <name>DrawRGBPixel</name>
     <category>Bitmap</category>
-    <comment>Draws a 24 bit pixel to a bitmap.</comment>
+    <comment>Draws a 24 bit pixel to a <class name="Bitmap">Bitmap</class>.</comment>
     <prototype>void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
@@ -169,7 +169,7 @@
       <param type="struct RGB8 *" name="RGB">The colour to be drawn, in RGB format.</param>
     </input>
     <description>
-<p>This function draws an RGB colour to the (X, Y) position of a target bitmap.  The function will check the given coordinates to ensure that the pixel is inside the bitmap's clipping area.</p>
+<p>This function draws an <st>RGB8</st> colour to the <code>(X, Y)</code> position of a target <class name="Bitmap">Bitmap</class>.  The function will check the given coordinates to ensure that the pixel is inside the bitmap's clipping area.</p>
     </description>
   </function>
 
@@ -185,10 +185,10 @@
       <param type="LONG" name="Width">The width of the rectangle.</param>
       <param type="LONG" name="Height">The height of the rectangle.</param>
       <param type="ULONG" name="Colour">The colour value to use for the rectangle.</param>
-      <param type="BAF" name="Flags" lookup="BAF">Use FILL to fill the rectangle.  Use of BLEND will enable blending.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Use <code>FILL</code> to fill the rectangle.  Use of <code>BLEND</code> will enable blending.</param>
     </input>
     <description>
-<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.  Blending is not enabled unless the <code>BAF::BLEND</code> flag is defined and an alpha value is present in the Colour.</p>
+<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified <code>Width</code> and <code>Height</code>.  If the <code>Flags</code> parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the <code>Colour</code> parameter.  Blending is not enabled unless the <code>BAF::BLEND</code> flag is defined and an alpha value is present in the <code>Colour</code>.</p>
     </description>
   </function>
 
@@ -223,7 +223,7 @@
     <prototype>void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="FLIP" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.</param>
+      <param type="FLIP" name="Orientation" lookup="FLIP">Set to either <code>HORIZONTAL</code> or <code>VERTICAL</code>.  If set to neither, the function does nothing.</param>
     </input>
     <description>
 <p>The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of colours.</p>
@@ -233,34 +233,19 @@
   <function>
     <name>GetColourFormat</name>
     <category>Bitmap</category>
-    <comment>Generates the values for a ColourFormat structure for a given bit depth.</comment>
+    <comment>Generates the values for a <st>ColourFormat</st> structure for a given bit depth.</comment>
     <prototype>void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
     <input>
-      <param type="struct ColourFormat *" name="Format">Pointer to an empty ColourFormat structure.</param>
+      <param type="struct ColourFormat *" name="Format">Pointer to an empty <st>ColourFormat</st> structure.</param>
       <param type="LONG" name="BitsPerPixel">The depth that you would like to generate colour values for.  Ignored if mask values are set.</param>
-      <param type="LONG" name="RedMask">Red component bit mask value.  Set this value to zero if the BitsPerPixel argument is used.</param>
+      <param type="LONG" name="RedMask">Red component bit mask value.  Set this value to zero if the <code>BitsPerPixel</code> parameter is used.</param>
       <param type="LONG" name="GreenMask">Green component bit mask value.</param>
       <param type="LONG" name="BlueMask">Blue component bit mask value.</param>
       <param type="LONG" name="AlphaMask">Alpha component bit mask value.</param>
     </input>
     <description>
-<p>This function will generate the values for a <code>ColourFormat</code> structure, for either a given bit depth or customised colour bit values.  The <code>ColourFormat</code> structure is used by internal bitmap routines to pack and unpack bit values to and from bitmap memory.</p>
-<pre>struct ColourFormat {
-   UBYTE  RedShift;    // Right shift value (applies only to 15/16 bit formats for eliminating redundant bits)
-   UBYTE  BlueShift;
-   UBYTE  GreenShift;
-   UBYTE  AlphaShift;
-   UBYTE  RedMask;     // The unshifted mask value (ranges from 0x00 to 0xff)
-   UBYTE  GreenMask;
-   UBYTE  BlueMask;
-   UBYTE  AlphaMask;
-   UBYTE  RedPos;      // Left shift/positional value
-   UBYTE  GreenPos;
-   UBYTE  BluePos;
-   UBYTE  AlphaPos;
-};
-</pre>
-<p>The <code>ColourFormat</code> structure is supported by the following macros for packing and unpacking colour bit values:</p>
+<p>This function will generate the values for a <st>ColourFormat</st> structure, for either a given bit depth or customised colour bit values.  The <st>ColourFormat</st> structure is used by internal bitmap routines to pack and unpack bit values to and from bitmap memory.</p>
+<p>The <st>ColourFormat</st> structure is supported by the following macros for packing and unpacking colour bit values:</p>
 <pre>Colour = CFPackPixel(Format,Red,Green,Blue)
 Colour = CFPackPixelA(Format,Red,Green,Blue,Alpha)
 Colour = CFPackAlpha(Format,Alpha)
@@ -538,7 +523,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
     </input>
     <description>
-<p>This function reads a pixel from a bitmap area and returns its colour index (if the Bitmap is indexed with a palette) or its packed pixel value.  Zero is returned if the pixel is out of bounds.</p>
+<p>This function reads a pixel from a bitmap area and returns its colour index (if the <class name="Bitmap">Bitmap</class> is indexed with a palette) or its packed pixel value.  Zero is returned if the pixel is out of bounds.</p>
     </description>
     <result type="ULONG">The colour value of the pixel will be returned.  Zero is returned if the pixel is out of bounds.</result>
   </function>
@@ -552,11 +537,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
       <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
-      <param type="struct RGB8 **" name="RGB">The colour values will be stored in this RGB structure.</param>
+      <param type="struct RGB8 **" name="RGB">The colour values will be stored in this <st>RGB8</st> structure.</param>
     </input>
     <description>
-<p>This function reads a pixel from a bitmap surface and returns the value in an RGB structure that remains good up until the next call to this function.  Zero is returned in the alpha component if the pixel is out of bounds.</p>
-<p>This function is thread-safe if the target Bitmap is locked.</p>
+<p>This function reads a pixel from a bitmap surface and returns the value in an <st>RGB8</st> structure that remains good up until the next call to this function.  Zero is returned in the alpha component if the pixel is out of bounds.</p>
+<p>This function is thread-safe if the target <class name="Bitmap">Bitmap</class> is locked.</p>
     </description>
   </function>
 
@@ -571,7 +556,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </input>
     <description>
 <p>The Resample() function provides a means for resampling a bitmap to a new colour format without changing the actual bit depth of the image. It uses dithering so as to retain the quality of the image when down-sampling.  This function is generally used to 'pre-dither' true colour bitmaps in preparation for copying to bitmaps with lower colour quality.</p>
-<p>You are required to supply a ColourFormat structure that describes the colour format that you would like to apply to the bitmap's image data.</p>
+<p>You are required to supply a <st>ColourFormat</st> structure that describes the colour format that you would like to apply to the bitmap's image data.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -625,11 +610,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="LONG" name="Top">The vertical start of the clip region.</param>
       <param type="LONG" name="Right">The right-most edge of the clip region.</param>
       <param type="LONG" name="Bottom">The bottom-most edge of the clip region.</param>
-      <param type="LONG" name="Terminate">Set to TRUE if this is the last clip region in the list, otherwise FALSE.</param>
+      <param type="LONG" name="Terminate">Set to <code>true</code> if this is the last clip region in the list, otherwise <code>false</code>.</param>
     </input>
     <description>
 <p>The SetClipRegion() method is used to manage the clipping regions assigned to a bitmap object.  Each new bitmap that is created has at least one clip region assigned to it, but by using SetClipRegion() you can also define multiple clipping areas, which is useful for complex graphics management.</p>
-<p>Each clipping region that you set is assigned a Number, starting from zero which is the default.  Each time that you set a new clip region you must specify the number of the region that you wish to set.  If you attempt to 'skip' regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5, the routine will set region 4 instead. If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last region that you want in your list and set the Terminate argument to TRUE to kill the regions specified beyond it.</p>
+<p>Each clipping region that you set is assigned a Number, starting from zero which is the default.  Each time that you set a new clip region you must specify the number of the region that you wish to set.  If you attempt to 'skip' regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5, the routine will set region 4 instead. If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last region that you want in your list and set the <code>Terminate</code> parameter to <code>true</code> to kill the regions specified beyond it.</p>
 <p>The <code>ClipLeft</code>, <code>ClipTop</code>, <code>ClipRight</code> and <code>ClipBottom</code> fields in the target Bitmap will be updated to reflect the overall area that is covered by the clipping regions that have been set.</p>
     </description>
   </function>
@@ -831,7 +816,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Waits for the completion of all active bitmap operations.</comment>
     <prototype>void gfxSync(objBitmap * Bitmap)</prototype>
     <input>
-      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap that you want to synchronise or <code>NULL</code> to sleep on the graphics accelerator.</param>
     </input>
     <description>
 <p>The Sync() function will wait for all current video operations to complete before it returns.  This ensures that it is safe to write to video memory with the CPU, preventing any possibility of clashes with the onboard graphics chip.</p>
@@ -920,9 +905,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <constants lookup="BAF" comment="Instructions for basic graphics operations.">
       <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
-      <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
+      <const name="COPY">Special <function module="Display">CopyArea</function> option that avoids blending when the destination pixel is empty.</const>
       <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
-      <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
+      <const name="FILL">For primitive operations such as <function module="Display">DrawRectangle</function>, this will fill the shape with a solid colour or texture.</const>
       <const name="LINEAR">Use linear interpolation to improve the quality of alpha blending.</const>
     </constants>
 
@@ -938,15 +923,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
       <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
       <const name="COMPRESSED">The bitmap data is compressed.</const>
-      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
+      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via <code>Resize()</code>).</const>
       <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
-      <const name="MASK">Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.</const>
+      <const name="MASK">Declare the <class name="Bitmap">Bitmap</class> as a 1 or 8 bit mask.  Must be set in conjunction with the <class name="Bitmap" field="BitsPerPixel">Bitmap.BitsPerPixel</class> field on initialisation.</const>
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
       <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
       <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
-      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
-      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
+      <const name="QUERIED">Automatically set after a <code>Query()</code> on the bitmap.</const>
+      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the <class name="Bitmap" field="TransIndex">Bitmap.TransIndex</class> or <class name="Bitmap" field="TransRGB">Bitmap.TransRGB</class> is defined, and support exists in functions such as <function module="Display">CopyArea</function>.</const>
       <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>
     </constants>
 
@@ -976,10 +961,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </constants>
 
     <constants lookup="CRF" comment="Flags for the SetCursor() function.">
-      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.</const>
+      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the <function module="Display">SetCursor</function> function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the <code>ANCHOR</code> option.</const>
       <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
       <const name="MMB">Release the cursor after the middle mouse button is held and released.</const>
-      <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down.</const>
+      <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  <code>ERR::NothingDone</code> is returned if the user has a button held down.</const>
       <const name="RESTRICT">Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.</const>
       <const name="RMB">Release the cursor after the right mouse button is held and released.</const>
     </constants>
@@ -994,9 +979,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <constants lookup="CSRF" comment="Flags for CopySurface().">
       <const name="ALPHA">Enable alpha blending if the source is in 32-bit colour format with an alpha channel.</const>
       <const name="CLIP">Enable clipping of the source coordinates.</const>
-      <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.</const>
-      <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
-      <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
+      <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the <code>BitsPerPixel</code> value.</const>
+      <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the <class name="Surface" field="XOffset">Surface.XOffset</class> and <class name="Surface" field="YOffset">Surface.YOffset</class> fields.</const>
+      <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the <class name="Surface" field="Opacity">Surface.Opacity</class> field.</const>
       <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
     </constants>
 
@@ -1085,11 +1070,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
-      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
+      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by <class name="Surface" field="MinWidth">Surface.MinWidth</class> and <class name="Surface" field="MinHeight">Surface.MinHeight</class>.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
       <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
-      <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
+      <const name="FIXED_BUFFER">Passes the <code>NEVER_SHRINK</code> option to the surface bitmap</const>
       <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
       <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
       <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
@@ -1098,9 +1083,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
       <const name="INIT_ONLY">Synonym for <code>HOST | TRANSPARENT | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</code></const>
       <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
-      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
+      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the <code>Move()</code> action only).</const>
       <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the Move action only).</const>
+      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the <code>Move()</code> action only).</const>
       <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
       <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
@@ -1111,7 +1096,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
       <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
       <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
-      <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
+      <const name="VISIBLE">If a surface object is visible to the user, the <code>VISIBLE</code> flag will be set.  If the flag is not set, the surface object is hidden.</const>
       <const name="VOLATILE">Synonym for <code>PRECOPY | AFTER_COPY | CURSOR</code></const>
       <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
     </constants>
@@ -1161,13 +1146,29 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
       <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
       <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF::TRANSLUCENT is used.</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
       <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF::TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.</field>
+      <field name="Colour" type="LONG">Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if <code>CSRF::CLIP</code> is used.</field>
       <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
       <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use <code>CSRF::DEFAULT_FORMAT</code>.</field>
+    </struct>
+
+    <struct name="ColourFormat" typeName="COLOURFORMAT">
+      <field name="RedShift" type="UBYTE">Right shift value for red (15/16 bit formats only)</field>
+      <field name="GreenShift" type="UBYTE">Right shift value for green</field>
+      <field name="BlueShift" type="UBYTE">Right shift value for blue</field>
+      <field name="AlphaShift" type="UBYTE">Right shift value for alpha</field>
+      <field name="RedMask" type="UBYTE">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE">Unshifted mask value for green</field>
+      <field name="BlueMask" type="UBYTE">Unshifted mask value for blue</field>
+      <field name="AlphaMask" type="UBYTE">Unshifted mask value for alpha</field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
+      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
+      <field name="BitsPerPixel" type="UBYTE">Number of bits per pixel for this format.</field>
     </struct>
 
     <struct name="CursorInfo">

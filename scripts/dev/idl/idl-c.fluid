@@ -920,8 +920,11 @@ function class(Name, Options, Spec, Private, Custom)
       for _, v in pairs(Options.references) do
          if nz(glCustomTypes[v]) then
             cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
+            glCustomTypes[v].restrict = nil
          elseif nz(glStructures[v]) then
             class.references['STRUCT:' .. v] = true
+            -- A manual reference to a structure will forcibly turn off any restriction
+            glStructures[v].restrict = nil
          else
             print('Reference to lookup ' .. v .. ' not found.')
          end

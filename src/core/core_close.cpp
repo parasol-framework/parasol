@@ -296,7 +296,7 @@ __export void Expunge(WORD Force)
                if (mem IS glPrivateMemory.end()) continue;
 
                auto mc = (extMetaClass *)mem->second.Address;
-               if ((mc) and (mc->Class->ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+               if ((mc) and (mc->classID() IS ID_METACLASS) and (mc->OpenCount > 0)) {
                   log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
                   class_in_use = true;
                }
@@ -357,7 +357,7 @@ __export void Expunge(WORD Force)
                   if (mem IS glPrivateMemory.end()) continue;
 
                   auto mc = (extMetaClass *)mem->second.Address;
-                  if ((mc) and (mc->Class->ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                  if ((mc) and (mc->classID() IS ID_METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                   }
                }
@@ -415,7 +415,7 @@ static void free_private_memory(void)
       if (mem.Address) {
          if (!glCrashStatus) {
             if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->Class->ClassID, mem.OwnerID);
+               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->classID(), mem.OwnerID);
             }
             else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }
