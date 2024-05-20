@@ -771,7 +771,7 @@ Z: Close Path
       <const name="ALL">Synonym for <code>FINAL_PATH | BASE_PATH | TRANSFORM</code></const>
       <const name="BASE_PATH">The base path (shape of the vector) must be recalculated.</const>
       <const name="FINAL_PATH">The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.</const>
-      <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.</const>
+      <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the <code>CX, CY</code> of an ellipse.</const>
     </constants>
 
     <constants lookup="RQ">
@@ -845,8 +845,8 @@ Z: Close Path
       <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
       <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
       <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
-      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
-      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
+      <const name="LINEAR">A linear gradient is drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</const>
+      <const name="RADIAL">A radial gradient is drawn from <code>CenterX, CenterY</code> to <code>Radius</code>.  An optional focal point can be expressed with <code>FX</code> and <code>FY</code>.</const>
     </constants>
 
     <constants lookup="VIJ" comment="Inner join options for angled lines.">
@@ -868,7 +868,7 @@ Z: Close Path
       <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
       <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
-      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
+      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by <code>StrokeWidth / 2</code>.</const>
     </constants>
 
     <constants lookup="VLJ" comment="Options for the look of line joins.">
@@ -899,10 +899,22 @@ Z: Close Path
     </constants>
 
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
-      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="BITMAP_SIZED">Automatically adjust the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> to match the target <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</const>
       <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>
-      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
-      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the <code>RenderTime</code> field.</const>
+      <const name="RESIZE">The vector will be stretched to fit the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> values, if defined by the client.</const>
+    </constants>
+
+    <constants lookup="VSF" comment="Filter source types - these are used internally">
+      <const name="ALPHA">As for <code>GRAPHIC</code> except that only the alpha channel is used.</const>
+      <const name="BKGD">An image snapshot of the SVG document under the filter region at the time that the filter element was invoked.</const>
+      <const name="BKGD_ALPHA">As for <code>BKGD</code> but only the alpha channel is used.</const>
+      <const name="FILL">The value of the fill property on the target element for the filter effect.</const>
+      <const name="GRAPHIC">Represents the graphics elements that were the original input into the filter element.</const>
+      <const name="IGNORE">The filter does not require an input source.</const>
+      <const name="PREVIOUS">Use the previous effect as input, or source graphic if no previous effect.</const>
+      <const name="REFERENCE">This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.</const>
+      <const name="STROKE">The value of the stroke property on the target element for the filter effect.</const>
     </constants>
 
     <constants lookup="VSM">
@@ -965,7 +977,7 @@ Z: Close Path
 
     <constants lookup="VUNIT">
       <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
-      <const name="UNDEFINED"/>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
       <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 
@@ -997,7 +1009,7 @@ Z: Close Path
 
     <struct name="MergeSource" comment="Input source declaration for MergeFX">
       <field name="SourceType" type="VSF" lookup="VSF">The type of the required source.</field>
-      <field name="Effect" type="objFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
+      <field name="Effect" type="objFilterEffect *">Effect pointer if the <code>SourceType</code> is <code>REFERENCE</code>.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
@@ -1043,8 +1055,8 @@ Z: Close Path
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XScaled" type="UBYTE">TRUE if the X value is scaled to its viewport (between 0 and 1.0).</field>
-      <field name="YScaled" type="UBYTE">TRUE if the Y value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UBYTE"><code>TRUE</code> if the X value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UBYTE"><code>TRUE</code> if the Y value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

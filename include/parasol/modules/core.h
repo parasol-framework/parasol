@@ -106,19 +106,17 @@ DEFINE_ENUM_FLAG_OPERATORS(DEVICE)
 enum class CCF : ULONG {
    NIL = 0,
    COMMAND = 0x00000001,
-   DRAWABLE = 0x00000002,
-   EFFECT = 0x00000004,
-   FILESYSTEM = 0x00000008,
-   GRAPHICS = 0x00000010,
-   GUI = 0x00000020,
-   IO = 0x00000040,
-   SYSTEM = 0x00000080,
-   TOOL = 0x00000100,
-   AUDIO = 0x00000200,
-   DATA = 0x00000400,
-   MISC = 0x00000800,
-   NETWORK = 0x00001000,
-   MULTIMEDIA = 0x00002000,
+   FILESYSTEM = 0x00000002,
+   GRAPHICS = 0x00000004,
+   GUI = 0x00000008,
+   IO = 0x00000010,
+   SYSTEM = 0x00000020,
+   TOOL = 0x00000040,
+   AUDIO = 0x00000080,
+   DATA = 0x00000100,
+   MISC = 0x00000200,
+   NETWORK = 0x00000400,
+   MULTIMEDIA = 0x00000800,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(CCF)
@@ -3215,7 +3213,7 @@ class objMetaClass : public Object {
    using create = pf::Create<objMetaClass>;
 
    DOUBLE  ClassVersion;                // The version number of the class.
-   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   const struct FieldArray * Fields;    // Points to a FieldArray that describes the class' object structure.
    struct Field * Dictionary;           // Returns a field lookup table sorted by field IDs.
    CSTRING ClassName;                   // The name of the represented class.
    CSTRING FileExtension;               // Describes the file extension represented by the class.

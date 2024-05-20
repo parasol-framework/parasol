@@ -12,15 +12,15 @@ Use the CompressedStream class to compress and decompress data on the fly withou
 area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line
 tools such as gzip.
 
-To decompress data, set the #Input field with a source object that supports the Read action, such as a File.
-Repeatedly reading from the CompressedStream will automatically handle the decompression process for you.  If the
+To decompress data, set the #Input field with a source object that supports the Read() action, such as a @File.
+Repeatedly reading from the CompressedStream will automatically handle the decompression process.  If the
 decompressed size of the incoming data is defined in the source header, it will be reflected in the #Size
 field.
 
-To compress data, set the #Output field with a source object that supports the #Write() action, such as a @File.
+To compress data, set the #Output field with a source object that supports the Write() action, such as a @File.
 Repeatedly writing to the CompressedStream with raw data will automatically handle the compression process for you.
-Once all of the data has been written, call the #Write() action with a Buffer of NULL and Length -1 to signal an end
-to the streaming process.
+Once all of the data has been written, call the #Write() action with a `Buffer` of `NULL` and `Length` `-1` to 
+signal an end to the streaming process.
 
 -END-
 
@@ -332,7 +332,7 @@ Input: An input object that will supply data for decompression.
 
 To create a stream that decompresses data from a compressed source, set the Input field with a reference to an object
 that will provide the source data.  It is most common for the source object to be a @File type, however any
-class that supports the Read action is permitted.
+class that supports the Read() action is permitted.
 
 The source object must be in a readable state.  The Input field is mutually exclusive to the #Output field.
 
@@ -340,7 +340,7 @@ The source object must be in a readable state.  The Input field is mutually excl
 Output: A target object that will receive data compressed by the stream.
 
 To create a stream that compresses data to a target object, set the Output field with an object reference.  It is
-most common for the target object to be a @File type, however any class that supports the Write action is
+most common for the target object to be a @File type, however any class that supports the Write() action is
 permitted.
 
 The target object must be in a writeable state.  The Output field is mutually exclusive to the #Input field.
@@ -352,7 +352,7 @@ The Size field will reflect the uncompressed size of the input source, if this c
 In the case of GZIP decompression, the size will not be known until the parser has consumed the header.
 This means that at least one call to the #Read() action is required before the Size is known.
 
-If the size is unknown, a value of -1 is returned.
+If the size is unknown, a value of `-1` is returned.
 
 *********************************************************************************************************************/
 

@@ -81,7 +81,7 @@
       <input>
         <param type="LONG" name="Index">The index of the command that is to be set.</param>
         <param type="struct PathCommand *" name="Command">An array of commands to set in the path.</param>
-        <param type="LONG" name="Size">The size of the Command buffer, in bytes.</param>
+        <param type="LONG" name="Size">The size of the <code>Command</code> buffer, in bytes.</param>
       </input>
       <description>
 <p>Use SetCommand() to copy one or more commands into an existing path.</p>
@@ -93,8 +93,8 @@
       <comment>The fastest available mechanism for setting a series of path instructions.</comment>
       <prototype>ERR vpSetCommandList(OBJECTPTR Object, APTR Commands, LONG Size)</prototype>
       <input>
-        <param type="APTR" name="Commands">An array of PathCommand structures.</param>
-        <param type="LONG" name="Size">The byte size of the Commands buffer.</param>
+        <param type="APTR" name="Commands">An array of <st>PathCommand</st> structures.</param>
+        <param type="LONG" name="Size">The byte size of the <code>Commands</code> buffer.</param>
       </input>
       <description>
 <p>Use SetCommandList() to copy a series of path commands to a <class name="VectorPath">VectorPath</class> object.  All existing commands will be cleared as a result of this process.</p>
@@ -111,8 +111,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRUCT []</type>
       <description>
-<p>Read the Commands field to obtain a direct pointer to the <code>PathCommand</code> array.  This will allow the control points of the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
-<p>This field can also be written at any time with a new array of <code>PathCommand</code> structures.  Doing so will clear the existing path, if any.</p>
+<p>Read the Commands field to obtain a direct pointer to the <st>PathCommand</st> array.  This will allow the control points of the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
+<p>This field can also be written at any time with a new array of <st>PathCommand</st> structures.  Doing so will clear the existing path, if any.</p>
       </description>
     </field>
 

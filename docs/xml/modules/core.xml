@@ -2312,17 +2312,15 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="AUDIO">Audio classes interface with audio hardware and drivers for audio playback and recording purposes.</const>
       <const name="COMMAND">Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.</const>
       <const name="DATA">Data classes parse, query and manipulate data.</const>
-      <const name="DRAWABLE">Drawable classes provide graphical areas that are designed to be drawn to.</const>
-      <const name="EFFECT">Effect classes draw graphics and/or play audio for non-productive demonstration purposes.</const>
       <const name="FILESYSTEM">FileSystem classes are based on file management and interaction with file based data.</const>
-      <const name="GRAPHICS">Graphics classes provide graphical manipulation and drawing services to developers.</const>
+      <const name="GRAPHICS">Graphics classes provide graphics management and drawing services.</const>
       <const name="GUI">GUI classes are used in the development of graphical user interfaces.</const>
-      <const name="IO">IO classes manage hardware and software based input and output.</const>
+      <const name="IO">I/O classes manage hardware and software based input and output.</const>
       <const name="MISC">Miscellaneous classes do not fit into any of the other available categories.</const>
-      <const name="MULTIMEDIA"/>
-      <const name="NETWORK">Network classes interface with network drivers to simplify network communications for the developer.</const>
+      <const name="MULTIMEDIA">Classes that represent more than one media type, e.g. video files.</const>
+      <const name="NETWORK">Network classes interface with system drivers to simplify network communications.</const>
       <const name="SYSTEM">System classes are designed to provide low-level services related to system management.</const>
-      <const name="TOOL">Tool classes are focussed on providing interactive services to the user.</const>
+      <const name="TOOL">Tools provide interactive services for the user.</const>
     </constants>
 
     <constants lookup="CF" comment="Compression stream formats">
@@ -2849,7 +2847,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR::Search is returned.</const>
+      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, <code>ERR::Search</code> is returned.</const>
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">
@@ -3125,7 +3123,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <constants lookup="RSF" comment="Flags for ResolvePath()">
       <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
       <const name="CASE_SENSITIVE">For use on host systems that use case-insensitive file systems such as Windows; this option checks that the discovered file is a case-sensitive match to the Path.</const>
-      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR::VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
+      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, <code>ERR::VirtualVolume</code> is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>

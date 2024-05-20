@@ -34,7 +34,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "SPECULAR: Select specular lighting.")
 
   enum("VUNIT", { type="int", start=0 },
-    "UNDEFINED",
+    "UNDEFINED: Either the default setting will be applied or the setting will be inherited from a parent object.",
     "BOUNDING_BOX: Coordinates are scaled to the object's bounding box.",
     "USERSPACE: Coordinates are scaled to the current viewport.",
     "END: Private")
@@ -95,7 +95,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   enum("VLC", { type="int", start=1, comment="Line-cap options." }, // Match to agg::line_cap_e
     "BUTT: The default.  The line is sharply squared off at its exact end point.",
-    "SQUARE: Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.",
+    "SQUARE: Similar to butt, the line is sharply squared off but will extend past the end point by `StrokeWidth / 2`.",
     "ROUND: The line cap is a half-circle and the line's end-point forms the center point.",
     "INHERIT: The cap type is inherited from the parent (defaults to butt if unspecified).")
 
@@ -107,8 +107,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "INHERIT: Inherit the parent's join value.")
 
   enum("VGT", { type="int", start=0, comment="VectorGradient options." },
-    "LINEAR: A linear gradient is drawn from (X1,Y1) to (X2,Y2).",
-    "RADIAL: A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.",
+    "LINEAR: A linear gradient is drawn from `(X1, Y1)` to `(X2, Y2)`.",
+    "RADIAL: A radial gradient is drawn from `CenterX, CenterY` to `Radius`.  An optional focal point can be expressed with `FX` and `FY`.",
     "CONIC: The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.",
     "DIAMOND: A diamond gradient is drawn as a square emanating from the center point.",
     "CONTOUR: Contoured gradients follow the contours of the vector path in which they are rendered.")
@@ -185,9 +185,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   enum("VSF", { type="int", start=0, comment="Filter source types - these are used internally", restrict="c" },
     "IGNORE|NONE: The filter does not require an input source.",
     "GRAPHIC: Represents the graphics elements that were the original input into the filter element.",
-    "ALPHA: As for GRAPHIC except that only the alpha channel is used.",
+    "ALPHA: As for `GRAPHIC` except that only the alpha channel is used.",
     "BKGD: An image snapshot of the SVG document under the filter region at the time that the filter element was invoked.",
-    "BKGD_ALPHA: As for BKGD but only the alpha channel is used.",
+    "BKGD_ALPHA: As for `BKGD` but only the alpha channel is used.",
     "FILL: The value of the fill property on the target element for the filter effect.",
     "STROKE: The value of the stroke property on the target element for the filter effect.",
     "REFERENCE: This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.",
@@ -236,9 +236,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "FIXED_RADIUS: is fixed")
 
   flags("VPF", { comment="Optional flags for the VectorScene object." },
-    "BITMAP_SIZED: Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.",
-    "RENDER_TIME: Compute the drawing frame-rate for the RenderTime field.",
-    "RESIZE: The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.",
+    "BITMAP_SIZED: Automatically adjust the @VectorScene.PageWidth and @VectorScene.PageHeight to match the target @Bitmap.Width and @Bitmap.Height.",
+    "RENDER_TIME: Compute the drawing frame-rate for the `RenderTime` field.",
+    "RESIZE: The vector will be stretched to fit the @VectorScene.PageWidth and @VectorScene.PageHeight values, if defined by the client.",
     "OUTLINE_VIEWPORTS: Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.")
 
   enum("TB", { type="int", start=0, "Function identifier for TurbulenceFX." },
@@ -273,7 +273,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   flags("RC", { bits=8, comments="Internal flags for signalling the need to recompute paths." },
     "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
-    "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
+    "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the `CX, CY` of an ellipse.",
     { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
 
   flags("ARF", { comment="Aspect ratios control alignment, scaling and clipping." },
@@ -310,8 +310,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   struct("VectorPoint", { comment="Structure for the VectorPolygon PointsArray field." }, [[
     double X   # The X coordinate of this point.
     double Y   # The Y coordinate of this point.
-    bit(uchar) XScaled # TRUE if the X value is scaled to its viewport (between 0 and 1.0).
-    bit(uchar) YScaled # TRUE if the Y value is scaled to its viewport (between 0 and 1.0).
+    bit(uchar) XScaled # `TRUE` if the X value is scaled to its viewport (between 0 and 1.0).
+    bit(uchar) YScaled # `TRUE` if the Y value is scaled to its viewport (between 0 and 1.0).
   ]])
 
   struct("VectorPainter", { comment="Deserialised painter information; compliant with SVG painter definitions." }, [[
@@ -400,7 +400,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
    int(VPF) Flags                # Optional flags.
    int      PageWidth            # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
    int      PageHeight           # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
-   int(VSM) SampleMethod         # VSM: Method to use for resampling images and patterns.
+   int(VSM) SampleMethod         # Method to use for resampling images and patterns.
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[
@@ -408,7 +408,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     double Y                   # Starting vertical coordinate
     obj(Picture) Picture
     obj(Bitmap)  Bitmap
-    int(VUNIT)   Units         # VUNIT constant, defines the coordinate system for (X,Y)
+    int(VUNIT)   Units         # Defines the coordinate system for `(X, Y)`
     int(DMF)     Dimensions
     int(VSPREAD) SpreadMethod
     int(ARF)     AspectRatio   # Defines how the referenced image should fit in the boundary of its target shape.
@@ -440,14 +440,14 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     double Radius                # The size of a radial gradient radius.
     obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
-    int(VUNIT) Units             # Defines the coordinate system for (x1,y1),(x2,y2)
+    int(VUNIT) Units             # Defines the coordinate system for `(X1, Y1), (X2, Y2)`
     int(VGT) Type
     int(VGF) Flags               # Optional flags.
     int(VCS) ColourSpace         # The colour space or method to use for interpolating the gradient colours.
     int TotalStops               # The total number of records in the Stops array.
   ]])
 
-  class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c" }, [[
+  class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c", references={ 'VSF' } }, [[
     obj(FilterEffect) Next  # Next filter in the chain.
     obj(FilterEffect) Prev  # Previous filter in the chain.
     obj(Bitmap) Target      # Target bitmap for rendering the effect.
@@ -464,7 +464,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   struct("MergeSource", { comment="Input source declaration for MergeFX" }, [[
    int(VSF) SourceType        # The type of the required source.
-   obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
+   obj(FilterEffect) Effect   # Effect pointer if the `SourceType` is `REFERENCE`.
   ]],
   [[
   MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
@@ -550,18 +550,18 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   })
 
   class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
-    obj(Vector) Child       # The first child vector, or NULL.
-    obj(VectorScene) Scene  # Short-cut to the top-level VectorScene.
-    obj(Vector) Next        # The next vector in the branch, or NULL.
-    obj(Vector) Prev        # The previous vector in the branch, or NULL.
-    obj Parent              # The parent vector, or NULL if this is the top-most vector.
+    obj(Vector) Child       # The first child vector, or `NULL`.
+    obj(VectorScene) Scene  # Short-cut to the top-level @VectorScene.
+    obj(Vector) Next        # The next vector in the branch, or `NULL`.
+    obj(Vector) Prev        # The previous vector in the branch, or `NULL`.
+    obj Parent              # The parent vector, or `NULL` if this is the top-most vector.
     struct(*VectorMatrix) Matrices # A list of transform matrices to apply to the vector.
     double StrokeOpacity    # Defines the opacity of the path stroke.
     double FillOpacity      # The opacity to use when filling the vector.
     double Opacity          # An overall opacity value for the vector.
-    double MiterLimit       # Imposes a limit on the ratio of the miter length to the StrokeWidth.
-    double InnerMiterLimit  # A special limit to apply when the MITER_ROUND line-join effect is in use.
-    double DashOffset       # For the DashArray, applies an initial dash offset.
+    double MiterLimit       # Imposes a limit on the ratio of the miter length to the `StrokeWidth`.
+    double InnerMiterLimit  # A special limit to apply when the `MITER_ROUND` line-join effect is in use.
+    double DashOffset       # For the `DashArray`, applies an initial dash offset.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
     int(VF)  Flags          # Optional flags.
     int(PTC) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.

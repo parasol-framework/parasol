@@ -38,7 +38,7 @@ static ERR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
 -FIELD-
 XOffset: The delta X coordinate for the input graphic.
 
-The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.
+The `(XOffset, YOffset)` field values define the offset of the input source within the target clipping area.
 
 *********************************************************************************************************************/
 
@@ -59,7 +59,7 @@ static ERR OFFSETFX_SET_XOffset(extOffsetFX *Self, LONG Value)
 -FIELD-
 YOffset: The delta Y coordinate for the input graphic.
 
-The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.
+The `(XOffset, YOffset)` field values define the offset of the input source within the target clipping area.
 
 *********************************************************************************************************************/
 

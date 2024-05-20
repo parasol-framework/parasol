@@ -18,7 +18,7 @@ following extract illustrates the SVG equivalent of this feature:
 
 Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal @VectorImage
 and then rendering that to the viewport as a rectangular path.  It is recommended that this feature is only used for
-fast 1:1 rendering without transforms.  The user is otherwise better served through the use of scalable fonts.
+fast `1:1` rendering without transforms.  The user is otherwise better served through the use of scalable fonts.
 
 -END-
 
@@ -756,7 +756,21 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    else return ERR::NoSupport;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Fill: Defines the fill painter using SVG's IRI format.
+
+The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The
+string is parsed through the ~Vector.ReadPainter() function.  Please refer to it for further details on
+valid formatting.
+
+It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by
+separating them with a semi-colon `;` character.  This feature makes it easy to use a common background fill and
+follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this
+feature is intended for programmed use-cases and is not SVG compliant.
+
+*********************************************************************************************************************/
 // Override the existing Vector Fill field - this is required for bitmap fonts as they need a path reset to be
 // triggered when decorative changes occur.
 

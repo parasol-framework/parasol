@@ -426,10 +426,10 @@ inline static UBYTE conv_l2r(DOUBLE X) {
 /*********************************************************************************************************************
 
 -ACTION-
-Clear: Clears a bitmap's image to black.
+Clear: Clears a bitmap's image to #BkgdIndex.
 
 Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of
-the blank area is determined by the #BkgdRGB field.  To clear a bitmap to a different colour, use the #DrawRectangle()
+the blank area is determined by the #BkgdIndex field.  To clear a bitmap to a different colour, use the #DrawRectangle()
 method instead.
 
 If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.
@@ -462,8 +462,8 @@ static ERR BITMAP_Clear(extBitmap *Self, APTR Void)
 -METHOD-
 Compress: Compresses bitmap data to save memory.
 
-A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful
-if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
+A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is 
+useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
 
 Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely
 result in a memory access fault.  The image data will remain invalid until the #Decompress() method is
@@ -735,14 +735,14 @@ static ERR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
 -METHOD-
 Decompress: Decompresses a compressed bitmap.
 
-The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed,
+The Decompress() method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed,
 the method does nothing.
 
-The compressed data will be terminated unless `RetainData` is TRUE.  Retaining the data will allow the client to
+The compressed data will be terminated unless `RetainData` is `true`.  Retaining the data will allow the client to
 repeatedly restore the content of the most recent #Compress() call.
 
 -INPUT-
-int RetainData: Retains the compression data if TRUE.
+int RetainData: Retains the compression data if `true`.
 
 -ERRORS-
 Okay
@@ -839,7 +839,7 @@ static ERR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 -METHOD-
 Demultiply: Reverses the conversion process performed by Premultiply().
 
-Use Demultiply to normalise RGB values that have previously been converted by #Premultiply().  This method will
+Use Demultiply() to normalise RGB values that have previously been converted by #Premultiply().  This method will
 return immediately if the bitmap values are already normalised, as determined by the presence of the `PREMUL` value
 in #Flags.
 
@@ -913,7 +913,7 @@ static ERR BITMAP_Demultiply(extBitmap *Self, APTR Void)
 /*********************************************************************************************************************
 
 -ACTION-
-Draw: Clears a bitmap's image to its assigned background colour.
+Draw: Clears a bitmap's image to #BkgdIndex.
 
 *********************************************************************************************************************/
 
@@ -1017,8 +1017,8 @@ static ERR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
 -ACTION-
 Flush: Flushes pending graphics operations and returns when the accelerator is idle.
 
-The Flush() action is provided for you to ensure that your graphics operations are synchronised with the graphics
-accelerator.  Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
+The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.  
+Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
 result in corruption in the bitmap's graphics display.
 
 You do not have to use this function if you stick to using the graphics functions that are provided in the Bitmap class.
@@ -1095,7 +1095,7 @@ static ERR BITMAP_Free(extBitmap *Self, APTR Void)
 -METHOD-
 GetColour: Converts Red, Green, Blue components into a single colour value.
 
-The GetColour method is used to convert `Red`, `Green`, `Blue` and `Alpha` colour components into a single colour
+The GetColour() method is used to convert `Red`, `Green`, `Blue` and `Alpha` colour components into a single colour
 index that can be used for directly writing colours to the bitmap.  The result is returned in the `Colour` parameter.
 
 -INPUT-
@@ -2308,7 +2308,7 @@ Chunky/24   = Width * 3
 Chunky/32   = Width * 4
 </pre>
 
-To learn the total byte-width per line including any additional padded bytes, refer to the #LineMod field.
+To learn the total byte-width per line including any additional padded bytes, refer to the #LineWidth field.
 
 -FIELD-
 ClipBottom: The bottom-most edge of  bitmap's clipping region.
@@ -2524,7 +2524,7 @@ static ERR SET_Handle(extBitmap *Self, APTR Value)
 Height: The height of the bitmap, in pixels.
 
 -FIELD-
-LineMod: The length of each bitmap line in bytes, including alignment.
+LineWidth: The length of each bitmap line in bytes, including alignment.
 
 -FIELD-
 Opacity: Determines the translucency setting to use in drawing operations.
@@ -2891,7 +2891,7 @@ static const FieldArray clBitmapFields[] = {
    { "ByteWidth",     FDF_LONG|FDF_R, NULL, NULL },
    { "Height",        FDF_LONG|FDF_RI, NULL, NULL },
    { "Type",          FDF_LONG|FDF_RI|FDF_LOOKUP, NULL, NULL, &clBitmapType },
-   { "LineMod",       FDF_LONG|FDF_R },
+   { "LineWidth",     FDF_LONG|FDF_R },
    { "PlaneMod",      FDF_LONG|FDF_R },
    { "ClipLeft",      FDF_LONG|FDF_RW },
    { "ClipRight",     FDF_LONG|FDF_RW },

@@ -7,7 +7,8 @@ VectorFilter: Constructs filter pipelines that alter rendered vector graphics.
 
 The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
-Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:
+Once created, a filter can be utilised by vector objects through their @Vector.Filter field.  By way of example in 
+SVG:
 
 <pre>
 &lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(&#35;EffectPipeline)"/&gt;
@@ -644,12 +645,13 @@ static ERR VECTORFILTER_GET_EffectXML(extVectorFilter *Self, CSTRING *Value)
 -FIELD-
 Height: The height of the filter area.  Can be expressed as a fixed or scaled coordinate.
 
-The height of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively
+The height of the filter area is expressed here as a fixed or scaled coordinate.  The #Width and Height effectively
 restrain the working space for the effect processing, making them an important consideration for efficiency.
 
 The coordinate system for the width and height depends on the value for #Units.
 
-If width or height is not specified, the effect is as if a value of 120% were specified.
+The default values for #Width and Height is `120%`, as per the SVG standard.  This provides a buffer space for the
+filter algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
 
@@ -720,24 +722,24 @@ PrimitiveUnits: Alters the behaviour of some effects that support alternative po
 
 PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is
 `USERSPACE`.  When set to `BOUNDING_BOX`, the effect may calculate its dimensions strictly based on the client vector
-using a scaled coordinate space of (0,0,100%,100%).
+using a scaled coordinate space of `(0, 0, 100%, 100%)`.
 
 -FIELD-
 ResX: Width of the intermediate images, measured in pixels.
 
-The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that
-the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of
+The combination of ResX and #ResY define the available space for rendering of filter effects.  It is recommended that
+the client does not set these values because the default `1:1` pixel ratio is appropriate in the majority of
 circumstances.
 
 -FIELD-
 ResY: Height of the intermediate images, measured in pixels.
 
-The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that
-the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of
+The combination of #ResX and ResY define the available space for rendering of filter effects.  It is recommended that
+the client does not set these values because the default `1:1` pixel ratio is appropriate in the majority of
 circumstances.
 
 -FIELD-
-Units: Defines the coordinate system for fields X, Y, Width and Height.
+Units: Defines the coordinate system for #X, #Y, #Width and #Height.
 
 The default coordinate system is `BOUNDING_BOX`, which positions the filter within the client vector.
 The alternative is `USERSPACE`, which positions the filter relative to the client vector's nearest viewport.
@@ -745,12 +747,13 @@ The alternative is `USERSPACE`, which positions the filter relative to the clien
 -FIELD-
 Width: The width of the filter area.  Can be expressed as a fixed or scaled coordinate.
 
-The width of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively
+The width of the filter area is expressed here as a fixed or scaled coordinate.  The Width and #Height effectively
 restrain the working space for the effect processing, making them an important consideration for efficiency.
 
 The coordinate system for the width and height depends on the value for #Units.
 
-If width or height is not specified, the effect is as if a value of 120% were specified.
+The default values for #Width and Height is `120%`, as per the SVG standard.  This provides a buffer space for the
+filter algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
 
@@ -783,11 +786,12 @@ static ERR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
 -FIELD-
 X: X coordinate for the filter.
 
-The meaning of the (X,Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
+The meaning of the (X, #Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
 relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
 vector's position.  It is important to note that coordinates are measured before any transforms are applied.
 
-If X or Y is not specified, the effect is as if a value of -10% were specified.
+The default values for X and #Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter 
+algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
 
@@ -817,11 +821,12 @@ static ERR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
 -FIELD-
 Y: Y coordinate for the filter.
 
-The meaning of the (X,Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
+The meaning of the (#X, Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
 relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
 vector's position.  It is important to note that coordinates are measured before any transforms are applied.
 
-If X or Y is not specified, the effect is as if a value of -10% were specified.
+The default values for #X and Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter 
+algorithms to work with, and is usually a sufficient default.
 
 -END-
 *********************************************************************************************************************/

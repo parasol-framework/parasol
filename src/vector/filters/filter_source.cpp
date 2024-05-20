@@ -10,8 +10,8 @@ SourceFX: Renders a source vector in the effect pipeline.
 
 The SourceFX class will render a named vector into a given rectangle within the current user coordinate system.
 
-Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y,
-Width and Height.  The placement and scaling of the referenced vector is controlled by the #AspectRatio field.
+Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes `X`, `Y`,
+`Width` and `Height`.  The placement and scaling of the referenced vector is controlled by the #AspectRatio field.
 
 -END-
 
@@ -262,7 +262,7 @@ SourceName: Name of a source definition to be rendered.
 Setting Def to the name of a pre-registered scene definition will reference that object in #Source.  If the name is
 not registered then `ERR::Search` is returned.  The named object must be derived from the @Vector class.
 
-Vectors are registered via the @VectorScene AddDef() method.
+Vectors are registered via the @VectorScene.AddDef() method.
 
 *********************************************************************************************************************/
 

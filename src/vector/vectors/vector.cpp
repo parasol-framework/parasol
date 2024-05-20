@@ -622,7 +622,7 @@ transform is no longer required before then, it can be manually removed with ~Ve
 
 -INPUT-
 &resource(*VectorMatrix) Transform: A reference to the new transform structure is returned here.
-int End: If true, the matrix priority is lowered by inserting it at the end of the transform list.
+int End: If `true`, the matrix priority is lowered by inserting it at the end of the transform list.
 
 -ERRORS-
 Okay:
@@ -748,8 +748,8 @@ to the current position of the vector.  Every unit specified in the Position par
 index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.
 
 It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector
-reaches the edge of its branch with excess units remaining, the method will return immediately with an ERR::Okay error
-code.
+reaches the edge of its branch with excess units remaining, the method will return immediately with an `ERR::Okay` 
+error code.
 
 -INPUT-
 int Position: Specify a relative position index here (-ve to move backwards, +ve to move forwards)
@@ -827,13 +827,13 @@ SubscribeFeedback: Subscribe to events that relate to the vector.
 
 Use this method to receive feedback for events that have affected the state of a vector.
 
-To remove an existing subscription, call this method again with the same Callback and an empty Mask.
+To remove an existing subscription, call this method again with the same `Callback` and an empty `Mask`.
 Alternatively have the callback function return `ERR::Terminate`.
 
-The prototype for the Callback is `ERR callback(*Vector, FM Event)`
+The prototype for the `Callback` is `ERR callback(*Vector, FM Event)`
 
 -INPUT-
-int(FM) Mask: Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.
+int(FM) Mask: Defines the feedback events required by the client.  Set to `0xffffffff` if all messages are required.
 ptr(func) Callback: The function that will receive feedback events.
 
 -ERRORS-
@@ -871,7 +871,7 @@ static ERR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback
 -METHOD-
 SubscribeInput: Create a subscription for input events that relate to the vector.
 
-The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target
+The SubscribeInput method filters events from ~Display.SubscribeInput() by limiting their relevance to that of the target
 vector.  The original events are transferred with some modifications - `X`, `Y`, `AbsX` and `AbsY` are converted to
 the vector's coordinate system, and `CROSSED_IN` and `CROSSED_OUT` events are triggered during passage through
 the clipping area.
@@ -881,7 +881,7 @@ It is a pre-requisite that the associated @VectorScene has been linked to a @Sur
 To remove an existing subscription, call this method again with the same `Callback` and an empty `Mask`.
 Alternatively have the function return `ERR::Terminate`.
 
-Please refer to gfxSubscribeInput() for further information on event management and message handling.
+Please refer to ~Display.SubscribeInput() for further information on event management and message handling.
 
 The prototype for the `Callback` is `ERR callback(*Vector, *InputEvent)`
 
@@ -939,7 +939,7 @@ static ERR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Args
 -METHOD-
 SubscribeKeyboard: Create a subscription for input events that relate to the vector.
 
-The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the
+The SubscribeKeyboard() method provides a callback mechanism for handling keyboard events.  Events are reported when the
 vector or one of its children has the user focus.  It is a pre-requisite that the associated @VectorScene has been
 linked to a @Surface.
 
@@ -957,9 +957,9 @@ ptr(func) Callback: Reference to a callback function that will receive input mes
 -ERRORS-
 Okay:
 NullArgs:
-FieldNotSet: The VectorScene's Surface field has not been defined.
+FieldNotSet: The @VectorScene.Surface field has not been defined.
 AllocMemory:
-Function: A call to gfxSubscribeInput() failed.
+Function: A call to ~Display.SubscribeInput() failed.
 
 *********************************************************************************************************************/
 
@@ -990,10 +990,10 @@ Any vector that generates a path can be traced by calling this method.  Tracing 
 from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback function is
 `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)`.
 
-The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
-the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.
+The `Vector` parameter refers to the vector targeted by the method.  The `Index` is an incrementing counter that reflects
+the currently plotted point.  The `X` and `Y` parameters reflect the coordinate of a point on the path.
 
-If the Callback returns `ERR::Terminate`, then no further coordinates will be processed.
+If the `Callback` returns `ERR::Terminate`, then no further coordinates will be processed.
 
 -INPUT-
 ptr(func) Callback: A function to call with the path coordinates.
@@ -1146,7 +1146,7 @@ static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Child: The first child vector, or NULL.
+Child: The first child vector, or `NULL`.
 
 The Child value refers to the first vector that forms a branch under this object.  This field cannot be
 set directly as it is managed internally.  Instead, use object ownership when a vector needs to be associated with a
@@ -1338,8 +1338,8 @@ static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
 -FIELD-
 EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
 
-The EnableBkgd option must be set to true if a section of the vector tree uses filters that have 'BackgroundImage' or
-'BackgroundAlpha' as a source.  If it is not set, then filters using BackgroundImage and BackgroundAlpha references
+The EnableBkgd option must be set to true if a section of the vector tree uses filters that have `BackgroundImage` or
+`BackgroundAlpha` as a source.  If it is not set, then filters using `BackgroundImage` and `BackgroundAlpha` references
 will not produce the expected behaviour.
 
 The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
@@ -1366,7 +1366,7 @@ static ERR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
 Fill: Defines the fill painter using SVG's IRI format.
 
 The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The
-string is parsed through the ~ReadPainter() function in the Vector module.  Please refer to it for further details on
+string is parsed through the ~Vector.ReadPainter() function.  Please refer to it for further details on
 valid formatting.
 
 It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by
@@ -1945,10 +1945,10 @@ for changes at a later time.  For more active monitoring and response, clients s
 event.
 
 -FIELD-
-Prev: The previous vector in the branch, or NULL.
+Prev: The previous vector in the branch, or `NULL`.
 
-The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the
-top of the branch.
+The Prev value refers to the previous vector in the branch.  If the value is `NULL`, then the vector is positioned at 
+the top of the branch.
 
 The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If
 this is not true, change the current owner before setting the Prev field.  Changing the value will result in updates to
@@ -1956,7 +1956,7 @@ the #Parent and #Next values.
 
 -ERRORS-
 InvalidObject: The value is not a member of the Vector class.
-InvalidValue: The provided value is either NULL or refers to itself.
+InvalidValue: The provided value is either `NULL` or refers to itself.
 UnsupportedOwner: The referenced vector does not share the same owner.
 
 *********************************************************************************************************************/

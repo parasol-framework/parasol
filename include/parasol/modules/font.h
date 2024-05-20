@@ -85,7 +85,7 @@ class objFont : public Object {
    STRING Face;            // The name of a font face that is to be loaded on initialisation.
    struct RGB8 Outline;    // Defines the outline colour around a font.
    struct RGB8 Underline;  // Enables font underlining when set.
-   struct RGB8 Colour;     // The font colour in RGB format.
+   struct RGB8 Colour;     // The font colour in RGB8 format.
    FTF    Flags;           // Optional flags.
    LONG   Gutter;          // The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
    LONG   LineSpacing;     // The amount of spacing between each line.

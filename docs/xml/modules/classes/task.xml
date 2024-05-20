@@ -17,8 +17,8 @@
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
-<p>To execute a compiled program, set the <fl>Location</fl> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <fl>Parameters</fl> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR::Okay then the executable program was run successfully.</p>
-<p>To find the task object that represents the active process, use the <function>CurrentTask</function> function to quickly retrieve it.</p></description>
+<p>To execute a compiled program, set the <fl>Location</fl> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <fl>Parameters</fl> field.  After initialising the task, use the <action>Activate</action> action to run the executable.  If the program executes successfully, the task object can be removed and this will not impact the running program.</p>
+<p>The task object that represents the active process can be acquired from <function>CurrentTask</function>.</p></description>
     <source>
       <file path="../classes/">class_task.cpp</file>
     </source>
@@ -125,7 +125,7 @@
       <comment>Sends a quit message to a task.</comment>
       <prototype>ERR taskQuit(OBJECTPTR Object)</prototype>
       <description>
-<p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task can be killed outright with the Free() action.</p>
+<p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -166,8 +166,8 @@
       <access read="G">Get</access>
       <type>APTR</type>
       <description>
-<p>This field provides direct access to the actions of a task.  You can use it in the development of an executable program to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the system's object oriented design.</p>
-<p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
+<p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <function>CurrentTask</function>.  Hooking into the action table allows the running executable to 'blend-in' with Parasol's object oriented design.</p>
+<p>The Actions field points to a lookup table of !ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
 <pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
    task-&gt;getPtr(FID_Actions, &amp;actions);
    actions[AC_Seek] = PROGRAM_Seek;
@@ -195,7 +195,7 @@
       <type>FUNCTION</type>
       <description>
 <p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
-<p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
+<p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
 
@@ -206,7 +206,7 @@
       <type>FUNCTION</type>
       <description>
 <p>The ExitCallback field can be set with a function reference that will be called when the executed process is terminated.  The callback must follow the prototype <code>Function(*Task)</code>.</p>
-<p>Please keep in mind that if the Task is freed when the process is still executing, the ExitCallback routine will not be called on termination because the Task object no longer exists for the control of the process.</p>
+<p>Please keep in mind that if the <code>Task</code> is freed when the process is still executing, the ExitCallback routine will not be called on termination because the <code>Task</code> object no longer exists for the control of the process.</p>
       </description>
     </field>
 
@@ -226,9 +226,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The InputCallback field is available for use only when the Task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size, ERR Status)</code></p>
-<p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
-<p>A status of ERR::Finished is sent if the stdinput handle has been closed.</p>
+<p>The InputCallback field is available for use only when the task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size, ERR Status)</code></p>
+<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
+<p>A status of <code>ERR::Finished</code> is sent if the stdinput handle has been closed.</p>
       </description>
     </field>
 
@@ -238,7 +238,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is activated.  This will override all other path options, such as the RESET_PATH flag.</p>
+<p>Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is activated.  This will override all other path options, such as the <code>RESET_PATH</code> flag.</p>
       </description>
     </field>
 
@@ -259,7 +259,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field specifies the name of the Task or program that has been initialised. It is up to the developer of the program to set the Name which will appear in this field.  If there is no name for the task then the system may assign a randomly generated name.</p>
+<p>This field specifies the name of the task or program that has been initialised. It is up to the developer of the program to set the Name which will appear in this field.  If there is no name for the task then the system may assign a randomly generated name.</p>
       </description>
     </field>
 
@@ -270,7 +270,7 @@
       <type>FUNCTION</type>
       <description>
 <p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
-<p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
+<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The <code>Data</code> pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
 

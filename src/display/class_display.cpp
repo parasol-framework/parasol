@@ -3,20 +3,9 @@
 -CLASS-
 Display: Manages the video display and graphics hardware.
 
-A Display object represents an area of displayable video memory.  Although it is a very complex structure, it is fairly
-simple to initialise.  In fact it is possible to initialise a display using an empty structure and accept all the user
-defaults (which we recommended if possible).  For more demanding applications however you may often need to specify a
-few fields.  Before doing so, make sure that you understand how each field operates and what implications setting them
-may bring.  Where possible try to avoid setting field values, as the user default should always be considered as
-acceptable.
-
-It is perfectly acceptable to initialise multiple display objects and add them to the viewport, but due to memory
-restrictions, chances of failure could be high when doing this in certain environments.  When programming for Parasol,
-it is recommended that the utilisation of display objects is avoided in favour of using the @Surface class.
-which is much lighter on memory usage.
-
-Displays that are created as shared objects are available for any application or object to draw graphics to, so bear in
-mind the implications of creating a shared display.
+A Display object represents a region of displayable video memory and metadata that defines the display mode.
+The Display is a primitive, hardware oriented interface.  It is recommended that unless otherwise required, the
+@Surface class is used to create displayable graphics regions.
 
 -END-
 
@@ -1057,7 +1046,7 @@ In a hosted environment, the supplied coordinates are treated as being indicativ
 window (not the client area).
 
 For full-screen displays, MoveToPoint can alter the screen position for the hardware device managing the display
-output.  This is a rare feature that requires hardware support.  ERR::NoSupport is returned if this feature is
+output.  This is a rare feature that requires hardware support.  `ERR::NoSupport` is returned if this feature is
 unavailable.
 -END-
 *********************************************************************************************************************/
@@ -1604,14 +1593,14 @@ static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
 -METHOD-
 SetGammaLinear: Sets the display gamma level using a linear algorithm.
 
-Call SetGammaLinear to update a target display's gamma values with a linear algorithm that takes input from Red, Green
-and Blue parameters provided by the client.
+Call SetGammaLinear() to update a target display's gamma values with a linear algorithm that takes input from `Red`, 
+`Green` and `Blue` parameters provided by the client.
 
 -INPUT-
 double Red: New red gamma value.
 double Green: New green gamma value.
 double Blue: New blue gamma value.
-int(GMF) Flags: Use SAVE to store the new settings.
+int(GMF) Flags: Use `SAVE` to store the new settings.
 
 -ERRORS-
 Okay:
@@ -1672,7 +1661,7 @@ static ERR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *Ar
 -METHOD-
 SetMonitor: Changes the default monitor settings.
 
-Use the SetMonitor method to change the settings that configure the user's monitor display.  You can set the model name
+Use the SetMonitor() method to change the settings that configure the user's monitor display.  You can set the model name
 of the monitor and the frequencies that are supported by it.  Altering the display frequencies will affect the
 available display resolutions, as well as the maximum allowable refresh rate.
 
@@ -1689,7 +1678,7 @@ int MinH: The minimum horizontal scan rate.  Usually set to 31.
 int MaxH: The maximum horizontal scan rate.
 int MinV: The minimum vertical scan rate.  Usually set to 50.
 int MaxV: The maximum vertical scan rate.
-int(MON) Flags: Set to AUTO_DETECT if the monitor settings should be auto-detected on startup.  Set BIT_6 if the device is limited to 6-bit colour output.
+int(MON) Flags: Set to `AUTO_DETECT` if the monitor settings should be auto-detected on startup.  Set `BIT_6` if the device is limited to 6-bit colour output.
 
 -ERRORS-
 Okay
@@ -1790,7 +1779,7 @@ Show: Presents a display object to the user.
 This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on
 screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a
 titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the
-#X and #Y fields.  In Parasol's native platform, the user's screen display will be altered to match the required
+#X and #Y fields.  In Parasol's native environment, the user's screen display will be altered to match the required
 resolution and the graphics of the display's #Bitmap object will take up the entirety of the screen.
 
 If the `BORDERLESS` flag has been set in the #Flags field, the window will appear without the surrounding border
@@ -1906,7 +1895,7 @@ ERR DISPLAY_Show(extDisplay *Self, APTR Void)
 -METHOD-
 UpdatePalette: Updates the video display palette to new colour values if in 256 colour mode.
 
-Call UpdatePalette to copy a new palette to the display bitmap's internal palette.  If the video display is running in
+Call UpdatePalette() to copy a new palette to the display bitmap's internal palette.  If the video display is running in
 256 colour mode, the new palette colours will also be reflected in the display.
 
 This method has no visible effect on RGB pixel displays.
@@ -1944,7 +1933,7 @@ static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Args
 WaitVBL: Waits for a vertical blank.
 
 This method waits for the strobe to reach the vertical blank area at the bottom of the display.  Not all graphics
-hardware will support this method.  If this is the case, WaitVBL() will return immediately with ERR::NoSupport.
+hardware will support this method.  If this is the case, WaitVBL() will return immediately with `ERR::NoSupport`.
 
 -ERRORS-
 Okay
@@ -1962,11 +1951,11 @@ ERR DISPLAY_WaitVBL(extDisplay *Self, APTR Void)
 -FIELD-
 Bitmap: Reference to the display's bitmap information.
 
-The Bitmap object describes the video region that will be used for displaying graphics. It holds details on the width,
+The @Bitmap object describes the video region that will be used for displaying graphics. It holds details on the width,
 height, type, number of colours and so on.  The display class inherits the bitmap's attributes, so it is not necessary
 to retrieve a direct reference to the bitmap object in order to make adjustments.
 
-The bitmap's width and height can be larger than the display area, but must never be smaller than the display area.
+The @Bitmap.Width and @Bitmap.Height can be larger than the display area, but never smaller.
 
 -FIELD-
 BmpX: The horizontal coordinate of the bitmap within a display.
@@ -1977,9 +1966,8 @@ hardware scrolling, call the #Move() action on the Bitmap in order to change thi
 -FIELD-
 BmpY: The vertical coordinate of the Bitmap within a display.
 
-This field defines the vertical offset for the #Bitmap, which is positioned 'behind' the display. If you want
-to achieve hardware scrolling, you will need to call the Move action on the Bitmap in order to change this value and
-update the display.
+This field defines the vertical offset for the #Bitmap, which is positioned 'behind' the display.  To achieve hardware 
+scrolling, you will need to call the Move() action on the #Bitmap in order to change this value and update the display.
 
 -FIELD-
 BottomMargin: In hosted mode, indicates the bottom margin of the client window.
@@ -1991,7 +1979,7 @@ and the bottom window edge.
 CertificationDate: String describing the date of the graphics driver's certification.
 
 The string in this field describes the date on which the graphics card driver was certified.  If this information is
-not available from the driver, a NULL pointer is returned.
+not available from the driver, a `NULL` pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2005,8 +1993,8 @@ static ERR GET_CertificationDate(extDisplay *Self, STRING *Value)
 -FIELD-
 Chipset: String describing the graphics chipset.
 
-The string in this field describes the graphic card's chipset.  If this information is not retrievable, a NULL pointer
-is returned.
+The string in this field describes the graphic card's chipset.  If this information is not retrievable, a `NULL` 
+pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2024,8 +2012,8 @@ Reading the HDensity field will return the horizontal pixel density for the disp
 size of the display is unknown, a default value based on knowledge of the platform will be retuned.  For standard PC's
 this will usually be 96.
 
-A custom density value can be enforced by setting the /interface/@dpi value in the loaded style, or by setting the
-HDensity field in the Display object.
+A custom density value can be enforced by setting the `/interface/@dpi` value in the loaded style, or by setting
+HDensity.
 
 Reading this field always succeeds.
 
@@ -2094,8 +2082,8 @@ Reading the VDensity field will return the vertical pixel density for the displa
 size of the display is unknown, a default value based on knowledge of the platform will be retuned.  For standard PC's
 this will usually be 96.
 
-A custom density value can be enforced by setting the /interface/@dpi value in the loaded style, or by setting the
-VDensity field in the Display object.
+A custom density value can be enforced by setting the `/interface/@dpi` value in the loaded style, or by setting
+VDensity.
 
 Reading this field always succeeds.
 
@@ -2161,7 +2149,7 @@ static ERR SET_VDensity(extDisplay *Self, LONG Value)
 Display: String describing the display (e.g. model name of the monitor).
 
 The string in this field describes the display device that is connected to the user's graphics card.  If this
-information is not detectable, a NULL pointer is returned.
+information is not detectable, a `NULL` pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2178,7 +2166,7 @@ static ERR GET_Display(extDisplay *Self, CSTRING *Value)
 DisplayManufacturer: String describing the display manufacturer.
 
 The string in this field returns the name of the manufacturer that created the user's display device.  If this
-information is not detectable, a NULL pointer is returned.
+information is not detectable, a `NULL` pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2194,14 +2182,14 @@ static ERR GET_DisplayManufacturer(extDisplay *Self, CSTRING *Value)
 -FIELD-
 DisplayType: In hosted mode, indicates the bottom margin of the client window.
 
-If the display is hosted in a client window, the BottomMargin indicates the number of pixels between the client area
+If the display is hosted in a client window, the #BottomMargin indicates the number of pixels between the client area
 and the bottom window edge.
 
 -FIELD-
 DriverCopyright: String containing copyright information on the graphics driver software.
 
 The string in this field returns copyright information related to the graphics driver.  If this information is not
-available, a NULL pointer is returned.
+available, a `NULL` pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2217,7 +2205,7 @@ static ERR GET_DriverCopyright(extDisplay *Self, CSTRING *Value)
 -FIELD-
 DriverVersion: String describing the version of the graphics hardware driver.
 
-The string in this field describes the graphic driver's version number. If this information is not detectable, a NULL
+The string in this field describes the graphic driver's version number. If this information is not detectable, a `NULL`
 pointer is returned.
 
 *********************************************************************************************************************/
@@ -2235,7 +2223,7 @@ static ERR GET_DriverVersion(extDisplay *Self, CSTRING *Value)
 DriverVendor: String describing the vendor of the graphics driver.
 
 The string in this field returns the name of the vendor that supplied the graphics card driver.  If this information is
-not available, a NULL pointer is returned.
+not available, a `NULL` pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2511,7 +2499,7 @@ the left window edge.
 Manufacturer: String describing the manufacturer of the graphics hardware.
 
 The string in this field returns the name of the manufacturer that created the user's graphics card.  If this
-information is not detectable, a NULL pointer is returned.
+information is not detectable, a `NULL` pointer is returned.
 
 *********************************************************************************************************************/
 
@@ -2584,7 +2572,7 @@ The PopOver field can be used when a display is hosted as a window.  Setting the
 ID of another display will ensure that the host window is always in front of the other display's window (assuming both
 windows are visible on the desktop).
 
-The ERR::NoSupport error code is returned if the host does not support this functionality or if the display owns the
+The `ERR::NoSupport` error code is returned if the host does not support this functionality or if the display owns the
 output device.
 
 *********************************************************************************************************************/

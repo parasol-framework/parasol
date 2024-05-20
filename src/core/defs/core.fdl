@@ -132,7 +132,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("RSF", { comment="Flags for ResolvePath()"},
     "NO_FILE_CHECK: Do not test for the existence of the targeted file or folder during the resolution process.",
-    "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR::VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
+    "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, `ERR::VirtualVolume` is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
     "APPROXIMATE: Ignores file extensions for the purpose of file name matching.",
     "NO_DEEP_SCAN: Do not perform more than one iteration when resolving the source file path.",
     "PATH: Use the PATH environment variable to resolve the file name in the Path parameter.",
@@ -223,7 +223,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "FILE: The path refers to a file.")
 
   flags("LDF", { comment="Flags for LoadFile()" },
-    "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR::Search is returned.")
+    "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, `ERR::Search` is returned.")
 
   enum("FBK", { type="int", start=1, comment="Flags for file feedback." },
     "MOVE_FILE: A file is to be, or has been moved.",

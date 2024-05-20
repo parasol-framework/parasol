@@ -14,7 +14,7 @@
     <include>modules/vectorfilter.h</include>
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:</p>
+<p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their <class name="Vector" field="Filter">Vector.Filter</class> field.  By way of example in SVG:</p>
 <pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#EffectPipeline)"/&gt;
 </pre>
 <p>Filter pipelines are constructed from effects based on the <class name="FilterEffect">FilterEffect</class> class, such as <class name="CompositeFX">CompositeFX</class> and <class name="FloodFX">FloodFX</class>. Construct a new pipeline by creating effect objects and placing them under the ownership of the VectorFilter that will be supporting them.  The VectorFilter will automatically detect them and they will be processed in the order in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should be created for each pipeline as necessary.</p>
@@ -92,9 +92,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The height of the filter area is expressed here as a fixed or scaled coordinate.  The <fl>Width</fl> and Height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
 <p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.</p>
-<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
+<p>The default values for <fl>Width</fl> and Height is <code>120%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -124,7 +124,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a scaled coordinate space of (0,0,100%,100%).</p>
+<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a scaled coordinate space of <code>(0, 0, 100%, 100%)</code>.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -135,7 +135,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of circumstances.</p>
+<p>The combination of ResX and <fl>ResY</fl> define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default <code>1:1</code> pixel ratio is appropriate in the majority of circumstances.</p>
       </description>
     </field>
 
@@ -145,13 +145,13 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of circumstances.</p>
+<p>The combination of <fl>ResX</fl> and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default <code>1:1</code> pixel ratio is appropriate in the majority of circumstances.</p>
       </description>
     </field>
 
     <field>
       <name>Units</name>
-      <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
+      <comment>Defines the coordinate system for <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl>.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
@@ -166,9 +166,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The width of the filter area is expressed here as a fixed or scaled coordinate.  The Width and <fl>Height</fl> effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
 <p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.</p>
-<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
+<p>The default values for <fl>Width</fl> and Height is <code>120%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -178,8 +178,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The meaning of the (X,Y) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
-<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
+<p>The meaning of the (X, <fl>Y</fl>) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>The default values for X and <fl>Y</fl> is <code>10%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -189,8 +189,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The meaning of the (X,Y) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
-<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
+<p>The meaning of the (<fl>X</fl>, Y) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>The default values for <fl>X</fl> and Y is <code>10%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -209,7 +209,7 @@
 
     <constants lookup="VUNIT">
       <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
-      <const name="UNDEFINED"/>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
       <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 

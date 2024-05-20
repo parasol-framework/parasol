@@ -12,13 +12,11 @@ Tasks, also known as processes, form the basis of process execution in an operat
 it is possible to execute a program from within the host system.
 
 To execute a compiled program, set the #Location field to point to the executable file before initialising the
-task.  Arguments can be passed to the executable by setting the #Parameters field.  Once the task object is
-successfully initialised, use the #Activate() action to run the executable.  If the file executes successfully,
-a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object
-immediately afterwards).  If the #Activate() action returns with ERR::Okay then the executable program was run
-successfully.
+task.  Arguments can be passed to the executable by setting the #Parameters field.  After initialising the task,
+use the #Activate() action to run the executable.  If the program executes successfully, the task object can be
+removed and this will not impact the running program.
 
-To find the task object that represents the active process, use the ~CurrentTask() function to quickly retrieve it.
+The task object that represents the active process can be acquired from ~CurrentTask().
 
 -END-
 
@@ -1484,8 +1482,7 @@ Quit: Sends a quit message to a task.
 
 The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the
 destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
-`MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task
-can be killed outright with the Free() action.
+`MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.
 
 -ERRORS-
 Okay
@@ -1687,13 +1684,12 @@ static ERR TASK_Write(extTask *Task, struct acWrite *Args)
 -FIELD-
 Actions: Used to gain direct access to a task's actions.
 
-This field provides direct access to the actions of a task.  You can use it in the development of an executable program
-to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the
-system's object oriented design.
+This field provides direct access to the actions of a task, and is intended for use with the active task object
+returned from ~CurrentTask().  Hooking into the action table allows the running executable to 'blend-in' with
+Parasol's object oriented design.
 
-The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID.
-You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to
-use for that action.  For example:
+The Actions field points to a lookup table of !ActionEntry items.  Hooking into an action involves writing its `AC`
+index in the table with a pointer to the action routine.  For example:
 
 <pre>
 if (!AccessObject(CurrentTask(), 5000, &task)) {
@@ -1758,42 +1754,13 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-ExitCallback: The callback is activated when the process is terminated.
-
-The ExitCallback field can be set with a function reference that will be called when the executed process is
-terminated.  The callback must follow the prototype `Function(*Task)`.
-
-Please keep in mind that if the Task is freed when the process is still executing, the ExitCallback routine will not be
-called on termination because the Task object no longer exists for the control of the process.
-
-*********************************************************************************************************************/
-
-static ERR GET_ExitCallback(extTask *Self, FUNCTION **Value)
-{
-   if (Self->ExitCallback.defined()) {
-      *Value = &Self->ExitCallback;
-      return ERR::Okay;
-   }
-   else return ERR::FieldNotSet;
-}
-
-static ERR SET_ExitCallback(extTask *Self, FUNCTION *Value)
-{
-   if (Value) Self->ExitCallback = *Value;
-   else Self->ExitCallback.clear();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 ErrorCallback: This callback returns incoming data from STDERR.
 
 The ErrorCallback field can be set with a function reference that will be called when an active process sends data via
 STDERR.  The callback must follow the prototype `Function(*Task, APTR Data, LONG Size)`
 
 The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be
-indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.
+indicated by the `Size`.  The data pointer is temporary and will be invalid once the callback function has returned.
 
 *********************************************************************************************************************/
 
@@ -1816,16 +1783,45 @@ static ERR SET_ErrorCallback(extTask *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+ExitCallback: The callback is activated when the process is terminated.
+
+The ExitCallback field can be set with a function reference that will be called when the executed process is
+terminated.  The callback must follow the prototype `Function(*Task)`.
+
+Please keep in mind that if the `Task` is freed when the process is still executing, the ExitCallback routine will not be
+called on termination because the `Task` object no longer exists for the control of the process.
+
+*********************************************************************************************************************/
+
+static ERR GET_ExitCallback(extTask *Self, FUNCTION **Value)
+{
+   if (Self->ExitCallback.defined()) {
+      *Value = &Self->ExitCallback;
+      return ERR::Okay;
+   }
+   else return ERR::FieldNotSet;
+}
+
+static ERR SET_ExitCallback(extTask *Self, FUNCTION *Value)
+{
+   if (Value) Self->ExitCallback = *Value;
+   else Self->ExitCallback.clear();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 InputCallback: This callback returns incoming data from STDIN.
 
-The InputCallback field is available for use only when the Task object represents the current process.
+The InputCallback field is available for use only when the task object represents the current process.
 The referenced function will be called when process receives data from STDIN.  The callback must follow the
 prototype `Function(*Task, APTR Data, LONG Size, ERR Status)`
 
-The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
-by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.
+The information read from STDOUT will be returned in the `Data` pointer and the byte-length of the data will be indicated
+by the `Size`.  The data buffer is temporary and will be invalid once the callback function has returned.
 
-A status of ERR::Finished is sent if the stdinput handle has been closed.
+A status of `ERR::Finished` is sent if the stdinput handle has been closed.
 
 *********************************************************************************************************************/
 
@@ -1873,8 +1869,8 @@ OutputCallback: This callback returns incoming data from STDOUT.
 The OutputCallback field can be set with a function reference that will be called when an active process sends data via
 STDOUT.  The callback must follow the prototype `Function(*Task, APTR Data, LONG Size)`
 
-The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
-by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.
+The information read from STDOUT will be returned in the `Data` pointer and the byte-length of the data will be indicated
+by the `Size`.  The `Data` pointer is temporary and will be invalid once the callback function has returned.
 
 *********************************************************************************************************************/
 
@@ -1904,7 +1900,7 @@ Lookup: TSF
 LaunchPath: Launched executables will start in the path specified here.
 
 Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is
-activated.  This will override all other path options, such as the RESET_PATH flag.
+activated.  This will override all other path options, such as the `RESET_PATH` flag.
 
 *********************************************************************************************************************/
 
@@ -1980,7 +1976,7 @@ static ERR SET_Location(extTask *Self, CSTRING Value)
 -FIELD-
 Name: Name of the task.
 
-This field specifies the name of the Task or program that has been initialised. It is up to the developer of the
+This field specifies the name of the task or program that has been initialised. It is up to the developer of the
 program to set the Name which will appear in this field.  If there is no name for the task then the system may
 assign a randomly generated name.
 
@@ -2169,7 +2165,7 @@ the error code `ERR::TaskStillExists` will be returned.
 -ERRORS-
 Okay
 TaskStillExists: The task is still running and has no return code at this stage.
-DoesNotExist: The task is yet to be successfully launched with the Activate action.
+DoesNotExist: The task is yet to be successfully launched with the #Activate() action.
 
 *********************************************************************************************************************/
 

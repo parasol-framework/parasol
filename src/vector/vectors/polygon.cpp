@@ -5,12 +5,15 @@ VectorPolygon: Extends the Vector class with support for generating polygons.
 
 The VectorPolygon class provides support for three different types of vector:
 
-* Closed-point polygons consisting of at least 3 points.
-* Open polygons consisting of at least 3 points (a 'polyline' in SVG).
-* Single lines consisting of two points only (a 'line' in SVG).
+<list type="sorted">
+<li>Closed-point polygons consisting of at least 3 points.</li>
+<li>Open polygons consisting of at least 3 points (a 'polyline' in SVG).</li>
+<li>Single lines consisting of two points only (a 'line' in SVG).</li>
+</list>
 
-To create a polyline, set the #Closed field to FALSE (defaults to TRUE).  To create a line, set the #Closed
-field to `false` and set only two points (#X1,#Y1) and (#X2,#Y2)
+To create a polyline, set the #Closed field to `false`.  
+
+To create a line, set the #Closed field to `false` and set only two points (#X1,#Y1) and (#X2,#Y2)
 
 -END-
 
@@ -332,8 +335,8 @@ static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG El
 -FIELD-
 Points: A series of (X,Y) coordinates that define the polygon.
 
-The Points field can be set with a series of (X,Y) coordinates that will define the polygon's shape.  A minimum of two
-numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or
+The Points field can be set with a series of `(X, Y)` coordinates that will define the polygon's shape.  A minimum of 
+two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or
 a comma.
 
 *********************************************************************************************************************/

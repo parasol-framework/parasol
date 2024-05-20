@@ -67,7 +67,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the ellipse is defined here as the equivalent of <fl>RadiusY</fl> * 2.0.</p>
+<p>The height of the ellipse is defined here as the equivalent of <code>RadiusY * 2.0</code>.</p>
       </description>
     </field>
 
@@ -118,7 +118,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the ellipse is defined here as the equivalent of <fl>RadiusX</fl> * 2.0.</p>
+<p>The width of the ellipse is defined here as the equivalent of <code>RadiusX * 2.0</code>.</p>
       </description>
     </field>
 

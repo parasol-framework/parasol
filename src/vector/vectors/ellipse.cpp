@@ -160,7 +160,7 @@ static ERR ELLIPSE_SET_Dimensions(extVectorEllipse *Self, LONG Value)
 -FIELD-
 Height: The height (vertical diameter) of the ellipse.
 
-The height of the ellipse is defined here as the equivalent of #RadiusY * 2.0.
+The height of the ellipse is defined here as the equivalent of `RadiusY * 2.0`.
 
 *********************************************************************************************************************/
 
@@ -372,7 +372,7 @@ static ERR ELLIPSE_SET_Vertices(extVectorEllipse *Self, LONG Value)
 -FIELD-
 Width: The width (horizontal diameter) of the ellipse.
 
-The width of the ellipse is defined here as the equivalent of #RadiusX * 2.0.
+The width of the ellipse is defined here as the equivalent of `RadiusX * 2.0`.
 -END-
 *********************************************************************************************************************/
 

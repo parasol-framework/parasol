@@ -42,7 +42,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.</p>
+<p>The <code>(XOffset, YOffset)</code> field values define the offset of the input source within the target clipping area.</p>
       </description>
     </field>
 
@@ -52,7 +52,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.</p>
+<p>The <code>(XOffset, YOffset)</code> field values define the offset of the input source within the target clipping area.</p>
       </description>
     </field>
 

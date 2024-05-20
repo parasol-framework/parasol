@@ -16,8 +16,8 @@
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>Use the CompressedStream class to compress and decompress data on the fly without the need for a temporary storage area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line tools such as gzip.</p>
-<p>To decompress data, set the <fl>Input</fl> field with a source object that supports the Read action, such as a File. Repeatedly reading from the CompressedStream will automatically handle the decompression process for you.  If the decompressed size of the incoming data is defined in the source header, it will be reflected in the <fl>Size</fl> field.</p>
-<p>To compress data, set the <fl>Output</fl> field with a source object that supports the <action>Write</action> action, such as a <class name="File">File</class>. Repeatedly writing to the CompressedStream with raw data will automatically handle the compression process for you. Once all of the data has been written, call the <action>Write</action> action with a Buffer of NULL and Length -1 to signal an end to the streaming process.</p></description>
+<p>To decompress data, set the <fl>Input</fl> field with a source object that supports the Read() action, such as a <class name="File">File</class>. Repeatedly reading from the CompressedStream will automatically handle the decompression process.  If the decompressed size of the incoming data is defined in the source header, it will be reflected in the <fl>Size</fl> field.</p>
+<p>To compress data, set the <fl>Output</fl> field with a source object that supports the Write() action, such as a <class name="File">File</class>. Repeatedly writing to the CompressedStream with raw data will automatically handle the compression process for you. Once all of the data has been written, call the <action>Write</action> action with a <code>Buffer</code> of <code>NULL</code> and <code>Length</code> <code>-1</code> to signal an end to the streaming process.</p></description>
     <source>
       <file path="../compression/">class_compressed_stream.cpp</file>
     </source>
@@ -40,7 +40,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>OBJECTPTR</type>
       <description>
-<p>To create a stream that decompresses data from a compressed source, set the Input field with a reference to an object that will provide the source data.  It is most common for the source object to be a <class name="File">File</class> type, however any class that supports the Read action is permitted.</p>
+<p>To create a stream that decompresses data from a compressed source, set the Input field with a reference to an object that will provide the source data.  It is most common for the source object to be a <class name="File">File</class> type, however any class that supports the Read() action is permitted.</p>
 <p>The source object must be in a readable state.  The Input field is mutually exclusive to the <fl>Output</fl> field.</p>
       </description>
     </field>
@@ -51,7 +51,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>OBJECTPTR</type>
       <description>
-<p>To create a stream that compresses data to a target object, set the Output field with an object reference.  It is most common for the target object to be a <class name="File">File</class> type, however any class that supports the Write action is permitted.</p>
+<p>To create a stream that compresses data to a target object, set the Output field with an object reference.  It is most common for the target object to be a <class name="File">File</class> type, however any class that supports the Write() action is permitted.</p>
 <p>The target object must be in a writeable state.  The Output field is mutually exclusive to the <fl>Input</fl> field.</p>
       </description>
     </field>
@@ -63,7 +63,7 @@
       <type>BIGINT</type>
       <description>
 <p>The Size field will reflect the uncompressed size of the input source, if this can be determined from the header. In the case of GZIP decompression, the size will not be known until the parser has consumed the header. This means that at least one call to the <action>Read</action> action is required before the Size is known.</p>
-<p>If the size is unknown, a value of -1 is returned.</p>
+<p>If the size is unknown, a value of <code>-1</code> is returned.</p>
       </description>
     </field>
 
@@ -160,7 +160,7 @@
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
-      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR::Search is returned.</const>
+      <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, <code>ERR::Search</code> is returned.</const>
     </constants>
 
     <constants lookup="LOC" comment="AnalysePath() values">
@@ -335,7 +335,7 @@
     <constants lookup="RSF" comment="Flags for ResolvePath()">
       <const name="APPROXIMATE">Ignores file extensions for the purpose of file name matching.</const>
       <const name="CASE_SENSITIVE">For use on host systems that use case-insensitive file systems such as Windows; this option checks that the discovered file is a case-sensitive match to the Path.</const>
-      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR::VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
+      <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, <code>ERR::VirtualVolume</code> is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>

@@ -11,7 +11,7 @@ Thread: Threads are created and managed by the Thread class.
 The Thread class provides the means to execute and manage threads within an application.
 
 The following code illustrates how to create a temporary thread that is automatically destroyed after the
-thread_entry() function has completed:
+`thread_entry()` function has completed:
 
 <pre>
 static ERR thread_entry(objThread *Thread) {
@@ -20,11 +20,10 @@ static ERR thread_entry(objThread *Thread) {
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
 if (thread.ok()) thread->activate(thread);
-
 </pre>
 
-To initialise the thread with data, call #SetData() prior to execution and read the #Data field from
-within the thread routine.
+To initialise the thread with data, call #SetData() prior to execution and read the #Data field from within the 
+thread routine.
 
 -END-
 
@@ -455,7 +454,7 @@ static ERR THREAD_NewObject(extThread *Self, APTR Void)
 -METHOD-
 SetData: Attaches data to the thread.
 
-Use the SetData method prior to activating a thread so that it can be initialised with user data.  The thread will be
+Use the SetData() method prior to activating a thread so that it can be initialised with user data.  The thread will be
 able to read the data from the #Data field.
 
 A copy of the provided data buffer will be stored with the thread object, so there is no need to retain the original

@@ -567,7 +567,7 @@ class objBitmap : public Object {
    LONG    ByteWidth;                                                // The width of the bitmap, in bytes.
    LONG    Height;                                                   // The height of the bitmap, in pixels.
    BMP     Type;                                                     // Defines the data type of the bitmap.
-   LONG    LineWidth;                                                // Line differential in bytes
+   LONG    LineWidth;                                                // The length of each bitmap line in bytes, including alignment.
    LONG    PlaneMod;                                                 // The differential between each bitmap plane.
    struct ClipRectangle Clip;                                        // Defines the bitmap's clipping region.
    LONG    Size;                                                     // The total size of the bitmap, in bytes.
@@ -837,7 +837,7 @@ class objBitmap : public Object {
 
    inline ERR setBkgdIndex(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -848,19 +848,19 @@ class objBitmap : public Object {
 
    inline ERR setClipLeft(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipRight(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipBottom(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1222,28 +1222,28 @@ class objPointer : public Object {
 
    using create = pf::Create<objPointer>;
 
-   DOUBLE   Speed;         // Speed multiplier for Pointer movement.
+   DOUBLE   Speed;         // Speed multiplier for pointer movement.
    DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
    DOUBLE   DoubleClick;   // The maximum interval between two clicks for a double click to be recognised.
    DOUBLE   WheelSpeed;    // Defines a multiplier to be applied to the mouse wheel.
    DOUBLE   X;             // The horizontal position of the pointer within its parent display.
    DOUBLE   Y;             // The vertical position of the pointer within its parent display.
-   DOUBLE   OverX;         // The horizontal position of the Pointer with respect to the object underneath the hot-spot.
-   DOUBLE   OverY;         // The vertical position of the Pointer with respect to the object underneath the hot-spot.
+   DOUBLE   OverX;         // The horizontal position of the pointer with respect to the object underneath the hot-spot.
+   DOUBLE   OverY;         // The vertical position of the pointer with respect to the object underneath the hot-spot.
    DOUBLE   OverZ;         // The position of the Pointer within an object.
    LONG     MaxSpeed;      // Restricts the maximum speed of a pointer's movement.
    OBJECTID InputID;       // Declares the I/O object to read movement from.
    OBJECTID SurfaceID;     // The top-most surface that is under the pointer's hot spot.
    OBJECTID AnchorID;      // Can refer to a surface that the pointer has been anchored to.
    PTC      CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
-   OBJECTID CursorOwnerID; // The current owner of the cursor, as defined by SetCursor().
+   OBJECTID CursorOwnerID; // The current owner of the cursor, as defined by ~Display.SetCursor().
    PF       Flags;         // Optional flags.
    OBJECTID RestrictID;    // Refers to a surface when the pointer is restricted.
    LONG     HostX;         // Indicates the current position of the host cursor on Windows or X11
    LONG     HostY;         // Indicates the current position of the host cursor on Windows or X11
    objBitmap * Bitmap;     // Refers to bitmap in which custom cursor images can be drawn.
-   OBJECTID DragSourceID;  // The object managing the current drag operation, as defined by StartCursorDrag().
-   LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
+   OBJECTID DragSourceID;  // The object managing the current drag operation, as defined by ~Display.StartCursorDrag().
+   LONG     DragItem;      // The currently dragged item, as defined by ~Display.StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
 

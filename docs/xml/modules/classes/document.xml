@@ -114,21 +114,21 @@
         <param type="FUNCTION *" name="Function">The function to call when the trigger activates.</param>
       </input>
       <description>
-<p>Use the AddListener method to receive feedback whenever a document event is triggered.  Triggers are a fundamental part of document page development, accessible through the &lt;trigger/&gt; tag.  Triggers are normally configured within the document's page code, however if you need to monitor triggers from outside the loaded document's code, then AddTrigger will give you that option.</p>
+<p>Use the AddListener() method to receive feedback whenever a document event is triggered.  Triggers are a fundamental part of document page development, accessible through the <code>&lt;trigger/&gt;</code> tag.  Triggers are normally configured within the document's page code, however if you need to monitor triggers from outside the loaded document's code, then AddListener() will give you that option.</p>
 <p>The following triggers are supported:</p>
 <types lookup="DRT">
-<type name="BEFORE_LAYOUT">Document layout is about to be processed.  C/C++: void BeforeLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight)</type>
-<type name="AFTER_LAYOUT">Document layout has been processed.  C/C++: void AfterLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight, LONG PageWidth, LONG PageHeight)</type>
+<type name="BEFORE_LAYOUT">Document layout is about to be processed.  C/C++: <code>void BeforeLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight)</code></type>
+<type name="AFTER_LAYOUT">Document layout has been processed.  C/C++: <code>void AfterLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight, LONG PageWidth, LONG PageHeight)</code></type>
 <type name="USER_CLICK">User has clicked the document.</type>
 <type name="USER_CLICK_RELEASE">User click has been released.</type>
 <type name="USER_MOVEMENT">User is moving the pointer over the document.</type>
-<type name="REFRESH">Page has been refreshed.  C/C++: void Refresh(*Caller, *Document)</type>
-<type name="GOT_FOCUS">The document has received the focus.  C/C++: void GotFocus(*Caller, *Document)</type>
-<type name="LOST_FOCUS">The document has lost the focus.  C/C++: void LostFocus(*Caller, *Document)</type>
-<type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: void LeavingPage(*Caller, *Document)</type>
+<type name="REFRESH">Page has been refreshed.  C/C++: <code>void Refresh(*Caller, *Document)</code></type>
+<type name="GOT_FOCUS">The document has received the focus.  C/C++: <code>void GotFocus(*Caller, *Document)</code></type>
+<type name="LOST_FOCUS">The document has lost the focus.  C/C++: <code>void LostFocus(*Caller, *Document)</code></type>
+<type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: <code>void LeavingPage(*Caller, *Document)</code></type>
 </types>
-<p>A listener can be manually removed by calling <method>RemoveListener</method>, however this is normally unnecessary. Your listener will be removed automatically if a new document source is loaded or the document object is terminated.</p>
-<p>Please note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior subscriptions, nor is their any detection for multiple copies of a subscription against a trigger.</p>
+<p>A listener can be removed by calling <method>RemoveListener</method>, however this is normally unnecessary. Listeners are removed automatically if a new document source is loaded, or the document object is terminated.</p>
+<p>Note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior subscriptions, nor is there any handling for multiple copies of a subscription to a trigger.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -142,12 +142,12 @@
       <prototype>ERR docCallFunction(OBJECTPTR Object, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Function">The name of the function that will be called.</param>
-        <param type="struct ScriptArg *" name="Args">Pointer to an optional list of arguments to pass to the procedure.</param>
-        <param type="LONG" name="TotalArgs">The total number of entries in the Args array.</param>
+        <param type="struct ScriptArg *" name="Args">Pointer to an optional list of parameters to pass to the procedure.</param>
+        <param type="LONG" name="TotalArgs">The total number of entries in the <code>Args</code> array.</param>
       </input>
       <description>
-<p>This method will execute any registered function in the currently open document.  The name of the function must be specified in the first parameter and that function must exist in the document's default script.  If the document contains multiple scripts, then a specific script can be referenced by using the name format 'script.function' where 'script' is the name of the script that contains the function.</p>
-<p>Arguments can be passed to the function by setting the Args and TotalArgs parameters.  These need to be specially formatted - please refer to the <class name="Script">Script</class> class' Exec method for more information on how to configure these parameters.</p>
+<p>This method will execute any registered function in the currently open document.  The name of the function must be specified in the first parameter and that function must exist in the document's default script.  If the document contains multiple scripts, then a specific script can be referenced by using the name format <code>script.function</code> where <code>script</code> is the name of the script that contains the function.</p>
+<p>Arguments can be passed to the function by setting the <code>Args</code> and <code>TotalArgs</code> parameters.  These need to be specially formatted - please refer to the <class name="Script">Script</class> class' Exec method for more information on how to configure these parameters.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -164,8 +164,8 @@
         <param type="LONG" name="Flags">Optional flags.</param>
       </input>
       <description>
-<p>The Edit method will manually activate an editable section in the document.  This results in the text cursor being placed at the start of the editable section, where the user may immediately begin editing the section via the keyboard.</p>
-<p>If the editable section is associated with an OnEnter trigger, the trigger will be called when the Edit method is invoked.</p>
+<p>The Edit() method will manually activate an editable section in the document.  This results in the text cursor being placed at the start of the editable section, where the user may immediately begin editing the section via the keyboard.</p>
+<p>If the editable section is associated with an <code>OnEnter</code> trigger, the trigger will be called when the Edit method is invoked.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -184,11 +184,11 @@
         <param type="LONG *" name="End">The byte position at which the index ends is returned in this parameter.</param>
       </input>
       <description>
-<p>Use the FindIndex method to search for indexes that have been declared in a loaded document.  Indexes are declared using the &lt;index/&gt; tag and must be given a unique name.  They are useful for marking areas of interest - such as a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact document position.</p>
-<p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an SCODE::INDEX_START code and the end byte will refer to an SCODE::INDEX_END code.</p>
+<p>Use the FindIndex() method to search for indexes that have been declared in a loaded document.  Indexes are declared using the <code>&lt;index/&gt;</code> tag and must be given a unique name.  They are useful for marking areas of interest - such as a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact document position.</p>
+<p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an <code>SCODE::INDEX_START</code> code and the end byte will refer to an <code>SCODE::INDEX_END</code> code.</p>
       </description>
       <result>
-        <error code="Okay">The index was found and the Start and End parameters reflect its position.</error>
+        <error code="Okay">The index was found and the <code>Start</code> and <code>End</code> parameters reflect its position.</error>
         <error code="Search">The index was not found.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -202,7 +202,7 @@
         <param type="CSTRING" name="Name">The name of the index.</param>
       </input>
       <description>
-<p>The HideIndex and ShowIndex methods allow the display of document content to be controlled at code level.  To control content visibility, start by encapsulating the content in the source document with an &lt;index&gt; tag and ensure that it is named.  Then make calls to HideIndex and ShowIndex with the index name to manipulate visibility.</p>
+<p>The HideIndex() and <method>ShowIndex</method> methods allow the display of document content to be controlled at code level.  To control content visibility, start by encapsulating the content in the source document with an <code>&lt;index&gt;</code> tag and ensure that it is named.  Then make calls to HideIndex() and <method>ShowIndex</method> with the index name to manipulate visibility.</p>
 <p>The document layout is automatically updated and pushed to the display when this method is called.</p>
       </description>
       <result>
@@ -218,12 +218,12 @@
       <prototype>ERR docInsertText(OBJECTPTR Object, CSTRING Text, LONG Index, LONG Char, LONG Preformat)</prototype>
       <input>
         <param type="CSTRING" name="Text">A UTF-8 text string.</param>
-        <param type="LONG" name="Index">Reference to a TEXT control code that will receive the content.  If -1, the text will be inserted at the end of the document stream.</param>
-        <param type="LONG" name="Char">A character offset within the TEXT control code that will be injected with content.  If -1, the text will be injected at the end of the target string.</param>
-        <param type="LONG" name="Preformat">If TRUE, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).</param>
+        <param type="LONG" name="Index">Reference to a <code>TEXT</code> control code that will receive the content.  If <code>-1</code>, the text will be inserted at the end of the document stream.</param>
+        <param type="LONG" name="Char">A character offset within the <code>TEXT</code> control code that will be injected with content.  If <code>-1</code>, the text will be injected at the end of the target string.</param>
+        <param type="LONG" name="Preformat">If <code>true</code>, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).</param>
       </input>
       <description>
-<p>Use the InsertXML method to insert new content into an initialised document.</p>
+<p>Use the InsertText() method to insert new content into an initialised document.</p>
 <p>Caution must be exercised when inserting document content.  Inserting an image in-between a set of table rows for instance, would cause unknown results.  Corruption of the document data may lead to a program crash when the document is refreshed.</p>
 <p>The document view will not be automatically redrawn by this method.  This must be done manually once all modifications to the document are complete.</p>
       </description>
@@ -244,7 +244,7 @@
         <param type="LONG" name="Index">The byte position at which to insert the new content.</param>
       </input>
       <description>
-<p>Use the InsertXML method to insert new content into an initialised document.</p>
+<p>Use the InsertXML() method to insert new content into an initialised document.</p>
 <p>Caution must be exercised when inserting document content.  Inserting an image in-between a set of table rows for instance, would cause unknown results.  Corruption of the document data may lead to a program crash when the document is refreshed.</p>
 <p>The document view will not be automatically redrawn by this method.  This must be done manually once all modifications to the document are complete.</p>
       </description>
@@ -262,13 +262,13 @@
       <comment>Returns selected content from the document, either as plain text or original byte code.</comment>
       <prototype>ERR docReadContent(OBJECTPTR Object, DATA Format, LONG Start, LONG End, STRING * Result)</prototype>
       <input>
-        <param type="DATA" name="Format" lookup="DATA">Set to TEXT to receive plain-text, or RAW to receive the original byte-code.</param>
+        <param type="DATA" name="Format" lookup="DATA">Set to <code>TEXT</code> to receive plain-text, or <code>RAW</code> to receive the original byte-code.</param>
         <param type="LONG" name="Start">An index in the document stream from which data will be extracted.</param>
         <param type="LONG" name="End">An index in the document stream at which extraction will stop.</param>
         <param type="STRING *" name="Result">The data is returned in this parameter as an allocated string.</param>
       </input>
       <description>
-<p>The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as a RIPL binary stream, or translate the content into plain-text (control codes are removed).</p>
+<p>The ReadContent() method extracts content from the document stream, covering a specific area.  It can return the data as a RIPL binary stream, or translate the content into plain-text (control codes are removed).</p>
 <p>If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point, this will remain the case in the resulting data.</p>
       </description>
       <result>
@@ -289,7 +289,7 @@
         <param type="LONG" name="End">The byte position at which the removal ends.</param>
       </input>
       <description>
-<p>This method will remove all document content between the Start and End indexes provided as parameters.  The document layout will also be marked for an update for the next redraw.</p>
+<p>This method will remove all document content between the <code>Start</code> and <code>End</code> indexes provided as parameters.  The document layout will also be marked for an update for the next redraw.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -321,13 +321,13 @@
       <comment>Selects links in the document.</comment>
       <prototype>ERR docSelectLink(OBJECTPTR Object, LONG Index, CSTRING Name)</prototype>
       <input>
-        <param type="LONG" name="Index">Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the Name parameter is set.</param>
-        <param type="CSTRING" name="Name">The name of the link to select (set to NULL if an Index is defined).</param>
+        <param type="LONG" name="Index">Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the <code>Name</code> parameter is set.</param>
+        <param type="CSTRING" name="Name">The name of the link to select (set to <code>NULL</code> if an <code>Index</code> is defined).</param>
       </input>
       <description>
 <p>This method will select a link in the document.  Selecting a link will mean that the link in question will take on a different appearance (e.g. if a text link, the text will change colour).  If the user presses the enter key when a hyperlink is selected, that link will be activated.</p>
 <p>Selecting a link may also enable drag and drop functionality for that link.</p>
-<p>Links are referenced either by their Index in the links array, or by name for links that have named references.  It should be noted that objects that can receive the focus - such as input boxes and buttons - are also treated as selectable links due to the nature of their functionality.</p>
+<p>Links are referenced either by their <code>Index</code> in the links array, or by name for links that have named references.  It should be noted that objects that can receive the focus - such as input boxes and buttons - are also treated as selectable links due to the nature of their functionality.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -344,7 +344,7 @@
         <param type="CSTRING" name="Name">The name of the index.</param>
       </input>
       <description>
-<p>The HideIndex and ShowIndex methods allow the display of document content to be controlled at code level.  To control content visibility, start by encapsulating the content in the source document with an &lt;index&gt; tag and ensure that it is named.  Then make calls to HideIndex and ShowIndex with the index name to manipulate visibility.</p>
+<p>The <method>HideIndex</method> and ShowIndex() methods allow the display of document content to be controlled at code level.  To control content visibility, start by encapsulating the content in the source document with an <code>&lt;index&gt;</code> tag and ensure that it is named.  Then make calls to <method>HideIndex</method> and ShowIndex() with the index name to manipulate visibility.</p>
 <p>The document layout is automatically updated and pushed to the display when this method is called.</p>
       </description>
       <result>
@@ -363,7 +363,7 @@
       <access read="R">Read</access>
       <type>STRING</type>
       <description>
-<p>If a document declares the names of its author(s) under a head tag, the author string will be readable from this field. This field is always NULL if a document does not declare an author string.</p>
+<p>If a document declares the names of its author(s) under a head tag, the author string will be readable from this field. This field is always <code>NULL</code> if a document does not declare an author string.</p>
       </description>
     </field>
 
@@ -373,7 +373,7 @@
       <access write="S">Set</access>
       <type>OBJECTPTR</type>
       <description>
-<p>Set ClientScript with a Script object to allow document content to 'breach the firewall' and access functionality outside of its namespace.  This feature is primarily intended for applications that need to interact with their own embedded documents.</p>
+<p>Set ClientScript with a <class name="Script">Script</class> object to allow document content to 'breach the firewall' and access functionality outside of its namespace.  This feature is primarily intended for applications that need to interact with their own embedded documents.</p>
 <p>If a document defines a default script in its content, it will have priority over the one referenced here.</p>
       </description>
     </field>
@@ -384,7 +384,7 @@
       <access read="R">Read</access>
       <type>STRING</type>
       <description>
-<p>If a document declares copyright information under a head tag, the copyright string will be readable from this field. This field is always NULL if a document does not declare a copyright string.</p>
+<p>If a document declares copyright information under a head tag, the copyright string will be readable from this field. This field is always <code>NULL</code> if a document does not declare a copyright string.</p>
       </description>
     </field>
 
@@ -416,8 +416,8 @@
       <description>
 <p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <fl>EventMask</fl> so that notifications are limited to those of interest.</p>
 <p>The callback function prototype is <code>ERR Function(*Document, DEF EventFlag, KEYVALUE *EventData)</code>.</p>
-<p>The EventFlag value will indicate the event that occurred.  Please see the <fl>EventMask</fl> field for a list of supported events and additional details.</p>
-<p>Error codes returned from the callback will normally be discarded, however in some cases ERR::Skip can be returned in order to prevent the event from being processed any further.</p>
+<p>The <code>EventFlag</code> value will indicate the event that occurred.  Please see the <fl>EventMask</fl> field for a list of supported events and additional details.</p>
+<p>Error codes returned from the callback will normally be discarded, however in some cases <code>ERR::Skip</code> can be returned in order to prevent the event from being processed any further.</p>
       </description>
     </field>
 
@@ -458,7 +458,7 @@
       <access read="R">Read</access>
       <type>STRING</type>
       <description>
-<p>If a document declares keywords under a head tag, the keywords string will be readable from this field.   This field is always NULL if a document does not declare any keywords.  It is recommended that keywords are separated with spaces or commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword separation.</p>
+<p>If a document declares keywords under a head tag, the keywords string will be readable from this field.   This field is always <code>NULL</code> if a document does not declare any keywords.  It is recommended that keywords are separated with spaces or commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword separation.</p>
       </description>
     </field>
 
@@ -513,7 +513,7 @@
 <p>
 <code>volume:folder/filename.rpl#page_name?param1&amp;param2=value</code></p>
 <p>Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document, a dialog is displayed to bring the error to the user's attention).</p>
-<p>To leap to a bookmark in the page that has been specified with the &lt;index&gt; element, use the colon as a separator after the pagename, i.e. <code>#pagename:bookmark</code>.</p>
+<p>To leap to a bookmark in the page that has been specified with the <code>&lt;index&gt;</code> element, use the colon as a separator after the pagename, i.e. <code>#pagename:bookmark</code>.</p>
 <p>Other means of opening a document include loading the data manually and passing it via the <action>DataFeed</action> action.</p>
       </description>
     </field>
@@ -526,7 +526,7 @@
       <description>
 <p>Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used to set configure a document in advance, such as setting default font values and background graphics.  It is functionally equivalent to embedding an <code>
 <include/></code> statement at the top of a document, but with the benefit of guaranteeing continued execution if the user navigates away from the first page.</p>
-<p>A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with NULL.</p>
+<p>A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with <code>NULL</code>.</p>
       </description>
     </field>
 
@@ -546,7 +546,7 @@
       <access read="R">Read</access>
       <type>STRING</type>
       <description>
-<p>If a document declares a title under a head tag, the title string will be readable from this field.   This field is always NULL if a document does not declare a title.</p>
+<p>If a document declares a title under a head tag, the title string will be readable from this field.   This field is always <code>NULL</code> if a document does not declare a title.</p>
       </description>
     </field>
 
@@ -573,7 +573,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is usually set to the location of the parasol-gui program).</p>
+<p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is usually set to the location of the parasol executable).</p>
 <p>The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be determined - in which case an empty string is returned.</p>
 <p>You can manually change the working path by setting the <fl>Origin</fl> field without affecting the loaded document.</p>
       </description>

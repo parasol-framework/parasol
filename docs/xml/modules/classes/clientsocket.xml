@@ -25,7 +25,7 @@
       <name>Read</name>
       <comment>Read incoming data from a client socket.</comment>
       <description>
-<p>The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
+<p>The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
       </description>
       <result>
         <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
@@ -39,7 +39,7 @@
       <name>Write</name>
       <comment>Writes data to the socket.</comment>
       <description>
-<p>Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the #MsgLimit field setting.</p>
+<p>Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <class name="NetSocket" field="MsgLimit">NetSocket.MsgLimit</class> value.</p>
       </description>
     </action>
 
@@ -57,7 +57,7 @@
         <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
       </input>
       <description>
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the WriteClientMsg method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
+<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteClientMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
 <p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
       </description>
       <result>
@@ -77,10 +77,10 @@
       <prototype>ERR csWriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
-        <param type="LONG" name="Length">The length of the message.</param>
+        <param type="LONG" name="Length">The length of the <code>Message</code>.</param>
       </input>
       <description>
-<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>.  The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
+<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>. The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

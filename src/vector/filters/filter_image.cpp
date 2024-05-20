@@ -9,16 +9,16 @@ that is distributed with this package.  Please refer to it for further informati
 ImageFX: Renders a bitmap image in the effect pipeline.
 
 The ImageFX class will render a source image into a given rectangle within the current user coordinate system.  The
-client has the option of providing a pre-allocated Bitmap or the path to a @Picture file as the source.
+client has the option of providing a pre-allocated @Bitmap or the path to a @Picture file as the source.
 
 If a pre-allocated @Bitmap is to be used, it must be created under the ownership of the ImageFX object, and this must
-be done prior to initialisation.  It is required that the bitmap uses 32 bits per pixel and that the alpha channel is
-enabled.
+be configured prior to initialisation.  It is required that the bitmap uses 32 bits per pixel and that the alpha 
+channel is enabled.
 
 If a source picture file is referenced, it will be upscaled to meet the requirements automatically as needed.
 
-Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y,
-Width and Height.  The placement and scaling of the referenced image is controlled by the #AspectRatio field.
+Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes `X`, 
+`Y`, `Width` and `Height`.  The placement and scaling of the referenced image is controlled by the #AspectRatio field.
 
 -END-
 
@@ -224,7 +224,7 @@ static ERR IMAGEFX_GET_Bitmap(extImageFX *Self, objBitmap **Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Path: Path to an image file supported by the Picture class.
+Path: Path to an image file supported by the @Picture class.
 
 *********************************************************************************************************************/
 
@@ -250,6 +250,8 @@ static ERR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
 
 -FIELD-
 ResampleMethod: The resample algorithm to use for transforming the source image.
+
+!VSM
 
 *********************************************************************************************************************/
 

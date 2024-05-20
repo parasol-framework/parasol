@@ -15,8 +15,13 @@
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
-<p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>
-<p>To create a polyline, set the <fl>Closed</fl> field to FALSE (defaults to TRUE).  To create a line, set the <fl>Closed</fl> field to <code>false</code> and set only two points (<fl>X1</fl>,<fl>Y1</fl>) and (<fl>X2</fl>,<fl>Y2</fl>)</p></description>
+<list type="sorted">
+<li>Closed-point polygons consisting of at least 3 points.</li>
+<li>Open polygons consisting of at least 3 points (a 'polyline' in SVG).</li>
+<li>Single lines consisting of two points only (a 'line' in SVG).</li>
+</list>
+<p>To create a polyline, set the <fl>Closed</fl> field to <code>false</code>.</p>
+<p>To create a line, set the <fl>Closed</fl> field to <code>false</code> and set only two points (<fl>X1</fl>,<fl>Y1</fl>) and (<fl>X2</fl>,<fl>Y2</fl>)</p></description>
     <source>
       <file path="vectors/">polygon.cpp</file>
     </source>
@@ -49,7 +54,7 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>The Points field can be set with a series of (X,Y) coordinates that will define the polygon's shape.  A minimum of two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or a comma.</p>
+<p>The Points field can be set with a series of <code>(X, Y)</code> coordinates that will define the polygon's shape.  A minimum of two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or a comma.</p>
       </description>
     </field>
 
@@ -123,8 +128,8 @@
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XScaled" type="UBYTE">TRUE if the X value is scaled to its viewport (between 0 and 1.0).</field>
-      <field name="YScaled" type="UBYTE">TRUE if the Y value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UBYTE"><code>TRUE</code> if the X value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UBYTE"><code>TRUE</code> if the Y value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

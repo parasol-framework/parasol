@@ -8,16 +8,17 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 MetaClass: The MetaClass is used to manage all classes supported by the system core.
 
-The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of
-new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each
-MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most
-of the interesting structural data can be gleaned from the #Fields array.
+The MetaClass is responsible for managing the construction of new classes.  Each MetaClass object remains active for
+the lifetime of the running program, and provides the benefit of run-time introspection so that detailed class
+information can be retrieved at any time.  This enables scripting languages such as Fluid to interact with all
+class types without needing active knowledge of their capabilities.
 
-A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list
-of MetaClass objects, which you can search by calling the ~FindClass() function.  The ~CheckAction() function
-provides a way of checking if a particular pre-defined action is supported by a class.
+A number of additional functions are available in the Core for the purpose of class management and introspection.
+~FindClass() allows all registered classes to be scanned.  ~CheckAction() verifies if a specific action is
+supported by a class.  ~FindField() confirms if a specific field is declared in the class specification.
 
-Classes are typically declared in modules, but declaring a new class within an application is feasible also.
+Classes are typically declared in modules, but if a class is intended to be private for an executable then declaring
+it within the application code is feasible also.
 
 Further discussion on classes and their technical aspects can be found in the Parasol Wiki.
 
@@ -72,8 +73,8 @@ static ERR SET_ClassName(extMetaClass *Self, CSTRING Value)
 }
 
 static const FieldDef CategoryTable[] = {
-   { "Command",  CCF::COMMAND },  { "Drawable",   CCF::DRAWABLE },
-   { "Effect",   CCF::EFFECT },   { "Filesystem", CCF::FILESYSTEM },
+   { "Command",  CCF::COMMAND },
+   { "Filesystem", CCF::FILESYSTEM },
    { "Graphics", CCF::GRAPHICS }, { "GUI",        CCF::GUI },
    { "IO",       CCF::IO },       { "System",     CCF::SYSTEM },
    { "Tool",     CCF::TOOL },     { "Data",       CCF::DATA },
@@ -200,11 +201,11 @@ This method checks if a class has defined a given field by scanning its blueprin
 a direct pointer to the `Field` struct will be returned to the client.
 
 In some clases the field might not be present in the main class spec, but does appear in an integral class.  In that
-case, a reference to the class will be returned in the Source parameter.
+case, a reference to the class will be returned in the `Source` parameter.
 
 -INPUT-
 int ID: The field ID to search for.  Field names can be converted to ID's by using the ~StrHash() function.
-&struct(*Field) Field: Pointer to the field if discovered, otherwise NULL.
+&struct(*Field) Field: Pointer to the !Field if discovered, otherwise `NULL`.
 &obj(MetaClass) Source: Pointer to the class that is associated with the `Field` (which can match the caller), or `NULL` if the field was not found.
 
 -RESULT-
@@ -391,12 +392,13 @@ ERR CLASS_NewObject(extMetaClass *Self, APTR Void)
 -FIELD-
 Actions: Defines the actions supported by the class.
 
-It is common practice when developing classes to write code for actions that will enhance class functionality.
-Action support is defined by listing a series of action ID's paired with customised routines.  The list will be
-copied to a jump table that is used internally.  After this operation, the original action list will serve no further
-purpose.
+Action routines are associated with a new class by referring to a list of !ActionArray items in this field.
+Each provided action ID must be paired with its associated routine.
 
-The following example shows an action list array borrowed from the @Picture class:
+Internally, the provided list is copied to the #ActionTable and the original values will serve no further purpose.
+
+The following example shows a list of !ActionArray structures borrowed from the @Picture class.  Note that such lists
+can also be auto-generated using our IDL scripts - an approach that we strongly recommend.
 
 <pre>
 ActionArray clActions[] = {
@@ -412,7 +414,7 @@ ActionArray clActions[] = {
 };
 </pre>
 
-Never define method ID's in an action list - the #Methods field is provided for this purpose.
+Note: Never refer to method ID's in an action list - the #Methods field is provided for this purpose.
 
 *********************************************************************************************************************/
 
@@ -442,9 +444,7 @@ table of action routines, with each routine pointing directly to the object supp
 jump table is defined by the global constant `AC_END`.  The table is sorted by action ID.
 
 It is possible to check if an action is supported by a class by looking up its index within the ActionTable, for
-example `Routine[AC_Read]`.  Calling an action routine directly is an illegal operation unless
-A) The call is made from an action support function in a class module and B) Special circumstances allow for such
-a call, as documented in the Action Support Guide.
+example `Routine[AC_Read]`.  Calling an action routine directly from client code is an illegal operation.
 
 *********************************************************************************************************************/
 
@@ -460,15 +460,18 @@ static ERR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elemen
 -FIELD-
 BaseClassID: Specifies the base class ID of a class object.
 
-Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class
-will represent.  Class ID's are generated as a hash from the class #Name, so if this field is undefined then it
-is generated from the Name automatically.
+The BaseClassID must always be set prior to the initialisation of a new MetaClass object unless #ClassName is
+considered sufficient.  If the BaseClassID is zero then the hash of #ClassName is computed and set as the
+value of BaseClassID.
+
+When defining a sub-class, it is required that the BaseClassID refers to the class that is being supported.
 
 -FIELD-
 ClassID: Specifies the ID of a class object.
 
 The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined
-to be a sub-class.  The ClassID must be a value that is hashed from the class #Name using ~StrHash().
+to be a sub-class.  The ClassID value always reflects the ~StrHash() computation of the #ClassName, and is
+automatically set on initialisation if not already set by the client.
 
 -FIELD-
 Category: The system category that a class belongs to.
@@ -487,10 +490,10 @@ prior to initialisation.
 -FIELD-
 ClassVersion: The version number of the class.
 
-This field value must reflect the version of the class structure.  Legal version numbers start from
-1.0 and ascend.  Revision numbers can be used to indicate bug-fixes or very minor changes.
+This field value must reflect the version of the class structure.  Legal version numbers start from 1.0 and ascend.
+Revision numbers can be used to indicate bug-fixes or very minor changes.
 
-If declaring a sub-class then this value can be 0, but base classes must set a value here.
+If declaring a sub-class then this value can be `0`, but base classes must set a value here.
 
 -FIELD-
 Dictionary: Returns a field lookup table sorted by field IDs.
@@ -514,13 +517,13 @@ static ERR GET_Dictionary(extMetaClass *Self, struct Field **Value, LONG *Elemen
 /*********************************************************************************************************************
 
 -FIELD-
-Fields: Points to a field array that describes the class' object structure.
+Fields: Points to a !FieldArray that describes the class' object structure.
 
-This field points to an array that describes the structural arrangement of the objects that will be generated from the
-class.  If creating a base class then it must be provided, while sub-classes will inherit this array from their base.
+This field points to an array that describes the structure of objects that will be generated for this class.  It is
+compulsory that base classes define this array.  Sub-classes will inherit the structure of their base, but they may
+set Fields with additional virtual fields if desired.
 
-The Class Development Guide has a section devoted to the configuration of this array. Please read the guide for more
-information.
+Refer to the Parasol Wiki on class development for more information.
 
 *********************************************************************************************************************/
 
@@ -556,8 +559,8 @@ FileDescription: Describes the file type represented by the class.
 
 This field allows you to specify a description of the class' file type, if the class is designed to be file related.
 This setting can be important, as it helps to distinguish your class from the other file based classes.  Always
-make sure that your file description is short, descriptive and unique.  A file description such as "JPEG" is not
-acceptable, but "JPEG Picture" would be appropriate.
+make sure that your file description is short, descriptive and unique.  A file description such as `JPEG` is not
+acceptable, but `JPEG Picture` would be appropriate.
 
 -FIELD-
 FileExtension: Describes the file extension represented by the class.
@@ -622,11 +625,10 @@ static ERR GET_Location(extMetaClass *Self, CSTRING *Value)
 -FIELD-
 Methods: Set this field to define the methods supported by the class.
 
-If a class design will include support for methods, create a MethodEntry and set this field prior to initialisation.
-A method array provides information on each method's ID, name, arguments, and structure size.
+If a class design will include support for methods, create a !MethodEntry list and set this field prior to
+initialisation.  The array must provide information on each method's ID, name, parameters, and structure size.
 
-The Class Development Guide has a section devoted to method configuration.  Please read the guide for further
-information.
+Note that method lists can be auto-generated using our IDL scripts - an approach that we strongly recommend.
 
 *********************************************************************************************************************/
 
@@ -745,8 +747,8 @@ static ERR GET_Objects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 -FIELD-
 OpenCount: The total number of active objects that are linked back to the MetaClass.
 
-Reading this field will reveal how many objects are currently using the class.  This figure will fluctuate over
-time as new objects are created and old ones are destroyed.  When the OpenCount reaches zero, the system may flush the
+This field reveals the total number of objects that reference the class.  This figure will fluctuate over
+time as new objects are created and old ones are destroyed.  When the OpenCount reaches zero, the Core may flush the
 @Module that the class is related to, so long as no more programs are using it or any other classes created by
 the module.
 

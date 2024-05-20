@@ -124,6 +124,7 @@ static ERR FILTEREFFECT_NewOwner(extFilterEffect *Self, struct acNewOwner *Args)
 
 -FIELD-
 Dimensions: Dimension flags are stored here.
+Lookup: DMF
 
 Dimension flags are automatically defined when setting the #X, #Y, #Width and #Height fields.
 
@@ -163,7 +164,7 @@ static ERR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Value)
 -FIELD-
 Height: Primitive height of the effect area.
 
-The (Width,Height) field values define the dimensions of the effect within the target clipping area.
+The `(Width, Height)` field values define the dimensions of the effect within the target clipping area.
 
 *********************************************************************************************************************/
 
