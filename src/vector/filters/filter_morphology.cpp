@@ -209,7 +209,7 @@ static ERR MORPHOLOGYFX_NewObject(extMorphologyFX *Self, APTR Void)
 /*********************************************************************************************************************
 
 -FIELD-
-Operator: Set to either 'erode' or 'dilate'.
+Operator: Set to either `ERODE` or `DILATE`.
 Lookup: MOP
 
 *********************************************************************************************************************/

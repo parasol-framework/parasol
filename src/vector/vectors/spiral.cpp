@@ -189,7 +189,7 @@ Spacing: Declares the amount of empty space between each loop of the spiral.
 Spacing tightly controls the computation of the spiral path, ensuring that a specific amount of empty space is left
 between each loop.  The space is declared in pixel units.
 
-If Spacing is undeclared, the spiral expands at an incremental rate of `#Step * 0.1`.
+If Spacing is undeclared, the spiral expands at an incremental rate of `Step * 0.1`.
 
 *********************************************************************************************************************/
 
@@ -213,7 +213,7 @@ static ERR SPIRAL_SET_Spacing(extVectorSpiral *Self, DOUBLE Value)
 -FIELD-
 Height: The height (vertical diameter) of the spiral.
 
-The height of the spiral is expressed as '#Radius * 2.0'.
+The height of the spiral is expressed as `Radius * 2.0`.
 
 *********************************************************************************************************************/
 
@@ -330,7 +330,7 @@ static ERR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
 Step: Determines the distance between each vertex in the spiral's path.
 
 The Step value affects the distance between each vertex in the spiral path during its generation.  The default value
-is 1.0.  Using larger values will create a spiral with jagged corners due to the reduction in vertices.
+is `1.0`.  Using larger values will create a spiral with jagged corners due to the reduction in vertices.
 
 *********************************************************************************************************************/
 
@@ -355,7 +355,7 @@ static ERR SPIRAL_SET_Step(extVectorSpiral *Self, DOUBLE Value)
 -FIELD-
 Width: The width (horizontal diameter) of the spiral.
 
-The width of the spiral is expressed as '#Radius * 2.0'.
+The width of the spiral is expressed as `Radius * 2.0`.
 -END-
 
 *********************************************************************************************************************/

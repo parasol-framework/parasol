@@ -301,7 +301,7 @@ static ERR FONT_NewObject(extFont *Self, APTR Void)
 Align: Sets the position of a font string to an abstract alignment.
 
 Use this field to set the alignment of a font string within its surface area.  This is an abstract means of positioning
-in comparison to setting the X and Y fields directly.
+in comparison to setting the #X and #Y fields directly.
 
 -FIELD-
 AlignHeight: The height to use when aligning the font string.
@@ -326,9 +326,9 @@ The Ascent value reflects the total number of pixels above the baseline, includi
 Bitmap: The destination Bitmap to use when drawing a font.
 
 -FIELD-
-Bold: Set to TRUE to enable bold styling.
+Bold: Set to `true` to enable bold styling.
 
-Setting the Bold field to TRUE prior to initialisation will enable bold styling.  This field is provided only for
+Setting the Bold field to `true` prior to initialisation will enable bold styling.  This field is provided only for
 convenience - we recommend that you set the Style field for determining font styling where possible.
 
 *********************************************************************************************************************/
@@ -356,18 +356,18 @@ static ERR SET_Bold(extFont *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Colour: The font colour in RGB format.
+Colour: The font colour in !RGB8 format.
 
 -FIELD-
 EndX: Indicates the final horizontal coordinate after completing a draw operation.
 
-The EndX and EndY fields reflect the final coordinate of the font #String, following the most recent call to
+The EndX and #EndY fields reflect the final coordinate of the font #String, following the most recent call to
 the #Draw() action.
 
 -FIELD-
 EndY: Indicates the final vertical coordinate after completing a draw operation.
 
-The EndX and EndY fields reflect the final coordinate of the font #String, following the most recent call to
+The #EndX and EndY fields reflect the final coordinate of the font #String, following the most recent call to
 the #Draw() action.
 
 -FIELD-
@@ -477,10 +477,10 @@ character.  The value is expressed as a multiplier of the width of each characte
 Using negative values is valid, and can lead to text being printed backwards.
 
 -FIELD-
-Italic: Set to TRUE to enable italic styling.
+Italic: Set to `true` to enable italic styling.
 
-Setting the Italic field to TRUE prior to initialisation will enable italic styling.  This field is provided for
-convenience only - we recommend that you set the Style field for determining font styling where possible.
+Setting the Italic field to `true` prior to initialisation will enable italic styling.  This field is provided for
+convenience only - we recommend that you set the #Style field for determining font styling where possible.
 
 *********************************************************************************************************************/
 
@@ -512,8 +512,8 @@ Leading: 'Internal leading' measured in pixels.  Applies to fixed fonts only.
 -FIELD-
 LineCount: The total number of lines in a font string.
 
-This field indicates the number of lines that are present in a font's String field.  If word wrapping is enabled, this
-will be taken into account in the resulting figure.
+This field indicates the number of lines that are present in a #font's String field.  If word wrapping is enabled, 
+this will be taken into account in the resulting figure.
 
 *********************************************************************************************************************/
 
@@ -570,7 +570,7 @@ Opacity: Determines the level of translucency applied to a font.
 
 This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font
 will not be translucent.  Any other value set here will alter the impact of a font's graphic over the destination
-Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.
+#Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.
 
 Please note that the use of translucency will always have an impact on the time it normally takes to draw a font.
 
@@ -595,8 +595,8 @@ static ERR SET_Opacity(extFont *Self, DOUBLE Value)
 -FIELD-
 Outline: Defines the outline colour around a font.
 
-An outline can be drawn around a font by setting the Outline field to an RGB colour.  The outline can be turned off by
-writing this field with a NULL value or setting the alpha component to zero.  Outlining is currently supported for
+An outline can be drawn around a font by setting the Outline field to an !RGB8 colour.  The outline can be turned off by
+writing this field with a `NULL` value or setting the alpha component to zero.  Outlining is currently supported for
 bitmap fonts only.
 
 -FIELD-
@@ -692,7 +692,7 @@ The default tab size is 8 and the TabSize only comes into effect when tab charac
 Underline: Enables font underlining when set.
 
 To underline a font string, set the Underline field to the colour that should be used to draw the underline.
-Underlining can be turned off by writing this field with a NULL value or setting the alpha component to zero.
+Underlining can be turned off by writing this field with a `NULL` value or setting the alpha component to zero.
 
 -FIELD-
 Width: Returns the pixel width of a string.
@@ -731,14 +731,14 @@ right-most edge of any word in the font string extends past the coordinate indic
 -FIELD-
 X: The starting horizontal position when drawing the font string.
 
-When drawing font strings, the X and Y fields define the position that the string will be drawn to in the target
-surface.  The default coordinates are (0,0).
+When drawing font strings, the X and #Y fields define the position that the string will be drawn to in the target
+surface.  The default coordinates are `(0, 0)`.
 
 -FIELD-
 Y: The starting vertical position when drawing the font string.
 
-When drawing font strings, the X and Y fields define the position that the string will be drawn to in the target
-surface.  The default coordinates are (0,0).
+When drawing font strings, the #X and Y fields define the position that the string will be drawn to in the target
+surface.  The default coordinates are `(0, 0)`.
 
 -FIELD-
 YOffset: Additional offset value that is added to vertically aligned fonts.

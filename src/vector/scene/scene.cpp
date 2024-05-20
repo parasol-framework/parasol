@@ -137,7 +137,7 @@ This method will add a new definition object to the root of a vector tree and gi
 provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name
 with the definition object, the object can then be referenced in URL strings.
 
-For example, if creating a gradient with a name of "redGradient" it would be possible to reference it with
+For example, if creating a gradient with a name of `redGradient` it would be possible to reference it with
 `url(#redGradient)` in common graphics attributes such as `fill` and `stroke`.
 
 At the time of writing, the provided object must belong to one of the following classes to be valid: @Vector,
@@ -486,16 +486,17 @@ static ERR VECTORSCENE_Resize(extVectorScene *Self, struct acResize *Args)
 -METHOD-
 SearchByID: Search for a vector by numeric ID.
 
-This method will search a scene for an object that matches a given ID (vector ID's can be set with the NumericID and ID
-fields).  If multiple vectors are using the same ID, repeated calls can be made to this method to find all of them.
-This is achieved by calling this method on the vector that was last returned as a result.
+This method will search a scene for an object that matches a given `ID` (vector ID's can be set with the 
+@Vector.NumericID or @Vector.ID fields).  If multiple vectors are using the same ID, repeated calls can be made 
+to this method to find them all.  This is achieved by calling this method on the vector that was last returned 
+as a `Result`.
 
-Please note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash
+Note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash
 with ~Core.StrHash() and using that as the ID.
 
 -INPUT-
 int ID: The ID to search for.
-&obj Result: This parameter will be updated with the discovered vector, or NULL if not found.
+&obj Result: This parameter will be updated with the discovered vector, or `NULL` if not found.
 
 -ERRORS-
 Okay
@@ -675,10 +676,10 @@ comparatively average result and execution speed.  The most advanced method is `
 level of quality at the cost of very poor execution speed.
 
 -FIELD-
-Surface: May refer to a Surface object for enabling automatic rendering.
+Surface: May refer to a @Surface object for enabling automatic rendering.
 
-Setting the Surface field will enable automatic rendering to a display surface.  The use of features such as input event handling
-and user focus management will also require an associated surface as a pre-requisite.
+Setting the Surface field will enable automatic rendering to a display @Surface.  The use of features such as input 
+event handling and user focus management will also require an associated surface as a pre-requisite.
 
 *********************************************************************************************************************/
 
@@ -691,12 +692,12 @@ static ERR SET_Surface(extVectorScene *Self, OBJECTID Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Viewport: References the first object in the scene, which must be a VectorViewport object.
+Viewport: References the first object in the scene, which must be a @VectorViewport object.
 
 The first object in the vector scene is referenced here.  It must belong to the @VectorViewport class, which will
 be used to define the size and location of the area rendered by the scene.
 
-The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport
+The Viewport value cannot be set by the client.  It will be automatically defined when the first @VectorViewport
 owned by the VectorScene is initialised.
 -END-
 

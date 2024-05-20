@@ -69,7 +69,7 @@ static void free_proxy(void)
 -METHOD-
 Delete: Removes a proxy from the database.
 
-Call the Delete method to remove a proxy from the system.  The proxy will be permanently removed from the proxy
+Call the Delete() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy
 database on the success of this function.
 
 -ERRORS-
@@ -107,7 +107,7 @@ static ERR PROXY_Delete(extProxy *Self, APTR Void)
 -ACTION-
 Disable: Marks a proxy as disabled.
 
-Calling the Disable action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by
+Calling the Disable() action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by
 programs that scan the database for active proxies.
 
 The change will not come into effect until the proxy record is saved.
@@ -125,7 +125,7 @@ static ERR PROXY_Disable(extProxy *Self, APTR Void)
 -ACTION-
 Enable: Enables a proxy.
 
-Calling the Enable action will mark the proxy as enabled.  The change will not come into effect until the proxy record
+Calling the Enable() action will mark the proxy as enabled.  The change will not come into effect until the proxy record
 is saved.
 
 *********************************************************************************************************************/
@@ -146,17 +146,17 @@ The following example searches for all proxies available for use on port 80 (HTT
 <pre>
 objProxy::create proxy;
 if (proxy.ok()) {
-   if (!prxFind(*proxy, 80)) {
+   if (prxFind(*proxy, 80) IS ERR::Okay) {
       do {
          ...
-      } while (!prxFindNext(*proxy));
+      } while (prxFindNext(*proxy) IS ERR::Okay);
    }
 }
 </pre>
 
 -INPUT-
 int Port: The port number  to access.  If zero, all proxies will be returned if you perform a looped search.
-int Enabled: Set to TRUE to return only enabled proxies, FALSE for disabled proxies or -1 for all proxies.
+int Enabled: Set to `true` to return only enabled proxies, `false` for disabled proxies or `-1` for all proxies.
 
 -ERRORS-
 Okay: A proxy was discovered.
@@ -321,8 +321,8 @@ static ERR PROXY_Find(extProxy *Self, struct prxFind *Args)
 FindNext: Continues an initiated search.
 
 This method continues searches that have been initiated by the #Find() method. If a proxy is found that matches
-the filter, ERR::Okay is returned and the details of the proxy object will reflect the data of the discovered record.
-ERR::NoSearchResult is returned if there are no more matching proxies.
+the filter, `ERR::Okay` is returned and the details of the proxy object will reflect the data of the discovered record.
+`ERR::NoSearchResult` is returned if there are no more matching proxies.
 
 -ERRORS-
 Okay: A proxy was discovered.
@@ -587,7 +587,7 @@ static ERR PROXY_SaveSettings(extProxy *Self, APTR Void)
    else return ERR::CreateObject;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 GatewayFilter: The IP address of the gateway that the proxy is limited to.
@@ -595,7 +595,7 @@ GatewayFilter: The IP address of the gateway that the proxy is limited to.
 The GatewayFilter defines the IP address of the gateway that this proxy is limited to. It is intended to limit the
 results of searches performed by the #Find() method.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_GatewayFilter(extProxy *Self, CSTRING Value)
 {
@@ -608,12 +608,12 @@ static ERR SET_GatewayFilter(extProxy *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
-Host: If TRUE, the proxy settings are derived from the host operating system's default settings.
+Host: If `true`, the proxy settings are derived from the host operating system's default settings.
 
-If Host is set to TRUE, the proxy settings are derived from the host operating system's default settings.  Hosted
+If Host is set to `true`, the proxy settings are derived from the host operating system's default settings.  Hosted
 proxies are treated differently to user proxies - they have priority, and any changes are applied directly to the host
 system rather than the user's configuration.
 
@@ -622,7 +622,7 @@ Port: Defines the ports supported by this proxy.
 
 The Port defines the port that the proxy server is supporting, e.g. port 80 for HTTP.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_Port(extProxy *Self, LONG Value)
 {
@@ -633,7 +633,7 @@ static ERR SET_Port(extProxy *Self, LONG Value)
    else return ERR::OutOfRange;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 NetworkFilter: The name of the network that the proxy is limited to.
@@ -643,7 +643,7 @@ searches performed by the #Find() method.
 
 This filter must not be set if the proxy needs to work on an unnamed network.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_NetworkFilter(extProxy *Self, CSTRING Value)
 {
@@ -656,7 +656,7 @@ static ERR SET_NetworkFilter(extProxy *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Username: The username to use when authenticating against the proxy server.
@@ -665,7 +665,7 @@ If the proxy requires authentication, the user name may be set here to enable an
 the username is not set, a dialog will be required to prompt the user for the user name before communicating with the
 proxy server.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_Username(extProxy *Self, CSTRING Value)
 {
@@ -678,16 +678,16 @@ static ERR SET_Username(extProxy *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Password: The password to use when authenticating against the proxy server.
 
-If the proxy requires authentication, the user password may be set here to enSable an automated authentication process.
+If the proxy requires authentication, the user password may be set here to enable an automated authentication process.
 If the password is not set, a dialog will need to be used to prompt the user for the password before communicating with
 the proxy.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_Password(extProxy *Self, CSTRING Value)
 {
@@ -700,14 +700,14 @@ static ERR SET_Password(extProxy *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ProxyName: A human readable name for the proxy server entry.
 
 A proxy can be given a human readable name by setting this field.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_ProxyName(extProxy *Self, CSTRING Value)
 {
@@ -720,14 +720,14 @@ static ERR SET_ProxyName(extProxy *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Server: The destination address of the proxy server - may be an IP address or resolvable domain name.
 
 The domain name or IP address of the proxy server must be defined here.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_Server(extProxy *Self, CSTRING Value)
 {
@@ -740,14 +740,14 @@ static ERR SET_Server(extProxy *Self, CSTRING Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ServerPort: The port that is used for proxy server communication.
 
 The port used to communicate with the proxy server must be defined here.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_ServerPort(extProxy *Self, LONG Value)
 {
@@ -759,15 +759,15 @@ static ERR SET_ServerPort(extProxy *Self, LONG Value)
    else return log.error(ERR::OutOfRange);
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
-Enabled: All proxies are enabled by default until this field is set to FALSE.
+Enabled: All proxies are enabled by default until this field is set to `false`.
 
-To disable a proxy, set this field to FALSE or call the #Disable() action.  This prevents the proxy from being
-discovered in searches unless
+To disable a proxy, set this field to `false` or call the #Disable() action.  This prevents the proxy from being
+discovered in searches.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_Enabled(extProxy *Self, LONG Value)
 {
@@ -776,7 +776,7 @@ static ERR SET_Enabled(extProxy *Self, LONG Value)
    return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Record: The unique ID of the current proxy record.
@@ -784,11 +784,11 @@ Record: The unique ID of the current proxy record.
 The Record is set to the unique ID of the current proxy record.  If no record is indexed then the Record is set to
 zero.
 
-If you set the Record manually, the proxy object will attempt to lookup that record.  ERR::Okay will be returned if the
+If Record is set manually, the proxy object will attempt to lookup that record.  `ERR::Okay` will be returned if the
 record is found and all record fields will be updated to reflect the data of that proxy.
 -END-
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERR SET_Record(extProxy *Self, LONG Value)
 {
@@ -797,11 +797,10 @@ static ERR SET_Record(extProxy *Self, LONG Value)
    return get_record(Self);
 }
 
-/****************************************************************************
-** The group field must be set to the record that you want before you call this function.
-**
-** Also not that you must have called clear_values() at some point before this function.
-*/
+//********************************************************************************************************************
+// The group field must be set to the record that you want before you call this function.
+//
+// Also not that you must have called clear_values() at some point before this function.
 
 static ERR get_record(extProxy *Self)
 {
@@ -828,7 +827,7 @@ static ERR get_record(extProxy *Self)
    else return log.error(ERR::NotFound);
 }
 
-/***************************************************************************/
+//********************************************************************************************************************
 
 static void clear_values(extProxy *Self)
 {
@@ -849,7 +848,7 @@ static void clear_values(extProxy *Self)
    if (Self->Server)        { FreeResource(Self->Server);        Self->Server        = NULL; }
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clPorts[] = {
    { "FTP-Data",  20 },

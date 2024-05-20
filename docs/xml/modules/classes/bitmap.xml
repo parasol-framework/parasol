@@ -27,9 +27,9 @@
   <actions>
     <action>
       <name>Clear</name>
-      <comment>Clears a bitmap's image to black.</comment>
+      <comment>Clears a bitmap's image to <fl>BkgdIndex</fl>.</comment>
       <description>
-<p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <fl>BkgdRGB</fl> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
+<p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <fl>BkgdIndex</fl> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
 <p>If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.</p>
       </description>
     </action>
@@ -45,14 +45,14 @@
 
     <action>
       <name>Draw</name>
-      <comment>Clears a bitmap's image to its assigned background colour.</comment>
+      <comment>Clears a bitmap's image to <fl>BkgdIndex</fl>.</comment>
     </action>
 
     <action>
       <name>Flush</name>
       <comment>Flushes pending graphics operations and returns when the accelerator is idle.</comment>
       <description>
-<p>The Flush() action is provided for you to ensure that your graphics operations are synchronised with the graphics accelerator.  Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may result in corruption in the bitmap's graphics display.</p>
+<p>The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator. Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may result in corruption in the bitmap's graphics display.</p>
 <p>You do not have to use this function if you stick to using the graphics functions that are provided in the Bitmap class.</p>
       </description>
     </action>
@@ -131,7 +131,7 @@
         <param type="LONG" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
       </input>
       <description>
-<p>A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
+<p>A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <method>Decompress</method> method is called to restore the bitmap to its original state.</p>
 <p>The <code>BMF::COMPRESSED</code> bit will be set in the <fl>Flags</fl> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       </description>
@@ -207,11 +207,11 @@
       <comment>Decompresses a compressed bitmap.</comment>
       <prototype>ERR bmpDecompress(OBJECTPTR Object, LONG RetainData)</prototype>
       <input>
-        <param type="LONG" name="RetainData">Retains the compression data if TRUE.</param>
+        <param type="LONG" name="RetainData">Retains the compression data if <code>true</code>.</param>
       </input>
       <description>
-<p>The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed, the method does nothing.</p>
-<p>The compressed data will be terminated unless <code>RetainData</code> is TRUE.  Retaining the data will allow the client to repeatedly restore the content of the most recent <method>Compress</method> call.</p>
+<p>The Decompress() method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed, the method does nothing.</p>
+<p>The compressed data will be terminated unless <code>RetainData</code> is <code>true</code>.  Retaining the data will allow the client to repeatedly restore the content of the most recent <method>Compress</method> call.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -224,7 +224,7 @@
       <comment>Reverses the conversion process performed by Premultiply().</comment>
       <prototype>ERR bmpDemultiply(OBJECTPTR Object)</prototype>
       <description>
-<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <fl>Flags</fl>.</p>
+<p>Use Demultiply() to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised, as determined by the presence of the <code>PREMUL</code> value in <fl>Flags</fl>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -284,7 +284,7 @@
         <param type="ULONG *" name="Colour">The resulting colour value will be returned here.</param>
       </input>
       <description>
-<p>The GetColour method is used to convert <code>Red</code>, <code>Green</code>, <code>Blue</code> and <code>Alpha</code> colour components into a single colour index that can be used for directly writing colours to the bitmap.  The result is returned in the <code>Colour</code> parameter.</p>
+<p>The GetColour() method is used to convert <code>Red</code>, <code>Green</code>, <code>Blue</code> and <code>Alpha</code> colour components into a single colour index that can be used for directly writing colours to the bitmap.  The result is returned in the <code>Colour</code> parameter.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -386,7 +386,7 @@ Chunky/16   = Width * 2
 Chunky/24   = Width * 3
 Chunky/32   = Width * 4
 </pre>
-<p>To learn the total byte-width per line including any additional padded bytes, refer to the <fl>LineMod</fl> field.</p>
+<p>To learn the total byte-width per line including any additional padded bytes, refer to the <fl>LineWidth</fl> field.</p>
       </description>
     </field>
 
@@ -565,16 +565,9 @@ unpackAlpha(Colour)
     </field>
 
     <field>
-      <name>LineMod</name>
+      <name>LineWidth</name>
       <comment>The length of each bitmap line in bytes, including alignment.</comment>
       <access read="R">Read</access>
-      <type>INT</type>
-    </field>
-
-    <field>
-      <name>LineWidth</name>
-      <comment>Line differential in bytes</comment>
-      <access>-/-</access>
       <type>INT</type>
     </field>
 

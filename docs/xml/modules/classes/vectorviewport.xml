@@ -53,21 +53,21 @@
   <fields>
     <field>
       <name>AbsX</name>
-      <comment>The horizontal position of the viewport, relative to (0,0).</comment>
+      <comment>The horizontal position of the viewport, relative to <code>(0, 0)</code>.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field will return the left-most boundary of the viewport, relative to point (0,0) of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
+<p>This field will return the left-most boundary of the viewport, relative to point <code>(0, 0)</code> of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
       </description>
     </field>
 
     <field>
       <name>AbsY</name>
-      <comment>The vertical position of the viewport, relative to (0,0).</comment>
+      <comment>The vertical position of the viewport, relative to <code>(0, 0)</code>.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field will return the top-most boundary of the viewport, relative to point (0,0) of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
+<p>This field will return the top-most boundary of the viewport, relative to point <code>(0, 0)</code> of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
       </description>
     </field>
 
@@ -98,7 +98,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded dragging, have the callback set the viewport's <fl>X</fl> and <fl>Y</fl> values to match the incoming coordinates, then redraw the scene.</p>
+<p>Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the user drags the viewport, the callback will receive the user's desired <code>(X, Y)</code> target coordinates.  For unimpeded dragging, have the callback set the viewport's <fl>X</fl> and <fl>Y</fl> values to match the incoming coordinates, then redraw the scene.</p>
 <p>The prototype for the callback function is as follows, where <code>OriginX</code> and <code>OriginY</code> refer to the (<fl>X</fl>,<fl>Y</fl>) position of the vector at initiation of the drag.</p>
 <p>
 <code>void function(*VectorViewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY)</code></p>
@@ -113,7 +113,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for full coverage.</p>
+<p>The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is <code>100%</code> for full coverage.</p>
 <p>The fixed value is always returned when retrieving the height.</p>
       </description>
     </field>
@@ -197,7 +197,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for full coverage.</p>
+<p>The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is <code>100%</code> for full coverage.</p>
       </description>
     </field>
 
@@ -208,7 +208,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and <fl>XOffset</fl> value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
 

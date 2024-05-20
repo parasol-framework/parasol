@@ -480,10 +480,10 @@ exit:
 /*********************************************************************************************************************
 
 -METHOD-
-ResolveSymbol: Resolves the symbol names in loaded link libraries to address pointers.
+ResolveSymbol: Resolves library symbol names to their address pointers.
 
 This method will convert symbol names to their respective address pointers.  The module code must have been successfully
-loaded into memory or an ERR::FieldNotSet error will be returned.  If the symbol was not found then ERR::NotFound is
+loaded into memory or an `ERR::FieldNotSet` error will be returned.  If the symbol was not found then `ERR::NotFound` is
 returned.
 
 -INPUT-
@@ -547,7 +547,7 @@ Lookup: MOF
 FunctionList: Refers to a list of public functions exported by the module.
 
 After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The
-FunctionList array consists of Function structs, which are in the following format:
+FunctionList array consists of !Function structs, which are in the following format:
 
 <pre>
 struct Function {
@@ -594,11 +594,11 @@ If the module is unloaded at any time then the jump table becomes invalid.
 -FIELD-
 Name: The name of the module.
 
-This string pointer specifies the name of the Module.  This name will be used to load the module from the `modules:`
+This string pointer specifies the name of the module.  This name will be used to load the module from the `modules:`
 folder, so this field actually reflects part of the module file name.  It is also possible to specify
 sub-directories before the module name itself - this could become more common in module loading in future.
 
-It is critical that file extensions do not appear in the Name string, e.g. `screen.dll` as not all systems
+It is critical that file extensions do not appear in the Name string, e.g. `display.dll` as not all systems
 may use a `.dll` extension.
 
 **********************************************************************************************************************/

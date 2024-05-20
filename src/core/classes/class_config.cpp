@@ -29,7 +29,7 @@ Path = modules:arrow
 
 Notice the text enclosed in square brackets, such as `[Action]`. These are referred to as 'groups', which are
 responsible for holding groups of key values expressed as strings.  In the above example, keys are defined by the
-ClassID and Path identifiers.
+`ClassID` and `Path` identifiers.
 
 The following source code illustrates how to open the classes.cfg file and read a key from it:
 
@@ -195,7 +195,7 @@ static ERR CONFIG_Clear(extConfig *Self, APTR Void)
 -ACTION-
 DataFeed: Data can be added to a Config object through this action.
 
-This action will accept configuration data in TEXT format.  Any existing data that matches to the new group keys will
+This action will accept configuration data in `TEXT` format.  Any existing data that matches to the new group keys will
 be overwritten with new values.
 -END-
 *********************************************************************************************************************/
@@ -223,7 +223,7 @@ static ERR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 -METHOD-
 DeleteKey: Deletes single key entries.
 
-This method deletes a single key from the config object.
+This method deletes a single key from the Config object.
 
 -INPUT-
 cstr Group: The name of the targeted group.
@@ -329,7 +329,7 @@ static ERR CONFIG_Free(extConfig *Self, APTR Void)
 -METHOD-
 GetGroupFromIndex: Converts an index number into its matching group string.
 
-Use GetGroupFromIndex to convert a group index number to its matching name.
+Use GetGroupFromIndex() to convert a group index number to its matching name.
 
 -INPUT-
 int Index: The group index that you want to identify.
@@ -382,11 +382,12 @@ static ERR CONFIG_Init(extConfig *Self, APTR Void)
 -METHOD-
 Merge: Merges two config objects together.
 
-The Merge method is used to merge configuration data from one config object provided as a source, into the target object.
-Existing data in the target will be overwritten by the source in cases where there matching set of group keys.
+The Merge() method is used to merge configuration data from one config object provided as a source, into the target 
+object.  Existing data in the target will be overwritten by the source in cases where there matching set of group 
+keys.
 
 -INPUT-
-obj Source: The config object to be merged.
+obj Source: The Config object to be merged.
 
 -ERRORS-
 Okay
@@ -411,7 +412,7 @@ static ERR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 -METHOD-
 MergeFile: Merges a configuration file into existing configuration data.
 
-The MergeFile method is used to pull configuration data from a file and merge it into the target config object.
+The MergeFile() method is used to pull configuration data from a file and merge it into the target config object.
 The path to the configuration file is all that is required.  Existing data in the target will be overwritten by the
 source in cases where there matching set of group keys.
 
@@ -461,12 +462,12 @@ only for as long as the client has exclusive access to the config object.  The p
 if more information is written to the config object.  For this reason, consider copying the result if it will be
 used extensively.
 
-If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array.
-If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters
-are NULL then the first known key value will be returned.
+If the `Group` parameter is set to `NULL`, the scan routine will treat all of the config data as a one dimensional array.
+If the `Key` parameter is set to `NULL` then the first key in the requested group is returned.  If both parameters
+are `NULL` then the first known key value will be returned.
 
 -INPUT-
-cstr Group: The name of a group to examine for a key.  If NULL, all groups are scanned.
+cstr Group: The name of a group to examine for a key.  If `NULL`, all groups are scanned.
 cstr Key: The name of a key to retrieve (case sensitive).
 &cstr Data: The key value will be stored in this parameter on returning.
 
@@ -565,7 +566,7 @@ static ERR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 Set: Sets keys in existing config groups (aborts if the group does not exist).
 
 This method is identical to #WriteValue() except it will abort if the name of the referred group does not exist in the
-config object.  The error code ERR::Search is returned if this is the case.  Please refer to #WriteValue() for further
+config object.  The error code `ERR::Search` is returned if this is the case.  Please refer to #WriteValue() for further
 information on the behaviour of this function.
 
 -INPUT-
@@ -577,8 +578,6 @@ cstr Data: The data that will be added to the given group/key.
 Okay
 NullArgs
 Search: The referred group does not exist.
-AllocMemory
-GetField: The Entries field could not be retrieved.
 -END-
 
 *********************************************************************************************************************/
@@ -599,7 +598,8 @@ static ERR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
 -METHOD-
 SortByKey: Sorts config data using a sequence of sort instructions.
 
-The SortByKey method sorts the groups of a config object by key values (the named key value should be present in every group).
+The SortByKey() method sorts the groups of a config object by key values (the named key value should be present in 
+every group).
 
 -INPUT-
 cstr Key: The name of the key to sort on.
@@ -650,11 +650,11 @@ static ERR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 -METHOD-
 WriteValue: Adds new entries to config objects.
 
-Use the WriteValue method to add or update information in a config object.  A Group name, Key name, and Data value
-are required.  If the Group and Key arguments match an existing entry in the config object, the data of that entry
-will be replaced with the new Data value.
+Use the WriteValue() method to add or update information in a config object.  A `Group` name, `Key` name, and `Data` 
+value are required.  If the `Group` and `Key` arguments match an existing entry in the config object, the data of 
+that entry will be replaced with the new Data value.
 
-The Group string may refer to an index if the hash `#` character is used to precede a target index number.
+The `Group` string may refer to an index if the hash `#` character is used to precede a target index number.
 
 -INPUT-
 cstr Group: The name of the group.
@@ -666,7 +666,6 @@ Okay
 NullArgs
 Args
 AllocMemory: The additional memory required for the new entry could not be allocated.
-GetField: The Entries field could not be retrieved.
 -END-
 
 *********************************************************************************************************************/
@@ -701,8 +700,8 @@ static ERR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
 -FIELD-
 Data: Reference to the raw data values.
 
-This field points to C++ object that contains all key-values for the config object.  It is intended to be used only by system code
-that is included with the standard framework.
+This field points to a C++ type that contains all key-values for the config object.  It is intended to be used only 
+by system code that is included with the standard framework.
 
 *********************************************************************************************************************/
 
@@ -724,15 +723,13 @@ When dealing with large configuration files it may be useful to filter out group
 The KeyFilter field allows simple filters to be defined that will perform this task for you.  It is recommended that it
 is set prior to parsing new data for best performance, but can be set or changed at any time to apply a new filter.
 
-Key filters are created in the format `[Key] = [Data1], [Data2], ...`
+Key filters are created in the format `[Key] = [Data1], [Data2], ...`.  For example:
 
-Here are some examples:
-
-<list type="unsorted">
-<li>Group = Sun, Light</li>
-<li>Path = documents:</li>
-<li>Name = Parasol</li>
-</>
+<pre>
+Group = Sun, Light
+Path = documents:
+Name = Parasol
+</pre>
 
 Filters can be inversed by prefixing the key with the `!` character.
 
@@ -773,22 +770,10 @@ GroupFilter: Set this field to enable group filtering.
 When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the GroupFilter
 field, it is possible to filter out entire groups that don't match the criteria.
 
-Group filters are created using the format `[Group1], [Group2], [Group3], ...`.
+Group filters are created in CSV format, i.e. `GroupA, GroupB, GroupC, ...`.
 
-Here are some examples:
-
-<list type="unsorted">
-<li>Program, Application, Game</li>
-<li>Apple, Banana</li>
-</>
-
-You can also reverse the filter so that only the groups matching your criteria are filtered out.  To do this, use the
-exclamation character, as in the following examples:
-
-<list type="unsorted">
-<li>!Program, Application, Game</li>
-<li>!Apple, Banana</li>
-</>
+The filter can be reversed so that only the groups matching your criteria are filtered out.  To do this, prefix the
+CSV list with the `!` character.
 
 To create a filter based on key names, refer to the #KeyFilter field.
 

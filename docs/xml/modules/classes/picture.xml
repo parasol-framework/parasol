@@ -32,9 +32,9 @@
       <name>Activate</name>
       <comment>Loads image data into a picture object.</comment>
       <description>
-<p>In order to load an image file into a picture object you will need to Activate it after initialisation.  So long as the <fl>Path</fl> field refers to a recognised image file, it will be loaded into the picture object and the fields will be filled out to reflect the image content.</p>
-<p>If you have preset the values of certain fields prior to activation, you will be placing restrictions on the image file that is to be loaded.  For example, if the source image is wider than a restricted Bitmap Width, the image will have its right edge clipped.  The same is true for the Bitmap Height and other restrictions apply to fields such as the Bitmap Palette.</p>
-<p>Once the picture is loaded, the image data will be held in the picture's Bitmap object.  You can draw to and from the Bitmap using its available drawing methods.</p>
+<p>Loading an image file requires a call to Activate() after initialisation.  The <fl>Path</fl> field will be used to source the image file.</p>
+<p>Pre-setting picture field values will place restrictions on the image file that is to be loaded.  For example, if the source image is wider than a preset <class name="Bitmap" field="Width">Bitmap.Width</class>, the image will have its right edge clipped.  The same is true for the <class name="Bitmap" field="Height">Bitmap.Height</class> and other restrictions apply to fields such as the <class name="Bitmap" field="Palette">Bitmap.Palette</class>.</p>
+<p>Once the picture is loaded, the image data will be held in the picture's <fl>Bitmap</fl> object.  Manipulating the <fl>Bitmap</fl> object is permitted.</p>
       </description>
     </action>
 
@@ -42,8 +42,8 @@
       <name>Init</name>
       <comment>Prepares the object for use.</comment>
       <description>
-<p>Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the <fl>Path</fl> field or have chosen to use the <code>NEW</code> flag, the initialisation routine will create a <fl>Bitmap</fl> area that contains no image data.  This allows you to fill the picture with your own image data and save it using the <action>SaveImage</action> or <action>SaveToObject</action> actions.  You must set the bitmap width, height and colour specifications at a minimum, or the initialisation process will fail.</p>
-<p>If you have set the <fl>Path</fl> field and avoided the <code>NEW</code> flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of <code>ERR::NoSupport</code> is returned.  You will need to use the Activate or Query actions to load or find out more information about the image format.</p>
+<p>Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the <fl>Path</fl> field or have chosen to use the <code>NEW</code> flag, the initialisation routine will create a <fl>Bitmap</fl> area that contains no image data.  This allows you to fill the picture with your own image data and save it using the <action>SaveImage</action> or <action>SaveToObject</action> actions.  You must set the <class name="Bitmap" field="Width">Bitmap.Width</class>, <class name="Bitmap" field="Height">Bitmap.Height</class> and colour specifications at a minimum, or the initialisation process will fail.</p>
+<p>If you have set the <fl>Path</fl> field and avoided the <code>NEW</code> flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of <code>ERR::NoSupport</code> is returned.  You will need to use the <action>Activate</action> or <action>Query</action> actions to load or find out more information about the image format.</p>
       </description>
     </action>
 
@@ -101,7 +101,7 @@
       <access read="R">Read</access>
       <type class="Bitmap">*Bitmap</type>
       <description>
-<p>The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains information on the image dimensions and palette for example.  The Palette can be preset if you want to remap the source image to a specific set of colour values.</p>
+<p>The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains information on the image dimensions and palette for example.  The <class name="Bitmap" field="Palette">Bitmap.Palette</class> can be preset if you want to remap the  source image to a specific set of colour values.</p>
 <p>Please refer to the <class name="Bitmap">Bitmap</class> class for more details on the structure of bitmap objects.</p>
       </description>
     </field>
@@ -112,7 +112,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Copyright details related to an image may be specified here.  The copyright should be short and to the point, for example "Copyright H.R. Giger (c) 1992."</p>
+<p>Copyright details related to an image may be specified here.  The copyright should be short and to the point, for example <code>Copyright J. Bloggs (c) 1992.</code></p>
       </description>
     </field>
 
@@ -142,8 +142,8 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If the source does not specify a suitable value for these fields, they may be initialised to a value based on the picture's <fl>Bitmap</fl> Width and Height.</p>
-<p>In the case of a scalable image source such as SVG, the DisplayWidth and DisplayHeight can be pre-configured by the client, and the loader will scale the source image to the preferred dimensions on load.</p>
+<p>The <fl>DisplayWidth</fl> and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If the source does not specify a suitable value for these fields, they may be initialised to a value based on the picture's <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</p>
+<p>In the case of a scalable image source such as SVG, the <fl>DisplayWidth</fl> and DisplayHeight can be pre-configured by the client, and the loader will scale the source image to the preferred dimensions on load.</p>
       </description>
     </field>
 
@@ -153,8 +153,8 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If the source does not specify a suitable value for these fields, they may be initialised to a value based on the picture's <fl>Bitmap</fl> Width and Height.</p>
-<p>In the case of a scalable image source such as SVG, the DisplayWidth and DisplayHeight can be pre-configured by the client, and the loader will scale the source image to the preferred dimensions on load.</p>
+<p>The DisplayWidth and <fl>DisplayHeight</fl> fields define the preferred pixel dimensions to use for the display when viewing the image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If the source does not specify a suitable value for these fields, they may be initialised to a value based on the picture's <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</p>
+<p>In the case of a scalable image source such as SVG, the DisplayWidth and <fl>DisplayHeight</fl> can be pre-configured by the client, and the loader will scale the source image to the preferred dimensions on load.</p>
       </description>
     </field>
 
@@ -225,8 +225,8 @@
   </fields>
   <types>
     <constants lookup="PCF" comment="Flags for the Picture class.">
-      <const name="ALPHA">If a picture supports an alpha channel, this field will be set (if you will be saving a Picture with an alpha channel, set this flag prior to initialisation and build the channel using the object provided in the Mask field).</const>
-      <const name="FORCE_ALPHA_32">If the picture source includes an alpha channel mask, it will normally be separated out and stored in the Mask field.  If you set the FORCE_ALPHA_32 option before loading, the image will be forced into 32-bit graphics mode with alpha channel.  The mask information will be stored in the alpha byte and the Mask field will not be set.</const>
+      <const name="ALPHA">If a picture supports an alpha channel, this field will be set (if you will be saving a Picture with an alpha channel, set this flag prior to initialisation and build the channel using the object provided in the <fl>Mask</fl> field).</const>
+      <const name="FORCE_ALPHA_32">If the picture source includes an alpha channel mask, it will normally be separated out and stored in the <fl>Mask</fl> field.  If you set the <code>FORCE_ALPHA_32</code> option before loading, the image will be forced into 32-bit graphics mode with alpha channel.  The mask information will be stored in the alpha byte and the <fl>Mask</fl> field will not be set.</const>
       <const name="LAZY">Prevents automatic loading of the picture image.  Use the Query action to process the picture header or Activate to load the image data.</const>
       <const name="MASK">A mask has been generated for the image.</const>
       <const name="NEW">Indicates that the picture image will be created from scratch.</const>

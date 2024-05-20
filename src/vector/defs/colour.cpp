@@ -3,9 +3,9 @@
 -CLASS-
 VectorColour: This is a stub class for use with the Vector module's DrawPath() function.
 
-VectorColour is a stub class for exclusive use with the Vector module's DrawPath() function, for use in either the
-StrokeStyle or FillStyle parameters.  VectorColour allows the path to be drawn with a solid colour, as specified in the
-Red, Green, Blue and Alpha fields.
+VectorColour is a stub class for exclusive use with the Vector module's ~Vector.DrawPath() function, for use in 
+either the `StrokeStyle` or `FillStyle` parameters.  VectorColour allows the path to be drawn with a solid colour, 
+as specified in the #Red, #Green, #Blue and #Alpha fields.
 
 -FIELD-
 Red: The red component value.

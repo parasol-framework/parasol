@@ -123,7 +123,7 @@
       <prototype>ERR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</prototype>
       <input>
         <param type="struct VectorMatrix **" name="Transform">A reference to the new transform structure is returned here.</param>
-        <param type="LONG" name="End">If true, the matrix priority is lowered by inserting it at the end of the transform list.</param>
+        <param type="LONG" name="End">If <code>true</code>, the matrix priority is lowered by inserting it at the end of the transform list.</param>
       </input>
       <description>
 <p>Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating the transformation matrix is supported by functions in the Vector module, such as <function module="Vector">Scale</function> and <function module="Vector">Rotate</function>.</p>
@@ -165,7 +165,7 @@
       </input>
       <description>
 <p>This method moves the position of a vector within its branch of the vector stack.  Repositioning is relative to the current position of the vector.  Every unit specified in the Position parameter will move the vector by one index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.</p>
-<p>It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector reaches the edge of its branch with excess units remaining, the method will return immediately with an ERR::Okay error code.</p>
+<p>It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector reaches the edge of its branch with excess units remaining, the method will return immediately with an <code>ERR::Okay</code> error code.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -178,13 +178,13 @@
       <comment>Subscribe to events that relate to the vector.</comment>
       <prototype>ERR vecSubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.</param>
+        <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to <code>0xffffffff</code> if all messages are required.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
       </input>
       <description>
 <p>Use this method to receive feedback for events that have affected the state of a vector.</p>
-<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the callback function return <code>ERR::Terminate</code>.</p>
-<p>The prototype for the Callback is <code>ERR callback(*Vector, FM Event)</code></p>
+<p>To remove an existing subscription, call this method again with the same <code>Callback</code> and an empty <code>Mask</code>. Alternatively have the callback function return <code>ERR::Terminate</code>.</p>
+<p>The prototype for the <code>Callback</code> is <code>ERR callback(*Vector, FM Event)</code></p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -201,10 +201,10 @@
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> events are triggered during passage through the clipping area.</p>
+<p>The SubscribeInput method filters events from <function module="Display">SubscribeInput</function> by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> events are triggered during passage through the clipping area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>To remove an existing subscription, call this method again with the same <code>Callback</code> and an empty <code>Mask</code>. Alternatively have the function return <code>ERR::Terminate</code>.</p>
-<p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
+<p>Please refer to <function module="Display">SubscribeInput</function> for further information on event management and message handling.</p>
 <p>The prototype for the <code>Callback</code> is <code>ERR callback(*Vector, *InputEvent)</code></p>
       </description>
       <result>
@@ -224,7 +224,7 @@
         <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the vector or one of its children has the user focus.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<p>The SubscribeKeyboard() method provides a callback mechanism for handling keyboard events.  Events are reported when the vector or one of its children has the user focus.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>The prototype for the callback is as follows, whereby <code>Qualifers</code> are <code>KQ</code> flags and the Code is a <code>K</code> constant representing the raw key value.  The <code>Unicode</code> value is the resulting character when the qualifier and code are translated through the user's keymap.</p>
 <p>
 <code>ERR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);</code></p>
@@ -232,10 +232,10 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="FieldNotSet">The VectorScene's Surface field has not been defined.</error>
+        <error code="FieldNotSet">The <class name="VectorScene" field="Surface">VectorScene.Surface</class> field has not been defined.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Function">A call to gfxSubscribeInput() failed.</error>
+        <error code="Function">A call to <function module="Display">SubscribeInput</function> failed.</error>
       </result>
     </method>
 
@@ -250,8 +250,8 @@
       </input>
       <description>
 <p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
-<p>The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
-<p>If the Callback returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
+<p>The <code>Vector</code> parameter refers to the vector targeted by the method.  The <code>Index</code> is an incrementing counter that reflects the currently plotted point.  The <code>X</code> and <code>Y</code> parameters reflect the coordinate of a point on the path.</p>
+<p>If the <code>Callback</code> returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -278,7 +278,7 @@
 
     <field>
       <name>Child</name>
-      <comment>The first child vector, or NULL.</comment>
+      <comment>The first child vector, or <code>NULL</code>.</comment>
       <access read="R">Read</access>
       <type class="Vector">*Vector</type>
       <description>
@@ -356,7 +356,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have 'BackgroundImage' or 'BackgroundAlpha' as a source.  If it is not set, then filters using BackgroundImage and BackgroundAlpha references will not produce the expected behaviour.</p>
+<p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have <code>BackgroundImage</code> or <code>BackgroundAlpha</code> as a source.  If it is not set, then filters using <code>BackgroundImage</code> and <code>BackgroundAlpha</code> references will not produce the expected behaviour.</p>
 <p>The EnableBkgd option can be enabled on Vector sub-classes <class name="VectorGroup">VectorGroup</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorViewport">VectorViewport</class>.  All other sub-classes will ignore the option if used.</p>
       </description>
     </field>
@@ -367,7 +367,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The string is parsed through the <function>ReadPainter</function> function in the Vector module.  Please refer to it for further details on valid formatting.</p>
+<p>The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The string is parsed through the <function module="Vector">ReadPainter</function> function.  Please refer to it for further details on valid formatting.</p>
 <p>It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by separating them with a semi-colon <code>;</code> character.  This feature makes it easy to use a common background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this feature is intended for programmed use-cases and is not SVG compliant.</p>
       </description>
     </field>
@@ -585,11 +585,11 @@
 
     <field>
       <name>Prev</name>
-      <comment>The previous vector in the branch, or NULL.</comment>
+      <comment>The previous vector in the branch, or <code>NULL</code>.</comment>
       <access read="R" write="S">Read/Set</access>
       <type class="Vector">*Vector</type>
       <description>
-<p>The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the top of the branch.</p>
+<p>The Prev value refers to the previous vector in the branch.  If the value is <code>NULL</code>, then the vector is positioned at the top of the branch.</p>
 <p>The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Prev field.  Changing the value will result in updates to the <fl>Parent</fl> and <fl>Next</fl> values.</p>
       </description>
     </field>
@@ -772,7 +772,7 @@ Z: Close Path
       <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
       <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
-      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
+      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by <code>StrokeWidth / 2</code>.</const>
     </constants>
 
     <constants lookup="VLJ" comment="Options for the look of line joins.">

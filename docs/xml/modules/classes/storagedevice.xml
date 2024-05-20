@@ -52,7 +52,7 @@
 
     <field>
       <name>DeviceID</name>
-      <comment>A unique ID for the mounted device (platform dependent, NULL if unavailable).</comment>
+      <comment>A unique ID for the mounted device (platform dependent, <code>NULL</code> if unavailable).</comment>
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
@@ -76,7 +76,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Set the Volume field prior to initialisation for that volume to be queried by the object.  The standard volume string format is 'name:', but omitting the colon or defining complete file system paths when writing this field is also acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.</p>
+<p>Set the Volume field prior to initialisation for that volume to be queried by the object.  The standard volume string format is <code>name:</code>, but omitting the colon or defining complete file system paths when writing this field is also acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.</p>
       </description>
     </field>
 

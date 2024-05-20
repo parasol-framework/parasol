@@ -5,8 +5,7 @@
 ArchiveName: Apply an archive name to the object, allowing it to be used as a named object in the file system.
 
 Setting the ArchiveName will allow a Compression object's files to be accessible using standard file system paths.
-This is achieved through use of the `archive:` volume, which is a file system extension included in the Compression
-module.  Please refer to the @FileArchive class for further information on this feature.
+This is achieved through use of the `archive:` volume, which is a virtual filesystem included in the Core API.  
 
 *********************************************************************************************************************/
 
@@ -147,7 +146,7 @@ The target object must be capable of processing incoming text from data channels
 -FIELD-
 Password: Required if an archive needs an encryption password for access.
 
-Set the password field if an archive will use a password for the encryption of its contents.  The string must be
+Set the Password field if an archive will use a password for the encryption of its contents.  The string must be
 null-terminated and not more than 128 bytes in length.
 
 It is recommended that the Password is set before or immediately after initialisation.  To change the password

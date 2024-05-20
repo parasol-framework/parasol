@@ -356,7 +356,7 @@ static ERR TURBULENCEFX_SET_FY(extTurbulenceFX *Self, DOUBLE Value)
 -FIELD-
 Octaves: The numOctaves parameter for the noise function.
 
-Defaults to 1 if not specified.
+Defaults to `1` if not specified.
 
 *********************************************************************************************************************/
 
@@ -377,7 +377,7 @@ static ERR TURBULENCEFX_SET_Octaves(extTurbulenceFX *Self, LONG Value)
 -FIELD-
 Seed: The starting number for the pseudo random number generator.
 
-If the value is undefined, the effect is as if a value of 0 were specified.  When the seed number is handed over to
+If the value is undefined, the effect is as if a value of `0` were specified.  When the seed number is handed over to
 the algorithm it must first be truncated, i.e. rounded to the closest integer value towards zero.
 
 *********************************************************************************************************************/
@@ -397,10 +397,10 @@ static ERR TURBULENCEFX_SET_Seed(extTurbulenceFX *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Stitch: If TRUE, stitching will be enabled at the tile's edges.
+Stitch: If `TRUE`, stitching will be enabled at the tile's edges.
 
 By default, the turbulence algorithm will sometimes show discontinuities at the tile borders.  If Stitch is set to
-TRUE then the algorithm will automatically adjust base frequency values such that the node's width and height
+`TRUE` then the algorithm will automatically adjust base frequency values such that the node's width and height
 (i.e., the width and height of the current subregion) contains an integral number of the Perlin tile width and height
 for the first octave.
 

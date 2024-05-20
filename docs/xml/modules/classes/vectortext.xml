@@ -23,7 +23,7 @@
   &lt;textPath xlink:href="#myTextPath2"/&gt;
 &lt;/text&gt;
 </pre>
-<p>Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal <class name="VectorImage">VectorImage</class> and then rendering that to the viewport as a rectangular path.  It is recommended that this feature is only used for fast 1:1 rendering without transforms.  The user is otherwise better served through the use of scalable fonts.</p></description>
+<p>Support for bitmap fonts is included.  This feature is implemented by drawing bitmap characters to an internal <class name="VectorImage">VectorImage</class> and then rendering that to the viewport as a rectangular path.  It is recommended that this feature is only used for fast <code>1:1</code> rendering without transforms.  The user is otherwise better served through the use of scalable fonts.</p></description>
     <source>
       <file path="vectors/">text.cpp</file>
     </source>
@@ -153,8 +153,13 @@
 
     <field>
       <name>Fill</name>
+      <comment>Defines the fill painter using SVG's IRI format.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
+      <description>
+<p>The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The string is parsed through the <function module="Vector">ReadPainter</function> function.  Please refer to it for further details on valid formatting.</p>
+<p>It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by separating them with a semi-colon <code>;</code> character.  This feature makes it easy to use a common background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this feature is intended for programmed use-cases and is not SVG compliant.</p>
+      </description>
     </field>
 
     <field>

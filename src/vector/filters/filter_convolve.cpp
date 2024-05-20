@@ -7,7 +7,7 @@ Convolve applies a matrix convolution filter effect to an input source.  A convo
 image with neighbouring pixels to produce a resulting image.  A wide variety of imaging operations can be achieved
 through convolutions, including blurring, edge detection, sharpening, embossing and beveling.
 
-A matrix convolution is based on an n-by-m matrix (the convolution kernel) which describes how a given pixel value in
+A matrix convolution is based on an `n-by-m` matrix (the convolution kernel) which describes how a given pixel value in
 the input image is combined with its neighbouring pixel values to produce a resulting pixel value. Each result pixel
 is determined by applying the kernel matrix to the corresponding source pixel and its neighbouring pixels.  The basic
 convolution formula which is applied to each colour value for a given pixel is:
@@ -27,8 +27,8 @@ Note in the above formula that the values in the kernel matrix are applied such 
 computer graphics textbooks.
 
 Because they operate on pixels, matrix convolutions are inherently resolution-dependent.  To make
-resolution-independent results, an explicit value should be provided for either the ResX and ResY attributes
-on the parent VectorFilter and/or #UnitX and #UnitY.
+resolution-independent results, an explicit value should be provided for either the `ResX` and `ResY` attributes
+on the parent @VectorFilter and/or #UnitX and #UnitY.
 
 -END-
 
@@ -340,7 +340,7 @@ Divisor: Defines the divisor value in the convolution algorithm.
 After applying the #Matrix to the input image to yield a number, that number is divided by #Divisor to yield the
 final destination color value.  A divisor that is the sum of all the matrix values tends to have an evening effect
 on the overall color intensity of the result.  The default value is the sum of all values in #Matrix, with the
-exception that if the sum is zero, then the divisor is set to 1.
+exception that if the sum is zero, then the divisor is set to `1`.
 
 *********************************************************************************************************************/
 
@@ -442,7 +442,7 @@ MatrixColumns: The number of columns in the Matrix.
 
 Indicates the number of columns represented in #Matrix.  A typical value is `3`.  It is recommended that only small
 values are used; higher values may result in very high CPU overhead and usually do not produce results that justify
-the impact on performance.  The default value is 3.
+the impact on performance.  The default value is `3`.
 
 *********************************************************************************************************************/
 

@@ -20,6 +20,18 @@ static const struct FieldDef clFontAlign[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clFontALIGN[] = {
+   { "Left", 0x00000001 },
+   { "Right", 0x00000002 },
+   { "Horizontal", 0x00000004 },
+   { "Vertical", 0x00000008 },
+   { "Center", 0x0000000c },
+   { "Middle", 0x0000000c },
+   { "Top", 0x00000010 },
+   { "Bottom", 0x00000020 },
+   { NULL, 0 }
+};
+
 static const struct ActionArray clFontActions[] = {
    { AC_Draw, FONT_Draw },
    { AC_Free, FONT_Free },

@@ -71,6 +71,20 @@ static const struct FieldDef clFilterEffectMixType[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clFilterEffectVSF[] = {
+   { "Ignore", 0x00000000 },
+   { "None", 0x00000000 },
+   { "Graphic", 0x00000001 },
+   { "Alpha", 0x00000002 },
+   { "Bkgd", 0x00000003 },
+   { "BkgdAlpha", 0x00000004 },
+   { "Fill", 0x00000005 },
+   { "Stroke", 0x00000006 },
+   { "Reference", 0x00000007 },
+   { "Previous", 0x00000008 },
+   { NULL, 0 }
+};
+
 static const struct ActionArray clFilterEffectActions[] = {
    { AC_Free, FILTEREFFECT_Free },
    { AC_Init, FILTEREFFECT_Init },

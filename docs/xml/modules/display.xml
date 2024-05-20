@@ -903,6 +903,17 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
     </constants>
 
+    <constants lookup="ALIGN" comment="Universal values for alignment of graphics and text">
+      <const name="BOTTOM">Align to bottom</const>
+      <const name="CENTER">Synonym for <code>HORIZONTAL | VERTICAL</code></const>
+      <const name="HORIZONTAL">Align to horizontal center</const>
+      <const name="LEFT">Align to left</const>
+      <const name="MIDDLE">Synonym for <code>HORIZONTAL | VERTICAL</code></const>
+      <const name="RIGHT">Align to right</const>
+      <const name="TOP">Align to top</const>
+      <const name="VERTICAL">Align to vertical center</const>
+    </constants>
+
     <constants lookup="BAF" comment="Instructions for basic graphics operations.">
       <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
       <const name="COPY">Special <function module="Display">CopyArea</function> option that avoids blending when the destination pixel is empty.</const>
@@ -961,7 +972,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </constants>
 
     <constants lookup="CRF" comment="Flags for the SetCursor() function.">
-      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the <function module="Display">SetCursor</function> function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the <code>ANCHOR</code> option.</const>
+      <const name="BUFFER">Use of the <code>BUFFER</code> option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the <function module="Display">SetCursor</function> function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the <code>ANCHOR</code> option.</const>
       <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
       <const name="MMB">Release the cursor after the middle mouse button is held and released.</const>
       <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  <code>ERR::NothingDone</code> is returned if the user has a button held down.</const>
@@ -982,7 +993,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the <code>BitsPerPixel</code> value.</const>
       <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the <class name="Surface" field="XOffset">Surface.XOffset</class> and <class name="Surface" field="YOffset">Surface.YOffset</class> fields.</const>
       <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the <class name="Surface" field="Opacity">Surface.Opacity</class> field.</const>
-      <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
+      <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's <code>Colour</code> field will be ignored.</const>
     </constants>
 
     <constants lookup="CT">
@@ -993,6 +1004,48 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="IMAGE"/>
       <const name="OBJECT"/>
       <const name="TEXT"/>
+    </constants>
+
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS">Synonym for <code>FIXED_RADIUS_X | FIXED_RADIUS_Y</code></const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="HEIGHT">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT</code></const>
+      <const name="HEIGHT_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
+      <const name="HORIZONTAL_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</code></const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS">Synonym for <code>SCALED_RADIUS_X | SCALED_RADIUS_Y</code></const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE">Synonym for <code>STATUS_CHANGE_H | STATUS_CHANGE_V</code></const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+      <const name="VERTICAL_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</code></const>
+      <const name="WIDTH">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH</code></const>
+      <const name="WIDTH_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="X">Synonym for <code>FIXED_X | SCALED_X</code></const>
+      <const name="X_OFFSET">Synonym for <code>FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
+      <const name="Y">Synonym for <code>FIXED_Y | SCALED_Y</code></const>
+      <const name="Y_OFFSET">Synonym for <code>FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
     </constants>
 
     <constants lookup="DPMS" comment="Possible modes for the Display class' PowerMode field.">
@@ -1049,7 +1102,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="FORCE_DRAW">Forces redrawing to the surface buffer (overrides visibility checks).</const>
       <const name="IGNORE_CHILDREN">Do not draw child surfaces (this includes volatile children).</const>
       <const name="IGNORE_NV_CHILDREN">Do not draw child surfaces unless they are volatile.</const>
-      <const name="RELATIVE">Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.</const>
+      <const name="RELATIVE">Coordinate parameters are expressed in relative format.  Right and Bottom reflect Width and Height respectively.</const>
       <const name="SINGLE_BITMAP">Only draw children and/or siblings when they share our bitmap space.</const>
     </constants>
 
@@ -1066,6 +1119,35 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="ANCHOR">Allow the pointer to be anchored.</const>
       <const name="UNUSED"/>
       <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
+    </constants>
+
+    <constants lookup="PTC" comment="Predefined cursor styles">
+      <const name="CROSSHAIR">The cross hair is used for targeting specific pixel points (common in paint programs).</const>
+      <const name="CUSTOM">Works in conjunction with the SetCustomCursor() function to represent a program defined bitmap.</const>
+      <const name="DEFAULT">The default cursor (usually an arrow pointing to the upper left).</const>
+      <const name="DRAGGABLE">Used to indicate that a surface or object can be dragged by the user.</const>
+      <const name="END"/>
+      <const name="HAND">The hand cursor is often used for indicating click-able content (hyper-links, icons etc).</const>
+      <const name="HAND_LEFT">Similar to the standard hand cursor, but points to the left.</const>
+      <const name="HAND_RIGHT">Similar to the standard hand cursor, but points to the right.</const>
+      <const name="INVISIBLE">The cursor graphic is invisible (but will continue to operate as normal in all other respects).</const>
+      <const name="MAGNIFIER">Represents a magnifying glass.</const>
+      <const name="NO_CHANGE"/>
+      <const name="PAINTBRUSH">The paintbrush cursor is typically employed by paint programs.</const>
+      <const name="SIZE_BOTTOM">Sizing cursor - for resizing the bottom edge of any rectangular area.</const>
+      <const name="SIZE_BOTTOM_LEFT">Sizing cursor - for resizing the bottom left corner of any rectangular area.</const>
+      <const name="SIZE_BOTTOM_RIGHT">Sizing cursor - for resizing the bottom right corner of any rectangular area.</const>
+      <const name="SIZE_LEFT">Sizing cursor - for resizing the left edge of any rectangular area.</const>
+      <const name="SIZE_RIGHT">Sizing cursor - for resizing the right edge of any rectangular area.</const>
+      <const name="SIZE_TOP">Sizing cursor - for resizing the top edge of any rectangular area.</const>
+      <const name="SIZE_TOP_LEFT">Sizing cursor - for resizing the top left corner of any rectangular area.</const>
+      <const name="SIZE_TOP_RIGHT">Sizing cursor - for resizing the top right corner of any rectangular area.</const>
+      <const name="SIZING">Multi-directional sizing cursor - for resizing in any direction.</const>
+      <const name="SLEEP">The sleep cursor is used to inform the user that the computer is busy.</const>
+      <const name="SPLIT_HORIZONTAL">The horizontal split cursor is typically used for splitting rectangles in half, or dragging a horizontal split within a large rectangular space.</const>
+      <const name="SPLIT_VERTICAL">The vertical split cursor is typically used for splitting rectangles in half, or dragging a vertical split within a large rectangular space.</const>
+      <const name="STOP">The stop cursor is used to inform the user that an operation is not possible (e.g. drag and drop to an unsupported object area).</const>
+      <const name="TEXT">The text cursor is popular for the precise positioning of text cursors.</const>
     </constants>
 
     <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
@@ -1114,15 +1196,15 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
       <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="FLIPPABLE">If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="FLIPPABLE">If <code>SCR::BUFFER</code> is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
       <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>
-      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
+      <const name="MAXSIZE">For <function module="Display">GetDisplayInfo</function> only, indicates that the width and height values indicate the display's maximum size.</const>
       <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
       <const name="POWERSAVE">Power saving is active (read-only).</const>
       <const name="READ_ONLY">Synonym for <code>MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</code></const>
-      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
+      <const name="REFRESH">For <function module="Display">GetDisplayInfo</function> only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
     </constants>
 

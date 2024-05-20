@@ -47,7 +47,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the spiral is expressed as '<fl>Radius</fl> * 2.0'.</p>
+<p>The height of the spiral is expressed as <code>Radius * 2.0</code>.</p>
       </description>
     </field>
 
@@ -99,8 +99,7 @@
       <type>DOUBLE</type>
       <description>
 <p>Spacing tightly controls the computation of the spiral path, ensuring that a specific amount of empty space is left between each loop.  The space is declared in pixel units.</p>
-<p>If Spacing is undeclared, the spiral expands at an incremental rate of <code>
-<fl>Step</fl> * 0.1</code>.</p>
+<p>If Spacing is undeclared, the spiral expands at an incremental rate of <code>Step * 0.1</code>.</p>
       </description>
     </field>
 
@@ -110,7 +109,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Step value affects the distance between each vertex in the spiral path during its generation.  The default value is 1.0.  Using larger values will create a spiral with jagged corners due to the reduction in vertices.</p>
+<p>The Step value affects the distance between each vertex in the spiral path during its generation.  The default value is <code>1.0</code>.  Using larger values will create a spiral with jagged corners due to the reduction in vertices.</p>
       </description>
     </field>
 
@@ -120,7 +119,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the spiral is expressed as '<fl>Radius</fl> * 2.0'.</p>
+<p>The width of the spiral is expressed as <code>Radius * 2.0</code>.</p>
       </description>
     </field>
 

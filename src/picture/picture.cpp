@@ -106,17 +106,15 @@ static ERR CMDExpunge(void)
 -ACTION-
 Activate: Loads image data into a picture object.
 
-In order to load an image file into a picture object you will need to Activate it after initialisation.  So long as the
-#Path field refers to a recognised image file, it will be loaded into the picture object and the fields
-will be filled out to reflect the image content.
+Loading an image file requires a call to Activate() after initialisation.  The #Path field will be used to source
+the image file.
 
-If you have preset the values of certain fields prior to activation, you will be placing restrictions on the image file
-that is to be loaded.  For example, if the source image is wider than a restricted Bitmap Width, the image will have
-its right edge clipped.  The same is true for the Bitmap Height and other restrictions apply to fields such as the
-Bitmap Palette.
+Pre-setting picture field values will place restrictions on the image file that is to be loaded.  For example, if 
+the source image is wider than a preset @Bitmap.Width, the image will have its right edge clipped.  The same is 
+true for the @Bitmap.Height and other restrictions apply to fields such as the @Bitmap.Palette.
 
-Once the picture is loaded, the image data will be held in the picture's Bitmap object.  You can draw to and from the
-Bitmap using its available drawing methods.
+Once the picture is loaded, the image data will be held in the picture's #Bitmap object.  Manipulating the #Bitmap
+object is permitted.
 -END-
 
 *********************************************************************************************************************/
@@ -344,13 +342,13 @@ Init: Prepares the object for use.
 Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the
 #Path field or have chosen to use the `NEW` flag, the initialisation routine will create a
 #Bitmap area that contains no image data.  This allows you to fill the picture with your own image data and
-save it using the #SaveImage() or #SaveToObject() actions.  You must set the bitmap width, height
+save it using the #SaveImage() or #SaveToObject() actions.  You must set the @Bitmap.Width, @Bitmap.Height
 and colour specifications at a minimum, or the initialisation process will fail.
 
 If you have set the #Path field and avoided the `NEW` flag, the initialisation process will analyse the
 file location to determine whether or not the data is in fact a valid image file.  If the file does not match up
-with a registered data format, an error code of `ERR::NoSupport` is returned.  You will need to use the Activate or
-Query actions to load or find out more information about the image format.
+with a registered data format, an error code of `ERR::NoSupport` is returned.  You will need to use the #Activate() or
+#Query() actions to load or find out more information about the image format.
 -END-
 
 *********************************************************************************************************************/
@@ -877,8 +875,8 @@ static ERR SET_Author(extPicture *Self, CSTRING Value)
 Bitmap: Represents a picture's image data.
 
 The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains
-information on the image dimensions and palette for example.  The Palette can be preset if you want to remap the 
-source image to a specific set of colour values.
+information on the image dimensions and palette for example.  The @Bitmap.Palette can be preset if you want to 
+remap the  source image to a specific set of colour values.
 
 Please refer to the @Bitmap class for more details on the structure of bitmap objects.
 
@@ -886,7 +884,7 @@ Please refer to the @Bitmap class for more details on the structure of bitmap ob
 Copyright: Copyright details of an image.
 
 Copyright details related to an image may be specified here.  The copyright should be short and to the point, for
-example "Copyright H.R. Giger (c) 1992."
+example `Copyright J. Bloggs (c) 1992.`
 
 *********************************************************************************************************************/
 
@@ -973,23 +971,23 @@ static ERR SET_Disclaimer(extPicture *Self, CSTRING Value)
 -FIELD-
 DisplayHeight: The preferred height to use when displaying the image.
 
-The DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the
+The #DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the
 image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If
 the source does not specify a suitable value for these fields, they may be initialised to a value based on the
-picture's #Bitmap Width and Height.
+picture's @Bitmap.Width and @Bitmap.Height.
 
-In the case of a scalable image source such as SVG, the DisplayWidth and DisplayHeight can be pre-configured by the
+In the case of a scalable image source such as SVG, the #DisplayWidth and DisplayHeight can be pre-configured by the
 client, and the loader will scale the source image to the preferred dimensions on load.
 
 -FIELD-
 DisplayWidth: The preferred width to use when displaying the image.
 
-The DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the
+The DisplayWidth and #DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the
 image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If
 the source does not specify a suitable value for these fields, they may be initialised to a value based on the
-picture's #Bitmap Width and Height.
+picture's @Bitmap.Width and @Bitmap.Height.
 
-In the case of a scalable image source such as SVG, the DisplayWidth and DisplayHeight can be pre-configured by the
+In the case of a scalable image source such as SVG, the DisplayWidth and #DisplayHeight can be pre-configured by the
 client, and the loader will scale the source image to the preferred dimensions on load.
 
 -FIELD-

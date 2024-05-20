@@ -1996,15 +1996,15 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Ar
 -METHOD-
 ResetDimensions: Changes the dimensions of a surface.
 
-The ResetDimensions method provides a simple way of re-declaring the dimensions of a surface object.  This is sometimes
-necessary when a surface needs to make a significant alteration to its method of display.  For instance if the width of
-the surface is declared through a combination of X and XOffset settings and the width needs to change to a fixed
-setting, then ResetDimensions will have to be used.
+The ResetDimensions() method provides a simple way of re-declaring the dimensions of a surface object.  This is 
+sometimes necessary when a surface needs to make a significant alteration to its display configuration.  For 
+instance if the width of the surface is declared through a combination of `X` and `XOffset` settings and the width 
+needs to change to a fixed setting, then ResetDimensions() will have to be used.
 
 It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension
-settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include `DMF_FIXED_X`
-and `DMF_FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full list of
-dimension flags that can be specified.
+settings.  For instance if `X` and `Width` are set, `XOffset` is ignored and the Dimensions value must include 
+`DMF_FIXED_X` and `DMF_FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full 
+list of dimension flags that can be specified.
 
 -INPUT-
 double X: New X coordinate.
@@ -2132,15 +2132,15 @@ static ERR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
 /*********************************************************************************************************************
 
 -ACTION-
-SaveImage: Saves the graphical image of a surface object.
+SaveImage: Saves the graphics of a surface object.
 
-If you need to store the image (graphical content) of a surface object, use the SaveImage action.  Calling SaveImage on
-a surface object will cause it to generate an image of its contents and save them to the given destination object.  Any
-child surfaces in the region will also be included in the resulting image data.
+To store the rendered image of a surface object, use the SaveImage() action.  Calling SaveImage() on a surface object 
+will cause it to render an image of its contents and save them to the given destination object.  Any child surfaces 
+in the region will also be included in the resulting image data.
 
-The image data will be saved in the data format that is indicated by the setting in the ClassID argument.  Options are
-limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE` (PNG).  If no ClassID is specified,
-the user's preferred default file format is used.
+The image data will be saved in the data format that is indicated by the setting in the `ClassID` parameter.  Options 
+are limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE` (PNG).  If no `ClassID` is 
+specified, the user's preferred default file format is used.
 -END-
 
 *********************************************************************************************************************/

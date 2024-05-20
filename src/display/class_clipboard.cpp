@@ -445,13 +445,13 @@ GetFiles: Retrieve the most recently clipped data as a list of files.
 This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it
 supports (or zero if all datatypes are recognised).
 
-The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype
+The most recently clipped datatype is always returned.  To scan for all available clip items, set the `Datatype`
 parameter to zero and repeatedly call this method with incremented Index numbers until the error code `ERR::OutOfRange`
 is returned.
 
-On success this method will return a list of files (terminated with a `NULL` entry) in the Files parameter.  Each file is
+On success this method will return a list of files (terminated with a `NULL` entry) in the `Files` parameter.  Each file is
 a readable clipboard entry - how the client reads it depends on the resulting `Datatype`.  Additionally, the
-~Core.IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a
+~Core.IdentifyFile() function could be used to find a class that supports the data.  The resulting `Files` array is a
 memory allocation that must be freed with a call to ~Core.FreeResource().
 
 If this method returns the `CEF::DELETE` flag in the `Flags` parameter, the client must delete the source files after
@@ -460,14 +460,14 @@ recommended as the most efficient method.
 
 -INPUT-
 &int(CLIPTYPE) Datatype: Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
-int Index: If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.
-!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().
+int Index: If the `Datatype` parameter is zero, this parameter may be set to the index of the desired clip item.
+!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a `NULL` entry.  You are required to free the returned array with ~Core.FreeResource().
 &int(CEF) Flags: Result flags are returned in this parameter.  If `DELETE` is set, you need to delete the files after use in order to support the 'cut' operation.
 
 -ERRORS-
 Okay: A matching clip was found and returned.
 Args:
-OutOfRange: The specified Index is out of the range of the available clip items.
+OutOfRange: The specified `Index` is out of the range of the available clip items.
 NoData: No clip was available that matched the requested data type.
 -END-
 
@@ -567,8 +567,8 @@ static ERR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
 -METHOD-
 Remove: Remove items from the clipboard.
 
-The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags
-in the Datatype parameter.  To clear all content from the clipboard, use the #Clear() action instead of this method.
+The Remove() method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags
+in the `Datatype` parameter.  To clear all content from the clipboard, use the #Clear() action instead of this method.
 
 -INPUT-
 int(CLIPTYPE) Datatype: The datatype(s) that will be deleted (datatypes may be logically-or'd together).

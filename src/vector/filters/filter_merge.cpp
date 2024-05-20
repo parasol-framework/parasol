@@ -7,7 +7,7 @@ Use MergeFX to composite multiple input sources so that they are rendered on top
 sequence.
 
 Many effects produce a number of intermediate layers in order to create the final output image.  This filter allows
-us to collapse those into a single image.  Although this could be done by using n-1 Composite-filters, it is more
+us to collapse those into a single image.  Although this could be done by using `n-1` Composite-filters, it is more
 convenient to have  this common operation available in this form, and offers the implementation some additional
 flexibility.
 

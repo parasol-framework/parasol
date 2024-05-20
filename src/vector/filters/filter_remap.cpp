@@ -3,7 +3,7 @@
 -CLASS-
 RemapFX: Provides pixel remapping; equivalent to feComponentTransfer in SVG.
 
-The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.
+The RemapFX class provides an implementation of the `feComponentTransfer` functionality in SVG.
 
 Internally the pixel rendering process is implemented using pixel lookup tables.  As such this particular effect
 carries minimal overhead compared to most other effect classes.
@@ -242,7 +242,7 @@ minimum size of 1.
 -INPUT-
 int(CMP) Component: The pixel component to which the discrete function must be applied.
 array(double) Values: A list of values for the discrete function.
-arraysize Size: Total number of elements in the value list.
+arraysize Size: Total number of elements in the `Values` list.
 
 -RESULT-
 Okay:

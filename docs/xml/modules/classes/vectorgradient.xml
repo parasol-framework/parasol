@@ -32,7 +32,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.</p>
+<p>The <code>(CenterX, CenterY)</code> coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to <code>50%</code>.</p>
       </description>
     </field>
 
@@ -42,7 +42,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.</p>
+<p>The <code>(CenterX, CenterY)</code> coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to <code>50%</code>.</p>
       </description>
     </field>
 
@@ -63,7 +63,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
       </description>
     </field>
 
@@ -73,7 +73,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
       </description>
     </field>
 
@@ -184,7 +184,7 @@
 
     <field>
       <name>Type</name>
-      <comment>Specifies the type of gradient (e.g. RADIAL, LINEAR)</comment>
+      <comment>Specifies the type of gradient (e.g. <code>RADIAL</code>, <code>LINEAR</code>)</comment>
       <access read="R" write="I">Read/Init</access>
       <type lookup="VGT">VGT</type>
       <description>
@@ -195,7 +195,7 @@
 
     <field>
       <name>Units</name>
-      <comment>Defines the coordinate system for fields X1, Y1, X2 and Y2.</comment>
+      <comment>Defines the coordinate system for <fl>X1</fl>, <fl>Y1</fl>, <fl>X2</fl> and <fl>Y2</fl>.</comment>
       <access read="R" write="I">Read/Init</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
@@ -210,7 +210,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
+<p>The <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
 <p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
@@ -221,7 +221,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
+<p>The <code>(X2, Y2)</code> field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
 <p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
@@ -232,7 +232,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.</p>
+<p>The <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
+<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -242,7 +243,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
+<p>The <code>(X2, Y2)</code> field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
 <p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
@@ -280,8 +281,8 @@
       <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
       <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
       <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
-      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
-      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
+      <const name="LINEAR">A linear gradient is drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</const>
+      <const name="RADIAL">A radial gradient is drawn from <code>CenterX, CenterY</code> to <code>Radius</code>.  An optional focal point can be expressed with <code>FX</code> and <code>FY</code>.</const>
     </constants>
 
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
@@ -296,7 +297,7 @@
 
     <constants lookup="VUNIT">
       <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
-      <const name="UNDEFINED"/>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
       <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 

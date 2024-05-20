@@ -15,7 +15,7 @@
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The SourceFX class will render a named vector into a given rectangle within the current user coordinate system.</p>
-<p>Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y, Width and Height.  The placement and scaling of the referenced vector is controlled by the <fl>AspectRatio</fl> field.</p></description>
+<p>Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes <code>X</code>, <code>Y</code>, <code>Width</code> and <code>Height</code>.  The placement and scaling of the referenced vector is controlled by the <fl>AspectRatio</fl> field.</p></description>
     <source>
       <file path="filters/">filter_source.cpp</file>
     </source>
@@ -57,7 +57,7 @@
       <type>STRING</type>
       <description>
 <p>Setting Def to the name of a pre-registered scene definition will reference that object in <fl>Source</fl>.  If the name is not registered then <code>ERR::Search</code> is returned.  The named object must be derived from the <class name="Vector">Vector</class> class.</p>
-<p>Vectors are registered via the <class name="VectorScene">VectorScene</class> AddDef() method.</p>
+<p>Vectors are registered via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method.</p>
       </description>
     </field>
 

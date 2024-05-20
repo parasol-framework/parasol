@@ -328,7 +328,7 @@ Use SetCommand() to copy one or more commands into an existing path.
 -INPUT-
 int Index: The index of the command that is to be set.
 buf(struct(*PathCommand)) Command: An array of commands to set in the path.
-bufsize Size: The size of the Command buffer, in bytes.
+bufsize Size: The size of the `Command` buffer, in bytes.
 
 -RESULT-
 Okay
@@ -365,8 +365,8 @@ cleared as a result of this process.
 NOTE: This method is not compatible with Fluid calls.
 
 -INPUT-
-buf(ptr) Commands: An array of PathCommand structures.
-bufsize Size: The byte size of the Commands buffer.
+buf(ptr) Commands: An array of !PathCommand structures.
+bufsize Size: The byte size of the `Commands` buffer.
 
 -RESULT-
 Okay
@@ -402,11 +402,11 @@ static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandLis
 -FIELD-
 Commands: Direct pointer to the PathCommand array.
 
-Read the Commands field to obtain a direct pointer to the `PathCommand` array.  This will allow the control points of
+Read the Commands field to obtain a direct pointer to the !PathCommand array.  This will allow the control points of
 the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call
 #Flush() to register the changes for the next redraw.
 
-This field can also be written at any time with a new array of `PathCommand` structures.  Doing so will clear the
+This field can also be written at any time with a new array of !PathCommand structures.  Doing so will clear the
 existing path, if any.
 
 *********************************************************************************************************************/

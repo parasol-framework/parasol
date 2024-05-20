@@ -862,9 +862,10 @@ static ERR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 -FIELD-
 ButtonState: Indicates the current button-press state.
 
-You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The
-flags returned by this field are `JD_LMB`, `JD_RMB` and `JD_MMB` indicating left, right and middle mouse buttons
-respectively.
+This field returns the state of mouse input buttons as bit-flags, sorted by order of their importance.  A bit flag 
+of `1` indicates that the user is holding the button down.  The bit order is `LMB`, `RMB`, `MMB`, with the `LMB` 
+starting at bit position zero.  Additional buttons are supported but their exact order will depend on the device
+that is in use, and the configuration of their order may be further customised by the user.
 
 *********************************************************************************************************************/
 
@@ -892,10 +893,10 @@ The ClickSlop value defines the allowable pixel distance between two clicks for 
 CursorID: Sets the user's cursor image, selected from the pre-defined graphics bank.
 
 -FIELD-
-CursorOwner: The current owner of the cursor, as defined by SetCursor().
+CursorOwner: The current owner of the cursor, as defined by ~Display.SetCursor().
 
 If the pointer is currently owned by an object, this field will refer to that object ID.  Pointer ownership is managed
-by the ~SetCursor() function.
+by the ~Display.SetCursor() function.
 
 -FIELD-
 DoubleClick: The maximum interval between two clicks for a double click to be recognised.
@@ -905,18 +906,18 @@ time frame is determined in the DoubleClick field and is measured in seconds.  T
 although the user can store his own preference in the pointer configuration file.
 
 -FIELD-
-DragItem: The currently dragged item, as defined by StartCursorDrag().
+DragItem: The currently dragged item, as defined by ~Display.StartCursorDrag().
 
-When the pointer is in drag-mode, the custom item number that was defined in the initial call to StartCursorDrag() will
-be defined here.  At all other times this field will be set to zero.
+When the pointer is in drag-mode, the custom item number that was defined in the initial call to 
+~Display.StartCursorDrag() will be defined here.  At all other times this field will be set to zero.
 
 -FIELD-
-DragSource: The object managing the current drag operation, as defined by StartCursorDrag().
+DragSource: The object managing the current drag operation, as defined by ~Display.StartCursorDrag().
 
 When the pointer is in drag-mode, the object that is managing the source data will be referenced in this field.  At all
 other times this field will be set to zero.
 
-Item dragging is managed by the StartCursorDrag() function.
+Item dragging is managed by the ~Display.StartCursorDrag() function.
 
 -FIELD-
 Flags: Optional flags.
@@ -951,22 +952,22 @@ static ERR SET_MaxSpeed(extPointer *Self, LONG Value)
 -FIELD-
 OverObject: Readable field that gives the ID of the object under the pointer.
 
-This field returns a reference to the object directly under the pointer's hot-spot.  NULL can be returned if there is
-no surface object under the pointer.
+This field returns a reference to the object directly under the pointer's hot-spot.  `NULL` can be returned if there 
+is no surface object under the pointer.
 
 -FIELD-
-OverX: The horizontal position of the Pointer with respect to the object underneath the hot-spot.
+OverX: The horizontal position of the pointer with respect to the object underneath the hot-spot.
 
 The OverX field provides other classes with a means of finding out exactly where the pointer is positioned over their
 display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where
-affected, the OverX and OverY fields can be polled to determine the exact position of the user click.
+affected, the OverX and #OverY fields can be polled to determine the exact position of the user click.
 
 -FIELD-
-OverY: The vertical position of the Pointer with respect to the object underneath the hot-spot.
+OverY: The vertical position of the pointer with respect to the object underneath the hot-spot.
 
 The OverY field provides other classes with a means of finding out exactly where the pointer is positioned over their
 display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where
-affected, the OverX and OverY fields can be polled to determine the exact position of the user click.
+affected, the #OverX and OverY fields can be polled to determine the exact position of the user click.
 
 -FIELD-
 OverZ: The position of the Pointer within an object.
@@ -977,15 +978,15 @@ displays, by returning its coordinate along the Z axis.
 -FIELD-
 Restrict: Refers to a surface when the pointer is restricted.
 
-If the pointer has been restricted to a surface through SetCursor(), this field refers to the ID of that surface.  If
-the pointer is not restricted, this field is set to zero.
+If the pointer has been restricted to a surface through ~Display.SetCursor(), this field refers to the ID of that 
+surface.  If the pointer is not restricted, this field is set to zero.
 
 -FIELD-
-Speed: Speed multiplier for Pointer movement.
+Speed: Speed multiplier for pointer movement.
 
 The speed at which the pointer moves can be adjusted with this field.  To lower the speed, use a value between 0 and
-100%.  To increase the speed, use a value between 100 and 1000%.  The Speed of the Pointer is complemented by the
-MaxSpeed field, which restricts the maximum amount of pixels that a Pointer can move each time the input device is
+100%.  To increase the speed, use a value between 100 and 1000%.  The speed of the pointer is complemented by the
+#MaxSpeed field, which restricts the maximum amount of pixels that a pointer can move each time the input device is
 polled.
 
 -FIELD-

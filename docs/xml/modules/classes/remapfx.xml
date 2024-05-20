@@ -14,7 +14,7 @@
     <include>modules/remapfx.h</include>
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.</p>
+<p>The RemapFX class provides an implementation of the <code>feComponentTransfer</code> functionality in SVG.</p>
 <p>Internally the pixel rendering process is implemented using pixel lookup tables.  As such this particular effect carries minimal overhead compared to most other effect classes.</p></description>
     <source>
       <file path="filters/">filter_remap.cpp</file>
@@ -37,7 +37,7 @@
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the discrete function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the discrete function.</param>
-        <param type="LONG" name="Size">Total number of elements in the value list.</param>
+        <param type="LONG" name="Size">Total number of elements in the <code>Values</code> list.</param>
       </input>
       <description>
 <p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>

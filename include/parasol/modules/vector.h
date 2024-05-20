@@ -674,9 +674,9 @@ class objVectorScene : public Object {
    LARGE    RenderTime;           // Returns the rendering time of the last scene.
    DOUBLE   Gamma;                // Private. Not currently implemented.
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
-   objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
+   objVectorViewport * Viewport;  // References the first object in the scene, which must be a @VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
-   OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
+   OBJECTID SurfaceID;            // May refer to a @Surface object for enabling automatic rendering.
    VPF      Flags;                // Optional flags.
    LONG     PageWidth;            // The width of the page that contains the vector.
    LONG     PageHeight;           // The height of the page that contains the vector.
@@ -935,7 +935,7 @@ class objVectorGradient : public Object {
    DOUBLE  Radius;                 // The radius of the gradient.
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
    VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
-   VUNIT   Units;                  // Defines the coordinate system for fields X1, Y1, X2 and Y2.
+   VUNIT   Units;                  // Defines the coordinate system for #X1, #Y1, #X2 and #Y2.
    VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    VGF     Flags;                  // Dimension flags are stored here.
    VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
@@ -1479,7 +1479,7 @@ class objVectorFilter : public Object {
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
    LONG   ResX;                  // Width of the intermediate images, measured in pixels.
    LONG   ResY;                  // Height of the intermediate images, measured in pixels.
-   VUNIT  Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT  Units;                 // Defines the coordinate system for #X, #Y, #Width and #Height.
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).

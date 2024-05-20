@@ -213,7 +213,7 @@
 
     <constants lookup="VUNIT">
       <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
-      <const name="UNDEFINED"/>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
       <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 

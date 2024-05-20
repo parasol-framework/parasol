@@ -65,7 +65,7 @@
       </input>
       <description>
 <p>This method will add a new definition object to the root of a vector tree and gives it a name.  This feature is provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name with the definition object, the object can then be referenced in URL strings.</p>
-<p>For example, if creating a gradient with a name of "redGradient" it would be possible to reference it with <code>url(#redGradient)</code> in common graphics attributes such as <code>fill</code> and <code>stroke</code>.</p>
+<p>For example, if creating a gradient with a name of <code>redGradient</code> it would be possible to reference it with <code>url(#redGradient)</code> in common graphics attributes such as <code>fill</code> and <code>stroke</code>.</p>
 <p>At the time of writing, the provided object must belong to one of the following classes to be valid: <class name="Vector">Vector</class>, <class name="VectorScene">VectorScene</class>, <class name="VectorGradient">VectorGradient</class>, <class name="VectorImage">VectorImage</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPattern">VectorPattern</class>, <class name="VectorFilter">VectorFilter</class>, <class name="VectorTransition">VectorTransition</class>, <class name="VectorClip">VectorClip</class>.</p>
       </description>
       <result>
@@ -114,11 +114,11 @@
       <prototype>ERR scSearchByID(OBJECTPTR Object, LONG ID, OBJECTPTR * Result)</prototype>
       <input>
         <param type="LONG" name="ID">The ID to search for.</param>
-        <param type="OBJECTPTR *" name="Result">This parameter will be updated with the discovered vector, or NULL if not found.</param>
+        <param type="OBJECTPTR *" name="Result">This parameter will be updated with the discovered vector, or <code>NULL</code> if not found.</param>
       </input>
       <description>
-<p>This method will search a scene for an object that matches a given ID (vector ID's can be set with the NumericID and ID fields).  If multiple vectors are using the same ID, repeated calls can be made to this method to find all of them. This is achieved by calling this method on the vector that was last returned as a result.</p>
-<p>Please note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash with <function module="Core">StrHash</function> and using that as the ID.</p>
+<p>This method will search a scene for an object that matches a given <code>ID</code> (vector ID's can be set with the <class name="Vector" field="NumericID">Vector.NumericID</class> or <class name="Vector" field="ID">Vector.ID</class> fields).  If multiple vectors are using the same ID, repeated calls can be made to this method to find them all.  This is achieved by calling this method on the vector that was last returned as a <code>Result</code>.</p>
+<p>Note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash with <function module="Core">StrHash</function> and using that as the ID.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -205,32 +205,32 @@
 
     <field>
       <name>Surface</name>
-      <comment>May refer to a Surface object for enabling automatic rendering.</comment>
+      <comment>May refer to a <class name="Surface">Surface</class> object for enabling automatic rendering.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>OBJECTID</type>
       <description>
-<p>Setting the Surface field will enable automatic rendering to a display surface.  The use of features such as input event handling and user focus management will also require an associated surface as a pre-requisite.</p>
+<p>Setting the Surface field will enable automatic rendering to a display <class name="Surface">Surface</class>.  The use of features such as input event handling and user focus management will also require an associated surface as a pre-requisite.</p>
       </description>
     </field>
 
     <field>
       <name>Viewport</name>
-      <comment>References the first object in the scene, which must be a VectorViewport object.</comment>
+      <comment>References the first object in the scene, which must be a <class name="VectorViewport">VectorViewport</class> object.</comment>
       <access read="R">Read</access>
       <type class="VectorViewport">*VectorViewport</type>
       <description>
 <p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, which will be used to define the size and location of the area rendered by the scene.</p>
-<p>The Viewport value cannot be set by the client.  It will be automatically defined when the first VectorViewport owned by the VectorScene is initialised.</p>
+<p>The Viewport value cannot be set by the client.  It will be automatically defined when the first <class name="VectorViewport">VectorViewport</class> owned by the VectorScene is initialised.</p>
       </description>
     </field>
 
   </fields>
   <types>
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
-      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="BITMAP_SIZED">Automatically adjust the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> to match the target <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</const>
       <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>
-      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
-      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the <code>RenderTime</code> field.</const>
+      <const name="RESIZE">The vector will be stretched to fit the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> values, if defined by the client.</const>
     </constants>
 
     <constants lookup="VSM">

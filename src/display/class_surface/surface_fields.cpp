@@ -41,14 +41,14 @@ have no impact on the display.
 Colour: String-based field for setting the background colour.
 
 If the surface object should have a plain background colour, set this field to the colour value that you want to use.
-The colour must be specified in the standard format of '#RRGGBB' for hexadecimal or 'Red,Green,Blue' for a decimal
-colour.
+The colour must be specified in the standard format of `#RRGGBB` for hexadecimal or `Red,Green,Blue` for decimal
+components.
 
 Surface objects that do not have a colour will not be cleared when being drawn.  The background will thus consist of
 'junk' graphics and the background will need to be drawn using another method.  This gives your the power to choose the
 fastest drawing model to suit your needs.
 
-If you set the Colour and later want to turn the background colour off, write a NULL value to the Colour field or set
+If you set the Colour and later want to turn the background colour off, write a `NULL` value to the Colour field or set
 the Alpha component to zero.  Changing the Colour field does not cause a graphics redraw.
 
 -FIELD-
@@ -149,7 +149,7 @@ static ERR SET_Flags(extSurface *Self, RNF Value)
 -FIELD-
 Modal: Sets the surface as modal (prevents user interaction with other surfaces).
 
-If TRUE, the surface will become the modal surface for the program when it is shown.  This prevents interaction with
+If `true`, the surface will become the modal surface for the program when it is shown.  This prevents interaction with
 other surfaces until the modal surface is either hidden or destroyed.  Children of the modal surface may be interacted
 with normally.
 
@@ -302,7 +302,7 @@ other surfaces created by the current program.
 Setting the PopOver field to zero will return the surface to its normal state.
 
 If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's
-Surface field, if available.  If this does not yield a valid surface then ERR::InvalidObject is returned.
+Surface field, if available.  If this does not yield a valid surface then `ERR::InvalidObject` is returned.
 
 *********************************************************************************************************************/
 
@@ -357,7 +357,7 @@ static ERR SET_RootLayer(extSurface *Self, OBJECTID Value)
 -FIELD-
 UserFocus: Refers to the surface object that has the current focus.
 
-Returns the surface object that has the primary user focus.  Returns NULL if no object has the focus.
+Returns the surface object that has the primary user focus.  Returns zero if no object has the focus.
 
 *********************************************************************************************************************/
 
@@ -373,13 +373,14 @@ static ERR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 -FIELD-
 Visible: Indicates the visibility of a surface object.
 
-If you need to know if a surface object is visible or hidden, you can read this field to find out either way.  A TRUE
-value is returned if the object is visible and FALSE is returned if the object is invisible.  Note that visibility is
+If you need to know if a surface object is visible or hidden, you can read this field to find out either way.  A `true`
+value is returned if the object is visible and `false` is returned if the object is invisible.  Note that visibility is
 subject to the properties of the container that the surface object resides in.  For example, if a surface object is
 visible but is contained within a surface object that is invisible, the end result is that both objects are actually
 invisible.
 
-Visibility is directly affected by the Hide and Show actions if you wish to change the visibility of a surface object.
+Visibility is directly affected by the #Hide() and #Show() actions if you wish to change the visibility of a 
+surface object.
 
 *********************************************************************************************************************/
 

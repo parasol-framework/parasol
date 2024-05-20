@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file 
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -241,7 +240,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
 -ACTION-
 Read: Read incoming data from a client socket.
 
-The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection
+The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection
 is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all
 other return codes indicate permanent failure, and the socket connection will be closed when the action returns.
 
@@ -269,8 +268,8 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 ReadClientMsg: Read a message from the socket.
 
 This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with
-the WriteClientMsg method will conform to this protocol, thus simplifying message transfers between programs based on the
-core platform at either point of the network link.
+the #WriteClientMsg() method will conform to this protocol, thus simplifying message transfers between programs based 
+on the core platform at either point of the network link.
 
 This method never returns a successful error code unless an entire message has been received from the sender.
 
@@ -413,9 +412,9 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClient
 -ACTION-
 Write: Writes data to the socket.
 
-Write raw data to a client socket with this action.  Write connections are buffered, so any
-data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the
-software queue are governed by the #MsgLimit field setting.
+Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated 
+in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are 
+governed by the @NetSocket.MsgLimit value.
 
 *********************************************************************************************************************/
 
@@ -453,13 +452,13 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 -METHOD-
 WriteClientMsg: Writes a message to the socket.
 
-Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with #ReadClientMsg().  The
-message data is sent through the #Write() action, so the standard process will apply (the message will be
+Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with #ReadClientMsg().  
+The message data is sent through the #Write() action, so the standard process will apply (the message will be
 queued and does not block if buffers are full).
 
 -INPUT-
 buf(ptr) Message: Pointer to the message to send.
-bufsize Length: The length of the message.
+bufsize Length: The length of the `Message`.
 
 -ERRORS-
 Okay

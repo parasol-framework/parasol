@@ -57,7 +57,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="ALIGN">ALIGN</type>
       <description>
-<p>Use this field to set the alignment of a font string within its surface area.  This is an abstract means of positioning in comparison to setting the X and Y fields directly.</p>
+<p>Use this field to set the alignment of a font string within its surface area.  This is an abstract means of positioning in comparison to setting the <fl>X</fl> and <fl>Y</fl> fields directly.</p>
 <types lookup="ALIGN"/>
       </description>
     </field>
@@ -101,17 +101,17 @@
 
     <field>
       <name>Bold</name>
-      <comment>Set to TRUE to enable bold styling.</comment>
+      <comment>Set to <code>true</code> to enable bold styling.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Setting the Bold field to TRUE prior to initialisation will enable bold styling.  This field is provided only for convenience - we recommend that you set the Style field for determining font styling where possible.</p>
+<p>Setting the Bold field to <code>true</code> prior to initialisation will enable bold styling.  This field is provided only for convenience - we recommend that you set the Style field for determining font styling where possible.</p>
       </description>
     </field>
 
     <field>
       <name>Colour</name>
-      <comment>The font colour in RGB format.</comment>
+      <comment>The font colour in <st>RGB8</st> format.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>RGB8</type>
     </field>
@@ -122,7 +122,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The EndX and EndY fields reflect the final coordinate of the font <fl>String</fl>, following the most recent call to the <action>Draw</action> action.</p>
+<p>The EndX and <fl>EndY</fl> fields reflect the final coordinate of the font <fl>String</fl>, following the most recent call to the <action>Draw</action> action.</p>
       </description>
     </field>
 
@@ -132,7 +132,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>The EndX and EndY fields reflect the final coordinate of the font <fl>String</fl>, following the most recent call to the <action>Draw</action> action.</p>
+<p>The <fl>EndX</fl> and EndY fields reflect the final coordinate of the font <fl>String</fl>, following the most recent call to the <action>Draw</action> action.</p>
       </description>
     </field>
 
@@ -207,11 +207,11 @@ Charter:120%::255,128,255
 
     <field>
       <name>Italic</name>
-      <comment>Set to TRUE to enable italic styling.</comment>
+      <comment>Set to <code>true</code> to enable italic styling.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Setting the Italic field to TRUE prior to initialisation will enable italic styling.  This field is provided for convenience only - we recommend that you set the Style field for determining font styling where possible.</p>
+<p>Setting the Italic field to <code>true</code> prior to initialisation will enable italic styling.  This field is provided for convenience only - we recommend that you set the <fl>Style</fl> field for determining font styling where possible.</p>
       </description>
     </field>
 
@@ -228,7 +228,7 @@ Charter:120%::255,128,255
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field indicates the number of lines that are present in a font's String field.  If word wrapping is enabled, this will be taken into account in the resulting figure.</p>
+<p>This field indicates the number of lines that are present in a #font's String field.  If word wrapping is enabled, this will be taken into account in the resulting figure.</p>
       </description>
     </field>
 
@@ -259,7 +259,7 @@ Charter:120%::255,128,255
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font will not be translucent.  Any other value set here will alter the impact of a font's graphic over the destination Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.</p>
+<p>This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font will not be translucent.  Any other value set here will alter the impact of a font's graphic over the destination <fl>Bitmap</fl>.  High values will retain the boldness of the font, while low values can render it close to invisible.</p>
 <p>Please note that the use of translucency will always have an impact on the time it normally takes to draw a font.</p>
       </description>
     </field>
@@ -270,7 +270,7 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type>RGB8</type>
       <description>
-<p>An outline can be drawn around a font by setting the Outline field to an RGB colour.  The outline can be turned off by writing this field with a NULL value or setting the alpha component to zero.  Outlining is currently supported for bitmap fonts only.</p>
+<p>An outline can be drawn around a font by setting the Outline field to an <st>RGB8</st> colour.  The outline can be turned off by writing this field with a <code>NULL</code> value or setting the alpha component to zero.  Outlining is currently supported for bitmap fonts only.</p>
       </description>
     </field>
 
@@ -336,7 +336,7 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type>RGB8</type>
       <description>
-<p>To underline a font string, set the Underline field to the colour that should be used to draw the underline. Underlining can be turned off by writing this field with a NULL value or setting the alpha component to zero.</p>
+<p>To underline a font string, set the Underline field to the colour that should be used to draw the underline. Underlining can be turned off by writing this field with a <code>NULL</code> value or setting the alpha component to zero.</p>
       </description>
     </field>
 
@@ -366,7 +366,7 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>When drawing font strings, the X and Y fields define the position that the string will be drawn to in the target surface.  The default coordinates are (0,0).</p>
+<p>When drawing font strings, the X and <fl>Y</fl> fields define the position that the string will be drawn to in the target surface.  The default coordinates are <code>(0, 0)</code>.</p>
       </description>
     </field>
 
@@ -376,7 +376,7 @@ Charter:120%::255,128,255
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>When drawing font strings, the X and Y fields define the position that the string will be drawn to in the target surface.  The default coordinates are (0,0).</p>
+<p>When drawing font strings, the <fl>X</fl> and Y fields define the position that the string will be drawn to in the target surface.  The default coordinates are <code>(0, 0)</code>.</p>
       </description>
     </field>
 
@@ -392,6 +392,17 @@ Charter:120%::255,128,255
 
   </fields>
   <types>
+    <constants lookup="ALIGN" comment="Universal values for alignment of graphics and text">
+      <const name="BOTTOM">Align to bottom</const>
+      <const name="CENTER">Synonym for <code>HORIZONTAL | VERTICAL</code></const>
+      <const name="HORIZONTAL">Align to horizontal center</const>
+      <const name="LEFT">Align to left</const>
+      <const name="MIDDLE">Synonym for <code>HORIZONTAL | VERTICAL</code></const>
+      <const name="RIGHT">Align to right</const>
+      <const name="TOP">Align to top</const>
+      <const name="VERTICAL">Align to vertical center</const>
+    </constants>
+
     <constants lookup="FMETA" comment="Result flags for the SelectFont() function.">
       <const name="HIDDEN">The font should not appear in any named list shown to the user.</const>
       <const name="HINT_INTERNAL">The Freetype hinter should be used.</const>
@@ -402,9 +413,9 @@ Charter:120%::255,128,255
     </constants>
 
     <constants lookup="FTF" comment="Font flags">
-      <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
+      <const name="BASE_LINE">The Font's <fl>Y</fl> coordinate is the base line.</const>
       <const name="BOLD">Font is described as having a bold weight (read only).</const>
-      <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
+      <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in <fl>Underline</fl>.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
     </constants>
 
@@ -417,10 +428,17 @@ Charter:120%::255,128,255
       <field name="Points" type="LONG *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
       <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
       <field name="Axes" type="STRING">For variable fonts, lists all supported axis codes in CSV format</field>
-      <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
-      <field name="Variable" type="BYTE">TRUE if the font has variable metrics.</field>
+      <field name="Scalable" type="BYTE"><code>TRUE</code> if the font is scalable.</field>
+      <field name="Variable" type="BYTE"><code>TRUE</code> if the font has variable metrics.</field>
       <field name="Hinting" type="HINT" lookup="HINT">Hinting options</field>
-      <field name="Hidden" type="BYTE">TRUE if the font should be hidden from user font lists.</field>
+      <field name="Hidden" type="BYTE"><code>TRUE</code> if the font should be hidden from user font lists.</field>
+    </struct>
+
+    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
+      <field name="Red" type="UBYTE">Red component value</field>
+      <field name="Green" type="UBYTE">Green component value</field>
+      <field name="Blue" type="UBYTE">Blue component value</field>
+      <field name="Alpha" type="UBYTE">Alpha component value</field>
     </struct>
 
   </structs>

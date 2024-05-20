@@ -86,9 +86,9 @@ http.acActivate()
       <name>Deactivate</name>
       <comment>Cancels the current download.  Can also signal the end to a download if subscribed.</comment>
       <description>
-<p>Following the completion of an HTTP request, the Deactivate action will be called internally to signal an end to the process.  By listening to the Deactivate action, you are given the opportunity to respond to the end of an HTTP request.</p>
+<p>Following the completion of an HTTP request, the Deactivate() action will be called internally to signal an end to the process.  By listening to the Deactivate action(), you are given the opportunity to respond to the end of an HTTP request.</p>
 <p>If child objects are initialised to the HTTP object, they will be activated automatically.  This feature is provided to assist scripted usage of the HTTP object.</p>
-<p>Active HTTP requests can be manually cancelled by calling the Deactivate action at any time.</p>
+<p>Active HTTP requests can be manually cancelled by calling the Deactivate() action at any time.</p>
       </description>
     </action>
 

@@ -95,7 +95,7 @@ by existing dimension fields.  Note that setting the alignment overrides any set
 Valid alignment flags are `BOTTOM`, `CENTER/MIDDLE`, `LEFT`, `HORIZONTAL`, `RIGHT`, `TOP`, `VERTICAL`.
 
 -FIELD-
-Bottom: Returns the bottom-most coordinate of a surface object (Y + Height).
+Bottom: Returns the bottom-most coordinate of a surface object, `Y + Height`.
 
 *********************************************************************************************************************/
 
@@ -114,7 +114,7 @@ A client can prevent a surface object from moving beyond a given point at the bo
 If for example you were to set the BottomLimit to 5, then any attempt to move the surface object into or beyond the 5
 units at the bottom of its container would fail.
 
-Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by
+Limits only apply to movement, as induced through the #Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
@@ -132,7 +132,7 @@ BottomMargin: Manipulates the bottom margin of a surface object.
 
 The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
 values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
+can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space
 available for placing graphics and other surface objects inside of it.
 
 By default, all margins are set to zero when a new surface object is created.
@@ -236,7 +236,7 @@ static ERR SET_Dimensions(extSurface *Self, LONG Value)
 -FIELD-
 Height: Defines the height of a surface object.
 
-The height of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the
+The height of a surface object is manipulated through this field.  Alternatively, use the #Resize() action to adjust the
 Width and Height at the same time.  A client can set the Height as a fixed value by default, or as a scaled value in
 conjunction with the `FD_SCALED` flag.  Scaled values are multiplied by the height of their parent container.
 
@@ -244,7 +244,7 @@ Setting the Height while a surface object is on display causes an immediate grap
 Any objects that are within the surface area will be re-drawn and resized as necessary.
 
 If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient
-for pairing the Y and YOffset fields together for dynamic height adjustment.
+for pairing the #Y and #YOffset fields together for dynamic height adjustment.
 
 *********************************************************************************************************************/
 
@@ -327,10 +327,10 @@ static ERR SET_Height(extSurface *Self, Variable *Value)
 -FIELD-
 InsideHeight: Defines the amount of space between the vertical margins.
 
-A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the
-result of calculating this formula: `Height - TopMargin - BottomMargin`.
+A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value 
+is the result of calculating this formula: `Height - TopMargin - BottomMargin`.
 
-If the TopMargin and BottomMargin fields are not set, the returned value will be equal to the surface object's
+If the #TopMargin and #BottomMargin fields are not set, the returned value will be equal to the surface object's
 height.
 
 *********************************************************************************************************************/
@@ -357,7 +357,7 @@ InsideWidth: Defines the amount of space between the horizontal margins.
 A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
 result of calculating this formula: `Width - LeftMargin - RightMargin`.
 
-If the LeftMargin and RightMargin fields are not set, the returned value will be equal to the surface object's width.
+If the #LeftMargin and #RightMargin fields are not set, the returned value will be equal to the surface object's width.
 
 *********************************************************************************************************************/
 
@@ -443,10 +443,10 @@ static ERR SET_MaxHeight(extSurface *Self, LONG Value)
 MaxWidth: Prevents the width of a surface object from exceeding a certain value.
 
 A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making
-it impossible to use the Resize() action to extend beyond the width you specify.
+it impossible to use the #Resize() action to extend beyond the width you specify.
 
 It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to
-the inside-width of the surface area, thus the overall maximum width will include both the LeftMargin and RightMargin
+the inside-width of the surface area, thus the overall maximum width will include both the #LeftMargin and #RightMargin
 values.
 
 *********************************************************************************************************************/
@@ -507,10 +507,10 @@ static ERR SET_MinHeight(extSurface *Self, LONG Value)
 MinWidth: Prevents the width of a surface object from shrinking beyond a certain value.
 
 A client can prevent the width of a surface object from shrinking too far by setting this field.  This feature specifically
-affects resizing, making it impossible to use the Resize() action to shrink the width of a surface object to a value
+affects resizing, making it impossible to use the #Resize() action to shrink the width of a surface object to a value
 less than the one you specify.
 
-It is possible to circumvent the MinWidth by setting the Width field directly.
+It is possible to circumvent the MinWidth by setting the #Width field directly.
 
 *********************************************************************************************************************/
 
@@ -536,7 +536,7 @@ static ERR SET_MinWidth(extSurface *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Right: Returns the right-most coordinate of a surface object (X + Width).
+Right: Returns the right-most coordinate of a surface object, `X + Width`.
 
 *********************************************************************************************************************/
 
@@ -596,7 +596,7 @@ A client can prevent a surface object from moving beyond a given point at the to
 If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10
 units at the top of its container would fail.
 
-Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by
+Limits only apply to movement, as induced through the #Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
@@ -622,7 +622,7 @@ By default, all margins are set to zero when a new surface object is created.
 -FIELD-
 VisibleHeight: The visible height of the surface area, relative to its parents.
 
-To determine the visible area of a surface, read the VisibleX, VisibleY, VisibleWidth and VisibleHeight fields.
+To determine the visible area of a surface, read the #VisibleX, #VisibleY, #VisibleWidth and VisibleHeight fields.
 
 The 'visible area' is determined by the position of the surface relative to its parents.  For example, if the surface
 is 100 pixels across and smallest parent is 50 pixels across, the number of pixels visible to the user must be 50
@@ -690,7 +690,7 @@ static ERR GET_VisibleWidth(extSurface *Self, LONG *Value)
 -FIELD-
 VisibleX: The first visible X coordinate of the surface area, relative to its parents.
 
-To determine the visible area of a surface, read the VisibleX, VisibleY, VisibleWidth and VisibleHeight fields.
+To determine the visible area of a surface, read the VisibleX, #VisibleY, #VisibleWidth and #VisibleHeight fields.
 
 The 'visible area' is determined by the position of the surface relative to its parents.  For example, if the surface
 is 100 pixels across and smallest parent is 50 pixels across, the number of pixels visible to the user must be 50
@@ -725,7 +725,7 @@ static ERR GET_VisibleX(extSurface *Self, LONG *Value)
 -FIELD-
 VisibleY: The first visible Y coordinate of the surface area, relative to its parents.
 
-To determine the visible area of a surface, read the VisibleX, VisibleY, VisibleWidth and VisibleHeight fields.
+To determine the visible area of a surface, read the #VisibleX, VisibleY, #VisibleWidth and #VisibleHeight fields.
 
 The 'visible area' is determined by the position of the surface relative to its parents.  For example, if the surface
 is 100 pixels across and smallest parent is 50 pixels across, the number of pixels visible to the user must be 50
@@ -759,8 +759,8 @@ static ERR GET_VisibleY(extSurface *Self, LONG *Value)
 -FIELD-
 Width: Defines the width of a surface object.
 
-The width of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the
-Width and Height at the same time.  A client can set the Width as a fixed value by default, or as a scaled value in
+The width of a surface object is manipulated through this field.  Alternatively, use the #Resize() action to adjust the
+Width and #Height at the same time.  A client can set the Width as a fixed value by default, or as a scaled value in
 conjunction with the `FD_SCALED` flag.  Scaled values are multiplied by the width of their parent container.
 
 Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any
@@ -916,9 +916,9 @@ static ERR SET_XCoord(extSurface *Self, Variable *Value)
 -FIELD-
 XOffset: Determines the horizontal offset of a surface object.
 
-The XOffset has a dual purpose depending on whether or not it is set in conjunction with the X or Width fields.
+The XOffset has a dual purpose depending on whether or not it is set in conjunction with the #X or #Width fields.
 
-If set in conjunction with the X field, the width of the surface object will be from that X coordinate up to the width
+If set in conjunction with the #X field, the width of the surface object will be from that X coordinate up to the width
 of the container, minus the value given in the XOffset.  This means that the width of the surface object is dynamically
 calculated in relation to the width of its container.
 
@@ -1082,14 +1082,14 @@ static ERR SET_YCoord(extSurface *Self, Variable *Value)
 -FIELD-
 YOffset: Determines the vertical offset of a surface object.
 
-The YOffset has a dual purpose depending on whether or not it is set in conjunction with the Y or Height fields.
+The YOffset has a dual purpose depending on whether or not it is set in conjunction with the #Y or #Height fields.
 
-If set in conjunction with the Y field, the height of the surface object will be from that Y coordinate up to the
+If set in conjunction with the #Y field, the height of the surface object will be from that Y coordinate up to the
 height of the container, minus the value given in the YOffset.  This means that the height of the surface object is
 dynamically calculated in relation to the height of its container.
 
 If the YOffset field is set in conjunction with a fixed or scaled height then the surface object will be positioned
-at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeight - YOffset".
+at a Y coordinate calculated from the formula `Y = ContainerHeight - SurfaceHeight - YOffset`.
 -END-
 
 *********************************************************************************************************************/

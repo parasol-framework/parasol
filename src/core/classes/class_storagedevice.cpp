@@ -65,7 +65,7 @@ mean that this field will be a multiple of 512.  Two files of 1 byte each on suc
 bytes of space and not 2.
 
 -FIELD-
-DeviceID: A unique ID for the mounted device (platform dependent, NULL if unavailable).
+DeviceID: A unique ID for the mounted device (platform dependent, `NULL` if unavailable).
 
 If a volume expresses a unique device identifier such as a factory serial number, it will be readable from this field.
 
@@ -98,7 +98,7 @@ Lookup: DEVICE
 Volume: The volume name of the device to query.
 
 Set the Volume field prior to initialisation for that volume to be queried by the object.  The standard volume string
-format is 'name:', but omitting the colon or defining complete file system paths when writing this field is also
+format is `name:`, but omitting the colon or defining complete file system paths when writing this field is also
 acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.
 -END-
 

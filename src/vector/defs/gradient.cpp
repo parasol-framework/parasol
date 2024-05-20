@@ -200,8 +200,8 @@ static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
 -FIELD-
 CenterX: The horizontal center point of the gradient.
 
-The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if
-the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.
+The `(CenterX, CenterY)` coordinates define the center point of the gradient.  The center point will only be used if
+the gradient type requires it (such as the radial type).  By default, the center point is set to `50%`.
 
 *********************************************************************************************************************/
 
@@ -232,8 +232,8 @@ static ERR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value)
 -FIELD-
 CenterY: The vertical center point of the gradient.
 
-The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if
-the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.
+The `(CenterX, CenterY)` coordinates define the center point of the gradient.  The center point will only be used if
+the gradient type requires it (such as the radial type).  By default, the center point is set to `50%`.
 
 *********************************************************************************************************************/
 
@@ -277,7 +277,7 @@ Dimension flags that indicate whether field values are fixed or scaled are defin
 -FIELD-
 FX: The horizontal focal point for radial gradients.
 
-The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
+The `(FX, FY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
 center of the gradient.
 
 *********************************************************************************************************************/
@@ -309,7 +309,7 @@ static ERR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
 -FIELD-
 FY: The vertical focal point for radial gradients.
 
-The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
+The `(FX, FY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
 center of the gradient.
 
 *********************************************************************************************************************/
@@ -591,13 +591,13 @@ static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Command
 /*********************************************************************************************************************
 
 -FIELD-
-Type: Specifies the type of gradient (e.g. RADIAL, LINEAR)
+Type: Specifies the type of gradient (e.g. `RADIAL`, `LINEAR`)
 Lookup: VGT
 
 The type of the gradient to be drawn is specified here.
 
 -FIELD-
-Units: Defines the coordinate system for fields X1, Y1, X2 and Y2.
+Units: Defines the coordinate system for #X1, #Y1, #X2 and #Y2.
 
 The default coordinate system for gradients is `BOUNDING_BOX`, which positions the gradient around the vector that
 references it.  The alternative is `USERSPACE`, which positions the gradient scaled to the current viewport.
@@ -605,8 +605,8 @@ references it.  The alternative is `USERSPACE`, which positions the gradient sca
 -FIELD-
 X1: Initial X coordinate for the gradient.
 
-The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
-these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
+The `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
+these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
 
 Coordinate values can be expressed as percentages that are scaled to the target space.
 
@@ -638,8 +638,8 @@ static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
 -FIELD-
 X2: Final X coordinate for the gradient.
 
-The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
-these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
+The `(X2, Y2)` field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
+these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
 
 Coordinate values can be expressed as percentages that are scaled to the target space.
 
@@ -671,8 +671,10 @@ static ERR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
 -FIELD-
 Y1: Initial Y coordinate for the gradient.
 
-The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
-these values.
+The `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
+these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
+
+Coordinate values can be expressed as percentages that are scaled to the target space.
 
 *********************************************************************************************************************/
 
@@ -702,8 +704,8 @@ static ERR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
 -FIELD-
 Y2: Final Y coordinate for the gradient.
 
-The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
-these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
+The `(X2, Y2)` field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
+these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
 
 Coordinate values can be expressed as percentages that are scaled to the target space.
 -END-

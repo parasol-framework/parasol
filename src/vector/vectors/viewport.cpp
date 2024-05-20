@@ -230,9 +230,9 @@ static ERR VECTORVIEWPORT_Resize(extVectorViewport *Self, struct acResize *Args)
 /*********************************************************************************************************************
 
 -FIELD-
-AbsX: The horizontal position of the viewport, relative to (0,0).
+AbsX: The horizontal position of the viewport, relative to `(0, 0)`.
 
-This field will return the left-most boundary of the viewport, relative to point (0,0) of the scene
+This field will return the left-most boundary of the viewport, relative to point `(0, 0)` of the scene
 graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
@@ -248,9 +248,9 @@ static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-AbsY: The vertical position of the viewport, relative to (0,0).
+AbsY: The vertical position of the viewport, relative to `(0, 0)`.
 
-This field will return the top-most boundary of the viewport, relative to point (0,0) of the scene
+This field will return the top-most boundary of the viewport, relative to point `(0, 0)` of the scene
 graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
@@ -315,7 +315,7 @@ static ERR VIEW_SET_Dimensions(extVectorViewport *Self, LONG Value)
 DragCallback: Receiver for drag requests originating from the viewport.
 
 Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the
-user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded
+user drags the viewport, the callback will receive the user's desired `(X, Y)` target coordinates.  For unimpeded
 dragging, have the callback set the viewport's #X and #Y values to match the incoming coordinates, then redraw the scene.
 
 The prototype for the callback function is as follows, where `OriginX` and `OriginY` refer to the (#X,#Y) position of 
@@ -363,7 +363,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
 -FIELD-
 Height: The height of the viewport's target area.
 
-The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for
+The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is `100%` for
 full coverage.
 
 The fixed value is always returned when retrieving the height.
@@ -603,7 +603,7 @@ static ERR VIEW_SET_ViewY(extVectorViewport *Self, DOUBLE Value)
 -FIELD-
 Width: The width of the viewport's target area.
 
-The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for
+The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is `100%` for
 full coverage.
 
 *********************************************************************************************************************/
@@ -671,7 +671,7 @@ X: Positions the viewport on the x-axis.
 The display position targeted by the viewport is declared by the (#X,#Y) field values.  Coordinates can be expressed 
 as fixed or scaled pixel units.
 
-If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value
+If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and #XOffset value
 are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's
 width.
 

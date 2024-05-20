@@ -696,13 +696,13 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
 -ACTION-
 Deactivate: Cancels the current download.  Can also signal the end to a download if subscribed.
 
-Following the completion of an HTTP request, the Deactivate action will be called internally to signal an end to the
-process.  By listening to the Deactivate action, you are given the opportunity to respond to the end of an HTTP request.
+Following the completion of an HTTP request, the Deactivate() action will be called internally to signal an end to the
+process.  By listening to the Deactivate action(), you are given the opportunity to respond to the end of an HTTP request.
 
 If child objects are initialised to the HTTP object, they will be activated automatically.  This feature is provided to
 assist scripted usage of the HTTP object.
 
-Active HTTP requests can be manually cancelled by calling the Deactivate action at any time.
+Active HTTP requests can be manually cancelled by calling the Deactivate() action at any time.
 -END-
 *********************************************************************************************************************/
 

@@ -5,18 +5,18 @@
 Author: The author(s) of the document.
 
 If a document declares the names of its author(s) under a head tag, the author string will be readable from this field.
-This field is always NULL if a document does not declare an author string.
+This field is always `NULL` if a document does not declare an author string.
 
 -FIELD-
 Copyright: Copyright information for the document.
 
 If a document declares copyright information under a head tag, the copyright string will be readable from this field.
-This field is always NULL if a document does not declare a copyright string.
+This field is always `NULL` if a document does not declare a copyright string.
 
 -FIELD-
 ClientScript: Allows an external script object to be used by a document file.
 
-Set ClientScript with a Script object to allow document content to 'breach the firewall' and access functionality
+Set ClientScript with a @Script object to allow document content to 'breach the firewall' and access functionality
 outside of its namespace.  This feature is primarily intended for applications that need to interact with their own
 embedded documents.
 
@@ -50,10 +50,10 @@ Set this field with a function reference to receive event notifications.  It mus
 
 The callback function prototype is `ERR Function(*Document, DEF EventFlag, KEYVALUE *EventData)`.
 
-The EventFlag value will indicate the event that occurred.  Please see the #EventMask field for a list of
+The `EventFlag` value will indicate the event that occurred.  Please see the #EventMask field for a list of
 supported events and additional details.
 
-Error codes returned from the callback will normally be discarded, however in some cases ERR::Skip can be returned in
+Error codes returned from the callback will normally be discarded, however in some cases `ERR::Skip` can be returned in
 order to prevent the event from being processed any further.
 
 *********************************************************************************************************************/
@@ -119,7 +119,7 @@ the focus, refer to that object by writing its ID to this field.
 Keywords: Includes keywords declared by the source document.
 
 If a document declares keywords under a head tag, the keywords string will be readable from this field.   This field is
-always NULL if a document does not declare any keywords.  It is recommended that keywords are separated with spaces or
+always `NULL` if a document does not declare any keywords.  It is recommended that keywords are separated with spaces or
 commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword
 separation.
 
@@ -138,7 +138,7 @@ Setting this field post-initialisation will cause a complete reload unless the p
 change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document,
 a dialog is displayed to bring the error to the user's attention).
 
-To leap to a bookmark in the page that has been specified with the &lt;index&gt; element, use the colon as a separator
+To leap to a bookmark in the page that has been specified with the `&lt;index&gt;` element, use the colon as a separator
 after the pagename, i.e. `#pagename:bookmark`.
 
 Other means of opening a document include loading the data manually and passing it via the #DataFeed() action.
@@ -317,7 +317,7 @@ to set configure a document in advance, such as setting default font values and 
 functionally equivalent to embedding an `<include/>` statement at the top of a document, but with the benefit
 of guaranteeing continued execution if the user navigates away from the first page.
 
-A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with NULL.
+A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with `NULL`.
 
 *********************************************************************************************************************/
 
@@ -355,7 +355,7 @@ TabFocus by pressing the tab key.  Please refer to the TabFocus class for more d
 Title: The title of the document.
 
 If a document declares a title under a head tag, the title string will be readable from this field.   This field is
-always NULL if a document does not declare a title.
+always `NULL` if a document does not declare a title.
 
 -FIELD-
 Viewport: A client-specific viewport that will host the document graphics.
@@ -385,7 +385,7 @@ WorkingPath: Defines the working path (folder or URI).
 
 The working path for a document is defined here.  By default this is defined as the location from which the document
 was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used
-(this is usually set to the location of the parasol-gui program).
+(this is usually set to the location of the parasol executable).
 
 The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be
 determined - in which case an empty string is returned.

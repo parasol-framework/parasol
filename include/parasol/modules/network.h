@@ -286,9 +286,9 @@ class objProxy : public Object {
    STRING Server;           // The destination address of the proxy server - may be an IP address or resolvable domain name.
    LONG   Port;             // Defines the ports supported by this proxy.
    LONG   ServerPort;       // The port that is used for proxy server communication.
-   LONG   Enabled;          // All proxies are enabled by default until this field is set to FALSE.
+   LONG   Enabled;          // All proxies are enabled by default until this field is set to false.
    LONG   Record;           // The unique ID of the current proxy record.
-   LONG   Host;             // If TRUE, the proxy settings are derived from the host operating system's default settings.
+   LONG   Host;             // If true, the proxy settings are derived from the host operating system's default settings.
 
    // Action stubs
 

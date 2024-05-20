@@ -168,30 +168,30 @@ static ERR DOCUMENT_Activate(extDocument *Self, APTR Void)
 -METHOD-
 AddListener: Adds a listener to a document trigger for receiving special callbacks.
 
-Use the AddListener method to receive feedback whenever a document event is triggered.  Triggers are a fundamental part
-of document page development, accessible through the &lt;trigger/&gt; tag.  Triggers are normally configured within the
-document's page code, however if you need to monitor triggers from outside the loaded document's code, then AddTrigger
+Use the AddListener() method to receive feedback whenever a document event is triggered.  Triggers are a fundamental part
+of document page development, accessible through the `&lt;trigger/&gt;` tag.  Triggers are normally configured within the
+document's page code, however if you need to monitor triggers from outside the loaded document's code, then AddListener()
 will give you that option.
 
 The following triggers are supported:
 
 <types lookup="DRT">
-<type name="BEFORE_LAYOUT">Document layout is about to be processed.  C/C++: void BeforeLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight)</>
-<type name="AFTER_LAYOUT">Document layout has been processed.  C/C++: void AfterLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight, LONG PageWidth, LONG PageHeight)</>
+<type name="BEFORE_LAYOUT">Document layout is about to be processed.  C/C++: `void BeforeLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight)`</>
+<type name="AFTER_LAYOUT">Document layout has been processed.  C/C++: `void AfterLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight, LONG PageWidth, LONG PageHeight)`</>
 <type name="USER_CLICK">User has clicked the document.</>
 <type name="USER_CLICK_RELEASE">User click has been released.</>
 <type name="USER_MOVEMENT">User is moving the pointer over the document.</>
-<type name="REFRESH">Page has been refreshed.  C/C++: void Refresh(*Caller, *Document)</>
-<type name="GOT_FOCUS">The document has received the focus.  C/C++: void GotFocus(*Caller, *Document)</>
-<type name="LOST_FOCUS">The document has lost the focus.  C/C++: void LostFocus(*Caller, *Document)</>
-<type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: void LeavingPage(*Caller, *Document)</>
+<type name="REFRESH">Page has been refreshed.  C/C++: `void Refresh(*Caller, *Document)`</>
+<type name="GOT_FOCUS">The document has received the focus.  C/C++: `void GotFocus(*Caller, *Document)`</>
+<type name="LOST_FOCUS">The document has lost the focus.  C/C++: `void LostFocus(*Caller, *Document)`</>
+<type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: `void LeavingPage(*Caller, *Document)`</>
 </type>
 
-A listener can be manually removed by calling #RemoveListener(), however this is normally unnecessary. Your
-listener will be removed automatically if a new document source is loaded or the document object is terminated.
+A listener can be removed by calling #RemoveListener(), however this is normally unnecessary. Listeners are removed 
+automatically if a new document source is loaded, or the document object is terminated.
 
-Please note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior
-subscriptions, nor is their any detection for multiple copies of a subscription against a trigger.
+Note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior
+subscriptions, nor is there any handling for multiple copies of a subscription to a trigger.
 
 -INPUT-
 int(DRT) Trigger: The unique identifier for the trigger.
@@ -219,17 +219,17 @@ CallFunction: Executes any registered function in the currently open document.
 
 This method will execute any registered function in the currently open document.  The name of the function must be
 specified in the first parameter and that function must exist in the document's default script.  If the document
-contains multiple scripts, then a specific script can be referenced by using the name format 'script.function' where
-'script' is the name of the script that contains the function.
+contains multiple scripts, then a specific script can be referenced by using the name format `script.function` where
+`script` is the name of the script that contains the function.
 
-Arguments can be passed to the function by setting the Args and TotalArgs parameters.  These need to be specially
+Arguments can be passed to the function by setting the `Args` and `TotalArgs` parameters.  These need to be specially
 formatted - please refer to the @Script class' Exec method for more information on how to configure these
 parameters.
 
 -INPUT-
 cstr Function:  The name of the function that will be called.
-struct(*ScriptArg) Args: Pointer to an optional list of arguments to pass to the procedure.
-int TotalArgs: The total number of entries in the Args array.
+struct(*ScriptArg) Args: Pointer to an optional list of parameters to pass to the procedure.
+int TotalArgs: The total number of entries in the `Args` array.
 
 -ERRORS-
 Okay
@@ -441,10 +441,10 @@ static ERR DOCUMENT_Draw(extDocument *Self, APTR Void)
 -METHOD-
 Edit: Activates a user editing section within a document.
 
-The Edit method will manually activate an editable section in the document.  This results in the text cursor being
+The Edit() method will manually activate an editable section in the document.  This results in the text cursor being
 placed at the start of the editable section, where the user may immediately begin editing the section via the keyboard.
 
-If the editable section is associated with an OnEnter trigger, the trigger will be called when the Edit method is
+If the editable section is associated with an `OnEnter` trigger, the trigger will be called when the Edit method is
 invoked.
 
 -INPUT-
@@ -522,14 +522,14 @@ static ERR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 -METHOD-
 FindIndex: Searches the document stream for an index, returning the start and end points if found.
 
-Use the FindIndex method to search for indexes that have been declared in a loaded document.  Indexes are declared
-using the &lt;index/&gt; tag and must be given a unique name.  They are useful for marking areas of interest - such as
+Use the FindIndex() method to search for indexes that have been declared in a loaded document.  Indexes are declared
+using the `&lt;index/&gt;` tag and must be given a unique name.  They are useful for marking areas of interest - such as
 a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact
 document position.
 
 If the named index exists, then the start and end points (as determined by the opening and closing of the index tag)
-will be returned as byte indexes in the document stream.  The starting byte will refer to an SCODE::INDEX_START code and
-the end byte will refer to an SCODE::INDEX_END code.
+will be returned as byte indexes in the document stream.  The starting byte will refer to an `SCODE::INDEX_START` code and
+the end byte will refer to an `SCODE::INDEX_END` code.
 
 -INPUT-
 cstr Name:  The name of the index to search for.
@@ -537,7 +537,7 @@ cstr Name:  The name of the index to search for.
 &int End:   The byte position at which the index ends is returned in this parameter.
 
 -ERRORS-
-Okay: The index was found and the Start and End parameters reflect its position.
+Okay: The index was found and the `Start` and `End` parameters reflect its position.
 NullArgs:
 Search: The index was not found.
 
@@ -745,9 +745,9 @@ static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
 -METHOD-
 HideIndex: Hides the content held within a named index.
 
-The HideIndex and ShowIndex methods allow the display of document content to be controlled at code level.  To control
-content visibility, start by encapsulating the content in the source document with an &lt;index&gt; tag and ensure that
-it is named.  Then make calls to HideIndex and ShowIndex with the index name to manipulate visibility.
+The HideIndex() and #ShowIndex() methods allow the display of document content to be controlled at code level.  To control
+content visibility, start by encapsulating the content in the source document with an `&lt;index&gt;` tag and ensure that
+it is named.  Then make calls to HideIndex() and #ShowIndex() with the index name to manipulate visibility.
 
 The document layout is automatically updated and pushed to the display when this method is called.
 
@@ -831,7 +831,7 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 -METHOD-
 InsertXML: Inserts new content into a loaded document (XML format).
 
-Use the InsertXML method to insert new content into an initialised document.
+Use the InsertXML() method to insert new content into an initialised document.
 
 Caution must be exercised when inserting document content.  Inserting an image in-between a set of table rows for
 instance, would cause unknown results.  Corruption of the document data may lead to a program crash when the document
@@ -884,7 +884,7 @@ static ERR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 -METHOD-
 InsertText: Inserts new content into a loaded document (raw text format).
 
-Use the InsertXML method to insert new content into an initialised document.
+Use the InsertText() method to insert new content into an initialised document.
 
 Caution must be exercised when inserting document content.  Inserting an image in-between a set of table rows for
 instance, would cause unknown results.  Corruption of the document data may lead to a program crash when the document
@@ -895,9 +895,9 @@ to the document are complete.
 
 -INPUT-
 cstr Text: A UTF-8 text string.
-int Index: Reference to a TEXT control code that will receive the content.  If -1, the text will be inserted at the end of the document stream.
-int Char: A character offset within the TEXT control code that will be injected with content.  If -1, the text will be injected at the end of the target string.
-int Preformat: If TRUE, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).
+int Index: Reference to a `TEXT` control code that will receive the content.  If `-1`, the text will be inserted at the end of the document stream.
+int Char: A character offset within the `TEXT` control code that will be injected with content.  If `-1`, the text will be injected at the end of the target string.
+int Preformat: If `true`, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).
 
 -ERRORS-
 Okay
@@ -946,7 +946,7 @@ static ERR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 -METHOD-
 ReadContent: Returns selected content from the document, either as plain text or original byte code.
 
-The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as
+The ReadContent() method extracts content from the document stream, covering a specific area.  It can return the data as
 a RIPL binary stream, or translate the content into plain-text (control codes are removed).
 
 If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from
@@ -954,7 +954,7 @@ an invalid data range.  For instance, if an opening paragraph code is not closed
 this will remain the case in the resulting data.
 
 -INPUT-
-int(DATA) Format: Set to TEXT to receive plain-text, or RAW to receive the original byte-code.
+int(DATA) Format: Set to `TEXT` to receive plain-text, or `RAW` to receive the original byte-code.
 int Start:  An index in the document stream from which data will be extracted.
 int End:    An index in the document stream at which extraction will stop.
 !str Result: The data is returned in this parameter as an allocated string.
@@ -1061,7 +1061,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 -METHOD-
 RemoveContent: Removes content from a loaded document.
 
-This method will remove all document content between the Start and End indexes provided as parameters.  The document
+This method will remove all document content between the `Start` and `End` indexes provided as parameters.  The document
 layout will also be marked for an update for the next redraw.
 
 -INPUT-
@@ -1165,13 +1165,13 @@ hyperlink is selected, that link will be activated.
 
 Selecting a link may also enable drag and drop functionality for that link.
 
-Links are referenced either by their Index in the links array, or by name for links that have named references.  It
+Links are referenced either by their `Index` in the links array, or by name for links that have named references.  It
 should be noted that objects that can receive the focus - such as input boxes and buttons - are also treated as
 selectable links due to the nature of their functionality.
 
 -INPUT-
-int Index: Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the Name parameter is set.
-cstr Name: The name of the link to select (set to NULL if an Index is defined).
+int Index: Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the `Name` parameter is set.
+cstr Name: The name of the link to select (set to `NULL` if an `Index` is defined).
 
 -ERRORS-
 Okay
@@ -1221,7 +1221,7 @@ SetKey: Passes variable parameters to loaded documents.
 
 static ERR DOCUMENT_SetKey(extDocument *Self, struct acSetKey *Args)
 {
-   // Please note that it is okay to set zero-length arguments
+   // Please note that it is okay to set zero-length parameters
 
    if ((!Args) or (!Args->Key)) return ERR::NullArgs;
    if (!Args->Key[0]) return ERR::Args;
@@ -1236,9 +1236,9 @@ static ERR DOCUMENT_SetKey(extDocument *Self, struct acSetKey *Args)
 -METHOD-
 ShowIndex: Shows the content held within a named index.
 
-The HideIndex and ShowIndex methods allow the display of document content to be controlled at code level.  To control
-content visibility, start by encapsulating the content in the source document with an &lt;index&gt; tag and ensure that
-it is named.  Then make calls to HideIndex and ShowIndex with the index name to manipulate visibility.
+The #HideIndex() and ShowIndex() methods allow the display of document content to be controlled at code level.  To control
+content visibility, start by encapsulating the content in the source document with an `&lt;index&gt;` tag and ensure that
+it is named.  Then make calls to #HideIndex() and ShowIndex() with the index name to manipulate visibility.
 
 The document layout is automatically updated and pushed to the display when this method is called.
 
