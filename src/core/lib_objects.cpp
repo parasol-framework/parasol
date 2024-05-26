@@ -372,9 +372,6 @@ In all cases, action calls in C++ can be simplified by using their corresponding
 If the class of an object does not support the `Action` ID, an error code of `ERR::NoSupport` is returned.  To test
 an object to see if its class supports an action, use the ~CheckAction() function.
 
-In circumstances where an object ID is known without its pointer, the use of ~ActionMsg() or ~QueueAction() may be
-desirable to avoid acquiring an object lock.
-
 -INPUT-
 int(AC) Action: An action or method ID must be specified here (e.g. `AC_Query`).
 obj Object:     A pointer to the object that is going to perform the action.
@@ -504,40 +501,6 @@ void ActionList(struct ActionTable **List, LONG *Size)
 {
    if (List) *List = (struct ActionTable *)ActionTable;
    if (Size) *Size = AC_END;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ActionMsg: Execute an action or method by way of object UID.
-
-Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison
-to #Action(), as the object pointer will need to be resolved before making the call.
-
--INPUT-
-int Action: The ID of the action or method to be executed.
-oid Object: The target object.
-ptr Args:   The parameter structure required by Action.
-
--ERRORS-
-Okay: The action was executed successfully.
-NullArgs:
--END-
-
-*********************************************************************************************************************/
-
-ERR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
-{
-   OBJECTPTR object;
-   if (auto error = AccessObject(ObjectID, 3000, &object); error IS ERR::Okay) {
-      error = Action(ActionID, object, Args);
-      ReleaseObject(object);
-      return error;
-   }
-   else {
-      pf::Log log(__FUNCTION__);
-      return log.warning(error);
-   }
 }
 
 /*********************************************************************************************************************

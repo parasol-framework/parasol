@@ -114,7 +114,10 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
       switch(Value) {
          case KEY::TAB: {
             log.branch("Key: Tab");
-            if (Self->TabFocusID) acFocus(Self->TabFocusID);
+            if (Self->TabFocusID) {
+               pf::ScopedObjectLock tab(Self->TabFocusID);
+               if (tab.granted()) acFocus(*tab);
+            }
             else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
             else advance_tabfocus(Self, 1);
             break;
@@ -244,7 +247,10 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
       // NB: When not in edit mode, only the navigation keys are enabled
       case KEY::TAB:
          log.branch("Key: Tab");
-         if (Self->TabFocusID) acFocus(Self->TabFocusID);
+         if (Self->TabFocusID) {
+            pf::ScopedObjectLock tab(Self->TabFocusID);
+            if (tab.granted()) acFocus(*tab);
+         }
          else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
          break;
@@ -893,16 +899,18 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
       if (Self->HasFocus) {
          CLASSID class_id = GetClassID(std::get<OBJECTID>(Self->Tabs[Index].ref));
          if (class_id IS ID_VECTORTEXT) {
-            OBJECTPTR input;
-            if (AccessObject(std::get<OBJECTID>(Self->Tabs[Index].ref), 1000, &input) IS ERR::Okay) {
-               acFocus(input);
+            pf::ScopedObjectLock focus(std::get<OBJECTID>(Self->Tabs[Index].ref));
+            if (focus.granted()) {
+               acFocus(*focus);
                //if ((input->getPtr(FID_UserInput, &text) IS ERR::Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
                //}
-               ReleaseObject(input);
             }
          }
-         else acFocus(std::get<OBJECTID>(Self->Tabs[Index].ref));
+         else {
+            ScopedObjectLock focus(std::get<OBJECTID>(Self->Tabs[Index].ref));
+            if (focus.granted()) acFocus(*focus);
+         }
       }
    }
    else if (Self->Tabs[Index].type IS TT::LINK) {

@@ -648,8 +648,8 @@ void ScintillaParasol::ScrollText(int linesToMove)
    ActionMsg(MT_MoveContent, surfaceid, &movecontent);
 */
    Scintilla::PRectangle rect = GetClientRectangle();
-   struct acDraw draw = { rect.left, rect.top, rect.Width(), rect.Height() };
-   ActionMsg(AC_Draw, surfaceid, &draw);
+   pf::ScopedObjectLock surface(surfaceid);
+   if (surface.granted()) acDrawArea(*surface, rect.left, rect.top, rect.Width(), rect.Height());
 }
 
 //********************************************************************************************************************
@@ -659,9 +659,9 @@ void ScintillaParasol::SetTicking(bool On)
    pf::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
 
-   if (!On) ticking_on = FALSE;
+   if (!On) ticking_on = false;
    else if (!ticking_on) {
-      ticking_on = TRUE;
+      ticking_on = true;
       lastticktime = (PreciseTime() / 1000LL);
    }
 }

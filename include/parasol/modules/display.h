@@ -1898,21 +1898,6 @@ extern ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
 
 // Stubs
 
-inline ERR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct drwInvalidateRegion args = { X, Y, Width, Height };
-   return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
-}
-
-inline ERR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
-   struct drwExpose args = { X, Y, Width, Height, Flags };
-   return ActionMsg(MT_DrwExpose, ObjectID, &args);
-}
-
-inline ERR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
-   struct drwSetOpacity args = { Value, Adjustment};
-   return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
-}
-
 inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = C_FUNCTION(Callback);

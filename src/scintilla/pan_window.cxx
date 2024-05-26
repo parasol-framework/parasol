@@ -75,8 +75,8 @@ void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
    pf::Log log(__FUNCTION__);
    log.branch();
 
-   // Surface class supports the redimension action
-   acRedimension(getSurfaceID(this), rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
+   pf::ScopedObjectLock surface(getSurfaceID(this));
+   if (surface.granted()) acRedimension(*surface, rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
 }
 
 //********************************************************************************************************************
@@ -130,8 +130,11 @@ void Scintilla::Window::Show(bool show)
    pf::Log log(__FUNCTION__);
    log.branch();
 
-   if (show) acShow(getSurfaceID(this));
-   else acHide(getSurfaceID(this));
+   pf::ScopedObjectLock surface(getSurfaceID(this));
+   if (surface.granted()) {
+      if (show) acShow(*surface);
+      else acHide(*surface);
+   }
 }
 
 //********************************************************************************************************************

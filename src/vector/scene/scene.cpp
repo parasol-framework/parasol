@@ -102,7 +102,8 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
          mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
       }
 
-      ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
+      pf::ScopedObjectLock surface(Self->SurfaceID);
+      if (surface.granted()) drwScheduleRedraw(*surface);
    }
 }
 

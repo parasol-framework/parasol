@@ -60,7 +60,8 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if (auto display_id = get_display(xevent.xany.window)) {
                auto surface_id = GetOwnerID(display_id);
                log.traceBranch("XFocusIn surface #%d", surface_id);
-               acFocus(surface_id);
+               pf::ScopedObjectLock<objSurface> surface(surface_id);
+               if (surface.granted()) surface->focus();
             }
             else log.trace("XFocusIn Failed to get window display ID.");
             break;
@@ -83,7 +84,8 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                   for (auto &id : list) {
                      if ((!in_focus) and (id != surface_id)) continue;
                      in_focus = true;
-                     acLostFocus(id);
+                     pf::ScopedObjectLock<objSurface> surface(id);
+                     if (surface.granted()) surface->lostFocus();
                   }
                }
             }
@@ -178,61 +180,45 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
 void handle_button_press(XEvent *xevent)
 {
-   pf::Log log(__FUNCTION__);
-   struct acDataFeed feed;
-   struct dcDeviceInput input;
-   objPointer *pointer;
-   DOUBLE value;
+   if (auto pointer = gfxAccessPointer()) {
+      if ((xevent->xbutton.button IS 4) or (xevent->xbutton.button IS 5)) {
+         // Mouse wheel movement
 
-   log.traceBranch("Button: %d", xevent->xbutton.button);
+         struct dcDeviceInput input = {
+            .Values    = { (xevent->xbutton.button IS 4) ? -9.0 : 9.0, 0 },
+            .Timestamp = PreciseTime(),
+            .Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL,
+            .Type      = JET::WHEEL
+         };
 
-   if ((xevent->xbutton.button IS 4) or (xevent->xbutton.button IS 5)) {
-      // Mouse wheel movement
-      if (xevent->xbutton.button IS 4) value = -9;
-      else value = 9;
-
-      input.Type      = JET::WHEEL;
-      input.Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL;
-      input.Values[0] = value;
-      input.Timestamp = PreciseTime();
-
-      feed.Object   = NULL;
-      feed.Datatype = DATA::DEVICE_INPUT;
-      feed.Buffer   = &input;
-      feed.Size     = sizeof(input);
-      ActionMsg(AC_DataFeed, glPointerID, &feed);
-      return;
-   }
-
-   input.Type = JET::NIL;
-
-   if ((pointer = gfxAccessPointer())) {
-      if (xevent->xbutton.button IS 1) {
-         input.Type  = JET::BUTTON_1;
-         input.Values[0] = 1;
+         acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
       }
-      else if (xevent->xbutton.button IS 2) {
-         input.Type  = JET::BUTTON_3;
-         input.Values[0] = 1;
+      else {
+         struct dcDeviceInput input;
+         input.Type = JET::NIL;
+
+         if (xevent->xbutton.button IS 1) {
+            input.Type  = JET::BUTTON_1;
+            input.Values[0] = 1;
+         }
+         else if (xevent->xbutton.button IS 2) {
+            input.Type  = JET::BUTTON_3;
+            input.Values[0] = 1;
+         }
+         else if (xevent->xbutton.button IS 3) {
+            input.Type  = JET::BUTTON_2;
+            input.Values[0] = 1;
+         }
+   
+         if (input.Type != JET::NIL) {
+            input.Flags = glInputType[LONG(input.Type)].Flags;
+            input.Timestamp = PreciseTime();
+
+            acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+         }
       }
-      else if (xevent->xbutton.button IS 3) {
-         input.Type  = JET::BUTTON_2;
-         input.Values[0] = 1;
-      }
+
       ReleaseObject(pointer);
-   }
-
-   if (input.Type != JET::NIL) {
-      input.Flags = glInputType[LONG(input.Type)].Flags;
-      input.Timestamp = PreciseTime();
-
-      feed.Object   = NULL;
-      feed.Datatype = DATA::DEVICE_INPUT;
-      feed.Buffer   = &input;
-      feed.Size     = sizeof(input);
-      if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
-         glPointerID = 0;
-      }
    }
 
    XFlush(XDisplay);
@@ -242,44 +228,20 @@ void handle_button_press(XEvent *xevent)
 
 void handle_button_release(XEvent *xevent)
 {
-   pf::Log log(__FUNCTION__);
+   if (auto pointer = gfxAccessPointer()) {
+      struct dcDeviceInput input = {
+         .Values    = { 0, 0 },
+         .Timestamp = PreciseTime(),
+         .Flags     = JTYPE::NIL,
+         .Type      = JET::NIL
+      };
 
-   log.traceBranch("Button: %d", xevent->xbutton.button);
+      if (xevent->xbutton.button IS 1) input.Type  = JET::BUTTON_1;
+      else if (xevent->xbutton.button IS 2) input.Type  = JET::BUTTON_3;
+      else if (xevent->xbutton.button IS 3) input.Type  = JET::BUTTON_2;
 
-   if (!glPointerID) {
-      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR::Okay) return;
-   }
-
-   struct dcDeviceInput input;
-   struct acDataFeed feed;
-   feed.Object   = NULL;
-   feed.Datatype = DATA::DEVICE_INPUT;
-   feed.Buffer   = &input;
-   feed.Size     = sizeof(input);
-   input.Type  = JET::NIL;
-   input.Flags = JTYPE::NIL;
-   input.Values[0] = 0;
-   input.Timestamp = PreciseTime();
-
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
-      if (xevent->xbutton.button IS 1) {
-         input.Type  = JET::BUTTON_1;
-         input.Values[0] = 0;
-      }
-      else if (xevent->xbutton.button IS 2) {
-         input.Type  = JET::BUTTON_3;
-         input.Values[0] = 0;
-      }
-      else if (xevent->xbutton.button IS 3) {
-         input.Type  = JET::BUTTON_2;
-         input.Values[0] = 0;
-      }
+      if (input.Type != JET::NIL) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
       ReleaseObject(pointer);
-   }
-
-   if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
-      glPointerID = 0;
    }
 
    XFlush(XDisplay);

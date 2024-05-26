@@ -1987,7 +1987,7 @@ struct CoreBase {
    ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
-   ERR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
+   ERR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(IDTYPE Type);
    ERR (*_AllocMemory)(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
@@ -2082,7 +2082,6 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
-   ERR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
    LONG (*_UTF8CharOffset)(CSTRING String, LONG Offset);
    LONG (*_UTF8Length)(CSTRING String);
    LONG (*_UTF8OffsetToChar)(CSTRING String, LONG Offset);
@@ -2099,7 +2098,7 @@ extern struct CoreBase *CoreBase;
 inline ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
-inline ERR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
+inline ERR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
 inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
@@ -2194,7 +2193,6 @@ inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
-inline ERR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline LONG UTF8CharOffset(CSTRING String, LONG Offset) { return CoreBase->_UTF8CharOffset(String,Offset); }
 inline LONG UTF8Length(CSTRING String) { return CoreBase->_UTF8Length(String); }
 inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset) { return CoreBase->_UTF8OffsetToChar(String,Offset); }
@@ -2207,7 +2205,7 @@ extern "C" {
 extern ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
 extern ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 extern void ActionList(struct ActionTable ** Actions, LONG * Size);
-extern ERR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
+extern ERR DeleteFile(CSTRING Path, FUNCTION * Callback);
 extern CSTRING ResolveClassID(CLASSID ID);
 extern LONG AllocateID(IDTYPE Type);
 extern ERR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
@@ -2301,7 +2299,6 @@ extern objTask * CurrentTask(void);
 extern CSTRING ResolveGroupID(LONG Group);
 extern CSTRING ResolveUserID(LONG User);
 extern ERR CreateLink(CSTRING From, CSTRING To);
-extern ERR DeleteFile(CSTRING Path, FUNCTION * Callback);
 extern LONG UTF8CharOffset(CSTRING String, LONG Offset);
 extern LONG UTF8Length(CSTRING String);
 extern LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
@@ -3153,7 +3150,7 @@ inline ERR acUndo(OBJECTPTR Object, LONG Steps) {
    return Action(AC_Undo, Object, &args);
 }
 
-inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
+inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    if (auto error = Action(AC_Write, Object, &write); error IS ERR::Okay) {
       if (Result) *Result = write.Result;
@@ -4636,62 +4633,6 @@ class objCompressedStream : public Object {
 #define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-inline ERR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
-   struct acDataFeed channel = { Sender, Datatype, Data, Size };
-   return ActionMsg(AC_DataFeed, ObjectID, &channel);
-}
-
-inline ERR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
-   struct acDragDrop args = { Source, Item, Datatype };
-   return ActionMsg(AC_DragDrop, ObjectID, &args);
-}
-
-inline ERR acDrawArea(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct acDraw draw = { X, Y, Width, Height };
-   return ActionMsg(AC_Draw, ObjectID, &draw);
-}
-
-inline ERR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
-   struct acMove move = { X, Y, Z };
-   return ActionMsg(AC_Move, ObjectID, &move);
-}
-
-inline ERR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
-   struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
-}
-
-inline ERR acRedimension(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acRedimension resize = { X, Y, Z, Width, Height, Depth };
-   return ActionMsg(AC_Redimension, ObjectID, &resize);
-}
-
-inline ERR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acResize resize = { Width, Height, Depth };
-   return ActionMsg(AC_Resize, ObjectID, &resize);
-}
-
-inline ERR acActivate(OBJECTID ObjectID) { return ActionMsg(AC_Activate, ObjectID, NULL); }
-inline ERR acClear(OBJECTID ObjectID) { return ActionMsg(AC_Clear, ObjectID, NULL); }
-inline ERR acDisable(OBJECTID ObjectID) { return ActionMsg(AC_Disable, ObjectID, NULL); }
-inline ERR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NULL); }
-inline ERR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
-inline ERR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
-inline ERR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
-inline ERR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
-inline ERR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }
-inline ERR acQuery(OBJECTID ObjectID) { return ActionMsg(AC_Query, ObjectID, NULL); }
-inline ERR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectID, NULL); }
-inline ERR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
-inline ERR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
-
-inline ERR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   return ActionMsg(AC_Write, ObjectID, &write);
-}
 
 inline FIELD ResolveField(CSTRING Field) {
    return StrHash(Field, FALSE);

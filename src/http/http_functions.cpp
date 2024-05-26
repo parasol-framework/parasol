@@ -1034,16 +1034,12 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
    if (Self->OutputObjectID) {
       if (Self->ObjectMode IS HOM::DATA_FEED) {
-         struct acDataFeed data = {
-            .Object   = Self,
-            .Datatype = Self->Datatype,
-            .Buffer   = Buffer,
-            .Size     = Length
-         };
-         ActionMsg(AC_DataFeed, Self->OutputObjectID, &data);
+         pf::ScopedObjectLock output(Self->OutputObjectID);
+         if (output.granted()) acDataFeed(*output, Self, Self->Datatype, Buffer, Length);
       }
       else if (Self->ObjectMode IS HOM::READ_WRITE) {
-         acWrite(Self->OutputObjectID, Buffer, Length);
+         pf::ScopedObjectLock output(Self->OutputObjectID);
+         if (output.granted()) acWrite(*output, Buffer, Length);
       }
    }
 

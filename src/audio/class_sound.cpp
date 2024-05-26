@@ -365,15 +365,21 @@ static ERR SOUND_Activate(extSound *Self)
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
 
-         if (ActionMsg(MT_SndAddStream, Self->AudioID, &stream) IS ERR::Okay) {
-            Self->Handle = stream.Result;
+         pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
+         if (audio.granted()) {
+            if (Action(MT_SndAddStream, *audio, &stream) IS ERR::Okay) {
+               Self->Handle = stream.Result;
+            }
+            else {
+               log.warning("Failed to add sample to the Audio device.");
+               return ERR::Failed;
+            }
          }
-         else {
-            log.warning("Failed to add sample to the Audio device.");
-            return ERR::Failed;
-         }
+         else return ERR::AccessObject;
       }
       else if (AllocMemory(Self->Length, MEM::DATA|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
+         auto dc = deferred_call([&buffer] { FreeResource(buffer); });
+
          auto client_pos = Self->Position;
          if (Self->Position) Self->seekStart(0); // Ensure we're reading the entire sample from the start
 
@@ -407,21 +413,20 @@ static ERR SOUND_Activate(extSound *Self)
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
-            if (ActionMsg(MT_SndAddSample, Self->AudioID, &add) IS ERR::Okay) {
-               Self->Handle = add.Result;
 
-               FreeResource(buffer);
+            pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
+            if (audio.granted()) {
+               if (Action(MT_SndAddSample, *audio, &add) IS ERR::Okay) {
+                  Self->Handle = add.Result;
+               }
+               else {
+                  log.warning("Failed to add sample to the Audio device.");
+                  return ERR::Failed;
+               }
             }
-            else {
-               FreeResource(buffer);
-               log.warning("Failed to add sample to the Audio device.");
-               return ERR::Failed;
-            }
+            else return log.warning(ERR::AccessObject);
          }
-         else {
-            FreeResource(buffer);
-            return log.warning(ERR::Read);
-         }
+         else return log.warning(ERR::Read);
       }
       else return log.warning(ERR::AllocMemory);
    }
