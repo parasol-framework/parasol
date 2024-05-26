@@ -424,14 +424,11 @@ static ERR SET_MaxHeight(extSurface *Self, LONG Value)
    Self->MaxHeight = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = -1,
-         .MinHeight = -1,
-         .MaxWidth  = Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
+      if (display.granted()) gfxSizeHints(*display, -1, -1,
+         Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
+         Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+         (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
    }
 
    return ERR::Okay;
@@ -456,14 +453,13 @@ static ERR SET_MaxWidth(extSurface *Self, LONG Value)
    Self->MaxWidth = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = -1,
-         .MinHeight = -1,
-         .MaxWidth  = Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
+      if (display.granted()) {
+         gfxSizeHints(*display, -1, -1,
+            Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
+            Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+            (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+      }
    }
 
    return ERR::Okay;
@@ -488,14 +484,13 @@ static ERR SET_MinHeight(extSurface *Self, LONG Value)
    if (Self->MinHeight < 1) Self->MinHeight = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-         .MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin,
-         .MaxWidth  = -1,
-         .MaxHeight = -1,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
+      if (display.granted()) {
+         gfxSizeHints(*display,
+            Self->MinWidth + Self->LeftMargin + Self->RightMargin,
+            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+            -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+      }
    }
 
    return ERR::Okay;
@@ -520,14 +515,13 @@ static ERR SET_MinWidth(extSurface *Self, LONG Value)
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-         .MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin,
-         .MaxWidth  = -1,
-         .MaxHeight = -1,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
+      if (display.granted()) {
+         gfxSizeHints(*display,
+            Self->MinWidth + Self->LeftMargin + Self->RightMargin,
+            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+            -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+      }
    }
 
    return ERR::Okay;

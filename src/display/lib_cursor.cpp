@@ -656,7 +656,7 @@ ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
    }
-   else ActionMsg(AC_MoveToPoint, glPointerID, &move);
+   else QueueAction(AC_MoveToPoint, glPointerID, &move);
 
    return ERR::Okay;
 }
@@ -734,9 +734,13 @@ ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID S
 
       if (Surface) {
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
-         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF::X|MTF::Y);
-         acShow(Surface);
-         acMoveToFront(Surface);
+
+         pf::ScopedObjectLock surface(Surface);
+         if (surface.granted()) {
+            acMoveToPoint(*surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF::X|MTF::Y);
+            acShow(*surface);
+            acMoveToFront(*surface);
+         }
       }
 
       gfxReleasePointer(pointer);

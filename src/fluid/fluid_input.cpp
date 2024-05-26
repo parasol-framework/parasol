@@ -257,24 +257,20 @@ static int input_request_item(lua_State *Lua)
       prv->Requests.emplace_back(source_id, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
 
-   struct dcRequest dcr;
-   dcr.Item          = item;
-   dcr.Preference[0] = UBYTE(datatype);
-   dcr.Preference[1] = 0;
-
-   struct acDataFeed dc = {
-      .Object   = Lua->Script,
-      .Datatype = DATA::REQUEST,
-      .Buffer   = &dcr,
-      .Size     = sizeof(dcr)
-   };
-
    {
       // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
       pf::Log log("input.request_item");
       log.branch();
-      auto error = ActionMsg(AC_DataFeed, source_id, &dc);
-      if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+      pf::ScopedObjectLock src(source_id);
+      if (src.granted()) {
+         struct dcRequest dcr;
+         dcr.Item          = item;
+         dcr.Preference[0] = UBYTE(datatype);
+         dcr.Preference[1] = 0;
+
+         auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));
+         if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+      }
    }
 
    return 0;

@@ -68,9 +68,10 @@ static ERR SET_Cursor(extSurface *Self, PTC Value)
    Self->Cursor = Value;
    if (Self->initialised()) {
       UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
-      OBJECTID pointer_id;
-      if (FindObject("SystemPointer", ID_POINTER, FOF::NIL, &pointer_id) IS ERR::Okay) {
-         acRefresh(pointer_id);
+
+      if (auto pointer = gfxAccessPointer()) {
+         acRefresh(pointer);
+         gfxReleasePointer(pointer);
       }
    }
    return ERR::Okay;

@@ -16,13 +16,8 @@ static void print(extCompression *Self, CSTRING Buffer)
    pf::Log log;
 
    if (Self->OutputID) {
-      struct acDataFeed feed = {
-         .Object   = Self,
-         .Datatype = DATA::TEXT,
-         .Buffer   = Buffer
-      };
-      feed.Size = StrLength(Buffer) + 1;
-      ActionMsg(AC_DataFeed, Self->OutputID, &feed);
+      pf::ScopedObjectLock output(Self->OutputID);
+      if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer, StrLength(Buffer) + 1);
    }
    else log.msg("%s", Buffer);
 }
@@ -32,13 +27,8 @@ static void print(extCompression *Self, std::string Buffer)
    pf::Log log;
 
    if (Self->OutputID) {
-      struct acDataFeed feed = {
-         .Object   = Self,
-         .Datatype = DATA::TEXT,
-         .Buffer   = Buffer.c_str()
-      };
-      feed.Size = Buffer.length() + 1;
-      ActionMsg(AC_DataFeed, Self->OutputID, &feed);
+      pf::ScopedObjectLock output(Self->OutputID);
+      if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer.c_str(), Buffer.length() + 1);
    }
    else log.msg("%s", Buffer.c_str());
 }

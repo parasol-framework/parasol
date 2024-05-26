@@ -145,8 +145,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 -ACTION-
 Activate: Opens the current document selection.
 
-Calling the Activate action on a document object will cause it to send Activate messages to the child objects that
-belong to the document object.
+Calling the Activate() action on a document object will forward Activate() calls to its child objects.
 
 *********************************************************************************************************************/
 
@@ -157,7 +156,10 @@ static ERR DOCUMENT_Activate(extDocument *Self)
 
    pf::vector<ChildEntry> list;
    if (ListChildren(Self->UID, &list) IS ERR::Okay) {
-      for (unsigned i=0; i < list.size(); i++) acActivate(list[i].ObjectID);
+      for (unsigned i=0; i < list.size(); i++) {
+         pf::ScopedObjectLock obj(list[i].ObjectID);
+         if (obj.granted()) acActivate(*obj);
+      }
    }
 
    return ERR::Okay;
@@ -187,7 +189,7 @@ The following triggers are supported:
 <type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: `void LeavingPage(*Caller, *Document)`</>
 </type>
 
-A listener can be removed by calling #RemoveListener(), however this is normally unnecessary. Listeners are removed 
+A listener can be removed by calling #RemoveListener(), however this is normally unnecessary. Listeners are removed
 automatically if a new document source is loaded, or the document object is terminated.
 
 Note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior
@@ -799,7 +801,10 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                }
                else if (code IS SCODE::IMAGE) {
                   auto &vec = Self->Stream.lookup<bc_image>(i);
-                  if (!vec.rect.empty()) acHide(vec.rect->UID);
+                  if (!vec.rect.empty()) {
+                     pf::ScopedObjectLock obj(vec.rect->UID);
+                     if (obj.granted()) acHide(*obj);
+                  }
 
                   if (auto tab = find_tabfocus(Self, TT::VECTOR, vec.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = false;

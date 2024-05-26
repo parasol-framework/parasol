@@ -4,7 +4,7 @@ extern "C" {
 ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result);
 ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 void ActionList(struct ActionTable ** Actions, LONG * Size);
-ERR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
+ERR DeleteFile(CSTRING Path, FUNCTION * Callback);
 CSTRING ResolveClassID(CLASSID ID);
 LONG AllocateID(IDTYPE Type);
 ERR AllocMemory(LONG Size, MEM Flags, APTR * Address, MEMORYID * ID);
@@ -99,7 +99,6 @@ objTask * CurrentTask();
 CSTRING ResolveGroupID(LONG Group);
 CSTRING ResolveUserID(LONG User);
 ERR CreateLink(CSTRING From, CSTRING To);
-ERR DeleteFile(CSTRING Path, FUNCTION * Callback);
 LONG UTF8CharOffset(CSTRING String, LONG Offset);
 LONG UTF8Length(CSTRING String);
 LONG UTF8OffsetToChar(CSTRING String, LONG Offset);

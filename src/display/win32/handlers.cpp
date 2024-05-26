@@ -52,22 +52,16 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
 {
    if (auto pointer = gfxAccessPointer(); pointer) {
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
-      gfxReleasePointer(pointer);
 
-      struct dcDeviceInput joy[1];
-      joy[0].Type  = JET::ABS_XY;
-      joy[0].Flags = NonClient ? JTYPE::SECONDARY : JTYPE::NIL;
-      joy[0].Values[0] = AbsX;
-      joy[0].Values[1] = AbsY;
-      joy[0].Timestamp = PreciseTime();
-
-      struct acDataFeed feed = {
-         .Object   = NULL,
-         .Datatype = DATA::DEVICE_INPUT,
-         .Buffer   = &joy,
-         .Size     = sizeof(struct dcDeviceInput)
+      struct dcDeviceInput joy = {
+         .Values = { AbsX, AbsY },
+         .Timestamp = PreciseTime(),
+         .Flags = NonClient ? JTYPE::SECONDARY : JTYPE::NIL,
+         .Type  = JET::ABS_XY
       };
-      ActionMsg(AC_DataFeed, glPointerID, &feed);
+
+      acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
+      gfxReleasePointer(pointer);
    }
 }
 
@@ -78,19 +72,18 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
    if (!glPointerID) {
       if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
+   
+   if (auto pointer = gfxAccessPointer(); pointer) {
+      struct dcDeviceInput joy = {
+         .Values    = { Wheel, 0 },
+         .Timestamp = PreciseTime(),
+         .Flags     = JTYPE::NIL,
+         .Type      = JET::WHEEL
+      };
 
-   struct dcDeviceInput joy;
-   joy.Type      = JET::WHEEL;
-   joy.Flags     = JTYPE::NIL;
-   joy.Values[0] = Wheel;
-   joy.Timestamp = PreciseTime();
-
-   struct acDataFeed feed;
-   feed.Object   = NULL;
-   feed.Datatype = DATA::DEVICE_INPUT;
-   feed.Buffer   = &joy;
-   feed.Size     = sizeof(struct dcDeviceInput);
-   ActionMsg(AC_DataFeed, glPointerID, &feed);
+      acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
+      gfxReleasePointer(pointer);
+   }
 }
 
 //********************************************************************************************************************
@@ -99,10 +92,13 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 {
    //log.msg("Windows focus state for surface #%d: %d", SurfaceID, State);
 
-   if (State) acFocus(SurfaceID);
-   else {
-      acLostFocus(SurfaceID);
-      // for (auto &id : glFocusList) acLostFocus(id);
+   pf::ScopedObjectLock surface(SurfaceID);
+   if (surface.granted()) {
+      if (State) acFocus(*surface);
+      else {
+         acLostFocus(*surface);
+         // for (auto &id : glFocusList) acLostFocus(id);
+      }
    }
 }
 
@@ -142,18 +138,10 @@ void MsgButtonPress(LONG button, LONG State)
          i++;
       }
 
+      if (i) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(struct dcDeviceInput) * i);
+
       gfxReleasePointer(pointer);
 
-      if (i) {
-         struct acDataFeed feed;
-         feed.Object   = NULL;
-         feed.Datatype = DATA::DEVICE_INPUT;
-         feed.Buffer   = &joy;
-         feed.Size     = sizeof(struct dcDeviceInput) * i;
-         if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR::NoMatchingObject) {
-            glPointerID = 0;
-         }
-      }
    }
 }
 
@@ -189,14 +177,13 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    }
 }
 
-/*********************************************************************************************************************
-** We're interested in this message only when Windows soft-sets one of our windows.  A 'soft-set' means that our Window
-** has received the focus without direct user interaction (typically a window on the desktop has closed and our
-** window is inheriting the focus).
-**
-** Being able to tell the difference between a soft-set and a hard-set is difficult, but checking for visibility seems
-** to be enough in preventing confusion.
-*/
+//********************************************************************************************************************
+// We're interested in this message only when Windows soft-sets one of our windows.  A 'soft-set' means that our Window
+// has received the focus without direct user interaction (typically a window on the desktop has closed and our
+// window is inheriting the focus).
+//
+// Being able to tell the difference between a soft-set and a hard-set is difficult, but checking for visibility seems
+// to be enough in preventing confusion.
 
 void MsgSetFocus(OBJECTID SurfaceID)
 {
@@ -254,11 +241,12 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 
 void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
-   if ((Width) and (Height)) {
-      struct drwExpose expose = { X, Y, Width, Height, EXF::CHILDREN };
-      ActionMsg(MT_DrwExpose, SurfaceID, &expose);
+   pf::ScopedObjectLock surface(SurfaceID);
+
+   if (surface.granted()) {
+      if ((Width) and (Height)) drwExpose(*surface, X, Y, Width, Height, EXF::CHILDREN);
+      else Action(MT_DrwExpose, *surface, NULL);
    }
-   else ActionMsg(MT_DrwExpose, SurfaceID, NULL);
 }
 
 //********************************************************************************************************************
@@ -317,8 +305,11 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
 
 void MsgShowObject(OBJECTID ObjectID)
 {
-   acShow(ObjectID);
-   acMoveToFront(ObjectID);
+   pf::ScopedObjectLock obj(ObjectID);
+   if (obj.granted()) {
+      acShow(*obj);
+      acMoveToFront(*obj);
+   }
 }
 
 } // namespace

@@ -292,14 +292,16 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Drag and drop has been released.  Inform the destination surface of the item's release.
 
       if (Self->DragSurface) {
-         acHide(Self->DragSurface);
+         pf::ScopedObjectLock surface(Self->DragSurface);
+         if (surface.granted()) acHide(*surface);
          Self->DragSurface = 0;
       }
 
       if (!modal_id) {
          pf::ScopedObjectLock src(Self->DragSourceID);
          if (src.granted()) {
-            acDragDrop(Self->OverObjectID, *src, Self->DragItem, Self->DragData);
+            pf::ScopedObjectLock surface(Self->OverObjectID);
+            if (surface.granted()) acDragDrop(*surface, *src, Self->DragItem, Self->DragData);
          }
       }
 
@@ -433,7 +435,8 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
                }
             }
 
-            acMoveToPoint(Self->DragSurface, sx, sy, 0, MTF::X|MTF::Y);
+            pf::ScopedObjectLock surface(Self->DragSurface);
+            if (surface.granted()) acMoveToPoint(*surface, sx, sy, 0, MTF::X|MTF::Y);
          }
 
          LONG absx, absy;

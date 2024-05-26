@@ -34,7 +34,8 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
          if (gfxGetSurfaceInfo(pointer->OverObjectID, &info) IS ERR::Okay) {
             pf::ScopedObjectLock display(info->DisplayID);
             if (display.granted()) {
-               acDragDrop(pointer->OverObjectID, *display, -1, Datatypes);
+               pf::ScopedObjectLock obj(pointer->OverObjectID);
+               if (obj.granted()) acDragDrop(*obj, *display, -1, Datatypes);
             }
          }
          else log.warning(ERR::GetSurfaceInfo);
@@ -1515,13 +1516,15 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
    else { // We are the new modal surface
       auto old_modal = glModalID;
       glModalID = SurfaceID;
-      acMoveToFront(SurfaceID);
+      pf::ScopedObjectLock<objSurface> surface(SurfaceID);
+      if (surface.granted()) {
+         acMoveToFront(*surface);
 
-      // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
+         // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
 
-      RNF flags;
-      if ((gfxGetSurfaceFlags(SurfaceID, &flags) IS ERR::Okay) and ((flags & RNF::HAS_FOCUS) IS RNF::NIL)) {
-         acFocus(SurfaceID);
+         if ((surface->Flags & RNF::HAS_FOCUS) IS RNF::NIL) {
+            acFocus(*surface);
+         }
       }
       return old_modal;
    }

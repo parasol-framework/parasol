@@ -191,8 +191,8 @@ the surface area first).</li>
       <comment>For hosted surfaces only, this method will minimise the surface to an icon.</comment>
       <prototype>ERR drwMinimise(OBJECTPTR Object)</prototype>
       <description>
-<p>If a surface is hosted in a desktop window, calling the Minimise method will perform the default minimise action on that window.  On a platform such as Microsoft Windows, this would normally result in the window being minimised to the task bar.</p>
-<p>Calling Minimise on a surface that is already in the minimised state may result in the host window being restored to the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the host platform.</p>
+<p>If a surface is hosted in a desktop window, calling the Minimise() method will perform the default minimise action on that window.  On a platform such as Microsoft Windows, this would normally result in the window being minimised to the task bar.</p>
+<p>Calling Minimise() on a surface that is already in the minimised state may result in the host window being restored to the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the host platform.</p>
       </description>
     </method>
 

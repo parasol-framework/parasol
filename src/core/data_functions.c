@@ -8,7 +8,6 @@ FDEF argsAccessMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_LONG }
 FDEF argsAccessObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsActionThread[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Args", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { "Key", FD_LONG }, { 0, 0 } };
 FDEF argsAddInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
@@ -115,7 +114,7 @@ const struct Function glFunctions[] = {
    { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },
    { (APTR)Action, "Action", argsAction },
    { (APTR)ActionList, "ActionList", argsActionList },
-   { (APTR)ActionMsg, "ActionMsg", argsActionMsg },
+   { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)ResolveClassID, "ResolveClassID", argsResolveClassID },
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
@@ -210,7 +209,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)UTF8CharOffset, "UTF8CharOffset", argsUTF8CharOffset },
    { (APTR)UTF8Length, "UTF8Length", argsUTF8Length },
    { (APTR)UTF8OffsetToChar, "UTF8OffsetToChar", argsUTF8OffsetToChar },

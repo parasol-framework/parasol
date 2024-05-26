@@ -116,7 +116,6 @@
 2b. Window-&gt;move(30, 15, 0);
 </pre>
 <p>If the class of an object does not support the <code>Action</code> ID, an error code of <code>ERR::NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function>CheckAction</function> function.</p>
-<p>In circumstances where an object ID is known without its pointer, the use of <function>ActionMsg</function> or <function>QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -163,25 +162,6 @@ struct FunctionField argsResize[] = {
 <type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a <code>LONG</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_LONG|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_LONGRESULT</code> macros are also available for use.</type>
 </types>
     </description>
-  </function>
-
-  <function>
-    <name>ActionMsg</name>
-    <category>Objects</category>
-    <comment>Execute an action or method by way of object UID.</comment>
-    <prototype>ERR ActionMsg(LONG Action, OBJECTID Object, APTR Args)</prototype>
-    <input>
-      <param type="LONG" name="Action">The ID of the action or method to be executed.</param>
-      <param type="OBJECTID" name="Object">The target object.</param>
-      <param type="APTR" name="Args">The parameter structure required by Action.</param>
-    </input>
-    <description>
-<p>Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison to <action>Action</action>, as the object pointer will need to be resolved before making the call.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The action was executed successfully.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>

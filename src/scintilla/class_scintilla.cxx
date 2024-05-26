@@ -592,7 +592,8 @@ Draw: Draws the Scintilla object's graphics.
 
 static ERR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 {
-   ActionMsg(AC_Draw, Self->SurfaceID, Args);
+   pf::ScopedObjectLock surface(Self->SurfaceID);
+   if (surface.granted()) Action(AC_Draw, *surface, Args);
    return ERR::Okay;
 }
 
@@ -617,10 +618,12 @@ Focus: Focus on the Scintilla surface.
 
 static ERR SCINTILLA_Focus(extScintilla *Self)
 {
-   return acFocus(Self->SurfaceID);
+   pf::ScopedObjectLock surface(Self->SurfaceID);
+   if (surface.granted()) return acFocus(*surface);
+   else return ERR::AccessObject;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static ERR SCINTILLA_Free(extScintilla *Self, APTR)
 {
@@ -671,19 +674,19 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
 -METHOD-
 GetLine: Copies the text content of any line to a user-supplied buffer.
 
-This method will retrieve the string for a line at a given index.  The string is copied to a user supplied buffer of
-the indicated length (in bytes).
+This method will retrieve the string for a `Line` at a given index.  The string is copied to a user supplied 
+`Buffer` of the indicated `Length` (in bytes).
 
 -INPUT-
 int Line: The index of the line to retrieve.
 buf(str) Buffer: The destination buffer.
-bufsize Length: The byte size of the buffer.
+bufsize Length: The byte size of the `Buffer`.
 
 -RESULT-
 Okay:
 NullArgs:
 OutOfRange: At least one of the parameters is out of range.
-BufferOverflow: The supplied buffer is not large enough to contain the
+BufferOverflow: The supplied `Buffer` is not large enough to contain the result.
 
 *********************************************************************************************************************/
 
@@ -708,7 +711,7 @@ static ERR SCINTILLA_GetLine(extScintilla *Self, struct sciGetLine *Args)
 -METHOD-
 GetPos: Returns the byte position of a given line and column number.
 
-This method converts a line and column index to the equivalent byte position within the text document.
+This method converts a `Line` and `Column` index to the equivalent byte position within the text document.
 
 -INPUT-
 int Line: Line index

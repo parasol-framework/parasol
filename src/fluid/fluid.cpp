@@ -758,13 +758,12 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   if (acWrite((OBJECTID)(MAXINT)FileID, (APTR)Data, Size) IS ERR::Okay) {
-      return 0;
+   pf::ScopedObjectLock file((MAXINT)FileID);
+   if (file.granted()) {
+      if (acWrite(*file, (APTR)Data, Size) IS ERR::Okay) return 0;
    }
-   else {
-      log.warning("Failed writing %d bytes.", (LONG)Size);
-      return 1;
-   }
+   log.warning("Failed writing %d bytes.", (LONG)Size);
+   return 1;
 }
 
 int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)

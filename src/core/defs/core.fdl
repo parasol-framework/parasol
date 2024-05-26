@@ -1076,7 +1076,7 @@ struct ScriptArg { // For use with scExec
     "AccessMemory",
     "Action",
     "ActionList",
-    "ActionMsg",
+    "DeleteFile",
     "ResolveClassID",
     "AllocateID",
     "AllocMemory",
@@ -1171,7 +1171,6 @@ struct ScriptArg { // For use with scExec
     "ResolveGroupID",
     "ResolveUserID",
     "CreateLink",
-    "DeleteFile",
     "UTF8CharOffset",
     "UTF8Length",
     "UTF8OffsetToChar",
@@ -2021,7 +2020,7 @@ inline ERR acUndo(OBJECTPTR Object, LONG Steps) {
    return Action(AC_Undo, Object, &args);
 }
 
-inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
+inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    if (auto error = Action(AC_Write, Object, &write); error IS ERR::Okay) {
       if (Result) *Result = write.Result;
@@ -2404,62 +2403,6 @@ inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
 #define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-inline ERR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
-   struct acDataFeed channel = { Sender, Datatype, Data, Size };
-   return ActionMsg(AC_DataFeed, ObjectID, &channel);
-}
-
-inline ERR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
-   struct acDragDrop args = { Source, Item, Datatype };
-   return ActionMsg(AC_DragDrop, ObjectID, &args);
-}
-
-inline ERR acDrawArea(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct acDraw draw = { X, Y, Width, Height };
-   return ActionMsg(AC_Draw, ObjectID, &draw);
-}
-
-inline ERR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
-   struct acMove move = { X, Y, Z };
-   return ActionMsg(AC_Move, ObjectID, &move);
-}
-
-inline ERR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
-   struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
-}
-
-inline ERR acRedimension(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acRedimension resize = { X, Y, Z, Width, Height, Depth };
-   return ActionMsg(AC_Redimension, ObjectID, &resize);
-}
-
-inline ERR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acResize resize = { Width, Height, Depth };
-   return ActionMsg(AC_Resize, ObjectID, &resize);
-}
-
-inline ERR acActivate(OBJECTID ObjectID) { return ActionMsg(AC_Activate, ObjectID, NULL); }
-inline ERR acClear(OBJECTID ObjectID) { return ActionMsg(AC_Clear, ObjectID, NULL); }
-inline ERR acDisable(OBJECTID ObjectID) { return ActionMsg(AC_Disable, ObjectID, NULL); }
-inline ERR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NULL); }
-inline ERR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
-inline ERR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
-inline ERR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
-inline ERR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
-inline ERR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }
-inline ERR acQuery(OBJECTID ObjectID) { return ActionMsg(AC_Query, ObjectID, NULL); }
-inline ERR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectID, NULL); }
-inline ERR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
-inline ERR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
-
-inline ERR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   return ActionMsg(AC_Write, ObjectID, &write);
-}
 
 inline FIELD ResolveField(CSTRING Field) {
    return StrHash(Field, FALSE);

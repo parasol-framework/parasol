@@ -98,10 +98,10 @@
       <input>
         <param type="LONG" name="Line">The index of the line to retrieve.</param>
         <param type="STRING" name="Buffer">The destination buffer.</param>
-        <param type="LONG" name="Length">The byte size of the buffer.</param>
+        <param type="LONG" name="Length">The byte size of the <code>Buffer</code>.</param>
       </input>
       <description>
-<p>This method will retrieve the string for a line at a given index.  The string is copied to a user supplied buffer of the indicated length (in bytes).</p>
+<p>This method will retrieve the string for a <code>Line</code> at a given index.  The string is copied to a user supplied <code>Buffer</code> of the indicated <code>Length</code> (in bytes).</p>
       </description>
     </method>
 
@@ -115,7 +115,7 @@
         <param type="LONG *" name="Pos">The byte position is returned in this parameter.</param>
       </input>
       <description>
-<p>This method converts a line and column index to the equivalent byte position within the text document.</p>
+<p>This method converts a <code>Line</code> and <code>Column</code> index to the equivalent byte position within the text document.</p>
       </description>
     </method>
 

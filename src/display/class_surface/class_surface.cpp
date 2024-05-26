@@ -753,7 +753,8 @@ static ERR SURFACE_Focus(extSurface *Self)
 
    if ((Self->Flags & RNF::IGNORE_FOCUS) != RNF::NIL) {
       FOCUSMSG("Focus propagated to parent (IGNORE_FOCUS flag set).");
-      acFocus(Self->ParentID);
+      pf::ScopedObjectLock focus(Self->ParentID);
+      if (focus.granted()) acFocus(*focus);
       glLastFocusTime = PreciseTime();
       return ERR::Okay|ERR::Notified;
    }
@@ -856,13 +857,17 @@ static ERR SURFACE_Focus(extSurface *Self)
    struct drwInheritedFocus inherit = { .FocusID = Self->UID, .Flags = Self->Flags };
    auto it = glFocusList.begin() + 1; // Skip Self
    while (it != glFocusList.end()) {
-      ActionMsg(MT_DrwInheritedFocus, *it, &inherit);
+      pf::ScopedObjectLock obj(*it);
+      if (obj.granted()) Action(MT_DrwInheritedFocus, *obj, &inherit);
       it++;
    }
 
    // Send out LostFocus actions to all objects that do not intersect with the new focus chain.
 
-   for (auto &id : lostfocus) acLostFocus(id);
+   for (auto &id : lostfocus) {
+      pf::ScopedObjectLock obj(id);
+      if (obj.granted()) acLostFocus(*obj);
+   }
 
    // Send a global focus event to all listeners.  The list consists of two sections with the focus-chain
    // placed first, then the lost-focus chain.
@@ -884,8 +889,9 @@ static ERR SURFACE_Focus(extSurface *Self)
       // Return without notification as we already have the focus
 
       if (Self->RevertFocusID) {
+         pf::ScopedObjectLock focus(Self->RevertFocusID);
          Self->RevertFocusID = 0;
-         acFocus(Self->RevertFocusID);
+         if (focus.granted()) acFocus(*focus);
       }
 
       glLastFocusTime = PreciseTime();
@@ -897,11 +903,15 @@ static ERR SURFACE_Focus(extSurface *Self)
 
       // Focussing on the display window is important in hosted environments
 
-      if (Self->DisplayID) acFocus(Self->DisplayID);
+      if (Self->DisplayID) {
+         pf::ScopedObjectLock display(Self->DisplayID);
+         if (display.granted()) acFocus(*display);
+      }
 
       if (Self->RevertFocusID) {
+         pf::ScopedObjectLock focus(Self->RevertFocusID);
          Self->RevertFocusID = 0;
-         acFocus(Self->RevertFocusID);
+         if (focus.granted()) acFocus(*focus);
       }
 
       glLastFocusTime = PreciseTime();
@@ -954,7 +964,10 @@ static ERR SURFACE_Free(extSurface *Self)
    // acting as windows, as the window class has its own focus management code.
 
    if (Self->hasFocus() and (Self->Owner) and (Self->Owner->classID() != ID_WINDOW)) {
-      if (Self->ParentID) acFocus(Self->ParentID);
+      if (Self->ParentID) {
+         pf::ScopedObjectLock focus(Self->ParentID);
+         if (focus.granted()) acFocus(*focus);
+      }
    }
 
    if ((Self->Flags & RNF::AUTO_QUIT) != RNF::NIL) {
@@ -993,7 +1006,8 @@ static ERR SURFACE_Hide(extSurface *Self)
       Self->Flags &= ~RNF::VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
       UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
-      if (acHide(Self->DisplayID) != ERR::Okay) return ERR::Failed;
+      pf::ScopedObjectLock display(Self->DisplayID);
+      if (display.granted()) if (acHide(*display) != ERR::Okay) return ERR::Failed;
    }
    else {
       // Mark this surface object as invisible, then invalidate the region it was covering in order to have the background redrawn.
@@ -1529,11 +1543,11 @@ static ERR SURFACE_LostFocus(extSurface *Self)
 -METHOD-
 Minimise: For hosted surfaces only, this method will minimise the surface to an icon.
 
-If a surface is hosted in a desktop window, calling the Minimise method will perform the default minimise action
+If a surface is hosted in a desktop window, calling the Minimise() method will perform the default minimise action
 on that window.  On a platform such as Microsoft Windows, this would normally result in the window being
 minimised to the task bar.
 
-Calling Minimise on a surface that is already in the minimised state may result in the host window being restored to
+Calling Minimise() on a surface that is already in the minimised state may result in the host window being restored to
 the desktop.  This behaviour is platform dependent and should be manually tested to confirm its reliability on the
 host platform.
 -END-
@@ -1542,7 +1556,10 @@ host platform.
 
 static ERR SURFACE_Minimise(extSurface *Self)
 {
-   if (Self->DisplayID) ActionMsg(MT_GfxMinimise, Self->DisplayID, NULL);
+   if (Self->DisplayID) {
+      pf::ScopedObjectLock display(Self->DisplayID);
+      if (display.granted()) gfxMinimise(*display);
+   }
    return ERR::Okay;
 }
 
@@ -1681,7 +1698,8 @@ static ERR SURFACE_MoveToBack(extSurface *Self)
    pf::Log log;
 
    if (!Self->ParentID) {
-      acMoveToBack(Self->DisplayID);
+      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID);
+      if (display.granted()) display->moveToBack();
       return ERR::Okay|ERR::Notified;
    }
 
@@ -1742,7 +1760,8 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
    log.branch("%s", Self->Name);
 
    if (!Self->ParentID) {
-      acMoveToFront(Self->DisplayID);
+      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID);
+      if (display.granted()) display->moveToFront();
       return ERR::Okay|ERR::Notified;
    }
 
@@ -1782,7 +1801,8 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
          for (auto i=index-1; i > 0; i--) {
             if (glSurfaces[i].Level IS level) {
                if (glSurfaces[i].SurfaceID != Self->PopOverID) {
-                  acMoveToFront(Self->PopOverID);
+                  pf::ScopedObjectLock<objSurface> pop(Self->PopOverID);
+                  if (pop.granted()) pop->moveToFront();
                   return ERR::Okay|ERR::Notified;
                }
                break;
@@ -1836,7 +1856,8 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
       for (LONG i=index-1; i > 0; i--) {
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
-               acMoveToFront(Self->PopOverID);
+               pf::ScopedObjectLock<objSurface> pop(Self->PopOverID);
+               if (pop.granted()) pop->moveToFront();
                return ERR::Okay;
             }
             break;
@@ -2279,9 +2300,10 @@ static ERR SURFACE_Show(extSurface *Self)
    else notified = ERR::NIL;
 
    if (!Self->ParentID) {
-      if (acShow(Self->DisplayID) IS ERR::Okay) {
+      pf::ScopedObjectLock display(Self->DisplayID);
+      if (acShow(*display) IS ERR::Okay) {
          Self->Flags |= RNF::VISIBLE;
-         if (Self->hasFocus()) acFocus(Self->DisplayID);
+         if (Self->hasFocus()) acFocus(*display);
       }
       else return log.warning(ERR::Failed);
    }
@@ -2431,7 +2453,8 @@ static ERR consume_input_events(const InputEvent *Events, LONG Handle)
             // Move the dragging surface to the new location
 
             if ((Self->DragID) and (Self->DragID != Self->UID)) {
-               acMove(Self->DragID, xchange, ychange, 0);
+               pf::ScopedObjectLock drag(Self->DragID);
+               if (drag.granted()) acMove(*drag, xchange, ychange, 0);
             }
             else {
                auto sticky = (Self->Flags & RNF::STICKY) != RNF::NIL;

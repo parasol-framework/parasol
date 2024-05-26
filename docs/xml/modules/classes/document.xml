@@ -31,7 +31,7 @@
       <name>Activate</name>
       <comment>Opens the current document selection.</comment>
       <description>
-<p>Calling the Activate action on a document object will cause it to send Activate messages to the child objects that belong to the document object.</p>
+<p>Calling the Activate() action on a document object will forward Activate() calls to its child objects.</p>
       </description>
     </action>
 
