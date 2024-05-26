@@ -38,7 +38,7 @@ static ERR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
          acResize(Self->Bitmap, Self->Scene->PageWidth, Self->Scene->PageHeight, 32);
       }
    }
-   else if (!(Self->Bitmap = objBitmap::create::integral(
+   else if (!(Self->Bitmap = objBitmap::create::local(
       fl::Width(Self->Scene->PageWidth),
       fl::Height(Self->Scene->PageHeight),
       fl::Flags(BMF::ALPHA_CHANNEL),
@@ -53,7 +53,7 @@ static ERR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR PATTERN_Free(extVectorPattern *Self, APTR Void)
+static ERR PATTERN_Free(extVectorPattern *Self)
 {
    VectorMatrix *next;
    for (auto node=Self->Matrices; node; node=next) {
@@ -70,7 +70,7 @@ static ERR PATTERN_Free(extVectorPattern *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR PATTERN_Init(extVectorPattern *Self, APTR Void)
+static ERR PATTERN_Init(extVectorPattern *Self)
 {
    pf::Log log;
 
@@ -102,9 +102,9 @@ static ERR PATTERN_Init(extVectorPattern *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
+static ERR PATTERN_NewObject(extVectorPattern *Self)
 {
-   if (NewObject(ID_VECTORSCENE, NF::INTEGRAL, &Self->Scene) IS ERR::Okay) {
+   if (NewObject(ID_VECTORSCENE, NF::LOCAL, &Self->Scene) IS ERR::Okay) {
       if (NewObject(ID_VECTORVIEWPORT, &Self->Viewport) IS ERR::Okay) {
          SetOwner(Self->Viewport, Self->Scene);
          Self->SpreadMethod = VSPREAD::REPEAT;
@@ -465,7 +465,7 @@ static const FieldArray clPatternFields[] = {
    { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
    { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
-   { "Scene",        FDF_INTEGRAL|FDF_R },
+   { "Scene",        FDF_LOCAL|FDF_R },
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternSpread },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
@@ -487,7 +487,7 @@ ERR init_pattern(void) // The pattern is a definition type for creating patterns
       fl::BaseClassID(ID_VECTORPATTERN),
       fl::Name("VectorPattern"),
       fl::Category(CCF::GRAPHICS),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::Actions(clPatternActions),
       fl::Fields(clPatternFields),
       fl::Size(sizeof(extVectorPattern)),

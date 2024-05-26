@@ -118,8 +118,8 @@ static const FieldArray glModuleFields[] = {
    END_FIELD
 };
 
-static ERR MODULE_Init(extModule *, APTR);
-static ERR MODULE_Free(extModule *, APTR);
+static ERR MODULE_Init(extModule *);
+static ERR MODULE_Free(extModule *);
 
 static const ActionArray glModuleActions[] = {
    { AC_Free, MODULE_Free },
@@ -262,7 +262,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 
 //********************************************************************************************************************
 
-ERR ROOTMODULE_Free(RootModule *Self, APTR Void)
+ERR ROOTMODULE_Free(RootModule *Self)
 {
    if (Self->Table) Self->Table->Root = NULL; // Remove the DLL's reference to the master.
 
@@ -299,7 +299,7 @@ static ERR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 // module code will be left resident in memory as it belongs to the RootModule, not the Module.  See Expunge()
 // in the Core for further details.
 
-static ERR MODULE_Free(extModule *Self, APTR Void)
+static ERR MODULE_Free(extModule *Self)
 {
    // Call the Module's Close procedure
 
@@ -315,7 +315,7 @@ static ERR MODULE_Free(extModule *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR MODULE_Init(extModule *Self, APTR Void)
+static ERR MODULE_Init(extModule *Self)
 {
    pf::Log log;
    ERR error = ERR::Failed;

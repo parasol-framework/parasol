@@ -90,7 +90,7 @@
       <comment>Resizes a bitmap object's dimensions.</comment>
       <description>
 <p>Resizing a bitmap will change its <fl>Width</fl>, <fl>Height</fl> and optionally <fl>BitsPerPixel</fl>.  Existing image data is not retained by this process.</p>
-<p>The image data is cleared with <fl>BkgdRGB</fl> if the <code>CLEAR</code> flag is defined in <fl>Flags</fl>.</p>
+<p>The image data is cleared with <fl>Bkgd</fl> if the <code>CLEAR</code> flag is defined in <fl>Flags</fl>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -351,23 +351,23 @@
     </field>
 
     <field>
-      <name>BkgdIndex</name>
-      <comment>The bitmap's background colour is defined here as a colour index.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The bitmap's background colour is defined in this field as a colour index.  It is recommended that the <fl>BkgdRGB</fl> field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set directly.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>BkgdRGB</name>
+      <name>Bkgd</name>
       <comment>The bitmap's background colour is defined here in RGB format.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>RGB8</type>
       <description>
 <p>The default background colour for a bitmap is black.  To change it, set this field with the new RGB colour.  The background colour is used in operations that require a default colour, such as when clearing the bitmap.</p>
 <p>The <fl>BkgdIndex</fl> will be updated as a result of setting this field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BkgdIndex</name>
+      <comment>The bitmap's background colour is defined here as a colour index.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The bitmap's background colour is defined in this field as a colour index.  It is recommended that the <fl>Bkgd</fl> field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set directly.</p>
       </description>
     </field>
 
@@ -673,23 +673,23 @@ unpackAlpha(Colour)
     </field>
 
     <field>
-      <name>TransIndex</name>
-      <comment>The transparent colour of the bitmap, represented as an index.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied during graphics operations.  It is recommended that the <fl>TransRGB</fl> field is used for altering the bitmap transparency unless efficiency requires that the transparency is set directly.</p>
-<p>NOTE: This field should never be set if the bitmap utilises alpha transparency.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>TransRGB</name>
+      <name>TransColour</name>
       <comment>The transparent colour of the bitmap, in RGB format.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>RGB8</type>
       <description>
 <p>The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied during drawing operations.</p>
+<p>NOTE: This field should never be set if the bitmap utilises alpha transparency.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TransIndex</name>
+      <comment>The transparent colour of the bitmap, represented as an index.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied during graphics operations.  It is recommended that the <fl>TransColour</fl> field is used for altering the bitmap transparency unless efficiency requires that the transparency is set directly.</p>
 <p>NOTE: This field should never be set if the bitmap utilises alpha transparency.</p>
       </description>
     </field>
@@ -737,7 +737,7 @@ unpackAlpha(Colour)
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
       <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a <code>Query()</code> on the bitmap.</const>
-      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the <class name="Bitmap" field="TransIndex">Bitmap.TransIndex</class> or <class name="Bitmap" field="TransRGB">Bitmap.TransRGB</class> is defined, and support exists in functions such as <function module="Display">CopyArea</function>.</const>
+      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the <class name="Bitmap" field="TransIndex">Bitmap.TransIndex</class> or <class name="Bitmap" field="TransColour">Bitmap.TransColour</class> is defined, and support exists in functions such as <function module="Display">CopyArea</function>.</const>
       <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>
     </constants>
 

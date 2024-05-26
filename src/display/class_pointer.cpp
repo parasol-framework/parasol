@@ -104,7 +104,7 @@ static ERR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
    return ERR::Okay;
 }
 
-static ERR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
+static ERR PTR_UngrabX11Pointer(extPointer *Self)
 {
    XUngrabPointer(XDisplay, CurrentTime);
    return ERR::Okay;
@@ -491,7 +491,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
 //********************************************************************************************************************
 
-static ERR PTR_Free(extPointer *Self, APTR Void)
+static ERR PTR_Free(extPointer *Self)
 {
    acHide(Self);
 
@@ -513,7 +513,7 @@ Hide: Hides the pointer from the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR PTR_Hide(extPointer *Self, APTR Void)
+static ERR PTR_Hide(extPointer *Self)
 {
    pf::Log log;
 
@@ -540,7 +540,7 @@ static ERR PTR_Hide(extPointer *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR PTR_Init(extPointer *Self, APTR Void)
+static ERR PTR_Init(extPointer *Self)
 {
    pf::Log log;
 
@@ -559,7 +559,7 @@ static ERR PTR_Init(extPointer *Self, APTR Void)
 
    // Allocate a custom cursor bitmap
 
-   if ((Self->Bitmap = objBitmap::create::integral(
+   if ((Self->Bitmap = objBitmap::create::local(
          fl::Name("CustomCursor"),
          fl::Width(MAX_CURSOR_WIDTH),
          fl::Height(MAX_CURSOR_HEIGHT),
@@ -669,7 +669,7 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 
 //********************************************************************************************************************
 
-static ERR PTR_NewObject(extPointer *Self, APTR Void)
+static ERR PTR_NewObject(extPointer *Self)
 {
    Self->CursorID = PTC::DEFAULT;
    Self->ClickSlop = 2;
@@ -683,7 +683,7 @@ Refresh: Refreshes the pointer's cursor status.
 -END-
 *********************************************************************************************************************/
 
-static ERR PTR_Refresh(extPointer *Self, APTR Void)
+static ERR PTR_Refresh(extPointer *Self)
 {
    // Calling OverObject will refresh the cursor image from the underlying surface object.  Incidentally, the point of
    // all this is to satisfy the Surface class' need to have the pointer refreshed if a surface's cursor ID is changed.
@@ -698,7 +698,7 @@ Reset: Resets the pointer settings back to the default.
 -END-
 *********************************************************************************************************************/
 
-static ERR PTR_Reset(extPointer *Self, APTR Void)
+static ERR PTR_Reset(extPointer *Self)
 {
    Self->Speed        = 150;
    Self->Acceleration = 0.50;
@@ -740,7 +740,7 @@ Show: Shows the pointer if it is not already on the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR PTR_Show(extPointer *Self, APTR Void)
+static ERR PTR_Show(extPointer *Self)
 {
    pf::Log log;
 
@@ -862,8 +862,8 @@ static ERR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 -FIELD-
 ButtonState: Indicates the current button-press state.
 
-This field returns the state of mouse input buttons as bit-flags, sorted by order of their importance.  A bit flag 
-of `1` indicates that the user is holding the button down.  The bit order is `LMB`, `RMB`, `MMB`, with the `LMB` 
+This field returns the state of mouse input buttons as bit-flags, sorted by order of their importance.  A bit flag
+of `1` indicates that the user is holding the button down.  The bit order is `LMB`, `RMB`, `MMB`, with the `LMB`
 starting at bit position zero.  Additional buttons are supported but their exact order will depend on the device
 that is in use, and the configuration of their order may be further customised by the user.
 
@@ -908,7 +908,7 @@ although the user can store his own preference in the pointer configuration file
 -FIELD-
 DragItem: The currently dragged item, as defined by ~Display.StartCursorDrag().
 
-When the pointer is in drag-mode, the custom item number that was defined in the initial call to 
+When the pointer is in drag-mode, the custom item number that was defined in the initial call to
 ~Display.StartCursorDrag() will be defined here.  At all other times this field will be set to zero.
 
 -FIELD-
@@ -952,7 +952,7 @@ static ERR SET_MaxSpeed(extPointer *Self, LONG Value)
 -FIELD-
 OverObject: Readable field that gives the ID of the object under the pointer.
 
-This field returns a reference to the object directly under the pointer's hot-spot.  `NULL` can be returned if there 
+This field returns a reference to the object directly under the pointer's hot-spot.  `NULL` can be returned if there
 is no surface object under the pointer.
 
 -FIELD-
@@ -978,7 +978,7 @@ displays, by returning its coordinate along the Z axis.
 -FIELD-
 Restrict: Refers to a surface when the pointer is restricted.
 
-If the pointer has been restricted to a surface through ~Display.SetCursor(), this field refers to the ID of that 
+If the pointer has been restricted to a surface through ~Display.SetCursor(), this field refers to the ID of that
 surface.  If the pointer is not restricted, this field is set to zero.
 
 -FIELD-

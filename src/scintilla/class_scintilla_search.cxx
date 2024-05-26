@@ -161,7 +161,7 @@ static ERR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 
 //********************************************************************************************************************
 
-static ERR SEARCH_Free(objScintillaSearch *Self, APTR Void)
+static ERR SEARCH_Free(objScintillaSearch *Self)
 {
    if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
    return ERR::Okay;
@@ -169,7 +169,7 @@ static ERR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SEARCH_Init(objScintillaSearch *Self, APTR Void)
+static ERR SEARCH_Init(objScintillaSearch *Self)
 {
    pf::Log log;
 

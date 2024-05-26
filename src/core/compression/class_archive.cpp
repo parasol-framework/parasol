@@ -157,7 +157,7 @@ extern extCompression * find_archive(CSTRING Path, std::string &FilePath)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_Activate(extFile *Self, APTR Void)
+static ERR ARCHIVE_Activate(extFile *Self)
 {
    Log log;
 
@@ -169,7 +169,7 @@ static ERR ARCHIVE_Activate(extFile *Self, APTR Void)
 
    log.msg("Allocating file stream for item %s", prv->Info.Name.c_str());
 
-   if ((prv->FileStream = extFile::create::integral(
+   if ((prv->FileStream = extFile::create::local(
       fl::Name("ArchiveFileStream"),
       fl::Path(prv->Archive->Path),
       fl::Flags(FL::READ)))) {
@@ -183,7 +183,7 @@ static ERR ARCHIVE_Activate(extFile *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_Free(extFile *Self, APTR Void)
+static ERR ARCHIVE_Free(extFile *Self)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
@@ -198,7 +198,7 @@ static ERR ARCHIVE_Free(extFile *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_Init(extFile *Self, APTR Void)
+static ERR ARCHIVE_Init(extFile *Self)
 {
    Log log;
 
@@ -259,7 +259,7 @@ static ERR ARCHIVE_Init(extFile *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_Query(extFile *Self, APTR Void)
+static ERR ARCHIVE_Query(extFile *Self)
 {
    auto prv = (prvFileArchive *)(Self->ChildPrivate);
 

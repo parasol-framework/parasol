@@ -60,7 +60,7 @@ static ERR GET_KeyFilter(extConfig *, CSTRING *);
 static ERR GET_GroupFilter(extConfig *, CSTRING *);
 static ERR GET_TotalGroups(extConfig *, LONG *);
 
-static ERR CONFIG_SaveSettings(extConfig *, APTR);
+static ERR CONFIG_SaveSettings(extConfig *);
 
 static const FieldDef clFlags[] = {
    { "AutoSave",    CNF::AUTO_SAVE },
@@ -183,7 +183,7 @@ Clear: Clears all configuration data.
 -END-
 *********************************************************************************************************************/
 
-static ERR CONFIG_Clear(extConfig *Self, APTR Void)
+static ERR CONFIG_Clear(extConfig *Self)
 {
    if (Self->Groups) { Self->Groups->clear(); }
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
@@ -292,14 +292,14 @@ Flush: Diverts to #SaveSettings().
 -END-
 *********************************************************************************************************************/
 
-static ERR CONFIG_Flush(extConfig *Self, APTR Void)
+static ERR CONFIG_Flush(extConfig *Self)
 {
-   return CONFIG_SaveSettings(Self, NULL);
+   return CONFIG_SaveSettings(Self);
 }
 
 //********************************************************************************************************************
 
-static ERR CONFIG_Free(extConfig *Self, APTR Void)
+static ERR CONFIG_Free(extConfig *Self)
 {
    pf::Log log;
 
@@ -358,7 +358,7 @@ static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex
 
 //********************************************************************************************************************
 
-static ERR CONFIG_Init(extConfig *Self, APTR Void)
+static ERR CONFIG_Init(extConfig *Self)
 {
    pf::Log log;
 
@@ -382,8 +382,8 @@ static ERR CONFIG_Init(extConfig *Self, APTR Void)
 -METHOD-
 Merge: Merges two config objects together.
 
-The Merge() method is used to merge configuration data from one config object provided as a source, into the target 
-object.  Existing data in the target will be overwritten by the source in cases where there matching set of group 
+The Merge() method is used to merge configuration data from one config object provided as a source, into the target
+object.  Existing data in the target will be overwritten by the source in cases where there matching set of group
 keys.
 
 -INPUT-
@@ -446,7 +446,7 @@ static ERR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 
 //********************************************************************************************************************
 
-static ERR CONFIG_NewObject(extConfig *Self, APTR Void)
+static ERR CONFIG_NewObject(extConfig *Self)
 {
    if (!(Self->Groups = new (std::nothrow) ConfigGroups)) return ERR::Memory;
    return ERR::Okay;
@@ -512,7 +512,7 @@ This action will save the configuration data back to its original file source (a
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_SaveSettings(extConfig *Self, APTR Void)
+static ERR CONFIG_SaveSettings(extConfig *Self)
 {
    pf::Log log;
    log.branch();
@@ -598,7 +598,7 @@ static ERR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
 -METHOD-
 SortByKey: Sorts config data using a sequence of sort instructions.
 
-The SortByKey() method sorts the groups of a config object by key values (the named key value should be present in 
+The SortByKey() method sorts the groups of a config object by key values (the named key value should be present in
 every group).
 
 -INPUT-
@@ -650,8 +650,8 @@ static ERR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 -METHOD-
 WriteValue: Adds new entries to config objects.
 
-Use the WriteValue() method to add or update information in a config object.  A `Group` name, `Key` name, and `Data` 
-value are required.  If the `Group` and `Key` arguments match an existing entry in the config object, the data of 
+Use the WriteValue() method to add or update information in a config object.  A `Group` name, `Key` name, and `Data`
+value are required.  If the `Group` and `Key` arguments match an existing entry in the config object, the data of
 that entry will be replaced with the new Data value.
 
 The `Group` string may refer to an index if the hash `#` character is used to precede a target index number.
@@ -700,7 +700,7 @@ static ERR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
 -FIELD-
 Data: Reference to the raw data values.
 
-This field points to a C++ type that contains all key-values for the config object.  It is intended to be used only 
+This field points to a C++ type that contains all key-values for the config object.  It is intended to be used only
 by system code that is included with the standard framework.
 
 *********************************************************************************************************************/

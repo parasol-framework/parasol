@@ -31,8 +31,8 @@ To get the current system time, use the #Query() action.
 
 static ERR GET_TimeStamp(objTime *, LARGE *);
 
-static ERR TIME_Query(objTime *, APTR);
-static ERR TIME_SetTime(objTime *, APTR);
+static ERR TIME_Query(objTime *);
+static ERR TIME_SetTime(objTime *);
 
 /*********************************************************************************************************************
 -ACTION-
@@ -40,7 +40,7 @@ Query: Updates the values in a time object with the current system date and time
 -END-
 *********************************************************************************************************************/
 
-static ERR TIME_Query(objTime *Self, APTR Void)
+static ERR TIME_Query(objTime *Self)
 {
    #ifdef __unix__
 
@@ -102,7 +102,7 @@ work if the user is logged in as the administrator.
 
 *********************************************************************************************************************/
 
-static ERR TIME_SetTime(objTime *Self, APTR Void)
+static ERR TIME_SetTime(objTime *Self)
 {
 #ifdef __unix__
    pf::Log log;

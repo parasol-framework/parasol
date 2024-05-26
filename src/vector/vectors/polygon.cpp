@@ -120,7 +120,7 @@ static ERR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCoun
 
 //********************************************************************************************************************
 
-static ERR POLYGON_Free(extVectorPoly *Self, APTR Void)
+static ERR POLYGON_Free(extVectorPoly *Self)
 {
    if (Self->Points) { FreeResource(Self->Points); Self->Points = NULL; }
    return ERR::Okay;
@@ -207,7 +207,7 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 
 //********************************************************************************************************************
 
-static ERR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
+static ERR POLYGON_NewObject(extVectorPoly *Self)
 {
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_polygon;
    Self->Closed       = TRUE;

@@ -200,7 +200,7 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR MORPHOLOGYFX_NewObject(extMorphologyFX *Self, APTR Void)
+static ERR MORPHOLOGYFX_NewObject(extMorphologyFX *Self)
 {
    Self->Operator = MOP::ERODE;
    return ERR::Okay;

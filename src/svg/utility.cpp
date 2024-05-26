@@ -472,7 +472,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
    objXML *xml;
    ERR error = ERR::Okay;
-   if (NewObject(ID_XML, NF::INTEGRAL, &xml) IS ERR::Okay) {
+   if (NewObject(ID_XML, NF::LOCAL, &xml) IS ERR::Okay) {
       objTask *task = CurrentTask();
       STRING working_path = NULL;
 

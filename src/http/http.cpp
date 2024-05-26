@@ -179,12 +179,12 @@ class extHTTP : public objHTTP {
    UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
 };
 
-static ERR HTTP_Activate(extHTTP *, APTR);
-static ERR HTTP_Deactivate(extHTTP *, APTR);
-static ERR HTTP_Free(extHTTP *, APTR);
+static ERR HTTP_Activate(extHTTP *);
+static ERR HTTP_Deactivate(extHTTP *);
+static ERR HTTP_Free(extHTTP *);
 static ERR HTTP_GetKey(extHTTP *, struct acGetKey *);
-static ERR HTTP_Init(extHTTP *, APTR);
-static ERR HTTP_NewObject(extHTTP *, APTR);
+static ERR HTTP_Init(extHTTP *);
+static ERR HTTP_NewObject(extHTTP *);
 static ERR HTTP_SetKey(extHTTP *, struct acSetKey *);
 static ERR HTTP_Write(extHTTP *, struct acWrite *);
 
@@ -283,7 +283,7 @@ INLINE CSTRING GETSTATUS(LONG Code)
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -296,7 +296,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clHTTP)     { FreeResource(clHTTP);     clHTTP     = NULL; }
    if (glProxy)    { FreeResource(glProxy);    glProxy    = NULL; }
@@ -359,7 +359,7 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 
 *********************************************************************************************************************/
 
-static ERR HTTP_Activate(extHTTP *Self, APTR Void)
+static ERR HTTP_Activate(extHTTP *Self)
 {
    pf::Log log;
    LONG i;
@@ -497,9 +497,9 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
                   log.trace("Multiple input files detected.");
                   Self->InputPos = 0;
                   parse_file(Self, cmd);
-                  Self->flInput = objFile::create::integral(fl::Path(cmd.str().c_str()), fl::Flags(FL::READ));
+                  Self->flInput = objFile::create::local(fl::Path(cmd.str().c_str()), fl::Flags(FL::READ));
                }
-               else Self->flInput = objFile::create::integral(fl::Path(Self->InputFile), fl::Flags(FL::READ));
+               else Self->flInput = objFile::create::local(fl::Path(Self->InputFile), fl::Flags(FL::READ));
 
                if (Self->flInput) {
                   Self->Index = 0;
@@ -635,7 +635,7 @@ static ERR HTTP_Activate(extHTTP *Self, APTR Void)
 
       auto flags = (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
 
-      if (!(Self->Socket = objNetSocket::create::integral(
+      if (!(Self->Socket = objNetSocket::create::local(
             fl::ClientData(Self),
             fl::Incoming((CPTR)socket_incoming),
             fl::Feedback((CPTR)socket_feedback),
@@ -706,7 +706,7 @@ Active HTTP requests can be manually cancelled by calling the Deactivate() actio
 -END-
 *********************************************************************************************************************/
 
-static ERR HTTP_Deactivate(extHTTP *Self, APTR Void)
+static ERR HTTP_Deactivate(extHTTP *Self)
 {
    pf::Log log;
 
@@ -743,7 +743,7 @@ static ERR HTTP_Deactivate(extHTTP *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR HTTP_Free(extHTTP *Self, APTR Args)
+static ERR HTTP_Free(extHTTP *Self)
 {
    if (Self->Args) { delete Self->Args; Self->Args = NULL; }
    if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
@@ -809,7 +809,7 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
 
 //********************************************************************************************************************
 
-static ERR HTTP_Init(extHTTP *Self, APTR Args)
+static ERR HTTP_Init(extHTTP *Self)
 {
    pf::Log log;
 
@@ -832,7 +832,7 @@ static ERR HTTP_Init(extHTTP *Self, APTR Args)
 
 //********************************************************************************************************************
 
-static ERR HTTP_NewObject(extHTTP *Self, APTR Args)
+static ERR HTTP_NewObject(extHTTP *Self)
 {
    Self->Error          = ERR::Okay;
    Self->UserAgent      = StrClone("Parasol Client");
@@ -1691,5 +1691,5 @@ static ERR create_http_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_http_module() { return &ModHeader; }

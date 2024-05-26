@@ -145,7 +145,7 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR DISPLACEMENTFX_NewObject(extDisplacementFX *Self, APTR Void)
+static ERR DISPLACEMENTFX_NewObject(extDisplacementFX *Self)
 {
    Self->Scale = 0; // SVG default requires this is 0, which makes the displacment algorithm ineffective.
    Self->XChannel = CMP::ALPHA;

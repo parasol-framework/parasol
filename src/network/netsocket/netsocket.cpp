@@ -157,7 +157,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       if (!Self->NetLookup) {
-         if (!(Self->NetLookup = extNetLookup::create::integral())) {
+         if (!(Self->NetLookup = extNetLookup::create::local())) {
             return ERR::CreateObject;
          }
       }
@@ -264,7 +264,7 @@ Failed: Shutdown operation failed.
 
 *********************************************************************************************************************/
 
-static ERR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_Disable(extNetSocket *Self)
 {
    pf::Log log;
 
@@ -340,7 +340,7 @@ static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectSoc
 //********************************************************************************************************************
 // Action: Free
 
-static ERR NETSOCKET_Free(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_Free(extNetSocket *Self)
 {
 #ifdef ENABLE_SSL
    sslDisconnect(Self);
@@ -364,7 +364,7 @@ static ERR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 // If a netsocket object is about to be freed, ensure that we are not using the netsocket object in one of our message
 // handlers.  We can still delay the free request in any case.
 
-static ERR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_FreeWarning(extNetSocket *Self)
 {
 
    if (Self->InUse) {
@@ -431,7 +431,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAd
 //********************************************************************************************************************
 // Action: Init()
 
-static ERR NETSOCKET_Init(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_Init(extNetSocket *Self)
 {
    pf::Log log;
    ERR error;
@@ -567,7 +567,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 //********************************************************************************************************************
 // Action: NewObject
 
-static ERR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
+static ERR NETSOCKET_NewObject(extNetSocket *Self)
 {
    Self->SocketHandle = NOHANDLE;
    Self->Error        = ERR::Okay;

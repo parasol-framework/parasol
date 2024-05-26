@@ -832,7 +832,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1160,7 +1160,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
    auto src = std::string(icon_path) + "Default.zip";
-   if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
+   if (!(glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
       return ERR::CreateObject;
    }
 
@@ -1183,7 +1183,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-static ERR CMDOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
@@ -1191,7 +1191,7 @@ static ERR CMDOpen(OBJECTPTR Module)
 
 //********************************************************************************************************************
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    pf::Log log(__FUNCTION__);
    ERR error = ERR::Okay;
@@ -1595,6 +1595,6 @@ static STRUCTS glStructures = {
    { "SurfaceInfo",   sizeof(SurfaceInfoV2) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_display_module() { return &ModHeader; }
 

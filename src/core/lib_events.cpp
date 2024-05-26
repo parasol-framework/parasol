@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file 
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Events
@@ -78,23 +77,19 @@ void free_events(void)
 -FUNCTION-
 BroadcastEvent: Broadcast an event to all event listeners in the system.
 
-Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An Event structure is
-required that must start with a 64-bit EventID acquired from ~GetEventID(), followed by any required data that is
-relevant to that event.  The C/C++ template is as follows:
+Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An event structure is
+required that must start with a 64-bit `EventID` acquired from ~GetEventID(), followed by any required data that is
+relevant to that event.  Here are some examples:
 
 <pre>
-typedef struct rkEvent {
-   EVENTID EventID;
-   // Data follows
-} rkEvent;
+typedef struct { EVENTID EventID; char Name[1]; } evVolumeCreated;
+typedef struct { EVENTID EventID; OBJECTID TaskID; } evTaskCreated;
+typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskRemoved;
 </pre>
-
-This document does not describe the available system events.  For more information about them, please refer to the
-System Events Reference manual.
 
 -INPUT-
 ptr Event: Pointer to an event structure.
-int EventSize: The size of the Event structure, in bytes.
+int EventSize: The size of the `Event` structure, in bytes.
 
 -ERRORS-
 Okay
@@ -126,17 +121,17 @@ ERR BroadcastEvent(APTR Event, LONG EventSize)
 GetEventID: Generates unique event ID's suitable for event broadcasting.
 
 Use GetEventID() to generate a 64-bit event identifier.  This identifier can be used for broadcasting and subscribing
-to events.  Events are described in three parts - Group, SubGroup and the Event name, or in string format
+to events.  Events are described in three parts - `Group`, `SubGroup` and the `Event` name, or in string format
 `group.subgroup.event`.
 
-The Group is strictly limited to one of the following definitions:
+The `Group` is strictly limited to one of the following definitions:
 
 <types lookup="EVG"/>
 
-The SubGroup and Event parameters are string-based and there are no restrictions on naming.  If a SubGroup or Event
-name is NULL, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network
-group with SubGroup and Event set to NULL will allow for a subscription to all network events that are broadcast.  A
-Group setting of zero is not allowed.
+The `SubGroup` and `Event` parameters are string-based and there are no restrictions on naming.  If a `SubGroup` or `Event`
+name is `NULL`, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network
+group with `SubGroup` and `Event` set to `NULL` will allow for a subscription to all network events that are broadcast.  A
+`Group` setting of zero is not allowed.
 
 -INPUT-
 int(EVG) Group: The group to which the event belongs.
@@ -144,7 +139,7 @@ cstr SubGroup: The sub-group to which the event belongs (case-sensitive).
 cstr Event:    The name of the event (case-sensitive).
 
 -RESULT-
-large: The EventID is returned as a 64-bit integer.
+large: The event ID is returned as a 64-bit integer.
 
 *********************************************************************************************************************/
 
@@ -175,19 +170,19 @@ LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 -FUNCTION-
 SubscribeEvent: Subscribe to a system event.
 
-Use the SubscribeEvent() function to listen for system events.  An EventID (obtainable from ~GetEventID())
+Use the SubscribeEvent() function to listen for system events.  An event ID (obtainable from ~GetEventID())
 must be provided, as well as a reference to a function that will be called each time that the event is broadcast.
 
-An event handle will be returned in the Handle parameter to identify the subscription.  This must be retained to later
+An event handle will be returned in the `Handle` parameter to identify the subscription.  This must be retained to later
 unsubscribe from the event with the ~UnsubscribeEvent() function.
 
-The format for the Callback function is `Function(APTR Custom, APTR Event, LONG Size)`, where 'Event' is the
+The prototype for the `Callback` function is `Function(APTR Custom, APTR Event, LONG Size)`, where `Event` is the
 event structure that matches to the subscribed EventID.
 
 -INPUT-
 large Event:  An event identifier.
 ptr(func) Callback: The function that will be subscribed to the event.
-ptr Custom:   A custom pointer that will be sent to the callback function, set to NULL if not required.
+ptr Custom:   A custom pointer that will be sent to the callback function, set to `NULL` if not required.
 &ptr Handle:  Pointer to an address that will receive the event handle.
 
 -ERRORS-
@@ -256,7 +251,7 @@ Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle
 function must be provided.
 
 -INPUT-
-ptr Handle: An event handle returned from SubscribeEvent()
+ptr Handle: An event handle returned from ~SubscribeEvent()
 -END-
 
 *********************************************************************************************************************/
@@ -296,9 +291,8 @@ void UnsubscribeEvent(APTR Handle)
    glEventListAltered = true;
 }
 
-/*********************************************************************************************************************
-** ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
-*/
+//********************************************************************************************************************
+// ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
 
 ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {

@@ -581,8 +581,8 @@ class objBitmap : public Object {
    LONG    XOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
    LONG    YOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
    LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
-   struct RGB8 TransRGB;                                             // The transparent colour of the bitmap, in RGB format.
-   struct RGB8 BkgdRGB;                                              // The bitmap's background colour is defined here in RGB format.
+   struct RGB8 TransColour;                                          // The transparent colour of the bitmap, in RGB format.
+   struct RGB8 Bkgd;                                                 // The bitmap's background colour is defined here in RGB format.
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
    CS      ColourSpace;                                              // Defines the colour space for RGB values.
    public:
@@ -738,13 +738,13 @@ class objBitmap : public Object {
 
    inline ERR setPalette(struct RGBPalette * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
    inline ERR setData(UBYTE * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -768,7 +768,7 @@ class objBitmap : public Object {
 
    inline ERR setClip(struct ClipRectangle * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -792,7 +792,7 @@ class objBitmap : public Object {
 
    inline ERR setTransIndex(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -823,15 +823,15 @@ class objBitmap : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setTransRGB(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setTransColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[34];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERR setBkgdRGB(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
@@ -860,7 +860,7 @@ class objBitmap : public Object {
 
    inline ERR setClipBottom(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1411,7 +1411,7 @@ class objSurface : public Object {
    LONG     RightLimit; // Prevents a surface object from moving beyond a given point on the right-hand side.
    LONG     TopLimit;   // Prevents a surface object from moving beyond a given point at the top of its container.
    LONG     BottomLimit; // Prevents a surface object from moving beyond a given point at the bottom of its container.
-   OBJECTID DisplayID;  // Refers to the @Display object that is managing the surface's graphics.
+   OBJECTID DisplayID;  // Refers to the Display object that is managing the surface's graphics.
    RNF      Flags;      // Optional flags.
    LONG     X;          // Determines the horizontal position of a surface object.
    LONG     Y;          // Determines the vertical position of a surface object.

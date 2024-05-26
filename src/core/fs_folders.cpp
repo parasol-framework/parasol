@@ -45,7 +45,7 @@ the scanner will return file and folder names only.  Only a subset of the availa
 -INPUT-
 cstr Path: The folder location to be scanned.  Using an empty string will scan for volume names.
 int(RDF) Flags: Optional flags.
-!resource(DirInfo) Info: A DirInfo structure will be returned in the pointer referenced here.
+!resource(DirInfo) Info: A !DirInfo structure will be returned in the pointer referenced here.
 
 -ERRORS-
 Okay
@@ -147,15 +147,15 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &info)) {
 }
 </pre>
 
-For each item that you scan, you will be able to read the Info structure for information on that item.  The DirInfo
-structure contains a FileInfo pointer that consists of the following fields:
+For each item that you scan, you will be able to read the Info structure for information on that item.  The !DirInfo
+structure contains a !FileInfo pointer that consists of the following fields:
 
 <struct lookup="FileInfo"/>
 
 The `RDF` flags that may be returned in the Flags field are `VOLUME`, `FOLDER`, `FILE`, `LINK`.
 
 -INPUT-
-resource(DirInfo) Info: Pointer to a DirInfo structure for storing scan results.
+resource(DirInfo) Info: Pointer to a !DirInfo structure for storing scan results.
 
 -ERRORS-
 Okay: An item was successfully scanned from the folder.

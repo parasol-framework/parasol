@@ -88,7 +88,7 @@ Clear: Free all child objects contained by the viewport.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_Clear(extVectorViewport *Self)
 {
    pf::vector<ChildEntry> list;
    if (ListChildren(Self->UID, &list) IS ERR::Okay) {
@@ -100,7 +100,7 @@ static ERR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
 {
    if ((Self->Scene) and (!Self->Scene->collecting()) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
       if (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self)) {
@@ -115,7 +115,7 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORVIEWPORT_Init(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_Init(extVectorViewport *Self)
 {
    // Initialisation is performed by VECTOR_Init()
 
@@ -169,7 +169,7 @@ static ERR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveToPo
 
 //********************************************************************************************************************
 
-static ERR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
+static ERR VECTORVIEWPORT_NewObject(extVectorViewport *Self)
 {
    Self->vpAspectRatio = ARF::MEET|ARF::X_MID|ARF::Y_MID;
    Self->vpOverflowX   = VOF::VISIBLE;
@@ -237,11 +237,11 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG *Value)
+static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG &Value)
 {
    if (Self->dirty()) gen_vector_tree(Self);
 
-   *Value = Self->vpBounds.left;
+   Value = Self->vpBounds.left;
    return ERR::Okay;
 }
 
@@ -255,11 +255,11 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AbsY(extVectorViewport *Self, LONG *Value)
+static ERR VIEW_GET_AbsY(extVectorViewport *Self, LONG &Value)
 {
    if (Self->dirty()) gen_vector_tree(Self);
 
-   *Value = Self->vpBounds.top;
+   Value = Self->vpBounds.top;
    return ERR::Okay;
 }
 
@@ -275,9 +275,9 @@ area.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AspectRatio(extVectorViewport *Self, ARF *Value)
+static ERR VIEW_GET_AspectRatio(extVectorViewport *Self, ARF &Value)
 {
-   *Value = Self->vpAspectRatio;
+   Value = Self->vpAspectRatio;
    return ERR::Okay;
 }
 
@@ -296,9 +296,9 @@ Lookup: DMF
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Dimensions(extVectorViewport *Self, LONG *Value)
+static ERR VIEW_GET_Dimensions(extVectorViewport *Self, LONG &Value)
 {
-   *Value = Self->vpDimensions;
+   Value = Self->vpDimensions;
    return ERR::Okay;
 }
 
@@ -329,10 +329,10 @@ It is required that the parent @VectorScene is associated with a @Surface for th
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_DragCallback(extVectorViewport *Self, FUNCTION **Value)
+static ERR VIEW_GET_DragCallback(extVectorViewport *Self, FUNCTION * &Value)
 {
    if (Self->vpDragCallback.defined()) {
-      *Value = &Self->vpDragCallback;
+      Value = &Self->vpDragCallback;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -370,21 +370,21 @@ The fixed value is always returned when retrieving the height.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_Height(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
 
    if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_HEIGHT) { // Working with a fixed dimension
-      if (Value->Type & FD_SCALED) {
+      if (Value.Type & FD_SCALED) {
          if (Self->ParentView) val = Self->vpFixedHeight * Self->ParentView->vpFixedHeight;
          else val = Self->vpFixedHeight * Self->Scene->PageHeight;
       }
       else val = Self->vpTargetHeight;
    }
    else if (Self->vpDimensions & DMF_SCALED_HEIGHT) { // Working with a scaled dimension
-      if (Value->Type & FD_SCALED) val = Self->vpTargetHeight;
+      if (Value.Type & FD_SCALED) val = Self->vpTargetHeight;
       else if (Self->ParentView) val = Self->vpTargetHeight * Self->ParentView->vpFixedHeight;
       else val = Self->vpTargetHeight * Self->Scene->PageHeight;
    }
@@ -401,26 +401,26 @@ static ERR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
       else val = parent_height - (Self->vpTargetYO * parent_height) - y;
    }
    else { // If no height set by the client, the full height is inherited from the parent
-      if (Self->ParentView) return Self->ParentView->get(FID_Height, Value);
+      if (Self->ParentView) return Self->ParentView->get(FID_Height, &Value);
       else Self->Scene->get(FID_PageHeight, &val);
    }
 
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   if (Value.Type & FD_DOUBLE) Value.Double = val;
+   else if (Value.Type & FD_LARGE) Value.Large = F2T(val);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_Height(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
 
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   if (Value.Type & FD_DOUBLE) val = Value.Double;
+   else if (Value.Type & FD_LARGE) val = Value.Large;
+   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
    Self->vpTargetHeight = val;
-   if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -440,9 +440,9 @@ If the viewport's #AspectRatio is set to `SLICE` then it will have priority over
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Overflow(extVectorViewport *Self, VOF *Value)
+static ERR VIEW_GET_Overflow(extVectorViewport *Self, VOF &Value)
 {
-   *Value = Self->vpOverflowX;
+   Value = Self->vpOverflowX;
    return ERR::Okay;
 }
 
@@ -465,9 +465,9 @@ This option controls the x axis only.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_OverflowX(extVectorViewport *Self, VOF *Value)
+static ERR VIEW_GET_OverflowX(extVectorViewport *Self, VOF &Value)
 {
-   *Value = Self->vpOverflowX;
+   Value = Self->vpOverflowX;
    return ERR::Okay;
 }
 
@@ -489,9 +489,9 @@ This option controls the y axis only.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_OverflowY(extVectorViewport *Self, VOF *Value)
+static ERR VIEW_GET_OverflowY(extVectorViewport *Self, VOF &Value)
 {
-   *Value = Self->vpOverflowY;
+   Value = Self->vpOverflowY;
    return ERR::Okay;
 }
 
@@ -511,9 +511,9 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewHeight(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewHeight(extVectorViewport *Self, DOUBLE &Value)
 {
-   *Value = Self->vpViewHeight;
+   Value = Self->vpViewHeight;
    return ERR::Okay;
 }
 
@@ -537,9 +537,9 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE &Value)
 {
-   *Value = Self->vpViewX;
+   Value = Self->vpViewX;
    return ERR::Okay;
 }
 
@@ -560,9 +560,9 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewWidth(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewWidth(extVectorViewport *Self, DOUBLE &Value)
 {
-   *Value = Self->vpViewWidth;
+   Value = Self->vpViewWidth;
    return ERR::Okay;
 }
 
@@ -586,9 +586,9 @@ rendered graphics in the source area will be repositioned and scaled to the area
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE *Value)
+static ERR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE &Value)
 {
-   *Value = Self->vpViewY;
+   Value = Self->vpViewY;
    return ERR::Okay;
 }
 
@@ -608,21 +608,21 @@ full coverage.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_Width(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
 
    if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
-      if (Value->Type & FD_SCALED) {
+      if (Value.Type & FD_SCALED) {
          if (Self->ParentView) val = Self->vpFixedWidth * Self->ParentView->vpFixedWidth;
          else val = Self->vpFixedWidth * Self->Scene->PageWidth;
       }
       else val = Self->vpTargetWidth;
    }
    else if (Self->vpDimensions & DMF_SCALED_WIDTH) { // Working with a scaled dimension
-      if (Value->Type & FD_SCALED) val = Self->vpTargetWidth;
+      if (Value.Type & FD_SCALED) val = Self->vpTargetWidth;
       else if (Self->ParentView) val = Self->vpTargetWidth * Self->ParentView->vpFixedWidth;
       else val = Self->vpTargetWidth * Self->Scene->PageWidth;
    }
@@ -639,25 +639,25 @@ static ERR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
       else val = parent_width - (Self->vpTargetXO * parent_width) - x;
    }
    else { // If no width set by the client, the full width is inherited from the parent
-      if (Self->ParentView) return Self->ParentView->get(FID_Width, Value);
+      if (Self->ParentView) return Self->ParentView->get(FID_Width, &Value);
       else Self->Scene->get(FID_PageWidth, &val);
    }
 
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   if (Value.Type & FD_DOUBLE) Value.Double = val;
+   else if (Value.Type & FD_LARGE) Value.Large = F2T(val);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_Width(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   if (Value.Type & FD_DOUBLE) val = Value.Double;
+   else if (Value.Type & FD_LARGE) val = Value.Large;
+   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
    Self->vpTargetWidth = val;
-   if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
+   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -677,7 +677,7 @@ width.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_X(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE width, value;
 
@@ -695,10 +695,10 @@ static ERR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_SCALED) value = value / Self->ParentView->vpFixedWidth;
+   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedWidth;
 
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   if (Value.Type & FD_DOUBLE) Value.Double = value;
+   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
    else {
       pf::Log log;
       return log.warning(ERR::FieldTypeMismatch);
@@ -707,16 +707,16 @@ static ERR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_X(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   if (Value.Type & FD_DOUBLE) val = Value.Double;
+   else if (Value.Type & FD_LARGE) val = Value.Large;
+   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
    Self->vpTargetX = val;
-   if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
+   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -736,7 +736,7 @@ parent's width.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE width;
    DOUBLE value = 0;
@@ -756,10 +756,10 @@ static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_SCALED) value = value / Self->ParentView->vpFixedWidth;
+   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedWidth;
 
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   if (Value.Type & FD_DOUBLE) Value.Double = value;
+   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
    else {
       pf::Log log;
       return log.warning(ERR::FieldTypeMismatch);
@@ -768,17 +768,17 @@ static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_XOffset(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
 
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   if (Value.Type & FD_DOUBLE) val = Value.Double;
+   else if (Value.Type & FD_LARGE) val = Value.Large;
+   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
    Self->vpTargetXO = val;
-   if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
+   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_SCALED_X_OFFSET);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -798,7 +798,7 @@ height.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_Y(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE value, height;
 
@@ -817,9 +817,9 @@ static ERR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_SCALED) value = value / Self->ParentView->vpFixedHeight;
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedHeight;
+   if (Value.Type & FD_DOUBLE) Value.Double = value;
+   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
    else {
       pf::Log log;
       return log.warning(ERR::FieldTypeMismatch);
@@ -828,16 +828,16 @@ static ERR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_Y(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   if (Value.Type & FD_DOUBLE) val = Value.Double;
+   else if (Value.Type & FD_LARGE) val = Value.Large;
+   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
    Self->vpTargetY = val;
-   if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
+   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -857,7 +857,7 @@ height.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE height;
    DOUBLE value = 0;
@@ -877,10 +877,10 @@ static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_SCALED) value = value / Self->ParentView->vpFixedHeight;
+   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedHeight;
 
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   if (Value.Type & FD_DOUBLE) Value.Double = value;
+   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
    else {
       pf::Log log;
       return log.warning(ERR::FieldTypeMismatch);
@@ -889,16 +889,16 @@ static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
+static ERR VIEW_SET_YOffset(extVectorViewport *Self, Variable &Value)
 {
    DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   if (Value.Type & FD_DOUBLE) val = Value.Double;
+   else if (Value.Type & FD_LARGE) val = Value.Large;
+   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
    Self->vpTargetYO = val;
-   if (Value->Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
+   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF_SCALED_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_SCALED_Y_OFFSET);
 
    mark_dirty((extVector *)Self, RC::ALL);

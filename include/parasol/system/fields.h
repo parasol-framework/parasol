@@ -959,7 +959,7 @@
 #define FID_SubClass 0xb7799ba5LL
 #define FID_Process 0xc336efe4LL
 #define FID_Clip 0x7c95326dLL
-#define FID_TransRGB 0xbb42bc88LL
+#define FID_TransColour 0x50fe95a1LL
 #define FID_HDensity 0x7bd1ed6dLL
 #define FID_VDensity 0x676b91bbLL
 #define FID_RequestHandler 0x781c36ecLL

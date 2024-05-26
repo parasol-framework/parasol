@@ -232,7 +232,7 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -256,7 +256,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (modDisplay)  { FreeResource(modDisplay);  modDisplay = NULL; }
    if (modFont)     { FreeResource(modFont);     modFont = NULL; }
@@ -407,7 +407,7 @@ Clear: Clears all content from the editor.
 
 ******************************************************************************/
 
-static ERR SCINTILLA_Clear(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_Clear(extScintilla *Self)
 {
    pf::Log log;
 
@@ -577,7 +577,7 @@ Disable: Disables the target #Surface.
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_Disable(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_Disable(extScintilla *Self)
 {
    Self->Flags |= SCIF::DISABLED;
    QueueAction(AC_Draw, Self->SurfaceID);
@@ -602,7 +602,7 @@ Enable: Enables the target #Surface.
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_Enable(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_Enable(extScintilla *Self)
 {
    Self->Flags &= ~SCIF::DISABLED;
    QueueAction(AC_Draw, Self->SurfaceID);
@@ -615,7 +615,7 @@ Focus: Focus on the Scintilla surface.
 -END-
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_Focus(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_Focus(extScintilla *Self)
 {
    return acFocus(Self->SurfaceID);
 }
@@ -761,7 +761,7 @@ static ERR SCINTILLA_GotoLine(extScintilla *Self, struct sciGotoLine *Args)
 
 //*****************************************************************************
 
-static ERR SCINTILLA_Hide(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_Hide(extScintilla *Self)
 {
    if (Self->Visible) {
       pf::Log log;
@@ -1001,7 +1001,7 @@ static ERR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args)
 
 static ERR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
-   if (NewObject(ID_FONT, NF::INTEGRAL, &Self->Font) IS ERR::Okay) {
+   if (NewObject(ID_FONT, NF::LOCAL, &Self->Font) IS ERR::Okay) {
       Self->Font->setFace("courier:10");
       Self->LeftMargin  = 4;
       Self->RightMargin = 30;
@@ -1218,7 +1218,7 @@ Private
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_ReportEvent(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_ReportEvent(extScintilla *Self)
 {
    if (Self->ReportEventFlags IS SEF::NIL) return ERR::Okay;
 
@@ -1286,7 +1286,7 @@ static ERR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
 
    log.branch("%s", Args->Face);
 
-   if ((Self->Font = objFont::create::integral(fl::Face(Args->Face)))) {
+   if ((Self->Font = objFont::create::local(fl::Face(Args->Face)))) {
       create_styled_fonts(Self);
       Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
       calc_longest_line(Self);
@@ -1371,7 +1371,7 @@ static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Args
 
 //********************************************************************************************************************
 
-static ERR SCINTILLA_Show(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_Show(extScintilla *Self)
 {
    if (!Self->Visible) {
       pf::Log log;
@@ -1399,7 +1399,7 @@ The position of the cursor is reset to the left margin as a result of calling th
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_TrimWhitespace(extScintilla *Self, APTR Void)
+static ERR SCINTILLA_TrimWhitespace(extScintilla *Self)
 {
    pf::Log log;
 
@@ -2107,21 +2107,21 @@ static void create_styled_fonts(extScintilla *Self)
    if (Self->ItalicFont) { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
    if (Self->BIFont)     { FreeResource(Self->BIFont); Self->BIFont = NULL; }
 
-   if ((Self->BoldFont = objFont::create::integral(
+   if ((Self->BoldFont = objFont::create::local(
          fl::Face(Self->Font->Face),
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold")))) {
    }
 
-   if ((Self->ItalicFont = objFont::create::integral(
+   if ((Self->ItalicFont = objFont::create::local(
          fl::Face(Self->Font->Face),
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("italics")))) {
    }
 
-   if ((Self->BIFont = objFont::create::integral(
+   if ((Self->BIFont = objFont::create::local(
          fl::Face(Self->Font->Face),
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
@@ -2210,7 +2210,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
    LONG size, len;
    ERR error = ERR::Okay;
 
-   if (auto file = objFile::create::integral(fl::Flags(FL::READ), fl::Path(Path))) {
+   if (auto file = objFile::create::local(fl::Flags(FL::READ), fl::Path(Path))) {
       if ((file->Flags & FL::STREAM) != FL::NIL) {
          if (flStartStream(file, Self->UID, FL::READ, 0) IS ERR::Okay) {
             acClear(Self);
@@ -2461,7 +2461,7 @@ static ERR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "Font",           FDF_INTEGRAL|FDF_R, NULL, NULL, ID_FONT },
+   { "Font",           FDF_LOCAL|FDF_R, NULL, NULL, ID_FONT },
    { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
    { "EventFlags",     FDF_LONG|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
    { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, ID_SURFACE },
@@ -2506,7 +2506,7 @@ static ERR create_scintilla(void)
       fl::ClassVersion(VER_SCINTILLA),
       fl::Name("Scintilla"),
       fl::Category(CCF::TOOL),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::Actions(clScintillaActions),
       fl::Methods(clScintillaMethods),
       fl::Fields(clFields),
@@ -2518,5 +2518,5 @@ static ERR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }

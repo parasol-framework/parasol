@@ -83,7 +83,7 @@ static void conv_l2r_row24(UBYTE *Row, LONG Width) {
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -94,7 +94,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clPicture)  { FreeResource(clPicture); clPicture = NULL; }
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
@@ -119,7 +119,7 @@ object is permitted.
 
 *********************************************************************************************************************/
 
-static ERR PICTURE_Activate(extPicture *Self, APTR Void)
+static ERR PICTURE_Activate(extPicture *Self)
 {
    pf::Log log;
 
@@ -139,7 +139,7 @@ static ERR PICTURE_Activate(extPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
+      if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
    Self->prvFile->seekStart(0);
@@ -201,7 +201,7 @@ static ERR PICTURE_Activate(extPicture *Self, APTR Void)
          bmp->Flags |= BMF::ALPHA_CHANNEL;
       }
       else {
-         if ((Self->Mask = objBitmap::create::integral(
+         if ((Self->Mask = objBitmap::create::local(
                fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
                fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
             Self->Flags |= PCF::MASK|PCF::ALPHA;
@@ -238,24 +238,24 @@ static ERR PICTURE_Activate(extPicture *Self, APTR Void)
       png_color_16p prgb;
       prgb = &(info_ptr->background);
       if (color_type IS PNG_COLOR_TYPE_PALETTE) {
-         bmp->BkgdRGB.Red   = bmp->Palette->Col[info_ptr->trans_alpha[0]].Red;
-         bmp->BkgdRGB.Green = bmp->Palette->Col[info_ptr->trans_alpha[0]].Green;
-         bmp->BkgdRGB.Blue  = bmp->Palette->Col[info_ptr->trans_alpha[0]].Blue;
-         bmp->BkgdRGB.Alpha = 255;
+         bmp->Bkgd.Red   = bmp->Palette->Col[info_ptr->trans_alpha[0]].Red;
+         bmp->Bkgd.Green = bmp->Palette->Col[info_ptr->trans_alpha[0]].Green;
+         bmp->Bkgd.Blue  = bmp->Palette->Col[info_ptr->trans_alpha[0]].Blue;
+         bmp->Bkgd.Alpha = 255;
       }
       else if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
-         bmp->BkgdRGB.Red   = prgb->gray;
-         bmp->BkgdRGB.Green = prgb->gray;
-         bmp->BkgdRGB.Blue  = prgb->gray;
-         bmp->BkgdRGB.Alpha = 255;
+         bmp->Bkgd.Red   = prgb->gray;
+         bmp->Bkgd.Green = prgb->gray;
+         bmp->Bkgd.Blue  = prgb->gray;
+         bmp->Bkgd.Alpha = 255;
       }
       else {
-         bmp->BkgdRGB.Red   = prgb->red;
-         bmp->BkgdRGB.Green = prgb->green;
-         bmp->BkgdRGB.Blue  = prgb->blue;
-         bmp->BkgdRGB.Alpha = 255;
+         bmp->Bkgd.Red   = prgb->red;
+         bmp->Bkgd.Green = prgb->green;
+         bmp->Bkgd.Blue  = prgb->blue;
+         bmp->Bkgd.Alpha = 255;
       }
-      log.trace("Background Colour: %d,%d,%d", bmp->BkgdRGB.Red, bmp->BkgdRGB.Green, bmp->BkgdRGB.Blue);
+      log.trace("Background Colour: %d,%d,%d", bmp->Bkgd.Red, bmp->Bkgd.Green, bmp->Bkgd.Blue);
    }
 
    // Set the bits per pixel value
@@ -323,7 +323,7 @@ exit:
 
 //********************************************************************************************************************
 
-static ERR PICTURE_Free(extPicture *Self, APTR Void)
+static ERR PICTURE_Free(extPicture *Self)
 {
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
@@ -353,7 +353,7 @@ with a registered data format, an error code of `ERR::NoSupport` is returned.  Y
 
 *********************************************************************************************************************/
 
-static ERR PICTURE_Init(extPicture *Self, APTR Void)
+static ERR PICTURE_Init(extPicture *Self)
 {
    pf::Log log;
 
@@ -378,7 +378,7 @@ static ERR PICTURE_Init(extPicture *Self, APTR Void)
             if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
 
             if ((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) {
-               if ((Self->Mask = objBitmap::create::integral(fl::Width(Self->Bitmap->Width),
+               if ((Self->Mask = objBitmap::create::local(fl::Width(Self->Bitmap->Width),
                      fl::Height(Self->Bitmap->Height),
                      fl::Flags(BMF::MASK),
                      fl::BitsPerPixel(((Self->Flags & PCF::ALPHA) != PCF::NIL) ? 8 : 1)))) {
@@ -432,13 +432,13 @@ static ERR PICTURE_Init(extPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR PICTURE_NewObject(extPicture *Self, APTR Void)
+static ERR PICTURE_NewObject(extPicture *Self)
 {
    pf::Log log;
 
    Self->Quality = 80; // 80% quality rating when saving
 
-   if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap) IS ERR::Okay) {
+   if (NewObject(ID_BITMAP, NF::LOCAL, &Self->Bitmap) IS ERR::Okay) {
       return ERR::Okay;
    }
    else return log.warning(ERR::NewObject);
@@ -446,7 +446,7 @@ static ERR PICTURE_NewObject(extPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR PICTURE_Query(extPicture *Self, APTR Void)
+static ERR PICTURE_Query(extPicture *Self)
 {
    pf::Log log;
    STRING path;
@@ -470,7 +470,7 @@ static ERR PICTURE_Query(extPicture *Self, APTR Void)
    if (!Self->prvFile) {
       if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
+      if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
    Self->prvFile->seekStart(0);
@@ -536,7 +536,7 @@ Refresh: Refreshes a loaded picture - draws the next frame.
 -END-
 *********************************************************************************************************************/
 
-static ERR PICTURE_Refresh(extPicture *Self, APTR Void)
+static ERR PICTURE_Refresh(extPicture *Self)
 {
    return ERR::Okay;
 }
@@ -629,25 +629,25 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    // Set the background colour
 
-   if (bmp->BkgdRGB.Alpha) {
+   if (bmp->Bkgd.Alpha) {
       png_color_16 rgb;
       if (bmp->AmtColours < 256) rgb.index = bmp->BkgdIndex;
       else rgb.index = 0;
-      rgb.red   = bmp->BkgdRGB.Red;
-      rgb.green = bmp->BkgdRGB.Green;
-      rgb.blue  = bmp->BkgdRGB.Blue;
+      rgb.red   = bmp->Bkgd.Red;
+      rgb.green = bmp->Bkgd.Green;
+      rgb.blue  = bmp->Bkgd.Blue;
       png_set_bKGD(write_ptr, info_ptr, &rgb);
    }
 
    // Set the transparent colour
 
-   if (bmp->TransRGB.Alpha) {
+   if (bmp->TransColour.Alpha) {
       png_color_16 rgb;
       if (bmp->AmtColours < 256) rgb.index = bmp->TransIndex;
       else rgb.index = 0;
-      rgb.red   = bmp->TransRGB.Red;
-      rgb.green = bmp->TransRGB.Green;
-      rgb.blue  = bmp->TransRGB.Blue;
+      rgb.red   = bmp->TransColour.Red;
+      rgb.green = bmp->TransColour.Green;
+      rgb.blue  = bmp->TransColour.Blue;
       png_set_tRNS(write_ptr, info_ptr, &rgb.index, 1, &rgb);
    }
 
@@ -1281,8 +1281,8 @@ exit:
 #include "picture_def.c"
 
 static const FieldArray clFields[] = {
-   { "Bitmap",        FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
-   { "Mask",          FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Bitmap",        FDF_LOCAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Mask",          FDF_LOCAL|FDF_R, NULL, NULL, ID_BITMAP },
    { "Flags",         FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clPictureFlags },
    { "DisplayHeight", FDF_LONG|FDF_RW },
    { "DisplayWidth",  FDF_LONG|FDF_RW },
@@ -1308,7 +1308,7 @@ static ERR create_picture_class(void)
       fl::ClassVersion(VER_PICTURE),
       fl::Name("Picture"),
       fl::Category(CCF::GRAPHICS),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::FileExtension("*.png"),
       fl::FileDescription("PNG Picture"),
       fl::FileHeader("[0:$89504e470d0a1a0a]"),
@@ -1322,6 +1322,6 @@ static ERR create_picture_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_picture_module() { return &ModHeader; }
 

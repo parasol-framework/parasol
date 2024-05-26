@@ -217,7 +217,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR REMAPFX_Free(extRemapFX *Self, APTR Void)
+static ERR REMAPFX_Free(extRemapFX *Self)
 {
    Self->~extRemapFX();
    return ERR::Okay;
@@ -225,7 +225,7 @@ static ERR REMAPFX_Free(extRemapFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR REMAPFX_NewObject(extRemapFX *Self, APTR Void)
+static ERR REMAPFX_NewObject(extRemapFX *Self)
 {
    new (Self) extRemapFX;
    return ERR::Okay;

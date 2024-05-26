@@ -47,9 +47,9 @@ its low-level mixer capabilities only if your needs are not met by the @Sound cl
 #include <sstream>
 #include <algorithm>
 
-static ERR CMDInit(OBJECTPTR, struct CoreBase *);
-static ERR CMDExpunge(void);
-static ERR CMDOpen(OBJECTPTR);
+static ERR MODInit(OBJECTPTR, struct CoreBase *);
+static ERR MODExpunge(void);
+static ERR MODOpen(OBJECTPTR);
 
 #include "module_def.c"
 
@@ -99,7 +99,7 @@ static const WORD glAlsaConvert[6] = {
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log;
 
@@ -126,13 +126,13 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR::Okay;
 }
 
-static ERR CMDOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    for (auto& [id, handle] : glSoundChannels) {
       // NB: Most Audio objects will be disposed of prior to this module being expunged.
@@ -165,5 +165,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

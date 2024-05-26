@@ -61,10 +61,10 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-static ERR FLUID_Activate(objScript *, APTR);
+static ERR FLUID_Activate(objScript *);
 static ERR FLUID_DataFeed(objScript *, struct acDataFeed *);
-static ERR FLUID_Free(objScript *, APTR);
-static ERR FLUID_Init(objScript *, APTR);
+static ERR FLUID_Free(objScript *);
+static ERR FLUID_Init(objScript *);
 static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
@@ -272,7 +272,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 
 //********************************************************************************************************************
 
-static ERR FLUID_Activate(objScript *Self, APTR Void)
+static ERR FLUID_Activate(objScript *Self)
 {
    pf::Log log;
 
@@ -532,7 +532,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
-               if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
+               if (auto xml = objXML::create::local(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
                   if (!xml->Tags.empty()) {
@@ -611,7 +611,7 @@ static ERR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 
 //********************************************************************************************************************
 
-static ERR FLUID_Free(objScript *Self, APTR Void)
+static ERR FLUID_Free(objScript *Self)
 {
    free_all(Self);
    return ERR::Okay;
@@ -647,7 +647,7 @@ static ERR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 
 //********************************************************************************************************************
 
-static ERR FLUID_Init(objScript *Self, APTR Void)
+static ERR FLUID_Init(objScript *Self)
 {
    pf::Log log;
 
@@ -671,7 +671,7 @@ static ERR FLUID_Init(objScript *Self, APTR Void)
    if ((!Self->String) and (Self->Path)) {
       LARGE src_ts, src_size;
 
-      if ((src_file = objFile::create::integral(fl::Path(Self->Path)))) {
+      if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
          error = src_file->get(FID_TimeStamp, &src_ts);
          if (error IS ERR::Okay) error = src_file->get(FID_Size, &src_size);
       }

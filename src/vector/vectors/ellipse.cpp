@@ -117,7 +117,7 @@ static ERR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *Arg
 
 //********************************************************************************************************************
 
-static ERR ELLIPSE_NewObject(extVectorEllipse *Self, APTR Void)
+static ERR ELLIPSE_NewObject(extVectorEllipse *Self)
 {
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_ellipse;
    return ERR::Okay;

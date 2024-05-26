@@ -942,7 +942,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
       <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a <code>Query()</code> on the bitmap.</const>
-      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the <class name="Bitmap" field="TransIndex">Bitmap.TransIndex</class> or <class name="Bitmap" field="TransRGB">Bitmap.TransRGB</class> is defined, and support exists in functions such as <function module="Display">CopyArea</function>.</const>
+      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the <class name="Bitmap" field="TransIndex">Bitmap.TransIndex</class> or <class name="Bitmap" field="TransColour">Bitmap.TransColour</class> is defined, and support exists in functions such as <function module="Display">CopyArea</function>.</const>
       <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>
     </constants>
 

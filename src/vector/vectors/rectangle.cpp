@@ -197,7 +197,7 @@ static ERR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint 
 
 //********************************************************************************************************************
 
-static ERR RECTANGLE_NewObject(extVectorRectangle *Self, APTR Void)
+static ERR RECTANGLE_NewObject(extVectorRectangle *Self)
 {
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_rectangle;
    return ERR::Okay;

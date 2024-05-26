@@ -733,7 +733,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       objBitmap *bmpBkgd = NULL;
       objBitmap *bmpSave = NULL;
       if (shape->EnableBkgd) {
-         if ((bmpBkgd = objBitmap::create::integral(fl::Name("scene_temp_bkgd"),
+         if ((bmpBkgd = objBitmap::create::local(fl::Name("scene_temp_bkgd"),
                fl::Width(mBitmap->Width),
                fl::Height(mBitmap->Height),
                fl::BitsPerPixel(32),

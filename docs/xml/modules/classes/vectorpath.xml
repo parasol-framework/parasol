@@ -163,8 +163,8 @@ Z: Close Path
   </fields>
   <structs>
     <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="PE" lookup="PE">The command type (PE value)</field>
-      <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.</field>
+      <field name="Type" type="PE" lookup="PE">The command type</field>
+      <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when <code>TRUE</code>.</field>
       <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
       <field name="Pad1" type="UBYTE">Private</field>
       <field name="X" type="DOUBLE">The targeted X coordinate (absolute or scaled) for the command</field>

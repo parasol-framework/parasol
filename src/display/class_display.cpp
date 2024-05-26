@@ -141,7 +141,7 @@ Activate: Activating a display has the same effect as calling the Show action.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Activate(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Activate(extDisplay *Self)
 {
    return acShow(Self);
 }
@@ -155,7 +155,7 @@ Private
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_CheckXWindow(extDisplay *Self, APTR Void)
+static ERR DISPLAY_CheckXWindow(extDisplay *Self)
 {
 #ifdef __xwindows__
 
@@ -184,7 +184,7 @@ Clear: Clears a display's image data and hardware buffers (e.g. OpenGL)
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Clear(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Clear(extDisplay *Self)
 {
 #ifdef _GLES_
    if (!lock_graphics_active(__func__)) {
@@ -281,7 +281,7 @@ NoSupport: The display driver does not support DPMS.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Disable(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Disable(extDisplay *Self)
 {
    return ERR::NoSupport;
 }
@@ -292,7 +292,7 @@ Enable: Restores the screen display from power saving mode.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Enable(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Enable(extDisplay *Self)
 {
    return ERR::NoSupport;
 }
@@ -302,7 +302,7 @@ static ERR DISPLAY_Enable(extDisplay *Self, APTR Void)
 // redraw is required.  It is the responsibility of the program that created the Display object to subscribe to the
 // Draw action and act on it.
 
-static ERR DISPLAY_Draw(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Draw(extDisplay *Self)
 {
    return ERR::Okay;
 }
@@ -313,7 +313,7 @@ Flush: Flush pending graphics operations to the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Flush(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Flush(extDisplay *Self)
 {
 #ifdef __xwindows__
    XSync(XDisplay, False);
@@ -328,7 +328,7 @@ static ERR DISPLAY_Flush(extDisplay *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR DISPLAY_Focus(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Focus(extDisplay *Self)
 {
    pf::Log log;
 
@@ -343,7 +343,7 @@ static ERR DISPLAY_Focus(extDisplay *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR DISPLAY_Free(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Free(extDisplay *Self)
 {
    pf::Log log;
 
@@ -483,7 +483,7 @@ displays available then the user's viewport will be blank after calling this act
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Hide(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Hide(extDisplay *Self)
 {
    pf::Log log;
 
@@ -517,7 +517,7 @@ static ERR DISPLAY_Hide(extDisplay *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR DISPLAY_Init(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Init(extDisplay *Self)
 {
    pf::Log log;
 
@@ -913,7 +913,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_Minimise(extDisplay *Self, APTR Void)
+static ERR DISPLAY_Minimise(extDisplay *Self)
 {
    pf::Log log;
    log.branch();
@@ -1001,7 +1001,7 @@ MoveToBack: Move the display to the back of the display list.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_MoveToBack(extDisplay *Self, APTR Void)
+static ERR DISPLAY_MoveToBack(extDisplay *Self)
 {
    pf::Log log;
    log.branch("%s", Self->Name);
@@ -1021,7 +1021,7 @@ MoveToFront: Move the display to the front of the display list.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
+static ERR DISPLAY_MoveToFront(extDisplay *Self)
 {
    pf::Log log;
    log.branch("%s", Self->Name);
@@ -1092,11 +1092,11 @@ static ERR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 
 //********************************************************************************************************************
 
-static ERR DISPLAY_NewObject(extDisplay *Self, APTR Void)
+static ERR DISPLAY_NewObject(extDisplay *Self)
 {
    new (Self) extDisplay;
 
-   if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(ID_BITMAP, NF::LOCAL, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
 
    OBJECTID id;
    if (FindObject("SystemVideo", 0, FOF::NIL, &id) != ERR::Okay) SetName(Self->Bitmap, "SystemVideo");
@@ -1301,7 +1301,7 @@ SaveSettings: Saves the current display settings as the default.
 -END-
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
+static ERR DISPLAY_SaveSettings(extDisplay *Self)
 {
    pf::Log log;
 
@@ -1593,7 +1593,7 @@ static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
 -METHOD-
 SetGammaLinear: Sets the display gamma level using a linear algorithm.
 
-Call SetGammaLinear() to update a target display's gamma values with a linear algorithm that takes input from `Red`, 
+Call SetGammaLinear() to update a target display's gamma values with a linear algorithm that takes input from `Red`,
 `Green` and `Blue` parameters provided by the client.
 
 -INPUT-
@@ -1796,7 +1796,7 @@ The `VISIBLE` flag in the #Flags field will be set if the Show operation is succ
 
 *********************************************************************************************************************/
 
-ERR DISPLAY_Show(extDisplay *Self, APTR Void)
+ERR DISPLAY_Show(extDisplay *Self)
 {
    pf::Log log;
 
@@ -1941,7 +1941,7 @@ NoSupport
 
 *********************************************************************************************************************/
 
-ERR DISPLAY_WaitVBL(extDisplay *Self, APTR Void)
+ERR DISPLAY_WaitVBL(extDisplay *Self)
 {
    return ERR::NoSupport;
 }
@@ -1966,7 +1966,7 @@ hardware scrolling, call the #Move() action on the Bitmap in order to change thi
 -FIELD-
 BmpY: The vertical coordinate of the Bitmap within a display.
 
-This field defines the vertical offset for the #Bitmap, which is positioned 'behind' the display.  To achieve hardware 
+This field defines the vertical offset for the #Bitmap, which is positioned 'behind' the display.  To achieve hardware
 scrolling, you will need to call the Move() action on the #Bitmap in order to change this value and update the display.
 
 -FIELD-
@@ -1993,7 +1993,7 @@ static ERR GET_CertificationDate(extDisplay *Self, STRING *Value)
 -FIELD-
 Chipset: String describing the graphics chipset.
 
-The string in this field describes the graphic card's chipset.  If this information is not retrievable, a `NULL` 
+The string in this field describes the graphic card's chipset.  If this information is not retrievable, a `NULL`
 pointer is returned.
 
 *********************************************************************************************************************/
@@ -2865,7 +2865,7 @@ void alloc_display_buffer(extDisplay *Self)
 
    if (Self->BufferID) { FreeResource(Self->BufferID); Self->BufferID = 0; }
 
-   if (auto buffer = objBitmap::create::integral(
+   if (auto buffer = objBitmap::create::local(
          fl::Name("SystemBuffer"),
          fl::BitsPerPixel(Self->Bitmap->BitsPerPixel),
          fl::BytesPerPixel(Self->Bitmap->BytesPerPixel),
@@ -2888,7 +2888,7 @@ void alloc_display_buffer(extDisplay *Self)
 
 static const FieldArray DisplayFields[] = {
    { "RefreshRate",    FDF_DOUBLE|FDF_RW, NULL, SET_RefreshRate },
-   { "Bitmap",         FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Bitmap",         FDF_LOCAL|FDF_R, NULL, NULL, ID_BITMAP },
    { "Flags",          FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clDisplayFlags },
    { "Width",          FDF_LONG|FDF_RW, NULL, SET_Width },
    { "Height",         FDF_LONG|FDF_RW, NULL, SET_Height },
@@ -2946,7 +2946,7 @@ ERR create_display_class(void)
       fl::ClassVersion(VER_DISPLAY),
       fl::Name("Display"),
       fl::Category(CCF::GRAPHICS),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::Actions(clDisplayActions),
       fl::Methods(clDisplayMethods),
       fl::Fields(DisplayFields),

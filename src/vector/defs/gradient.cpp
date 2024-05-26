@@ -138,7 +138,7 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
 
 //********************************************************************************************************************
 
-static ERR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
+static ERR VECTORGRADIENT_Free(extVectorGradient *Self)
 {
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
@@ -156,7 +156,7 @@ static ERR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
+static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 {
    pf::Log log;
 
@@ -180,7 +180,7 @@ static ERR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
+static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
 {
    Self->SpreadMethod = VSPREAD::PAD;
    Self->Type    = VGT::LINEAR;

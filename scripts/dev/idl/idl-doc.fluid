@@ -253,7 +253,7 @@ end
 function substituteReferences(String, Class)
    -- Substitute struct insertion requests
 
-   String = String:gsub('!([A-Z]%w*)([\n%s])', function(Lookup, Whitespace)
+   String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
       if (glStructures[Lookup]) then
          if (glStructures[Lookup].restrict == 'c') then return Lookup .. Whitespace end
 

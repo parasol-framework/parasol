@@ -151,7 +151,7 @@
     <field>
       <name>Path</name>
       <comment>A path referring to an SVG file.</comment>
-      <access read="G" write="S">Get/Set</access>
+      <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
 <p>SVG data can be loaded from a file source by setting the Path field to an SVG file.</p>

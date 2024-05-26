@@ -462,7 +462,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    }
 
    if (!Self->Templates) {
-      if (!(Self->Templates = objXML::create::integral(fl::Name("xmlTemplates"), fl::Statement(glDefaultStyles),
+      if (!(Self->Templates = objXML::create::local(fl::Name("xmlTemplates"), fl::Statement(glDefaultStyles),
          fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) return ERR::CreateObject;
 
       Self->TemplatesModified = Self->Templates->Modified;

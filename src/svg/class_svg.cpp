@@ -40,7 +40,7 @@ The client can hook into the animation cycle by setting the #FrameCallback with 
 -END-
 *********************************************************************************************************************/
 
-static ERR SVG_Activate(extSVG *Self, APTR Void)
+static ERR SVG_Activate(extSVG *Self)
 {
    if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
@@ -59,7 +59,7 @@ Deactivate: Stops all playback of SVG animations.
 -END-
 *********************************************************************************************************************/
 
-static ERR SVG_Deactivate(extSVG *Self, APTR Void)
+static ERR SVG_Deactivate(extSVG *Self)
 {
    if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = 0; }
    return ERR::Okay;
@@ -84,7 +84,7 @@ static ERR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 
 //********************************************************************************************************************
 
-static ERR SVG_Free(extSVG *Self, APTR Void)
+static ERR SVG_Free(extSVG *Self)
 {
    Self->~extSVG();
 
@@ -123,10 +123,10 @@ generate the content in a local #Scene object, or alternatively the content can 
 -END-
 *********************************************************************************************************************/
 
-static ERR SVG_Init(extSVG *Self, APTR Void)
+static ERR SVG_Init(extSVG *Self)
 {
    if (!Self->Target) {
-      if ((Self->Target = objVectorScene::create::integral())) {
+      if ((Self->Target = objVectorScene::create::local())) {
          Self->Scene = (objVectorScene *)Self->Target;
       }
       else return ERR::NewObject;
@@ -140,7 +140,7 @@ static ERR SVG_Init(extSVG *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SVG_NewObject(extSVG *Self, APTR Void)
+static ERR SVG_NewObject(extSVG *Self)
 {
    #ifdef __ANDROID__
       Self->FrameRate = 30; // Choose a lower frame rate for Android devices, so as to minimise power consumption.
@@ -634,7 +634,7 @@ static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 
 static const FieldArray clSVGFields[] = {
    { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
-   { "Path",      FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Path",      FDF_STRING|FDF_RW, NULL, SET_Path },
    { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
    { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
    { "Frame",     FDF_LONG|FDF_RW, NULL, NULL },
@@ -649,6 +649,8 @@ static const FieldArray clSVGFields[] = {
    END_FIELD
 };
 
+//********************************************************************************************************************
+
 static ERR init_svg(void)
 {
    clSVG = objMetaClass::create::global(
@@ -658,7 +660,7 @@ static ERR init_svg(void)
       fl::Actions(clSVGActions),
       fl::Methods(clSVGMethods),
       fl::Fields(clSVGFields),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::Size(sizeof(extSVG)),
       fl::Path(MOD_PATH));
 

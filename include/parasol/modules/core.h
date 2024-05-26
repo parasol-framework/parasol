@@ -388,30 +388,29 @@ enum class JET : LONG {
 
 #define FD_DOUBLERESULT 0x80000100
 #define FD_PTR_DOUBLERESULT 0x88000100
-#define FD_VOID 0x00000000
 #define FD_VOLATILE 0x00000000
+#define FD_VOID 0x00000000
 #define FD_OBJECT 0x00000001
-#define FD_INTEGRAL 0x00000002
-#define FD_REQUIRED 0x00000004
+#define FD_LOCAL 0x00000002
 #define FD_VIRTUAL 0x00000008
 #define FD_STRUCT 0x00000010
 #define FD_ALLOC 0x00000020
 #define FD_FLAGS 0x00000040
 #define FD_VARTAGS 0x00000040
-#define FD_BUFSIZE 0x00000080
 #define FD_LOOKUP 0x00000080
-#define FD_ARRAYSIZE 0x00000080
 #define FD_PTRSIZE 0x00000080
+#define FD_BUFSIZE 0x00000080
+#define FD_ARRAYSIZE 0x00000080
 #define FD_R 0x00000100
 #define FD_READ 0x00000100
 #define FD_RESULT 0x00000100
+#define FD_BUFFER 0x00000200
 #define FD_W 0x00000200
 #define FD_WRITE 0x00000200
-#define FD_BUFFER 0x00000200
 #define FD_RW 0x00000300
+#define FD_INIT 0x00000400
 #define FD_I 0x00000400
 #define FD_TAGS 0x00000400
-#define FD_INIT 0x00000400
 #define FD_RI 0x00000500
 #define FD_ERROR 0x00000800
 #define FD_ARRAY 0x00001000
@@ -425,15 +424,15 @@ enum class JET : LONG {
 #define FD_RGB 0x00080000
 #define FD_SCALED 0x00200000
 #define FD_WORD 0x00400000
-#define FD_STR 0x00800000
 #define FD_STRING 0x00800000
+#define FD_STR 0x00800000
 #define FD_STRRESULT 0x00800100
 #define FD_BYTE 0x01000000
 #define FD_FUNCTION 0x02000000
 #define FD_LARGE 0x04000000
 #define FD_LARGERESULT 0x04000100
-#define FD_PTR 0x08000000
 #define FD_POINTER 0x08000000
+#define FD_PTR 0x08000000
 #define FD_OBJECTPTR 0x08000001
 #define FD_PTRRESULT 0x08000100
 #define FD_PTRBUFFER 0x08000200
@@ -1009,7 +1008,7 @@ enum class NF : ULONG {
    PRIVATE = 0x00000000,
    UNTRACKED = 0x00000001,
    INITIALISED = 0x00000002,
-   INTEGRAL = 0x00000004,
+   LOCAL = 0x00000004,
    FREE_ON_UNLOCK = 0x00000008,
    FREE = 0x00000010,
    TIMER_SUB = 0x00000020,
@@ -1102,7 +1101,7 @@ enum class RP : LONG {
 
 enum class CLF : ULONG {
    NIL = 0,
-   PROMOTE_INTEGRAL = 0x00000001,
+   INHERIT_LOCAL = 0x00000001,
    NO_OWNERSHIP = 0x00000002,
 };
 
@@ -1617,16 +1616,16 @@ struct OpenInfo {
 #define FDF_VARIABLE   FD_VARIABLE
 #define FDF_SYNONYM    FD_SYNONYM
 
-#define FDF_UNSIGNED    (FD_UNSIGNED)
-#define FDF_FUNCTION    (FD_FUNCTION)           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
+#define FDF_UNSIGNED    FD_UNSIGNED
+#define FDF_FUNCTION    FD_FUNCTION           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
-#define FDF_STRUCT      (FD_STRUCT)
-#define FDF_RESOURCE    (FD_RESOURCE)
+#define FDF_STRUCT      FD_STRUCT
+#define FDF_RESOURCE    FD_RESOURCE
 #define FDF_OBJECT      (FD_POINTER|FD_OBJECT)   // Field refers to another object
 #define FDF_OBJECTID    (FD_LONG|FD_OBJECT)      // Field refers to another object by ID
-#define FDF_INTEGRAL    (FD_POINTER|FD_INTEGRAL) // Field refers to an integral object
+#define FDF_LOCAL       (FD_POINTER|FD_LOCAL)    // Field refers to a local object
 #define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
-#define FDF_STR         (FDF_STRING)
+#define FDF_STR         FDF_STRING
 #define FDF_SCALED      FD_SCALED
 #define FDF_FLAGS       FD_FLAGS                // Field contains flags
 #define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
@@ -1636,13 +1635,12 @@ struct OpenInfo {
 #define FDF_INIT        FD_INIT                 // Field can only be written prior to Init()
 #define FDF_SYSTEM      FD_SYSTEM
 #define FDF_ERROR       (FD_LONG|FD_ERROR)
-#define FDF_REQUIRED    FD_REQUIRED
 #define FDF_RGB         (FD_RGB|FD_BYTE|FD_ARRAY)
-#define FDF_R           (FD_READ)
-#define FDF_W           (FD_WRITE)
+#define FDF_R           FD_READ
+#define FDF_W           FD_WRITE
 #define FDF_RW          (FD_READ|FD_WRITE)
 #define FDF_RI          (FD_READ|FD_INIT)
-#define FDF_I           (FD_INIT)
+#define FDF_I           FD_INIT
 #define FDF_VIRTUAL     FD_VIRTUAL
 #define FDF_LONGFLAGS   (FDF_LONG|FDF_FLAGS)
 #define FDF_FIELDTYPES  (FD_LONG|FD_DOUBLE|FD_LARGE|FD_POINTER|FD_VARIABLE|FD_BYTE|FD_ARRAY|FD_FUNCTION)
@@ -1845,7 +1843,7 @@ struct Message {
    LARGE Time;    // A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
    LONG  UID;     // A unique identifier automatically created by ~Core.SendMessage().
    LONG  Type;    // A message type identifier as defined by the client.
-   LONG  Size;    // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.
+   LONG  Size;    // The byte-size of the message data, or zero if no data is provided.
 };
 
 typedef struct MemInfo {
@@ -1908,7 +1906,7 @@ struct FileInfo {
    LARGE  Size;               // The size of the file's content.
    LARGE  TimeStamp;          // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
-   STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
+   STRING Name;               // The name of the file.
    RDF    Flags;              // Additional flags to describe the file.
    PERMIT Permissions;        // Standard permission flags.
    LONG   UserID;             // User  ID (Unix systems only).
@@ -2893,17 +2891,16 @@ class Create {
          else return NULL;
       }
 
-      // Return an unscoped integral object (suitable for class allocations only).  This marks the object as
-      // being 'hidden' from the client unless explicitly makes it available.
+      // Return an unscoped local object (suitable for class allocations only).
 
-      template <typename... Args> static T * integral(Args&&... Fields) {
-         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
+      template <typename... Args> static T * local(Args&&... Fields) {
+         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::LOCAL);
          if (object.ok()) return *object;
          else return NULL;
       }
 
-      inline static T * integral(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields, NF::INTEGRAL);
+      inline static T * local(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields, NF::LOCAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -2983,7 +2980,7 @@ class Create {
       ~Create() {
          if (obj) {
             if (obj->initialised()) {
-               if ((obj->Object::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+               if ((obj->Object::Flags & (NF::UNTRACKED|NF::LOCAL)) != NF::NIL)  {
                   return; // Detected a successfully created unscoped object
                }
             }
@@ -3347,7 +3344,7 @@ class objStorageDevice : public Object {
    template <class T> inline ERR setVolume(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
-      return field->WriteValue(target, field, 0x08800504, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
 };
@@ -3980,6 +3977,10 @@ inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
    Result = args.Error;
    return(error);
 }
+struct ActionEntry {
+   ERR (*PerformAction)(OBJECTPTR, APTR);     // Pointer to a custom action hook.
+};
+
 // Task class definition
 
 #define VER_TASK (1.000000)

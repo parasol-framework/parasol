@@ -150,7 +150,7 @@ belong to the document object.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Activate(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Activate(extDocument *Self)
 {
    pf::Log log;
    log.branch();
@@ -263,7 +263,7 @@ document.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Clear(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Clear(extDocument *Self)
 {
    pf::Log log;
 
@@ -414,7 +414,7 @@ Disable: Disables user interactivity.
 -END-
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Disable(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Disable(extDocument *Self)
 {
    Self->Flags |= DCF::DISABLED;
    return ERR::Okay;
@@ -426,7 +426,7 @@ Draw: Force a page layout update (if changes are pending) and redraw to the disp
 -END-
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Draw(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Draw(extDocument *Self)
 {
    if (Self->Viewport) {
       if (Self->Processing) Self->Viewport->draw();
@@ -480,7 +480,7 @@ Enable: Enables object functionality.
 -END-
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Enable(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Enable(extDocument *Self)
 {
    Self->Flags &= ~DCF::DISABLED;
    return ERR::Okay;
@@ -592,7 +592,7 @@ static ERR DOCUMENT_Focus(extDocument *Self, APTR Args)
 
 //********************************************************************************************************************
 
-static ERR DOCUMENT_Free(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Free(extDocument *Self)
 {
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
@@ -643,7 +643,7 @@ static ERR DOCUMENT_GetKey(extDocument *Self, struct acGetKey *Args)
 
 //********************************************************************************************************************
 
-static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Init(extDocument *Self)
 {
    pf::Log log;
 
@@ -680,7 +680,7 @@ static ERR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Allocate the view and page areas
 
-   //if ((Self->Scene = objVectorScene::create::integral(
+   //if ((Self->Scene = objVectorScene::create::local(
    //      fl::Name("docScene"),
    //      fl::Owner(Self->Viewport->UID)))) {
    //}
@@ -934,7 +934,7 @@ static ERR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
 //********************************************************************************************************************
 
-static ERR DOCUMENT_NewObject(extDocument *Self, APTR Void)
+static ERR DOCUMENT_NewObject(extDocument *Self)
 {
    new (Self) extDocument;
    unload_doc(Self);
@@ -1013,7 +1013,7 @@ Refresh: Reloads the document data from the original source location.
 -END-
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Refresh(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Refresh(extDocument *Self)
 {
    pf::Log log;
 

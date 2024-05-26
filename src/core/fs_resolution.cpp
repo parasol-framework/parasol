@@ -29,11 +29,11 @@ When checking for the location of a file, ResolvePath() will only accept an exac
 treated as an approximation (i.e. file extensions can be ignored) then use the `RSF::APPROXIMATE` flag to tell the
 function to ignore extensions for the purpose of file name matching.
 
-To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the PATH environment
-variable to resolve the file name specified in the Path parameter.
+To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH` environment
+variable to resolve the file name specified in the `Path` parameter.
 
-The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is
-no longer required with FreeResource().
+The resolved path will be returned in the `Result` parameter as an allocated memory block.  It must be removed once it is
+no longer required with ~FreeResource().
 
 <types lookup="RSF"/>
 
@@ -43,7 +43,7 @@ virtual driver does not support this check.  This is common when working with ne
 -INPUT-
 cstr Path: The path to be resolved.
 int(RSF) Flags: Optional flags.
-!str Result: Must point to an empty STRING variable so that the resolved path can be stored.  If NULL, ResolvePath() will work as normal and return a valid error code without the result string.
+!str Result: Must point to an empty `STRING` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
 
 -ERRORS-
 Okay:            The path was resolved.
@@ -51,7 +51,7 @@ NullArgs:        Invalid arguments were specified.
 AllocMemory:     The result string could not be allocated.
 LockFailed:
 Search:          The given volume does not exist.
-FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use NO_FILE_CHECK to avoid this error code).
+FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
 Loop:            The volume refers back to itself.
 
 -END-

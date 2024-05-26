@@ -94,19 +94,19 @@ static LONG glProcessBreak = 0;
 
 static ERR GET_LaunchPath(extTask *, STRING *);
 
-static ERR TASK_Activate(extTask *, APTR);
-static ERR TASK_Free(extTask *, APTR);
+static ERR TASK_Activate(extTask *);
+static ERR TASK_Free(extTask *);
 static ERR TASK_GetEnv(extTask *, struct taskGetEnv *);
 static ERR TASK_GetKey(extTask *, struct acGetKey *);
-static ERR TASK_Init(extTask *, APTR);
-static ERR TASK_NewObject(extTask *, APTR);
+static ERR TASK_Init(extTask *);
+static ERR TASK_NewObject(extTask *);
 static ERR TASK_SetEnv(extTask *, struct taskSetEnv *);
 static ERR TASK_SetKey(extTask *, struct acSetKey *);
 static ERR TASK_Write(extTask *, struct acWrite *);
 
 static ERR TASK_AddArgument(extTask *, struct taskAddArgument *);
-static ERR TASK_Expunge(extTask *, APTR);
-static ERR TASK_Quit(extTask *, APTR);
+static ERR TASK_Expunge(extTask *);
+static ERR TASK_Quit(extTask *);
 
 static const FieldDef clFlags[] = {
    { "Foreign",    TSF::FOREIGN },
@@ -607,7 +607,7 @@ TimeOut:     Can be returned if the `WAIT` flag is used.  Indicates that the pro
 
 *********************************************************************************************************************/
 
-static ERR TASK_Activate(extTask *Self, APTR Void)
+static ERR TASK_Activate(extTask *Self)
 {
    pf::Log log;
    LONG i, j, k;
@@ -1133,7 +1133,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR TASK_Expunge(extTask *Self, APTR Void)
+static ERR TASK_Expunge(extTask *Self)
 {
    Expunge(false);
    return ERR::Okay;
@@ -1141,7 +1141,7 @@ static ERR TASK_Expunge(extTask *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TASK_Free(extTask *Self, APTR Void)
+static ERR TASK_Free(extTask *Self)
 {
    pf::Log log;
 
@@ -1357,7 +1357,7 @@ static ERR TASK_GetKey(extTask *Self, struct acGetKey *Args)
 
 //********************************************************************************************************************
 
-static ERR TASK_Init(extTask *Self, APTR Void)
+static ERR TASK_Init(extTask *Self)
 {
    pf::Log log;
    LONG len;
@@ -1464,7 +1464,7 @@ static ERR TASK_Init(extTask *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TASK_NewObject(extTask *Self, APTR Void)
+static ERR TASK_NewObject(extTask *Self)
 {
    new (Self) extTask;
 #ifdef __unix__
@@ -1490,7 +1490,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR TASK_Quit(extTask *Self, APTR Void)
+static ERR TASK_Quit(extTask *Self)
 {
    pf::Log log;
 

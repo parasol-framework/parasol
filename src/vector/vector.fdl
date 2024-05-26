@@ -4,12 +4,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
+    loadFile(glPath .. 'common.fdl')
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
   flags("ARC", { comment="Options for drawing arcs." },
-    "LARGE",
-    "SWEEP")
+    "LARGE: The arc will take the longest available drawing path rather than the shortest.",
+    "SWEEP: Inverts the default behaviour in generating the arc path (go clockwise).")
 
   flags("VCLF", { comment="Options for VectorClip." },
     "APPLY_FILLS: Apply fill instructions when drawing the clipping path(s).",
@@ -22,7 +23,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
 
   enum("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
      "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
-     "NONE: Scale X/Y values on a 1:1 basis, in relation to the diagonal of the parent viewport.")
+     "NONE: Scale X/Y values on a `1:1` basis, in relation to the diagonal of the parent viewport.")
 
   enum("LS", { type="int", comment="Light source identifiers." },
     "DISTANT: Distant light source.",
@@ -90,7 +91,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "MITER_REVERT",
     "ROUND: The join is rounded.",
     "BEVEL: The join is blunted, eliminating overly sharp edges.",
-    "MITER_ROUND: Default to MITER, but switch to ROUND if the miter limit is exceeded.",
+    "MITER_ROUND: Default to `MITER`, but switch to `ROUND` if the miter limit is exceeded.",
     "INHERIT: Inherit the join option from the parent.")
 
   enum("VLC", { type="int", start=1, comment="Line-cap options." }, // Match to agg::line_cap_e
@@ -145,7 +146,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "INVERT_RGB",
     "INVERT",
     "CONTRAST",
-    "DODGE: Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.",
+    "DODGE: Gives a brighter result than `SCREEN` by decreasing the contrast between the input and mix colours.",
     "BURN",
     "HARD_LIGHT",
     "SOFT_LIGHT",
@@ -168,8 +169,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "RASTER: Rasterise glyphs to a texture cache for very fast rendering.  This feature is not compatible with scalable graphics conventions.")
 
   flags("VMF", { comment="Morph flags" },
-    "STRETCH: Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",
-    "AUTO_SPACING: Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.",
+    "STRETCH: Applicable when used on @VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",
+    "AUTO_SPACING: Applicable when used on @VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.",
     "X_MIN: Align the source so that it is morphed along the left of the target path.",
     "X_MID: Align the source so that it is morphed along the middle of the target path.",
     "X_MAX: Align the source so that it is morphed along the right of the target path.",
@@ -246,22 +247,22 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "NOISE: Use the fractal noise function.")
 
   enum("VSM", { type="int", start=0, comments="Options for the VectorScene SampleMethod." },
-    "AUTO: The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.",
+    "AUTO: The default option is chosen by the system.  This will typically be `BILINEAR`, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.",
     "NEIGHBOUR: Nearest neighbour is the fastest sampler at the cost of poor quality.",
-    "BILINEAR: Bilinear is a common algorithm that produces a reasonable quality image.",
-    "BICUBIC: Produces a similar result to bilinear with a marginally sharper after-effect.",
-    "SPLINE16: About 1/2 the speed of bilinear, this method produces a considerably better result.",
+    "BILINEAR: Bilinear is a common algorithm that produces a reasonable quality image quickly.",
+    "BICUBIC: Produces a similar result to `BILINEAR` with a marginally sharper after-effect.",
+    "SPLINE16: About half the speed of `BILINEAR`, this method produces a considerably better result.",
     "KAISER",
     "QUADRIC",
     "GAUSSIAN",
     "BESSEL",
     "MITCHELL",
-    "SINC3: Five times slower than bilinear, the final result is of very good quality.",
-    "LANCZOS3: This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.",
-    "BLACKMAN3: Five times slower than bilinear, the final result will lack sharpness when compared to SINC3.",
-    "SINC8: 15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.",
+    "SINC3: Five times slower than `BILINEAR`, the final result is of very good quality.",
+    "LANCZOS3: This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with `SINC` and `BLACKMAN`.",
+    "BLACKMAN3: Five times slower than `BILINEAR`, the final result will lack sharpness when compared to SINC3.",
+    "SINC8: 15 times slower than `BILINEAR`, the final result is of excellent quality but may be marginally over-sharpened.",
     "LANCZOS8",
-    "BLACKMAN8: 15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.")
+    "BLACKMAN8: 15 times slower than `BILINEAR`, the final result is of excellent quality and sharpness is well balanced.")
 
   enum("RQ", { type="int", start=0, comments="Options for determining the quality of a rendered path." },
     "AUTO: The default option is chosen by the system.",
@@ -310,20 +311,20 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
   struct("VectorPoint", { comment="Structure for the VectorPolygon PointsArray field." }, [[
     double X   # The X coordinate of this point.
     double Y   # The Y coordinate of this point.
-    bit(uchar) XScaled # `TRUE` if the X value is scaled to its viewport (between 0 and 1.0).
-    bit(uchar) YScaled # `TRUE` if the Y value is scaled to its viewport (between 0 and 1.0).
+    bit(uchar) XScaled # `TRUE` if the `X` value is scaled to its viewport (between 0 and 1.0).
+    bit(uchar) YScaled # `TRUE` if the `Y` value is scaled to its viewport (between 0 and 1.0).
   ]])
 
   struct("VectorPainter", { comment="Deserialised painter information; compliant with SVG painter definitions." }, [[
-    obj(VectorPattern)  Pattern   # A VectorPattern object, suitable for pattern based fills.
-    obj(VectorImage)    Image     # A VectorImage object, suitable for image fills.
-    obj(VectorGradient) Gradient  # A VectorGradient object, suitable for gradient fills.
+    obj(VectorPattern)  Pattern   # A @VectorPattern object, suitable for pattern based fills.
+    obj(VectorImage)    Image     # A @VectorImage object, suitable for image fills.
+    obj(VectorGradient) Gradient  # A @VectorGradient object, suitable for gradient fills.
     struct(FRGB) Colour           # A single RGB colour definition, suitable for block colour fills.
   ]])
 
   struct("PathCommand", { comment="Base structure for path commands." }, [[
-    int(PE) Type         # The command type (PE value)
-    uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+    int(PE) Type         # The command type
+    uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when `TRUE`.
     uchar   Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
     uchar   Pad1         # Private
     double  X            # The targeted X coordinate (absolute or scaled) for the command
@@ -425,7 +426,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     int(VSPREAD) SpreadMethod     # Behaviour to use when pattern bounds do not match the vector path.
     int(VUNIT) Units              # VUNIT constant
     int(VUNIT) ContentUnits       # VUNIT constant
-    int(DMF) Dimensions
+    int(DMF) Dimensions           # Flags for the dimension values.
   ]])
 
   class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[

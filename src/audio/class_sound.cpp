@@ -238,7 +238,7 @@ Activate: Plays the audio sample.
 -END-
 *********************************************************************************************************************/
 
-static ERR SOUND_Activate(extSound *Self, APTR Void)
+static ERR SOUND_Activate(extSound *Self)
 {
    pf::Log log;
 
@@ -498,7 +498,7 @@ Deactivate: Stops the audio sample and resets the playback position.
 -END-
 *********************************************************************************************************************/
 
-static ERR SOUND_Deactivate(extSound *Self, APTR Void)
+static ERR SOUND_Deactivate(extSound *Self)
 {
    pf::Log log;
 
@@ -532,7 +532,7 @@ Disable: Disable playback of an active audio sample, equivalent to pausing.
 -END-
 *********************************************************************************************************************/
 
-static ERR SOUND_Disable(extSound *Self, APTR Void)
+static ERR SOUND_Disable(extSound *Self)
 {
    pf::Log log;
 
@@ -561,7 +561,7 @@ Enable: Continues playing a sound if it has been disabled.
 -END-
 *********************************************************************************************************************/
 
-static ERR SOUND_Enable(extSound *Self, APTR Void)
+static ERR SOUND_Enable(extSound *Self)
 {
    pf::Log log;
    log.branch();
@@ -589,7 +589,7 @@ static ERR SOUND_Enable(extSound *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SOUND_Free(extSound *Self, APTR Void)
+static ERR SOUND_Free(extSound *Self)
 {
    if (Self->StreamTimer)   { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
@@ -658,7 +658,7 @@ Init: Prepares a sound object for usage.
 
 #ifdef USE_WIN32_PLAYBACK
 
-static ERR SOUND_Init(extSound *Self, APTR Void)
+static ERR SOUND_Init(extSound *Self)
 {
    pf::Log log;
    LONG id, len;
@@ -697,7 +697,7 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
    // Load the sound file's header and test it to see if it matches our supported file format.
 
    if (!Self->File) {
-      if (!(Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+      if (!(Self->File = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR::File);
       }
    }
@@ -764,7 +764,7 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
 
 #else // Use the internal mixer
 
-static ERR SOUND_Init(extSound *Self, APTR Void)
+static ERR SOUND_Init(extSound *Self)
 {
    pf::Log log;
    LONG id, len, result, pos;
@@ -804,7 +804,7 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
    // Load the sound file's header and test it to see if it matches our supported file format.
 
    if (!Self->File) {
-      if (!(Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+      if (!(Self->File = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR::File);
       }
    }
@@ -893,7 +893,7 @@ static ERR SOUND_Init(extSound *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SOUND_NewObject(extSound *Self, APTR Void)
+static ERR SOUND_NewObject(extSound *Self)
 {
    new (Self) extSound;
 

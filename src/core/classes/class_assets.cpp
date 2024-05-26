@@ -184,21 +184,21 @@ void free_asset_class(void)
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Delete(objFile *Self, APTR Void)
+static ERROR ASSET_Delete(objFile *Self)
 {
    return ERR::NoSupport; // Asset files cannot be deleted.
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Free(objFile *Self, APTR Void)
+static ERROR ASSET_Free(objFile *Self)
 {
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Init(objFile *Self, APTR Void)
+static ERROR ASSET_Init(objFile *Self)
 {
    pf::Log log(__FUNCTION__);
    prvFileAsset *prv;

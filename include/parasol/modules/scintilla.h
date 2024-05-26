@@ -177,10 +177,10 @@ class objScintilla : public Object {
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
    CSTRING   Path;               // Identifies the location of a text file to load.
    SEF       EventFlags;         // Specifies events that need to be reported from the Scintilla object.
-   OBJECTID  SurfaceID;          // Refers to the @Surface targeted by the Scintilla object.
+   OBJECTID  SurfaceID;          // Refers to the Surface targeted by the Scintilla object.
    SCIF      Flags;              // Optional flags.
    OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
-   LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target #Surface.
+   LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target Surface.
    LONG      LeftMargin;         // The amount of white-space at the left side of the page.
    LONG      RightMargin;        // Defines the amount of white-space at the right side of the page.
    struct RGB8 LineHighlight;    // The colour to use when highlighting the line that contains the user's cursor.

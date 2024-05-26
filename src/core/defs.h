@@ -159,10 +159,6 @@ struct rkWatchPath {
 
 using namespace pf;
 
-struct ActionEntry {
-   ERR (*PerformAction)(OBJECTPTR, APTR);     // Internal
-};
-
 struct ThreadMessage {
    OBJECTID ThreadID;    // Internal
    FUNCTION Callback;
@@ -354,8 +350,8 @@ class extMetaClass : public objMetaClass {
    std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
    std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-   class RootModule *Root;             // Root module that owns this class, if any.
-   UBYTE Integral[8];                   // Integral object references (by field indexes), in order
+   class RootModule *Root;              // Root module that owns this class, if any.
+   UBYTE Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;

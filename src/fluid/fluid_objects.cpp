@@ -171,7 +171,7 @@ inline void build_read_table(object *Def)
          else if (dict[i].Flags & FD_STRUCT) jmp.insert(obj_read(hash, object_get_struct, &dict[i]));
          else if (dict[i].Flags & FD_STRING) jmp.insert(obj_read(hash, object_get_string, &dict[i]));
          else if (dict[i].Flags & FD_POINTER) {
-            if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
+            if (dict[i].Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
                jmp.insert(obj_read(hash, object_get_object, &dict[i]));
             }
             else jmp.insert(obj_read(hash, object_get_ptr, &dict[i]));
@@ -232,7 +232,7 @@ inline WRITE_TABLE * get_write_table(object *Def)
                      jmp.insert(obj_write(hash, object_set_function, &dict[i]));
                   }
                   else if (dict[i].Flags & FD_POINTER) {
-                     if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) {
+                     if (dict[i].Flags & (FD_OBJECT|FD_LOCAL)) {
                         jmp.insert(obj_write(hash, object_set_object, &dict[i]));
                      }
                      else jmp.insert(obj_write(hash, object_set_ptr, &dict[i]));

@@ -81,7 +81,7 @@ static void generate_spiral(extVectorSpiral *Vector, agg::path_storage &Path)
 
 //********************************************************************************************************************
 
-static ERR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
+static ERR SPIRAL_NewObject(extVectorSpiral *Self)
 {
    Self->Step   = 1.0;
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_spiral;

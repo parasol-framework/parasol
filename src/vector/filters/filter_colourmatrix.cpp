@@ -394,7 +394,7 @@ static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR COLOURFX_Free(extColourFX *Self, APTR Void)
+static ERR COLOURFX_Free(extColourFX *Self)
 {
    if (Self->Matrix) { delete Self->Matrix; Self->Matrix = NULL; }
    return ERR::Okay;
@@ -402,7 +402,7 @@ static ERR COLOURFX_Free(extColourFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR COLOURFX_Init(extColourFX *Self, APTR Void)
+static ERR COLOURFX_Init(extColourFX *Self)
 {
    pf::Log log;
 
@@ -470,7 +470,7 @@ static ERR COLOURFX_Init(extColourFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR COLOURFX_NewObject(extColourFX *Self, APTR Void)
+static ERR COLOURFX_NewObject(extColourFX *Self)
 {
    // Configure identity matrix
    Self->Values[0] = 1;

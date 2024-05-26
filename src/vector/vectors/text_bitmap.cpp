@@ -97,13 +97,13 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    }
 
    if (!Vector->txBitmapImage) {
-      if (!(Vector->txAlphaBitmap = objBitmap::create::integral(
+      if (!(Vector->txAlphaBitmap = objBitmap::create::local(
             fl::Width(longest_line_width),
             fl::Height(dy),
             fl::BitsPerPixel(32),
             fl::Flags(BMF::ALPHA_CHANNEL)))) return;
 
-      if (!(Vector->txBitmapImage = objVectorImage::create::integral(
+      if (!(Vector->txBitmapImage = objVectorImage::create::local(
             fl::Bitmap(Vector->txAlphaBitmap),
             fl::SpreadMethod(VSPREAD::CLIP),
             fl::Units(VUNIT::BOUNDING_BOX),

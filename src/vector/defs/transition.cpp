@@ -135,7 +135,7 @@ static ERR set_stop_transform(extVectorTransition *Self, TransitionStop *Stop, C
 
 //********************************************************************************************************************
 
-static ERR TRANSITION_Free(extVectorTransition *Self, APTR Void)
+static ERR TRANSITION_Free(extVectorTransition *Self)
 {
    for (auto i=0; i < Self->TotalStops; i++) {
       delete Self->Stops[i].AGGTransform;
@@ -147,7 +147,7 @@ static ERR TRANSITION_Free(extVectorTransition *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TRANSITION_Init(extVectorTransition *Self, APTR Void)
+static ERR TRANSITION_Init(extVectorTransition *Self)
 {
    pf::Log log;
    if (Self->TotalStops < 2) return log.warning(ERR::FieldNotSet);
@@ -156,7 +156,7 @@ static ERR TRANSITION_Init(extVectorTransition *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TRANSITION_NewObject(extVectorTransition *Self, APTR Void)
+static ERR TRANSITION_NewObject(extVectorTransition *Self)
 {
    Self->Dirty = true;
    return ERR::Okay;

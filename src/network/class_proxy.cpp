@@ -78,7 +78,7 @@ Okay: Proxy deleted.
 
 *********************************************************************************************************************/
 
-static ERR PROXY_Delete(extProxy *Self, APTR Void)
+static ERR PROXY_Delete(extProxy *Self)
 {
    pf::Log log;
 
@@ -114,7 +114,7 @@ The change will not come into effect until the proxy record is saved.
 
 *********************************************************************************************************************/
 
-static ERR PROXY_Disable(extProxy *Self, APTR Void)
+static ERR PROXY_Disable(extProxy *Self)
 {
    Self->Enabled = FALSE;
    return ERR::Okay;
@@ -130,7 +130,7 @@ is saved.
 
 *********************************************************************************************************************/
 
-static ERR PROXY_Enable(extProxy *Self, APTR Void)
+static ERR PROXY_Enable(extProxy *Self)
 {
    Self->Enabled = TRUE;
    return ERR::Okay;
@@ -331,7 +331,7 @@ NoSearchResult: No matching proxy was discovered.
 
 *********************************************************************************************************************/
 
-static ERR PROXY_FindNext(extProxy *Self, APTR Void)
+static ERR PROXY_FindNext(extProxy *Self)
 {
    if (!Self->Find) return ERR::NoSearchResult; // Ensure that Find() was used to initiate a search
 
@@ -427,7 +427,7 @@ static ERR find_proxy(extProxy *Self)
 
 //********************************************************************************************************************
 
-static ERR PROXY_Free(extProxy *Self, APTR Void)
+static ERR PROXY_Free(extProxy *Self)
 {
    clear_values(Self);
    return ERR::Okay;
@@ -435,14 +435,14 @@ static ERR PROXY_Free(extProxy *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR PROXY_Init(extProxy *Self, APTR Void)
+static ERR PROXY_Init(extProxy *Self)
 {
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERR PROXY_NewObject(extProxy *Self, APTR Void)
+static ERR PROXY_NewObject(extProxy *Self)
 {
    Self->GroupName[0] = 0;
    Self->Enabled = TRUE;
@@ -465,7 +465,7 @@ administrator to define proxy settings as the default for all users by copying t
 
 *********************************************************************************************************************/
 
-static ERR PROXY_SaveSettings(extProxy *Self, APTR Void)
+static ERR PROXY_SaveSettings(extProxy *Self)
 {
    pf::Log log;
 

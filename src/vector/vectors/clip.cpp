@@ -28,7 +28,7 @@ the clipping path is sized to match the target vector.  A viewbox size of `0 0 1
 
 *********************************************************************************************************************/
 
-static ERR CLIP_Free(extVectorClip *Self, APTR Void)
+static ERR CLIP_Free(extVectorClip *Self)
 {
    Self->~extVectorClip();
    if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = NULL; }
@@ -37,7 +37,7 @@ static ERR CLIP_Free(extVectorClip *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR CLIP_Init(extVectorClip *Self, APTR Void)
+static ERR CLIP_Init(extVectorClip *Self)
 {
    pf::Log log;
 
@@ -84,7 +84,7 @@ static ERR CLIP_NewChild(extVectorClip *Self, struct acNewChild *Args)
 
 //********************************************************************************************************************
 
-static ERR CLIP_NewObject(extVectorClip *Self, APTR Void)
+static ERR CLIP_NewObject(extVectorClip *Self)
 {
    new (Self) extVectorClip;
 

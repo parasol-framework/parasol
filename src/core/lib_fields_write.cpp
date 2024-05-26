@@ -50,7 +50,7 @@ LONG array[100];
 SetArray(Object, FID_Table|TLONG, array, 100);
 </pre>
 
-An indicator of the type of the elements in the Array must be OR'd into the Field parameter.  Available field types are
+An indicator of the type of the elements in the Array must be OR'd into the `Field` parameter.  Available field types are
 listed in ~SetField().  Note that the type that you choose must be a match to the type expected for elements
 in the array.
 
@@ -58,7 +58,7 @@ in the array.
 obj Object:   Pointer to the target object.
 fid Field:    The universal ID of the field you wish to write to, OR'd with a type indicator.
 ptr Array:    Pointer to the array values.
-int Elements: The number of elements listed in the Array.
+int Elements: The number of elements listed in the `Array`.
 
 -ERRORS-
 Okay
@@ -123,7 +123,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 Fields are referenced as hashed UID's calculated from the ~StrHash() function.  The majority of field ID's are
 predefined in the `parasol/system/fields.h` include file.
 
-The type of the Value parameter must be OR'd into the Field parameter.  If the provided type does not match that of
+The type of the `Value` parameter must be OR'd into the `Field` parameter.  If the provided type does not match that of
 the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be
 converted to a numeric value automatically.  String and pointer types are interchangeable.
 
@@ -136,14 +136,14 @@ Available field types are as follows:
 <type name="TLARGE">A 64-bit integer value.</>
 <type name="TPTR">A standard address space pointer.</>
 <type name="TSTR">A pointer that refers to a string.</>
-<type name="TFUNCTION">A pointer to a FUNCTION structure.</>
-<type name="TVAR">A pointer to a Variable structure.</>
+<type name="TFUNCTION">A pointer to a `FUNCTION` structure.</>
+<type name="TVAR">A pointer to a `Variable` structure.</>
 </>
 
 There is no requirement for the client to have a working knowledge of the target object's field configuration in
 order to write information to it.
 
-To set a field with a fixed-size array, please use the ~SetArray() function.
+To set a field with a fixed-size array, use the ~SetArray() function.
 
 -INPUT-
 obj Object: Pointer to the target object.

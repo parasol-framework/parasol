@@ -139,7 +139,7 @@ CRC values, making it ideal for processing streamed data.
 -INPUT-
 uint CRC: If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.
 ptr Data: The data to generate a CRC value for.
-uint Length: The length of the Data buffer.
+uint Length: The length of the `Data` buffer.
 
 -RESULT-
 uint: Returns the computed 32 bit CRC value for the given data.
@@ -584,7 +584,7 @@ LARGE PreciseTime(void)
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
 This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
-activity occurs on the descriptor then the function specified in the Routine parameter will be called.  The routine
+activity occurs on the descriptor then the function specified in the `Routine` parameter will be called.  The routine
 must read all of information from the descriptor, as the running process will not be able to sleep until all the
 data is cleared.
 
@@ -592,8 +592,8 @@ The file descriptor should be configured as non-blocking before registration.  B
 program to hang if not handled carefully.
 
 File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
-Set the `RFD::READ` flag to apply the Routine to the read callback and `RFD::WRITE` for the write callback.  If neither
-flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
+Set the `RFD::READ` flag to apply the `Routine` to the read callback and `RFD::WRITE` for the write callback.  If neither
+flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to one subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
 combining the read/write flags with `RFD::REMOVE`.
 
@@ -764,7 +764,7 @@ int(RES) Resource: The ID of the resource to be set.
 large Value:    The new value to set for the resource.
 
 -RESULT-
-large: Returns the previous value used for the resource that you have set.  If the resource ID that you provide is invalid, NULL is returned.
+large: Returns the previous value of the `Resource`.  If the `Resource` value is invalid, `NULL` is returned.
 -END-
 
 *********************************************************************************************************************/
@@ -857,8 +857,8 @@ This function creates a new timer subscription that will be called at regular in
 
 A callback function must be provided that follows this prototype: `ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)`
 
-The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime
-parameter is set to the ~PreciseTime() value just prior to the Callback being called.  The callback function
+The `Elapsed` parameter is the total number of microseconds that have elapsed since the last call.  The `CurrentTime`
+parameter is set to the ~PreciseTime() value just prior to the `Callback` being called.  The callback function
 can return `ERR::Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
 should call `check(ERR::Terminate)` to perform the equivalent of this behaviour.
 

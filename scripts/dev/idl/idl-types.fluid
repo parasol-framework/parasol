@@ -114,7 +114,7 @@ function getFieldType(Type, CustomName, Option)
       elseif bit.band(Type, FD_DOUBLE) != 0 then
          result = 'DOUBLE'
          ptr = ptr + 1
-      elseif bit.band(Type, bit.bor(FD_OBJECT, FD_INTEGRAL)) != 0 then
+      elseif bit.band(Type, bit.bor(FD_OBJECT, nz(FD_INTEGRAL, FD_LOCAL))) != 0 then // FD_INTEGRAL is deprecated
          return 'OBJECTPTR'
       elseif bit.band(Type, FD_STRING) != 0 then
          return 'STRING'

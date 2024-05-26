@@ -35,12 +35,12 @@ inline char base64_encode_value(char value_in)
 -FUNCTION-
 Base64Encode: Encodes a binary source into a base 64 string.
 
-This is a state-based function that will encode raw data and output it as base-64 encoded text.  To use, the State
+This is a state-based function that will encode raw data and output it as base-64 encoded text.  To use, the `State`
 structure must initially be set to zero (automatic if using C++).  Call this function repeatedly with new Input data
-and it will be written to the supplied Output pointer.  Once all incoming data has been consumed, call this function
-a final time with an Input of NULL and InputSize of zero.
+and it will be written to the supplied `Output` pointer.  Once all incoming data has been consumed, call this function
+a final time with an `Input` of `NULL` and InputSize of zero.
 
-It is required that the Output is sized to at least `(4 / 3) + 1` of InputSize when encoding.  For the final output,
+It is required that the `Output` is sized to at least `(4 / 3) + 1` of `InputSize` when encoding.  For the final output,
 the size must be at least 6 bytes.
 
 -INPUT-
@@ -150,16 +150,16 @@ static int base64_encode_block(CSTRING plaintext_in, LONG length_in, char *code_
 Base64Decode: Decodes a base 64 string to its binary form.
 
 This function will decode a base 64 string to its binary form.  It is designed to support streaming from the source
-Input and gracefully handles buffer over-runs by forwarding data to the next call.
+`Input` and gracefully handles buffer over-runs by forwarding data to the next call.
 
 To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.
 
 -INPUT-
 resource(pfBase64Decode) State: Pointer to an pfBase64Decode structure, initialised to zero.
 cstr Input: A base 64 input string.  The pointer will be updated when the function returns.
-bufsize InputSize: The size of the input string.
+bufsize InputSize: The size of the `Input` string.
 buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or equal to the size of Input.
-&int Written: The total number of bytes written to Output is returned here.
+&int Written: The total number of bytes written to `Output` is returned here.
 
 -ERRORS-
 Okay

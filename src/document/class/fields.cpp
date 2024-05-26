@@ -331,7 +331,7 @@ static ERR SET_Pretext(extDocument *Self, CSTRING Value)
       return Self->PretextXML->setStatement(Value);
    }
    else {
-      if ((Self->PretextXML = objXML::create::integral({
+      if ((Self->PretextXML = objXML::create::local({
             fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
             fl::Statement(Value),
             fl::ReadOnly(true)

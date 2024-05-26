@@ -1722,7 +1722,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
                LONG written;
                if ((error = Base64Decode(&state, val, size, output, &written)) IS ERR::Okay) {
                   Path = "temp:svg.img";
-                  if ((file = objFile::create::integral(fl::Path(Path), fl::Flags(FL::NEW|FL::WRITE)))) {
+                  if ((file = objFile::create::local(fl::Path(Path), fl::Flags(FL::NEW|FL::WRITE)))) {
                      LONG result;
                      file->write(output, written, &result);
                   }

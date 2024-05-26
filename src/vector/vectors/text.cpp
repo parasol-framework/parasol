@@ -330,7 +330,7 @@ static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Args)
 
 //********************************************************************************************************************
 
-static ERR VECTORTEXT_Free(extVectorText *Self, APTR Void)
+static ERR VECTORTEXT_Free(extVectorText *Self)
 {
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
@@ -360,7 +360,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORTEXT_Init(extVectorText *Self, APTR Void)
+static ERR VECTORTEXT_Init(extVectorText *Self)
 {
    if ((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) {
       if (!Self->txFocusID) {
@@ -398,7 +398,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
+static ERR VECTORTEXT_NewObject(extVectorText *Self)
 {
    new (&Self->txLines) std::vector<TextLine>;
    new (&Self->txCursor) TextCursor;

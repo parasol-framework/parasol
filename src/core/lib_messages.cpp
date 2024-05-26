@@ -105,16 +105,16 @@ During a call to ~ProcessMessages(), each incoming message will be scanned to de
 to process that message.  All handlers that accept the message type will be called with a copy of the message
 structure and any additional data.  The message is then removed from the message queue.
 
-When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The
-MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The
-Routine parameter must point to the function handler, which will follow this definition:
+When calling AddMsgHandler(), you can provide an optional `Custom` pointer that will have meaning to the handler.  The
+`MsgType` acts as a filter so that only messages with the same type identifier will be passed to the handler.  The
+`Routine` parameter must point to the function handler, which will follow this definition:
 
 <pre>ERR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 
 The handler must return `ERR::Okay` if the message was handled.  This means that the message will not be passed to message
 handlers that are yet to receive the message.  Throw `ERR::NothingDone` if the message has been ignored or `ERR::Continue`
 if the message was processed but may be analysed by other handlers.  Throw `ERR::Terminate` to break the current
-ProcessMessages() loop.  When using Fluid, this is best achieved by writing `check(errorcode)` in the handler.
+~ProcessMessages() loop.  When using Fluid, this is best achieved by writing `check(errorcode)` in the handler.
 
 The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage
 collected or can be passed to ~FreeResource() once it is no longer required.
@@ -123,7 +123,7 @@ collected or can be passed to ~FreeResource() once it is no longer required.
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
 int MsgType: The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.
 ptr(func) Routine: Refers to the function that will handle incoming messages.
-!resource(MsgHandler) Handle:  The resulting handle of the new message handler - this will be needed for FreeResource().
+!resource(MsgHandler) Handle: The resulting handle of the new message handler - retain for ~FreeResource().
 
 -ERRORS-
 Okay: Message handler successfully processed.
@@ -179,23 +179,23 @@ particular Type.  It is also possible to call this function in a loop to clear o
 other than `ERR::Okay` is returned.
 
 Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you
-need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your
-messages.  If the buffer is too small, the message data will be cut off to fit inside the buffer.
+need to supply a `Buffer`, preferably one that is large enough to receive all the data that you expect from your
+messages.  If the `Buffer` is too small, the message data will be trimmed to fit.
 
-Message data is written to the supplied buffer with a Message structure, which is immediately followed
+Message data is written to the supplied buffer with a !Message structure, which is immediately followed
 up with the actual message data.
 
 -INPUT-
 int Type:   Filter down to this message type or set to zero to receive the next message on the queue.
 int(MSF) Flags:  This argument is reserved for future use.  Set it to zero.
-buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the incoming message information.  If set to NULL then all accompanying message data will be destroyed.
+buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the incoming message information.  If set to `NULL` then all accompanying message data will be destroyed.
 bufsize Size:   The byte-size of the buffer that you have supplied.
 
 -ERRORS-
 Okay:
 Args:
 AccessMemory: Failed to gain access to the message queue.
-Search: No more messages are left on the queue, or no messages that match the given Type are on the queue.
+Search: No more messages are left on the queue, or no messages that match the given `Type` are on the queue.
 -END-
 
 *********************************************************************************************************************/
@@ -255,7 +255,7 @@ message, then it is removed from the queue without being processed. Message hand
 will stop processing the queue and returns immediately with `ERR::Okay`.
 
 If a message with a `MSGID_QUIT` ID is found on the queue, then the function returns immediately with the error code
-ERR::Terminate.  The program must respond to the terminate request by exiting immediately.
+`ERR::Terminate`.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
 int(PMF) Flags: Optional flags are specified here (clients should set a value of zero).
@@ -263,7 +263,7 @@ int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function w
 
 -ERRORS-
 Okay:
-Terminate: A MSGID_QUIT message type was found on the message queue.
+Terminate: A `MSGID_QUIT` message type was found on the message queue.
 TimeOut:
 -END-
 
@@ -525,19 +525,19 @@ while (!ScanMessages(&handle, MSGID_QUIT, NULL, NULL)) {
 </pre>
 
 Messages will often (but not always) carry data that is relevant to the message type.  To retrieve this data a buffer
-must be supplied.  If the buffer is too small as indicated by the Size, the message data will be trimmed to fit
+must be supplied.  If the `Buffer` is too small as indicated by the `Size`, the message data will be trimmed to fit
 without any further indication.
 
 -INPUT-
 &int Handle: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
 int Type:   The message type to filter for, or zero to scan all messages in the queue.
 buf(ptr) Buffer: Optional pointer to a buffer that is large enough to hold any message data.
-bufsize Size: The byte-size of the supplied Buffer.
+bufsize Size: The byte-size of the supplied `Buffer`.
 
 -ERRORS-
 Okay:
 NullArgs:
-Search: No more messages are left on the queue, or no messages that match the given Type are on the queue.
+Search: No more messages are left on the queue, or no messages that match the given `Type` are on the queue.
 -END-
 
 *********************************************************************************************************************/
@@ -590,14 +590,14 @@ ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG BufferSize)
 SendMessage: Add a message to the local message queue.
 
 The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated
-with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are
+with a `Type` identifier and this can help the receiver process any accompanying Data.  Some common message types are
 pre-defined, such as `MSGID_QUIT`.  Custom messages should use a unique type ID obtained from ~AllocateID().
 
 -INPUT-
 int(MSGID) Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
 int(MSF) Flags: Optional flags.
-buf(ptr) Data:  Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.
-bufsize Size:   The byte-size of the data being written to the message queue.
+buf(ptr) Data:  Pointer to the data that will be written to the queue.  Set to `NULL` if there is no data to write.
+bufsize Size:   The byte-size of the `Data` being written to the message queue.
 
 -ERRORS-
 Okay: The message was successfully written to the message queue.
@@ -846,23 +846,23 @@ The UpdateMessage() function provides a facility for updating the content of exi
 The client must provide the ID of the message to update and the new message Type and/or Data to set against the
 message.
 
-Messages can be deleted from the queue by setting the Type to -1.  There is no need to provide buffer information
+Messages can be deleted from the queue by setting the `Type` to `-1`.  There is no need to provide buffer information
 when deleting a message.
 
-If Data is defined, its size should equal that of the data already set against the message.  The size will be trimmed
+If `Data` is defined, its size should equal that of the data already set against the message.  The size will be trimmed
 if it exceeds that of the existing message, as this function cannot expand the size of the queue.
 
 -INPUT-
 int Message:   The ID of the message that will be updated.
-int Type:      Defines the type of the message.  If set to -1, the message will be deleted.
+int Type:      Defines the type of the message.  If set to `-1`, the message will be deleted.
 buf(ptr) Data: Pointer to a buffer that contains the new data for the message.
-bufsize Size:  The byte-size of the buffer that has been supplied.  It must not exceed the size of the message that is being updated.
+bufsize Size:  The byte-size of the `Data` that has been supplied.  It must not exceed the size of the message that is being updated.
 
 -ERRORS-
 Okay:   The message was successfully updated.
 NullArgs:
 AccessMemory:
-Search: The supplied ID does not refer to a message in the queue.
+Search: The supplied `Message` ID does not refer to a message in the queue.
 -END-
 
 *********************************************************************************************************************/

@@ -310,7 +310,7 @@ redo_upload:
          // Open the next file
 
          if (parse_file(Self, (STRING)Self->Buffer, Self->BufferSize) IS ERR::Okay) {
-            if ((Self->flInput = objFile::create::integral(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL::READ)))) {
+            if ((Self->flInput = objFile::create::local(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL::READ)))) {
                if (total_out < Self->BufferSize) goto redo_upload; // Upload as much as possible in each pass
                else goto continue_upload;
             }
@@ -974,7 +974,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       }
       else flags = FL::NEW;
 
-      if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL::WRITE)))) {
+      if ((Self->flOutput = objFile::create::local(fl::Path(Self->OutputFile), fl::Flags(flags|FL::WRITE)))) {
          if ((Self->Flags & HTF::RESUME) != HTF::NIL) {
             acSeekEnd(Self->flOutput, 0);
             Self->setIndex(0);

@@ -976,7 +976,7 @@ ERR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y, L
             else while (Height > 0) {
                for (LONG i=0; i < Width; i++) {
                   Bitmap->ReadUCRPixel(Bitmap, X + i, Y, &pixel);
-                  if ((pixel.Red != Bitmap->TransRGB.Red) or (pixel.Green != Bitmap->TransRGB.Green) or (pixel.Blue != Bitmap->TransRGB.Blue)) {
+                  if ((pixel.Red != Bitmap->TransColour.Red) or (pixel.Green != Bitmap->TransColour.Green) or (pixel.Blue != Bitmap->TransColour.Blue)) {
                      dest->DrawUCRPixel(dest, DestX + i, DestY, &pixel);
                   }
                }

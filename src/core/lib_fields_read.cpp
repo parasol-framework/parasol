@@ -49,11 +49,11 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
       }
    }
 
-   // Integral field support.  NOTE: This is fallback mechanism.  The client can optimise their code by
-   // directly retrieving a pointer to the integral object and then reading the field value from that.
+   // Local object support.  NOTE: This is fallback mechanism.  The client can optimise their code by
+   // directly retrieving a pointer to the local object and then reading the field value from that.
 
-   for (unsigned i=0; mc->Integral[i] != 0xff; i++) {
-      OBJECTPTR child = *((OBJECTPTR *)(((BYTE *)Object) + mc->FieldLookup[mc->Integral[i]].Offset));
+   for (unsigned i=0; mc->Local[i] != 0xff; i++) {
+      OBJECTPTR child = *((OBJECTPTR *)(((BYTE *)Object) + mc->FieldLookup[mc->Local[i]].Offset));
       auto &field = child->ExtClass->FieldLookup;
       unsigned floor = 0;
       auto ceiling = child->ExtClass->BaseCeiling;
@@ -79,7 +79,7 @@ FieldName: Resolves a field ID to its registered name.
 Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the
 internal dictionary.  This is handled automatically when a new class is added to the system.
 
-If the FieldID is not registered, the value is returned back as a hex string.  The inclusion of this feature
+If the `FieldID` is not registered, the value is returned back as a hex string.  The inclusion of this feature
 guarantees that an empty string will never be returned.
 
 -INPUT-
@@ -106,7 +106,7 @@ CSTRING FieldName(ULONG FieldID)
 -FUNCTION-
 FindField: Finds field descriptors for any class, by ID.
 
-The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID.
+The FindField() function checks if an object supports a specified field by scanning its class descriptor for a `FieldID`.
 If a matching field is declared, its descriptor is returned.  For example:
 
 <pre>
@@ -115,9 +115,9 @@ if (auto field = FindField(Display, FID_Width, NULL)) {
 }
 </pre>
 
-The resulting Field structure is immutable.
+The resulting !Field structure is immutable.
 
-Note: To lookup the field definition of a MetaClass, use the @MetaClass.FindField() method.
+Note: To lookup the field definition of a @MetaClass, use the @MetaClass.FindField() method.
 
 -INPUT-
 obj Object:   The target object.
@@ -125,7 +125,7 @@ uint FieldID: The 'FID' number to lookup.
 &obj Target:  (Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).
 
 -RESULT-
-struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not found.
+struct(Field): Returns a pointer to the !Field descriptor, otherwise `NULL` if not found.
 -END-
 
 *********************************************************************************************************************/
@@ -143,8 +143,9 @@ Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-on
 -FUNCTION-
 GetField: Retrieves single field values from objects.
 
-The GetField() function is used to read field values from objects.  There is no requirement for the client to have
-an understanding of the target object in order to read information from it.
+The GetField() function is used to read field values from objects in the safest way possible.  As long as the
+requested field exists, the value can most likely be read.  It is only imperative that the requested type is
+compatible with the field value itself.
 
 The following code segment illustrates how to read values from an object:
 
@@ -153,11 +154,11 @@ GetField(Object, FID_X|TLONG, &x);
 GetField(Object, FID_Y|TLONG, &y);
 </pre>
 
-As GetField() is based on field ID's that reflect field names ("FID's"), you will find that there are occasions where
+As GetField() is based on field ID's that reflect field names (`FID`'s), you will find that there are occasions where
 there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call
 the ~StrHash() function.  Reserved field ID's are listed in the `parasol/system/fields.h` include file.
 
-The type of the Result parameter must be OR'd into the Field parameter.  When reading a field you must give
+The type of the `Result` parameter must be OR'd into the `Field` parameter.  When reading a field you must give
 consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are
 compatible with each other and strings can also be converted to numeric types automatically.  String and pointer
 types are interchangeable.
@@ -181,7 +182,7 @@ ptr Result: Pointer to the variable that will store the result.
 Okay:             The field value was read successfully.
 Args:             Invalid arguments were specified.
 NoFieldAccess:    Permissions for this field indicate that it is not readable.
-UnsupportedField: The Field is not supported by the object's class.
+UnsupportedField: The `Field` is not supported by the object's class.
 
 *********************************************************************************************************************/
 
@@ -227,7 +228,7 @@ Use the GetFieldArray() function to read an array field from an object, includin
 supplements the ~GetField() function, which does not support returning the array length.
 
 This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it
-is standard practice not to count the null terminator in the total returned by Elements.
+is standard practice not to count the null terminator in the total returned by `Elements`.
 
 To achieve a minimum level of type safety, the anticipated type of array values can be specified by
 OR'ing a field type with the field identifier, e.g. `TLONG` or `TSTR`.  If no type is incorporated then a check will
@@ -478,7 +479,7 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
          }
          else return error;
       }
-      else if (field->Flags & (FD_INTEGRAL|FD_OBJECT)) {
+      else if (field->Flags & (FD_LOCAL|FD_OBJECT)) {
          OBJECTPTR obj;
          if ((error = copy_field_to_buffer(Object, field, FD_POINTER, &obj, ext, NULL)) IS ERR::Okay) {
             if (ext) {
@@ -732,7 +733,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
    }
    else if (srcflags & (FD_POINTER|FD_STRING)) {
       if (DestFlags & (FD_POINTER|FD_STRING)) *((APTR *)Result) = *((APTR *)data);
-      else if (srcflags & (FD_INTEGRAL|FD_OBJECT)) {
+      else if (srcflags & (FD_LOCAL|FD_OBJECT)) {
          if (auto object = *((OBJECTPTR *)data)) {
             if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UID;
             else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UID;
