@@ -84,7 +84,7 @@
       <const name="CONTRAST"/>
       <const name="DARKEN">Use the darker colour components of the mix and input values.</const>
       <const name="DIFFERENCE">Output the difference between the input and mix colours.</const>
-      <const name="DODGE">Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.</const>
+      <const name="DODGE">Gives a brighter result than <code>SCREEN</code> by decreasing the contrast between the input and mix colours.</const>
       <const name="EXCLUSION">Produce the difference between the mix and input values around a reference point of mid-grey.</const>
       <const name="HARD_LIGHT"/>
       <const name="IN">The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.</const>

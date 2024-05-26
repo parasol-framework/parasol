@@ -197,7 +197,7 @@
       <comment>Create a subscription for input events that relate to the vector.</comment>
       <prototype>ERR vecSubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="JTYPE" name="Mask">Combine <code>JTYPE</code> flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
+        <param type="JTYPE" name="Mask" lookup="JTYPE">Combine <code>JTYPE</code> flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
@@ -212,7 +212,7 @@
         <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Function">A call to gfxSubscribeInput() failed.</error>
+        <error code="Function">A call to <function module="Display">SubscribeInput</function> failed.</error>
       </result>
     </method>
 
@@ -780,7 +780,7 @@ Z: Close Path
       <const name="INHERIT">Inherit the join option from the parent.</const>
       <const name="MITER">The default.  The join will form a pointed edge.</const>
       <const name="MITER_REVERT"/>
-      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
+      <const name="MITER_ROUND">Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</const>
       <const name="ROUND">The join is rounded.</const>
     </constants>
 

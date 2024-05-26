@@ -59,7 +59,7 @@ static SimpleVector * new_simplevector(void)
 
 //********************************************************************************************************************
 
-ERR CMDOpen(OBJECTPTR Module)
+ERR MODOpen(OBJECTPTR Module)
 {
    ((objModule *)Module)->setFunctionList(glFunctions);
    return ERR::Okay;
@@ -125,6 +125,54 @@ void vecArcTo(SimpleVector *Vector, double RX, double RY, double Angle, double X
 /*********************************************************************************************************************
 
 -FUNCTION-
+CharWidth: Returns the width of a character.
+
+This function will return the pixel width of a font character.  The character is specified as a unicode value in the
+`Char` parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
+The previous character in the word is set in `KChar` and the kerning value will be returned in the `Kerning` parameter.
+If kerning information is not required, set the `KChar` and `Kerning` parameters to zero.
+
+The font's glyph spacing value is not used in calculating the character width.
+
+-INPUT-
+ptr FontHandle: The font to use for calculating the character width.
+uint Char: A 32-bit unicode character.
+uint KChar: A unicode character to use for calculating the font kerning (optional).
+&double Kerning: The resulting kerning value (optional).
+
+-RESULT-
+double: The pixel width of the character will be returned.
+
+*********************************************************************************************************************/
+
+double vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
+{
+   if (!Handle) return 0;
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      auto &cache = pt->get_glyph(Char);
+      if (Kerning) {
+         if (KChar) {
+            FT_Vector delta;
+            FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
+            *Kerning = int26p6_to_dbl(delta.x);
+         }
+         else *Kerning = 0;
+      }
+      return cache.adv_x;
+   }
+   else {
+      if (Kerning) *Kerning = 0;
+      return fntCharWidth(((bmp_font *)Handle)->font, Char);
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 ClosePath: Close the path by connecting the beginning and end points.
 
 This function will set a close-path command at the current vertex.  It then increments the vertex position
@@ -134,7 +182,7 @@ Note that closing a path does not necessarily terminate the vector.  Further pat
 interesting effects can be created by taking advantage of fill rules.
 
 -INPUT-
-ptr Path:  The vector path to modify.
+ptr Path: The vector path to modify.
 
 *********************************************************************************************************************/
 
@@ -194,21 +242,21 @@ void vecCurve4(SimpleVector *Vector, double CtrlX1, double CtrlY1, double CtrlX2
 -FUNCTION-
 DrawPath: Draws a vector path to a target bitmap.
 
-Use DrawPath() to draw a generated path to a Bitmap, using customised fill and stroke definitions.  This
+Use DrawPath() to draw a generated path to a @Bitmap, using customised fill and stroke definitions.  This
 functionality provides an effective alternative to configuring vector scenes for situations where only
 simple vector shapes are required.  However, it is limited in that advanced rendering options and effects are not
 available to the client.
 
-A StrokeStyle and/or FillStyle will be required to render the path.  Valid styles are allocated and configured using
+A `StrokeStyle` and/or `FillStyle` will be required to render the path.  Valid styles are allocated and configured using
 recognised vector style objects, specifically from the classes @VectorImage, @VectorPattern and @VectorGradient.  If a
-fill or stroke operation is not required, set the relevant parameter to NULL.
+fill or stroke operation is not required, set the relevant parameter to `NULL`.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to a target Bitmap object.
+obj(Bitmap) Bitmap: Pointer to a target @Bitmap object.
 ptr Path: The vector path to render.
 double StrokeWidth: The width of the stroke.  Set to 0 if no stroke is required.
-obj StrokeStyle: Pointer to a valid object for stroke definition, or NULL if none required.
-obj FillStyle: Pointer to a valid object for fill definition, or NULL if none required.
+obj StrokeStyle: Pointer to a valid object for stroke definition, or `NULL` if none required.
+obj FillStyle: Pointer to a valid object for fill definition, or `NULL` if none required.
 
 -ERRORS-
 Okay
@@ -241,7 +289,7 @@ FlushMatrix: Flushes matrix changes to a vector.
 If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in
 order to have those changes reflected on the display.  This needs to be done before the next draw cycle.
 
-Note that if the client uses API functions to modify a VectorMatrix, a call to FlushMatrix() is unnecessary as the
+Note that if the client uses API functions to modify a !VectorMatrix, a call to FlushMatrix() is unnecessary as the
 vector will have already been marked for an update.
 
 -INPUT-
@@ -269,7 +317,7 @@ ERR vecFlushMatrix(VectorMatrix *Matrix)
 -FUNCTION-
 GetVertex: Retrieve the coordinates of the current vertex.
 
-The coordinates of the current vertex are returned by this function in the X and Y parameters.  In addition, the
+The coordinates of the current vertex are returned by this function in the `X` and `Y` parameters.  In addition, the
 internal command number for that vertex is the return value.
 
 -INPUT-
@@ -300,7 +348,7 @@ double CX: Horizontal center point of the ellipse.
 double CY: Vertical center point of the ellipse.
 double RX: Horizontal radius of the ellipse.
 double RY: Vertical radius of the ellipse.
-int Vertices: Optional.  If >= 3, the total number of generated vertices will be limited to the specified value.
+int Vertices: Optional.  If `>= 3`, the total number of generated vertices will be limited to the specified value.
 &ptr Path: A pointer variable that will receive the resulting path.
 
 -ERRORS-
@@ -411,7 +459,7 @@ resulting path can then be passed to vector functions that receive a Path parame
 deallocated with ~Core.FreeResource() once it is no longer required.
 
 The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path
-element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are
+element `d` attribute, but also provides some additional features that are present in the vector engine.  Commands are
 case insensitive.
 
 The following commands are supported:
@@ -432,7 +480,7 @@ Z: Close Path
 The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate
 of the previous command).
 
-If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing
+If the `Sequence` is `NULL` then an empty path resource will be generated.  This path will be suitable for passing
 to path modifying functions such as ~MoveTo() and ~LineTo() for custom path generation.
 
 -INPUT-
@@ -475,16 +523,96 @@ ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
 /*********************************************************************************************************************
 
 -FUNCTION-
+GetFontHandle: Returns a handle for a given font family.
+
+For a given font family and size, this function will return a `Handle` that can be passed to font querying functions.
+
+The handle is deterministic and permanent, remaining valid for the lifetime of the program.
+
+-INPUT-
+cstr Family: The name of the font family to access.
+cstr Style: The preferred style to choose from the family.  Use `Regular` or `NULL` for the default.
+int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
+int Size: The font-size, measured in pixels @ 72 DPI.
+&ptr Handle: The resulting font handle is returned here.
+
+-ERRORS-
+Okay:
+Args:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Size < 1) return log.warning(ERR::Args);
+
+   if (!Style) Style = "Regular";
+   common_font *handle;
+   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); error IS ERR::Okay) {
+      *Handle = handle;
+      return ERR::Okay;
+   }
+   else return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontMetrics: Returns a set of display metric values for a font.
+
+Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI)
+for a given font.
+
+-INPUT-
+ptr Handle: A font handle obtained from ~GetFontHandle().
+struct(*FontMetrics) Info: The font metrics for the `Handle` will be stored here.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
+{
+   if ((!Handle) or (!Metrics)) return ERR::NullArgs;
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      Metrics->Height      = pt->height;
+      Metrics->LineSpacing = pt->line_spacing;
+      Metrics->Ascent      = pt->ascent;
+      Metrics->Descent     = pt->descent;
+      return ERR::Okay;
+   }
+   else {
+      auto font = ((bmp_font *)Handle)->font;
+      Metrics->Height      = font->Ascent;
+      Metrics->LineSpacing = font->LineSpacing;
+      Metrics->Ascent      = font->Height;
+      Metrics->Descent     = font->Gutter;
+      return ERR::Okay;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 TracePath: Returns the coordinates for a vector path, using callbacks.
 
-Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path
-from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is
-`ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
+Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the 
+`Path` from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function 
+is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
 
-The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the
+The `Index` is an incrementing counter that reflects the currently plotted point.  The `X` and `Y` parameters reflect the
 coordinate of a point on the path.
 
-If the Callback returns `ERR::Terminate`, then no further coordinates will be processed.
+If the `Callback` returns `ERR::Terminate`, then no further coordinates will be processed.
 
 -INPUT-
 ptr Path:      The vector path to trace.
@@ -598,7 +726,7 @@ void vecMoveTo(SimpleVector *Vector, double X, double Y)
 -FUNCTION-
 Multiply: Combines a matrix with a series of matrix values.
 
-This function uses matrix multiplication to combine a set of values with a VectorMatrix structure.
+This function uses matrix multiplication to combine a set of values with a !VectorMatrix structure.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -644,7 +772,7 @@ ERR vecMultiply(VectorMatrix *Matrix, double ScaleX, double ShearY, double Shear
 -FUNCTION-
 MultiplyMatrix: Combines a source matrix with a target.
 
-This function uses matrix multiplication to combine a Source matrix with a Target.
+This function uses matrix multiplication to combine a `Source` matrix with a `Target`.
 
 -INPUT-
 struct(*VectorMatrix) Target: The target transformation matrix.
@@ -842,18 +970,18 @@ RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is suppo
 component values range between `0.0` and `255.0`.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
-been registered with the provided Scene object.  If Scene is `NULL` then it will not be possible to find the reference.
-Any failure to lookup a reference will be silently discarded.
+been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the 
+reference.  Any failure to lookup a reference will be silently discarded.
 
-A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
+A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
 that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
-optional Result string can store a reference to the character up to which the IRI was parsed.
+optional `Result` string can store a reference to the character up to which the IRI was parsed.
 
 -INPUT-
-obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
+obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
 cstr IRI: The IRI string to be translated.
-struct(*VectorPainter) Painter: This VectorPainter structure will store the deserialised result.
-&cstr Result: Optional pointer for storing the end of the parsed IRI string.  NULL is returned if there is no further content to parse.
+struct(*VectorPainter) Painter: This !VectorPainter structure will store the deserialised result.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse.
 
 -ERRORS-
 Okay:
@@ -1174,7 +1302,7 @@ RewindPath: Resets the vertex seek position to zero.
 Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as
 ~LineTo() would result in the first vertex being modified.
 
-If the referenced Path is empty, this function does nothing.
+If the referenced `Path` is empty, this function does nothing.
 
 -INPUT-
 ptr Path: The vector path to rewind.
@@ -1191,8 +1319,8 @@ void vecRewindPath(SimpleVector *Vector)
 -FUNCTION-
 Rotate: Applies a rotation transformation to a matrix.
 
-This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point (0,0)
-unless CenterX and CenterY values are specified.
+This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point `(0, 0)`
+unless `CenterX` and `CenterY` values are specified.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -1243,12 +1371,12 @@ Scale: Scale the size of the vector by (x,y)
 This function will perform a scale operation on a matrix.  Values of less than `1.0` will shrink the affected vector
 path, while values greater than `1.0` will enlarge it.
 
-Scaling is relative to position `(0,0)`.  If the width and height of the vector path needs to be transformed without
-affecting its top-left position, the client must translate the path to `(0,0)` around its center point.  The path
+Scaling is relative to position `(0, 0)`.  If the width and height of the vector path needs to be transformed without
+affecting its top-left position, the client must translate the path to `(0, 0)` around its center point.  The path
 should then be scaled before being transformed back to its original top-left coordinate.
 
 The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of
-`-1.0` on the x axis would result in a 1:1 flip across the horizontal.
+`-1.0` on the x axis would result in a `1:1` flip across the horizontal.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -1381,66 +1509,18 @@ void vecSmooth4(SimpleVector *Vector, double CtrlX, double CtrlY, double X, doub
 /*********************************************************************************************************************
 
 -FUNCTION-
-CharWidth: Returns the width of a character.
-
-This function will return the pixel width of a font character.  The character is specified as a unicode value in the
-Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
-The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.
-If kerning information is not required, set the KChar and Kerning parameters to zero.
-
-The font's GlyphSpacing value is not used in calculating the character width.
-
--INPUT-
-ptr FontHandle: The font to use for calculating the character width.
-uint Char: A 32-bit unicode character.
-uint KChar: A unicode character to use for calculating the font kerning (optional).
-&double Kerning: The resulting kerning value (optional).
-
--RESULT-
-double: The pixel width of the character will be returned.
-
-*********************************************************************************************************************/
-
-double vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
-{
-   if (!Handle) return 0;
-
-   if (((common_font *)Handle)->type IS CF_FREETYPE) {
-      auto pt = (freetype_font::ft_point *)Handle;
-      FT_Activate_Size(pt->ft_size);
-
-      auto &cache = pt->get_glyph(Char);
-      if (Kerning) {
-         if (KChar) {
-            FT_Vector delta;
-            FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
-            *Kerning = int26p6_to_dbl(delta.x);
-         }
-         else *Kerning = 0;
-      }
-      return cache.adv_x;
-   }
-   else {
-      if (Kerning) *Kerning = 0;
-      return fntCharWidth(((bmp_font *)Handle)->font, Char);
-   }
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 StringWidth: Calculate the pixel width of a UTF-8 string, for a given font.
 
 This function calculates the pixel width of a string, in relation to a known font.  The function takes into account
-any line-feeds that are encountered, so if the String contains multiple lines, then the width of the longest line will
+any line-feeds that are encountered, so if the `String` contains multiple lines, then the width of the longest line will
 be returned.
 
 The font's kerning specifications will be taken into account when computing the distance between glyphs.
 
 -INPUT-
-ptr FontHandle: A font handle obtained from GetFontHandle().
+ptr FontHandle: A font handle obtained from ~GetFontHandle().
 cstr String: Pointer to a null-terminated string.
-int Chars: The maximum number of unicode characters to process in calculating the string width.  Set to -1 for all chars.
+int Chars: The maximum number of unicode characters to process in calculating the string width.  Set to `-1` for all chars.
 
 -RESULT-
 double: The pixel width of the string is returned.
@@ -1491,86 +1571,6 @@ double vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
       else return len;
    }
    else return fntStringWidth(((bmp_font *)Handle)->font, String, Chars);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetFontHandle: Returns a handle for a given font family.
-
-For a given font family and size, this function will return a handle that can be passed to font querying functions.
-
-The handle is deterministic and permanent, remaining valid for the lifetime of the program.
-
--INPUT-
-cstr Family: The name of the font family to access.
-cstr Style: The preferred style to choose from the family.  Use "Regular" or NULL for the default.
-int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
-int Size: The font-size, measured in pixels @ 72 DPI.
-&ptr Handle: The resulting font handle is returned here.
-
--ERRORS-
-Okay:
-Args:
-NullArgs:
--END-
-
-*********************************************************************************************************************/
-
-ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Size < 1) return log.warning(ERR::Args);
-
-   if (!Style) Style = "Regular";
-   common_font *handle;
-   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); error IS ERR::Okay) {
-      *Handle = handle;
-      return ERR::Okay;
-   }
-   else return error;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetFontMetrics: Returns a set of display metric values for a font.
-
-Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI)
-for a given font.
-
--INPUT-
-ptr Handle: A font handle obtained from GetFontHandle().
-struct(*FontMetrics) Info: The font metrics for the Handle will be stored here.
-
--ERRORS-
-Okay:
-NullArgs:
--END-
-
-*********************************************************************************************************************/
-
-ERR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
-{
-   if ((!Handle) or (!Metrics)) return ERR::NullArgs;
-
-   if (((common_font *)Handle)->type IS CF_FREETYPE) {
-      auto pt = (freetype_font::ft_point *)Handle;
-      Metrics->Height      = pt->height;
-      Metrics->LineSpacing = pt->line_spacing;
-      Metrics->Ascent      = pt->ascent;
-      Metrics->Descent     = pt->descent;
-      return ERR::Okay;
-   }
-   else {
-      auto font = ((bmp_font *)Handle)->font;
-      Metrics->Height      = font->Ascent;
-      Metrics->LineSpacing = font->LineSpacing;
-      Metrics->Ascent      = font->Height;
-      Metrics->Descent     = font->Gutter;
-      return ERR::Okay;
-   }
 }
 
 /*********************************************************************************************************************

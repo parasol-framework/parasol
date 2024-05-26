@@ -411,7 +411,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
 
 //********************************************************************************************************************
 
-static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Void)
+static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
@@ -421,11 +421,11 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
 
    Self->Flags &= ~RNF::VISIBLE;
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
-   if (Self->defined(NF::INTEGRAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
+   if (Self->defined(NF::LOCAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
    else FreeResource(Self);
 }
 
-static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Void)
+static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
@@ -578,7 +578,7 @@ Activate: Shows a surface object on the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_Activate(extSurface *Self, APTR Void)
+static ERR SURFACE_Activate(extSurface *Self)
 {
    if (!Self->ParentID) acShow(Self);
    return ERR::Okay;
@@ -708,7 +708,7 @@ Disable: Disables a surface object.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_Disable(extSurface *Self, APTR Void)
+static ERR SURFACE_Disable(extSurface *Self)
 {
    Self->Flags |= RNF::DISABLED;
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
@@ -721,7 +721,7 @@ Enable: Enables a disabled surface object.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_Enable(extSurface *Self, APTR Void)
+static ERR SURFACE_Enable(extSurface *Self)
 {
    Self->Flags &= ~RNF::DISABLED;
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
@@ -736,7 +736,7 @@ Focus: Changes the primary user focus to the surface object.
 
 static LARGE glLastFocusTime = 0;
 
-static ERR SURFACE_Focus(extSurface *Self, APTR Void)
+static ERR SURFACE_Focus(extSurface *Self)
 {
    pf::Log log;
 
@@ -911,7 +911,7 @@ static ERR SURFACE_Focus(extSurface *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SURFACE_Free(extSurface *Self, APTR Void)
+static ERR SURFACE_Free(extSurface *Self)
 {
    if (Self->RedrawTimer) { UpdateTimer(Self->RedrawTimer, 0); Self->RedrawTimer = 0; }
 
@@ -981,7 +981,7 @@ Hide: Hides a surface object from the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_Hide(extSurface *Self, APTR Void)
+static ERR SURFACE_Hide(extSurface *Self)
 {
    pf::Log log;
 
@@ -1070,7 +1070,7 @@ static ERR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *Ar
 
 //********************************************************************************************************************
 
-static ERR SURFACE_Init(extSurface *Self, APTR Void)
+static ERR SURFACE_Init(extSurface *Self)
 {
    pf::Log log;
    objBitmap *bitmap;
@@ -1324,7 +1324,7 @@ static ERR SURFACE_Init(extSurface *Self, APTR Void)
       // and are ignorant of window frames, so we read the X, Y fields back from the display after initialisation (the
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
-      if (auto display = objDisplay::create::integral(
+      if (auto display = objDisplay::create::local(
             fl::Name(name),
             fl::X(Self->X), fl::Y(Self->Y), fl::Width(Self->Width), fl::Height(Self->Height),
             fl::BitsPerPixel(glpDisplayDepth),
@@ -1422,7 +1422,7 @@ static ERR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (auto bitmap = objBitmap::create::integral(
+         if (auto bitmap = objBitmap::create::local(
                fl::BitsPerPixel(bpp), fl::Width(Self->Width), fl::Height(Self->Height),
                fl::DataFlags(memflags),
                fl::Flags((((Self->Flags & RNF::COMPOSITE) != RNF::NIL) ? (BMF::ALPHA_CHANNEL|BMF::FIXED_DEPTH) : BMF::NIL)))) {
@@ -1501,7 +1501,7 @@ LostFocus: Informs a surface object that it has lost the user focus.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_LostFocus(extSurface *Self, APTR Void)
+static ERR SURFACE_LostFocus(extSurface *Self)
 {
 #if 0
    if (auto msg = GetActionMsg()) {
@@ -1540,7 +1540,7 @@ host platform.
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_Minimise(extSurface *Self, APTR Void)
+static ERR SURFACE_Minimise(extSurface *Self)
 {
    if (Self->DisplayID) ActionMsg(MT_GfxMinimise, Self->DisplayID, NULL);
    return ERR::Okay;
@@ -1676,7 +1676,7 @@ MoveToBack: Moves a surface object to the back of its container.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_MoveToBack(extSurface *Self, APTR Void)
+static ERR SURFACE_MoveToBack(extSurface *Self)
 {
    pf::Log log;
 
@@ -1735,7 +1735,7 @@ MoveToFront: Moves a surface object to the front of its container.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_MoveToFront(extSurface *Self, APTR Void)
+static ERR SURFACE_MoveToFront(extSurface *Self)
 {
    pf::Log log;
 
@@ -1887,7 +1887,7 @@ static ERR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 
 //********************************************************************************************************************
 
-static ERR SURFACE_NewObject(extSurface *Self, APTR Void)
+static ERR SURFACE_NewObject(extSurface *Self)
 {
    Self->LeftLimit   = -1000000000;
    Self->RightLimit  = -1000000000;
@@ -1996,14 +1996,14 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Ar
 -METHOD-
 ResetDimensions: Changes the dimensions of a surface.
 
-The ResetDimensions() method provides a simple way of re-declaring the dimensions of a surface object.  This is 
-sometimes necessary when a surface needs to make a significant alteration to its display configuration.  For 
-instance if the width of the surface is declared through a combination of `X` and `XOffset` settings and the width 
+The ResetDimensions() method provides a simple way of re-declaring the dimensions of a surface object.  This is
+sometimes necessary when a surface needs to make a significant alteration to its display configuration.  For
+instance if the width of the surface is declared through a combination of `X` and `XOffset` settings and the width
 needs to change to a fixed setting, then ResetDimensions() will have to be used.
 
 It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension
-settings.  For instance if `X` and `Width` are set, `XOffset` is ignored and the Dimensions value must include 
-`DMF_FIXED_X` and `DMF_FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full 
+settings.  For instance if `X` and `Width` are set, `XOffset` is ignored and the Dimensions value must include
+`DMF_FIXED_X` and `DMF_FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full
 list of dimension flags that can be specified.
 
 -INPUT-
@@ -2109,7 +2109,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
+static ERR SURFACE_ScheduleRedraw(extSurface *Self)
 {
    // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
    const DOUBLE FPS = 60.0;
@@ -2134,12 +2134,12 @@ static ERR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
 -ACTION-
 SaveImage: Saves the graphics of a surface object.
 
-To store the rendered image of a surface object, use the SaveImage() action.  Calling SaveImage() on a surface object 
-will cause it to render an image of its contents and save them to the given destination object.  Any child surfaces 
+To store the rendered image of a surface object, use the SaveImage() action.  Calling SaveImage() on a surface object
+will cause it to render an image of its contents and save them to the given destination object.  Any child surfaces
 in the region will also be included in the resulting image data.
 
-The image data will be saved in the data format that is indicated by the setting in the `ClassID` parameter.  Options 
-are limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE` (PNG).  If no `ClassID` is 
+The image data will be saved in the data format that is indicated by the setting in the `ClassID` parameter.  Options
+are limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE` (PNG).  If no `ClassID` is
 specified, the user's preferred default file format is used.
 -END-
 
@@ -2265,7 +2265,7 @@ Show: Shows a surface object on the display.
 -END-
 *********************************************************************************************************************/
 
-static ERR SURFACE_Show(extSurface *Self, APTR Void)
+static ERR SURFACE_Show(extSurface *Self)
 {
    pf::Log log;
 

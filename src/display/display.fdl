@@ -140,7 +140,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "BLANK_PALETTE: Forces a blank/black palette on initialisation.",
     "COMPRESSED: The bitmap data is compressed.",
     "NO_DATA: Do not allocate memory in the Data field on initialisation.",
-    "TRANSPARENT: Indicates that the bitmap utilises a transparent colour.  This is automatically set if the @Bitmap.TransIndex or @Bitmap.TransRGB is defined, and support exists in functions such as ~Display.CopyArea().",
+    "TRANSPARENT: Indicates that the bitmap utilises a transparent colour.  This is automatically set if the @Bitmap.TransIndex or @Bitmap.TransColour is defined, and support exists in functions such as ~Display.CopyArea().",
     "MASK: Declare the @Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the @Bitmap.BitsPerPixel field on initialisation.",
     "INVERSE_ALPHA: Indicates reverse alpha blending, higher values are transparent.",
     "QUERIED: Automatically set after a `Query()` on the bitmap.",
@@ -364,8 +364,8 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     int   XOffset               # Horizontal offset to apply to graphics coordinates
     int   YOffset               # Vertical offset to apply to graphics coordinates
     int   Opacity               # Opacity setting to use in drawing operations
-    struct(RGB8) TransRGB       # The transparent colour of the bitmap, in !RGB8 format.
-    struct(RGB8) BkgdRGB        # Background colour (for clearing, resizing)
+    struct(RGB8) TransColour    # The transparent colour of the bitmap.
+    struct(RGB8) Bkgd           # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.
     int(CS) ColourSpace         # Defines the colour space for RGB values.
   ]],

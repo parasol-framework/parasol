@@ -284,7 +284,7 @@ static MsgHandler *glResolveAddrHandler = NULL;
 
 //********************************************************************************************************************
 
-ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log;
 
@@ -326,7 +326,7 @@ ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-ERR MODOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;

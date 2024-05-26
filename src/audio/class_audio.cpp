@@ -44,7 +44,7 @@ An inactive audio object can operate in a limited fashion but is without access 
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_Activate(extAudio *Self, APTR Void)
+static ERR AUDIO_Activate(extAudio *Self)
 {
    pf::Log log;
 
@@ -431,7 +431,7 @@ resources back to the host system.  The audio object will remain in a suspended 
 -END-
 *********************************************************************************************************************/
 
-static ERR AUDIO_Deactivate(extAudio *Self, APTR Void)
+static ERR AUDIO_Deactivate(extAudio *Self)
 {
    pf::Log log;
 
@@ -455,7 +455,7 @@ static ERR AUDIO_Deactivate(extAudio *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR AUDIO_Free(extAudio *Self, APTR Void)
+static ERR AUDIO_Free(extAudio *Self)
 {
    if ((Self->Flags & ADF::AUTO_SAVE) != ADF::NIL) Self->saveSettings();
 
@@ -482,7 +482,7 @@ static ERR AUDIO_Free(extAudio *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR AUDIO_Init(extAudio *Self, APTR Void)
+static ERR AUDIO_Init(extAudio *Self)
 {
    pf::Log log;
 
@@ -495,7 +495,7 @@ static ERR AUDIO_Init(extAudio *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR AUDIO_NewObject(extAudio *Self, APTR Void)
+static ERR AUDIO_NewObject(extAudio *Self)
 {
    pf::Log log;
 
@@ -638,7 +638,7 @@ SaveSettings: Saves the current audio settings.
 -END-
 *********************************************************************************************************************/
 
-static ERR AUDIO_SaveSettings(extAudio *Self, APTR Void)
+static ERR AUDIO_SaveSettings(extAudio *Self)
 {
    objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
 

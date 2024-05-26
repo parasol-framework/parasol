@@ -738,7 +738,7 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
+static ERR COMPOSITEFX_Init(extCompositeFX *Self)
 {
    pf::Log log;
 
@@ -752,7 +752,7 @@ static ERR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR COMPOSITEFX_NewObject(extCompositeFX *Self, APTR Void)
+static ERR COMPOSITEFX_NewObject(extCompositeFX *Self)
 {
    Self->Operator = OP::OVER;
    return ERR::Okay;

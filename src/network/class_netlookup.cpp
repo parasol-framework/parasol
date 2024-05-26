@@ -240,7 +240,7 @@ This routine may block temporarily if there are unresolved requests awaiting com
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
+static ERR NETLOOKUP_Free(extNetLookup *Self)
 {
    if (Self->Threads) { delete Self->Threads; Self->Threads = NULL; }
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
@@ -255,7 +255,7 @@ static ERR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
+static ERR NETLOOKUP_FreeWarning(extNetLookup *Self)
 {
    if (not Self->Threads->empty()) {
       pf::Log log;
@@ -277,7 +277,7 @@ restart:
 
 //********************************************************************************************************************
 
-static ERR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
+static ERR NETLOOKUP_NewObject(extNetLookup *Self)
 {
    if (!(Self->Threads = new (std::nothrow) std::unordered_set<OBJECTID>)) return ERR::Memory;
    if (!(Self->ThreadLock = new (std::nothrow) std::mutex)) return ERR::Memory;
@@ -329,7 +329,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress 
    if (netStrToAddress(Args->Address, &ip) IS ERR::Okay) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
-      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
+      if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
          auto buffer = std::make_unique<UBYTE[]>(pkg_size);
          auto rb = (resolve_buffer *)buffer.get();
          rb->NetLookupID = Self->UID;
@@ -393,7 +393,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
 
    ERR error;
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
-   if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
+   if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_name),
          fl::Flags(THF::AUTO_FREE))) {
       auto buffer = std::make_unique<UBYTE[]>(pkg_size);
       auto rb = (resolve_buffer *)buffer.get();

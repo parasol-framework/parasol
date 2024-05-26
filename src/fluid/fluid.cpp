@@ -282,7 +282,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -299,14 +299,14 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return create_fluid();
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clFluid)    { FreeResource(clFluid); clFluid = NULL; }
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    return ERR::Okay;
 }
 
-static ERR CMDOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTableV1);
    return ERR::Okay;
@@ -828,5 +828,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

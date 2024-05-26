@@ -251,7 +251,7 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR TURBULENCEFX_Init(extTurbulenceFX *Self, APTR Void)
+static ERR TURBULENCEFX_Init(extTurbulenceFX *Self)
 {
    LONG lSeed = setup_seed(Self->Seed);
    auto &gradient = Self->Gradient;
@@ -291,7 +291,7 @@ static ERR TURBULENCEFX_Init(extTurbulenceFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR TURBULENCEFX_NewObject(extTurbulenceFX *Self, APTR Void)
+static ERR TURBULENCEFX_NewObject(extTurbulenceFX *Self)
 {
    Self->Octaves    = 1;
    Self->Stitch     = false;

@@ -124,7 +124,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
     str Path         # Location of the XML data file
     obj Source       # Alternative data source to specifying a `Path`
     int(XMF) Flags   # Optional user flags
-    int Start        # Starting cursor position (tag index) used for certain operations
+    int Start        # Starting cursor position (tag index) for some operations
     int Modified     # Modification timestamp
     error ParseError # Private
     int LineNo       # Private

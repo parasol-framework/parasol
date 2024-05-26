@@ -4,7 +4,7 @@
 
 //********************************************************************************************************************
 
-static ERR RSVG_Activate(extPicture *Self, APTR Void)
+static ERR RSVG_Activate(extPicture *Self)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR::NotInitialised;
@@ -24,7 +24,7 @@ static ERR RSVG_Activate(extPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR RSVG_Free(extPicture *Self, APTR Void)
+static ERR RSVG_Free(extPicture *Self)
 {
    if (auto prv = (prvSVG *)Self->ChildPrivate) {
       if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = NULL; }
@@ -34,7 +34,7 @@ static ERR RSVG_Free(extPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR RSVG_Init(extPicture *Self, APTR Void)
+static ERR RSVG_Init(extPicture *Self)
 {
    pf::Log log;
    STRING path;
@@ -68,7 +68,7 @@ static ERR RSVG_Init(extPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR RSVG_Query(extPicture *Self, APTR Void)
+static ERR RSVG_Query(extPicture *Self)
 {
    pf::Log log;
    prvSVG *prv;
@@ -83,7 +83,7 @@ static ERR RSVG_Query(extPicture *Self, APTR Void)
    if (!prv->SVG) {
       STRING path;
       if (Self->get(FID_Path, &path) IS ERR::Okay) {
-         if ((prv->SVG = objSVG::create::integral(fl::Path(path)))) {
+         if ((prv->SVG = objSVG::create::local(fl::Path(path)))) {
          }
          else return log.warning(ERR::CreateObject);
       }

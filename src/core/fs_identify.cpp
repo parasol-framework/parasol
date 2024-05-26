@@ -37,7 +37,7 @@ against the given file.
 
 -INPUT-
 cstr Path:     The location of the object data.
-&cid Class:    Must refer to a CLASSID variable that will store the resulting class ID.
+&cid Class:    Must refer to a `CLASSID` variable that will store the resulting class ID.
 &cid SubClass: Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).
 
 -ERRORS-

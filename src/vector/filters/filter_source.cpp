@@ -164,7 +164,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR SOURCEFX_Free(extSourceFX *Self, APTR Void)
+static ERR SOURCEFX_Free(extSourceFX *Self)
 {
    if (Self->Bitmap)     { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Source)     { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
@@ -175,7 +175,7 @@ static ERR SOURCEFX_Free(extSourceFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SOURCEFX_Init(extSourceFX *Self, APTR Void)
+static ERR SOURCEFX_Init(extSourceFX *Self)
 {
    pf::Log log;
 
@@ -188,15 +188,15 @@ static ERR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
+static ERR SOURCEFX_NewObject(extSourceFX *Self)
 {
    Self->AspectRatio = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->SourceType  = VSF::NONE;
    Self->Render      = true;
 
-   if ((Self->Scene = objVectorScene::create::integral(fl::Name("fx_src_scene"), fl::PageWidth(1), fl::PageHeight(1)))) {
+   if ((Self->Scene = objVectorScene::create::local(fl::Name("fx_src_scene"), fl::PageWidth(1), fl::PageHeight(1)))) {
       if (objVectorViewport::create::global(fl::Name("fx_src_viewport"), fl::Owner(Self->Scene->UID))) {
-         if ((Self->Bitmap = objBitmap::create::integral(fl::Name("fx_src_cache"),
+         if ((Self->Bitmap = objBitmap::create::local(fl::Name("fx_src_cache"),
                fl::Width(1),
                fl::Height(1),
                fl::BitsPerPixel(32),

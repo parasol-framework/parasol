@@ -12,7 +12,7 @@ The documented fields and actions here are integral to all effects that utilise 
 
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_Free(extFilterEffect *Self, APTR Void)
+static ERR FILTEREFFECT_Free(extFilterEffect *Self)
 {
    if (Self->Filter) {
       for (auto e = Self->Filter->Effects; (e) and (Self->UsageCount > 0); e = (extFilterEffect *)e->Next) {
@@ -32,7 +32,7 @@ static ERR FILTEREFFECT_Free(extFilterEffect *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR FILTEREFFECT_Init(extFilterEffect *Self, APTR Void)
+static ERR FILTEREFFECT_Init(extFilterEffect *Self)
 {
    pf::Log log;
 
@@ -62,7 +62,7 @@ MoveToBack: Move an effect to the back of the VectorFilter's list order.
 -END-
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_MoveToBack(extFilterEffect *Self, APTR Void)
+static ERR FILTEREFFECT_MoveToBack(extFilterEffect *Self)
 {
    if (Self->Filter->Effects != Self) {
       if (Self->Filter->LastEffect IS Self) Self->Filter->LastEffect = (extFilterEffect *)Self->Prev;
@@ -86,7 +86,7 @@ MoveToBack: Move an effect to the front of the VectorFilter's list order.
 -END-
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
+static ERR FILTEREFFECT_MoveToFront(extFilterEffect *Self)
 {
    if (Self->Next) {
       if (Self->Prev) Self->Prev->Next = Self->Next;
@@ -104,7 +104,7 @@ static ERR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
+static ERR FILTEREFFECT_NewObject(extFilterEffect *Self)
 {
    Self->SourceType = VSF::PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
    return ERR::Okay;

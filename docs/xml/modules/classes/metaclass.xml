@@ -292,8 +292,8 @@
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
+      <const name="INHERIT_LOCAL">Inherit the functionality of local objects defined in the class spec.</const>
       <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (<function module="Core">SetOwner</function> will not work either).</const>
-      <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
     </constants>
 
   </types>

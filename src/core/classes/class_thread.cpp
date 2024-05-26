@@ -307,7 +307,7 @@ Activate: Spawn a new thread that calls the function referenced in the #Routine 
 -END-
 *********************************************************************************************************************/
 
-static ERR THREAD_Activate(extThread *Self, APTR Void)
+static ERR THREAD_Activate(extThread *Self)
 {
    pf::Log log;
 
@@ -363,7 +363,7 @@ could result in an unstable application.
 -END-
 *********************************************************************************************************************/
 
-static ERR THREAD_Deactivate(extThread *Self, APTR Void)
+static ERR THREAD_Deactivate(extThread *Self)
 {
    if (Self->Active) {
       #ifdef __ANDROID__
@@ -391,7 +391,7 @@ an active thread is made then it will be marked for termination so as to avoid t
 -END-
 *********************************************************************************************************************/
 
-static ERR THREAD_Free(extThread *Self, APTR Void)
+static ERR THREAD_Free(extThread *Self)
 {
    if ((Self->Data) and (Self->DataSize > 0)) {
       FreeResource(Self->Data);
@@ -413,7 +413,7 @@ static ERR THREAD_Free(extThread *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR THREAD_FreeWarning(extThread *Self, APTR Void)
+static ERR THREAD_FreeWarning(extThread *Self)
 {
    if (!Self->Active) return ERR::Okay;
    else {
@@ -426,7 +426,7 @@ static ERR THREAD_FreeWarning(extThread *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR THREAD_Init(extThread *Self, APTR Void)
+static ERR THREAD_Init(extThread *Self)
 {
    pf::Log log;
 
@@ -438,7 +438,7 @@ static ERR THREAD_Init(extThread *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR THREAD_NewObject(extThread *Self, APTR Void)
+static ERR THREAD_NewObject(extThread *Self)
 {
    new (Self) extThread;
    Self->StackSize = 16384;

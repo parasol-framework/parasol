@@ -267,7 +267,7 @@ template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T In
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -288,7 +288,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return add_document_class();
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    glFonts.clear();
 
@@ -372,7 +372,7 @@ static ERR add_document_class(void)
       fl::ClassVersion(VER_DOCUMENT),
       fl::Name("Document"),
       fl::Category(CCF::GUI),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::Actions(clDocumentActions),
       fl::Methods(clDocumentMethods),
       fl::Fields(clFields),
@@ -385,5 +385,5 @@ static ERR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

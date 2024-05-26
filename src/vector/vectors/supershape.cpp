@@ -141,7 +141,7 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 
 //********************************************************************************************************************
 
-static ERR SUPER_NewObject(extVectorShape *Self, APTR Void)
+static ERR SUPER_NewObject(extVectorShape *Self)
 {
    Self->Radius = 100;
    Self->N1 = 0.1;

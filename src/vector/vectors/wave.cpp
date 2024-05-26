@@ -191,7 +191,7 @@ static ERR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 
 //********************************************************************************************************************
 
-static ERR WAVE_NewObject(extVectorWave *Self, APTR Void)
+static ERR WAVE_NewObject(extVectorWave *Self)
 {
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_wave;
    Self->wFrequency = 1.0;

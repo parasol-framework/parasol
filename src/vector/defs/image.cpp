@@ -18,7 +18,7 @@ NOTE: For the rendering of vectors as flattened images, use @VectorPattern.
 
 *********************************************************************************************************************/
 
-static ERR IMAGE_Init(objVectorImage *Self, APTR Void)
+static ERR IMAGE_Init(objVectorImage *Self)
 {
    pf::Log log;
 
@@ -33,7 +33,7 @@ static ERR IMAGE_Init(objVectorImage *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR IMAGE_NewObject(objVectorImage *Self, APTR Void)
+static ERR IMAGE_NewObject(objVectorImage *Self)
 {
    Self->Units        = VUNIT::BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD::CLIP;

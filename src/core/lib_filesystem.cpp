@@ -539,7 +539,7 @@ CSTRING ResolveGroupID(LONG GroupID)
 ResolveUserID: Converts a user ID to its corresponding name.
 
 This function converts user ID's obtained from the file system into their corresponding names.  If the `User` ID is
-invalid then NULL will be returned.
+invalid then `NULL` will be returned.
 
 -INPUT-
 int User: The user ID.
@@ -758,7 +758,7 @@ By default, user, group and permission information for new files is inherited ei
 the file source in copy operations.  Use this function to override this behaviour with new default values.  All
 threads of the process will be affected.
 
-To revert behaviour to the default settings, set the User and/or `Group` values to -1 and the `Permissions` value to zero.
+To revert behaviour to the default settings, set the `User` and/or `Group` values to `-1` and the `Permissions` value to zero.
 
 -INPUT-
 int User: User ID to apply to new files.
@@ -1030,7 +1030,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 
 This function will overwrite the destination location if it already exists.
 
-The Source argument should always clarify the type of location that is being copied - e.g. if you are copying a
+The `Source` argument should always clarify the type of location that is being copied - e.g. if you are copying a
 folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a
 file.
 
@@ -1079,8 +1079,8 @@ matched to `photo.jpg` in the same folder).
 -INPUT-
 cstr Path: The path of the file.
 buf(ptr) Buffer: Pointer to a buffer that will receive the file content.
-bufsize BufferSize: The byte size of the Buffer.
-&int Result: The total number of bytes read into the Buffer will be returned here (optional).
+bufsize BufferSize: The byte size of the `Buffer`.
+&int Result: The total number of bytes read into the `Buffer` will be returned here (optional).
 
 -ERRORS-
 Okay
@@ -1177,13 +1177,13 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReadInfoTag: Read a named tag from a FileInfo structure.
+ReadInfoTag: Read a named tag from a !FileInfo structure.
 
-Call ReadInfoTag() to retrieve the string value associated with a named tag in a FileInfo structure.  The tag must
-have been added with AddInfoTag() or `ERR::NotFound` will be returned.
+Call ReadInfoTag() to retrieve the string value associated with a named tag in a !FileInfo structure.  The tag must
+have been added with ~AddInfoTag() or `ERR::NotFound` will be returned.
 
 -INPUT-
-struct(FileInfo) Info: Pointer to a valid FileInfo structure.
+struct(FileInfo) Info: Pointer to a valid !FileInfo structure.
 cstr Name: The name of the tag.
 &cstr Value: The discovered string value is returned here if found.
 
@@ -1302,7 +1302,7 @@ UnloadFile: Unloads files from the file cache.
 This function unloads cached files that have been previously loaded with the ~LoadFile() function.
 
 -INPUT-
-resource(CacheFile) Cache: A pointer to a CacheFile structure returned from LoadFile().
+resource(CacheFile) Cache: A pointer to a !CacheFile structure returned from LoadFile().
 -END-
 
 *********************************************************************************************************************/

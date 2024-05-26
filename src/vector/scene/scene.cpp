@@ -61,7 +61,7 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 
 //********************************************************************************************************************
 
-static ERR VECTORSCENE_Reset(extVectorScene *, APTR);
+static ERR VECTORSCENE_Reset(extVectorScene *);
 
 void apply_focus(extVectorScene *, extVector *);
 static void scene_key_event(extVectorScene *, evKey *, LONG);
@@ -214,7 +214,7 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_Debug(extVectorScene *Self)
 {
    pf::Log log("debug_tree");
 
@@ -385,7 +385,7 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 
 //********************************************************************************************************************
 
-static ERR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_Init(extVectorScene *Self)
 {
    // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
    // alternative for the client is to set the Bitmap field and manage rendering manually.
@@ -427,14 +427,14 @@ static ERR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORSCENE_NewObject(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_NewObject(extVectorScene *Self)
 {
    Self->SampleMethod = VSM::BILINEAR;
 
    new (Self) extVectorScene;
 
    // Please refer to the Reset action for setting variable defaults
-   return VECTORSCENE_Reset(Self, NULL);
+   return VECTORSCENE_Reset(Self);
 }
 
 /*********************************************************************************************************************
@@ -459,7 +459,7 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTORSCENE_Reset(extVectorScene *Self, APTR Void)
+static ERR VECTORSCENE_Reset(extVectorScene *Self)
 {
    if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
    Self->Defs.clear();
@@ -486,9 +486,9 @@ static ERR VECTORSCENE_Resize(extVectorScene *Self, struct acResize *Args)
 -METHOD-
 SearchByID: Search for a vector by numeric ID.
 
-This method will search a scene for an object that matches a given `ID` (vector ID's can be set with the 
-@Vector.NumericID or @Vector.ID fields).  If multiple vectors are using the same ID, repeated calls can be made 
-to this method to find them all.  This is achieved by calling this method on the vector that was last returned 
+This method will search a scene for an object that matches a given `ID` (vector ID's can be set with the
+@Vector.NumericID or @Vector.ID fields).  If multiple vectors are using the same ID, repeated calls can be made
+to this method to find them all.  This is achieved by calling this method on the vector that was last returned
 as a `Result`.
 
 Note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash
@@ -678,7 +678,7 @@ level of quality at the cost of very poor execution speed.
 -FIELD-
 Surface: May refer to a @Surface object for enabling automatic rendering.
 
-Setting the Surface field will enable automatic rendering to a display @Surface.  The use of features such as input 
+Setting the Surface field will enable automatic rendering to a display @Surface.  The use of features such as input
 event handling and user focus management will also require an associated surface as a pre-requisite.
 
 *********************************************************************************************************************/

@@ -30,7 +30,7 @@ The alpha component value, measured from 0 to 1.0.  The default is 1.0.
 
 *********************************************************************************************************************/
 
-static ERR COLOUR_NewObject(objVectorColour *Self, APTR Void)
+static ERR COLOUR_NewObject(objVectorColour *Self)
 {
    Self->Alpha = 1.0;
    return ERR::Okay;

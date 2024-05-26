@@ -172,7 +172,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
 //********************************************************************************************************************
 
-static ERR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
+static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
    pf::Log log;
 
@@ -208,7 +208,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
+static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
 #ifdef __linux__
    LONG non_blocking = 1;

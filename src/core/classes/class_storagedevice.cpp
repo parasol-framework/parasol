@@ -20,12 +20,12 @@ Following initialisation, all meta fields describing the volume are readable for
 #define PRV_FILESYSTEM
 #include "../defs.h"
 
-static ERR STORAGE_Free(extStorageDevice *, APTR);
-static ERR STORAGE_Init(extStorageDevice *, APTR);
+static ERR STORAGE_Free(extStorageDevice *);
+static ERR STORAGE_Init(extStorageDevice *);
 
 //********************************************************************************************************************
 
-static ERR STORAGE_Free(extStorageDevice *Self, APTR Void)
+static ERR STORAGE_Free(extStorageDevice *Self)
 {
    if (Self->Volume) { FreeResource(Self->Volume); Self->Volume = NULL; }
    return ERR::Okay;
@@ -33,7 +33,7 @@ static ERR STORAGE_Free(extStorageDevice *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR STORAGE_Init(extStorageDevice *Self, APTR Void)
+static ERR STORAGE_Init(extStorageDevice *Self)
 {
    pf::Log log;
 
@@ -167,7 +167,7 @@ static const FieldArray clFields[] = {
    { "BytesUsed",   FDF_LARGE|FDF_R },
    // Virtual fields
    { "DeviceID",    FDF_STRING|FDF_R, GET_DeviceID },
-   { "Volume",      FDF_STRING|FDF_REQUIRED|FDF_RI, GET_Volume, SET_Volume },
+   { "Volume",      FDF_STRING|FDF_RI, GET_Volume, SET_Volume },
     END_FIELD
 };
 

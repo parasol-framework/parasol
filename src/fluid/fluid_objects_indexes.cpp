@@ -284,7 +284,7 @@ static int object_get(lua_State *Lua)
             result = object_get_string(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_POINTER) {
-            if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) {
+            if (field->Flags & (FD_OBJECT|FD_LOCAL)) {
                result = object_get_object(Lua, obj_read(0, NULL, field), def);
             }
             else result = object_get_ptr(Lua, obj_read(0, NULL, field), def);
@@ -497,7 +497,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
          else return ERR::SetValueNotFunction;
       }
       else if (field->Flags & FD_POINTER) {
-         if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
+         if (field->Flags & (FD_OBJECT|FD_LOCAL)) { // Writing to an integral is permitted if marked as writeable.
             if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
                OBJECTPTR ptr_obj;
                if (object->ObjectPtr) {

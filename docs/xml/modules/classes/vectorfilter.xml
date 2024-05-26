@@ -204,7 +204,7 @@
 
     <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">
       <const name="MEET">Scale X/Y values independently and in relation to the width/height of the parent viewport.</const>
-      <const name="NONE">Scale X/Y values on a 1:1 basis, in relation to the diagonal of the parent viewport.</const>
+      <const name="NONE">Scale X/Y values on a <code>1:1</code> basis, in relation to the diagonal of the parent viewport.</const>
     </constants>
 
     <constants lookup="VUNIT">

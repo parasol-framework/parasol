@@ -315,10 +315,10 @@ C/C++ as the function name is automatically entered by the C pre-processor.
 
 -INPUT-
 cstr Header: A short string that names the function that is making the call.
-error Error: An error code from the "system/errors.h" include file.  Valid error codes and their descriptions can be found in the Parasol SDK manual.
+error Error: An error code from the `system/errors.h` include file.  Valid error codes and their descriptions can be found in the Parasol Wiki.
 
 -RESULT-
-error: Returns the same code that was specified in the Error parameter.
+error: Returns the same code that was specified in the `Error` parameter.
 
 *********************************************************************************************************************/
 

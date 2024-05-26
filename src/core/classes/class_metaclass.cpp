@@ -141,9 +141,9 @@ static const FieldArray glMetaFields[] = {
 };
 
 extern "C" ERR CLASS_FindField(extMetaClass *, struct mcFindField *);
-extern "C" ERR CLASS_Free(extMetaClass *, APTR);
-extern "C" ERR CLASS_Init(extMetaClass *, APTR);
-extern "C" ERR CLASS_NewObject(extMetaClass *, APTR);
+extern "C" ERR CLASS_Free(extMetaClass *);
+extern "C" ERR CLASS_Init(extMetaClass *);
+extern "C" ERR CLASS_NewObject(extMetaClass *);
 
 FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 
@@ -175,7 +175,7 @@ void init_metaclass(void)
    glMetaClass.Category           = CCF::SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
-   glMetaClass.Integral[0]        = 0xff;
+   glMetaClass.Local[0]        = 0xff;
 
    glMetaClass.Methods.resize(2);
    glMetaClass.Methods[1] = { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mcFindField) };
@@ -230,7 +230,7 @@ ERR CLASS_FindField(extMetaClass *Self, struct mcFindField *Args)
 
 //********************************************************************************************************************
 
-ERR CLASS_Free(extMetaClass *Self, APTR Void)
+ERR CLASS_Free(extMetaClass *Self)
 {
    if (Self->ClassID) glClassMap.erase(Self->ClassID);
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
@@ -240,7 +240,7 @@ ERR CLASS_Free(extMetaClass *Self, APTR Void)
 
 //********************************************************************************************************************
 
-ERR CLASS_Init(extMetaClass *Self, APTR Void)
+ERR CLASS_Init(extMetaClass *Self)
 {
    pf::Log log;
 
@@ -380,10 +380,10 @@ ERR CLASS_Init(extMetaClass *Self, APTR Void)
 
 //********************************************************************************************************************
 
-ERR CLASS_NewObject(extMetaClass *Self, APTR Void)
+ERR CLASS_NewObject(extMetaClass *Self)
 {
    new (Self) extMetaClass;
-   Self->Integral[0] = 0xff;
+   Self->Local[0] = 0xff;
    return ERR::Okay;
 }
 
@@ -922,30 +922,30 @@ static void field_setup(extMetaClass *Class)
 
       if (glLogLevel >= 2) register_fields(Class->FieldLookup);
 
-      // Build a list of integral objects before we do the sort
+      // Build a list of local objects before we do the sort
 
-      ULONG integral[ARRAYSIZE(Class->Integral)];
+      ULONG local[ARRAYSIZE(Class->Local)];
 
       UBYTE int_count = 0;
-      if ((Class->Flags & CLF::PROMOTE_INTEGRAL) != CLF::NIL) {
+      if ((Class->Flags & CLF::INHERIT_LOCAL) != CLF::NIL) {
          for (unsigned i=0; i < Class->FieldLookup.size(); i++) {
-            if (Class->FieldLookup[i].Flags & FD_INTEGRAL) {
-               Class->Integral[int_count] = i;
-               integral[int_count++] = Class->FieldLookup[i].FieldID;
-               if (int_count >= ARRAYSIZE(Class->Integral)-1) break;
+            if (Class->FieldLookup[i].Flags & FD_LOCAL) {
+               Class->Local[int_count] = i;
+               local[int_count++] = Class->FieldLookup[i].FieldID;
+               if (int_count >= std::ssize(Class->Local)-1) break;
             }
          }
       }
-      Class->Integral[int_count] = 0xff;
+      Class->Local[int_count] = 0xff;
 
       sort_class_fields(Class, Class->FieldLookup);
 
-      // Repair integral indexes
+      // Repair local indexes
 
       for (unsigned i=0; i < int_count; i++) {
          for (unsigned j=0; j < Class->FieldLookup.size(); j++) {
-            if (integral[i] IS Class->FieldLookup[j].FieldID) {
-               Class->Integral[i] = j;
+            if (local[i] IS Class->FieldLookup[j].FieldID) {
+               Class->Local[i] = j;
                break;
             }
          }
@@ -1171,8 +1171,8 @@ static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClas
       }
    }
 
-   for (unsigned i=0; Class->Integral[i] != 0xff; i++) {
-      auto &field = Class->FieldLookup[Class->Integral[i]];
+   for (unsigned i=0; Class->Local[i] != 0xff; i++) {
+      auto &field = Class->FieldLookup[Class->Local[i]];
       if (field.Arg) {
          if (auto child_class = (extMetaClass *)FindClass(field.Arg)) {
             *Result = child_class;

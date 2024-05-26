@@ -805,7 +805,7 @@ function struct(Name, Options, Def, Append)
          end
 
          if nz(f.comment) then
-            local clean_comment = f.comment:gsub('[`!]', '')
+            local clean_comment = f.comment:gsub('[`!@#]', '')
             table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
@@ -1519,7 +1519,7 @@ function outputClassHeader(class, Private, Custom)
                end
 
                if nz(f.comment) then
-                  local clean_comment = f.comment:gsub('[`!]', '')
+                  local clean_comment = f.comment:gsub('[`!@#]', '')
                   output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
                else
                   output(left)

@@ -52,7 +52,7 @@ static ERR init_wave(void);
 
 #include "utility.cpp"
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log;
 
@@ -110,7 +110,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return error;
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    glBitmapFonts.clear();
    glFreetypeFonts.clear();
@@ -176,7 +176,7 @@ static ERR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-extern ERR CMDOpen(OBJECTPTR Module);
+extern ERR MODOpen(OBJECTPTR Module);
 
 static STRUCTS glStructures = {
    { "GradientStop", sizeof(GradientStop) },
@@ -187,5 +187,5 @@ static STRUCTS glStructures = {
    { "VectorPoint",  sizeof(VectorPoint) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_vector_module() { return &ModHeader; }

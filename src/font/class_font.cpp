@@ -68,14 +68,14 @@ FieldNotSet: The Bitmap and/or String field has not been set.
 
 static ERR draw_bitmap_font(extFont *);
 
-static ERR FONT_Draw(extFont *Self, APTR Void)
+static ERR FONT_Draw(extFont *Self)
 {
    return draw_bitmap_font(Self);
 }
 
 //********************************************************************************************************************
 
-static ERR FONT_Free(extFont *Self, APTR Void)
+static ERR FONT_Free(extFont *Self)
 {
    CACHE_LOCK lock(glCacheMutex);
 
@@ -97,7 +97,7 @@ static ERR FONT_Free(extFont *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR FONT_Init(extFont *Self, APTR Void)
+static ERR FONT_Init(extFont *Self)
 {
    pf::Log log;
    LONG diff;
@@ -280,7 +280,7 @@ static ERR FONT_Init(extFont *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR FONT_NewObject(extFont *Self, APTR Void)
+static ERR FONT_NewObject(extFont *Self)
 {
    new (Self) extFont;
 

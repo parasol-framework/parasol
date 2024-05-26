@@ -271,7 +271,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    pf::SwitchContext ctx(Self);
 
    if (!Self->SourceGraphic) {
-      if (!(Self->SourceGraphic = objBitmap::create::integral(fl::Name("source_graphic"),
+      if (!(Self->SourceGraphic = objBitmap::create::local(fl::Name("source_graphic"),
          fl::Width(Self->ClientViewport->Scene->PageWidth),
          fl::Height(Self->ClientViewport->Scene->PageHeight),
          fl::BitsPerPixel(32),
@@ -284,7 +284,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    }
 
    if (!Self->SourceScene) {
-      if ((Self->SourceScene = extVectorScene::create::integral(
+      if ((Self->SourceScene = extVectorScene::create::local(
             fl::PageWidth(Self->ClientViewport->Scene->PageWidth),
             fl::PageHeight(Self->ClientViewport->Scene->PageHeight)))) {
 
@@ -496,7 +496,7 @@ Clear: Removes all filter effects.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTORFILTER_Clear(extVectorFilter *Self, APTR Void)
+static ERR VECTORFILTER_Clear(extVectorFilter *Self)
 {
    pf::Log log;
 
@@ -511,7 +511,7 @@ static ERR VECTORFILTER_Clear(extVectorFilter *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORFILTER_Free(extVectorFilter *Self, APTR Void)
+static ERR VECTORFILTER_Free(extVectorFilter *Self)
 {
    acClear(Self);
 
@@ -524,7 +524,7 @@ static ERR VECTORFILTER_Free(extVectorFilter *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORFILTER_Init(extVectorFilter *Self, APTR Void)
+static ERR VECTORFILTER_Init(extVectorFilter *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -560,7 +560,7 @@ static ERR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Args)
 
 //********************************************************************************************************************
 
-static ERR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
+static ERR VECTORFILTER_NewObject(extVectorFilter *Self)
 {
    new (Self) extVectorFilter;
    Self->Units          = VUNIT::BOUNDING_BOX;

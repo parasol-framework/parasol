@@ -530,7 +530,7 @@ Failed: Failed to initialise the decompression process.
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_CompressStreamStart(extCompression *Self, APTR Void)
+static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
 {
    pf::Log log;
 
@@ -816,7 +816,7 @@ Failed: Failed to initialise the decompression process.
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_DecompressStreamStart(extCompression *Self, APTR Void)
+static ERR COMPRESSION_DecompressStreamStart(extCompression *Self)
 {
    pf::Log log;
 
@@ -1686,7 +1686,7 @@ Flush: Flushes all pending actions.
 -END-
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_Flush(extCompression *Self, APTR Void)
+static ERR COMPRESSION_Flush(extCompression *Self)
 {
    if (Self->isSubClass()) return ERR::Okay;
 
@@ -1725,7 +1725,7 @@ static ERR COMPRESSION_Flush(extCompression *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR COMPRESSION_Free(extCompression *Self, APTR Void)
+static ERR COMPRESSION_Free(extCompression *Self)
 {
    // Before terminating anything, write the EOF signature (if modifications have been made).
 
@@ -1756,7 +1756,7 @@ static ERR COMPRESSION_Free(extCompression *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR COMPRESSION_Init(extCompression *Self, APTR Void)
+static ERR COMPRESSION_Init(extCompression *Self)
 {
    pf::Log log;
    auto path = Self->get<STRING>(FID_Path);
@@ -1769,7 +1769,7 @@ static ERR COMPRESSION_Init(extCompression *Self, APTR Void)
    else if ((Self->Flags & CMF::NEW) != CMF::NIL) {
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
-      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
+      if ((Self->FileIO = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
          return ERR::Okay;
       }
       else {
@@ -1791,7 +1791,7 @@ static ERR COMPRESSION_Init(extCompression *Self, APTR Void)
          pf::Create<objFile> file({
             fl::Path(path),
             fl::Flags(FL::READ|FL::APPROXIMATE|(((Self->Flags & CMF::READ_ONLY) != CMF::NIL) ? FL::NIL : FL::WRITE))
-         }, NF::INTEGRAL);
+         }, NF::LOCAL);
 
          // Try switching to read-only access if we were denied permission.
 
@@ -1799,7 +1799,7 @@ static ERR COMPRESSION_Init(extCompression *Self, APTR Void)
          else if ((file.error IS ERR::NoPermission) and ((Self->Flags & CMF::READ_ONLY) IS CMF::NIL)) {
             log.trace("Trying read-only access...");
 
-            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+            if ((Self->FileIO = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
                Self->Flags |= CMF::READ_ONLY;
             }
             else error = ERR::File;
@@ -1831,7 +1831,7 @@ static ERR COMPRESSION_Init(extCompression *Self, APTR Void)
 
          log.detail("Creating a new file because the location does not exist.");
 
-         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
+         if ((Self->FileIO = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
             return ERR::Okay;
          }
          else {
@@ -1855,7 +1855,7 @@ static ERR COMPRESSION_Init(extCompression *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR COMPRESSION_NewObject(extCompression *Self, APTR Void)
+static ERR COMPRESSION_NewObject(extCompression *Self)
 {
    pf::Log log;
 

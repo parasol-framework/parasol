@@ -135,7 +135,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, `ERR::VirtualVolume` is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
     "APPROXIMATE: Ignores file extensions for the purpose of file name matching.",
     "NO_DEEP_SCAN: Do not perform more than one iteration when resolving the source file path.",
-    "PATH: Use the PATH environment variable to resolve the file name in the Path parameter.",
+    "PATH: Use the `PATH` environment variable to resolve the file name in the `Path` parameter.",
     "CASE_SENSITIVE: For use on host systems that use case-insensitive file systems such as Windows; this option checks that the discovered file is a case-sensitive match to the Path.")
 
   -- NB: The MFF flags are duplicated in the FileSystem's Win32 code if you're going to change these
@@ -272,7 +272,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
-    "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
+    "LOCAL: Classes can allocate local objects to stop them from being associated with the client.",
     "FREE_ON_UNLOCK: Read-only indicator for when the object is marked for deletion.",
     "FREE: Read-only indicator for when the object is being freed.",
     "TIMER_SUB: The object is subscribed to a timer interval.",
@@ -352,7 +352,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
   flags("CLF", { comment="Flags for the MetaClass." },
-    "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
+    "INHERIT_LOCAL: Inherit the functionality of local objects defined in the class spec.",
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (~Core.SetOwner() will not work either).")
 
   flags("CNF", { comment="Flags for the Config class." },
@@ -684,16 +684,16 @@ struct OpenInfo {
 #define FDF_VARIABLE   FD_VARIABLE
 #define FDF_SYNONYM    FD_SYNONYM
 
-#define FDF_UNSIGNED    (FD_UNSIGNED)
-#define FDF_FUNCTION    (FD_FUNCTION)           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
+#define FDF_UNSIGNED    FD_UNSIGNED
+#define FDF_FUNCTION    FD_FUNCTION           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
-#define FDF_STRUCT      (FD_STRUCT)
-#define FDF_RESOURCE    (FD_RESOURCE)
+#define FDF_STRUCT      FD_STRUCT
+#define FDF_RESOURCE    FD_RESOURCE
 #define FDF_OBJECT      (FD_POINTER|FD_OBJECT)   // Field refers to another object
 #define FDF_OBJECTID    (FD_LONG|FD_OBJECT)      // Field refers to another object by ID
-#define FDF_INTEGRAL    (FD_POINTER|FD_INTEGRAL) // Field refers to an integral object
+#define FDF_LOCAL       (FD_POINTER|FD_LOCAL)    // Field refers to a local object
 #define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
-#define FDF_STR         (FDF_STRING)
+#define FDF_STR         FDF_STRING
 #define FDF_SCALED      FD_SCALED
 #define FDF_FLAGS       FD_FLAGS                // Field contains flags
 #define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
@@ -703,13 +703,12 @@ struct OpenInfo {
 #define FDF_INIT        FD_INIT                 // Field can only be written prior to Init()
 #define FDF_SYSTEM      FD_SYSTEM
 #define FDF_ERROR       (FD_LONG|FD_ERROR)
-#define FDF_REQUIRED    FD_REQUIRED
 #define FDF_RGB         (FD_RGB|FD_BYTE|FD_ARRAY)
-#define FDF_R           (FD_READ)
-#define FDF_W           (FD_WRITE)
+#define FDF_R           FD_READ
+#define FDF_W           FD_WRITE
 #define FDF_RW          (FD_READ|FD_WRITE)
 #define FDF_RI          (FD_READ|FD_INIT)
-#define FDF_I           (FD_INIT)
+#define FDF_I           FD_INIT
 #define FDF_VIRTUAL     FD_VIRTUAL
 #define FDF_LONGFLAGS   (FDF_LONG|FDF_FLAGS)
 #define FDF_FIELDTYPES  (FD_LONG|FD_DOUBLE|FD_LARGE|FD_POINTER|FD_VARIABLE|FD_BYTE|FD_ARRAY|FD_FUNCTION)
@@ -931,15 +930,15 @@ class FloatRect {
      large Time  # A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
      int UID     # A unique identifier automatically created by ~Core.SendMessage().
      int Type    # A message type identifier as defined by the client.
-     int Size    # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.
+     int Size    # The byte-size of the message data, or zero if no data is provided.
   ]])
 
   struct("MemInfo", { type="meminfo" }, [[
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
-    uint  Size         # The size of the memory block.
+    uint Size          # The size of the memory block.
     int(MEM) Flags     # The type of memory.
-    mem  MemoryID      # The unique ID for this block.
+    mem   MemoryID     # The unique ID for this block.
     short AccessCount  # Total number of active locks on this block.
   ]])
 
@@ -992,11 +991,11 @@ class FloatRect {
     std::unordered_map<std::string, std::string> *Tags;
   ]])
 
-  struct("FileInfo", { comment="Returned by GetFileInfo()" }, [[
+  struct("FileInfo", { comment="Metadata for describing a file." }, [[
     large Size                 # The size of the file's content.
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or `NULL`.
-    str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
+    str Name                   # The name of the file.
     int(RDF) Flags             # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
@@ -1009,7 +1008,7 @@ class FloatRect {
   ]]) -- NB: Private fields can follow this structure.
 
   struct("DirInfo", { comment="Used by OpenDir() only" }, [[
-    struct(*FileInfo) Info # Pointer to a FileInfo structure
+    struct(*FileInfo) Info # Pointer to a !FileInfo structure
   ]],
   [[
    #ifdef PRV_FILE
@@ -1760,17 +1759,16 @@ class Create {
          else return NULL;
       }
 
-      // Return an unscoped integral object (suitable for class allocations only).  This marks the object as
-      // being 'hidden' from the client unless explicitly makes it available.
+      // Return an unscoped local object (suitable for class allocations only).
 
-      template <typename... Args> static T * integral(Args&&... Fields) {
-         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
+      template <typename... Args> static T * local(Args&&... Fields) {
+         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::LOCAL);
          if (object.ok()) return *object;
          else return NULL;
       }
 
-      inline static T * integral(const std::initializer_list<FieldValue> Fields) {
-         pf::Create<T> object(Fields, NF::INTEGRAL);
+      inline static T * local(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields, NF::LOCAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -1850,7 +1848,7 @@ class Create {
       ~Create() {
          if (obj) {
             if (obj->initialised()) {
-               if ((obj->Object::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+               if ((obj->Object::Flags & (NF::UNTRACKED|NF::LOCAL)) != NF::NIL)  {
                   return; // Detected a successfully created unscoped object
                }
             }
@@ -2276,6 +2274,10 @@ inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
    Result = args.Error;
    return(error);
 }
+  ]])
+
+  struct("ActionEntry", { restrict='c', comment="For the Task Actions field." }, [[
+     fptr(error obj ptr) PerformAction # Pointer to a custom action hook.
   ]])
 
   methods("Task", "Task", {

@@ -656,32 +656,32 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
       }
    }
    else if (!Output.compare(pos, sizeof("[%tm-day]")-1, "[%tm-day]")) {
-      if (!m_time) m_time = objTime::create::integral();
+      if (!m_time) m_time = objTime::create::local();
       if (!time_queried) { acQuery(m_time); time_queried = true; }
       Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(m_time->Day));
    }
    else if (!Output.compare(pos, sizeof("[%tm-month]")-1, "[%tm-month]")) {
-      if (!m_time) m_time = objTime::create::integral();
+      if (!m_time) m_time = objTime::create::local();
       if (!time_queried) { acQuery(m_time); time_queried = true; }
       Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(m_time->Month));
    }
    else if (!Output.compare(pos, sizeof("[%tm-year]")-1, "[%tm-year]")) {
-      if (!m_time) m_time = objTime::create::integral();
+      if (!m_time) m_time = objTime::create::local();
       if (!time_queried) { acQuery(m_time); time_queried = true; }
       Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(m_time->Year));
    }
    else if (!Output.compare(pos, sizeof("[%tm-hour]")-1, "[%tm-hour]")) {
-      if (!m_time) m_time = objTime::create::integral();
+      if (!m_time) m_time = objTime::create::local();
       if (!time_queried) { acQuery(m_time); time_queried = true; }
       Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(m_time->Hour));
    }
    else if (!Output.compare(pos, sizeof("[%tm-minute]")-1, "[%tm-minute]")) {
-      if (!m_time) m_time = objTime::create::integral();
+      if (!m_time) m_time = objTime::create::local();
       if (!time_queried) { acQuery(m_time); time_queried = true; }
       Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(m_time->Minute));
    }
    else if (!Output.compare(pos, sizeof("[%tm-second]")-1, "[%tm-second]")) {
-      if (!m_time) m_time = objTime::create::integral();
+      if (!m_time) m_time = objTime::create::local();
       if (!time_queried) { acQuery(m_time); time_queried = true; }
       Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(m_time->Second));
    }
@@ -2061,7 +2061,7 @@ void parser::tag_svg(XMLTag &Tag)
 
    STRING xml_svg;
    if (auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg); err IS ERR::Okay) {
-      if ((Self->SVG = objSVG::create::integral({ fl::Statement(xml_svg), fl::Target(target) }))) {
+      if ((Self->SVG = objSVG::create::local({ fl::Statement(xml_svg), fl::Target(target) }))) {
          if (target IS Self->View) { // Put the page back in front of the background objects
             acMoveToFront(Self->Page);
          }
@@ -2225,7 +2225,7 @@ void parser::tag_include(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (StrMatch("src", Tag.Attribs[i].Name) IS ERR::Okay) {
-         if (auto xmlinc = objXML::create::integral(fl::Path(Tag.Attribs[i].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
+         if (auto xmlinc = objXML::create::local(fl::Path(Tag.Attribs[i].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             auto old_xml = change_xml(xmlinc);
             parse_tags(xmlinc->Tags);
             Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
@@ -2257,7 +2257,7 @@ void parser::tag_parse(XMLTag &Tag)
           (StrMatch("$value", Tag.Attribs[1].Name) IS ERR::Okay)) {
          log.traceBranch("Parsing string value as XML...");
 
-         if (auto xmlinc = objXML::create::integral(fl::Statement(Tag.Attribs[1].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
+         if (auto xmlinc = objXML::create::local(fl::Statement(Tag.Attribs[1].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             auto old_xml = change_xml(xmlinc);
             parse_tags(xmlinc->Tags);
             change_xml(old_xml);
@@ -3323,7 +3323,7 @@ void parser::tag_script(XMLTag &Tag)
    }
 
    if (StrMatch("fluid", type) IS ERR::Okay) {
-      error = NewObject(ID_FLUID, NF::INTEGRAL, &script);
+      error = NewObject(ID_FLUID, NF::LOCAL, &script);
    }
    else {
       error = ERR::NoSupport;

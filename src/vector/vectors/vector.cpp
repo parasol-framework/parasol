@@ -199,7 +199,7 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_Debug(extVector *Self, APTR Void)
+static ERR VECTOR_Debug(extVector *Self)
 {
    LONG level = 0;
    debug_tree(Self, level);
@@ -212,7 +212,7 @@ Disable: Disabling a vector can be used to trigger style changes and prevent use
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTOR_Disable(extVector *Self, APTR Void)
+static ERR VECTOR_Disable(extVector *Self)
 {
    // It is up to the client to monitor the Disable action if any reaction is required.
    Self->Flags |= VF::DISABLED;
@@ -269,7 +269,7 @@ Enable: Reverses the effects of disabling the vector.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTOR_Enable(extVector *Self, APTR Void)
+static ERR VECTOR_Enable(extVector *Self)
 {
   // It is up to the client to subscribe to the Enable action if any activity needs to take place.
   Self->Flags &= ~VF::DISABLED;
@@ -278,7 +278,7 @@ static ERR VECTOR_Enable(extVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTOR_Free(extVector *Self, APTR Void)
+static ERR VECTOR_Free(extVector *Self)
 {
    Self->~extVector();
 
@@ -491,7 +491,7 @@ Hide: Changes the vector's visibility setting to hidden.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTOR_Hide(extVector *Self, APTR Void)
+static ERR VECTOR_Hide(extVector *Self)
 {
    Self->Visibility = VIS::HIDDEN;
    return ERR::Okay;
@@ -499,7 +499,7 @@ static ERR VECTOR_Hide(extVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTOR_Init(extVector *Self, APTR Void)
+static ERR VECTOR_Init(extVector *Self)
 {
    pf::Log log;
 
@@ -545,7 +545,7 @@ MoveToBack: Move a vector to the back of its stack.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_MoveToBack(extVector *Self, APTR Void)
+static ERR VECTOR_MoveToBack(extVector *Self)
 {
    struct vecPush push = { -32768 };
    return VECTOR_Push(Self, &push);
@@ -557,7 +557,7 @@ MoveToFront: Move a vector to the front of its stack.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTOR_MoveToFront(extVector *Self, APTR Void)
+static ERR VECTOR_MoveToFront(extVector *Self)
 {
    struct vecPush push = { 32767 };
    return VECTOR_Push(Self, &push);
@@ -565,7 +565,7 @@ static ERR VECTOR_MoveToFront(extVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTOR_NewObject(extVector *Self, APTR Void)
+static ERR VECTOR_NewObject(extVector *Self)
 {
    new (Self) extVector;
    Self->StrokeOpacity = 1.0;
@@ -748,7 +748,7 @@ to the current position of the vector.  Every unit specified in the Position par
 index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.
 
 It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector
-reaches the edge of its branch with excess units remaining, the method will return immediately with an `ERR::Okay` 
+reaches the edge of its branch with excess units remaining, the method will return immediately with an `ERR::Okay`
 error code.
 
 -INPUT-
@@ -814,7 +814,7 @@ Show: Changes the vector's visibility setting to visible.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTOR_Show(extVector *Self, APTR Void)
+static ERR VECTOR_Show(extVector *Self)
 {
    Self->Visibility = VIS::VISIBLE;
    return ERR::Okay;
@@ -894,7 +894,7 @@ Okay:
 NullArgs:
 FieldNotSet: The VectorScene has no reference to a Surface.
 AllocMemory:
-Function: A call to gfxSubscribeInput() failed.
+Function: A call to ~Display.SubscribeInput() failed.
 
 *********************************************************************************************************************/
 
@@ -1947,7 +1947,7 @@ event.
 -FIELD-
 Prev: The previous vector in the branch, or `NULL`.
 
-The Prev value refers to the previous vector in the branch.  If the value is `NULL`, then the vector is positioned at 
+The Prev value refers to the previous vector in the branch.  If the value is `NULL`, then the vector is positioned at
 the top of the branch.
 
 The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If

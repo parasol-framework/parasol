@@ -174,7 +174,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
 
 //********************************************************************************************************************
 
-static ERR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Clear(extVectorPath *Self)
 {
    Self->Commands.clear();
    reset_path(Self);
@@ -183,7 +183,7 @@ static ERR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Flush(extVectorPath *Self)
 {
    reset_path(Self);
    return ERR::Okay;
@@ -191,7 +191,7 @@ static ERR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORPATH_Free(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Free(extVectorPath *Self)
 {
    Self->Commands.~vector();
    return ERR::Okay;
@@ -199,14 +199,14 @@ static ERR VECTORPATH_Free(extVectorPath *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR VECTORPATH_Init(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_Init(extVectorPath *Self)
 {
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
+static ERR VECTORPATH_NewObject(extVectorPath *Self)
 {
    new(&Self->Commands) std::vector<PathCommand>;
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_path;

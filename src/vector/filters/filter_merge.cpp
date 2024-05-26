@@ -58,7 +58,7 @@ static ERR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR MERGEFX_Free(extMergeFX *Self, APTR Void)
+static ERR MERGEFX_Free(extMergeFX *Self)
 {
    Self->~extMergeFX();
    return ERR::Okay;
@@ -66,7 +66,7 @@ static ERR MERGEFX_Free(extMergeFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
+static ERR MERGEFX_NewObject(extMergeFX *Self)
 {
    new (Self) extMergeFX;
    Self->SourceType = VSF::IGNORE;

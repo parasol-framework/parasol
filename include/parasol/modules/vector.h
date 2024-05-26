@@ -535,7 +535,7 @@ struct VectorPainter {
 };
 
 struct PathCommand {
-   PE     Type;       // The command type (PE value)
+   PE     Type;       // The command type
    UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
    UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
    UBYTE  Pad1;       // Private
@@ -674,9 +674,9 @@ class objVectorScene : public Object {
    LARGE    RenderTime;           // Returns the rendering time of the last scene.
    DOUBLE   Gamma;                // Private. Not currently implemented.
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
-   objVectorViewport * Viewport;  // References the first object in the scene, which must be a @VectorViewport object.
+   objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
-   OBJECTID SurfaceID;            // May refer to a @Surface object for enabling automatic rendering.
+   OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
    VPF      Flags;                // Optional flags.
    LONG     PageWidth;            // The width of the page that contains the vector.
    LONG     PageHeight;           // The height of the page that contains the vector.
@@ -764,11 +764,11 @@ class objVectorImage : public Object {
 
    using create = pf::Create<objVectorImage>;
 
-   DOUBLE  X;               // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
-   DOUBLE  Y;               // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
-   objPicture * Picture;    // Refers to a @Picture from which the source #Bitmap is acquired.
+   DOUBLE  X;               // Apply a horizontal offset to the image, the origin of which is determined by the Units value.
+   DOUBLE  Y;               // Apply a vertical offset to the image, the origin of which is determined by the Units value.
+   objPicture * Picture;    // Refers to a Picture from which the source Bitmap is acquired.
    objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
-   VUNIT   Units;           // Declares the coordinate system to use for the #X and #Y values.
+   VUNIT   Units;           // Declares the coordinate system to use for the X and Y values.
    LONG    Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VSPREAD SpreadMethod;    // Defines image tiling behaviour, if desired.
    ARF     AspectRatio;     // Flags that affect the aspect ratio of the image within its target vector.
@@ -835,7 +835,7 @@ class objVectorPattern : public Object {
    DOUBLE  Width;                 // Width of the pattern tile.
    DOUBLE  Height;                // Height of the pattern tile.
    DOUBLE  Opacity;               // The opacity of the pattern.
-   objVectorScene * Scene;        // Refers to the internal @VectorScene that will contain the rendered pattern.
+   objVectorScene * Scene;        // Refers to the internal VectorScene that will contain the rendered pattern.
    objVectorPattern * Inherit;    // Inherit attributes from a VectorPattern referenced here.
    VSPREAD SpreadMethod;          // The behaviour to use when the pattern bounds do not match the vector path.
    VUNIT   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
@@ -935,7 +935,7 @@ class objVectorGradient : public Object {
    DOUBLE  Radius;                 // The radius of the gradient.
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
    VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
-   VUNIT   Units;                  // Defines the coordinate system for #X1, #Y1, #X2 and #Y2.
+   VUNIT   Units;                  // Defines the coordinate system for X1, Y1, X2 and Y2.
    VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    VGF     Flags;                  // Dimension flags are stored here.
    VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
@@ -1479,7 +1479,7 @@ class objVectorFilter : public Object {
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
    LONG   ResX;                  // Width of the intermediate images, measured in pixels.
    LONG   ResY;                  // Height of the intermediate images, measured in pixels.
-   VUNIT  Units;                 // Defines the coordinate system for #X, #Y, #Width and #Height.
+   VUNIT  Units;                 // Defines the coordinate system for X, Y, Width and Height.
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
@@ -1656,7 +1656,7 @@ class objVector : public Object {
    using create = pf::Create<objVector>;
 
    objVector * Child;                 // The first child vector, or NULL.
-   objVectorScene * Scene;            // Short-cut to the top-level @VectorScene.
+   objVectorScene * Scene;            // Short-cut to the top-level VectorScene.
    objVector * Next;                  // The next vector in the branch, or NULL.
    objVector * Prev;                  // The previous vector in the branch, or NULL.
    OBJECTPTR Parent;                  // The parent of the vector, or NULL if this is the top-most vector.

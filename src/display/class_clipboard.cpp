@@ -350,7 +350,7 @@ Clear: Destroys all cached data that is stored in the clipboard.
 -END-
 *********************************************************************************************************************/
 
-static ERR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
+static ERR CLIPBOARD_Clear(objClipboard *Self)
 {
    STRING path;
    if (ResolvePath("clipboard:", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
@@ -427,7 +427,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
 //********************************************************************************************************************
 
-static ERR CLIPBOARD_Free(objClipboard *Self, APTR Void)
+static ERR CLIPBOARD_Free(objClipboard *Self)
 {
    if (Self->RequestHandler.isScript()) {
       UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
@@ -544,7 +544,7 @@ static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
 //********************************************************************************************************************
 
-static ERR CLIPBOARD_Init(objClipboard *Self, APTR Void)
+static ERR CLIPBOARD_Init(objClipboard *Self)
 {
    if ((Self->Flags & CPF::HISTORY_BUFFER) != CPF::NIL) glHistoryLimit = MAX_CLIPS;
 
@@ -557,7 +557,7 @@ static ERR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
+static ERR CLIPBOARD_NewObject(objClipboard *Self)
 {
    return ERR::Okay;
 }

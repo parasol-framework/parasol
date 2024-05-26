@@ -219,7 +219,7 @@
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
       <const name="FREE_ON_UNLOCK">Read-only indicator for when the object is marked for deletion.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
-      <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
+      <const name="LOCAL">Classes can allocate local objects to stop them from being associated with the client.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by <function module="Core">ProcessMessages</function>).</const>
       <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using <code>UNIQUE</code>.</const>
       <const name="PRIVATE"/>
@@ -338,7 +338,7 @@
       <const name="CHECK_VIRTUAL">If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, <code>ERR::VirtualVolume</code> is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.</const>
       <const name="NO_DEEP_SCAN">Do not perform more than one iteration when resolving the source file path.</const>
       <const name="NO_FILE_CHECK">Do not test for the existence of the targeted file or folder during the resolution process.</const>
-      <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
+      <const name="PATH">Use the <code>PATH</code> environment variable to resolve the file name in the <code>Path</code> parameter.</const>
     </constants>
 
     <constants lookup="STR">
@@ -382,7 +382,7 @@
     </struct>
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
-      <field name="Info" type="struct FileInfo *">Pointer to a FileInfo structure</field>
+      <field name="Info" type="struct FileInfo *">Pointer to a <st>FileInfo</st> structure</field>
     </struct>
 
     <struct name="Field" comment="Used to describe the public fields of a class.">
@@ -397,11 +397,11 @@
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
-    <struct name="FileInfo" comment="Returned by GetFileInfo()">
+    <struct name="FileInfo" comment="Metadata for describing a file.">
       <field name="Size" type="LARGE">The size of the file's content.</field>
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
-      <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
+      <field name="Name" type="STRING">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
@@ -423,7 +423,7 @@
       <field name="Time" type="LARGE">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
       <field name="UID" type="LONG">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
       <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
-      <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</field>
+      <field name="Size" type="LONG">The byte-size of the message data, or zero if no data is provided.</field>
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">

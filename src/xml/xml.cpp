@@ -17,7 +17,7 @@ multiple XML statements need to be processed then reset the Path or Statement fi
 object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.
 
 Successfully processed data can be read back by scanning the array referenced in the #Tags field.  The array contains
-an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this
+an !XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this
 information, refer to the #Tags field.  C++ developers are recommended to interact with #Tags directly, which
 is represented as `pf::vector&lt;XMLTag&gt;`.  Note that adding new Tags is a volatile action that can destabilise the
 object (taking a complete copy of the tags may be warranted instead).
@@ -155,14 +155,14 @@ static ERR SET_Source(extXML *, OBJECTPTR);
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
-   CoreBase = argCoreBase;
+   CoreBase = pCore;
 
    return add_xml_class();
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clXML) { FreeResource(clXML); clXML = NULL; }
    return ERR::Okay;
@@ -174,7 +174,7 @@ Clear: Clears all of the data held in an XML object.
 -END-
 *********************************************************************************************************************/
 
-static ERR XML_Clear(extXML *Self, APTR Void)
+static ERR XML_Clear(extXML *Self)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -343,7 +343,7 @@ static ERR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
 
 //********************************************************************************************************************
 
-static ERR XML_Free(extXML *Self, APTR Void)
+static ERR XML_Free(extXML *Self)
 {
    if (Self->Path)      { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -356,20 +356,20 @@ static ERR XML_Free(extXML *Self, APTR Void)
 -METHOD-
 GetAttrib: Retrieves the value of an XML attribute.
 
-The GetAttrib method scans a tag for a specific attribute and returns it. A tag index and name of the required
-attribute must be specified.  If found, the attribute value is returned in the `Value` parameter.
+The GetAttrib method scans a tag for a specific attribute and returns it. A tag `Index` and name of the required
+`Attrib` must be specified.  If found, the attribute value is returned in the `Value` parameter.
 
 It is recommended that C/C++ programs bypass this method and access the !XMLAttrib structure directly.
 
 -INPUT-
 int Index: The index of the XML tag to search.
 cstr Attrib: The name of the attribute to search for (case insensitive).  If `NULL` or an empty string, the tag name is returned as the result.
-&cstr Value: The value of the attribute is returned here, or `NULL` if the named attribute does not exist.
+&cstr Value: The value of the attribute is returned here, or `NULL` if the named `Attrib` does not exist.
 
 -ERRORS-
 Okay: The attribute was found.
 Args: The required arguments were not specified.
-NotFound: The attribute name was not found.
+NotFound: The `Attrib` name was not found.
 
 *********************************************************************************************************************/
 
@@ -409,15 +409,15 @@ of the scope for this document, however the following examples illustrate the ma
 and a number of special instructions that we support:
 
 <types type="Path">
-<type name="/menu/submenu">Return the content of the submenu tag whose parent is the first window.</>
-<type name="xpath:/menu[2]/window">Return the content of the submenu tag whose parent is the 3rd window.</>
+<type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</>
+<type name="xpath:/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</>
 <type name="count:/menu">Return a count of all menu tags at the root level.</>
 <type name="xml:/menu/window/@title">Return the value of the title attribute from the window tag.</>
-<type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title 'foo'.</>
-<type name="extract:/menu/window(@title='bar')">Extract all XML from the window tag which has title 'bar'.</>
-<type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside &lt;menu&gt; that contains content 'apple'.</>
-<type name="exists:/menu/@title">Return '1' if a menu with a title attribute can be matched, otherwise '0'.</>
-<type name="contentexists:/menu">Return '1' if if the immediate child tags of the XPath contain text (white space is ignored).</>
+<type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title `foo`.</>
+<type name="extract:/menu/window(@title='bar')">Extract all XML from the window tag which has title `bar`.</>
+<type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside `&lt;menu&gt;` that contains content `apple`.</>
+<type name="exists:/menu/@title">Return `1` if a menu with a title attribute can be matched, otherwise `0`.</>
+<type name="contentexists:/menu">Return `1` if if the immediate child tags of the XPath contain text (white space is ignored).</>
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
 </types>
 
@@ -577,8 +577,8 @@ bufsize Length: The length of the `Buffer` in bytes.
 -ERRORS-
 Okay: The content string was successfully extracted.
 Args
-NotFound: The tag identified by Index was not found.
-BufferOverflow: The buffer was not large enough to hold the content (the resulting string will be valid but truncated).
+NotFound: The tag identified by `Index` was not found.
+BufferOverflow: The `Buffer` was not large enough to hold the content (the resulting string will be valid but truncated).
 
 *********************************************************************************************************************/
 
@@ -600,7 +600,7 @@ static ERR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 -METHOD-
 Serialise: Serialise part of the XML tree to an XML string.
 
-The Serialise method will serialise all or part of the XML data tree to a string.
+The Serialise() method will serialise all or part of the XML data tree to a string.
 
 The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data
 is no longer required.
@@ -692,7 +692,7 @@ static ERR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
 
 //********************************************************************************************************************
 
-static ERR XML_Init(extXML *Self, APTR Void)
+static ERR XML_Init(extXML *Self)
 {
    pf::Log log;
 
@@ -1006,7 +1006,7 @@ static ERR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
 
 //********************************************************************************************************************
 
-static ERR XML_NewObject(extXML *Self, APTR Void)
+static ERR XML_NewObject(extXML *Self)
 {
    new (Self) extXML;
    Self->LineNo = 1;
@@ -1159,7 +1159,7 @@ Reset: Clears the information held in an XML object.
 -END-
 *********************************************************************************************************************/
 
-static ERR XML_Reset(extXML *Self, APTR Void)
+static ERR XML_Reset(extXML *Self)
 {
    return acClear(Self);
 }
@@ -1743,7 +1743,6 @@ static ERR add_xml_class(void)
       fl::FileExtension("*.xml"),
       fl::FileDescription("XML File"),
       fl::Category(CCF::DATA),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clXMLActions),
       fl::Methods(clXMLMethods),
       fl::Fields(clFields),
@@ -1761,5 +1760,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }

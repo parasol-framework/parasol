@@ -160,7 +160,7 @@ static LONG test_x11(STRING Path)
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    LONG i;
    UBYTE display;
@@ -263,13 +263,13 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Okay;
 }
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERROR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTable);
    return ERR_Okay;
 }
 
-static ERROR CMDExpunge(void)
+static ERROR MODExpunge(void)
 {
    if (modDriver) { FreeResource(modDriver); modDriver = NULL; }
    return ERR_Okay;
@@ -277,4 +277,4 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)

@@ -966,7 +966,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2024" }, function(
     "SubClass",
     "Process",
     "Clip",
-    "TransRGB",
+    "TransColour",
     "HDensity",
     "VDensity",
     "RequestHandler",

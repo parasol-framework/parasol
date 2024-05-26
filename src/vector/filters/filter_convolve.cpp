@@ -252,7 +252,7 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
+static ERR CONVOLVEFX_Init(extConvolveFX *Self)
 {
    pf::Log log;
 
@@ -294,7 +294,7 @@ static ERR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR CONVOLVEFX_Free(extConvolveFX *Self, APTR Void)
+static ERR CONVOLVEFX_Free(extConvolveFX *Self)
 {
    Self->~extConvolveFX();
    return ERR::Okay;
@@ -302,7 +302,7 @@ static ERR CONVOLVEFX_Free(extConvolveFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR CONVOLVEFX_NewObject(extConvolveFX *Self, APTR Void)
+static ERR CONVOLVEFX_NewObject(extConvolveFX *Self)
 {
    new (Self) extConvolveFX;
    return ERR::Okay;

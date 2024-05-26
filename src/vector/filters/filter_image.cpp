@@ -137,7 +137,7 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR IMAGEFX_Free(extImageFX *Self, APTR Void)
+static ERR IMAGEFX_Free(extImageFX *Self)
 {
    if (Self->Picture) { FreeResource(Self->Picture); Self->Picture = NULL; }
    return ERR::Okay;
@@ -145,7 +145,7 @@ static ERR IMAGEFX_Free(extImageFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR IMAGEFX_Init(extImageFX *Self, APTR Void)
+static ERR IMAGEFX_Init(extImageFX *Self)
 {
    pf::Log log;
 
@@ -174,7 +174,7 @@ static ERR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 
 //********************************************************************************************************************
 
-static ERR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
+static ERR IMAGEFX_NewObject(extImageFX *Self)
 {
    Self->AspectRatio    = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->ResampleMethod = VSM::BILINEAR;
@@ -239,7 +239,7 @@ static ERR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
 {
    if ((Self->Bitmap) or (Self->Picture)) return ERR::Failed;
 
-   if ((Self->Picture = objPicture::create::integral(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF::FORCE_ALPHA_32)))) {
+   if ((Self->Picture = objPicture::create::local(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF::FORCE_ALPHA_32)))) {
       Self->Bitmap = Self->Picture->Bitmap;
       return ERR::Okay;
    }

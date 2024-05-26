@@ -45,7 +45,7 @@ Activate: Executes the script.
 -END-
 *********************************************************************************************************************/
 
-static ERR SCRIPT_Activate(objScript *Self, APTR Void)
+static ERR SCRIPT_Activate(objScript *Self)
 {
    return ERR::NoSupport;
 }
@@ -238,7 +238,7 @@ static ERR SCRIPT_Exec(objScript *Self, struct scExec *Args)
 
 //********************************************************************************************************************
 
-static ERR SCRIPT_Free(objScript *Self, APTR Void)
+static ERR SCRIPT_Free(objScript *Self)
 {
    if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
@@ -314,7 +314,7 @@ static ERR SCRIPT_GetKey(objScript *Self, struct acGetKey *Args)
 
 //********************************************************************************************************************
 
-static ERR SCRIPT_Init(objScript *Self, APTR Void)
+static ERR SCRIPT_Init(objScript *Self)
 {
    pf::Log log;
 
@@ -330,7 +330,7 @@ static ERR SCRIPT_Init(objScript *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR SCRIPT_NewObject(objScript *Self, APTR Void)
+static ERR SCRIPT_NewObject(objScript *Self)
 {
    new (Self) objScript;
 
@@ -351,7 +351,7 @@ static ERR SCRIPT_NewObject(objScript *Self, APTR Void)
 // If reset, the script will be reloaded from the original file location the next time an activation occurs.  All
 // parameters are also reset.
 
-static ERR SCRIPT_Reset(objScript *Self, APTR Void)
+static ERR SCRIPT_Reset(objScript *Self)
 {
    Self->Vars.clear();
    return ERR::Okay;

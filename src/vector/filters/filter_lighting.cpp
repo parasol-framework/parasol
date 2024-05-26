@@ -516,7 +516,7 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERR LIGHTINGFX_Free(extLightingFX *Self, APTR Void)
+static ERR LIGHTINGFX_Free(extLightingFX *Self)
 {
    Self->~extLightingFX();
    return ERR::Okay;
@@ -524,7 +524,7 @@ static ERR LIGHTINGFX_Free(extLightingFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR LIGHTINGFX_NewObject(extLightingFX *Self, APTR Void)
+static ERR LIGHTINGFX_NewObject(extLightingFX *Self)
 {
    new (Self) extLightingFX;
    return ERR::Okay;

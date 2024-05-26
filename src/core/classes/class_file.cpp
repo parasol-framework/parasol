@@ -100,7 +100,7 @@ in a file.
 
 extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
-static ERR FILE_Init(extFile *, APTR);
+static ERR FILE_Init(extFile *);
 static ERR FILE_Watch(extFile *, struct flWatch *);
 
 static ERR SET_Path(extFile *, CSTRING);
@@ -116,7 +116,7 @@ Activate: Opens the file.  Performed automatically if `NEW`, `READ` or `WRITE` f
 -END-
 *********************************************************************************************************************/
 
-static ERR FILE_Activate(extFile *Self, APTR Void)
+static ERR FILE_Activate(extFile *Self)
 {
    pf::Log log;
 
@@ -267,7 +267,7 @@ Read: Failed to read the file content.
 
 *********************************************************************************************************************/
 
-static ERR FILE_BufferContent(extFile *Self, APTR Void)
+static ERR FILE_BufferContent(extFile *Self)
 {
    pf::Log log;
    LONG len;
@@ -492,7 +492,7 @@ static ERR FILE_Delete(extFile *Self, struct flDelete *Args)
 
 //********************************************************************************************************************
 
-static ERR FILE_Free(extFile *Self, APTR Void)
+static ERR FILE_Free(extFile *Self)
 {
    pf::Log log;
 
@@ -576,7 +576,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 
 *********************************************************************************************************************/
 
-static ERR FILE_Init(extFile *Self, APTR Void)
+static ERR FILE_Init(extFile *Self)
 {
    pf::Log log;
    LONG len;
@@ -880,7 +880,7 @@ static ERR FILE_MoveFile(extFile *Self, struct flMove *Args)
 
 //********************************************************************************************************************
 
-static ERR FILE_NewObject(extFile *Self, APTR Void)
+static ERR FILE_NewObject(extFile *Self)
 {
    Self->Handle = -1;
    Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
@@ -958,7 +958,7 @@ Query: Read a file's meta information from source.
 -END-
 *********************************************************************************************************************/
 
-static ERR FILE_Query(extFile *Self, APTR Void)
+static ERR FILE_Query(extFile *Self)
 {
 #ifdef _WIN32
    return ERR::Okay;
@@ -1262,7 +1262,7 @@ Reset: If the file represents a folder, the file list index is reset by this act
 -END-
 *********************************************************************************************************************/
 
-static ERR FILE_Reset(extFile *Self, APTR Void)
+static ERR FILE_Reset(extFile *Self)
 {
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
       if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
@@ -1475,7 +1475,7 @@ NoSupport: The file is not streamed.
 
 *********************************************************************************************************************/
 
-static ERR FILE_StopStream(extFile *Self, APTR Void)
+static ERR FILE_StopStream(extFile *Self)
 {
    return ERR::NoSupport;
 }

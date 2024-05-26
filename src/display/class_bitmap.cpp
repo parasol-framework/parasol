@@ -149,7 +149,7 @@ static void DrawRGBPixelPlanar(objBitmap *, LONG X, LONG Y, RGB8 *);
 
 static ERR GET_Handle(extBitmap *, APTR *);
 
-static ERR SET_BkgdRGB(extBitmap *, RGB8 *);
+static ERR SET_Bkgd(extBitmap *, RGB8 *);
 static ERR SET_BkgdIndex(extBitmap *, LONG);
 static ERR SET_Trans(extBitmap *, RGB8 *);
 static ERR SET_TransIndex(extBitmap *, LONG);
@@ -436,12 +436,12 @@ If the bitmap supports alpha blending, the alpha blend bits will be reset to 'cl
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Clear(extBitmap *Self, APTR Void)
+static ERR BITMAP_Clear(extBitmap *Self)
 {
 #ifdef _GLES_
    if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
       if (!lock_graphics_active(__func__)) {
-         glClearColorx(Self->BkgdRGB.Red, Self->BkgdRGB.Green, Self->BkgdRGB.Blue, 255);
+         glClearColorx(Self->Bkgd.Red, Self->Bkgd.Green, Self->Bkgd.Blue, 255);
          glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
          unlock_graphics();
          return ERR::Okay;
@@ -569,7 +569,7 @@ InvalidDimension: The clipping region is invalid.
 -END-
 *********************************************************************************************************************/
 
-ERR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
+ERR BITMAP_ConvertToLinear(extBitmap *Self)
 {
    pf::Log log;
 
@@ -645,7 +645,7 @@ InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
 
-ERR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
+ERR BITMAP_ConvertToRGB(extBitmap *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -851,7 +851,7 @@ InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Demultiply(extBitmap *Self, APTR Void)
+static ERR BITMAP_Demultiply(extBitmap *Self)
 {
    pf::Log log;
 
@@ -917,7 +917,7 @@ Draw: Clears a bitmap's image to #BkgdIndex.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Draw(extBitmap *Self, APTR Void)
+static ERR BITMAP_Draw(extBitmap *Self)
 {
    gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    return ERR::Okay;
@@ -1026,7 +1026,7 @@ You do not have to use this function if you stick to using the graphics function
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Flush(extBitmap *Self, APTR Void)
+static ERR BITMAP_Flush(extBitmap *Self)
 {
 #ifdef _GLES_
    if (!lock_graphics_active(__func__)) {
@@ -1039,7 +1039,7 @@ static ERR BITMAP_Flush(extBitmap *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR BITMAP_Free(extBitmap *Self, APTR Void)
+static ERR BITMAP_Free(extBitmap *Self)
 {
    #ifdef __xwindows__
       if (Self->x11.XShmImage) {
@@ -1145,7 +1145,7 @@ The Init() action requires that the #Width and #Height fields are defined at min
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Init(extBitmap *Self, APTR Void)
+static ERR BITMAP_Init(extBitmap *Self)
 {
    pf::Log log;
 
@@ -1161,22 +1161,22 @@ static ERR BITMAP_Init(extBitmap *Self, APTR Void)
    // If the Bitmap is 15 or 16 bit, make corrections to the background values
 
    if (Self->BitsPerPixel IS 16) {
-      Self->TransRGB.Red   &= 0xf8;
-      Self->TransRGB.Green &= 0xfc;
-      Self->TransRGB.Blue  &= 0xf8;
+      Self->TransColour.Red   &= 0xf8;
+      Self->TransColour.Green &= 0xfc;
+      Self->TransColour.Blue  &= 0xf8;
 
-      Self->BkgdRGB.Red   &= 0xf8;
-      Self->BkgdRGB.Green &= 0xfc;
-      Self->BkgdRGB.Blue  &= 0xf8;
+      Self->Bkgd.Red   &= 0xf8;
+      Self->Bkgd.Green &= 0xfc;
+      Self->Bkgd.Blue  &= 0xf8;
    }
    else if (Self->BitsPerPixel IS 15) {
-      Self->TransRGB.Red   &= 0xf8;
-      Self->TransRGB.Green &= 0xf8;
-      Self->TransRGB.Blue  &= 0xf8;
+      Self->TransColour.Red   &= 0xf8;
+      Self->TransColour.Green &= 0xf8;
+      Self->TransColour.Blue  &= 0xf8;
 
-      Self->BkgdRGB.Red   &= 0xf8;
-      Self->BkgdRGB.Green &= 0xf8;
-      Self->BkgdRGB.Blue  &= 0xf8;
+      Self->Bkgd.Red   &= 0xf8;
+      Self->Bkgd.Green &= 0xf8;
+      Self->Bkgd.Blue  &= 0xf8;
    }
 
 #ifdef __xwindows__
@@ -1347,14 +1347,14 @@ static ERR BITMAP_Init(extBitmap *Self, APTR Void)
    if (auto error = CalculatePixelRoutines(Self); error != ERR::Okay) return error;
 
    if (Self->BitsPerPixel > 8) {
-      Self->TransIndex = (((Self->TransRGB.Red   >> Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
-                         (((Self->TransRGB.Green >> Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
-                         (((Self->TransRGB.Blue  >> Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
+      Self->TransIndex = (((Self->TransColour.Red   >> Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
+                         (((Self->TransColour.Green >> Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
+                         (((Self->TransColour.Blue  >> Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
                          (((255 >> Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
 
-      Self->BkgdIndex = (((Self->BkgdRGB.Red   >> Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
-                        (((Self->BkgdRGB.Green >> Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
-                        (((Self->BkgdRGB.Blue  >> Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
+      Self->BkgdIndex = (((Self->Bkgd.Red   >> Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
+                        (((Self->Bkgd.Green >> Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
+                        (((Self->Bkgd.Blue  >> Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
                         (((255 >> Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
    }
 
@@ -1383,7 +1383,7 @@ Lock: Locks the bitmap surface for direct read/write access.
 -END-
 *********************************************************************************************************************/
 
-static ERR BITMAP_Lock(extBitmap *Self, APTR Void)
+static ERR BITMAP_Lock(extBitmap *Self)
 {
 #ifdef __xwindows__
    if (Self->x11.drawable) {
@@ -1439,7 +1439,7 @@ static ERR BITMAP_Lock(extBitmap *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR BITMAP_NewObject(extBitmap *Self, APTR Void)
+static ERR BITMAP_NewObject(extBitmap *Self)
 {
    #define CBANK 5
    RGB8 *RGB;
@@ -1531,7 +1531,7 @@ InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Premultiply(extBitmap *Self, APTR Void)
+static ERR BITMAP_Premultiply(extBitmap *Self)
 {
    pf::Log log;
 
@@ -1589,7 +1589,7 @@ that the bitmap is a 16 bit, 64k colour bitmap.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Query(extBitmap *Self, APTR Void)
+static ERR BITMAP_Query(extBitmap *Self)
 {
    pf::Log log;
    objDisplay *display;
@@ -1782,7 +1782,7 @@ Resize: Resizes a bitmap object's dimensions.
 Resizing a bitmap will change its #Width, #Height and optionally #BitsPerPixel.  Existing image data is not retained by
 this process.
 
-The image data is cleared with #BkgdRGB if the `CLEAR` flag is defined in #Flags.
+The image data is cleared with #Bkgd if the `CLEAR` flag is defined in #Flags.
 
 -ERRORS-
 Okay
@@ -1968,7 +1968,7 @@ setfields:
    CalculatePixelRoutines(Self);
 
    if ((Self->Flags & BMF::CLEAR) != BMF::NIL) {
-      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF::FILL);
+      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->Bkgd), BAF::FILL);
    }
 
    return ERR::Okay;
@@ -2198,7 +2198,7 @@ Unlock: Unlocks the bitmap surface once direct access is no longer required.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Unlock(extBitmap *Self, APTR Void)
+static ERR BITMAP_Unlock(extBitmap *Self)
 {
 #ifndef __xwindows__
    unlock_surface(Self);
@@ -2240,7 +2240,7 @@ The BitsPerPixel field clarifies exactly how many bits are being used to manage 
 includes any 'special' bits that are in use, e.g. alpha-channel bits.
 
 -FIELD-
-BkgdRGB: The bitmap's background colour is defined here in RGB format.
+Bkgd: The bitmap's background colour is defined here in RGB format.
 
 The default background colour for a bitmap is black.  To change it, set this field with the new RGB colour.  The
 background colour is used in operations that require a default colour, such as when clearing the bitmap.
@@ -2249,17 +2249,17 @@ The #BkgdIndex will be updated as a result of setting this field.
 
 *********************************************************************************************************************/
 
-static ERR SET_BkgdRGB(extBitmap *Self, RGB8 *Value)
+static ERR SET_Bkgd(extBitmap *Self, RGB8 *Value)
 {
-   Self->BkgdRGB = *Value;
+   Self->Bkgd = *Value;
 
    if (Self->BitsPerPixel > 8) {
-      Self->BkgdIndex = (((Self->BkgdRGB.Red   >>Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
-                         (((Self->BkgdRGB.Green>>Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
-                         (((Self->BkgdRGB.Blue >>Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
-                         (((Self->BkgdRGB.Alpha>>Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
+      Self->BkgdIndex = (((Self->Bkgd.Red   >>Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
+                         (((Self->Bkgd.Green>>Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
+                         (((Self->Bkgd.Blue >>Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
+                         (((Self->Bkgd.Alpha>>Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
    }
-   else Self->BkgdIndex = RGBToValue(&Self->BkgdRGB, Self->Palette);
+   else Self->BkgdIndex = RGBToValue(&Self->Bkgd, Self->Palette);
    return ERR::Okay;
 }
 
@@ -2268,7 +2268,7 @@ static ERR SET_BkgdRGB(extBitmap *Self, RGB8 *Value)
 -FIELD-
 BkgdIndex: The bitmap's background colour is defined here as a colour index.
 
-The bitmap's background colour is defined in this field as a colour index.  It is recommended that the #BkgdRGB
+The bitmap's background colour is defined in this field as a colour index.  It is recommended that the #Bkgd
 field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set
 directly.
 
@@ -2278,7 +2278,7 @@ static ERR SET_BkgdIndex(extBitmap *Self, LONG Index)
 {
    if ((Index < 0) or (Index > 255)) return ERR::OutOfRange;
    Self->BkgdIndex = Index;
-   Self->BkgdRGB   = Self->Palette->Col[Self->BkgdIndex];
+   Self->Bkgd   = Self->Palette->Col[Self->BkgdIndex];
    return ERR::Okay;
 }
 
@@ -2655,7 +2655,7 @@ pixel value does not need to be de-constructed into its RGB components.
 Size: The total size of the bitmap, in bytes.
 
 -FIELD-
-TransRGB: The transparent colour of the bitmap, in RGB format.
+TransColour: The transparent colour of the bitmap, in RGB format.
 
 The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied
 during drawing operations.
@@ -2666,15 +2666,15 @@ NOTE: This field should never be set if the bitmap utilises alpha transparency.
 
 static ERR SET_Trans(extBitmap *Self, RGB8 *Value)
 {
-   Self->TransRGB = *Value;
+   Self->TransColour = *Value;
 
    if (Self->BitsPerPixel > 8) {
-      Self->TransIndex = (((Self->TransRGB.Red  >>Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
-                         (((Self->TransRGB.Green>>Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
-                         (((Self->TransRGB.Blue >>Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
-                         (((Self->TransRGB.Alpha>>Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
+      Self->TransIndex = (((Self->TransColour.Red  >>Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
+                         (((Self->TransColour.Green>>Self->prvColourFormat.GreenShift) & Self->prvColourFormat.GreenMask) << Self->prvColourFormat.GreenPos) |
+                         (((Self->TransColour.Blue >>Self->prvColourFormat.BlueShift)  & Self->prvColourFormat.BlueMask)  << Self->prvColourFormat.BluePos) |
+                         (((Self->TransColour.Alpha>>Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
    }
-   else Self->TransIndex = RGBToValue(&Self->TransRGB, Self->Palette);
+   else Self->TransIndex = RGBToValue(&Self->TransColour, Self->Palette);
 
    if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF::TRANSPARENT;
    return ERR::Okay;
@@ -2686,7 +2686,7 @@ static ERR SET_Trans(extBitmap *Self, RGB8 *Value)
 TransIndex: The transparent colour of the bitmap, represented as an index.
 
 The transparent colour of the bitmap is defined here.  Colours in the bitmap that match this value will not be copied
-during graphics operations.  It is recommended that the #TransRGB field is used for altering the bitmap
+during graphics operations.  It is recommended that the #TransColour field is used for altering the bitmap
 transparency unless efficiency requires that the transparency is set directly.
 
 NOTE: This field should never be set if the bitmap utilises alpha transparency.
@@ -2698,7 +2698,7 @@ static ERR SET_TransIndex(extBitmap *Self, LONG Index)
    if ((Index < 0) or (Index > 255)) return ERR::OutOfRange;
 
    Self->TransIndex = Index;
-   Self->TransRGB   = Self->Palette->Col[Self->TransIndex];
+   Self->TransColour   = Self->Palette->Col[Self->TransIndex];
 
    if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF::TRANSPARENT;
    return ERR::Okay;
@@ -2909,8 +2909,8 @@ static const FieldArray clBitmapFields[] = {
    { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
    { "Opacity",       FDF_LONG|FDF_RW },
    { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
-   { "TransRGB",      FDF_RGB|FDF_RW, NULL, SET_Trans },
-   { "BkgdRGB",       FDF_RGB|FDF_RW, NULL, SET_BkgdRGB },
+   { "TransColour",      FDF_RGB|FDF_RW, NULL, SET_Trans },
+   { "Bkgd",       FDF_RGB|FDF_RW, NULL, SET_Bkgd },
    { "BkgdIndex",     FDF_LONG|FDF_RW, NULL, SET_BkgdIndex },
    { "ColourSpace",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
    // Virtual fields

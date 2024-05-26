@@ -60,7 +60,7 @@ JUMPTABLE_CORE
 
 static OBJECTPTR clJSON = NULL;
 
-static ERR JSON_Init(objXML *, APTR);
+static ERR JSON_Init(objXML *);
 static ERR JSON_SaveToObject(objXML *, struct acSaveToObject *);
 
 static UWORD glTagID = 1;
@@ -76,7 +76,7 @@ static ERR txt_to_json(objXML *, CSTRING);
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -95,7 +95,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR::AddClass;
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clJSON) { FreeResource(clJSON); clJSON = NULL; }
    return ERR::Okay;
@@ -168,7 +168,7 @@ static ERR next_item(LONG &Line, CSTRING &Input)
 
 //********************************************************************************************************************
 
-static ERR JSON_Init(objXML *Self, APTR Void)
+static ERR JSON_Init(objXML *Self)
 {
    pf::Log log;
    STRING location, statement;
@@ -638,5 +638,5 @@ static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, NULL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, NULL, NULL)
 extern "C" struct ModHeader * register_json_module() { return &ModHeader; }

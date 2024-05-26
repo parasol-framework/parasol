@@ -303,7 +303,7 @@ static void parse_id3v2(objSound *Self)
 
 //********************************************************************************************************************
 
-static ERR MP3_Free(objSound *Self, APTR Void)
+static ERR MP3_Free(objSound *Self)
 {
    prvMP3 *prv;
    if (!(prv = (prvMP3 *)Self->ChildPrivate)) return ERR::Okay;
@@ -316,7 +316,7 @@ static ERR MP3_Free(objSound *Self, APTR Void)
 //********************************************************************************************************************
 // Playback is managed by Sound.acActivate()
 
-static ERR MP3_Init(objSound *Self, APTR Void)
+static ERR MP3_Init(objSound *Self)
 {
    pf::Log log;
 
@@ -344,7 +344,7 @@ static ERR MP3_Init(objSound *Self, APTR Void)
    // or not this is really an mp3 file.
 
    if (!prv->File) {
-      if (!(prv->File = objFile::create::integral(fl::Path(location), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+      if (!(prv->File = objFile::create::local(fl::Path(location), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR::CreateObject);
       }
    }
@@ -872,7 +872,7 @@ static const struct ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -892,7 +892,7 @@ static ERR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return clMP3 ? ERR::Okay : ERR::AddClass;
 }
 
-static ERR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clMP3) { FreeResource(clMP3); clMP3 = NULL; }
    return ERR::Okay;
@@ -900,5 +900,5 @@ static ERR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, NULL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, NULL, NULL)
 extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

@@ -19,7 +19,7 @@ field.
 
 To compress data, set the #Output field with a source object that supports the Write() action, such as a @File.
 Repeatedly writing to the CompressedStream with raw data will automatically handle the compression process for you.
-Once all of the data has been written, call the #Write() action with a `Buffer` of `NULL` and `Length` `-1` to 
+Once all of the data has been written, call the #Write() action with a `Buffer` of `NULL` and `Length` `-1` to
 signal an end to the streaming process.
 
 -END-
@@ -35,19 +35,19 @@ class extCompressedStream : public objCompressedStream {
    gz_header Header;
 };
 
-static ERR CSTREAM_Reset(extCompressedStream *, APTR);
+static ERR CSTREAM_Reset(extCompressedStream *);
 
 //********************************************************************************************************************
 
-static ERR CSTREAM_Free(extCompressedStream *Self, APTR Void)
+static ERR CSTREAM_Free(extCompressedStream *Self)
 {
-   CSTREAM_Reset(Self, NULL);
+   CSTREAM_Reset(Self);
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERR CSTREAM_Init(extCompressedStream *Self, APTR Void)
+static ERR CSTREAM_Init(extCompressedStream *Self)
 {
    pf::Log log;
 
@@ -63,7 +63,7 @@ static ERR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
+static ERR CSTREAM_NewObject(extCompressedStream *Self) {
    Self->Format = CF::GZIP;
    return ERR::Okay;
 }
@@ -168,7 +168,7 @@ referenced objects separately.
 
 *********************************************************************************************************************/
 
-static ERR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
+static ERR CSTREAM_Reset(extCompressedStream *Self)
 {
    Self->TotalOutput = 0;
 
@@ -208,7 +208,7 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    // Seeking results in a reset of the compression object's state.  It then needs to decompress the stream up to the
    // position requested by the client.
 
-   CSTREAM_Reset(Self, NULL);
+   CSTREAM_Reset(Self);
 
    LARGE pos = 0;
    if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
