@@ -60,7 +60,8 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if (auto display_id = get_display(xevent.xany.window)) {
                auto surface_id = GetOwnerID(display_id);
                log.traceBranch("XFocusIn surface #%d", surface_id);
-               acFocus(surface_id);
+               pf::ScopedObjectLock<objSurface> surface(surface_id);
+               if (surface.granted()) surface->focus();
             }
             else log.trace("XFocusIn Failed to get window display ID.");
             break;
@@ -83,7 +84,8 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                   for (auto &id : list) {
                      if ((!in_focus) and (id != surface_id)) continue;
                      in_focus = true;
-                     acLostFocus(id);
+                     pf::ScopedObjectLock<objSurface> surface(id);
+                     if (surface.granted()) surface->lostFocus();
                   }
                }
             }
