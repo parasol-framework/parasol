@@ -184,8 +184,8 @@ void handle_button_press(XEvent *xevent)
       if ((xevent->xbutton.button IS 4) or (xevent->xbutton.button IS 5)) {
          // Mouse wheel movement
 
-         struct dcDeviceInput input = {;
-            .Values    = { (xevent->xbutton.button IS 4) ? -9 : 9, 0 },
+         struct dcDeviceInput input = {
+            .Values    = { (xevent->xbutton.button IS 4) ? -9.0 : 9.0, 0 },
             .Timestamp = PreciseTime(),
             .Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL,
             .Type      = JET::WHEEL
@@ -234,13 +234,13 @@ void handle_button_release(XEvent *xevent)
          .Timestamp = PreciseTime(),
          .Flags     = JTYPE::NIL,
          .Type      = JET::NIL
-      }
+      };
 
       if (xevent->xbutton.button IS 1) input.Type  = JET::BUTTON_1;
       else if (xevent->xbutton.button IS 2) input.Type  = JET::BUTTON_3;
       else if (xevent->xbutton.button IS 3) input.Type  = JET::BUTTON_2;
 
-      if (input.Type != JYPE::NIL) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+      if (input.Type != JET::NIL) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
       ReleaseObject(pointer);
    }
 
