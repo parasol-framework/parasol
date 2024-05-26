@@ -172,7 +172,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    if (!Info) return ERR::Failed;
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::Failed;
    glOpenInfo   = Info;
-   tlMainThread = TRUE;
+   tlMainThread = true;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
 
    if (glProcessID) fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
@@ -282,9 +282,9 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    // Debug processing
 
-   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)  glLogLevel = (WORD)Info->Detail;
-   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL) glMaxDepth = (WORD)Info->MaxDepth;
-   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = TRUE;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)      glLogLevel = (WORD)Info->Detail;
+   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL)   glMaxDepth = (WORD)Info->MaxDepth;
+   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = true;
 
    // Android sets an important JNI pointer on initialisation.
 
@@ -305,7 +305,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
 #if defined(__unix__) && !defined(__ANDROID__)
    if (((Info->Flags & OPF::PRIVILEGED) != OPF::NIL) and (geteuid() != getuid())) {
-      glPrivileged = TRUE;
+      glPrivileged = true;
    }
 #endif
 
@@ -908,7 +908,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
       if ((task = mem.Address)) {
          if ((task->ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;
-            task->ReturnCodeSet = TRUE;
+            task->ReturnCodeSet = true;
             break;
          }
       }

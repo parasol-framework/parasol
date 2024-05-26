@@ -884,7 +884,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="CSTRING" name="Field">The name of the field that is to be retrieved.</param>
       <param type="STRING" name="Buffer">Pointer to a buffer space large enough to hold the expected field value.  If the buffer is not large enough, the result will be truncated.  A buffer of 256 bytes is considered large enough for most occasions.  For generic field reading purposes, a buffer as large as 64kb may be desired.</param>
-      <param type="LONG" name="Size">The size of the buffer that has been provided, in bytes.</param>
+      <param type="LONG" name="Size">The size of the <code>Buffer</code> that has been provided, in bytes.</param>
     </input>
     <description>
 <p>The GetFieldVariable() function is used to retrieve the value of a field without any advance knowledge of the field's type or details.  It also supports some advanced features such as flag name lookups and the retrieval of values from array indexes.  Although this function is simple to use, it is the slowest of the field retrieval instructions as it relies on string-based field names and converts all results into a string buffer that you must provide.</p>
@@ -1614,7 +1614,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 <pre>LONG array[100];
 SetArray(Object, FID_Table|TLONG, array, 100);
 </pre>
-<p>An indicator of the type of the elements in the Array must be OR'd into the <code>Field</code> parameter.  Available field types are listed in <function>SetField</function>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
+<p>An indicator of the type of the elements in the <code>Array</code> must be OR'd into the <code>Field</code> parameter.  Available field types are listed in <function>SetField</function>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>

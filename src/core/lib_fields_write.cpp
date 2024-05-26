@@ -50,9 +50,9 @@ LONG array[100];
 SetArray(Object, FID_Table|TLONG, array, 100);
 </pre>
 
-An indicator of the type of the elements in the Array must be OR'd into the `Field` parameter.  Available field types are
-listed in ~SetField().  Note that the type that you choose must be a match to the type expected for elements
-in the array.
+An indicator of the type of the elements in the `Array` must be OR'd into the `Field` parameter.  Available field 
+types are listed in ~SetField().  Note that the type that you choose must be a match to the type expected for 
+elements in the array.
 
 -INPUT-
 obj Object:   Pointer to the target object.
@@ -63,8 +63,8 @@ int Elements: The number of elements listed in the `Array`.
 -ERRORS-
 Okay
 NullArgs
-FieldTypeMismatch: The referenced field is not an array.
-UnsupportedField: The specified field is not support by the object's class.
+FieldTypeMismatch: The specified `Field` is not an array.
+UnsupportedField: The specified `Field` is not support by the `Object` class.
 NoFieldAccess:    The field is read-only.
 
 *********************************************************************************************************************/

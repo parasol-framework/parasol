@@ -37,7 +37,7 @@ static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { NULL, 0 } }
 #undef True
 #undef False
 static ERR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
-static ERR PTR_UngrabX11Pointer(extPointer *, APTR);
+static ERR PTR_UngrabX11Pointer(extPointer *);
 static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 } };
 #endif
 

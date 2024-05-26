@@ -179,7 +179,7 @@ fid Field:  The ID of the field to read, OR'd with a type indicator.
 ptr Result: Pointer to the variable that will store the result.
 
 -ERRORS-
-Okay:             The field value was read successfully.
+Okay:             The `Field` value was read successfully.
 Args:             Invalid arguments were specified.
 NoFieldAccess:    Permissions for this field indicate that it is not readable.
 UnsupportedField: The `Field` is not supported by the object's class.
@@ -312,7 +312,7 @@ of `1` character, otherwise a value of `0` is returned in the Buffer.
 obj Object: Pointer to an object.
 cstr Field: The name of the field that is to be retrieved.
 buf(str) Buffer: Pointer to a buffer space large enough to hold the expected field value.  If the buffer is not large enough, the result will be truncated.  A buffer of 256 bytes is considered large enough for most occasions.  For generic field reading purposes, a buffer as large as 64kb may be desired.
-bufsize Size: The size of the buffer that has been provided, in bytes.
+bufsize Size: The size of the `Buffer` that has been provided, in bytes.
 
 -ERRORS-
 Okay:             The field was value retrieved.
