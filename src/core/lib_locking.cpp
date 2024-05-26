@@ -45,12 +45,11 @@ static THREADVAR WORD glWLIndex = -1; // The current thread's index within glWai
 static std::vector<WaitLock> glWaitLocks;
 static std::mutex glWaitLockMutex;
 
-/*********************************************************************************************************************
-** Prepare a thread for going to sleep on a resource.  Checks for deadlocks in advance.  Once a thread has added a
-** WakeLock entry, it must keep it until either the thread or process is destroyed.
-**
-** Used by AccessMemory() and LockObject()
-*/
+//********************************************************************************************************************
+// Prepare a thread for going to sleep on a resource.  Checks for deadlocks in advance.  Once a thread has added a
+// WakeLock entry, it must keep it until either the thread or process is destroyed.
+//
+// Used by AccessMemory() and LockObject()
 
 ERR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
 {
@@ -200,18 +199,18 @@ Memory blocks should never be locked for extended periods of time.  Ensure that 
 call to ~ReleaseMemory() within the same code block.
 
 -INPUT-
-mem Memory:       The ID of the memory block that you want to access.
-int(MEM) Flags:   Set to `READ`, `WRITE` or `READ_WRITE` according to requirements.
+mem Memory:       The ID of the memory block to access.
+int(MEM) Flags:   Set to `READ`, `WRITE` or `READ_WRITE`.
 int MilliSeconds: The millisecond interval to wait before a timeout occurs.  Use at least 40ms for best results.
-&ptr Result:      Must refer to an APTR for storing the resolved address.
+&ptr Result:      Must refer to an `APTR` for storing the resolved address.
 
 -ERRORS-
 Okay
-Args: The MilliSeconds value is less or equal to zero.
+Args: The `MilliSeconds` value is less or equal to zero.
 NullArgs
 SystemLocked
 TimeOut
-MemoryDoesNotExist: The MemoryID that you supplied does not refer to an existing memory block.
+MemoryDoesNotExist: The supplied `Memory` ID does not refer to an existing memory block.
 -END-
 
 *********************************************************************************************************************/
@@ -272,9 +271,9 @@ Category: Objects
 This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use
 it simultaneously.
 
-If the object is already locked, it will wait until the object becomes available.   This must occur within the amount
-of time specified in the Milliseconds parameter.  If the time expires, the function will return with an `ERR::TimeOut`
-error code.  If successful, `ERR::Okay` is returned and a reference to the object's address is stored in the Result
+If the `Object` is already locked, the function will wait until it becomes available.   This must occur within the amount
+of time specified in the `Milliseconds` parameter.  If the time expires, the function will return with an `ERR::TimeOut`
+error code.  If successful, `ERR::Okay` is returned and a reference to the object's address is stored in the `Result`
 variable.
 
 It is crucial that calls to AccessObject() are followed with a call to ~ReleaseObject() once the lock is no

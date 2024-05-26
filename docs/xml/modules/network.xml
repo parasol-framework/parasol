@@ -83,7 +83,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NullArgs">The NetSocket argument was not specified.</error>
     </result>
   </function>
 
@@ -117,9 +117,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 </pre>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="Okay">The Address was converted successfully.</error>
+      <error code="Failed">The String was not a valid IP Address.</error>
+      <error code="Args">Either the string or the IPAddress pointer were NULL.</error>
     </result>
   </function>
 

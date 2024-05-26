@@ -2044,7 +2044,7 @@ function processFunction(extract)
       for line in string.gmatch(errors, "(.-)\n") do
          if not nz(line) then break end // A double line-break forces a premature end to error processing.
 
-         local ecode, comment = line:match("(%a-):%s+(.-)")
+         local ecode, comment = line:match("(%a-):%s+(.+)")
          if nz(ecode) and nz(comment) then
             local codeValue = _G['ERR_' .. ecode]
             if not codeValue then

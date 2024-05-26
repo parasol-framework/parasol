@@ -662,20 +662,20 @@ ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION 
 -FUNCTION-
 CheckAction: Checks objects to see whether or not they support certain actions.
 
-This function checks if an object's class supports a given action or method ID.  For instance:
+This function returns `ERR::True` if an object's class supports a given action or method ID.  For example:
 
 <pre>
-if (!CheckAction(pic, AC_Query)) {
+if (CheckAction(pic, AC_Query) IS ERR::True) {
    // The Query action is supported.
 }
 </pre>
 
 -INPUT-
 obj Object: The target object.
-int Action: A registered action ID.
+int Action: A registered action or method ID.
 
 -ERRORS-
-Okay: The object supports the specified action.
+True: The object supports the specified action.
 False: The action is not supported.
 NullArgs:
 LostClass:
@@ -689,13 +689,13 @@ ERR CheckAction(OBJECTPTR Object, LONG ActionID)
    if (Object) {
       if (!Object->Class) return ERR::False;
       else if (Object->classID() IS ID_METACLASS) {
-         if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR::Okay;
+         if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR::True;
          else return ERR::False;
       }
       else if (auto cl = Object->ExtClass) {
-         if (cl->ActionTable[ActionID].PerformAction) return ERR::Okay;
+         if (cl->ActionTable[ActionID].PerformAction) return ERR::True;
          else if (cl->Base) {
-            if (cl->Base->ActionTable[ActionID].PerformAction) return ERR::Okay;
+            if (cl->Base->ActionTable[ActionID].PerformAction) return ERR::True;
          }
          return ERR::False;
       }

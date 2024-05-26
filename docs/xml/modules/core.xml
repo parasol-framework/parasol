@@ -38,10 +38,10 @@
     <comment>Grants access to memory blocks by identifier.</comment>
     <prototype>ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
-      <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
-      <param type="MEM" name="Flags" lookup="MEM">Set to <code>READ</code>, <code>WRITE</code> or <code>READ_WRITE</code> according to requirements.</param>
+      <param type="MEMORYID" name="Memory">The ID of the memory block to access.</param>
+      <param type="MEM" name="Flags" lookup="MEM">Set to <code>READ</code>, <code>WRITE</code> or <code>READ_WRITE</code>.</param>
       <param type="LONG" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Use at least 40ms for best results.</param>
-      <param type="APTR *" name="Result">Must refer to an APTR for storing the resolved address.</param>
+      <param type="APTR *" name="Result">Must refer to an <code>APTR</code> for storing the resolved address.</param>
     </input>
     <description>
 <p>Call AccessMemory() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other threads.</p>
@@ -49,9 +49,9 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="Args">The <code>MilliSeconds</code> value is less or equal to zero.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="MemoryDoesNotExist">Memory block does not exist.</error>
+      <error code="MemoryDoesNotExist">The supplied <code>Memory</code> ID does not refer to an existing memory block.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -69,7 +69,7 @@
     </input>
     <description>
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use it simultaneously.</p>
-<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR::TimeOut</code> error code.  If successful, <code>ERR::Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
+<p>If the <code>Object</code> is already locked, the function will wait until it becomes available.   This must occur within the amount of time specified in the <code>Milliseconds</code> parameter.  If the time expires, the function will return with an <code>ERR::TimeOut</code> error code.  If successful, <code>ERR::Okay</code> is returned and a reference to the object's address is stored in the <code>Result</code> variable.</p>
 <p>It is crucial that calls to AccessObject() are followed with a call to <function>ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function>ReleaseObject</function> correctly.</p>
 <p>It is recommended that C++ developers use the <code>ScopedObjectLock</code> class to acquire object locks rather than making direct calls to AccessObject().  The following example illustrates lock acquisition within a 1 second time limit:</p>
 <pre>{
@@ -120,9 +120,9 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NoAction">The object does not support this operation.</error>
-      <error code="IllegalActionID">Illegal action ID (number outside of valid range).</error>
-      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
+      <error code="NoAction">The action is not supported by the object's supporting class.</error>
+      <error code="IllegalActionID">The Action parameter is invalid.</error>
+      <error code="ObjectCorrupt">The object that was received is badly corrupted in a critical area.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -179,7 +179,7 @@ struct FunctionField argsResize[] = {
 <p>Use ActionMsg() to execute an action when only the object UID is known.  This is less performant in comparison to <action>Action</action>, as the object pointer will need to be resolved before making the call.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The action was executed successfully.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -252,7 +252,7 @@ struct FunctionField argsResize[] = {
 <p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function>FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">Message handler successfully processed.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -302,10 +302,10 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
+      <error code="Failed">The block could not be allocated due to insufficient memory space.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="ArrayFull">Although memory space for the block was available, all available memory records are in use.</error>
+      <error code="AccessMemory">The block was allocated but access to it was not granted, causing failure.</error>
     </result>
   </function>
 
@@ -341,7 +341,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>If the queried path does not exist, a fail code is returned.  This behaviour makes the AnalysePath() function a good candidate for testing the validity of a path string.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The path was analysed and the result is stored in the <code>Type</code> variable.</error>
       <error code="DoesNotExist">Resource does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -418,18 +418,18 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>ERR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="LONG" name="Action">A registered action ID.</param>
+      <param type="LONG" name="Action">A registered action or method ID.</param>
     </input>
     <description>
-<p>This function checks if an object's class supports a given action or method ID.  For instance:</p>
-<pre>if (!CheckAction(pic, AC_Query)) {
+<p>This function returns <code>ERR::True</code> if an object's class supports a given action or method ID.  For example:</p>
+<pre>if (CheckAction(pic, AC_Query) IS ERR::True) {
    // The Query action is supported.
 }
 </pre>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="False">The result is false.</error>
+      <error code="True">The object supports the specified action.</error>
+      <error code="False">The action is not supported.</error>
       <error code="LostClass">The object has lost its class reference.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -447,8 +447,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its <code>ID</code>.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="False">The result is false.</error>
+      <error code="Okay">The block exists.</error>
+      <error code="False">The block does not exist.</error>
     </result>
   </function>
 
@@ -464,8 +464,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>The CheckObjectExists() function verifies the presence of any object created by <function>NewObject</function>.</p>
     </description>
     <result type="ERR">
-      <error code="True">Operation successful.</error>
-      <error code="False">The result is false.</error>
+      <error code="True">The object exists.</error>
+      <error code="False">The object ID does not exist.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
     </result>
   </function>
@@ -484,8 +484,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>The targeted paths do not have to refer to an existing file or folder in order to match (i.e. match on string comparison succeeds).</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="False">The result is false.</error>
+      <error code="Okay">The file paths refer to the same file.</error>
+      <error code="False">The file paths refer to different files.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -515,8 +515,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>For each file that is processed during the copy operation, a &amp;FileFeedback structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
+      <error code="Okay">The location was copied successfully.</error>
+      <error code="Failed">A failure occurred during the copy process.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
@@ -537,8 +537,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
-      <error code="NoSupport">This request is not supported.</error>
-      <error code="FileExists">The destination file or folder already exists.</error>
+      <error code="NoSupport">Virtual file system does not support folder creation.</error>
+      <error code="FileExists">An identically named file or folder already exists at the Path.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -558,13 +558,13 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>This function does not automatically create folders in circumstances where new folders are required to complete the From link.  You will need to call <function>CreateFolder</function> to ensure that the necessary paths exist beforehand.  If the file referenced at To does not exist, the link will be created without error, but any attempts to open the link will fail until the target file or folder exists.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoSupport">This request is not supported.</error>
+      <error code="Okay">The link was created successfully.</error>
+      <error code="NoSupport">The file system or the host operating system does not support symbolic links.</error>
       <error code="Memory">General memory error.</error>
-      <error code="LowCapacity">Array is at low capacity.</error>
-      <error code="NoPermission">General security violation.</error>
-      <error code="BufferOverflow">A buffer overflow has occurred.</error>
-      <error code="FileExists">The destination file or folder already exists.</error>
+      <error code="LowCapacity">There is no room on the device to create the new link.</error>
+      <error code="NoPermission">The user does not have permission to create the link, or the file system is mounted read-only.</error>
+      <error code="BufferOverflow">One or both of the provided arguments is too long.</error>
+      <error code="FileExists">The location referenced at From already exists.</error>
       <error code="ResolvePath">A volume could not be resolved.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -610,10 +610,10 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>Prior to the deletion of any file, a &amp;FileFeedback structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="File">File error, e.g. file not found.</error>
+      <error code="Okay">The file or folder was deleted successfully.</error>
+      <error code="File">The location could not be opened for deletion.</error>
       <error code="FileNotFound">File not found.</error>
-      <error code="NoSupport">This request is not supported.</error>
+      <error code="NoSupport">The filesystem driver does not support deletion.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -630,9 +630,9 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>This function deletes volume names from the system.  Once a volume is deleted, any further references to it will result in errors unless the volume is recreated.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The volume was removed.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="NoPermission">General security violation.</error>
+      <error code="NoPermission">An attempt to delete a system volume was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -709,8 +709,8 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Okay">At least one matching object was found and stored in the <code>ObjectID</code>.</error>
+      <error code="Search">No objects matching the given name could be found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="EmptyString">A required string value contains no characters.</error>
@@ -732,8 +732,8 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 <p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that code has over-written the memory boundaries.  All caught errors are reported to the application log and warrant priority attention.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="InvalidData">There is an error in the provided data.</error>
+      <error code="Okay">The memory block was freed or marked for deletion.</error>
+      <error code="InvalidData">The bounds of the block are damaged.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -843,10 +843,10 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 </types>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
+      <error code="Okay">The <code>Field</code> value was read successfully.</error>
+      <error code="Args">Invalid arguments were specified.</error>
+      <error code="NoFieldAccess">Permissions for this field indicate that it is not readable.</error>
+      <error code="UnsupportedField">The <code>Field</code> is not supported by the object's class.</error>
     </result>
   </function>
 
@@ -868,8 +868,8 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
+      <error code="NoFieldAccess">Permissions for this field indicate that it is not readable.</error>
+      <error code="UnsupportedField">The Field is not supported by the object's class.</error>
       <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -895,11 +895,11 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>To check if a string is defined (rather than retrieving the entire string content which can be time consuming), prefix the <code>Field</code> name with a question mark.  A value of <code>1</code> will be returned in the <code>Buffer</code> if the string has a minimum length of <code>1</code> character, otherwise a value of <code>0</code> is returned in the Buffer.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The field was value retrieved.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
-      <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
+      <error code="NoFieldAccess">Permissions for this field state that it is not readable.</error>
+      <error code="UnsupportedField">The requested field is not supported by the object's class.</error>
+      <error code="Mismatch">The field value cannot be converted into a string.</error>
     </result>
   </function>
 
@@ -921,9 +921,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Search">No more messages are left on the queue, or no messages that match the given <code>Type</code> are on the queue.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="AccessMemory">Failed to gain access to the message queue.</error>
     </result>
   </function>
 
@@ -999,7 +999,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Search">A suitable class could not be found for the data source.</error>
       <error code="FileNotFound">File not found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="Read">Error reading data from file.</error>
@@ -1020,7 +1020,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>If an object does not support the data or its configuration, an error code of <code>ERR::NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The object was initialised.</error>
       <error code="LostClass">The object has lost its class reference.</error>
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
     </result>
@@ -1040,7 +1040,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>Note that any child objects marked with the <code>LOCAL</code> flag will be excluded because they are private members of the targeted object.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">Zero or more children were found and listed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1063,8 +1063,8 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>Calls to LoadFile() must be matched with a call to <function>UnloadFile</function> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Okay">The file was cached successfully.</error>
+      <error code="Search">If <code>CHECK_EXISTS</code> is specified, this failure indicates that the file is not cached.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1201,8 +1201,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
-      <error code="MissingClass">The class could not be found in the system.</error>
-      <error code="ObjectExists">Object exists.</error>
+      <error code="MissingClass">The <code>ClassID</code> is invalid or refers to a class that is not installed.</error>
+      <error code="ObjectExists">An object with the provided Name already exists in the system (applies only when the <code>NF::UNIQUE</code> flag has been used).</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1276,7 +1276,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Terminate">Please terminate future calls.</error>
+      <error code="Terminate">A <code>MSGID_QUIT</code> message type was found on the message queue.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
     </result>
   </function>
@@ -1298,7 +1298,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="OutOfRange">The ActionID is invalid.</error>
       <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
       <error code="MissingClass">The class could not be found in the system.</error>
       <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
@@ -1370,7 +1370,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="Memory">General memory error.</error>
+      <error code="Memory">The memory block to be re-allocated is invalid.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1395,9 +1395,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>Call the <code>DeregisterFD()</code> macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoSupport">This request is not supported.</error>
+      <error code="Okay">The FD was successfully registered.</error>
+      <error code="Args">The FD was set to a value of -1.</error>
+      <error code="NoSupport">The host platform does not support file descriptors.</error>
     </result>
   </function>
 
@@ -1497,13 +1497,13 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>If the path resolves to a virtual drive, it may not be possible to confirm whether the target file exists if the virtual driver does not support this check.  This is common when working with network drives.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="FileNotFound">File not found.</error>
+      <error code="Okay">The path was resolved.</error>
+      <error code="Search">The given volume does not exist.</error>
+      <error code="FileNotFound">The path was resolved, but the referenced file or folder does not exist (use <code>NO_FILE_CHECK</code> to avoid this error code).</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="Loop">An infinite loop was detected.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="AllocMemory">The result string could not be allocated.</error>
+      <error code="Loop">The volume refers back to itself.</error>
+      <error code="NullArgs">Invalid arguments were specified.</error>
     </result>
   </function>
 
@@ -1544,8 +1544,8 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 <p>The <code>RDF</code> flags that may be returned in the Flags field are <code>VOLUME</code>, <code>FOLDER</code>, <code>FILE</code>, <code>LINK</code>.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="DirEmpty">The folder is empty.</error>
+      <error code="Okay">An item was successfully scanned from the folder.</error>
+      <error code="DirEmpty">There are no more items to scan.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
@@ -1572,7 +1572,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Search">No more messages are left on the queue, or no messages that match the given <code>Type</code> are on the queue.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1592,7 +1592,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 <p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a <code>Type</code> identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function>AllocateID</function>.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The message was successfully written to the message queue.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
@@ -1618,9 +1618,9 @@ SetArray(Object, FID_Table|TLONG, array, 100);
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
+      <error code="NoFieldAccess">The field is read-only.</error>
+      <error code="FieldTypeMismatch">The specified <code>Field</code> is not an array.</error>
+      <error code="UnsupportedField">The specified <code>Field</code> is not support by the <code>Object</code> class.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1713,8 +1713,8 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
+      <error code="NoFieldAccess">The field is read-only.</error>
+      <error code="UnsupportedField">The specified field is not support by the object's class.</error>
     </result>
   </function>
 
@@ -1733,7 +1733,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Search">The Object is not recognised by the system - the address may be invalid.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1822,9 +1822,9 @@ SetField(Object, FID_Statement|TSTR, "string");
 <types lookup="VOLUME"/>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The volume was successfully added.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NullArgs">A valid name and path string was not provided.</error>
     </result>
   </function>
 
@@ -1847,8 +1847,8 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>If the <code>STR::WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="False">The result is false.</error>
+      <error code="Okay">The strings match.</error>
+      <error code="False">The strings do not match.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1902,7 +1902,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="OutOfRange">The Action parameter is invalid.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1950,9 +1950,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
+      <error code="ArrayFull">The task's timer array is at capacity - no more subscriptions can be granted.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
-      <error code="InvalidState">Object was in an incorrect state for the operation.</error>
+      <error code="InvalidState">The subscriber is marked for termination.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -2178,8 +2178,8 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>If <code>Data</code> is defined, its size should equal that of the data already set against the message.  The size will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
+      <error code="Okay">The message was successfully updated.</error>
+      <error code="Search">The supplied <code>Message</code> ID does not refer to a message in the queue.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>

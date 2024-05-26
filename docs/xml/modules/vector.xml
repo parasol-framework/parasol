@@ -505,7 +505,7 @@ Z: Close Path
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="OutOfRange">At least one of the angles is out of the allowable range.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

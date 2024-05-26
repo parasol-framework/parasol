@@ -26,10 +26,10 @@
 <p>The SetVariable() function provides a method for setting global variables in a Fluid script prior to execution of that script.  If the script is cached, the variable settings will be available on the next activation.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
+      <error code="Okay">The variable was defined successfully.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
-      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
+      <error code="ObjectCorrupt">Privately maintained memory has become inaccessible.</error>
+      <error code="FieldTypeMismatch">A valid field type was not specified in the <code>Type</code> parameter.</error>
     </result>
   </function>
 
