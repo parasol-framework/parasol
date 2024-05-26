@@ -367,7 +367,7 @@ static ERR SOUND_Activate(extSound *Self)
 
          pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
          if (audio.granted()) {
-            if (Action(MT_SndAddStream, audio, &stream) IS ERR::Okay) {
+            if (Action(MT_SndAddStream, *audio, &stream) IS ERR::Okay) {
                Self->Handle = stream.Result;
             }
             else {
@@ -378,7 +378,7 @@ static ERR SOUND_Activate(extSound *Self)
          else return ERR::AccessObject;
       }
       else if (AllocMemory(Self->Length, MEM::DATA|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-         auto dc = deferred_call([&Self] { FreeResource(buffer); });
+         auto dc = deferred_call([&buffer] { FreeResource(buffer); });
 
          auto client_pos = Self->Position;
          if (Self->Position) Self->seekStart(0); // Ensure we're reading the entire sample from the start
@@ -416,7 +416,7 @@ static ERR SOUND_Activate(extSound *Self)
 
             pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
             if (audio.granted()) {
-               if (Action(MT_SndAddSample, audio, &add) IS ERR::Okay) {
+               if (Action(MT_SndAddSample, *audio, &add) IS ERR::Okay) {
                   Self->Handle = add.Result;
                }
                else {
