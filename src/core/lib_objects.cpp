@@ -764,7 +764,7 @@ objMetaClass * FindClass(CLASSID ClassID)
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
 
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
+         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ULONG(ClassID));
 
          objModule::create mod = { fl::Name(path) };
          if (mod.ok()) {
@@ -776,7 +776,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       }
       else log.warning("No module path defined for class \"%s\"", glClassDB[ClassID].Name.c_str());
    }
-   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ClassID, LONG(glClassDB.size()));
+   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ULONG(ClassID), LONG(glClassDB.size()));
 
    return NULL;
 }
@@ -1135,7 +1135,7 @@ ERR InitObject(OBJECTPTR Object)
       CLASSID class_id, subclass_id;
       if (IdentifyFile(path, &class_id, &subclass_id) IS ERR::Okay) {
          if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {
-            log.msg("Searching for subclass $%.8x", subclass_id);
+            log.msg("Searching for subclass $%.8x", ULONG(subclass_id));
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
                   if ((error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL)) IS ERR::Okay) {
@@ -1147,10 +1147,10 @@ ERR InitObject(OBJECTPTR Object)
                }
                else return ERR::Okay;
             }
-            else log.warning("Failed to load module for class #%d.", subclass_id);
+            else log.warning("Failed to load module for class #%d.", ULONG(subclass_id));
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), class_id);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), ULONG(class_id));
 
       Object->Class = cl;  // Put back the original to retain object integrity
    }
@@ -1250,7 +1250,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
       if (glClassMap.contains(class_id)) {
          log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
       }
-      else log.function("Class $%.8x was not found in the system.", class_id);
+      else log.function("Class $%.8x was not found in the system.", ULONG(class_id));
       return ERR::MissingClass;
    }
 
@@ -1561,7 +1561,7 @@ CSTRING ResolveClassID(CLASSID ID)
    if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
 
    pf::Log log(__FUNCTION__);
-   log.warning("Failed to resolve ID $%.8x", ID);
+   log.warning("Failed to resolve ID $%.8x", ULONG(ID));
    return NULL;
 }
 

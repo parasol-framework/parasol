@@ -303,7 +303,7 @@ ERR CLASS_Init(extMetaClass *Self)
          }
       }
       else {
-         log.warning("A base for class $%.8x is not present!", Self->BaseClassID);
+         log.warning("A base for class $%.8x is not present!", ULONG(Self->BaseClassID));
          return ERR::Failed;
       }
    }

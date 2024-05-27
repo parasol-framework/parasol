@@ -240,7 +240,7 @@ class_identified:
    if (res_path) FreeResource(res_path);
 
    if (error IS ERR::Okay) {
-      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? ULONG(*SubClassID) : 0UL);
+      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), (SubClassID != NULL) ? (unsigned int)(*SubClassID) : 0);
       else {
          log.detail("Failed to identify file \"%s\"", Path);
          error = ERR::Search;

@@ -2245,6 +2245,21 @@ PERMIT get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
 }
 
 //********************************************************************************************************************
+// Strips trailing slashes from folder locations.
+
+bool strip_folder(STRING Path)
+{
+   LONG i = StrLength(Path);
+   if (i > 1) {
+      if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) {
+         Path[i-1] = 0;
+         return true;
+      }
+   }
+   return false;
+}
+
+//********************************************************************************************************************
 
 ERR fs_readlink(STRING Source, STRING *Link)
 {
