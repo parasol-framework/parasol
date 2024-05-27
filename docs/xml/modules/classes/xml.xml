@@ -28,11 +28,18 @@
     <action>
       <name>Clear</name>
       <comment>Clears all of the data held in an XML object.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Retrieves data from an xml object.</comment>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of a key value.</param>
+        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
+        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+      </input>
       <description>
 <p>The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
 <types type="Path">
@@ -54,16 +61,27 @@
     <action>
       <name>Reset</name>
       <comment>Clears the information held in an XML object.</comment>
+      <prototype>ERR acRefresh(*Object)</prototype>
     </action>
 
     <action>
       <name>SaveToObject</name>
       <comment>Saves XML data to a storage object (e.g. <class name="File">File</class>).</comment>
+      <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+      </input>
     </action>
 
     <action>
       <name>SetKey</name>
       <comment>Sets attributes and content in the XML tree using XPaths.</comment>
+      <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the target key.</param>
+        <param type="CSTRING" name="Value">The string value to associate with Key.</param>
+      </input>
       <description>
 <p>Use SetKey to add tag attributes and content using XPaths.  The XPath is specified in the <code>Key</code> parameter and the data is specified in the <code>Value</code> parameter.  Setting the Value to <code>NULL</code> will remove the attribute or existing content, while an empty string will keep an attribute but eliminate any associated data.</p>
 <p>It is not possible to add new tags using this action - it is only possible to update existing tags.</p>

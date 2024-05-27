@@ -26,11 +26,19 @@
     <action>
       <name>Disable</name>
       <comment>Disabling a vector can be used to trigger style changes and prevent user input.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Draws the surface associated with the vector.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
       <description>
 <p>Calling the Draw action on a vector will schedule a redraw of the scene graph if it is associated with a <class name="Surface">Surface</class>. Internally, drawing is scheduled for the next frame and is not immediate.</p>
       </description>
@@ -39,26 +47,31 @@
     <action>
       <name>Enable</name>
       <comment>Reverses the effects of disabling the vector.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
     </action>
 
     <action>
       <name>Hide</name>
       <comment>Changes the vector's visibility setting to hidden.</comment>
+      <prototype>ERR acHide(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToBack</name>
       <comment>Move a vector to the back of its stack.</comment>
+      <prototype>ERR acMoveToBack(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move a vector to the front of its stack.</comment>
+      <prototype>ERR acMoveToFront(*Object)</prototype>
     </action>
 
     <action>
       <name>Show</name>
       <comment>Changes the vector's visibility setting to visible.</comment>
+      <prototype>ERR acShow(*Object)</prototype>
     </action>
 
   </actions>

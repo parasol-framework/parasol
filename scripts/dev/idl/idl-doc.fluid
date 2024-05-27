@@ -18,56 +18,319 @@ glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
 
-if not AC_GetKey then AC_GetKey = AC_GetVar end // Temporary bridging fix
-if not AC_SetKey then AC_SetKey = AC_SetVar end // Temporary bridging fix
+function setAction(Action, Options)
+   for k, v in pairs(Options) do
+      glActions[Action][k] = v
+   end
+end
 
-glActionComments = { }
-glActionComments[AC_Activate]       = 'Performs the native action of the object.'
-glActionComments[AC_Clear]          = 'Clears an object\'s data.'
-glActionComments[AC_Clipboard]      = 'Copy and paste information to and from clipboard objects.'
-glActionComments[AC_CopyData]       = 'Copies one object\'s data to another.'
-glActionComments[AC_DataFeed]       = 'Provides a mechanism for feeding data to objects.'
-glActionComments[AC_Deactivate]     = 'Stops an object from performing its native activities.'
-glActionComments[AC_Disable]        = 'Disables an object.'
-glActionComments[AC_DragDrop]       = 'Manages drag and drop from one object to another.'
-glActionComments[AC_Draw]           = 'Draws object graphics to drawable areas.'
-glActionComments[AC_Enable]         = 'Restore the state of a disabled object.'
-glActionComments[AC_Flush]          = 'Flush buffered data from an object.'
-glActionComments[AC_Focus]          = 'Focus on this object in the user interface.'
-glActionComments[AC_FreeWarning]    = 'Used for receiving an early warning before an object is removed.'
-glActionComments[AC_Free]           = 'Removes the object and its resources.'
-glActionComments[AC_GetKey]         = 'Retrieves custom key values that are not defined by an object\'s structure.'
-glActionComments[AC_Hide]           = 'Hides a visible object from the view of the user.'
-glActionComments[AC_Init]           = 'Initialises an object so that it is ready for active use.'
-glActionComments[AC_Lock]           = "Lock the underlying data or representation of the object."
-glActionComments[AC_LostFocus]      = 'This internal action is called when an object loses the user focus.'
-glActionComments[AC_MoveToBack]     = 'Move an object to the back of its current location.'
-glActionComments[AC_MoveToFront]    = 'Move an object to the front of its current location.'
-glActionComments[AC_MoveToPoint]    = 'Moves the coordinates of an object to a new position.'
-glActionComments[AC_Move]           = 'Moves the physical representation of an object to a new location.'
-glActionComments[AC_NewChild]       = 'Used by classes that need to be alerted when an object receives a new child.'
-glActionComments[AC_NewObject]      = 'Called when a new object has been created from a base class.'
-glActionComments[AC_NewOwner]       = 'Called when the owner of an object is about to change.'
-glActionComments[AC_Next]           = 'Move to the next record.'
-glActionComments[AC_Prev]           = 'Move to the previous record.'
-glActionComments[AC_Query]          = 'Retrieves the latest information from an object.'
-glActionComments[AC_Read]           = 'Reads raw data information from objects.'
-glActionComments[AC_Redimension]    = 'Repositions and resizes the target object.'
-glActionComments[AC_Redo]           = 'Reverse a previous call to the Undo action.'
-glActionComments[AC_Refresh]        = 'Refreshes the state of an object.'
-glActionComments[AC_Rename]         = 'Renames an object.'
-glActionComments[AC_Reset]          = 'Resets an object to its original state.'
-glActionComments[AC_Resize]         = 'Resizes objects that are represented by two or three dimensional graphics.'
-glActionComments[AC_SaveImage]      = 'Saves an object\'s image to a destination object.'
-glActionComments[AC_SaveSettings]   = 'Saves object settings to a physical storage location.'
-glActionComments[AC_SaveToObject]   = 'Saves an object\'s data to a destination object.'
-glActionComments[AC_Seek]           = 'Move the read/write marker to a new position.'
-glActionComments[AC_SetField]       = 'Private.  For use by the Core only.'
-glActionComments[AC_SetKey]         = 'Sets custom key values that are not defined by an object\'s structure.'
-glActionComments[AC_Show]           = 'Makes an object visible to the user.'
-glActionComments[AC_Undo]           = 'Reverses the last operation.'
-glActionComments[AC_Unlock]         = 'Remove a lock from an object.'
-glActionComments[AC_Write]          = 'Writes data to objects that provide storage or output services.'
+----------------------------------------------------------------------------------------------------------------------
+
+setAction('Activate', {
+   comment   = 'Performs the native action of the object.',
+   prototype = 'ERR acActivate(*Object)'
+})
+
+setAction('Clear', {
+   comment   = 'Clears an object\'s data.',
+   prototype = 'ERR acClear(*Object)'
+})
+
+setAction('Clipboard', {
+   comment   = 'Copy and paste information to and from clipboard objects.',
+   prototype = 'ERR acClipboard(*Object, OBJECTID Clipboard, CLIPMODE Mode)',
+   params    = {
+      { name='Mode', type='CLIPMODE', lookup='CLIPMODE', comment='The mode that will be used to shift data between the target object and clipboard system.' }
+   }
+})
+
+setAction('CopyData', {
+   comment   = 'Copies one object\'s data to another.',
+   prototype = 'ERR acCopyData(*Object, OBJECTID Dest)',
+   params    = {
+      { name='Dest', type='OBJECTID', comment='The unique ID of the destination object.' }
+   }
+})
+
+setAction('DataFeed', {
+   comment   = 'Provides a mechanism for feeding data to objects.',
+   prototype = 'ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)',
+   params    = {
+      { name='Object', type='OBJECTID', comment='Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.' },
+      { name='Datatype', type='DATA', lookup='DATA', comment='The type of data being sent.' },
+      { name='Buffer', type='APTR', comment='The data being sent to the target object.' },
+      { name='Size', type='LONG', comment='The size of the data in Buffer.' }
+   }
+})
+
+setAction('Deactivate', {
+   comment   = 'Stops an object from performing its native activities.',
+   prototype = 'ERR acDeactivate(*Object)'
+})
+
+setAction('Disable', {
+   comment   = 'Disables an object.',
+   prototype = 'ERR acDisable(*Object)'
+})
+
+setAction('DragDrop', {
+   comment   = 'Manages drag and drop from one object to another.',
+   prototype = 'ERR acDragDrop(*Object, OBJECTID Source, LONG Item, DATA Datatype)',
+   params    = {
+      { name='Source', type='OBJECTID', comment='Refers to the object containing the source data.' },
+      { name='Item', type='LONG', comment='An item ID, relevant to the source object.' },
+      { name='Datatype', type='DATA', lookup='DATA', comment='The type of data represented by the source item.' }
+   }
+})
+
+setAction('Draw', {
+   comment   = 'Draws object graphics to drawable areas.',
+   prototype = 'ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)',
+   params    = {
+      { name='X', type='LONG', comment='The X position of the region to be drawn.' },
+      { name='Y', type='LONG', comment='The Y position of the region to be drawn.' },
+      { name='Width', type='LONG', comment='The width of the region to be drawn.' },
+      { name='Height', type='LONG', comment='The height of the region to be drawn.' }
+   }
+})
+
+setAction('Enable', {
+   comment   = 'Restore the state of a disabled object.',
+   prototype = 'ERR acEnable(*Object)'
+})
+
+setAction('Flush', {
+   comment   = 'Flush buffered data from an object.',
+   prototype = 'ERR acFlush(*Object)'
+})
+
+setAction('Focus', {
+   comment   = 'Focus on this object in the user interface.',
+   prototype = 'ERR acFocus(*Object)'
+})
+
+setAction('FreeWarning', {
+   comment = 'Used for receiving an early warning before an object is removed.'
+})
+
+setAction('Free', {
+   comment   = 'Removes the object and its resources.',
+   prototype = 'ERR FreeResource(*Object)'
+})
+
+setAction('GetKey', {
+   comment   = 'Retrieves custom key values that are not defined by an object\'s structure.',
+   prototype = 'ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)',
+   params    = {
+      { name='Key', type='CSTRING', comment='The name of a key value.' },
+      { name='Value', type='STRING', comment='Pointer to a buffer space large enough to hold the retrieved value.' },
+      { name='Size', type='LONG', comment='Indicates the byte size of the Buffer.' }
+   }
+})
+
+setAction('Hide', {
+   comment   = 'Hides a visible object from the view of the user.',
+   prototype = 'ERR acHide(*Object)'
+})
+
+setAction('Init', {
+   comment   = 'Initialises an object so that it is ready for active use.',
+   prototype = 'ERR InitObject(*Object)'
+})
+
+setAction('Lock', {
+   comment   = "Lock the underlying data or representation of the object.",
+   prototype = 'ERR acLock(*Object)'
+})
+
+setAction('LostFocus', {
+   comment   = 'This internal action is called when an object loses the user focus.',
+   prototype = 'ERR acLostFocus(*Object)'
+})
+
+setAction('Move', {
+   comment   = 'Moves the physical representation of an object to a new location.',
+   prototype = 'ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)',
+   params    = {
+      { name='DeltaX', type='DOUBLE', comment='The number of units to move along the X axis.' },
+      { name='DeltaY', type='DOUBLE', comment='The number of units to move along the Y axis.' },
+      { name='DeltaZ', type='DOUBLE', comment='The number of units to move along the Z axis.' }
+   }
+})
+
+setAction('MoveToBack', {
+   comment   = 'Move an object to the back of its current location.',
+   prototype = 'ERR acMoveToBack(*Object)'
+})
+
+setAction('MoveToFront', {
+   comment   = 'Move an object to the front of its current location.',
+   prototype = 'ERR acMoveToFront(*Object)'
+})
+
+setAction('MoveToPoint', {
+   comment   = 'Moves the coordinates of an object to a new position.',
+   prototype = 'ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)',
+   params    = {
+      { name='X', type='DOUBLE', comment='The new X position to move the object to.' },
+      { name='Y', type='DOUBLE', comment='The new Y position to move the object to.' },
+      { name='Z', type='DOUBLE', comment='The new Z position to move the object to.' },
+      { name='Flags', type='MTF', lookup='MTF', comment='Set the relevant MTF flag for each provided parameter.' }
+   }
+})
+
+setAction('NewChild', {
+   comment = 'Used by classes that need to be alerted when an object receives a new child.'
+})
+
+setAction('NewObject', {
+   comment = 'Called when a new object has been created from a base class.'
+})
+
+setAction('NewOwner', {
+   comment = 'Called when the owner of an object is about to change.'
+})
+
+setAction('Next', {
+   comment   = 'Move to the next record.',
+   prototype = 'ERR acNext(*Object)'
+})
+
+setAction('Prev', {
+   comment   = 'Move to the previous record.',
+   prototype = 'ERR acPrev(*Object)'
+})
+
+setAction('Query', {
+   comment   = 'Retrieves the latest information from an object.',
+   prototype = 'ERR acQuery(*Object)'
+})
+
+setAction('Read', {
+   comment   = 'Reads raw data information from objects.',
+   prototype = 'ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)',
+   params    = {
+      { name='Buffer', type='APTR', comment='Points a buffer that will receive the data.' },
+      { name='Length', type='LONG', comment='The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.' },
+      { name='Result', type='LONG', comment='The Read action will write this parameter with the total number of bytes read into the Buffer.' }
+   }
+})
+
+setAction('Redimension', {
+   comment   = 'Repositions and resizes the target object.',
+   prototype = 'ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)',
+   params    = {
+      { name='X', type='DOUBLE', comment='The new X position to apply to the target object.' },
+      { name='Y', type='DOUBLE', comment='The new Y position to apply to the target object.' },
+      { name='Z', type='DOUBLE', comment='The new Z position to apply to the target object.' },
+      { name='Width', type='DOUBLE', comment='The new width of the target object.' },
+      { name='Height', type='DOUBLE', comment='The new height of the target object.' },
+      { name='Depth', type='DOUBLE', comment='The new depth of the target object.' }
+   }
+})
+
+setAction('Redo', {
+   comment   = 'Reverse a previous call to the Undo action.',
+   prototype = 'ERR acRedo(*Object)'
+})
+
+setAction('Refresh', {
+   comment   = 'Refreshes the state of an object.',
+   prototype = 'ERR acRefresh(*Object)'
+})
+
+setAction('Rename', {
+   comment   = 'Renames an object.',
+   prototype = 'ERR acRename(*Object, CSTRING Name)',
+   params    = {
+      { name='Name', type='CSTRING', comment='The new name for the object.' }
+   }
+})
+
+setAction('Reset', {
+   comment   = 'Resets an object to its original state.',
+   prototype = 'ERR acRefresh(*Object)'
+})
+
+setAction('Resize', {
+   comment   = 'Resizes objects that are represented by two or three dimensional graphics.',
+   prototype = 'ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)',
+   params    = {
+      { name='Width', type='DOUBLE', comment='The new width of the object.' },
+      { name='Height', type='DOUBLE', comment='The new height of the object.' },
+      { name='Depth', type='DOUBLE', comment='The new depth of the object.' }
+   }
+})
+
+setAction('SaveImage', {
+   comment   = 'Saves an object\'s image to a destination object.',
+   prototype = 'ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)',
+   params    = {
+      { name='Dest', type='OBJECTID', comment='Refers to an object that will receive the encoded image data.' },
+      { name='ClassID', type='CLASSID', comment='The Picture class to use for encoding the image data.' }
+   }
+})
+
+setAction('SaveSettings', {
+   comment   = 'Saves object settings to a physical storage location.',
+   prototype = 'ERR acSaveSettings(*Object)'
+})
+
+setAction('SaveToObject', {
+   comment   = 'Saves an object\'s data to a destination object.',
+   prototype = 'ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)',
+   params    = {
+      { name='Dest', type='OBJECTID', comment='Refers to an object that will receive the encoded data.' },
+      { name='ClassID', type='CLASSID', comment='Can refer to a sub-class that should be used when encoding the data.' }
+   }
+})
+
+setAction('Seek', {
+   comment   = 'Move the read/write marker to a new position.',
+   prototype = 'ERR acSeek(*Object, DOUBLE Offset, LONG Position)',
+   params    = {
+      { name='Offset', type='DOUBLE', comment='The desired offset to seek to, relative to the Position parameter.' },
+      { name='Position', type='POS', comment='The position that defines the starting point for Offset.' }
+   }
+})
+
+setAction('SetField', {
+   comment = 'Private.  For use by the Core to manage context.'
+})
+
+setAction('SetKey', {
+   comment   = 'Sets custom key values that are not defined by an object\'s structure.',
+   prototype = 'ERR acSetKey(*Object, CSTRING Key, CSTRING Value)',
+   params    = {
+      { name='Key', type='CSTRING', comment='The name of the target key.' },
+      { name='Value', type='CSTRING', comment='The string value to associate with Key.' }
+   }
+})
+
+setAction('Show', {
+   comment   = 'Makes an object visible to the user.',
+   prototype = 'ERR acShow(*Object)'
+})
+
+setAction('Undo', {
+   comment   = 'Reverses the last operation.',
+   prototype = 'ERR acUndo(*Object)'
+})
+
+setAction('Unlock', {
+   comment   = 'Remove a lock from an object.',
+   prototype = 'ERR acUnlock(*Object)'
+})
+
+setAction('Write', {
+   comment   = 'Writes data to objects that provide storage or output services.',
+   prototype = 'ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)',
+   params    = {
+      { name='Buffer', type='APTR', comment='A buffer containing the data that will be written to the object.' },
+      { name='Length', type='LONG', comment='The total number of bytes to write to the object.' },
+      { name='Result', type='LONG', comment='This parameter with be updated with the total number of bytes written from the Buffer.' }
+   }
+})
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -415,22 +678,37 @@ function docClass(Class)
       out = out .. "\n  <actions>\n"
       for _, a in ipairs(Class.sortedActions) do
          if (ignoreAction(glActions[a.name].id) != true) or nz(a.description) then
-            out = out .. "    <action>\n"
-            out = out .. "      <name>" .. a.name .. "</name>\n"
+            out = out .. '    <action>\n'
+            out = out .. '      <name>' .. a.name .. '</name>\n'
 
-            if a.comment == nil then a.comment = glActionComments[glActions[a.name].id] end
-            if nz(a.comment) then out = out .. "      <comment>" .. substituteReferences(a.comment:escXML(), Class) .. "</comment>\n" end
+            if a.comment == nil then a.comment = glActions[a.name].comment end
+            if nz(a.comment) then out = out .. '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
+
+            if nz(glActions[a.name].prototype) then
+               out = out .. '      <prototype>' .. glActions[a.name].prototype:escXML() .. '</prototype>\n'
+            end
+
+            if nz(glActions[a.name].params) then
+               out = out .. '      <input>\n'
+               for _, param in ipairs(glActions[a.name].params) do
+                  local ref = ''
+                  if nz(param.lookup) then ref = ' lookup="' .. param.lookup .. '"' end
+                  if (param.comment == nil) then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
+                  out = out .. "        <param type=\"" .. param.type:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+               end
+               out = out .. '      </input>\n'
+            end
 
             if nz(a.description) then
-               out = out .. "      <description>\n"
+               out = out .. '      <description>\n'
                out = out .. extractParagraph(a.description, Class, Class.references)
-               out = out .. "\n      </description>\n"
+               out = out .. '\n      </description>\n'
             end
 
             if nz(a.results) then
                local results = ''
                for _, result in ipairs(a.results) do
-                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
+                  results = results .. '        <error code="' .. result.codeName .. '">' .. substituteReferences(result.msg:escXML(), Class) .. '</error>\n'
                end
 
                if nz(results) then

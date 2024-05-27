@@ -25,11 +25,13 @@
     <action>
       <name>MoveToBack</name>
       <comment>Move an effect to the front of the VectorFilter's list order.</comment>
+      <prototype>ERR acMoveToBack(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move an object to the front of its current location.</comment>
+      <prototype>ERR acMoveToFront(*Object)</prototype>
     </action>
 
   </actions>

@@ -297,24 +297,51 @@
                     <tbody>
                       <xsl:for-each select="/book/actions/action">
                         <tr data-toggle="collapse" data-target="_" class="clickable">
-                          <xsl:attribute name="data-target">#fl-<xsl:value-of select="name"/></xsl:attribute>
+                          <xsl:attribute name="data-target">#ta-<xsl:value-of select="name"/></xsl:attribute>
                           <td style="width:1%; border-top-style: none; border-bottom-style: none;">
-                            <a><xsl:attribute name="id">ta-<xsl:value-of select="name"/></xsl:attribute></a>
                             <xsl:choose>
                               <xsl:when test="description">
                                 <span class="glyphicon glyphicon-chevron-right"/>
                               </xsl:when>
                             </xsl:choose>
                           </td>
-                          <th class="col-md-1"><a href="actions.html"><xsl:value-of select="name"/></a></th>
+                          <th class="col-md-1 text-primary"><xsl:value-of select="name"/></th>
                           <td><xsl:apply-templates select="comment"/></td>
                         </tr>
-                        <xsl:if test="description">
+                        <xsl:if test="description or input">
                           <tr class="no-hover">
                             <td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"/>
                             <td colspan="2" class="hiddenRow">
                               <div id="_" class="accordion-body collapse">
-                                <xsl:attribute name="id">fl-<xsl:value-of select="name"/></xsl:attribute>
+                                <xsl:attribute name="id">ta-<xsl:value-of select="name"/></xsl:attribute>
+
+                              <div class="panel panel-info" style="border-radius: 0;">
+                                <div class="panel-heading" style="border-radius: 0;"><samp><xsl:value-of select="prototype"/></samp></div>
+                                <xsl:choose>
+                                  <xsl:when test="input/param">
+                                    <div class="panel-body">
+                                      <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                                        <thead>
+                                          <tr><th class="col-md-1">Input</th><th>Description</th></tr>
+                                        </thead>
+                                        <tbody>
+                                          <xsl:for-each select="input/param">
+                                            <xsl:choose>
+                                              <xsl:when test="@lookup">
+                                                <tr><td><a><xsl:attribute name="href">../core.html?page=<xsl:value-of select="@lookup"/></xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
+                                              </xsl:when>
+                                              <xsl:otherwise>
+                                                <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
+                                              </xsl:otherwise>
+                                            </xsl:choose>
+                                          </xsl:for-each>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </xsl:when>
+                                </xsl:choose>
+                              </div>
+
                                 <div class="docs-content" style="margin:10px 10px 0px 30px">
                                   <xsl:for-each select="description">
                                     <xsl:apply-templates/>
@@ -353,14 +380,14 @@
                     <tbody>
                       <xsl:for-each select="/book/methods/method">
                         <tr data-toggle="collapse" data-target="_" class="clickable">
-                          <xsl:attribute name="data-target">#fl-<xsl:value-of select="name"/></xsl:attribute>
+                          <xsl:attribute name="data-target">#tmx-<xsl:value-of select="name"/></xsl:attribute>
                           <th class="col-md-1 text-primary"><xsl:value-of select="name"/></th>
                           <td><a><xsl:attribute name="id">tm-<xsl:value-of select="name"/></xsl:attribute></a><xsl:apply-templates select="comment"/></td>
                         </tr>
                         <tr class="no-hover">
                           <td colspan="2" class="hiddenRow">
                             <div id="_" class="accordion-body collapse">
-                              <xsl:attribute name="id">fl-<xsl:value-of select="name"/></xsl:attribute>
+                              <xsl:attribute name="id">tmx-<xsl:value-of select="name"/></xsl:attribute>
 
                               <div class="panel panel-info" style="border-radius: 0;">
                                 <div class="panel-heading" style="border-radius: 0;"><samp><xsl:value-of select="prototype"/></samp></div>
@@ -375,7 +402,7 @@
                                           <xsl:for-each select="input/param">
                                             <xsl:choose>
                                               <xsl:when test="@lookup">
-                                                <tr><td><a href="#"><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
+                                                <tr><td><a><xsl:attribute name="href">?page=<xsl:value-of select="@lookup"/></xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
                                               </xsl:when>
                                               <xsl:otherwise>
                                                 <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>

@@ -40,26 +40,36 @@ proc.sleep()
     <action>
       <name>Activate</name>
       <comment>Plays the audio sample.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
     </action>
 
     <action>
       <name>Deactivate</name>
       <comment>Stops the audio sample and resets the playback position.</comment>
+      <prototype>ERR acDeactivate(*Object)</prototype>
     </action>
 
     <action>
       <name>Disable</name>
       <comment>Disable playback of an active audio sample, equivalent to pausing.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
     </action>
 
     <action>
       <name>Enable</name>
       <comment>Continues playing a sound if it has been disabled.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Retrieve custom key values.</comment>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of a key value.</param>
+        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
+        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+      </input>
       <description>
 <p>The following custom key values are formally recognised and may be defined automatically when loading sample files:</p>
 <types type="Tag">
@@ -77,6 +87,12 @@ proc.sleep()
     <action>
       <name>Read</name>
       <comment>Read decoded audio from the sound sample.</comment>
+      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
+        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+      </input>
       <description>
 <p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <fl>Position</fl> value.</p>
       </description>
@@ -85,11 +101,21 @@ proc.sleep()
     <action>
       <name>SaveToObject</name>
       <comment>Saves audio sample data to an object.</comment>
+      <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+      </input>
     </action>
 
     <action>
       <name>Seek</name>
       <comment>Moves the cursor position for reading data.</comment>
+      <prototype>ERR acSeek(*Object, DOUBLE Offset, LONG Position)</prototype>
+      <input>
+        <param type="DOUBLE" name="Offset">The desired offset to seek to, relative to the Position parameter.</param>
+        <param type="POS" name="Position">The position that defines the starting point for Offset.</param>
+      </input>
       <description>
 <p>Use Seek to move the read cursor within the decoded audio stream and update <fl>Position</fl>.  This will affect the Read action.  If the sample is in active playback at the time of the call, the playback position will also be moved.</p>
       </description>
@@ -98,6 +124,11 @@ proc.sleep()
     <action>
       <name>SetKey</name>
       <comment>Define custom tags that will be saved with the sample data.</comment>
+      <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the target key.</param>
+        <param type="CSTRING" name="Value">The string value to associate with Key.</param>
+      </input>
     </action>
 
   </actions>

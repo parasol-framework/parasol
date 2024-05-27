@@ -30,6 +30,7 @@
     <action>
       <name>Activate</name>
       <comment>Opens the current document selection.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
       <description>
 <p>Calling the Activate() action on a document object will forward Activate() calls to its child objects.</p>
       </description>
@@ -38,6 +39,7 @@
     <action>
       <name>Clear</name>
       <comment>Clears all content from the object.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
       <description>
 <p>Using the Clear() action will delete all of the document's content.  The UI will be updated to reflect a clear document.</p>
       </description>
@@ -46,11 +48,22 @@
     <action>
       <name>Clipboard</name>
       <comment>Full support for clipboard activity is provided through this action.</comment>
+      <prototype>ERR acClipboard(*Object, OBJECTID Clipboard, CLIPMODE Mode)</prototype>
+      <input>
+        <param type="CLIPMODE" name="Mode" lookup="CLIPMODE">The mode that will be used to shift data between the target object and clipboard system.</param>
+      </input>
     </action>
 
     <action>
       <name>DataFeed</name>
       <comment>Document data can be sent and consumed via feeds.</comment>
+      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)</prototype>
+      <input>
+        <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
+        <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
+        <param type="APTR" name="Buffer">The data being sent to the target object.</param>
+        <param type="LONG" name="Size">The size of the data in Buffer.</param>
+      </input>
       <description>
 <p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the <code>DATA::TEXT</code> and <code>DATA::XML</code> types for this purpose.</p>
       </description>
@@ -65,41 +78,68 @@
     <action>
       <name>Disable</name>
       <comment>Disables user interactivity.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Force a page layout update (if changes are pending) and redraw to the display.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
     <action>
       <name>Enable</name>
       <comment>Enables object functionality.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
     </action>
 
     <action>
       <name>Focus</name>
       <comment>Sets the user focus on the document page.</comment>
+      <prototype>ERR acFocus(*Object)</prototype>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Retrieves script parameters.</comment>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of a key value.</param>
+        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
+        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+      </input>
     </action>
 
     <action>
       <name>Refresh</name>
       <comment>Reloads the document data from the original source location.</comment>
+      <prototype>ERR acRefresh(*Object)</prototype>
     </action>
 
     <action>
       <name>SaveToObject</name>
       <comment>Use this action to save edited information as an XML document file.</comment>
+      <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+      </input>
     </action>
 
     <action>
       <name>SetKey</name>
       <comment>Passes variable parameters to loaded documents.</comment>
+      <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the target key.</param>
+        <param type="CSTRING" name="Value">The string value to associate with Key.</param>
+      </input>
     </action>
 
   </actions>

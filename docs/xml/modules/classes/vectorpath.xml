@@ -24,11 +24,13 @@
     <action>
       <name>Clear</name>
       <comment>Clears an object's data.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
     <action>
       <name>Flush</name>
       <comment>Flush buffered data from an object.</comment>
+      <prototype>ERR acFlush(*Object)</prototype>
     </action>
 
   </actions>

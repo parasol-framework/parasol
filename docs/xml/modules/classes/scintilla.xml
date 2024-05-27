@@ -24,56 +24,80 @@
     <action>
       <name>Clear</name>
       <comment>Clears all content from the editor.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
     <action>
       <name>Clipboard</name>
       <comment>Full support for clipboard activity is provided through this action.</comment>
+      <prototype>ERR acClipboard(*Object, OBJECTID Clipboard, CLIPMODE Mode)</prototype>
+      <input>
+        <param type="CLIPMODE" name="Mode" lookup="CLIPMODE">The mode that will be used to shift data between the target object and clipboard system.</param>
+      </input>
     </action>
 
     <action>
       <name>Disable</name>
       <comment>Disables the target <fl>Surface</fl>.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Draws the Scintilla object's graphics.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
     <action>
       <name>Enable</name>
       <comment>Enables the target <fl>Surface</fl>.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
     </action>
 
     <action>
       <name>Focus</name>
       <comment>Focus on the Scintilla surface.</comment>
+      <prototype>ERR acFocus(*Object)</prototype>
     </action>
 
     <action>
       <name>Hide</name>
       <comment>Hides a visible object from the view of the user.</comment>
+      <prototype>ERR acHide(*Object)</prototype>
     </action>
 
     <action>
       <name>Redo</name>
       <comment>Redo the most recently undone activity.</comment>
+      <prototype>ERR acRedo(*Object)</prototype>
     </action>
 
     <action>
       <name>SaveToObject</name>
       <comment>Save content as a text stream to another object.</comment>
+      <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+      </input>
     </action>
 
     <action>
       <name>Show</name>
       <comment>Makes an object visible to the user.</comment>
+      <prototype>ERR acShow(*Object)</prototype>
     </action>
 
     <action>
       <name>Undo</name>
       <comment>Undo the last user action.</comment>
+      <prototype>ERR acUndo(*Object)</prototype>
     </action>
 
   </actions>

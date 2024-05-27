@@ -26,6 +26,7 @@
     <action>
       <name>Activate</name>
       <comment>Enables access to the audio hardware and initialises the mixer.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
       <description>
 <p>An audio object will not play or record until it has been activated.  Activating the object will result in an attempt to access the device hardware, which on some platforms may lead to failure if another process has permanently locked the audio device.  The resources and any device locks obtained by this action can be released with a call to <action>Deactivate</action>.</p>
 <p>An inactive audio object can operate in a limited fashion but is without access to the audio hardware.</p>
@@ -35,6 +36,7 @@
     <action>
       <name>Deactivate</name>
       <comment>Disables the audio mixer and returns device resources to the system.</comment>
+      <prototype>ERR acDeactivate(*Object)</prototype>
       <description>
 <p>Deactivating an audio object will switch off the mixer, clear the output buffer and return any allocated device resources back to the host system.  The audio object will remain in a suspended state until it is reactivated.</p>
       </description>
@@ -43,11 +45,17 @@
     <action>
       <name>SaveSettings</name>
       <comment>Saves the current audio settings.</comment>
+      <prototype>ERR acSaveSettings(*Object)</prototype>
     </action>
 
     <action>
       <name>SaveToObject</name>
       <comment>Saves the current audio settings to another object.</comment>
+      <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+      </input>
     </action>
 
   </actions>

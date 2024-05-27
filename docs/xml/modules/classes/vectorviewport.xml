@@ -26,26 +26,55 @@
     <action>
       <name>Clear</name>
       <comment>Free all child objects contained by the viewport.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
     <action>
       <name>Move</name>
       <comment>Move the position of the viewport by delta X, Y.</comment>
+      <prototype>ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</prototype>
+      <input>
+        <param type="DOUBLE" name="DeltaX">The number of units to move along the X axis.</param>
+        <param type="DOUBLE" name="DeltaY">The number of units to move along the Y axis.</param>
+        <param type="DOUBLE" name="DeltaZ">The number of units to move along the Z axis.</param>
+      </input>
     </action>
 
     <action>
       <name>MoveToPoint</name>
       <comment>Move the position of the viewport to a fixed point.</comment>
+      <prototype>ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to move the object to.</param>
+        <param type="DOUBLE" name="Y">The new Y position to move the object to.</param>
+        <param type="DOUBLE" name="Z">The new Z position to move the object to.</param>
+        <param type="MTF" name="Flags" lookup="MTF">Set the relevant MTF flag for each provided parameter.</param>
+      </input>
     </action>
 
     <action>
       <name>Redimension</name>
       <comment>Reposition and resize a viewport to a fixed size.</comment>
+      <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to apply to the target object.</param>
+        <param type="DOUBLE" name="Y">The new Y position to apply to the target object.</param>
+        <param type="DOUBLE" name="Z">The new Z position to apply to the target object.</param>
+        <param type="DOUBLE" name="Width">The new width of the target object.</param>
+        <param type="DOUBLE" name="Height">The new height of the target object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the target object.</param>
+      </input>
     </action>
 
     <action>
       <name>Resize</name>
       <comment>Resize a viewport to a fixed size.</comment>
+      <prototype>ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="Width">The new width of the object.</param>
+        <param type="DOUBLE" name="Height">The new height of the object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the object.</param>
+      </input>
     </action>
 
   </actions>

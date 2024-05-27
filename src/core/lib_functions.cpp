@@ -560,7 +560,7 @@ switched on).  The benefit of monotonic time is that it is unaffected by changes
 savings adjustments or manual changes by the user.
 
 -RESULT-
-large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
+large: Returns the system time in microseconds.  Could return zero in the extremely unlikely event of an error.
 
 *********************************************************************************************************************/
 

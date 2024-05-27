@@ -1237,7 +1237,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight savings adjustments or manual changes by the user.</p>
     </description>
-    <result type="LARGE">Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.</result>
+    <result type="LARGE">Returns the system time in microseconds.  Could return zero in the extremely unlikely event of an error.</result>
   </function>
 
   <function>

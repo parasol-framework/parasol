@@ -26,21 +26,34 @@
     <action>
       <name>Activate</name>
       <comment>Executes the script.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
     </action>
 
     <action>
       <name>GetKey</name>
       <comment>Script parameters can be retrieved through this action.</comment>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of a key value.</param>
+        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
+        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+      </input>
     </action>
 
     <action>
       <name>Reset</name>
       <comment>Resets an object to its original state.</comment>
+      <prototype>ERR acRefresh(*Object)</prototype>
     </action>
 
     <action>
       <name>SetKey</name>
       <comment>Script parameters can be set through this action.</comment>
+      <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the target key.</param>
+        <param type="CSTRING" name="Value">The string value to associate with Key.</param>
+      </input>
     </action>
 
   </actions>

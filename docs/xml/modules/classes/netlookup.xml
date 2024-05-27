@@ -24,6 +24,7 @@
     <action>
       <name>Free</name>
       <comment>Terminate the object.</comment>
+      <prototype>ERR FreeResource(*Object)</prototype>
       <description>
 <p>This routine may block temporarily if there are unresolved requests awaiting completion in separate threads.</p>
       </description>

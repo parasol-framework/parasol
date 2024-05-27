@@ -26,6 +26,7 @@
     <action>
       <name>Activate</name>
       <comment>Initiates playback of SVG animations.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
       <description>
 <p>SVG documents that use animation features will remain static until they are activated with this action.  The animation code will be processed in the background at the pre-defined <fl>FrameRate</fl>.  The <fl>Scene</fl> will be redrawn automatically as each frame is processed.</p>
 <p>The client can hook into the animation cycle by setting the <fl>FrameCallback</fl> with a suitable function.</p>
@@ -35,11 +36,13 @@
     <action>
       <name>Deactivate</name>
       <comment>Stops all playback of SVG animations.</comment>
+      <prototype>ERR acDeactivate(*Object)</prototype>
     </action>
 
     <action>
       <name>Init</name>
       <comment>Initialise the SVG object.</comment>
+      <prototype>ERR InitObject(*Object)</prototype>
       <description>
 <p>Initialising an SVG object will load an SVG source file if a <fl>Path</fl> has been specified.  The default behaviour is to generate the content in a local <fl>Scene</fl> object, or alternatively the content can be redirected to an external <class name="VectorScene">VectorScene</class> referred to by <fl>Target</fl>.</p>
       </description>
@@ -48,6 +51,11 @@
     <action>
       <name>SaveImage</name>
       <comment>Saves the SVG document as a PNG image.</comment>
+      <prototype>ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded image data.</param>
+        <param type="CLASSID" name="ClassID">The Picture class to use for encoding the image data.</param>
+      </input>
       <description>
 <p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> of the <fl>Scene</fl>, or if not defined, the default of 1920x1080 is applied.</p>
 <p>The image will be saved in PNG format by default, but can be changed by specifying an alternate <code>ClassID</code>.  PNG is recommended in particular because it supports an alpha channel.</p>
@@ -57,6 +65,11 @@
     <action>
       <name>SaveToObject</name>
       <comment>Saves the SVG document to a data object.</comment>
+      <prototype>ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded data.</param>
+        <param type="CLASSID" name="ClassID">Can refer to a sub-class that should be used when encoding the data.</param>
+      </input>
     </action>
 
   </actions>

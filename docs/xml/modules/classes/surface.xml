@@ -30,16 +30,25 @@
     <action>
       <name>Activate</name>
       <comment>Shows a surface object on the display.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
     </action>
 
     <action>
       <name>Disable</name>
       <comment>Disables a surface object.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Redraws the contents of a surface object.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
       <description>
 <p>Calling the Draw action on a surface object will send redraw messages to every hook that has been attached to the surface object's drawing system.  This has the effect of redrawing all graphics within the surface object.  The procedure is as follows:</p>
 <list type="ordered">
@@ -62,56 +71,95 @@ the surface area first).</li>
     <action>
       <name>Enable</name>
       <comment>Enables a disabled surface object.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
     </action>
 
     <action>
       <name>Focus</name>
       <comment>Changes the primary user focus to the surface object.</comment>
+      <prototype>ERR acFocus(*Object)</prototype>
     </action>
 
     <action>
       <name>Hide</name>
       <comment>Hides a surface object from the display.</comment>
+      <prototype>ERR acHide(*Object)</prototype>
     </action>
 
     <action>
       <name>LostFocus</name>
       <comment>Informs a surface object that it has lost the user focus.</comment>
+      <prototype>ERR acLostFocus(*Object)</prototype>
     </action>
 
     <action>
       <name>Move</name>
       <comment>Moves a surface object to a new display position.</comment>
+      <prototype>ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</prototype>
+      <input>
+        <param type="DOUBLE" name="DeltaX">The number of units to move along the X axis.</param>
+        <param type="DOUBLE" name="DeltaY">The number of units to move along the Y axis.</param>
+        <param type="DOUBLE" name="DeltaZ">The number of units to move along the Z axis.</param>
+      </input>
     </action>
 
     <action>
       <name>MoveToBack</name>
       <comment>Moves a surface object to the back of its container.</comment>
+      <prototype>ERR acMoveToBack(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Moves a surface object to the front of its container.</comment>
+      <prototype>ERR acMoveToFront(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToPoint</name>
       <comment>Moves a surface object to an absolute coordinate.</comment>
+      <prototype>ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to move the object to.</param>
+        <param type="DOUBLE" name="Y">The new Y position to move the object to.</param>
+        <param type="DOUBLE" name="Z">The new Z position to move the object to.</param>
+        <param type="MTF" name="Flags" lookup="MTF">Set the relevant MTF flag for each provided parameter.</param>
+      </input>
     </action>
 
     <action>
       <name>Redimension</name>
       <comment>Moves and resizes a surface object in a single action call.</comment>
+      <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to apply to the target object.</param>
+        <param type="DOUBLE" name="Y">The new Y position to apply to the target object.</param>
+        <param type="DOUBLE" name="Z">The new Z position to apply to the target object.</param>
+        <param type="DOUBLE" name="Width">The new width of the target object.</param>
+        <param type="DOUBLE" name="Height">The new height of the target object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the target object.</param>
+      </input>
     </action>
 
     <action>
       <name>Resize</name>
       <comment>Alters the dimensions of a surface object.</comment>
+      <prototype>ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="Width">The new width of the object.</param>
+        <param type="DOUBLE" name="Height">The new height of the object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the object.</param>
+      </input>
     </action>
 
     <action>
       <name>SaveImage</name>
       <comment>Saves the graphics of a surface object.</comment>
+      <prototype>ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)</prototype>
+      <input>
+        <param type="OBJECTID" name="Dest">Refers to an object that will receive the encoded image data.</param>
+        <param type="CLASSID" name="ClassID">The Picture class to use for encoding the image data.</param>
+      </input>
       <description>
 <p>To store the rendered image of a surface object, use the SaveImage() action.  Calling SaveImage() on a surface object will cause it to render an image of its contents and save them to the given destination object.  Any child surfaces in the region will also be included in the resulting image data.</p>
 <p>The image data will be saved in the data format that is indicated by the setting in the <code>ClassID</code> parameter.  Options are limited to members of the <class name="Picture">Picture</class> class, for example <code>CLASSID::JPEG</code> and <code>CLASSID::PICTURE</code> (PNG).  If no <code>ClassID</code> is specified, the user's preferred default file format is used.</p>
@@ -121,6 +169,7 @@ the surface area first).</li>
     <action>
       <name>Show</name>
       <comment>Shows a surface object on the display.</comment>
+      <prototype>ERR acShow(*Object)</prototype>
     </action>
 
   </actions>

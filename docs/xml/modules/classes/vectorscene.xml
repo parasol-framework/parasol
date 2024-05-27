@@ -27,6 +27,13 @@
     <action>
       <name>Draw</name>
       <comment>Renders the scene to a bitmap.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
       <description>
 <p>The Draw action will render the scene to the target <fl>Bitmap</fl> immediately.  If <fl>Bitmap</fl> is NULL, an error will be returned.</p>
 <p>In addition, the <fl>RenderTime</fl> field will be updated if the <code>RENDER_TIME</code> flag is defined.</p>
@@ -40,16 +47,32 @@
     <action>
       <name>Redimension</name>
       <comment>Redefines the size of the page.</comment>
+      <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to apply to the target object.</param>
+        <param type="DOUBLE" name="Y">The new Y position to apply to the target object.</param>
+        <param type="DOUBLE" name="Z">The new Z position to apply to the target object.</param>
+        <param type="DOUBLE" name="Width">The new width of the target object.</param>
+        <param type="DOUBLE" name="Height">The new height of the target object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the target object.</param>
+      </input>
     </action>
 
     <action>
       <name>Reset</name>
       <comment>Clears all registered definitions and resets field values.  Child vectors are unmodified.</comment>
+      <prototype>ERR acRefresh(*Object)</prototype>
     </action>
 
     <action>
       <name>Resize</name>
       <comment>Redefines the size of the page.</comment>
+      <prototype>ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="Width">The new width of the object.</param>
+        <param type="DOUBLE" name="Height">The new height of the object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the object.</param>
+      </input>
     </action>
 
   </actions>

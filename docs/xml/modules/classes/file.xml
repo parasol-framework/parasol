@@ -25,11 +25,19 @@
     <action>
       <name>Activate</name>
       <comment>Opens the file.  Performed automatically if <code>NEW</code>, <code>READ</code> or <code>WRITE</code> flags were specified on initialisation.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
     </action>
 
     <action>
       <name>DataFeed</name>
       <comment>Data can be streamed to any file as a method of writing content.</comment>
+      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)</prototype>
+      <input>
+        <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
+        <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
+        <param type="APTR" name="Buffer">The data being sent to the target object.</param>
+        <param type="LONG" name="Size">The size of the data in Buffer.</param>
+      </input>
       <description>
 <p>Streaming data of any type to a file will result in the content being written to the file at the current seek <fl>Position</fl>.</p>
       </description>
@@ -38,6 +46,7 @@
     <action>
       <name>Init</name>
       <comment>Initialises a file.</comment>
+      <prototype>ERR InitObject(*Object)</prototype>
       <description>
 <p>This action will prepare a file or folder at the given <fl>Path</fl> for use.</p>
 <p>To create a new file from scratch, specify the <code>NEW</code> flag.  This will overwrite any file that exists at the target path.</p>
@@ -60,11 +69,18 @@
     <action>
       <name>Query</name>
       <comment>Read a file's meta information from source.</comment>
+      <prototype>ERR acQuery(*Object)</prototype>
     </action>
 
     <action>
       <name>Read</name>
       <comment>Reads data from a file.</comment>
+      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
+        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+      </input>
       <description>
 <p>Reads data from a file into the given buffer.  Increases the value in the <fl>Position</fl> field by the amount of bytes read from the file data.  The <code>FL::READ</code> bit in the <fl>Flags</fl> field must have been set on file initialisation, or the call will fail.</p>
 <p>It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g. if the end of the file has been reached.  The <code>Result</code> parameter will be returned as zero in such cases.  Check the current <fl>Position</fl> against the <fl>Size</fl> to confirm that the end has been reached.</p>
@@ -84,21 +100,37 @@
     <action>
       <name>Rename</name>
       <comment>Changes the name of a file.</comment>
+      <prototype>ERR acRename(*Object, CSTRING Name)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The new name for the object.</param>
+      </input>
     </action>
 
     <action>
       <name>Reset</name>
       <comment>If the file represents a folder, the file list index is reset by this action.</comment>
+      <prototype>ERR acRefresh(*Object)</prototype>
     </action>
 
     <action>
       <name>Seek</name>
       <comment>Seeks to a new read/write position within a file.</comment>
+      <prototype>ERR acSeek(*Object, DOUBLE Offset, LONG Position)</prototype>
+      <input>
+        <param type="DOUBLE" name="Offset">The desired offset to seek to, relative to the Position parameter.</param>
+        <param type="POS" name="Position">The position that defines the starting point for Offset.</param>
+      </input>
     </action>
 
     <action>
       <name>Write</name>
       <comment>Writes data to a file.</comment>
+      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
+        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
+        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+      </input>
       <description>
 <p>Writes data from the provided buffer into the file, then updates the <fl>Position</fl> field to reflect the new read/write position.  You must have set the <code>FL::WRITE</code> bit in the <fl>Flags</fl> field when you initialised the file, or the call will fail.</p>
       </description>

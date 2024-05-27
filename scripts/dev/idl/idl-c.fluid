@@ -13,8 +13,6 @@
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
 
-   loadFile(glPath .. 'idl-doc.fluid')
-
 ----------------------------------------------------------------------------------------------------------------------
 
 glActionStubs = {
@@ -2546,6 +2544,8 @@ end
    resolveSDKPath(arg('sdk'))
 
    loadActions()
+
+   loadFile(glPath .. 'idl-doc.fluid')
 
    if (processFDLFile(glSource) == ERR_Okay) then
       processSourceFiles()
