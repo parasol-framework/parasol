@@ -611,7 +611,7 @@ cstr Dest:   The destination location.
 ptr(func) Callback: Optional callback for receiving feedback during the operation.
 
 -ERRORS-
-Okay: The location was copied successfully.
+Okay: The source was copied to its destination successfully.
 Args:
 Failed: A failure occurred during the copy process.
 
@@ -628,15 +628,15 @@ ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 CreateLink: Creates symbolic links on Unix file systems.
 
 Use the CreateLink() function to create symbolic links on Unix file systems. The link connects a new file created at
-From to an existing file referenced at To. The To link is allowed to be relative to the From location - for instance,
+`From` to an existing file referenced at `To`. The `To` link is allowed to be relative to the `From` location - for instance,
 you can link `documents:myfiles/newlink.txt` to `../readme.txt` or `folder/readme.txt`. The `..` path component must be
 used when making references to parent folders.
 
 The permission flags for the link are inherited from the file that you are linking to.  If the file location referenced
-at From already exists as a file or folder, the function will fail with an ERR::FileExists error code.
+at `From` already exists as a file or folder, the function will fail with an `ERR::FileExists` error code.
 
 This function does not automatically create folders in circumstances where new folders are required to complete the
-From link.  You will need to call ~CreateFolder() to ensure that the necessary paths exist beforehand.  If the
+`From` link.  You will need to call ~CreateFolder() to ensure that the necessary paths exist beforehand.  If the
 file referenced at To does not exist, the link will be created without error, but any attempts to open the link will
 fail until the target file or folder exists.
 
@@ -705,7 +705,7 @@ failures are ignored, although an error will be returned if the top-level folder
 This function does not allow for the approximation of file names.  To approximate a file location, open it as a @File
 object or use ~ResolvePath() first.
 
-The Callback parameter can be set with a function that matches the prototype `LONG Callback(struct FileFeedback *)`.
+The `Callback` parameter can be set with a function that matches the prototype `LONG Callback(struct FileFeedback *)`.
 
 Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
 callback must return a constant value that can potentially affect file processing.  Valid values are `FFR::Okay` (delete
@@ -976,7 +976,7 @@ int(PERMIT) Permissions: Security permissions to apply to the created Dir(s).  S
 -ERRORS-
 Okay:
 NullArgs:
-FileExists: An identically named file or folder already exists at the Path.
+FileExists: An identically named file or folder already exists at the `Path`.
 NoSupport:  Virtual file system does not support folder creation.
 Failed:
 
@@ -1034,11 +1034,11 @@ The `Source` argument should always clarify the type of location that is being c
 folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a
 file.
 
-The Callback parameter can be set with a function that matches this prototype:
+The `Callback` parameter can be set with a function that matches this prototype:
 
 `LONG Callback(struct FileFeedback *)`
 
-For each file that is processed during the move operation, a &FileFeedback structure is passed that describes the
+For each file that is processed during the move operation, a !FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
 Valid values are `FFR::Okay` (move the file), `FFR::Skip` (do not move the file) and `FFR::Abort` (abort the process
 completely and return `ERR::Cancelled` as an error code).
@@ -1070,10 +1070,10 @@ ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 -FUNCTION-
 ReadFileToBuffer: Reads a file into a buffer.
 
-This function provides a simple method for reading file content into a buffer.  In some cases this procedure may be
+This function provides a simple method for reading file content into a `Buffer`.  In some cases this procedure may be
 optimised for the host platform, which makes it the fastest way to read file content in simple cases.
 
-File path approximation is supported if the Path is prefixed with a `~` character (e.g. `~pictures:photo` could be
+File path approximation is supported if the `Path` is prefixed with a `~` character (e.g. `~pictures:photo` could be
 matched to `photo.jpg` in the same folder).
 
 -INPUT-
@@ -1302,7 +1302,7 @@ UnloadFile: Unloads files from the file cache.
 This function unloads cached files that have been previously loaded with the ~LoadFile() function.
 
 -INPUT-
-resource(CacheFile) Cache: A pointer to a !CacheFile structure returned from LoadFile().
+resource(CacheFile) Cache: A pointer to a !CacheFile structure returned from ~LoadFile().
 -END-
 
 *********************************************************************************************************************/
@@ -2129,8 +2129,7 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
    }
 
    DirInfo *dir;
-   ERR error;
-   if ((error = OpenDir(Source, RDF::FILE|RDF::FOLDER|RDF::PERMISSIONS, &dir)) IS ERR::Okay) {
+   if (auto error = OpenDir(Source, RDF::FILE|RDF::FOLDER|RDF::PERMISSIONS, &dir); error IS ERR::Okay) {
       while ((error = ScanDir(dir)) IS ERR::Okay) {
          FileInfo *file = dir->Info;
          if ((file->Flags & RDF::LINK) != RDF::NIL) {
@@ -2243,22 +2242,6 @@ PERMIT get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
 
    //log.msg("%s [FAIL]", Path);
    return PERMIT::NIL;
-}
-
-//********************************************************************************************************************
-// Strips trailing slashes from folder locations.
-
-BYTE strip_folder(STRING Path)
-{
-   LONG i;
-   for (i=0; Path[i]; i++);
-   if (i > 1) {
-      if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) {
-         Path[i-1] = 0;
-         return TRUE;
-      }
-   }
-   return FALSE;
 }
 
 //********************************************************************************************************************

@@ -996,14 +996,14 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 -FUNCTION-
 InitObject: Initialises an object so that it is ready for use.
 
-This function initialises objects so that they can be used for their intended purpose. The process of initialisation
-is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to
-this rule only apply to the GetKey() and SetKey() actions.
+This function initialises objects so that they can be used for their intended purpose. Initialisation is compulsory,
+and a client may not call any actions or methods on an object until it has been initialised.  Exceptions to
+this rule only apply to the `GetKey()` and `SetKey()` actions.
 
 If the initialisation of an object fails due to a support problem (for example, if a PNG @Picture object attempts to
 load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can
-provide ample support exists, a partial transfer of ownership will occur and the object's  management will be shared
-between both the base class and the sub-class.
+support the object's configuration is available, the object's interface will be shared between both the base-class
+and the sub-class.
 
 If an object does not support the data or its configuration, an error code of `ERR::NoSupport` will be returned.
 Other appropriate error codes can be returned if initialisation fails.
@@ -1014,6 +1014,7 @@ obj Object: The object to initialise.
 -ERRORS-
 Okay: The object was initialised.
 LostClass
+DoubleInit
 ObjectCorrupt
 
 *********************************************************************************************************************/
@@ -1163,19 +1164,20 @@ ERR InitObject(OBJECTPTR Object)
 ListChildren: Returns a list of all children belonging to an object.
 
 The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty
-vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
+vector of !ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
 
 Note that any child objects marked with the `LOCAL` flag will be excluded because they are private members of the
 targeted object.
 
 -INPUT-
 oid Object: An object to query.
-ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of ChildEntry structures.
+ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of !ChildEntry structures.
 
 -ERRORS-
 Okay: Zero or more children were found and listed.
 Args
 NullArgs
+LockFailed
 
 *********************************************************************************************************************/
 
@@ -1360,7 +1362,7 @@ the action function with `ERR::Notified`, e.g. `ERR::Okay|ERR::Notified`.
 -INPUT-
 obj Object: Pointer to the object that is to receive the notification message.
 int(AC) Action: The action ID for notification.
-ptr Args: Pointer to an action parameter structure that is relevant to the ActionID.
+ptr Args: Pointer to an action parameter structure that is relevant to the `Action` ID.
 error Error: The error code that is associated with the action result.
 
 -END-
@@ -1432,12 +1434,12 @@ The action will be executed on the next cycle of ~ProcessMessages() in line with
 -INPUT-
 int Action: The ID of an action or method to execute.
 oid Object: The target object.
-ptr Args:   The relevant argument structure for the Action, or NULL if not required.
+ptr Args:   The relevant argument structure for the `Action`, or `NULL` if not required.
 
 -ERRORS-
 Okay:
 NullArgs:
-OutOfRange: The ActionID is invalid.
+OutOfRange: The `Action` ID is invalid.
 NoMatchingObject:
 MissingClass:
 Failed:
@@ -1509,16 +1511,16 @@ ERR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ResolveClassName: Resolves any class name to a CLASSID UID.
+ResolveClassName: Resolves any class name to a `CLASSID` UID.
 
-This function will resolve a class `Name` to its CLASSID UID and verifies that the class is installed.  It is case
+This function will resolve a class `Name` to its `CLASSID` UID and verifies that the class is installed.  It is case
 insensitive.
 
 -INPUT-
 cstr Name: The name of the class that requires resolution.
 
 -RESULT-
-cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
+cid: Returns the class ID identified from the class name, or `NULL` if the class could not be found.
 -END-
 
 *********************************************************************************************************************/
@@ -1539,7 +1541,7 @@ CLASSID ResolveClassName(CSTRING ClassName)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ResolveClassID: Resolve a valid CLASSID to its name.
+ResolveClassID: Resolve a valid `CLASSID` to its name.
 
 This function will resolve a valid class ID to its equivalent name.  The name is resolved by checking the
 class database, so the class must be registered in the database for this function to return successfully.
@@ -1550,7 +1552,7 @@ Registration is achieved by ensuring that the class is compiled into the build.
 cid ID: The ID of the class that needs to be resolved.
 
 -RESULT-
-cstr: Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".
+cstr: Returns the name of the class, or `NULL` if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. `NetSocket`.
 -END-
 
 *********************************************************************************************************************/
@@ -1579,17 +1581,19 @@ Internally, setting a new owner will cause three things to happen:
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
 </list>
 
-If the `Object` does not support the NewOwner action, or the Owner does not support the NewChild action, then the
+If the `Object` does not support the NewOwner action, or the `Owner` does not support the NewChild action, then the
 process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.
 
 -INPUT-
-obj Object: Pointer to the object to modify.
-obj Owner: Pointer to the new owner for the object.
+obj Object: The object to modify.
+obj Owner: The new owner for the `Object`.
 
 -ERRORS-
 Okay
 NullArgs
 Args
+Recursion
+SystemLocked
 -END-
 
 *********************************************************************************************************************/
@@ -1668,7 +1672,7 @@ SetContext(ctx);
 FreeResource(display->UID);
 </pre>
 
-The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When
+The above code allocates a @Bitmap and a memory block, both of which will be contained by the display. When
 ~FreeResource() is called, both the bitmap and memory block will be automatically removed as they have a dependency
 on the display's existence.  Please keep in mind that the following is incorrect:
 
@@ -1711,8 +1715,8 @@ OBJECTPTR SetContext(OBJECTPTR Object)
 -FUNCTION-
 SetName: Sets the name of an object.
 
-This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the Name will be limited to the value indicated in the core header file, under
+This function sets the name of an `Object`.  This enhances log messages and allows the object to be found in searches.
+Please note that the length of the `Name` will be limited to the value indicated in the core header file, under
 the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
@@ -1725,7 +1729,7 @@ cstr Name: The new name for the object.
 -ERRORS-
 Okay:
 NullArgs:
-Search:       The Object is not recognised by the system - the address may be invalid.
+Search: The `Object` is not recognised by the system - the address may be invalid.
 LockFailed:
 
 *********************************************************************************************************************/
@@ -1774,19 +1778,19 @@ ERR SetName(OBJECTPTR Object, CSTRING NewName)
 SubscribeAction: Monitor action calls made against an object.
 
 The SubscribeAction() function allows a client to receive a callback each time that an action is executed on
-an object.  This technique is referred to as "action monitoring" and is often used for responding to UI
+an object.  This strategy is referred to as "action monitoring" and is often used for responding to UI
 events and the termination of objects.
 
-Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.
+Subscriptions are context sensitive, so the `Callback` will execute in the space attributed to to the caller.
 
-The following example illustrates how to listen to a Surface object's Redimension action and respond to resize
+The following example illustrates how to listen to a @Surface object's Redimension action and respond to resize
 events:
 
 <pre>
 SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
 
-The template below illustrates how the Callback function should be constructed:
+The template below illustrates how the `Callback` function should be constructed:
 
 <pre>
 void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameters, APTR CallbackMeta)
@@ -1800,10 +1804,10 @@ void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameter
 }
 </pre>
 
-The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated
+The `Object` is the original subscription target, as-is the Action ID.  The Result is the error code that was generated
 at the end of the action call.  If this is not set to `ERR::Okay`, assume that the action did not have an effect on
-state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be
-NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context
+state.  The `Parameters` are the original arguments provided by the client - be aware that these can legitimately be
+`NULL` even if an action specifies a required parameter structure.  Notice that because subscriptions are context
 sensitive, ~CurrentContext() can be used to get a reference to the object that initiated the subscription.
 
 To terminate an action subscription, use the ~UnsubscribeAction() function.  Subscriptions are not resource tracked,

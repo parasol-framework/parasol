@@ -23,7 +23,7 @@ checking the validity of each possible location.  For instance, if resolving a p
 and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
 both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
 can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF::NO_FILE_CHECK`
-setting in the Flags parameter.
+setting in the `Flags` parameter.
 
 When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be
 treated as an approximation (i.e. file extensions can be ignored) then use the `RSF::APPROXIMATE` flag to tell the
@@ -46,13 +46,13 @@ int(RSF) Flags: Optional flags.
 !str Result: Must point to an empty `STRING` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
 
 -ERRORS-
-Okay:            The path was resolved.
-NullArgs:        Invalid arguments were specified.
-AllocMemory:     The result string could not be allocated.
+Okay:        The `Path` was resolved.
+NullArgs:    Invalid parameters were specified.
+AllocMemory: The result string could not be allocated.
 LockFailed:
-Search:          The given volume does not exist.
-FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
-Loop:            The volume refers back to itself.
+Search:       The given volume does not exist.
+FileNotFound: The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
+Loop:         The volume refers back to itself.
 
 -END-
 
@@ -87,7 +87,7 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
       else return log.warning(ERR::AllocMemory);
    }
 
-   // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
+   // Check if the Path parameter contains a volume character.  If it does not, make a clone of the string and return it.
 
    bool resolved = false;
 #ifdef _WIN32
@@ -139,7 +139,7 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
       else return log.warning(ERR::AllocMemory);
    }
 
-   StrCopy(Path, src, sizeof(src)); // Copy the Path argument to our internal buffer
+   StrCopy(Path, src, sizeof(src)); // Copy the Path parameter to our internal buffer
 
    // Keep looping until the volume is resolved
 

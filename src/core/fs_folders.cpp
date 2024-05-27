@@ -35,7 +35,7 @@ static ResourceManager glResourceFolder = {
 OpenDir: Opens a folder for content scanning.
 
 The OpenDir() function is used to open a folder for scanning via the ~ScanDir() function.  If the provided Path can be
-accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to ~ScanDir().  Once
+accessed, a !DirInfo structure will be returned in the Info parameter, which will need to be passed to ~ScanDir().  Once
 the scanning process is complete, call the ~FreeResource() function.
 
 When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined,

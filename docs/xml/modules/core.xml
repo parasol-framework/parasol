@@ -495,7 +495,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>For each file that is processed during the copy operation, a &amp;FileFeedback structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
-      <error code="Okay">The location was copied successfully.</error>
+      <error code="Okay">The source was copied to its destination successfully.</error>
       <error code="Failed">A failure occurred during the copy process.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
@@ -518,7 +518,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="NoSupport">Virtual file system does not support folder creation.</error>
-      <error code="FileExists">An identically named file or folder already exists at the Path.</error>
+      <error code="FileExists">An identically named file or folder already exists at the <code>Path</code>.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -533,9 +533,9 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <param type="CSTRING" name="To">The file that you are linking to is specified here.</param>
     </input>
     <description>
-<p>Use the CreateLink() function to create symbolic links on Unix file systems. The link connects a new file created at From to an existing file referenced at To. The To link is allowed to be relative to the From location - for instance, you can link <code>documents:myfiles/newlink.txt</code> to <code>../readme.txt</code> or <code>folder/readme.txt</code>. The <code>..</code> path component must be used when making references to parent folders.</p>
-<p>The permission flags for the link are inherited from the file that you are linking to.  If the file location referenced at From already exists as a file or folder, the function will fail with an ERR::FileExists error code.</p>
-<p>This function does not automatically create folders in circumstances where new folders are required to complete the From link.  You will need to call <function>CreateFolder</function> to ensure that the necessary paths exist beforehand.  If the file referenced at To does not exist, the link will be created without error, but any attempts to open the link will fail until the target file or folder exists.</p>
+<p>Use the CreateLink() function to create symbolic links on Unix file systems. The link connects a new file created at <code>From</code> to an existing file referenced at <code>To</code>. The <code>To</code> link is allowed to be relative to the <code>From</code> location - for instance, you can link <code>documents:myfiles/newlink.txt</code> to <code>../readme.txt</code> or <code>folder/readme.txt</code>. The <code>..</code> path component must be used when making references to parent folders.</p>
+<p>The permission flags for the link are inherited from the file that you are linking to.  If the file location referenced at <code>From</code> already exists as a file or folder, the function will fail with an <code>ERR::FileExists</code> error code.</p>
+<p>This function does not automatically create folders in circumstances where new folders are required to complete the <code>From</code> link.  You will need to call <function>CreateFolder</function> to ensure that the necessary paths exist beforehand.  If the file referenced at To does not exist, the link will be created without error, but any attempts to open the link will fail until the target file or folder exists.</p>
     </description>
     <result type="ERR">
       <error code="Okay">The link was created successfully.</error>
@@ -586,7 +586,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <description>
 <p>This function will delete a file or folder when given a valid file location.  The current user must have delete access to the given file. When deleting folders, all content will be scanned and deleted recursively. Individual deletion failures are ignored, although an error will be returned if the top-level folder still contains content on its deletion.</p>
 <p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function>ResolvePath</function> first.</p>
-<p>The Callback parameter can be set with a function that matches the prototype <code>LONG Callback(struct FileFeedback *)</code>.</p>
+<p>The <code>Callback</code> parameter can be set with a function that matches the prototype <code>LONG Callback(struct FileFeedback *)</code>.</p>
 <p>Prior to the deletion of any file, a &amp;FileFeedback structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
@@ -948,7 +948,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.</p>
 <p>C++ developers should use the <code>GetResourcePtr()</code> macro if a resource identifier is known to return a pointer.</p>
     </description>
-    <result type="LARGE">Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, NULL is returned.</result>
+    <result type="LARGE">Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, <code>NULL</code> is returned.</result>
   </function>
 
   <function>
@@ -959,7 +959,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <description>
 <p>The GetSystemState() function is used to retrieve miscellaneous resource and environment values, such as resource paths, the Core's version number and the name of the host platform.</p>
     </description>
-    <result type="const struct SystemState *">A read-only SystemState structure is returned.</result>
+    <result type="const struct SystemState *">A read-only <st>SystemState</st> structure is returned.</result>
   </function>
 
   <function>
@@ -974,7 +974,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file to be identified as a datatype of the <class name="Picture">Picture</class> class, or an MP3 file to be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
-<p>The method involves analysing the Path's file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
+<p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
 <p>This function returns an error code of <code>ERR::Search</code> in the event that a suitable class is not available to match against the given file.</p>
     </description>
     <result type="ERR">
@@ -995,13 +995,14 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="OBJECTPTR" name="Object">The object to initialise.</param>
     </input>
     <description>
-<p>This function initialises objects so that they can be used for their intended purpose. The process of initialisation is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to this rule only apply to the GetKey() and SetKey() actions.</p>
-<p>If the initialisation of an object fails due to a support problem (for example, if a PNG <class name="Picture">Picture</class> object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can provide ample support exists, a partial transfer of ownership will occur and the object's  management will be shared between both the base class and the sub-class.</p>
+<p>This function initialises objects so that they can be used for their intended purpose. Initialisation is compulsory, and a client may not call any actions or methods on an object until it has been initialised.  Exceptions to this rule only apply to the <code>GetKey()</code> and <code>SetKey()</code> actions.</p>
+<p>If the initialisation of an object fails due to a support problem (for example, if a PNG <class name="Picture">Picture</class> object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can support the object's configuration is available, the object's interface will be shared between both the base-class and the sub-class.</p>
 <p>If an object does not support the data or its configuration, an error code of <code>ERR::NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
     </description>
     <result type="ERR">
       <error code="Okay">The object was initialised.</error>
       <error code="LostClass">The object has lost its class reference.</error>
+      <error code="DoubleInit">Warning - Attempt to initialise an object twice.</error>
       <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
     </result>
   </function>
@@ -1013,15 +1014,16 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <prototype>ERR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
     <input>
       <param type="OBJECTID" name="Object">An object to query.</param>
-      <param type="pf::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of ChildEntry structures.</param>
+      <param type="pf::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of <st>ChildEntry</st> structures.</param>
     </input>
     <description>
-<p>The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.</p>
+<p>The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty vector of <st>ChildEntry</st> structures to host the results, which include unique object ID's and their class identifiers.</p>
 <p>Note that any child objects marked with the <code>LOCAL</code> flag will be excluded because they are private members of the targeted object.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Zero or more children were found and listed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1150,10 +1152,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 </pre>
 <p>This function will overwrite the destination location if it already exists.</p>
 <p>The <code>Source</code> argument should always clarify the type of location that is being copied - e.g. if you are copying a folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a file.</p>
-<p>The Callback parameter can be set with a function that matches this prototype:</p>
+<p>The <code>Callback</code> parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the move operation, a &amp;FileFeedback structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the move operation, a <st>FileFeedback</st> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1195,7 +1197,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that is to receive the notification message.</param>
       <param type="LONG" name="Action" lookup="AC">The action ID for notification.</param>
-      <param type="APTR" name="Args">Pointer to an action parameter structure that is relevant to the ActionID.</param>
+      <param type="APTR" name="Args">Pointer to an action parameter structure that is relevant to the <code>Action</code> ID.</param>
       <param type="ERR" name="Error">The error code that is associated with the action result.</param>
     </input>
     <description>
@@ -1216,7 +1218,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="struct DirInfo **" name="Info">A <st>DirInfo</st> structure will be returned in the pointer referenced here.</param>
     </input>
     <description>
-<p>The OpenDir() function is used to open a folder for scanning via the <function>ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function>ScanDir</function>.  Once the scanning process is complete, call the <function>FreeResource</function> function.</p>
+<p>The OpenDir() function is used to open a folder for scanning via the <function>ScanDir</function> function.  If the provided Path can be accessed, a <st>DirInfo</st> structure will be returned in the Info parameter, which will need to be passed to <function>ScanDir</function>.  Once the scanning process is complete, call the <function>FreeResource</function> function.</p>
 <p>When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined, the scanner will return file and folder names only.  Only a subset of the available <code>RDF</code> flags may be used, namely <code>SIZE</code>, <code>DATE</code>, <code>PERMISSIONS</code>, <code>FILE</code>, <code>FOLDER</code>, <code>QUALIFY</code>, <code>TAGS</code>.</p>
     </description>
     <result type="ERR">
@@ -1269,7 +1271,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="LONG" name="Action">The ID of an action or method to execute.</param>
       <param type="OBJECTID" name="Object">The target object.</param>
-      <param type="APTR" name="Args">The relevant argument structure for the Action, or NULL if not required.</param>
+      <param type="APTR" name="Args">The relevant argument structure for the <code>Action</code>, or <code>NULL</code> if not required.</param>
     </input>
     <description>
 <p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied <code>Action</code> and <code>Args</code> will be combined into a message for the queue.  This function then returns immediately.</p>
@@ -1278,7 +1280,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
-      <error code="OutOfRange">The ActionID is invalid.</error>
+      <error code="OutOfRange">The <code>Action</code> ID is invalid.</error>
       <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
       <error code="MissingClass">The class could not be found in the system.</error>
       <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
@@ -1298,8 +1300,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="LONG *" name="Result">The total number of bytes read into the <code>Buffer</code> will be returned here (optional).</param>
     </input>
     <description>
-<p>This function provides a simple method for reading file content into a buffer.  In some cases this procedure may be optimised for the host platform, which makes it the fastest way to read file content in simple cases.</p>
-<p>File path approximation is supported if the Path is prefixed with a <code>~</code> character (e.g. <code>~pictures:photo</code> could be matched to <code>photo.jpg</code> in the same folder).</p>
+<p>This function provides a simple method for reading file content into a <code>Buffer</code>.  In some cases this procedure may be optimised for the host platform, which makes it the fastest way to read file content in simple cases.</p>
+<p>File path approximation is supported if the <code>Path</code> is prefixed with a <code>~</code> character (e.g. <code>~pictures:photo</code> could be matched to <code>photo.jpg</code> in the same folder).</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1416,7 +1418,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   <function>
     <name>ResolveClassID</name>
     <category>Objects</category>
-    <comment>Resolve a valid CLASSID to its name.</comment>
+    <comment>Resolve a valid <code>CLASSID</code> to its name.</comment>
     <prototype>CSTRING ResolveClassID(CLASSID ID)</prototype>
     <input>
       <param type="CLASSID" name="ID">The ID of the class that needs to be resolved.</param>
@@ -1425,21 +1427,21 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function will resolve a valid class ID to its equivalent name.  The name is resolved by checking the class database, so the class must be registered in the database for this function to return successfully.</p>
 <p>Registration is achieved by ensuring that the class is compiled into the build.</p>
     </description>
-    <result type="CSTRING">Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".</result>
+    <result type="CSTRING">Returns the name of the class, or <code>NULL</code> if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. <code>NetSocket</code>.</result>
   </function>
 
   <function>
     <name>ResolveClassName</name>
     <category>Objects</category>
-    <comment>Resolves any class name to a CLASSID UID.</comment>
+    <comment>Resolves any class name to a <code>CLASSID</code> UID.</comment>
     <prototype>CLASSID ResolveClassName(CSTRING Name)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of the class that requires resolution.</param>
     </input>
     <description>
-<p>This function will resolve a class <code>Name</code> to its CLASSID UID and verifies that the class is installed.  It is case insensitive.</p>
+<p>This function will resolve a class <code>Name</code> to its <code>CLASSID</code> UID and verifies that the class is installed.  It is case insensitive.</p>
     </description>
-    <result type="CLASSID">Returns the class ID identified from the class name, or NULL if the class could not be found.</result>
+    <result type="CLASSID">Returns the class ID identified from the class name, or <code>NULL</code> if the class could not be found.</result>
   </function>
 
   <function>
@@ -1469,7 +1471,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>
 <p>The resulting path is guaranteed to be absolute, meaning the use of sequences such as <code>..</code>, <code>//</code> and <code>./</code> will be eliminated.</p>
-<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the <code>RSF::NO_FILE_CHECK</code> setting in the Flags parameter.</p>
+<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the <code>RSF::NO_FILE_CHECK</code> setting in the <code>Flags</code> parameter.</p>
 <p>When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be treated as an approximation (i.e. file extensions can be ignored) then use the <code>RSF::APPROXIMATE</code> flag to tell the function to ignore extensions for the purpose of file name matching.</p>
 <p>To resolve the location of executable programs on Unix systems, use the <code>RSF::PATH</code> flag.  This uses the <code>PATH</code> environment variable to resolve the file name specified in the <code>Path</code> parameter.</p>
 <p>The resolved path will be returned in the <code>Result</code> parameter as an allocated memory block.  It must be removed once it is no longer required with <function>FreeResource</function>.</p>
@@ -1477,13 +1479,13 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>If the path resolves to a virtual drive, it may not be possible to confirm whether the target file exists if the virtual driver does not support this check.  This is common when working with network drives.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">The path was resolved.</error>
+      <error code="Okay">The <code>Path</code> was resolved.</error>
       <error code="Search">The given volume does not exist.</error>
       <error code="FileNotFound">The path was resolved, but the referenced file or folder does not exist (use <code>NO_FILE_CHECK</code> to avoid this error code).</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="AllocMemory">The result string could not be allocated.</error>
       <error code="Loop">The volume refers back to itself.</error>
-      <error code="NullArgs">Invalid arguments were specified.</error>
+      <error code="NullArgs">Invalid parameters were specified.</error>
     </result>
   </function>
 
@@ -1624,7 +1626,7 @@ auto ctx = SetContext(display);
 SetContext(ctx);
 FreeResource(display-&gt;UID);
 </pre>
-<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When <function>FreeResource</function> is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
+<p>The above code allocates a <class name="Bitmap">Bitmap</class> and a memory block, both of which will be contained by the display. When <function>FreeResource</function> is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
 <pre>InitObject(display);
 auto ctx = SetContext(display);
 
@@ -1708,12 +1710,12 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="Name">The new name for the object.</param>
     </input>
     <description>
-<p>This function sets the name of an object.  This enhances log messages and allows the object to be found in searches. Please note that the length of the Name will be limited to the value indicated in the core header file, under the <code>MAX_NAME_LEN</code> definition.  Names exceeding the allowed length are trimmed to fit.</p>
+<p>This function sets the name of an <code>Object</code>.  This enhances log messages and allows the object to be found in searches. Please note that the length of the <code>Name</code> will be limited to the value indicated in the core header file, under the <code>MAX_NAME_LEN</code> definition.  Names exceeding the allowed length are trimmed to fit.</p>
 <p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with an underscore.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">The Object is not recognised by the system - the address may be invalid.</error>
+      <error code="Search">The <code>Object</code> is not recognised by the system - the address may be invalid.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1725,8 +1727,8 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Changes object ownership dynamically.</comment>
     <prototype>ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object to modify.</param>
-      <param type="OBJECTPTR" name="Owner">Pointer to the new owner for the object.</param>
+      <param type="OBJECTPTR" name="Object">The object to modify.</param>
+      <param type="OBJECTPTR" name="Owner">The new owner for the <code>Object</code>.</param>
     </input>
     <description>
 <p>This function changes the ownership of an existing object.  Ownership is an attribute that affects an object's placement within the object hierarchy as well as impacting on the resource tracking of the object in question. Internally, setting a new owner will cause three things to happen:</p>
@@ -1735,12 +1737,14 @@ SetField(Object, FID_Statement|TSTR, "string");
 <li>The object's class will then receive notification via the <action>NewOwner</action> action.</li>
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
 </list>
-<p>If the <code>Object</code> does not support the NewOwner action, or the Owner does not support the NewChild action, then the process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.</p>
+<p>If the <code>Object</code> does not support the NewOwner action, or the <code>Owner</code> does not support the NewChild action, then the process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Recursion">Detected a recursive function call.</error>
     </result>
   </function>
 
@@ -1756,9 +1760,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources are supported:</p>
 <types lookup="RES" type="Resource">
-<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on <function>AllocMemory</function>.  The Value specifies the memory limit in bytes.</type>
-<type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
-<type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
+<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on <function>AllocMemory</function>.  The <code>Value</code> specifies the memory limit in bytes.</type>
+<type name="LOG_LEVEL">Adjusts the current debug level.  The <code>Value</code> must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
+<type name="PRIVILEGED_USER">If the <code>Value</code> is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
 </types>
     </description>
     <result type="LARGE">Returns the previous value of the <code>Resource</code>.  If the <code>Resource</code> value is invalid, <code>NULL</code> is returned.</result>
@@ -1860,12 +1864,12 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
-<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
-<p>Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.</p>
-<p>The following example illustrates how to listen to a Surface object's Redimension action and respond to resize events:</p>
+<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This strategy is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
+<p>Subscriptions are context sensitive, so the <code>Callback</code> will execute in the space attributed to to the caller.</p>
+<p>The following example illustrates how to listen to a <class name="Surface">Surface</class> object's Redimension action and respond to resize events:</p>
 <pre>SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
-<p>The template below illustrates how the Callback function should be constructed:</p>
+<p>The template below illustrates how the <code>Callback</code> function should be constructed:</p>
 <pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameters, APTR CallbackMeta)
 {
    auto Self = (objClassType *)CurrentContext();
@@ -1876,7 +1880,7 @@ SetField(Object, FID_Statement|TSTR, "string");
    }
 }
 </pre>
-<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR::Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, <function>CurrentContext</function> can be used to get a reference to the object that initiated the subscription.</p>
+<p>The <code>Object</code> is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR::Okay</code>, assume that the action did not have an effect on state.  The <code>Parameters</code> are the original arguments provided by the client - be aware that these can legitimately be <code>NULL</code> even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, <function>CurrentContext</function> can be used to get a reference to the object that initiated the subscription.</p>
 <p>To terminate an action subscription, use the <function>UnsubscribeAction</function> function.  Subscriptions are not resource tracked, so it is critical to match the original call with an unsubscription.</p>
     </description>
     <result type="ERR">
@@ -2101,7 +2105,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Unloads files from the file cache.</comment>
     <prototype>void UnloadFile(struct CacheFile * Cache)</prototype>
     <input>
-      <param type="struct CacheFile *" name="Cache">A pointer to a CacheFile structure returned from LoadFile().</param>
+      <param type="struct CacheFile *" name="Cache">A pointer to a CacheFile structure returned from <function>LoadFile</function>.</param>
     </input>
     <description>
 <p>This function unloads cached files that have been previously loaded with the <function>LoadFile</function> function.</p>

@@ -986,7 +986,6 @@ ERR  findfile(STRING);
 PERMIT convert_fs_permissions(LONG);
 LONG   convert_permissions(PERMIT);
 void   set_memory_manager(APTR, ResourceManager *);
-BYTE   strip_folder(STRING) __attribute__ ((unused));
 ERR  get_file_info(CSTRING, FileInfo *, LONG);
 extern "C" ERR  convert_errno(LONG Error, ERR Default);
 void   free_file_cache(void);

@@ -26,7 +26,7 @@ This function examines the relationship between file data and installed classes.
 to be identified as a datatype of the @Picture class, or an MP3 file to be identified as a datatype of the @Sound
 class.
 
-The method involves analysing the Path's file extension and comparing it to the supported extensions of all available
+The method involves analysing the `Path`'s file extension and comparing it to the supported extensions of all available
 classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is
 not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be
 loaded and checked against classes that can match against file header information.  If a match is found, the ID of the
