@@ -1677,7 +1677,7 @@ static const FieldArray clFields[] = {
 static ERR create_http_class(void)
 {
    clHTTP = objMetaClass::create::global(
-      fl::BaseClassID(ID_HTTP),
+      fl::BaseClassID(CLASSID::HTTP),
       fl::ClassVersion(VER_HTTP),
       fl::Name("HTTP"),
       fl::Category(CCF::NETWORK),

@@ -87,7 +87,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 
    std::string id;
 
-   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
       gradient->setFields(
          fl::Name("SVGLinearGrad"),
@@ -169,7 +169,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
    objVectorGradient *gradient;
    std::string id;
 
-   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT::RADIAL),
@@ -239,7 +239,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
    objVectorGradient *gradient;
    std::string id;
 
-   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGDiamondGrad"), fl::Type(VGT::DIAMOND),
@@ -309,7 +309,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
    objVectorGradient *gradient;
    std::string id;
 
-   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
       gradient->setFields(fl::Name("SVGContourGrad"), fl::Type(VGT::CONTOUR));
 
@@ -374,7 +374,7 @@ static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
-   if (NewObject(ID_VECTORGRADIENT, &gradient) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGConicGrad"), fl::Type(VGT::CONIC),

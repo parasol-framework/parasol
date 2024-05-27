@@ -22,7 +22,7 @@ registered vector rather than an image file.
 
 class extSourceFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SOURCEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::SOURCEFX;
    static constexpr CSTRING CLASS_NAME = "SourceFX";
    using create = pf::Create<extSourceFX>;
 
@@ -245,7 +245,7 @@ static ERR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 {
    pf::Log log;
    if (!Value) return log.warning(ERR::InvalidValue);
-   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::WrongClass);
+   if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
 
    if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
    Self->Source = Value;
@@ -279,7 +279,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 
    objVector *src;
    if (scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src) IS ERR::Okay) {
-      if (src->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::WrongClass);
+      if (src->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
       Self->Source = src;
       SubscribeAction(src, AC_Free, C_FUNCTION(notify_free_source));
       Self->Render = true;
@@ -309,7 +309,7 @@ static ERR SOURCEFX_GET_XMLDef(extSourceFX *Self, STRING *Value)
 static const FieldArray clSourceFXFields[] = {
    { "AspectRatio", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, SOURCEFX_GET_AspectRatio, SOURCEFX_SET_AspectRatio, &clAspectRatio },
    { "SourceName",  FDF_VIRTUAL|FDF_STRING|FDF_I, NULL, SOURCEFX_SET_SourceName },
-   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, NULL, SOURCEFX_SET_Source, ID_VECTOR },
+   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, NULL, SOURCEFX_SET_Source, CLASSID::VECTOR },
    { "XMLDef",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, SOURCEFX_GET_XMLDef },
    END_FIELD
 };
@@ -319,8 +319,8 @@ static const FieldArray clSourceFXFields[] = {
 ERR init_sourcefx(void)
 {
    clSourceFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_SOURCEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::SOURCEFX),
       fl::Name("SourceFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clSourceFXActions),

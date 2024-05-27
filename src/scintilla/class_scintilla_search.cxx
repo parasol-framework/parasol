@@ -175,7 +175,7 @@ static ERR SEARCH_Init(objScintillaSearch *Self)
 
    if (!Self->Scintilla) { // Find our parent
       auto obj = Self->Owner;
-      while ((obj) and (obj->classID() != ID_SCINTILLA)) {
+      while ((obj) and (obj->classID() != CLASSID::SCINTILLA)) {
          obj = obj->Owner;
       }
       if (obj) Self->Scintilla = (objScintilla *)obj;
@@ -393,7 +393,7 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "Scintilla", FDF_OBJECT|FDF_RI, NULL, NULL, ID_SCINTILLA },
+   { "Scintilla", FDF_OBJECT|FDF_RI, NULL, NULL, CLASSID::SCINTILLA },
    { "Text",      FDF_STRING|FDF_RW, NULL, SET_Text },
    { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clFlags },
    END_FIELD

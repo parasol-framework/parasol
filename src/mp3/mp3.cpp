@@ -879,8 +879,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("audio", &modAudio, &AudioBase) != ERR::Okay) return ERR::InitModule;
 
    clMP3 = objMetaClass::create::global(
-      fl::BaseClassID(ID_SOUND),
-      fl::ClassID(ID_MP3),
+      fl::BaseClassID(CLASSID::SOUND),
+      fl::ClassID(CLASSID::MP3),
       fl::ClassVersion(VER_MP3),
       fl::FileExtension("*.mp3"),
       fl::FileDescription("MP3 Audio Stream"),

@@ -18,8 +18,8 @@ single bounds area.  The calc_full_boundary() function can be used to do this.
 static ERR init_group(void)
 {
    clVectorGroup = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORGROUP),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORGROUP),
       fl::Name("VectorGroup"),
       fl::Category(CCF::GRAPHICS),
       fl::Size(sizeof(extVector)),

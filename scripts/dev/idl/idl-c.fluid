@@ -139,12 +139,12 @@ glActionStubs = {
       return Action(AC_MoveToPoint, this, &moveto);
    }]],
    SaveImage = [[
-   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }]],
    SaveToObject = [[
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }]],
@@ -526,6 +526,20 @@ function hash(Prefix, Format, ...)
       local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
+   output()
+end
+
+function typedHash(Prefix, Type, ...)
+   Type = cType({ type=Type }, Prefix)
+   output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
+   output('   NIL = 0,')
+   for _, v in ipairs({...}) do
+      local hash_name = v:gsub('[^%w]', '_')
+      -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+      local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
+      output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
+   end
+   output('};')
    output()
 end
 
@@ -1498,7 +1512,7 @@ function outputClassHeader(class, Private, Custom)
       priority('class obj' .. class.name .. ';') -- Forward declaration
       output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'Object') .. ' {')
       output('   public:')
-      output('   static constexpr CLASSID CLASS_ID = ID_' .. class.name:upper() .. ';')
+      output('   static constexpr CLASSID CLASS_ID = CLASSID::' .. class.name:upper() .. ';')
       output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
       output('')
       output('   using create = pf::Create<obj' .. class.name .. '>;')

@@ -355,17 +355,17 @@ static int object_new(lua_State *Lua)
    NF objflags = NF::NIL;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
-      class_id = lua_tointeger(Lua, 1);
+      class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = NULL;
-      log.trace("$%.8x", class_id);
+      log.trace("$%.8x", ULONG(class_id));
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') { // Deprecated
          log.warning("Use of @ for allocating public objects is deprecated.");
          class_name++;
       }
-      class_id = StrHash(class_name, 0);
-      log.trace("%s, $%.8x", class_name, class_id);
+      class_id = CLASSID(StrHash(class_name, 0));
+      log.trace("%s, $%.8x", class_name, ULONG(class_id));
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));
@@ -375,8 +375,7 @@ static int object_new(lua_State *Lua)
    }
 
    OBJECTPTR obj;
-   ERR error;
-   if ((error = NewObject(class_id, objflags, &obj)) IS ERR::Okay) {
+   if (auto error = NewObject(class_id, objflags, &obj); error IS ERR::Okay) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -494,7 +493,7 @@ static int object_newchild(lua_State *Lua)
    NF objflags = NF::NIL;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
-      class_id = lua_tointeger(Lua, 1);
+      class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = NULL;
       log.trace("$%.8x", class_id);
    }
@@ -503,7 +502,7 @@ static int object_newchild(lua_State *Lua)
          class_name++;
          log.warning("Use of @ for allocating public objects is deprecated.");
       }
-      class_id = StrHash(class_name, 0);
+      class_id = CLASSID(StrHash(class_name, 0));
       log.trace("%s, $%.8x", class_name, class_id);
    }
    else {
@@ -667,16 +666,16 @@ static int object_find(lua_State *Lua)
    if ((type IS LUA_TSTRING) and ((object_name = lua_tostring(Lua, 1)))) {
       LONG class_type = lua_type(Lua, 2); // Optional
       if (class_type IS LUA_TNUMBER) {
-         class_id = lua_tointeger(Lua, 2);
+         class_id = CLASSID(lua_tointeger(Lua, 2));
       }
       else if (class_type IS LUA_TSTRING) {
-         class_id = StrHash(lua_tostring(Lua, 2), false);
+         class_id = CLASSID(StrHash(lua_tostring(Lua, 2), false));
       }
-      else class_id = 0;
+      else class_id = CLASSID::NIL;
 
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
-      if ((StrMatch("self", object_name) IS ERR::Okay) and (!class_id)) {
+      if ((StrMatch("self", object_name) IS ERR::Okay) and (class_id IS CLASSID::NIL)) {
          return object_find_ptr(Lua, Lua->Script);
       }
       else if (StrMatch("owner", object_name) IS ERR::Okay) {
@@ -752,16 +751,16 @@ static int object_children(lua_State *Lua)
    CLASSID class_id;
    CSTRING classfilter;
    if ((classfilter = luaL_optstring(Lua, 1, NULL)) and (classfilter[0])) {
-      class_id = StrHash(classfilter, 0);
+      class_id = CLASSID(StrHash(classfilter, 0));
    }
-   else class_id = 0;
+   else class_id = CLASSID::NIL;
 
    pf::vector<ChildEntry> list;
    if (ListChildren(def->UID, &list) IS ERR::Okay) {
       LONG index = 0;
       auto id = std::make_unique<LONG[]>(list.size());
       for (auto &rec : list) {
-         if (class_id) {
+         if (class_id != CLASSID::NIL) {
             if (rec.ClassID IS class_id) id[index++] = rec.ObjectID;
          }
          else id[index++] = rec.ObjectID;
@@ -994,7 +993,7 @@ static int object_destruct(lua_State *Lua)
          // owned by a Database object).
 
          if (auto obj = GetObjectPtr(def->UID)) {
-            if ((obj->Class->BaseClassID IS ID_RECORDSET) or (obj->Owner IS Lua->Script) or (obj->ownerID() IS Lua->Script->TargetID)) {
+            if ((obj->Class->BaseClassID IS CLASSID::RECORDSET) or (obj->Owner IS Lua->Script) or (obj->ownerID() IS Lua->Script->TargetID)) {
                pf::Log log("obj.destruct");
                log.trace("Freeing Fluid-owned object #%d.", def->UID);
                FreeResource(obj); // We can't presume that the object pointer would be valid

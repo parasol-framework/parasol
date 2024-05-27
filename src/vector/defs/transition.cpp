@@ -222,7 +222,7 @@ static const FieldArray clTransitionFields[] = {
 ERR init_transition(void) // The transition is a definition type for creating transitions and not drawing.
 {
    clVectorTransition = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORTRANSITION),
+      fl::BaseClassID(CLASSID::VECTORTRANSITION),
       fl::Name("VectorTransition"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clTransitionActions),

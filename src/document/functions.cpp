@@ -802,7 +802,7 @@ static ERR extract_script(extDocument *Self, const std::string &Link, objScript 
          std::string script_name;
          script_name.assign(Link, 0, dot);
          OBJECTID id;
-         if (FindObject(script_name.c_str(), ID_SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
+         if (FindObject(script_name.c_str(), CLASSID::SCRIPT, FOF::NIL, &id) IS ERR::Okay) {
             // Security checks
             *Script = (objScript *)GetObjectPtr(id);
             if ((Script[0]->Owner != Self) and ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL)) {
@@ -929,7 +929,7 @@ void ui_link::exec(extDocument *Self)
             auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
             if (IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id) IS ERR::Okay) {
-               if (class_id IS ID_DOCUMENT) {
+               if (class_id IS CLASSID::DOCUMENT) {
                   Self->set(FID_Path, lk);
 
                   if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);

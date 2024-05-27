@@ -650,7 +650,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    pf::Log log;
 
    if (!Self->Viewport) {
-      if ((Self->Owner) and (Self->Owner->classID() IS ID_VECTORVIEWPORT)) {
+      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
          Self->Viewport = (objVectorViewport *)Self->Owner;
       }
       else return log.warning(ERR::UnsupportedOwner);
@@ -658,7 +658,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
 
    if (!Self->Focus) Self->Focus = Self->Viewport;
 
-   if (Self->Focus->classID() != ID_VECTORVIEWPORT) {
+   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) {
       return log.warning(ERR::WrongObjectType);
    }
 
@@ -1338,10 +1338,10 @@ static const FieldArray clFields[] = {
    { "Author",       FDF_STRING|FDF_R },
    { "Copyright",    FDF_STRING|FDF_R },
    { "Keywords",     FDF_STRING|FDF_R },
-   { "Viewport",     FDF_OBJECT|FDF_RW, NULL, SET_Viewport, ID_VECTORVIEWPORT },
-   { "Focus",        FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORVIEWPORT },
-   { "View",         FDF_OBJECT|FDF_R, NULL, NULL, ID_VECTORVIEWPORT },
-   { "Page",         FDF_OBJECT|FDF_R, NULL, NULL, ID_VECTORVIEWPORT },
+   { "Viewport",     FDF_OBJECT|FDF_RW, NULL, SET_Viewport, CLASSID::VECTORVIEWPORT },
+   { "Focus",        FDF_OBJECT|FDF_RI, NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "View",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "Page",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
    { "TabFocus",     FDF_OBJECTID|FDF_RW },
    { "EventMask",    FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Flags",        FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },

@@ -18,7 +18,7 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 class extVectorWave : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORWAVE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORWAVE;
    static constexpr CSTRING CLASS_NAME = "VectorWave";
    using create = pf::Create<extVectorWave>;
 
@@ -592,8 +592,8 @@ static const ActionArray clWaveActions[] = {
 static ERR init_wave(void)
 {
    clVectorWave = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORWAVE),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORWAVE),
       fl::Name("VectorWave"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clWaveActions),

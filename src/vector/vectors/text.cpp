@@ -169,7 +169,7 @@ public:
 
 class extVectorText : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORTEXT;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORTEXT;
    static constexpr CSTRING CLASS_NAME = "VectorText";
    using create = pf::Create<extVectorText>;
 
@@ -727,7 +727,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    // Setting the Font with a reference to an external font object will copy across the configuration of
    // that font.  It is recommended that the external font is initialised beforehand.
 
-   if (Value->baseClassID() IS ID_FONT) {
+   if (Value->baseClassID() IS CLASSID::FONT) {
       auto other = (objFont *)Value;
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
@@ -740,7 +740,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
    }
-   else if (Value->classID() IS ID_VECTORTEXT) {
+   else if (Value->classID() IS CLASSID::VECTORTEXT) {
       auto other = (extVectorText *)Value;
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
@@ -2030,8 +2030,8 @@ static const FieldArray clTextFields[] = {
    { "Point",         FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_Point },
    { "LineSpacing",   FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_LineSpacing },
    { "Rotate",        FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_Rotate, TEXT_SET_Rotate },
-   { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeInside, TEXT_SET_ShapeInside, ID_VECTOR },
-   { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeSubtract, TEXT_SET_ShapeSubtract, ID_VECTOR },
+   { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeInside, TEXT_SET_ShapeInside, CLASSID::VECTOR },
+   { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeSubtract, TEXT_SET_ShapeSubtract, CLASSID::VECTOR },
    { "TextLength",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_TextLength, TEXT_SET_TextLength },
    { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Flags, TEXT_SET_Flags, &clVectorTextVTXF },
    { "TextWidth",     FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_TextWidth },
@@ -2057,8 +2057,8 @@ static ERR init_text(void)
    FID_FreetypeFace = StrHash("FreetypeFace");
 
    clVectorText = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORTEXT),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORTEXT),
       fl::Name("VectorText"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorTextActions),

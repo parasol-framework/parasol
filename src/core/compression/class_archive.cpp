@@ -690,8 +690,8 @@ static const struct FieldArray clArchiveFields[] = {
 extern "C" ERR add_archive_class(void)
 {
    glArchiveClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_FILE),
-      fl::ClassID(ID_FILEARCHIVE),
+      fl::BaseClassID(CLASSID::FILE),
+      fl::ClassID(CLASSID::FILEARCHIVE),
       fl::Name("FileArchive"),
       fl::Actions(clArchiveActions),
       fl::Methods(clArchiveMethods),

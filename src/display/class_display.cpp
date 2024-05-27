@@ -812,7 +812,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
          }
          else {
             OBJECTID surface_id;
-            if (FindObject("SystemSurface", ID_SURFACE, FOF::NIL, &surface_id) IS ERR::Okay) {
+            if (FindObject("SystemSurface", CLASSID::SURFACE, FOF::NIL, &surface_id) IS ERR::Okay) {
                if (surface_id IS Self->ownerID()) desktop = true;
             }
          }
@@ -1096,13 +1096,13 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
 {
    new (Self) extDisplay;
 
-   if (NewObject(ID_BITMAP, NF::LOCAL, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::BITMAP, NF::LOCAL, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
 
    OBJECTID id;
-   if (FindObject("SystemVideo", 0, FOF::NIL, &id) != ERR::Okay) SetName(Self->Bitmap, "SystemVideo");
+   if (FindObject("SystemVideo", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay) SetName(Self->Bitmap, "SystemVideo");
 
    if (!Self->Name[0]) {
-      if (FindObject("SystemDisplay", 0, FOF::NIL, &id) != ERR::Okay) SetName(Self, "SystemDisplay");
+      if (FindObject("SystemDisplay", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay) SetName(Self, "SystemDisplay");
    }
 
    #ifdef __xwindows__
@@ -1868,10 +1868,10 @@ ERR DISPLAY_Show(extDisplay *Self)
 
    objPointer *pointer;
    OBJECTID pointer_id;
-   if (FindObject("SystemPointer", ID_POINTER, FOF::NIL, &pointer_id) != ERR::Okay) {
-      if (NewObject(ID_POINTER, NF::UNTRACKED, &pointer) IS ERR::Okay) {
+   if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &pointer_id) != ERR::Okay) {
+      if (NewObject(CLASSID::POINTER, NF::UNTRACKED, &pointer) IS ERR::Okay) {
          SetName(pointer, "SystemPointer");
-         if ((Self->Owner) and (Self->Owner->classID() IS ID_SURFACE)) pointer->setSurface(Self->Owner->UID);
+         if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::SURFACE)) pointer->setSurface(Self->Owner->UID);
 
          #ifdef __ANDROID__
             AConfiguration *config;
@@ -2035,7 +2035,7 @@ ERR GET_HDensity(extDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
+   if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
       pf::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
@@ -2105,7 +2105,7 @@ ERR GET_VDensity(extDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
+   if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
       pf::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
@@ -2590,7 +2590,7 @@ static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
       else if (AccessObject(Value, 2000, &popover) IS ERR::Okay) {
-         if (popover->Class->BaseClassID IS ID_DISPLAY) {
+         if (popover->Class->BaseClassID IS CLASSID::DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
          }
@@ -2599,7 +2599,7 @@ static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
       else return ERR::AccessObject;
    }
    else if (Value) {
-      if (GetClassID(Value) IS ID_DISPLAY) {
+      if (GetClassID(Value) IS CLASSID::DISPLAY) {
          Self->PopOverID = Value;
       }
       else return log.warning(ERR::WrongClass);
@@ -2611,7 +2611,7 @@ static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
 #elif _WIN32
 
    if (Value) {
-      if (GetClassID(Value) IS ID_DISPLAY) Self->PopOverID = Value;
+      if (GetClassID(Value) IS CLASSID::DISPLAY) Self->PopOverID = Value;
       else return log.warning(ERR::WrongClass);
    }
    else Self->PopOverID = 0;
@@ -2888,7 +2888,7 @@ void alloc_display_buffer(extDisplay *Self)
 
 static const FieldArray DisplayFields[] = {
    { "RefreshRate",    FDF_DOUBLE|FDF_RW, NULL, SET_RefreshRate },
-   { "Bitmap",         FDF_LOCAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Bitmap",         FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
    { "Flags",          FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clDisplayFlags },
    { "Width",          FDF_LONG|FDF_RW, NULL, SET_Width },
    { "Height",         FDF_LONG|FDF_RW, NULL, SET_Height },
@@ -2896,7 +2896,7 @@ static const FieldArray DisplayFields[] = {
    { "Y",              FDF_LONG|FDF_RW, NULL, SET_Y },
    { "BmpX",           FDF_LONG|FDF_RW },
    { "BmpY",           FDF_LONG|FDF_RW },
-   { "Buffer",         FDF_OBJECTID|FDF_R|FDF_SYSTEM, NULL, NULL, ID_BITMAP },
+   { "Buffer",         FDF_OBJECTID|FDF_R|FDF_SYSTEM, NULL, NULL, CLASSID::BITMAP },
    { "TotalMemory",    FDF_LONG|FDF_R },
    { "MinHScan",       FDF_LONG|FDF_R },
    { "MaxHScan",       FDF_LONG|FDF_R },

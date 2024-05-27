@@ -176,7 +176,7 @@ static DOUBLE global_point_size(void)
    if (!glPointSet) {
       pf::Log log(__FUNCTION__);
       OBJECTID style_id;
-      if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
+      if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
          pf::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char pointsize[20];

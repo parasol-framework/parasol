@@ -403,7 +403,7 @@ static const ActionArray clStreamActions[] = {
 extern "C" ERR add_compressed_stream_class(void)
 {
    glCompressedStreamClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_COMPRESSEDSTREAM),
+      fl::BaseClassID(CLASSID::COMPRESSEDSTREAM),
       fl::ClassVersion(1.0),
       fl::Name("CompressedStream"),
       fl::FileDescription("GZip File"),

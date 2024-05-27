@@ -397,7 +397,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
 
             OBJECTID objectid = 0;
             if (!name.empty()) {
-               if (FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid) IS ERR::Okay) {
+               if (FindObject(name.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &objectid) IS ERR::Okay) {
                   if ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL) {
                      // Only consider objects that are children of the document
                      bool valid = false;
@@ -852,7 +852,7 @@ static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
       }
       else if (StrMatch("exists", Tag.Attribs[i].Name) IS ERR::Okay) {
          OBJECTID object_id;
-         if (FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id) IS ERR::Okay) {
+         if (FindObject(Tag.Attribs[i].Value.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &object_id) IS ERR::Okay) {
             satisfied = valid_objectid(Self, object_id) ? true : false;
          }
          break;
@@ -1582,7 +1582,7 @@ void parser::tag_call(XMLTag &Tag)
             auto script_name = Tag.Attribs[1].Value.substr(0, i);
 
             OBJECTID id;
-            if (FindObject(script_name.c_str(), 0, FOF::NIL, &id) IS ERR::Okay) script = GetObjectPtr(id);
+            if (FindObject(script_name.c_str(), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) script = GetObjectPtr(id);
 
             function.assign(Tag.Attribs[1].Value, i + 1);
          }
@@ -2881,7 +2881,7 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
             else {
                OBJECTID objectid = 0;
                if (StrMatch(name, "self") IS ERR::Okay) objectid = CurrentContext()->UID;
-               else FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid);
+               else FindObject(name.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &objectid);
 
                if (objectid) {
                   OBJECTPTR object = NULL;
@@ -3059,7 +3059,7 @@ void parser::tag_object(XMLTag &Tag)
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
-                        if (objxml->classID() IS ID_XML) {
+                        if (objxml->classID() IS CLASSID::XML) {
                            if (!xmlSerialise(objxml, 0, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
                               acDataXML(object, content.c_str());
                            }
@@ -3135,7 +3135,7 @@ void parser::tag_object(XMLTag &Tag)
             // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
             // This section is intended to confirm the graphical state of the object.
 
-            if (object->classID() IS ID_VECTOR) {
+            if (object->classID() IS CLASSID::VECTOR) {
                //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
                //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Inline = true;
             }
@@ -3146,11 +3146,11 @@ void parser::tag_object(XMLTag &Tag)
             if (Self->ObjectCache) {
                switch (object->classID()) {
                   // The following class types can be cached
-                  case ID_XML:
-                  case ID_FILE:
-                  case ID_CONFIG:
-                  case ID_COMPRESSION:
-                  case ID_SCRIPT: {
+                  case CLASSID::XML:
+                  case CLASSID::FILE:
+                  case CLASSID::CONFIG:
+                  case CLASSID::COMPRESSION:
+                  case CLASSID::SCRIPT: {
                      Self->Resources.emplace_back(object->UID, RTD::PERSISTENT_OBJECT);
                      break;
                   }
@@ -3159,7 +3159,7 @@ void parser::tag_object(XMLTag &Tag)
 
                   default:
                      log.warning("Cannot cache object of class type '%s'", object->Class->ClassName);
-                  //case ID_IMAGE:
+                  //case CLASSID::IMAGE:
                   //   auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
                      break;
                }
@@ -3175,7 +3175,7 @@ void parser::tag_object(XMLTag &Tag)
 
             // Add the object to the tab-list if it is in our list of classes that support keyboard input.
 
-            static const CLASSID classes[] = { ID_VECTOR };
+            static const CLASSID classes[] = { CLASSID::VECTOR };
 
             for (unsigned i=0; i < ARRAYSIZE(classes); i++) {
                if (classes[i] IS class_id) {
@@ -3281,7 +3281,7 @@ void parser::tag_script(XMLTag &Tag)
          // Reference an external script as the default for function calls
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             OBJECTID id;
-            if (FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::NIL, &id) IS ERR::Okay) {
+            if (FindObject(Tag.Attribs[i].Value.c_str(), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) {
                Self->DefaultScript = (objScript *)GetObjectPtr(id);
                return;
             }
@@ -3323,7 +3323,7 @@ void parser::tag_script(XMLTag &Tag)
    }
 
    if (StrMatch("fluid", type) IS ERR::Okay) {
-      error = NewObject(ID_FLUID, NF::LOCAL, &script);
+      error = NewObject(CLASSID::FLUID, NF::LOCAL, &script);
    }
    else {
       error = ERR::NoSupport;

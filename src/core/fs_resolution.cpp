@@ -466,7 +466,7 @@ static ERR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG Pat
 
    if (Path[0]) {
       OBJECTID volume_id;
-      if (FindObject(Path, 0, FOF::NIL, &volume_id) IS ERR::Okay) {
+      if (FindObject(Path, CLASSID::NIL, FOF::NIL, &volume_id) IS ERR::Okay) {
          OBJECTPTR object;
          if (AccessObject(volume_id, 5000, &object) IS ERR::Okay) {
             if ((object->getPtr(FID_ResolvePath, &resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {

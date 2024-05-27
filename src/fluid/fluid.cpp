@@ -341,7 +341,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    prvFluid *prv;
    va_list list;
 
-   if ((!Script) or (Script->classID() != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR::Args);
+   if ((!Script) or (Script->classID() != CLASSID::FLUID) or (!Name) or (!*Name)) return log.warning(ERR::Args);
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 

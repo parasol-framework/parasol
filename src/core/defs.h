@@ -88,6 +88,7 @@ using namespace std::chrono_literals;
 
 #include <parasol/system/errors.h>
 #include <parasol/system/types.h>
+#include <parasol/system/registry.h>
 
 #include <stdarg.h>
 
@@ -498,7 +499,7 @@ struct ClassRecord {
 
    inline ClassRecord(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
       ClassID  = pClass->ClassID;
-      ParentID = (pClass->BaseClassID IS pClass->ClassID) ? 0 : pClass->BaseClassID;
+      ParentID = (pClass->BaseClassID IS pClass->ClassID) ? CLASSID::NIL : pClass->BaseClassID;
       Category = pClass->Category;
 
       Name.assign(pClass->ClassName);
@@ -512,7 +513,7 @@ struct ClassRecord {
 
    inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
       ClassID  = pClassID;
-      ParentID = 0;
+      ParentID = CLASSID::NIL;
       Category = CCF::SYSTEM;
       Name     = pName;
       Path     = "modules:core";

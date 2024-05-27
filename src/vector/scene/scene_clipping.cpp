@@ -18,7 +18,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 {
    agg::scanline32_p8 sl;
    for (auto node=Shape; node; node=(extVector *)node->Next) {
-      if (node->Class->BaseClassID IS ID_VECTOR) {
+      if (node->Class->BaseClassID IS CLASSID::VECTOR) {
          if (node->Visibility != VIS::VISIBLE);
          else if (!node->BasePath.empty()) {
             auto t = node->Transform * Transform;
@@ -204,7 +204,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
    matrix->TranslateX = t.tx;
    matrix->TranslateY = t.ty;
 
-   if (m_shape->classID() IS ID_VECTORTEXT) {
+   if (m_shape->classID() IS CLASSID::VECTORTEXT) {
       // This feels a bit hacky and might not necessarily be right... but it does get around the
       // issue of VectorText's positioning around the baseline and having path bounds in negative space.
       matrix->TranslateX = 0;

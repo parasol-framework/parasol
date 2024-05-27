@@ -195,7 +195,7 @@ inline ERR docReadContent(APTR Ob, DATA Format, LONG Start, LONG End, STRING * R
 
 class objDocument : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_DOCUMENT;
+   static constexpr CLASSID CLASS_ID = CLASSID::DOCUMENT;
    static constexpr CSTRING CLASS_NAME = "Document";
 
    using create = pf::Create<objDocument>;
@@ -243,7 +243,7 @@ class objDocument : public Object {
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }

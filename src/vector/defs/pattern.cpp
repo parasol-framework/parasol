@@ -104,8 +104,8 @@ static ERR PATTERN_Init(extVectorPattern *Self)
 
 static ERR PATTERN_NewObject(extVectorPattern *Self)
 {
-   if (NewObject(ID_VECTORSCENE, NF::LOCAL, &Self->Scene) IS ERR::Okay) {
-      if (NewObject(ID_VECTORVIEWPORT, &Self->Viewport) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORSCENE, NF::LOCAL, &Self->Scene) IS ERR::Okay) {
+      if (NewObject(CLASSID::VECTORVIEWPORT, &Self->Viewport) IS ERR::Okay) {
          SetOwner(Self->Viewport, Self->Scene);
          Self->SpreadMethod = VSPREAD::REPEAT;
          Self->Units        = VUNIT::BOUNDING_BOX;
@@ -174,7 +174,7 @@ penalty.
 static ERR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
    if (Value) {
-      if (Value->classID() IS ID_VECTORPATTERN) {
+      if (Value->classID() IS CLASSID::VECTORPATTERN) {
          Self->Inherit = Value;
       }
       else return ERR::InvalidValue;
@@ -475,7 +475,7 @@ static const FieldArray clPatternFields[] = {
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, VECTORPATTERN_GET_Matrices, VECTORPATTERN_SET_Matrices, "VectorMatrix" },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, PATTERN_SET_Transform },
-   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, PATTERN_GET_Viewport, NULL, ID_VECTORVIEWPORT },
+   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, PATTERN_GET_Viewport, NULL, CLASSID::VECTORVIEWPORT },
    END_FIELD
 };
 
@@ -484,7 +484,7 @@ static const FieldArray clPatternFields[] = {
 ERR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
 {
    clVectorPattern = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORPATTERN),
+      fl::BaseClassID(CLASSID::VECTORPATTERN),
       fl::Name("VectorPattern"),
       fl::Category(CCF::GRAPHICS),
       fl::Flags(CLF::INHERIT_LOCAL),

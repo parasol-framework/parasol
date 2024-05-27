@@ -266,7 +266,7 @@ inline ERR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) noexcept {
 
 class objXML : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_XML;
+   static constexpr CLASSID CLASS_ID = CLASSID::XML;
    static constexpr CSTRING CLASS_NAME = "XML";
 
    using create = pf::Create<objXML>;
@@ -298,7 +298,7 @@ class objXML : public Object {
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }

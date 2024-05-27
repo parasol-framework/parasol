@@ -553,11 +553,11 @@ static ERR PTR_Init(extPointer *Self)
 
    if (!Self->SurfaceID) {
       Self->SurfaceID = Self->UID;
-      while ((Self->SurfaceID) and (GetClassID(Self->SurfaceID) != ID_SURFACE)) {
+      while ((Self->SurfaceID) and (GetClassID(Self->SurfaceID) != CLASSID::SURFACE)) {
          Self->SurfaceID = GetOwnerID(Self->SurfaceID);
       }
 
-      if (!Self->SurfaceID) FindObject("SystemSurface", 0, FOF::NIL, &Self->SurfaceID);
+      if (!Self->SurfaceID) FindObject("SystemSurface", CLASSID::NIL, FOF::NIL, &Self->SurfaceID);
    }
 
    // Allocate a custom cursor bitmap
@@ -1298,15 +1298,15 @@ static const FieldArray clPointerFields[] = {
    { "OverZ",        FDF_DOUBLE|FDF_R },
    { "MaxSpeed",     FDF_LONG|FDF_RW, NULL, SET_MaxSpeed },
    { "Input",        FDF_OBJECTID|FDF_RW },
-   { "Surface",      FDF_OBJECTID|FDF_RW, NULL, NULL, ID_SURFACE },
-   { "Anchor",       FDF_OBJECTID|FDF_R, NULL, NULL, ID_SURFACE },
+   { "Surface",      FDF_OBJECTID|FDF_RW, NULL, NULL, CLASSID::SURFACE },
+   { "Anchor",       FDF_OBJECTID|FDF_R, NULL, NULL, CLASSID::SURFACE },
    { "CursorID",     FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &CursorLookup },
    { "CursorOwner",  FDF_OBJECTID|FDF_RW },
    { "Flags",        FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clPointerFlags },
-   { "Restrict",     FDF_OBJECTID|FDF_R, NULL, NULL, ID_SURFACE },
+   { "Restrict",     FDF_OBJECTID|FDF_R, NULL, NULL, CLASSID::SURFACE },
    { "HostX",        FDF_LONG|FDF_R|FDF_SYSTEM },
    { "HostY",        FDF_LONG|FDF_R|FDF_SYSTEM },
-   { "Bitmap",       FDF_OBJECT|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Bitmap",       FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::BITMAP },
    { "DragSource",   FDF_OBJECTID|FDF_R },
    { "DragItem",     FDF_LONG|FDF_R },
    { "OverObject",   FDF_OBJECTID|FDF_R },
@@ -1322,7 +1322,7 @@ static const FieldArray clPointerFields[] = {
 ERR create_pointer_class(void)
 {
    clPointer = objMetaClass::create::global(
-      fl::BaseClassID(ID_POINTER),
+      fl::BaseClassID(CLASSID::POINTER),
       fl::ClassVersion(VER_POINTER),
       fl::Name("Pointer"),
       fl::Category(CCF::GRAPHICS),

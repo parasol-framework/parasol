@@ -114,7 +114,7 @@ the surface area first).</li>
       <comment>Saves the graphics of a surface object.</comment>
       <description>
 <p>To store the rendered image of a surface object, use the SaveImage() action.  Calling SaveImage() on a surface object will cause it to render an image of its contents and save them to the given destination object.  Any child surfaces in the region will also be included in the resulting image data.</p>
-<p>The image data will be saved in the data format that is indicated by the setting in the <code>ClassID</code> parameter.  Options are limited to members of the <class name="Picture">Picture</class> class, for example <code>ID_JPEG</code> and <code>ID_PICTURE</code> (PNG).  If no <code>ClassID</code> is specified, the user's preferred default file format is used.</p>
+<p>The image data will be saved in the data format that is indicated by the setting in the <code>ClassID</code> parameter.  Options are limited to members of the <class name="Picture">Picture</class> class, for example <code>CLASSID::JPEG</code> and <code>CLASSID::PICTURE</code> (PNG).  If no <code>ClassID</code> is specified, the user's preferred default file format is used.</p>
       </description>
     </action>
 

@@ -296,7 +296,7 @@ __export void Expunge(WORD Force)
                if (mem IS glPrivateMemory.end()) continue;
 
                auto mc = (extMetaClass *)mem->second.Address;
-               if ((mc) and (mc->classID() IS ID_METACLASS) and (mc->OpenCount > 0)) {
+               if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                   log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
                   class_in_use = true;
                }
@@ -357,7 +357,7 @@ __export void Expunge(WORD Force)
                   if (mem IS glPrivateMemory.end()) continue;
 
                   auto mc = (extMetaClass *)mem->second.Address;
-                  if ((mc) and (mc->classID() IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                  if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                   }
                }

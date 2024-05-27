@@ -71,7 +71,7 @@ struct FontList {
 
 class objFont : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_FONT;
+   static constexpr CLASSID CLASS_ID = CLASSID::FONT;
    static constexpr CSTRING CLASS_NAME = "Font";
 
    using create = pf::Create<objFont>;

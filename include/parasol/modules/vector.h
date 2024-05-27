@@ -581,7 +581,7 @@ struct FontMetrics {
 
 class objVectorColour : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORCOLOUR;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORCOLOUR;
    static constexpr CSTRING CLASS_NAME = "VectorColour";
 
    using create = pf::Create<objVectorColour>;
@@ -621,7 +621,7 @@ class objVectorColour : public Object {
 
 class objVectorTransition : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORTRANSITION;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORTRANSITION;
    static constexpr CSTRING CLASS_NAME = "VectorTransition";
 
    using create = pf::Create<objVectorTransition>;
@@ -666,7 +666,7 @@ inline ERR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) noexcept {
 
 class objVectorScene : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORSCENE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORSCENE;
    static constexpr CSTRING CLASS_NAME = "VectorScene";
 
    using create = pf::Create<objVectorScene>;
@@ -759,7 +759,7 @@ class objVectorScene : public Object {
 
 class objVectorImage : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORIMAGE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORIMAGE;
    static constexpr CSTRING CLASS_NAME = "VectorImage";
 
    using create = pf::Create<objVectorImage>;
@@ -825,7 +825,7 @@ class objVectorImage : public Object {
 
 class objVectorPattern : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORPATTERN;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATTERN;
    static constexpr CSTRING CLASS_NAME = "VectorPattern";
 
    using create = pf::Create<objVectorPattern>;
@@ -919,7 +919,7 @@ class objVectorPattern : public Object {
 
 class objVectorGradient : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORGRADIENT;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORGRADIENT;
    static constexpr CSTRING CLASS_NAME = "VectorGradient";
 
    using create = pf::Create<objVectorGradient>;
@@ -1082,7 +1082,7 @@ class objVectorGradient : public Object {
 
 class objFilterEffect : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_FILTEREFFECT;
+   static constexpr CLASSID CLASS_ID = CLASSID::FILTEREFFECT;
    static constexpr CSTRING CLASS_NAME = "FilterEffect";
 
    using create = pf::Create<objFilterEffect>;
@@ -1187,7 +1187,7 @@ struct MergeSource {
 
 class objImageFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_IMAGEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::IMAGEFX;
    static constexpr CSTRING CLASS_NAME = "ImageFX";
 
    using create = pf::Create<objImageFX>;
@@ -1199,7 +1199,7 @@ class objImageFX : public objFilterEffect {
 
 class objSourceFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SOURCEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::SOURCEFX;
    static constexpr CSTRING CLASS_NAME = "SourceFX";
 
    using create = pf::Create<objSourceFX>;
@@ -1211,7 +1211,7 @@ class objSourceFX : public objFilterEffect {
 
 class objBlurFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_BLURFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::BLURFX;
    static constexpr CSTRING CLASS_NAME = "BlurFX";
 
    using create = pf::Create<objBlurFX>;
@@ -1223,7 +1223,7 @@ class objBlurFX : public objFilterEffect {
 
 class objColourFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COLOURFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::COLOURFX;
    static constexpr CSTRING CLASS_NAME = "ColourFX";
 
    using create = pf::Create<objColourFX>;
@@ -1235,7 +1235,7 @@ class objColourFX : public objFilterEffect {
 
 class objCompositeFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COMPOSITEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::COMPOSITEFX;
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
 
    using create = pf::Create<objCompositeFX>;
@@ -1247,7 +1247,7 @@ class objCompositeFX : public objFilterEffect {
 
 class objConvolveFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_CONVOLVEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::CONVOLVEFX;
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
 
    using create = pf::Create<objConvolveFX>;
@@ -1259,7 +1259,7 @@ class objConvolveFX : public objFilterEffect {
 
 class objDisplacementFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_DISPLACEMENTFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::DISPLACEMENTFX;
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
 
    using create = pf::Create<objDisplacementFX>;
@@ -1271,7 +1271,7 @@ class objDisplacementFX : public objFilterEffect {
 
 class objFloodFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_FLOODFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::FLOODFX;
    static constexpr CSTRING CLASS_NAME = "FloodFX";
 
    using create = pf::Create<objFloodFX>;
@@ -1309,7 +1309,7 @@ inline ERR ltSetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUB
 
 class objLightingFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_LIGHTINGFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::LIGHTINGFX;
    static constexpr CSTRING CLASS_NAME = "LightingFX";
 
    using create = pf::Create<objLightingFX>;
@@ -1321,7 +1321,7 @@ class objLightingFX : public objFilterEffect {
 
 class objMergeFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_MERGEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::MERGEFX;
    static constexpr CSTRING CLASS_NAME = "MergeFX";
 
    using create = pf::Create<objMergeFX>;
@@ -1333,7 +1333,7 @@ class objMergeFX : public objFilterEffect {
 
 class objMorphologyFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_MORPHOLOGYFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::MORPHOLOGYFX;
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
 
    using create = pf::Create<objMorphologyFX>;
@@ -1345,7 +1345,7 @@ class objMorphologyFX : public objFilterEffect {
 
 class objOffsetFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::OFFSETFX;
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
 
    using create = pf::Create<objOffsetFX>;
@@ -1411,7 +1411,7 @@ inline ERR rfSelectMask(APTR Ob, CMP Component, LONG Mask) noexcept {
 
 class objRemapFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_REMAPFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::REMAPFX;
    static constexpr CSTRING CLASS_NAME = "RemapFX";
 
    using create = pf::Create<objRemapFX>;
@@ -1423,7 +1423,7 @@ class objRemapFX : public objFilterEffect {
 
 class objTurbulenceFX : public objFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_TURBULENCEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
 
    using create = pf::Create<objTurbulenceFX>;
@@ -1435,7 +1435,7 @@ class objTurbulenceFX : public objFilterEffect {
 
 class objVectorClip : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
 
    using create = pf::Create<objVectorClip>;
@@ -1466,7 +1466,7 @@ class objVectorClip : public Object {
 
 class objVectorFilter : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORFILTER;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORFILTER;
    static constexpr CSTRING CLASS_NAME = "VectorFilter";
 
    using create = pf::Create<objVectorFilter>;
@@ -1650,7 +1650,7 @@ inline ERR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) noexcept {
 
 class objVector : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTOR;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTOR;
    static constexpr CSTRING CLASS_NAME = "Vector";
 
    using create = pf::Create<objVector>;
@@ -1948,7 +1948,7 @@ inline ERR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) noexcept {
 
 class objVectorPath : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATH;
    static constexpr CSTRING CLASS_NAME = "VectorPath";
 
    using create = pf::Create<objVectorPath>;
@@ -1972,7 +1972,7 @@ inline ERR vtDeleteLine(APTR Ob, LONG Line) noexcept {
 
 class objVectorText : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORTEXT;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORTEXT;
    static constexpr CSTRING CLASS_NAME = "VectorText";
 
    using create = pf::Create<objVectorText>;
@@ -1984,7 +1984,7 @@ class objVectorText : public objVector {
 
 class objVectorGroup : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORGROUP;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORGROUP;
    static constexpr CSTRING CLASS_NAME = "VectorGroup";
 
    using create = pf::Create<objVectorGroup>;
@@ -1996,7 +1996,7 @@ class objVectorGroup : public objVector {
 
 class objVectorWave : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORWAVE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORWAVE;
    static constexpr CSTRING CLASS_NAME = "VectorWave";
 
    using create = pf::Create<objVectorWave>;
@@ -2008,7 +2008,7 @@ class objVectorWave : public objVector {
 
 class objVectorRectangle : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORRECTANGLE;
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
 
    using create = pf::Create<objVectorRectangle>;
@@ -2020,7 +2020,7 @@ class objVectorRectangle : public objVector {
 
 class objVectorPolygon : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORPOLYGON;
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
 
    using create = pf::Create<objVectorPolygon>;
@@ -2032,7 +2032,7 @@ class objVectorPolygon : public objVector {
 
 class objVectorShape : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORSHAPE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORSHAPE;
    static constexpr CSTRING CLASS_NAME = "VectorShape";
 
    using create = pf::Create<objVectorShape>;
@@ -2044,7 +2044,7 @@ class objVectorShape : public objVector {
 
 class objVectorSpiral : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORSPIRAL;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORSPIRAL;
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
 
    using create = pf::Create<objVectorSpiral>;
@@ -2056,7 +2056,7 @@ class objVectorSpiral : public objVector {
 
 class objVectorEllipse : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORELLIPSE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORELLIPSE;
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
 
    using create = pf::Create<objVectorEllipse>;
@@ -2068,7 +2068,7 @@ class objVectorEllipse : public objVector {
 
 class objVectorViewport : public objVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORVIEWPORT;
    static constexpr CSTRING CLASS_NAME = "VectorViewport";
 
    using create = pf::Create<objVectorViewport>;
@@ -2206,7 +2206,7 @@ inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 //********************************************************************************************************************
 
 inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Class->ClassID = ID_VECTORCOLOUR;
+   Colour->Class->ClassID = CLASSID::VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

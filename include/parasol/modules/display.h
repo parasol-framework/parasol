@@ -549,7 +549,7 @@ inline ERR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Righ
 
 class objBitmap : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_BITMAP;
+   static constexpr CLASSID CLASS_ID = CLASSID::BITMAP;
    static constexpr CSTRING CLASS_NAME = "Bitmap";
 
    using create = pf::Create<objBitmap>;
@@ -694,7 +694,7 @@ class objBitmap : public Object {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
@@ -940,7 +940,7 @@ inline ERR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV,
 
 class objDisplay : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_DISPLAY;
+   static constexpr CLASSID CLASS_ID = CLASSID::DISPLAY;
    static constexpr CSTRING CLASS_NAME = "Display";
 
    using create = pf::Create<objDisplay>;
@@ -1015,7 +1015,7 @@ class objDisplay : public Object {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
@@ -1175,7 +1175,7 @@ inline ERR clipRemove(APTR Ob, CLIPTYPE Datatype) noexcept {
 
 class objClipboard : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_CLIPBOARD;
+   static constexpr CLASSID CLASS_ID = CLASSID::CLIPBOARD;
    static constexpr CSTRING CLASS_NAME = "Clipboard";
 
    using create = pf::Create<objClipboard>;
@@ -1217,7 +1217,7 @@ class objClipboard : public Object {
 
 class objPointer : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_POINTER;
+   static constexpr CLASSID CLASS_ID = CLASSID::POINTER;
    static constexpr CSTRING CLASS_NAME = "Pointer";
 
    using create = pf::Create<objPointer>;
@@ -1390,7 +1390,7 @@ inline ERR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBL
 
 class objSurface : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SURFACE;
+   static constexpr CLASSID CLASS_ID = CLASSID::SURFACE;
    static constexpr CSTRING CLASS_NAME = "Surface";
 
    using create = pf::Create<objSurface>;
@@ -1478,7 +1478,7 @@ class objSurface : public Object {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }

@@ -400,7 +400,7 @@ AccessObject: The source configuration object could not be accessed.
 static ERR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
    if ((!Args) or (!Args->Source)) return ERR::NullArgs;
-   if (Args->Source->classID() != ID_CONFIG) return ERR::Args;
+   if (Args->Source->classID() != CLASSID::CONFIG) return ERR::Args;
 
    auto src = (extConfig *)Args->Source;
    merge_groups(Self->Groups[0], src->Groups[0]);
@@ -1091,7 +1091,7 @@ static const FieldArray clFields[] = {
 extern "C" ERR add_config_class(void)
 {
    glConfigClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_CONFIG),
+      fl::BaseClassID(CLASSID::CONFIG),
       fl::ClassVersion(VER_CONFIG),
       fl::Name("Config"),
       fl::Category(CCF::DATA),

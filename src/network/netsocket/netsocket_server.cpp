@@ -130,7 +130,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    // Socket Management
 
    extClientSocket *client_socket;
-   if (NewObject(ID_CLIENTSOCKET, &client_socket) IS ERR::Okay) {
+   if (NewObject(CLASSID::CLIENTSOCKET, &client_socket) IS ERR::Okay) {
       client_socket->Handle = clientfd;
       client_socket->Client = client_ip;
       InitObject(client_socket);

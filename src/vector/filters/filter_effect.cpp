@@ -114,7 +114,7 @@ static ERR FILTEREFFECT_NewObject(extFilterEffect *Self)
 
 static ERR FILTEREFFECT_NewOwner(extFilterEffect *Self, struct acNewOwner *Args)
 {
-   if (Args->NewOwner->Class->BaseClassID IS ID_VECTORFILTER) {
+   if (Args->NewOwner->Class->BaseClassID IS CLASSID::VECTORFILTER) {
       Self->Filter = (extVectorFilter *)Args->NewOwner;
    }
    return ERR::Okay;
@@ -327,11 +327,11 @@ static ERR FILTEREFFECT_SET_Y(extFilterEffect *Self, Variable *Value)
 #include "filter_effect_def.c"
 
 static const FieldArray clFilterEffectFields[] = {
-   { "Next",       FDF_OBJECT|FDF_RW, NULL, NULL, ID_FILTEREFFECT },
-   { "Prev",       FDF_OBJECT|FDF_RW, NULL, NULL, ID_FILTEREFFECT },
-   { "Target",     FDF_OBJECT|FDF_RW, NULL, NULL, ID_BITMAP },
-   { "Input",      FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Input, ID_FILTEREFFECT },
-   { "Mix",        FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Mix, ID_FILTEREFFECT },
+   { "Next",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::FILTEREFFECT },
+   { "Prev",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::FILTEREFFECT },
+   { "Target",     FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::BITMAP },
+   { "Input",      FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Input, CLASSID::FILTEREFFECT },
+   { "Mix",        FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Mix, CLASSID::FILTEREFFECT },
    { "X",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_X, FILTEREFFECT_SET_X },
    { "Y",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
    { "Width",      FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },

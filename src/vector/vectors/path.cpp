@@ -539,8 +539,8 @@ static const FieldArray clPathFields[] = {
 static ERR init_path(void)
 {
    clVectorPath = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORPATH),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORPATH),
       fl::Name("VectorPath"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorPathActions),

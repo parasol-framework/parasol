@@ -241,7 +241,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
 
    OBJECTID id;
-   if (FindObject("glStyle", ID_XML, FOF::NIL, &id) IS ERR::Okay) {
+   if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &id) IS ERR::Okay) {
       char buffer[40];
       if (acGetKey(GetObjectPtr(id), "/colours/@texthighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
          read_rgb8(buffer, &glHighlight);
@@ -1004,7 +1004,7 @@ static ERR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args)
 
 static ERR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
-   if (NewObject(ID_FONT, NF::LOCAL, &Self->Font) IS ERR::Okay) {
+   if (NewObject(CLASSID::FONT, NF::LOCAL, &Self->Font) IS ERR::Okay) {
       Self->Font->setFace("courier:10");
       Self->LeftMargin  = 4;
       Self->RightMargin = 30;
@@ -1048,7 +1048,7 @@ static ERR SCINTILLA_NewOwner(extScintilla *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
       auto obj = Args->NewOwner;
-      while ((obj) and (obj->classID() != ID_SURFACE)) {
+      while ((obj) and (obj->classID() != CLASSID::SURFACE)) {
          obj = obj->Owner;
       }
       if (obj) Self->SurfaceID = obj->UID;
@@ -2176,7 +2176,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
    }
 
    OBJECTPTR dialog;
-   if (NewObject(ID_SCRIPT, &dialog) IS ERR::Okay) {
+   if (NewObject(CLASSID::SCRIPT, &dialog) IS ERR::Okay) {
       dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.fluid"));
 
       acSetKey(dialog, "modal", "1");
@@ -2464,10 +2464,10 @@ static ERR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "Font",           FDF_LOCAL|FDF_R, NULL, NULL, ID_FONT },
+   { "Font",           FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::FONT },
    { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
    { "EventFlags",     FDF_LONG|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
-   { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, ID_SURFACE },
+   { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, CLASSID::SURFACE },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clScintillaFlags },
    { "Focus",          FDF_OBJECTID|FDF_RI },
    { "Visible",        FDF_LONG|FDF_RI },

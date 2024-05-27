@@ -13,7 +13,7 @@ for ordered operations such as `ATOP` and `OVER`.
 
 class extCompositeFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COMPOSITEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::COMPOSITEFX;
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
    using create = pf::Create<extCompositeFX>;
 
@@ -916,8 +916,8 @@ static const FieldArray clCompositeFXFields[] = {
 ERR init_compositefx(void)
 {
    clCompositeFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_COMPOSITEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::COMPOSITEFX),
       fl::Name("CompositeFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clCompositeFXActions),

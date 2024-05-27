@@ -548,8 +548,8 @@ static const FieldArray clPolygonFields[] = {
 static ERR init_polygon(void)
 {
    clVectorPolygon = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORPOLYGON),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORPOLYGON),
       fl::Name("VectorPolygon"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clPolygonActions),

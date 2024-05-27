@@ -394,7 +394,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
    OBJECTID surface_id = GetOwnerID(DisplayID);
    extSurface *surface;
    if (AccessObject(surface_id, 4000, &surface) IS ERR::Okay) {
-      if (surface->classID() IS ID_SURFACE) {
+      if (surface->classID() IS CLASSID::SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
             surface->Y = Y;
@@ -963,7 +963,7 @@ static ERR SURFACE_Free(extSurface *Self)
    // Give the focus to the parent if our object has the primary focus.  Do not apply this technique to surface objects
    // acting as windows, as the window class has its own focus management code.
 
-   if (Self->hasFocus() and (Self->Owner) and (Self->Owner->classID() != ID_WINDOW)) {
+   if (Self->hasFocus() and (Self->Owner) and (Self->Owner->classID() != CLASSID::WINDOW)) {
       if (Self->ParentID) {
          pf::ScopedObjectLock focus(Self->ParentID);
          if (focus.granted()) acFocus(*focus);
@@ -1102,7 +1102,7 @@ static ERR SURFACE_Init(extSurface *Self)
 
    if ((!Self->ParentID) and (gfxGetDisplayType() IS DT::NATIVE)) {
       if ((Self->Flags & RNF::FULL_SCREEN) IS RNF::NIL) {
-         if (FindObject("desktop", ID_SURFACE, FOF::NIL, &Self->ParentID) != ERR::Okay) {
+         if (FindObject("desktop", CLASSID::SURFACE, FOF::NIL, &Self->ParentID) != ERR::Okay) {
             if (!glSurfaces.empty()) Self->ParentID = glSurfaces[0].SurfaceID;
          }
       }
@@ -1321,7 +1321,7 @@ static ERR SURFACE_Init(extSurface *Self)
       if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) scrflags |= SCR::COMPOSITE;
 
       OBJECTID id, pop_display = 0;
-      CSTRING name = FindObject("SystemDisplay", 0, FOF::NIL, &id) != ERR::Okay ? "SystemDisplay" : (CSTRING)NULL;
+      CSTRING name = FindObject("SystemDisplay", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay ? "SystemDisplay" : (CSTRING)NULL;
 
       if (Self->PopOverID) {
          extSurface *popsurface;
@@ -1896,7 +1896,7 @@ static ERR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 {
    if ((!Self->ParentDefined) and (!Self->initialised())) {
       OBJECTID owner_id = Args->NewOwner->UID;
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != CLASSID::SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->ParentID = owner_id;
@@ -2160,7 +2160,7 @@ will cause it to render an image of its contents and save them to the given dest
 in the region will also be included in the resulting image data.
 
 The image data will be saved in the data format that is indicated by the setting in the `ClassID` parameter.  Options
-are limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE` (PNG).  If no `ClassID` is
+are limited to members of the @Picture class, for example `CLASSID::JPEG` and `CLASSID::PICTURE` (PNG).  If no `ClassID` is
 specified, the user's preferred default file format is used.
 -END-
 
@@ -2177,7 +2177,7 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
    // Create a Bitmap that is the same size as the rendered area
 
-   CLASSID class_id = (!Args->ClassID) ? ID_PICTURE: Args->ClassID;
+   CLASSID class_id = (Args->ClassID IS CLASSID::NIL) ? CLASSID::PICTURE : Args->ClassID;
 
    objPicture *picture;
    if (NewObject(class_id, &picture) IS ERR::Okay) {
@@ -2543,9 +2543,9 @@ static const FieldDef clTypeFlags[] = {
 #include "surface_def.c"
 
 static const FieldArray clSurfaceFields[] = {
-   { "Drag",         FDF_OBJECTID|FDF_RW, NULL, SET_Drag, ID_SURFACE },
-   { "Buffer",       FDF_OBJECTID|FDF_R,  NULL, NULL, ID_BITMAP },
-   { "Parent",       FDF_OBJECTID|FDF_RW, NULL, SET_Parent, ID_SURFACE },
+   { "Drag",         FDF_OBJECTID|FDF_RW, NULL, SET_Drag, CLASSID::SURFACE },
+   { "Buffer",       FDF_OBJECTID|FDF_R,  NULL, NULL, CLASSID::BITMAP },
+   { "Parent",       FDF_OBJECTID|FDF_RW, NULL, SET_Parent, CLASSID::SURFACE },
    { "PopOver",      FDF_OBJECTID|FDF_RI, NULL, SET_PopOver },
    { "TopMargin",    FDF_LONG|FDF_RW,  NULL, NULL },
    { "BottomMargin", FDF_LONG|FDF_RW,  NULL, SET_BottomMargin },
@@ -2559,7 +2559,7 @@ static const FieldArray clSurfaceFields[] = {
    { "RightLimit",   FDF_LONG|FDF_RW,  NULL, SET_RightLimit },
    { "TopLimit",     FDF_LONG|FDF_RW,  NULL, SET_TopLimit },
    { "BottomLimit",  FDF_LONG|FDF_RW,  NULL, SET_BottomLimit },
-   { "Display",      FDF_OBJECTID|FDF_R, NULL, NULL, ID_DISPLAY },
+   { "Display",      FDF_OBJECTID|FDF_R, NULL, NULL, CLASSID::DISPLAY },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clSurfaceFlags },
    { "X",            FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_XCoord, SET_XCoord },
    { "Y",            FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_YCoord, SET_YCoord },

@@ -100,12 +100,12 @@ Status: Internal
 This function manages the output of application log messages by sending them through a log filter, which must be
 enabled by the user.  If no logging is enabled or if the filter is not passed, the function does nothing.
 
-Log message formatting follows the same guidelines as the printf() function.
+Log message formatting follows the same guidelines as the `printf()` function.
 
-The following example will print the default width of a Display object to the log.
+The following example will print the default width of a @Display object to the log.
 
 <pre>
-if (!NewObject(ID_DISPLAY, 0, &display)) {
+if (!NewObject(CLASSID::DISPLAY, &display)) {
    if (!display->init(display)) {
       VLogF(VLF::API, "Demo","The width of the display is: %d", display-&gt;Width);
    }
@@ -115,9 +115,9 @@ if (!NewObject(ID_DISPLAY, 0, &display)) {
 
 -INPUT-
 int(VLF) Flags: Optional flags
-cstr Header: A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.
+cstr Header: A short name for the first column.  Typically function names are placed here, so that the origin of the message is obvious.
 cstr Message: A formatted message to print.
-va_list Args: A va_list corresponding to the arguments referenced in Message.
+va_list Args: A `va_list` corresponding to the arguments referenced in `Message`.
 -END-
 
 *********************************************************************************************************************/

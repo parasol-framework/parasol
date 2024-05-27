@@ -57,7 +57,7 @@ void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
    if (!m_fill.empty())   Vector->set(FID_Fill, m_fill);
    if (!m_stroke.empty()) Vector->set(FID_Stroke, m_stroke);
    if (m_stroke_width)    Vector->set(FID_StrokeWidth, m_stroke_width);
-   if (Vector->classID() IS ID_VECTORTEXT) {
+   if (Vector->classID() IS CLASSID::VECTORTEXT) {
       if (!m_font_family.empty()) Vector->set(FID_Face, m_font_family);
       if (!m_font_size.empty())   Vector->set(FID_FontSize, m_font_size);
       if (m_font_weight) Vector->set(FID_Weight, m_font_weight);
@@ -65,7 +65,7 @@ void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
    if (m_fill_opacity >= 0.0) Vector->set(FID_FillOpacity, m_fill_opacity);
    if (m_opacity >= 0.0) Vector->set(FID_Opacity, m_opacity);
 
-   if (Vector->classID() != ID_VECTORTEXT) {
+   if (Vector->classID() != CLASSID::VECTORTEXT) {
       if (m_path_quality != RQ::AUTO) Vector->set(FID_PathQuality, LONG(m_path_quality));
    }
 }
@@ -147,7 +147,7 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
          case SVF_SET:              xtag_set(Self, State, child, Tag, Vector); break;
          case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
          case SVF_TEXTPATH:
-            if (Vector->classID() IS ID_VECTORTEXT) {
+            if (Vector->classID() IS CLASSID::VECTORTEXT) {
                if (!child.Children.empty()) {
                   auto buffer = child.getContent();
                   if (!buffer.empty()) {
@@ -176,7 +176,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
    log.traceBranch("Tag: %d", Tag.ID);
 
    OBJECTPTR trans;
-   if (NewObject(ID_VECTORTRANSITION, &trans) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORTRANSITION, &trans) IS ERR::Okay) {
       trans->setFields(
          fl::Owner(Self->Scene->UID), // All clips belong to the root page to prevent hierarchy issues.
          fl::Name("SVGTransition")
@@ -244,7 +244,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
 
    if (add_id(Self, Tag, id)) {
       objVector *clip;
-      if (NewObject(ID_VECTORCLIP, &clip) IS ERR::Okay) {
+      if (NewObject(CLASSID::VECTORCLIP, &clip) IS ERR::Okay) {
          clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
 
          if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
@@ -325,7 +325,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
 
    if (add_id(Self, Tag, id)) {
       objVector *clip;
-      if (NewObject(ID_VECTORCLIP, &clip) IS ERR::Okay) {
+      if (NewObject(CLASSID::VECTORCLIP, &clip) IS ERR::Okay) {
          clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"),
             fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
             fl::Units(units));
@@ -351,7 +351,7 @@ static ERR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_BLURFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::BLURFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -400,7 +400,7 @@ static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_OFFSETFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::OFFSETFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -433,7 +433,7 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_MERGEFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::MERGEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -512,7 +512,7 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_COLOURFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::COLOURFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -589,7 +589,7 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_CONVOLVEFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::CONVOLVEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -679,7 +679,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_LIGHTINGFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::LIGHTINGFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    fx->set(FID_Type, LONG(Type));
@@ -804,7 +804,7 @@ static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLT
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_DISPLACEMENTFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::DISPLACEMENTFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -862,7 +862,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_REMAPFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::REMAPFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -948,7 +948,7 @@ static ERR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_COMPOSITEFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::COMPOSITEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -1049,7 +1049,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_FLOODFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::FLOODFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    ERR error = ERR::Okay;
@@ -1102,7 +1102,7 @@ static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_TURBULENCEFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::TURBULENCEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -1160,7 +1160,7 @@ static ERR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_MORPHOLOGYFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::MORPHOLOGYFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    std::string result_name;
@@ -1205,7 +1205,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_SOURCEFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::SOURCEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    bool required = false;
@@ -1276,7 +1276,7 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
    }
 
    objFilterEffect *fx;
-   if (NewObject(ID_IMAGEFX, &fx) != ERR::Okay) return ERR::NewObject;
+   if (NewObject(CLASSID::IMAGEFX, &fx) != ERR::Okay) return ERR::NewObject;
    SetOwner(fx, Filter);
 
    bool image_required = false;
@@ -1368,7 +1368,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
    objVectorFilter *filter;
    std::string id;
 
-   if (NewObject(ID_VECTORFILTER, &filter) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORFILTER, &filter) IS ERR::Okay) {
       filter->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGFilter"),
          fl::Units(VUNIT::BOUNDING_BOX), fl::ColourSpace(VCS::LINEAR_RGB));
 
@@ -1480,7 +1480,7 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
    objVectorPattern *pattern;
    std::string id;
 
-   if (NewObject(ID_VECTORPATTERN, &pattern) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORPATTERN, &pattern) IS ERR::Okay) {
       SetOwner(pattern, Self->Scene);
       pattern->setFields(fl::Name("SVGPattern"),
          fl::Units(VUNIT::BOUNDING_BOX),
@@ -1614,14 +1614,14 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
       case SVF_SWITCH:           log.warning("<switch> not supported."); break;
       case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
-      case SVF_RECT:             process_shape(Self, ID_VECTORRECTANGLE, State, Tag, Parent, Vector); break;
-      case SVF_ELLIPSE:          process_shape(Self, ID_VECTORELLIPSE, State, Tag, Parent, Vector); break;
-      case SVF_CIRCLE:           process_shape(Self, ID_VECTORELLIPSE, State, Tag, Parent, Vector); break;
-      case SVF_PATH:             process_shape(Self, ID_VECTORPATH, State, Tag, Parent, Vector); break;
-      case SVF_POLYGON:          process_shape(Self, ID_VECTORPOLYGON, State, Tag, Parent, Vector); break;
-      case SVF_PARASOL_SPIRAL:   process_shape(Self, ID_VECTORSPIRAL, State, Tag, Parent, Vector); break;
-      case SVF_PARASOL_WAVE:     process_shape(Self, ID_VECTORWAVE, State, Tag, Parent, Vector); break;
-      case SVF_PARASOL_SHAPE:    process_shape(Self, ID_VECTORSHAPE, State, Tag, Parent, Vector); break;
+      case SVF_RECT:             process_shape(Self, CLASSID::VECTORRECTANGLE, State, Tag, Parent, Vector); break;
+      case SVF_ELLIPSE:          process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
+      case SVF_CIRCLE:           process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
+      case SVF_PATH:             process_shape(Self, CLASSID::VECTORPATH, State, Tag, Parent, Vector); break;
+      case SVF_POLYGON:          process_shape(Self, CLASSID::VECTORPOLYGON, State, Tag, Parent, Vector); break;
+      case SVF_PARASOL_SPIRAL:   process_shape(Self, CLASSID::VECTORSPIRAL, State, Tag, Parent, Vector); break;
+      case SVF_PARASOL_WAVE:     process_shape(Self, CLASSID::VECTORWAVE, State, Tag, Parent, Vector); break;
+      case SVF_PARASOL_SHAPE:    process_shape(Self, CLASSID::VECTORSHAPE, State, Tag, Parent, Vector); break;
       case SVF_IMAGE:            xtag_image(Self, State, Tag, Parent, Vector); break;
       case SVF_CONTOURGRADIENT:  xtag_contourgradient(Self, Tag); break;
       case SVF_RADIALGRADIENT:   xtag_radialgradient(Self, Tag); break;
@@ -1652,17 +1652,17 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
          break;
 
       case SVF_LINE:
-         process_shape(Self, ID_VECTORPOLYGON, State, Tag, Parent, Vector);
+         process_shape(Self, CLASSID::VECTORPOLYGON, State, Tag, Parent, Vector);
          Vector->set(FID_Closed, FALSE);
          break;
 
       case SVF_POLYLINE:
-         process_shape(Self, ID_VECTORPOLYGON, State, Tag, Parent, Vector);
+         process_shape(Self, CLASSID::VECTORPOLYGON, State, Tag, Parent, Vector);
          Vector->set(FID_Closed, FALSE);
          break;
 
       case SVF_TEXT: {
-         if (process_shape(Self, ID_VECTORTEXT, State, Tag, Parent, Vector) IS ERR::Okay) {
+         if (process_shape(Self, CLASSID::VECTORTEXT, State, Tag, Parent, Vector) IS ERR::Okay) {
             if (!Tag.Children.empty()) {
                STRING existing_str = NULL;
                Vector->get(FID_String, &existing_str);
@@ -1767,7 +1767,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
    std::string id, src;
    FUNIT width, height;
 
-   if (NewObject(ID_VECTORIMAGE, &image) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORIMAGE, &image) IS ERR::Okay) {
       image->setFields(fl::Owner(Self->Scene->UID),
          fl::Name("SVGImage"),
          fl::Units(VUNIT::BOUNDING_BOX),
@@ -1905,7 +1905,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
    // require a filled rectangle to reference the image).  In practice this doesn't seem necessary, as the image
    // object supports built-in viewport concepts like preserveAspectRatio.
 
-   if (auto error = NewObject(ID_VECTORRECTANGLE, &Vector); error IS ERR::Okay) {
+   if (auto error = NewObject(CLASSID::VECTORRECTANGLE, &Vector); error IS ERR::Okay) {
       SetOwner(Vector, Parent);
       State.applyAttribs(Vector);
 
@@ -2060,7 +2060,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Parent) or (Parent->Class->BaseClassID != ID_VECTOR)) {
+   if ((!Parent) or (Parent->Class->BaseClassID != CLASSID::VECTOR)) {
       log.traceWarning("Unable to apply morph to non-vector parent object.");
       return;
    }
@@ -2124,26 +2124,26 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
    auto &tagref = Self->IDs[uri];
 
-   CLASSID class_id = 0;
+   auto class_id = CLASSID::NIL;
    switch (StrHash(tagref.name())) {
-      case SVF_PATH:           class_id = ID_VECTORPATH; break;
-      case SVF_RECT:           class_id = ID_VECTORRECTANGLE; break;
-      case SVF_ELLIPSE:        class_id = ID_VECTORELLIPSE; break;
-      case SVF_CIRCLE:         class_id = ID_VECTORELLIPSE; break;
-      case SVF_POLYGON:        class_id = ID_VECTORPOLYGON; break;
-      case SVF_PARASOL_SPIRAL: class_id = ID_VECTORSPIRAL; break;
-      case SVF_PARASOL_WAVE:   class_id = ID_VECTORWAVE; break;
-      case SVF_PARASOL_SHAPE:  class_id = ID_VECTORSHAPE; break;
+      case SVF_PATH:           class_id = CLASSID::VECTORPATH; break;
+      case SVF_RECT:           class_id = CLASSID::VECTORRECTANGLE; break;
+      case SVF_ELLIPSE:        class_id = CLASSID::VECTORELLIPSE; break;
+      case SVF_CIRCLE:         class_id = CLASSID::VECTORELLIPSE; break;
+      case SVF_POLYGON:        class_id = CLASSID::VECTORPOLYGON; break;
+      case SVF_PARASOL_SPIRAL: class_id = CLASSID::VECTORSPIRAL; break;
+      case SVF_PARASOL_WAVE:   class_id = CLASSID::VECTORWAVE; break;
+      case SVF_PARASOL_SHAPE:  class_id = CLASSID::VECTORSHAPE; break;
       default:
          log.warning("Invalid reference '%s', '%s' is not recognised by <morph>.", ref.c_str(), tagref.name());
    }
 
    if ((flags & (VMF::Y_MIN|VMF::Y_MID|VMF::Y_MAX)) IS VMF::NIL) {
-      if (Parent->classID() IS ID_VECTORTEXT) flags |= VMF::Y_MIN;
+      if (Parent->classID() IS CLASSID::VECTORTEXT) flags |= VMF::Y_MIN;
       else flags |= VMF::Y_MID;
    }
 
-   if (class_id) {
+   if (class_id != CLASSID::NIL) {
       objVector *shape;
       svgState state(Self);
       process_shape(Self, class_id, state, tagref, Self->Scene, shape);
@@ -2217,14 +2217,14 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       }
 
       if (need_group) {
-         if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
+         if (NewObject(CLASSID::VECTORGROUP, &group) IS ERR::Okay) {
             SetOwner(group, Parent);
             Parent = group;
             group->init();
          }
       }
 
-      if (NewObject(ID_VECTORVIEWPORT, &viewport) != ERR::Okay) return;
+      if (NewObject(CLASSID::VECTORVIEWPORT, &viewport) != ERR::Okay) return;
       SetOwner(viewport, Parent);
       viewport->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))); // SVG default
 
@@ -2412,7 +2412,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
    // Vectors within <a> will be assigned to a group purely because it's easier for us to manage them that way.
 
    objVector *group;
-   if (NewObject(ID_VECTORGROUP, &group) IS ERR::Okay) {
+   if (NewObject(CLASSID::VECTORGROUP, &group) IS ERR::Okay) {
       SetOwner(group, Parent);
 
       process_children(Self, State, Tag, group);
@@ -2442,7 +2442,7 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
    auto state = State;
 
    objVector *group;
-   if (NewObject(ID_VECTORGROUP, &group) != ERR::Okay) return;
+   if (NewObject(CLASSID::VECTORGROUP, &group) != ERR::Okay) return;
    SetOwner(group, Parent);
    if (!Tag.Children.empty()) state.applyTag(Tag); // Apply all group attribute values to the current state.
    process_attrib(Self, Tag, State, group);
@@ -2473,11 +2473,11 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    // If initialising to a VectorScene, prefer to use its existing viewport if there is one.
 
    objVectorViewport *viewport;
-   if ((Parent->classID() IS ID_VECTORSCENE) and (((objVectorScene *)Parent)->Viewport)) {
+   if ((Parent->classID() IS CLASSID::VECTORSCENE) and (((objVectorScene *)Parent)->Viewport)) {
       viewport = ((objVectorScene *)Parent)->Viewport;
    }
    else {
-      if (NewObject(ID_VECTORVIEWPORT, &viewport) != ERR::Okay) return;
+      if (NewObject(CLASSID::VECTORVIEWPORT, &viewport) != ERR::Okay) return;
       SetOwner(viewport, Parent);
    }
 
@@ -2826,7 +2826,7 @@ static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector
       log.trace("%s = %.40s", name.c_str(), value.c_str());
 
       if (auto error = set_property(Self, Vector, StrHash(name), Tag, State, value); error != ERR::Okay) {
-         if (Vector->classID() != ID_VECTORGROUP) {
+         if (Vector->classID() != CLASSID::VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
                name.c_str(), value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
          }
@@ -3022,7 +3022,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
    if (Hash IS SVF_CLASS) return ERR::Okay;
 
    switch(Vector->classID()) {
-      case ID_VECTORVIEWPORT:
+      case CLASSID::VECTORVIEWPORT:
          switch (Hash) {
             // The following 'view-*' fields are for defining the SVG view box
             case SVF_VIEW_X:      FUNIT(FID_ViewX, StrValue).set(Vector); return ERR::Okay;
@@ -3037,7 +3037,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORELLIPSE:
+      case CLASSID::VECTORELLIPSE:
          switch (Hash) {
             case SVF_CX: FUNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
             case SVF_CY: FUNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
@@ -3048,7 +3048,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORWAVE:
+      case CLASSID::VECTORWAVE:
          switch (Hash) {
             case SVF_X: FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
             case SVF_Y: FUNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
@@ -3062,7 +3062,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORRECTANGLE:
+      case CLASSID::VECTORRECTANGLE:
          switch (Hash) {
             case SVF_X1:
             case SVF_X:  FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
@@ -3093,7 +3093,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
 
       // VectorPolygon handles polygon, polyline and line.
-      case ID_VECTORPOLYGON:
+      case CLASSID::VECTORPOLYGON:
          switch (Hash) {
             case SVF_POINTS: Vector->set(FID_Points, StrValue); return ERR::Okay;
             case SVF_X1: FUNIT(FID_X1, StrValue).set(Vector); return ERR::Okay;
@@ -3103,7 +3103,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORTEXT:
+      case CLASSID::VECTORTEXT:
          switch (Hash) {
             case SVF_X: FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
             case SVF_Y: FUNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
@@ -3221,7 +3221,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORSPIRAL:
+      case CLASSID::VECTORSPIRAL:
          switch (Hash) {
             case SVF_PATHLENGTH: Vector->set(FID_PathLength, StrValue); return ERR::Okay;
             case SVF_CX:       FUNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
@@ -3235,7 +3235,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORSHAPE:
+      case CLASSID::VECTORSHAPE:
          switch (Hash) {
             case SVF_CX:   FUNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
             case SVF_CY:   FUNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
@@ -3258,12 +3258,14 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          }
          break;
 
-      case ID_VECTORPATH:
+      case CLASSID::VECTORPATH:
          switch (Hash) {
             case SVF_D: Vector->set(FID_Sequence, StrValue); return ERR::Okay;
             case SVF_PATHLENGTH: Vector->set(FID_PathLength, StrValue); return ERR::Okay;
          }
          break;
+
+      default: break;
    }
 
    // Fall-through to generic attributes.

@@ -348,7 +348,7 @@ static void error_dialog(const std::string Title, const std::string Message)
    detect_recursive_dialog = true;
 
    OBJECTPTR dialog;
-   if (NewObject(ID_SCRIPT, &dialog) IS ERR::Okay) {
+   if (NewObject(CLASSID::SCRIPT, &dialog) IS ERR::Okay) {
       dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
 
       acSetKey(dialog, "modal", "1");
@@ -898,7 +898,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    else if (Self->Tabs[Index].type IS TT::VECTOR) {
       if (Self->HasFocus) {
          CLASSID class_id = GetClassID(std::get<OBJECTID>(Self->Tabs[Index].ref));
-         if (class_id IS ID_VECTORTEXT) {
+         if (class_id IS CLASSID::VECTORTEXT) {
             pf::ScopedObjectLock focus(std::get<OBJECTID>(Self->Tabs[Index].ref));
             if (focus.granted()) {
                acFocus(*focus);

@@ -278,7 +278,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
 
    OBJECTID style_id;
-   if (FindObject("glStyle", ID_XML, FOF::NIL, &style_id) IS ERR::Okay) {
+   if (FindObject("glStyle", CLASSID::XML, FOF::NIL, &style_id) IS ERR::Okay) {
       char buffer[32];
       if (acGetKey(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer)) IS ERR::Okay) {
          glHighlight.assign(buffer);
@@ -368,7 +368,7 @@ inline void layout_doc_fast(extDocument *Self)
 static ERR add_document_class(void)
 {
    clDocument = objMetaClass::create::global(
-      fl::BaseClassID(ID_DOCUMENT),
+      fl::BaseClassID(CLASSID::DOCUMENT),
       fl::ClassVersion(VER_DOCUMENT),
       fl::Name("Document"),
       fl::Category(CCF::GUI),

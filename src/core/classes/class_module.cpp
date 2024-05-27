@@ -340,7 +340,7 @@ static ERR MODULE_Init(extModule *Self)
    if ((master = check_resident(Self, name))) {
       Self->Root = master;
    }
-   else if (NewObject(ID_ROOTMODULE, NF::UNTRACKED, (OBJECTPTR *)&master) IS ERR::Okay) {
+   else if (NewObject(CLASSID::ROOTMODULE, NF::UNTRACKED, (OBJECTPTR *)&master) IS ERR::Okay) {
       master->Next = glModuleList; // Insert the RootModule at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
       glModuleList = master;
@@ -787,7 +787,7 @@ static const ActionArray glRootModuleActions[] = {
 extern "C" ERR add_module_class(void)
 {
    if (!(glModuleClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_MODULE),
+      fl::BaseClassID(CLASSID::MODULE),
       fl::ClassVersion(VER_MODULE),
       fl::Name("Module"),
       fl::Category(CCF::SYSTEM),
@@ -800,7 +800,7 @@ extern "C" ERR add_module_class(void)
       fl::Path("modules:core")))) return ERR::AddClass;
 
    if (!(glRootModuleClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_ROOTMODULE),
+      fl::BaseClassID(CLASSID::ROOTMODULE),
       fl::ClassVersion(1.0),
       fl::Name("RootModule"),
       fl::Flags(CLF::NO_OWNERSHIP),

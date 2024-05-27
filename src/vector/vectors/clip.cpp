@@ -48,7 +48,7 @@ static ERR CLIP_Init(extVectorClip *Self)
 
    // A viewport hosts the shapes for determining the clipping path.
 
-   if ((Self->Owner) and (Self->Owner->classID() IS ID_VECTORSCENE)) {
+   if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORSCENE)) {
       if ((Self->Viewport = (objVectorViewport *)objVectorViewport::create::global(
             fl::Owner(Self->ownerID()),
             fl::Visibility(VIS::HIDDEN),
@@ -171,7 +171,7 @@ static const FieldArray clClipFields[] = {
 static ERR init_clip(void)
 {
    clVectorClip = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORCLIP),
+      fl::BaseClassID(CLASSID::VECTORCLIP),
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),

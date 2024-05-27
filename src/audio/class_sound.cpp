@@ -161,7 +161,7 @@ static ERR set_playback_trigger(extSound *Self)
 #ifdef _WIN32
 extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 {
-   if (Object->Class->BaseClassID IS ID_SOUND) {
+   if (Object->Class->BaseClassID IS CLASSID::SOUND) {
       auto Self = (extSound *)Object;
       if (Self->OnStop.defined()) {
          pf::Log log(__FUNCTION__);
@@ -205,11 +205,11 @@ static ERR snd_init_audio(extSound *Self)
 {
    pf::Log log;
 
-   if (FindObject("SystemAudio", ID_AUDIO, FOF::NIL, &Self->AudioID) IS ERR::Okay) return ERR::Okay;
+   if (FindObject("SystemAudio", CLASSID::AUDIO, FOF::NIL, &Self->AudioID) IS ERR::Okay) return ERR::Okay;
 
    extAudio *audio;
    ERR error;
-   if ((error = NewObject(ID_AUDIO, NF::NIL, &audio)) IS ERR::Okay) {
+   if ((error = NewObject(CLASSID::AUDIO, NF::NIL, &audio)) IS ERR::Okay) {
       SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 
@@ -961,7 +961,7 @@ static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 
    // This routine is used if the developer is trying to save the sound data as a specific subclass type.
 
-   if ((Args->ClassID) and (Args->ClassID != ID_SOUND)) {
+   if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SOUND)) {
       auto mclass = (objMetaClass *)FindClass(Args->ClassID);
 
       ERR (**routine)(OBJECTPTR, APTR);
@@ -1761,7 +1761,7 @@ static const ActionArray clActions[] = {
 ERR add_sound_class(void)
 {
    clSound = objMetaClass::create::global(
-      fl::BaseClassID(ID_SOUND),
+      fl::BaseClassID(CLASSID::SOUND),
       fl::ClassVersion(VER_SOUND),
       fl::FileExtension("*.wav|*.wave|*.snd"),
       fl::FileDescription("Sound Sample"),

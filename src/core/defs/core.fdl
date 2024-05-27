@@ -1255,7 +1255,7 @@ inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
-template<class T> inline ERR NewObject(LARGE ClassID, T **Result) {
+template<class T> inline ERR NewObject(CLASSID ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
 }
 
@@ -1984,12 +1984,12 @@ inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Fla
    return Action(AC_MoveToPoint, Object, &moveto);
 }
 
-inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
    struct acSaveImage args = { Dest, { ClassID } };
    return Action(AC_SaveImage, Object, &args);
 }
 
-inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
    struct acSaveToObject args = { Dest, { ClassID } };
    return Action(AC_SaveToObject, Object, &args);
 }

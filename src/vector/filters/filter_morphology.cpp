@@ -28,7 +28,7 @@ equal to the alpha channel.
 
 class extMorphologyFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_MORPHOLOGYFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::MORPHOLOGYFX;
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
    using create = pf::Create<extMorphologyFX>;
 
@@ -316,8 +316,8 @@ static const FieldArray clMorphologyFXFields[] = {
 ERR init_morphfx(void)
 {
    clMorphologyFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_MORPHOLOGYFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::MORPHOLOGYFX),
       fl::Name("MorphologyFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clMorphologyFXActions),

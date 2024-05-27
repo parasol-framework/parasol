@@ -462,7 +462,7 @@ class extVectorScene : public objVectorScene {
 
 class extVectorViewport : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORVIEWPORT;
    static constexpr CSTRING CLASS_NAME = "VectorViewport";
    using create = pf::Create<extVectorViewport>;
 
@@ -484,7 +484,7 @@ class extVectorViewport : public extVector {
 
 class extVectorPoly : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORPOLYGON;
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
    using create = pf::Create<extVectorPoly>;
 
@@ -495,7 +495,7 @@ class extVectorPoly : public extVector {
 
 class extVectorPath : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATH;
    static constexpr CSTRING CLASS_NAME = "VectorPath";
    using create = pf::Create<extVectorPath>;
 
@@ -504,7 +504,7 @@ class extVectorPath : public extVector {
 
 class extVectorRectangle : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORRECTANGLE;
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
    using create = pf::Create<extVectorRectangle>;
 
@@ -527,7 +527,7 @@ class GradientColours {
 
 class extVectorClip : public objVectorClip {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
    using create = pf::Create<extVectorClip>;
 
@@ -955,10 +955,10 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
 
 inline static extVector * get_parent(const extVector *Vector)
 {
-   if (Vector->Class->BaseClassID != ID_VECTOR) return NULL;
+   if (Vector->Class->BaseClassID != CLASSID::VECTOR) return NULL;
    while (Vector) {
       if (!Vector->Parent) Vector = (extVector *)Vector->Prev; // Scan back to the first sibling to find the parent
-      else if (Vector->Parent->Class->BaseClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
+      else if (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR) return (extVector *)(Vector->Parent);
       else return NULL;
    }
 
@@ -1027,7 +1027,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
    //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
 
    if (Vector.LineJoin) {
-      if (Vector.classID() IS ID_VECTORPOLYGON) {
+      if (Vector.classID() IS CLASSID::VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
                case agg::miter_join:        Stroke.line_cap(agg::square_cap); break;

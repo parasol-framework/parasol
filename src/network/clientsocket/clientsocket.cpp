@@ -496,8 +496,8 @@ static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClie
 
 static const FieldArray clClientSocketFields[] = {
    { "ConnectTime", FDF_LARGE|FDF_R },
-   { "Prev",        FDF_OBJECT|FDF_R, NULL, NULL, ID_CLIENTSOCKET },
-   { "Next",        FDF_OBJECT|FDF_R, NULL, NULL, ID_CLIENTSOCKET },
+   { "Prev",        FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::CLIENTSOCKET },
+   { "Next",        FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::CLIENTSOCKET },
    { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
@@ -513,7 +513,7 @@ static const FieldArray clClientSocketFields[] = {
 static ERR init_clientsocket(void)
 {
    clClientSocket = objMetaClass::create::global(
-      fl::BaseClassID(ID_CLIENTSOCKET),
+      fl::BaseClassID(CLASSID::CLIENTSOCKET),
       fl::ClassVersion(1.0),
       fl::Name("ClientSocket"),
       fl::Category(CCF::NETWORK),

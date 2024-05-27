@@ -1111,7 +1111,7 @@ static const FieldDef AlignFlags[] = {
 static const FieldArray clFontFields[] = {
    { "Point",        FDF_DOUBLE|FDF_RW, GET_Point, SET_Point },
    { "GlyphSpacing", FDF_DOUBLE|FDF_RW },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, NULL, ID_BITMAP },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::BITMAP },
    { "String",       FDF_STRING|FDF_RW, NULL, SET_String },
    { "Path",         FDF_STRING|FDF_RW, NULL, SET_Path },
    { "Style",        FDF_STRING|FDF_RI, NULL, SET_Style },
@@ -1152,7 +1152,7 @@ static const FieldArray clFontFields[] = {
 static ERR add_font_class(void)
 {
    clFont = objMetaClass::create::global(
-      fl::BaseClassID(ID_FONT),
+      fl::BaseClassID(CLASSID::FONT),
       fl::ClassVersion(VER_FONT),
       fl::Name("Font"),
       fl::Category(CCF::GRAPHICS),

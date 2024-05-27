@@ -17,7 +17,7 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 class extVectorShape : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORSHAPE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORSHAPE;
    static constexpr CSTRING CLASS_NAME = "VectorShape";
    using create = pf::Create<extVectorShape>;
 
@@ -615,8 +615,8 @@ static const FieldArray clVectorShapeFields[] = {
 static ERR init_supershape(void)
 {
    clVectorShape = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORSHAPE),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORSHAPE),
       fl::Name("VectorShape"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorShapeActions),

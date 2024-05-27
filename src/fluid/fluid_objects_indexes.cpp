@@ -210,7 +210,7 @@ static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
 
       case LUA_TSTRING: {
          OBJECTID id;
-         if (FindObject(lua_tostring(Lua, ValueIndex), 0, FOF::NIL, &id) IS ERR::Okay) {
+         if (FindObject(lua_tostring(Lua, ValueIndex), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) {
             Object->set(Field->FieldID, id);
          }
          else {
@@ -577,7 +577,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
 
             case LUA_TSTRING: {
                OBJECTID id;
-               if (FindObject(lua_tostring(Lua, ValueIndex), 0, FOF::NIL, &id) IS ERR::Okay) {
+               if (FindObject(lua_tostring(Lua, ValueIndex), CLASSID::NIL, FOF::NIL, &id) IS ERR::Okay) {
                   target->set(field->FieldID, id);
                }
                else {

@@ -131,7 +131,7 @@ static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
    CLASSID class_id, subclass;
    if (IdentifyFile(TargetFile, &class_id, &subclass)) {
       subclass = ID_FLUID;
-      class_id = ID_SCRIPT;
+      class_id = CLASSID::SCRIPT;
    }
 
    if (subclass != ID_FLUID) return -1;
