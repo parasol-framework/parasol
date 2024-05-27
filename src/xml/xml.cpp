@@ -34,6 +34,7 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 #include <parasol/modules/xml.h>
 #include <functional>
 #include <sstream>
+#include "../link/unicode.h"
 
 JUMPTABLE_CORE
 

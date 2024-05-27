@@ -72,8 +72,10 @@ typedef unsigned int       ULONG;    // Unsigned 32-bit quantity
 
 #if defined(_MSC_VER)
 typedef __int64            LARGE;
+typedef __int64            BIGINT;
 #else
-typedef long long          LARGE;    // Signed 64-bit quantity
+typedef long long          LARGE;
+typedef long long          BIGINT;
 #endif
 
 #ifdef _WIN32

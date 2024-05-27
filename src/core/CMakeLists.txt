@@ -16,7 +16,6 @@ set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies 
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_messages.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_memory.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_strings.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_unicode.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_folders.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_identify.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_resolution.cpp"

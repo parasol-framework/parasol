@@ -451,4 +451,3 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
 //********************************************************************************************************************
 
 #include "lib_base64.cpp"
-#include "lib_unicode.cpp"

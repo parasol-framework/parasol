@@ -105,6 +105,7 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
 #include "../link/linear_rgb.h"
+#include "../link/unicode.h"
 
 using namespace pf;
 class extBitmap;

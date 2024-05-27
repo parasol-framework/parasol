@@ -48,6 +48,7 @@ using namespace pf;
 //#include "agg_vcgen_markers_term.h"
 
 #include "../link/linear_rgb.h"
+#include "../link/unicode.h"
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS

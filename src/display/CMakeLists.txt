@@ -86,6 +86,7 @@ set_module_defaults (${MOD})
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
+target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 
 if (WIN32)

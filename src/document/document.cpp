@@ -51,6 +51,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include <mutex>
 #include <charconv>
 #include "defs/hashes.h"
+#include "../link/unicode.h"
 
 static const LONG MAX_PAGE_WIDTH    = 30000;
 static const LONG MAX_PAGE_HEIGHT   = 100000;

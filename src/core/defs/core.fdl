@@ -1093,7 +1093,6 @@ struct ScriptArg { // For use with scExec
     "FindObject",
     "FindClass",
     "AnalysePath",
-    "UTF8Copy",
     "FreeResource",
     "GetClassID",
     "GetOwnerID",
@@ -1110,7 +1109,6 @@ struct ScriptArg { // For use with scExec
     "NewObject",
     "NotifySubscribers",
     "CopyFile",
-    "UTF8ValidEncoding",
     "ProcessMessages",
     "IdentifyFile",
     "ReallocMemory",
@@ -1170,14 +1168,7 @@ struct ScriptArg { // For use with scExec
     "CurrentTask",
     "ResolveGroupID",
     "ResolveUserID",
-    "CreateLink",
-    "UTF8CharOffset",
-    "UTF8Length",
-    "UTF8OffsetToChar",
-    "UTF8PrevLength",
-    "UTF8CharLength",
-    "UTF8ReadValue",
-    "UTF8WriteValue")
+    "CreateLink")
 
   c_insert([=[
 

@@ -442,6 +442,7 @@ endif (MINGW)
 # Sub-libraries are defined as linkable objects so that they work correctly between static and modular builds.
 
 add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
+add_library(unicode OBJECT src/link/unicode.cpp)
 
 # --------------------------------------------------------------------------------------------------------------------
 
