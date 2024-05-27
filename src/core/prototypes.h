@@ -35,7 +35,7 @@ ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APT
 ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
 ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
-ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
+ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR * Object);
 void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
 ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);

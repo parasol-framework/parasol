@@ -277,19 +277,19 @@ static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
    log.branch();
 
    LONG counter = glCounter++;
-   CLASSID classid = 0;
+   CLASSID classid = CLASSID::NIL;
    auto datatype = Args->Datatype;
 
    std::vector<ClipItem> items;
    for (unsigned i=0; Args->Objects[i]; i++) {
       pf::ScopedObjectLock<Object> object(Args->Objects[i], 5000);
       if (object.granted()) {
-         if (!classid) classid = object.obj->classID();
+         if (classid IS CLASSID::NIL) classid = object.obj->classID();
 
          if (classid IS object.obj->classID()) { // The client may not mix and match classes.
             if (datatype IS CLIPTYPE::NIL) {
-               if (object.obj->classID() IS ID_PICTURE) datatype = CLIPTYPE::IMAGE;
-               else if (object.obj->classID() IS ID_SOUND) datatype = CLIPTYPE::AUDIO;
+               if (object.obj->classID() IS CLASSID::PICTURE) datatype = CLIPTYPE::IMAGE;
+               else if (object.obj->classID() IS CLASSID::SOUND) datatype = CLIPTYPE::AUDIO;
                else datatype = CLIPTYPE::OBJECT;
             }
 
@@ -812,7 +812,7 @@ static const FieldArray clFields[] = {
 ERR create_clipboard_class(void)
 {
    clClipboard = objMetaClass::create::global(
-      fl::BaseClassID(ID_CLIPBOARD),
+      fl::BaseClassID(CLASSID::CLIPBOARD),
       fl::ClassVersion(VER_CLIPBOARD),
       fl::Name("Clipboard"),
       fl::Category(CCF::IO),

@@ -1737,7 +1737,7 @@ static const FieldArray clFields[] = {
 static ERR add_xml_class(void)
 {
    clXML = objMetaClass::create::global(
-      fl::BaseClassID(ID_XML),
+      fl::BaseClassID(CLASSID::XML),
       fl::ClassVersion(VER_XML),
       fl::Name("XML"),
       fl::FileExtension("*.xml"),

@@ -317,7 +317,7 @@ static ERR SET_PopOver(extSurface *Self, OBJECTID Value)
 
    if (Value) {
       CLASSID class_id = GetClassID(Value);
-      if (class_id != ID_SURFACE) {
+      if (class_id != CLASSID::SURFACE) {
          OBJECTPTR obj;
          if (AccessObject(Value, 3000, &obj) IS ERR::Okay) {
             Value = obj->get<OBJECTID>(FID_Surface);
@@ -325,7 +325,7 @@ static ERR SET_PopOver(extSurface *Self, OBJECTID Value)
          }
          else return ERR::AccessObject;
 
-         if (class_id != ID_SURFACE) return log.warning(ERR::InvalidObject);
+         if (class_id != CLASSID::SURFACE) return log.warning(ERR::InvalidObject);
       }
    }
 

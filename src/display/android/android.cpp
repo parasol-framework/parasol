@@ -20,7 +20,7 @@ static void android_init_window(LONG MsgID)
 
       OBJECTID show_id = glActiveDisplayID;
       OBJECTID owner_id = GetOwnerID(show_id);
-      if (GetClassID(owner_id) IS ID_SURFACE) {
+      if (GetClassID(owner_id) IS CLASSID::SURFACE) {
          show_id = owner_id;
          owner_id = GetOwnerID(owner_id);
          if (GetClassID(owner_id) IS ID_WINDOW) {

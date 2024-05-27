@@ -12,7 +12,7 @@ of `(XOffset,YOffset)`.
 
 class extOffsetFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::OFFSETFX;
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
    using create = pf::Create<extOffsetFX>;
 
@@ -107,8 +107,8 @@ static const FieldArray clOffsetFXFields[] = {
 ERR init_offsetfx(void)
 {
    clOffsetFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_OFFSETFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::OFFSETFX),
       fl::Name("OffsetFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clOffsetFXActions),

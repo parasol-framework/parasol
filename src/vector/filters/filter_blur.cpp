@@ -75,7 +75,7 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
 
 class extBlurFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_BLURFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::BLURFX;
    static constexpr CSTRING CLASS_NAME = "BlurFX";
    using create = pf::Create<extBlurFX>;
 
@@ -465,8 +465,8 @@ static const FieldArray clBlurFXFields[] = {
 ERR init_blurfx(void)
 {
    clBlurFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_BLURFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::BLURFX),
       fl::Name("BlurFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clBlurFXActions),

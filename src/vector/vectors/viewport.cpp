@@ -946,8 +946,8 @@ static const FieldArray clViewFields[] = {
 static ERR init_viewport(void)
 {
    clVectorViewport = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORVIEWPORT),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORVIEWPORT),
       fl::Name("VectorViewport"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorViewportActions),

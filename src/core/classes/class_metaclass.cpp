@@ -86,8 +86,8 @@ static const FieldDef CategoryTable[] = {
 static const std::vector<Field> glMetaFieldsPreset = {
    // If you adjust this table, remember to adjust the index numbers and the byte offsets into the structure.
    { 0, NULL, NULL,                writeval_default, "ClassVersion",    FID_ClassVersion, sizeof(Object), 0, FDF_DOUBLE|FDF_RI },
-   { (MAXINT)"FieldArray", (ERR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields", FID_Fields, sizeof(Object)+8, 1, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { (MAXINT)"Field",      (ERR (*)(APTR, APTR))GET_Dictionary, NULL, writeval_default, "Dictionary", FID_Dictionary, sizeof(Object)+8+(sizeof(APTR)*1), 2, FDF_ARRAY|FD_STRUCT|FDF_R },
+   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields", FID_Fields, sizeof(Object)+8, 1, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { MAXINT("Field"),      (ERR (*)(APTR, APTR))GET_Dictionary, NULL, writeval_default, "Dictionary", FID_Dictionary, sizeof(Object)+8+(sizeof(APTR)*1), 2, FDF_ARRAY|FD_STRUCT|FDF_R },
    { 0, NULL, NULL,                writeval_default, "ClassName",       FID_ClassName,       sizeof(Object)+8+(sizeof(APTR)*2),  3,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "FileExtension",   FID_FileExtension,   sizeof(Object)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "FileDescription", FID_FileDescription, sizeof(Object)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
@@ -98,17 +98,17 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { (MAXINT)&CategoryTable, NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
-   { (MAXINT)"MethodEntry", (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 14, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 14, FDF_ARRAY|FD_STRUCT|FDF_RI },
    { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 15, FDF_POINTER|FDF_I },
    { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(Object), 16, FDF_ARRAY|FDF_POINTER|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 17, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 18, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 19, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 20, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { (MAXINT)"FieldArray", (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 21, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { ID_ROOTMODULE, (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 22, FDF_OBJECT|FDF_R },
+   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 21, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 22, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -136,7 +136,7 @@ static const FieldArray glMetaFields[] = {
    { "Module",          FDF_STRING|FDF_R, GET_Module },
    { "Objects",         FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, GET_Objects },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, NULL, "FieldArray" },
-   { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, NULL, ID_ROOTMODULE },
+   { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, NULL, CLASSID::ROOTMODULE },
    END_FIELD
 };
 
@@ -170,8 +170,8 @@ void init_metaclass(void)
    glMetaClass.Fields             = glMetaFields;
    glMetaClass.ClassName          = "MetaClass";
    glMetaClass.Size               = sizeof(extMetaClass);
-   glMetaClass.ClassID            = ID_METACLASS;
-   glMetaClass.BaseClassID        = ID_METACLASS;
+   glMetaClass.ClassID            = CLASSID::METACLASS;
+   glMetaClass.BaseClassID        = CLASSID::METACLASS;
    glMetaClass.Category           = CCF::SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
@@ -189,7 +189,7 @@ void init_metaclass(void)
 
    glMetaClass.BaseCeiling = glMetaClass.FieldLookup.size();
 
-   glClassMap[ID_METACLASS] = &glMetaClass;
+   glClassMap[CLASSID::METACLASS] = &glMetaClass;
 }
 
 /*********************************************************************************************************************
@@ -232,7 +232,7 @@ ERR CLASS_FindField(extMetaClass *Self, struct mcFindField *Args)
 
 ERR CLASS_Free(extMetaClass *Self)
 {
-   if (Self->ClassID) glClassMap.erase(Self->ClassID);
+   if (Self->ClassID != CLASSID::NIL) glClassMap.erase(Self->ClassID);
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
    Self->~extMetaClass();
    return ERR::Okay;
@@ -246,13 +246,13 @@ ERR CLASS_Init(extMetaClass *Self)
 
    if (!Self->ClassName) return log.warning(ERR::MissingClassName);
 
-   auto class_hash = StrHash(Self->ClassName, false);
+   auto class_hash = CLASSID(StrHash(Self->ClassName, false));
 
-   if (Self->BaseClassID) {
+   if (Self->BaseClassID != CLASSID::NIL) {
       if (class_hash != Self->BaseClassID) Self->ClassID = class_hash;
-      else if (!Self->ClassID) Self->ClassID = Self->BaseClassID;
+      else if (Self->ClassID IS CLASSID::NIL) Self->ClassID = Self->BaseClassID;
    }
-   else if (!Self->BaseClassID) {
+   else if (Self->BaseClassID IS CLASSID::NIL) {
       Self->ClassID = Self->BaseClassID = class_hash;
    }
 
@@ -303,7 +303,7 @@ ERR CLASS_Init(extMetaClass *Self)
          }
       }
       else {
-         log.warning("A base for class $%.8x is not present!", Self->BaseClassID);
+         log.warning("A base for class $%.8x is not present!", ULONG(Self->BaseClassID));
          return ERR::Failed;
       }
    }
@@ -316,7 +316,7 @@ ERR CLASS_Init(extMetaClass *Self)
 
    auto ctx = tlContext;
    while (ctx != &glTopContext) {
-      if (ctx->object()->classID() IS ID_ROOTMODULE) {
+      if (ctx->object()->classID() IS CLASSID::ROOTMODULE) {
          Self->Root = (RootModule *)ctx->object();
          break;
       }
@@ -607,7 +607,7 @@ static ERR GET_Location(extMetaClass *Self, CSTRING *Value)
    if (Self->Path) { *Value = Self->Path; return ERR::Okay; }
    if (Self->Location) { *Value = Self->Location; return ERR::Okay; }
 
-   if (Self->ClassID) {
+   if (Self->ClassID != CLASSID::NIL) {
       if (glClassDB.contains(Self->ClassID)) {
          Self->Location = StrClone(glClassDB[Self->ClassID].Path.c_str());
       }
@@ -1174,7 +1174,7 @@ static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClas
    for (unsigned i=0; Class->Local[i] != 0xff; i++) {
       auto &field = Class->FieldLookup[Class->Local[i]];
       if (field.Arg) {
-         if (auto child_class = (extMetaClass *)FindClass(field.Arg)) {
+         if (auto child_class = (extMetaClass *)FindClass(CLASSID(field.Arg))) {
             *Result = child_class;
             if (auto child_field = lookup_id_byclass(child_class, FieldID, Result)) return child_field;
             *Result = NULL;

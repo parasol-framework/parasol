@@ -11,12 +11,12 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
    CLASSID class_id, subclass;
    if ((error = IdentifyFile(TargetFile, &class_id, &subclass)) != ERR::Okay) {
-      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.\n", TargetFile, GetErrorMsg(error));
-      subclass = ID_SCRIPT;
-      class_id = ID_SCRIPT;
+      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", TargetFile, GetErrorMsg(error));
+      subclass = CLASSID::SCRIPT;
+      class_id = CLASSID::SCRIPT;
    }
 
-   if (class_id IS ID_PARC) glSandbox = TRUE;
+   if (class_id IS CLASSID::PARC) glSandbox = TRUE;
 
    if (glSandbox) {
       pf::vector<std::string> *params = NULL;
@@ -114,7 +114,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
       return error;
    }
 #endif
-   if (NewObject(subclass ? subclass : class_id, &glScript) IS ERR::Okay) {
+   if (NewObject(subclass != CLASSID::NIL ? subclass : class_id, &glScript) IS ERR::Okay) {
       glScript->setTarget(glTarget ? glTarget->UID : CurrentTaskID());
       glScript->setPath(TargetFile);
 

@@ -10,7 +10,7 @@ void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVecto
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
    for (auto node=Vector; node; node=(extVector *)node->Next) {
-      if (node->classID() IS ID_VECTORVIEWPORT) {
+      if (node->classID() IS CLASSID::VECTORVIEWPORT) {
          auto vp = (extVectorViewport *)node;
 
          if (vp->dirty()) gen_vector_path(vp);
@@ -53,7 +53,7 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y
 static void send_input_events(extVector *Vector, InputEvent *Event, bool Propagate = false)
 {
    if (!Vector->InputSubscriptions) {
-      if ((Propagate) and (Vector->Parent) and (Vector->Parent->Class->BaseClassID IS ID_VECTOR)) {
+      if ((Propagate) and (Vector->Parent) and (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR)) {
          send_input_events((extVector *)Vector->Parent, Event, true);
       }
       return;
@@ -89,7 +89,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
    // Some events can bubble-up if they are not intercepted by the target vector.
 
    if ((!consumed) and (Event->Type IS JET::WHEEL)) {
-      if ((Vector->Parent) and (Vector->Parent->Class->BaseClassID IS ID_VECTOR)) {
+      if ((Vector->Parent) and (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR)) {
          send_input_events((extVector *)Vector->Parent, Event, true);
       }
    }

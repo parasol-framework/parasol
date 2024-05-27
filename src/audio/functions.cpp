@@ -71,12 +71,12 @@ static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 
 #ifdef _WIN32
 extern "C" int dsReadData(Object *Self, void *Buffer, int Length) {
-   if (Self->Class->BaseClassID IS ID_SOUND) {
+   if (Self->Class->BaseClassID IS CLASSID::SOUND) {
       LONG result;
       if (((objSound *)Self)->read(Buffer, Length, &result) != ERR::Okay) return 0;
       else return result;
    }
-   else if (Self->Class->BaseClassID IS ID_AUDIO) {
+   else if (Self->Class->BaseClassID IS CLASSID::AUDIO) {
       auto space_left = SAMPLE(Length / ((extAudio *)Self)->DriverBitSize); // Convert to number of samples
 
       SAMPLE mix_left;
@@ -103,7 +103,7 @@ extern "C" int dsReadData(Object *Self, void *Buffer, int Length) {
 }
 
 extern "C" void dsSeekData(Object *Self, LONG Offset) {
-   if (Self->Class->BaseClassID IS ID_SOUND) {
+   if (Self->Class->BaseClassID IS CLASSID::SOUND) {
       ((objSound *)Self)->seek(Offset, SEEK::START);
    }
    else return; // Seeking not applicable for the Audio class.

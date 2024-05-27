@@ -2801,7 +2801,7 @@ static const FieldArray FileFields[] = {
    { "Position", FDF_LARGE|FDF_RW, NULL, SET_Position },
    { "Flags",    FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clFileFlags },
    { "Static",   FDF_LONG|FDF_RI },
-   { "Target",   FDF_OBJECTID|FDF_RW, NULL, NULL, ID_SURFACE },
+   { "Target",   FDF_OBJECTID|FDF_RW, NULL, NULL, CLASSID::SURFACE },
    { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
    // Virtual fields
    { "Date",     FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Date, SET_Date, "DateTime" },

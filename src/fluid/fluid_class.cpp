@@ -1115,8 +1115,8 @@ static ERR register_interfaces(objScript *Self)
 ERR create_fluid(void)
 {
    clFluid = objMetaClass::create::global(
-      fl::BaseClassID(ID_SCRIPT),
-      fl::ClassID(ID_FLUID),
+      fl::BaseClassID(CLASSID::SCRIPT),
+      fl::ClassID(CLASSID::FLUID),
       fl::ClassVersion(VER_FLUID),
       fl::Name("Fluid"),
       fl::Category(CCF::DATA),

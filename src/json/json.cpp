@@ -83,8 +83,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    objModule::create xml = { fl::Name("xml") }; // Load our dependency ahead of class registration
 
    if ((clJSON = objMetaClass::create::global(
-      fl::BaseClassID(ID_XML),
-      fl::ClassID(ID_JSON),
+      fl::BaseClassID(CLASSID::XML),
+      fl::ClassID(CLASSID::JSON),
       fl::Name("JSON"),
       fl::Category(CCF::DATA),
       fl::FileExtension("*.json"),

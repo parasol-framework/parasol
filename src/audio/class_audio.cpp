@@ -1382,7 +1382,7 @@ static const FieldArray clAudioFields[] = {
 ERR add_audio_class(void)
 {
    clAudio = objMetaClass::create::global(
-      fl::BaseClassID(ID_AUDIO),
+      fl::BaseClassID(CLASSID::AUDIO),
       fl::ClassVersion(1.0),
       fl::Name("Audio"),
       fl::Category(CCF::AUDIO),

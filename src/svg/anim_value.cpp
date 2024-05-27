@@ -9,7 +9,7 @@ void anim_value::perform()
 
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      if (vector->classID() IS ID_VECTORGROUP) {
+      if (vector->classID() IS CLASSID::VECTORGROUP) {
          // Groups are a special case because they act as a placeholder and aren't guaranteed to propagate all
          // attributes to their children.
 
@@ -39,7 +39,7 @@ void anim_value::set_value(objVector &Vector)
    auto hash = StrHash(target_attrib);
 
    switch(Vector.Class->ClassID) {
-      case ID_VECTORWAVE:
+      case CLASSID::VECTORWAVE:
          switch (hash) {
             case SVF_CLOSE:     Vector.set(FID_Close, get_string()); return;
             case SVF_AMPLITUDE: FUNIT(FID_Amplitude, get_numeric_value(Vector, FID_Amplitude)).set(&Vector); return;
@@ -49,7 +49,7 @@ void anim_value::set_value(objVector &Vector)
          }
          break;
 
-      case ID_VECTORTEXT:
+      case CLASSID::VECTORTEXT:
          switch (hash) {
             case SVF_DX: Vector.set(FID_DX, get_string()); return;
             case SVF_DY: Vector.set(FID_DY, get_string()); return;
@@ -76,6 +76,8 @@ void anim_value::set_value(objVector &Vector)
             case SVF_FONT_SIZE: Vector.set(FID_FontSize, get_numeric_value(Vector, FID_FontSize)); return;
          }
          break;
+
+      default: break;
    }
 
    switch(hash) {
@@ -231,7 +233,7 @@ void anim_value::set_value(objVector &Vector)
          return;
 
       case SVF_X: {
-         if (Vector.Class->ClassID IS ID_VECTORGROUP) {
+         if (Vector.Class->ClassID IS CLASSID::VECTORGROUP) {
             // Special case: SVG groups don't have an (x,y) position, but can declare one in the form of a
             // transform.  Refer to xtag_use() for a working example as to why.
 
@@ -253,7 +255,7 @@ void anim_value::set_value(objVector &Vector)
       }
 
       case SVF_Y: {
-         if (Vector.Class->ClassID IS ID_VECTORGROUP) {
+         if (Vector.Class->ClassID IS CLASSID::VECTORGROUP) {
             VectorMatrix *m;
             for (m=Vector.Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
 

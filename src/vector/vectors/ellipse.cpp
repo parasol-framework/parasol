@@ -11,7 +11,7 @@ The VectorEllipse class provides the necessary functionality for elliptical path
 
 class extVectorEllipse : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORELLIPSE;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORELLIPSE;
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
    using create = pf::Create<extVectorEllipse>;
 
@@ -440,8 +440,8 @@ static const ActionArray clEllipseActions[] = {
 static ERR init_ellipse(void)
 {
    clVectorEllipse = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORELLIPSE),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORELLIPSE),
       fl::Name("VectorEllipse"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clEllipseActions),

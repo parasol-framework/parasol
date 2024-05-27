@@ -255,9 +255,9 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
             return(ERR_Failed);
          }
          ScriptFile = glDirectory;
-         class_id = ID_SCRIPT;
+         class_id = CLASSID::SCRIPT;
       }
-      else if (class_id != ID_SCRIPT) {
+      else if (class_id != CLASSID::SCRIPT) {
          OBJECTPTR run;
 
          // The script is actually a reference to a data file, in which case we may be able to run it, if it has a file association.
@@ -308,9 +308,9 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
       }
    }
    else {
-      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.\n", ScriptFile, GetErrorMsg(error));
-      subclass = ID_SCRIPT;
-      class_id = ID_SCRIPT;
+      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", ScriptFile, GetErrorMsg(error));
+      subclass = CLASSID::SCRIPT;
+      class_id = CLASSID::SCRIPT;
    }
 
    if (!NewObject(subclass ? subclass : class_id, 0, &glScript)) {

@@ -138,7 +138,7 @@ DEFINE_ENUM_FLAG_OPERATORS(HTF)
 
 class objHTTP : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_HTTP;
+   static constexpr CLASSID CLASS_ID = CLASSID::HTTP;
    static constexpr CSTRING CLASS_NAME = "HTTP";
 
    using create = pf::Create<objHTTP>;

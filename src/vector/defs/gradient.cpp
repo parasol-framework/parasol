@@ -379,7 +379,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
 {
    if (Value) {
-      if (Value->classID() IS ID_VECTORGRADIENT) Self->Inherit = Value;
+      if (Value->classID() IS CLASSID::VECTORGRADIENT) Self->Inherit = Value;
       else return ERR::InvalidValue;
    }
    else Self->Inherit = NULL;
@@ -768,7 +768,7 @@ static const FieldArray clGradientFields[] = {
 ERR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    clVectorGradient = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORGRADIENT),
+      fl::BaseClassID(CLASSID::VECTORGRADIENT),
       fl::Name("VectorGradient"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorGradientActions),

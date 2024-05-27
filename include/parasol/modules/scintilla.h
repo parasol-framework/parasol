@@ -169,7 +169,7 @@ inline ERR sciScrollToPoint(APTR Ob, LONG X, LONG Y) noexcept {
 
 class objScintilla : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SCINTILLA;
+   static constexpr CLASSID CLASS_ID = CLASSID::SCINTILLA;
    static constexpr CSTRING CLASS_NAME = "Scintilla";
 
    using create = pf::Create<objScintilla>;
@@ -219,7 +219,7 @@ class objScintilla : public Object {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
    }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
@@ -448,7 +448,7 @@ inline ERR ssFind(APTR Ob, LONG * Pos, STF Flags) noexcept {
 
 class objScintillaSearch : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SCINTILLASEARCH;
+   static constexpr CLASSID CLASS_ID = CLASSID::SCINTILLASEARCH;
    static constexpr CSTRING CLASS_NAME = "ScintillaSearch";
 
    using create = pf::Create<objScintillaSearch>;

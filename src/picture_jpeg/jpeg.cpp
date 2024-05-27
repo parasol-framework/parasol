@@ -332,8 +332,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    objModule::create pic = { fl::Name("picture") }; // Load our dependency ahead of class registration
 
    clJPEG = objMetaClass::create::global(
-      fl::BaseClassID(ID_PICTURE),
-      fl::ClassID(ID_JPEG),
+      fl::BaseClassID(CLASSID::PICTURE),
+      fl::ClassID(CLASSID::JPEG),
       fl::Name("JPEG"),
       fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),

@@ -65,8 +65,8 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
    ERR error = ERR::Okay;
    STRING res_path = NULL;
-   if (ClassID) *ClassID = 0;
-   if (SubClassID) *SubClassID = 0;
+   if (ClassID) *ClassID = CLASSID::NIL;
+   if (SubClassID) *SubClassID = CLASSID::NIL;
    UBYTE buffer[400] = { 0 };
 
    if ((error = load_datatypes()) != ERR::Okay) { // Load the associations configuration file
@@ -127,13 +127,13 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
       log.trace("Checking extension against class database.");
 
-      if (!*ClassID) {
+      if (*ClassID IS CLASSID::NIL) {
          if (auto filename = get_filename(res_path)) {
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (!rec.Match.empty()) {
                   if (StrCompare(rec.Match.c_str(), filename, 0, STR::WILDCARD) IS ERR::Okay) {
-                     if (rec.ParentID) {
+                     if (rec.ParentID != CLASSID::NIL) {
                         *ClassID = rec.ParentID;
                         if (SubClassID) *SubClassID = rec.ClassID;
                      }
@@ -148,7 +148,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
       // Check data
 
-      if (!*ClassID) {
+      if (*ClassID IS CLASSID::NIL) {
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
          if ((ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read) IS ERR::Okay) and (bytes_read >= 4)) {
@@ -219,7 +219,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
                }
 
                if (match) {
-                  if (rec.ParentID) {
+                  if (rec.ParentID != CLASSID::NIL) {
                      *ClassID = rec.ParentID;
                      if (SubClassID) *SubClassID = rec.ClassID;
                   }
@@ -240,13 +240,13 @@ class_identified:
    if (res_path) FreeResource(res_path);
 
    if (error IS ERR::Okay) {
-      if (*ClassID) log.detail("File belongs to class $%.8x:$%.8x", *ClassID, (SubClassID) ? *SubClassID : 0);
+      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), (SubClassID != NULL) ? (unsigned int)(*SubClassID) : 0);
       else {
          log.detail("Failed to identify file \"%s\"", Path);
          error = ERR::Search;
       }
    }
 
-   if (!(*ClassID)) return ERR::Search;
+   if ((*ClassID) IS CLASSID::NIL) return ERR::Search;
    else return error;
 }

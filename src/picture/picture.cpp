@@ -438,7 +438,7 @@ static ERR PICTURE_NewObject(extPicture *Self)
 
    Self->Quality = 80; // 80% quality rating when saving
 
-   if (NewObject(ID_BITMAP, NF::LOCAL, &Self->Bitmap) IS ERR::Okay) {
+   if (NewObject(CLASSID::BITMAP, NF::LOCAL, &Self->Bitmap) IS ERR::Okay) {
       return ERR::Okay;
    }
    else return log.warning(ERR::NewObject);
@@ -809,7 +809,7 @@ static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
    pf::Log log;
    ERR (**routine)(OBJECTPTR, APTR);
 
-   if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
+   if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->getPtr(FID_ActionTable, &routine) IS ERR::Okay) and (routine)) {
          if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PICTURE_SaveToObject)) {
@@ -1281,8 +1281,8 @@ exit:
 #include "picture_def.c"
 
 static const FieldArray clFields[] = {
-   { "Bitmap",        FDF_LOCAL|FDF_R, NULL, NULL, ID_BITMAP },
-   { "Mask",          FDF_LOCAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Bitmap",        FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
+   { "Mask",          FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
    { "Flags",         FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clPictureFlags },
    { "DisplayHeight", FDF_LONG|FDF_RW },
    { "DisplayWidth",  FDF_LONG|FDF_RW },

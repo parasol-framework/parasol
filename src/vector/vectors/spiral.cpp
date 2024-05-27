@@ -12,7 +12,7 @@ The VectorSpiral class generates spiral paths that extend from a central point.
 
 class extVectorSpiral : public extVector {
    public:
-   static constexpr CLASSID CLASS_ID = ID_VECTORSPIRAL;
+   static constexpr CLASSID CLASS_ID = CLASSID::VECTORSPIRAL;
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
    using create = pf::Create<extVectorSpiral>;
 
@@ -412,8 +412,8 @@ static const FieldArray clVectorSpiralFields[] = {
 static ERR init_spiral(void)
 {
    clVectorSpiral = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORSPIRAL),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORSPIRAL),
       fl::Name("VectorSpiral"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorSpiralActions),

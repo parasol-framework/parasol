@@ -45,7 +45,7 @@ inline ERR svgParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noe
 
 class objSVG : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SVG;
+   static constexpr CLASSID CLASS_ID = CLASSID::SVG;
    static constexpr CSTRING CLASS_NAME = "SVG";
 
    using create = pf::Create<objSVG>;
@@ -67,11 +67,11 @@ class objSVG : public Object {
    }
    inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }

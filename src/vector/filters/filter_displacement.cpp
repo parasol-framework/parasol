@@ -45,7 +45,7 @@ image.  The Input image must remain in its current color space.
 
 class extDisplacementFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_DISPLACEMENTFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::DISPLACEMENTFX;
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
    using create = pf::Create<extDisplacementFX>;
 
@@ -258,8 +258,8 @@ static const FieldArray clDisplacementFXFields[] = {
 ERR init_displacementfx(void)
 {
    clDisplacementFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_DISPLACEMENTFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::DISPLACEMENTFX),
       fl::Name("DisplacementFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clDisplacementFXActions),

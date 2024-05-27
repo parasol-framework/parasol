@@ -141,14 +141,14 @@ objPointer * gfxAccessPointer(void)
    objPointer *pointer = NULL;
 
    if (!glPointerID) {
-      if (FindObject("SystemPointer", ID_POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
+      if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
          AccessObject(glPointerID, 2000, &pointer);
       }
       return pointer;
    }
 
    if (AccessObject(glPointerID, 2000, &pointer) IS ERR::NoMatchingObject) {
-      if (FindObject("SystemPointer", ID_POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
+      if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
          AccessObject(glPointerID, 2000, &pointer);
       }
    }
@@ -525,7 +525,7 @@ ERR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJEC
          #endif
       }
 
-      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE) and ((Flags & CRF::RESTRICT) IS CRF::NIL)) {
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS CLASSID::SURFACE) and ((Flags & CRF::RESTRICT) IS CRF::NIL)) {
          pointer->CursorReleaseID = ObjectID; // Release the cursor image if it goes outside of the given surface object
       }
    }
@@ -551,7 +551,7 @@ ERR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJEC
    }
 
    if (((flags & CRF::RESTRICT) != CRF::NIL) and (ObjectID)) {
-      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE)) { // Must be a public surface object
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS CLASSID::SURFACE)) { // Must be a public surface object
          // Restrict the pointer to the specified surface
          pointer->RestrictID = ObjectID;
 

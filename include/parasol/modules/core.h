@@ -2018,7 +2018,7 @@ struct CoreBase {
    ERR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING * Result);
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
-   ERR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
+   ERR (*_NewObject)(CLASSID ClassID, NF Flags, APTR Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
@@ -2129,7 +2129,7 @@ inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR
 inline ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
-inline ERR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
+inline ERR NewObject(CLASSID ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
@@ -2235,7 +2235,7 @@ extern ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR
 extern ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
 extern ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 extern ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
-extern ERR NewObject(LARGE ClassID, NF Flags, APTR Object);
+extern ERR NewObject(CLASSID ClassID, NF Flags, APTR Object);
 extern void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
 extern ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
@@ -2385,7 +2385,7 @@ inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
-template<class T> inline ERR NewObject(LARGE ClassID, T **Result) {
+template<class T> inline ERR NewObject(CLASSID ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
 }
 
@@ -3114,12 +3114,12 @@ inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Fla
    return Action(AC_MoveToPoint, Object, &moveto);
 }
 
-inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
    struct acSaveImage args = { Dest, { ClassID } };
    return Action(AC_SaveImage, Object, &args);
 }
 
-inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
    struct acSaveToObject args = { Dest, { ClassID } };
    return Action(AC_SaveToObject, Object, &args);
 }
@@ -3201,7 +3201,7 @@ inline ERR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** 
 
 class objMetaClass : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_METACLASS;
+   static constexpr CLASSID CLASS_ID = CLASSID::METACLASS;
    static constexpr CSTRING CLASS_NAME = "MetaClass";
 
    using create = pf::Create<objMetaClass>;
@@ -3326,7 +3326,7 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
 
 class objStorageDevice : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_STORAGEDEVICE;
+   static constexpr CLASSID CLASS_ID = CLASSID::STORAGEDEVICE;
    static constexpr CSTRING CLASS_NAME = "StorageDevice";
 
    using create = pf::Create<objStorageDevice>;
@@ -3416,7 +3416,7 @@ inline ERR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) noexce
 
 class objFile : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_FILE;
+   static constexpr CLASSID CLASS_ID = CLASSID::FILE;
    static constexpr CSTRING CLASS_NAME = "File";
 
    using create = pf::Create<objFile>;
@@ -3646,7 +3646,7 @@ inline ERR cfgMerge(APTR Ob, OBJECTPTR Source) noexcept {
 
 class objConfig : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_CONFIG;
+   static constexpr CLASSID CLASS_ID = CLASSID::CONFIG;
    static constexpr CSTRING CLASS_NAME = "Config";
 
    using create = pf::Create<objConfig>;
@@ -3733,7 +3733,7 @@ class objConfig : public Object {
    inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
@@ -3827,7 +3827,7 @@ inline ERR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) noe
 
 class objScript : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SCRIPT;
+   static constexpr CLASSID CLASS_ID = CLASSID::SCRIPT;
    static constexpr CSTRING CLASS_NAME = "Script";
 
    using create = pf::Create<objScript>;
@@ -4018,7 +4018,7 @@ inline ERR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) noexcept {
 
 class objTask : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_TASK;
+   static constexpr CLASSID CLASS_ID = CLASSID::TASK;
    static constexpr CSTRING CLASS_NAME = "Task";
 
    using create = pf::Create<objTask>;
@@ -4181,7 +4181,7 @@ inline ERR thSetData(APTR Ob, APTR Data, LONG Size) noexcept {
 
 class objThread : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_THREAD;
+   static constexpr CLASSID CLASS_ID = CLASSID::THREAD;
    static constexpr CSTRING CLASS_NAME = "Thread";
 
    using create = pf::Create<objThread>;
@@ -4245,7 +4245,7 @@ inline ERR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) noexcept {
 
 class objModule : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_MODULE;
+   static constexpr CLASSID CLASS_ID = CLASSID::MODULE;
    static constexpr CSTRING CLASS_NAME = "Module";
 
    using create = pf::Create<objModule>;
@@ -4319,7 +4319,7 @@ class objModule : public Object {
 
 class objTime : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_TIME;
+   static constexpr CLASSID CLASS_ID = CLASSID::TIME;
    static constexpr CSTRING CLASS_NAME = "Time";
 
    using create = pf::Create<objTime>;
@@ -4507,7 +4507,7 @@ inline ERR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** It
 
 class objCompression : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COMPRESSION;
+   static constexpr CLASSID CLASS_ID = CLASSID::COMPRESSION;
    static constexpr CSTRING CLASS_NAME = "Compression";
 
    using create = pf::Create<objCompression>;
@@ -4593,7 +4593,7 @@ class objCompression : public Object {
 
 class objCompressedStream : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COMPRESSEDSTREAM;
+   static constexpr CLASSID CLASS_ID = CLASSID::COMPRESSEDSTREAM;
    static constexpr CSTRING CLASS_NAME = "CompressedStream";
 
    using create = pf::Create<objCompressedStream>;

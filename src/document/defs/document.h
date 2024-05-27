@@ -288,7 +288,7 @@ public:
    RTD type;
    bool terminate = false; // If true, can be freed immediately and not on a delay
 
-   docresource(OBJECTID pID, RTD pType, CLASSID pClassID = 0) :
+   docresource(OBJECTID pID, RTD pType, CLASSID pClassID = CLASSID::NIL) :
       object_id(pID), class_id(pClassID), type(pType) { }
 
    ~docresource() {

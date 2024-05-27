@@ -52,7 +52,7 @@ void debug_tree(extVector *Vector, LONG &Level)
          GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
       }
 
-      if ((v->Class->BaseClassID IS ID_VECTOR) and (v->Child)) {
+      if ((v->Class->BaseClassID IS CLASSID::VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
          blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
          debug_tree((extVector *)v->Child, Level);
@@ -79,7 +79,7 @@ static void validate_tree(extVector *Vector)
          log.warning("Invalid coupling between %d (%p) <- %d; Parent: %d", v->Prev->UID, v->Prev->Next, v->UID, v->Parent->UID);
       }
 
-      if ((v->Class->BaseClassID IS ID_VECTOR) and (v->Child)) {
+      if ((v->Class->BaseClassID IS CLASSID::VECTOR) and (v->Child)) {
          validate_tree((extVector *)v->Child);
       }
    }
@@ -90,7 +90,7 @@ static void validate_tree(extVector *Vector)
 
 static ERR set_parent(extVector *Self, OBJECTPTR Owner)
 {
-   if ((Owner->classID() != ID_VECTORSCENE) and (Owner->Class->BaseClassID != ID_VECTOR)) {
+   if ((Owner->classID() != CLASSID::VECTORSCENE) and (Owner->Class->BaseClassID != CLASSID::VECTOR)) {
       return ERR::UnsupportedOwner;
    }
 
@@ -101,7 +101,7 @@ static ERR set_parent(extVector *Self, OBJECTPTR Owner)
    if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
    if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
 
-   if (Self->Parent->Class->BaseClassID IS ID_VECTOR) {
+   if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) {
       if ((!Self->Prev) and (!Self->Next)) {
          if (((extVector *)Self->Parent)->Child) { // Insert at the end
             auto end = ((extVector *)Self->Parent)->Child;
@@ -114,7 +114,7 @@ static ERR set_parent(extVector *Self, OBJECTPTR Owner)
 
       Self->Scene = ((extVector *)Self->Parent)->Scene;
    }
-   else if (Self->Parent->Class->BaseClassID IS ID_VECTORSCENE) {
+   else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTORSCENE) {
       if ((!Self->Prev) and (!Self->Next)) {
          if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
             auto end = ((objVectorScene *)Self->Parent)->Viewport;
@@ -301,7 +301,7 @@ static ERR VECTOR_Free(extVector *Self)
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
-      if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
+      if (Self->Parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       else ((extVector *)Self->Parent)->Child = Self->Next;
    }
 
@@ -472,7 +472,7 @@ static ERR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds.height();
       return ERR::Okay;
    }
-   else if (Self->classID() IS ID_VECTORVIEWPORT) {
+   else if (Self->classID() IS CLASSID::VECTORVIEWPORT) {
       if (Self->dirty()) gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
@@ -503,7 +503,7 @@ static ERR VECTOR_Init(extVector *Self)
 {
    pf::Log log;
 
-   if (Self->classID() IS ID_VECTOR) {
+   if (Self->classID() IS CLASSID::VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR::Failed;
    }
@@ -529,7 +529,7 @@ static ERR VECTOR_Init(extVector *Self)
          if (Self->ParentView) {
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
          }
-         else if (Self->classID() IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
+         else if (Self->classID() IS CLASSID::VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[(extVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
          }
          glResizeSubscriptions.erase(Self);
@@ -593,7 +593,7 @@ static ERR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
    pf::Log log;
 
-   if (!Self->classID()) return ERR::Okay;
+   if (Self->classID() IS CLASSID::NIL) return ERR::Okay;
 
    // Modifying the owner after the root vector has been established is not permitted.
    // The client should instead create a new object under the target and transfer the field values.
@@ -695,7 +695,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
    if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
-   if (Self->classID() IS ID_VECTORVIEWPORT) {
+   if (Self->classID() IS CLASSID::VECTORVIEWPORT) {
       auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
 
       agg::vertex_d w, x, y, z;
@@ -706,7 +706,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
       if (point_in_rectangle(x, y, z, w, agg::vertex_d(Args->X, Args->Y))) return ERR::Okay;
    }
-   else if (Self->classID() IS ID_VECTORRECTANGLE) {
+   else if (Self->classID() IS CLASSID::VECTORRECTANGLE) {
       agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
 
       t_path.rewind(0);
@@ -723,7 +723,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
       auto path = Self->Bounds.as_path(Self->Transform);
       if (get_bounds(path).hit_test(Args->X, Args->Y)) {
-         if ((Self->DisableHitTesting) or (Self->classID() IS ID_VECTORTEXT)) return ERR::Okay;
+         if ((Self->DisableHitTesting) or (Self->classID() IS CLASSID::VECTORTEXT)) return ERR::Okay;
          else {
             // Full hit testing using the true path.  TODO: Find out if there are more optimal hit testing methods.
 
@@ -782,8 +782,8 @@ static ERR VECTOR_Push(extVector *Self, struct vecPush *Args)
       scan->Prev = Self;
 
       if (!Self->Prev) { // Reconfigure the parent's child relationship
-         if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
-         else if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
+         if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)Self->Parent)->Child = Self;
+         else if (Self->Parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       }
       else Self->Prev->Next = Self;
    }
@@ -795,8 +795,8 @@ static ERR VECTOR_Push(extVector *Self, struct vecPush *Args)
       if (Self->Next) Self->Next->Prev = Self->Prev;
 
       if (!Self->Prev) {
-         if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
-         else if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
+         if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
+         else if (Self->Parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       }
 
       Self->Prev = scan; // Vector is ahead of scan
@@ -1131,7 +1131,7 @@ static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
       }
       return ERR::Okay;
    }
-   else if (Value->Class->BaseClassID IS ID_VECTOR) {
+   else if (Value->Class->BaseClassID IS CLASSID::VECTOR) {
       if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_appendpath));
@@ -1517,7 +1517,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
       return ERR::Search;
    }
 
-   if (def->Class->BaseClassID IS ID_VECTORFILTER) {
+   if (def->Class->BaseClassID IS CLASSID::VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
       Self->Filter = (extVectorFilter *)def;
@@ -1720,7 +1720,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
       }
       return ERR::Okay;
    }
-   else if (Value->classID() IS ID_VECTORCLIP) {
+   else if (Value->classID() IS CLASSID::VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_clipmask));
@@ -1801,7 +1801,7 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
       }
       return ERR::Okay;
    }
-   else if (Value->Class->BaseClassID IS ID_VECTOR) {
+   else if (Value->Class->BaseClassID IS CLASSID::VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_morph));
@@ -1855,7 +1855,7 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::InvalidObject);
+   if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
    if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
@@ -1869,8 +1869,8 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
 
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
       Self->Parent = Value->Parent;
-      if (Self->Parent->classID() IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
-      else if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
+      if (Self->Parent->classID() IS CLASSID::VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
+      else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
    return ERR::Okay;
@@ -1965,7 +1965,7 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR::InvalidObject);
+   if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::InvalidObject);
    if (!Value) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
@@ -1973,11 +1973,11 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
 
    if (Self->Parent) { // Detach from the parent
-      if (Self->Parent->classID() IS ID_VECTORSCENE) {
+      if (Self->Parent->classID() IS CLASSID::VECTORSCENE) {
          ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
          Self->Next->Parent = Self->Parent;
       }
-      else if (Self->Parent->Class->BaseClassID IS ID_VECTOR) {
+      else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) {
          ((extVector *)Self->Parent)->Child = Self->Next;
          Self->Next->Parent = Self->Parent;
       }
@@ -2342,7 +2342,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
       }
       return ERR::Okay;
    }
-   else if (Value->classID() IS ID_VECTORTRANSITION) {
+   else if (Value->classID() IS CLASSID::VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_transition));
@@ -2460,10 +2460,10 @@ static const FieldDef clFillRule[] = {
 #include "vector_def.c"
 
 static const FieldArray clVectorFields[] = {
-   { "Child",           FDF_OBJECT|FD_R, NULL, NULL, ID_VECTOR },
-   { "Scene",           FDF_OBJECT|FD_R, NULL, NULL, ID_VECTORSCENE },
-   { "Next",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Next, ID_VECTOR },
-   { "Prev",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Prev, ID_VECTOR },
+   { "Child",           FDF_OBJECT|FD_R, NULL, NULL, CLASSID::VECTOR },
+   { "Scene",           FDF_OBJECT|FD_R, NULL, NULL, CLASSID::VECTORSCENE },
+   { "Next",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Next, CLASSID::VECTOR },
+   { "Prev",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Prev, CLASSID::VECTOR },
    { "Parent",          FDF_OBJECT|FD_R },
    { "Matrices",        FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "VectorMatrix" },
    { "StrokeOpacity",   FDF_DOUBLE|FDF_RW, VECTOR_GET_StrokeOpacity, VECTOR_SET_StrokeOpacity },

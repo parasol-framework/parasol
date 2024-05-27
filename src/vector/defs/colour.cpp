@@ -54,7 +54,7 @@ static const FieldArray clColourFields[] = {
 ERR init_colour(void)
 {
    clVectorColour = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORCOLOUR),
+      fl::BaseClassID(CLASSID::VECTORCOLOUR),
       fl::Name("VectorColour"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourActions),

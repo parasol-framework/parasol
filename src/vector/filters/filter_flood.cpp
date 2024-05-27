@@ -16,7 +16,7 @@ The FloodFX class is an output-only effect that fills its target area with a sin
 
 class extFloodFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_FLOODFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::FLOODFX;
    static constexpr CSTRING CLASS_NAME = "FloodFX";
    using create = pf::Create<extFloodFX>;
 
@@ -170,8 +170,8 @@ static const FieldArray clFloodFXFields[] = {
 ERR init_floodfx(void)
 {
    clFloodFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_FLOODFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::FLOODFX),
       fl::Name("FloodFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clFloodFXActions),

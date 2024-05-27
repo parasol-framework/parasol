@@ -476,12 +476,12 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
-constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
+constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, LONG(Value)); }
 constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
 constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
 constexpr FieldValue BytesPerPixel(LONG Value) { return FieldValue(FID_BytesPerPixel, Value); }
 constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(Value)); }
-constexpr FieldValue ClassID(LONG Value) { return FieldValue(FID_ClassID, Value); }
+constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, LONG(Value)); }
 constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, LONG(Value)); }

@@ -170,15 +170,15 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    OBJECTPTR def = Args->Def;
 
-   if ((def->classID() IS ID_VECTORSCENE) or
-       (def->baseClassID() IS ID_VECTOR) or
-       (def->classID() IS ID_VECTORGRADIENT) or
-       (def->classID() IS ID_VECTORIMAGE) or
-       (def->classID() IS ID_VECTORPATH) or
-       (def->classID() IS ID_VECTORPATTERN) or
-       (def->baseClassID() IS ID_VECTORFILTER) or
-       (def->classID() IS ID_VECTORTRANSITION) or
-       (def->classID() IS ID_VECTORCLIP)) {
+   if ((def->classID() IS CLASSID::VECTORSCENE) or
+       (def->baseClassID() IS CLASSID::VECTOR) or
+       (def->classID() IS CLASSID::VECTORGRADIENT) or
+       (def->classID() IS CLASSID::VECTORIMAGE) or
+       (def->classID() IS CLASSID::VECTORPATH) or
+       (def->classID() IS CLASSID::VECTORPATTERN) or
+       (def->baseClassID() IS CLASSID::VECTORFILTER) or
+       (def->classID() IS CLASSID::VECTORTRANSITION) or
+       (def->classID() IS CLASSID::VECTORCLIP)) {
       // The use of this object as a definition is valid.
    }
    else return log.warning(ERR::InvalidObject);
@@ -525,7 +525,7 @@ cont:
       else if (vector->Next) vector = (extVector *)vector->Next;
       else {
          while ((vector = get_parent(vector))) { // Unwind back up the stack, looking for the first Parent with a Next field.
-            if (vector->Class->BaseClassID != ID_VECTOR) return ERR::Search;
+            if (vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Search;
             if (vector->Next) {
                vector = (extVector *)vector->Next;
                goto cont;
@@ -720,7 +720,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    std::vector<extVector *> focus_gained; // The first reference is the most foreground object
 
    for (auto node=Vector; node; node=(extVector *)node->Parent) {
-      if (node->Class->BaseClassID IS ID_VECTOR) {
+      if (node->Class->BaseClassID IS CLASSID::VECTOR) {
          focus_gained.emplace_back(node);
       }
       else break;
@@ -899,10 +899,10 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 static const FieldArray clSceneFields[] = {
    { "RenderTime",   FDF_LARGE|FDF_R, GET_RenderTime },
    { "Gamma",        FDF_DOUBLE|FDF_RW },
-   { "HostScene",    FDF_OBJECT|FDF_RI,    NULL, NULL, ID_VECTORSCENE },
-   { "Viewport",     FDF_OBJECT|FD_R,      NULL, NULL, ID_VECTORVIEWPORT },
-   { "Bitmap",       FDF_OBJECT|FDF_RW,    NULL, SET_Bitmap, ID_BITMAP },
-   { "Surface",      FDF_OBJECTID|FDF_RI,  NULL, SET_Surface, ID_SURFACE },
+   { "HostScene",    FDF_OBJECT|FDF_RI,    NULL, NULL, CLASSID::VECTORSCENE },
+   { "Viewport",     FDF_OBJECT|FD_R,      NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "Bitmap",       FDF_OBJECT|FDF_RW,    NULL, SET_Bitmap, CLASSID::BITMAP },
+   { "Surface",      FDF_OBJECTID|FDF_RI,  NULL, SET_Surface, CLASSID::SURFACE },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
    { "PageWidth",    FDF_LONG|FDF_RW,      NULL, SET_PageWidth },
    { "PageHeight",   FDF_LONG|FDF_RW,      NULL, SET_PageHeight },

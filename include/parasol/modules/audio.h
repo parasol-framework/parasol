@@ -227,7 +227,7 @@ inline ERR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Chann
 
 class objAudio : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_AUDIO;
+   static constexpr CLASSID CLASS_ID = CLASSID::AUDIO;
    static constexpr CSTRING CLASS_NAME = "Audio";
 
    using create = pf::Create<objAudio>;
@@ -246,7 +246,7 @@ class objAudio : public Object {
    inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
@@ -327,7 +327,7 @@ class objAudio : public Object {
 
 class objSound : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SOUND;
+   static constexpr CLASSID CLASS_ID = CLASSID::SOUND;
    static constexpr CSTRING CLASS_NAME = "Sound";
 
    using create = pf::Create<objSound>;
@@ -381,7 +381,7 @@ class objSound : public Object {
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }

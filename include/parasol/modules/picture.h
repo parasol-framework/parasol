@@ -33,7 +33,7 @@ DEFINE_ENUM_FLAG_OPERATORS(PCF)
 
 class objPicture : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_PICTURE;
+   static constexpr CLASSID CLASS_ID = CLASSID::PICTURE;
    static constexpr CSTRING CLASS_NAME = "Picture";
 
    using create = pf::Create<objPicture>;
@@ -69,11 +69,11 @@ class objPicture : public Object {
       return Action(AC_Read, this, &read);
    }
    inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }
-   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) noexcept {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }

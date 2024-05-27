@@ -26,7 +26,7 @@ Technically the ImageFX object is represented by a new viewport, the bounds of w
 
 class extImageFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_IMAGEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::IMAGEFX;
    static constexpr CSTRING CLASS_NAME = "ImageFX";
    using create = pf::Create<extImageFX>;
 
@@ -161,7 +161,7 @@ static ERR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
    pf::Log log;
 
-   if (Args->Object->classID() IS ID_BITMAP) {
+   if (Args->Object->classID() IS CLASSID::BITMAP) {
       if (!Self->Bitmap) {
          if (((objBitmap *)Args->Object)->BytesPerPixel IS 4) Self->Bitmap = (objBitmap *)Args->Object;
          else log.warning("Attached bitmap ignored; BPP of %d != 4", ((objBitmap *)Args->Object)->BytesPerPixel);
@@ -306,7 +306,7 @@ static const FieldDef clResampleMethod[] = {
 #include "filter_image_def.c"
 
 static const FieldArray clImageFXFields[] = {
-   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, IMAGEFX_GET_Bitmap, NULL, ID_BITMAP },
+   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, IMAGEFX_GET_Bitmap, NULL, CLASSID::BITMAP },
    { "Path",           FDF_VIRTUAL|FDF_STRING|FDF_RI, IMAGEFX_GET_Path, IMAGEFX_SET_Path },
    { "XMLDef",         FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, IMAGEFX_GET_XMLDef },
    { "AspectRatio",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, IMAGEFX_GET_AspectRatio, IMAGEFX_SET_AspectRatio, &clAspectRatio },
@@ -319,8 +319,8 @@ static const FieldArray clImageFXFields[] = {
 ERR init_imagefx(void)
 {
    clImageFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_IMAGEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::IMAGEFX),
       fl::Name("ImageFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageFXActions),

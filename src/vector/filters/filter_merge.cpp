@@ -26,7 +26,7 @@ its vector description on top.
 
 class extMergeFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_MERGEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::MERGEFX;
    static constexpr CSTRING CLASS_NAME = "MergeFX";
    using create = pf::Create<extMergeFX>;
 
@@ -133,8 +133,8 @@ static const FieldArray clMergeFXFields[] = {
 ERR init_mergefx(void)
 {
    clMergeFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_MERGEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::MERGEFX),
       fl::Name("MergeFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clMergeFXActions),

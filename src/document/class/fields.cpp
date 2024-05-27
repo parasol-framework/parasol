@@ -367,7 +367,7 @@ the nearest viewport container will be determined based on object ownership.
 
 static ERR SET_Viewport(extDocument *Self, objVectorViewport *Value)
 {
-   if (Value->CLASS_ID != ID_VECTORVIEWPORT) return ERR::InvalidObject;
+   if (Value->CLASS_ID != CLASSID::VECTORVIEWPORT) return ERR::InvalidObject;
 
    if (Self->initialised()) {
       if (Self->Viewport IS Value) return ERR::Okay;

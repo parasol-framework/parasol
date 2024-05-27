@@ -660,7 +660,7 @@ inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 //********************************************************************************************************************
 
 inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Class->ClassID = ID_VECTORCOLOUR;
+   Colour->Class->ClassID = CLASSID::VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

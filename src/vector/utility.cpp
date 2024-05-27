@@ -110,25 +110,27 @@ CSTRING get_name(OBJECTPTR Vector)
    if (!Vector) return "NULL";
 
    switch(Vector->classID()) {
-      case ID_VECTORCLIP:      return "Clip";
-      case ID_VECTORRECTANGLE: return "Rectangle";
-      case ID_VECTORELLIPSE:   return "Ellipse";
-      case ID_VECTORPATH:      return "Path";
-      case ID_VECTORPOLYGON:   return "Polygon";
-      case ID_VECTORTEXT:      return "Text";
-      case ID_VECTORFILTER:    return "Filter";
-      case ID_VECTORGROUP:     return "Group";
-      case ID_VECTORVIEWPORT:  return "Viewport";
-      case ID_VECTORWAVE:      return "Wave";
+      case CLASSID::VECTORCLIP:      return "Clip";
+      case CLASSID::VECTORRECTANGLE: return "Rectangle";
+      case CLASSID::VECTORELLIPSE:   return "Ellipse";
+      case CLASSID::VECTORPATH:      return "Path";
+      case CLASSID::VECTORPOLYGON:   return "Polygon";
+      case CLASSID::VECTORTEXT:      return "Text";
+      case CLASSID::VECTORFILTER:    return "Filter";
+      case CLASSID::VECTORGROUP:     return "Group";
+      case CLASSID::VECTORVIEWPORT:  return "Viewport";
+      case CLASSID::VECTORWAVE:      return "Wave";
+      default: break;
    }
 
    switch(Vector->baseClassID()) {
-      case ID_VECTORCOLOUR:    return "Colour";
-      case ID_VECTORFILTER:    return "Filter";
-      case ID_VECTORGRADIENT:  return "Gradient";
-      case ID_VECTORPATTERN:   return "Pattern";
-      case ID_VECTOR:          return "Vector";
-      case ID_VECTORSCENE:     return "Scene";
+      case CLASSID::VECTORCOLOUR:    return "Colour";
+      case CLASSID::VECTORFILTER:    return "Filter";
+      case CLASSID::VECTORGRADIENT:  return "Gradient";
+      case CLASSID::VECTORPATTERN:   return "Pattern";
+      case CLASSID::VECTOR:          return "Vector";
+      case CLASSID::VECTORSCENE:     return "Scene";
+      default: break;
    }
 
    return "Unknown";
@@ -346,7 +348,7 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
    for (; Vector; Vector=(extVector *)Vector->Next) {
       if (Vector->dirty()) gen_vector_path(Vector);
 
-      if (Vector->classID() != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+      if (Vector->classID() != CLASSID::VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          if (Vector->BasePath.total_vertices()) {
             DOUBLE stroke = 0;
             if (IncludeTransforms) {

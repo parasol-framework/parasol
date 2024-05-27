@@ -161,7 +161,7 @@ inline point3 rightNormal(const UBYTE m[9], const DOUBLE Scale) {
 
 class extLightingFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_LIGHTINGFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::LIGHTINGFX;
    static constexpr CSTRING CLASS_NAME = "LightingFX";
    using create = pf::Create<extLightingFX>;
 
@@ -894,8 +894,8 @@ static const FieldArray clLightingFXFields[] = {
 ERR init_lightingfx(void)
 {
    clLightingFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_LIGHTINGFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::LIGHTINGFX),
       fl::Name("LightingFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clLightingFXActions),

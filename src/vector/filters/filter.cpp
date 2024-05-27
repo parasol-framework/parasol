@@ -544,7 +544,7 @@ static ERR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if (Args->Object->Class->BaseClassID IS ID_FILTEREFFECT) {
+   if (Args->Object->Class->BaseClassID IS CLASSID::FILTEREFFECT) {
       auto effect = (extFilterEffect *)Args->Object;
 
       if (!Self->Effects) Self->Effects = effect;
@@ -580,7 +580,7 @@ static ERR VECTORFILTER_NewObject(extVectorFilter *Self)
 
 static ERR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 {
-   if (Args->NewOwner->classID() IS ID_VECTORSCENE) {
+   if (Args->NewOwner->classID() IS CLASSID::VECTORSCENE) {
       Self->Scene = (extVectorScene *)Args->NewOwner;
    }
    return ERR::Okay;
@@ -692,7 +692,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERR VECTORFILTER_SET_Inherit(extVectorFilter *Self, extVectorFilter *Value)
 {
    if (Value) {
-      if (Value->Class->BaseClassID IS ID_VECTORFILTER) Self->Inherit = Value;
+      if (Value->Class->BaseClassID IS CLASSID::VECTORFILTER) Self->Inherit = Value;
       else return ERR::InvalidValue;
    }
    else Self->Inherit = NULL;
@@ -893,7 +893,7 @@ static const FieldArray clFilterFields[] = {
 ERR init_filter(void)
 {
    clVectorFilter = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORFILTER),
+      fl::BaseClassID(CLASSID::VECTORFILTER),
       fl::Name("VectorFilter"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorFilterActions),

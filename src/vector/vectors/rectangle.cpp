@@ -641,8 +641,8 @@ static const ActionArray clRectangleActions[] = {
 static ERR init_rectangle(void)
 {
    clVectorRectangle = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTOR),
-      fl::ClassID(ID_VECTORRECTANGLE),
+      fl::BaseClassID(CLASSID::VECTOR),
+      fl::ClassID(CLASSID::VECTORRECTANGLE),
       fl::Name("VectorRectangle"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clRectangleActions),

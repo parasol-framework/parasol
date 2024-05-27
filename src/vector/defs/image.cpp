@@ -143,8 +143,8 @@ static const FieldDef clImageDimensions[] = {
 static const FieldArray clImageFields[] = {
    { "X",            FDF_DOUBLE|FDF_RW },
    { "Y",            FDF_DOUBLE|FDF_RW },
-   { "Picture",      FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Picture, ID_PICTURE },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Bitmap, ID_BITMAP },
+   { "Picture",      FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Picture, CLASSID::PICTURE },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Bitmap, CLASSID::BITMAP },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageUnits },
    { "Dimensions",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clImageDimensions },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageSpread },
@@ -157,7 +157,7 @@ static const FieldArray clImageFields[] = {
 ERR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    clVectorImage = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORIMAGE),
+      fl::BaseClassID(CLASSID::VECTORIMAGE),
       fl::Name("VectorImage"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageActions),

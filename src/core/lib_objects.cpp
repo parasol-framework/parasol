@@ -109,9 +109,9 @@ static ERR object_free(Object *Object)
       return ERR::InUse;
    }
 
-   if (Object->classID() IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
-   else if (Object->classID() IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->ownerID());
-   else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->ownerID());
+   if (Object->classID() IS CLASSID::METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
+   else if (Object->classID() IS CLASSID::MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->ownerID());
+   else if (Object->Name[0])                      log.branch("Name: %s, Owner: %d", Object->Name, Object->ownerID());
    else log.branch("Owner: %d", Object->ownerID());
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
@@ -651,7 +651,7 @@ ERR CheckAction(OBJECTPTR Object, LONG ActionID)
 
    if (Object) {
       if (!Object->Class) return ERR::False;
-      else if (Object->classID() IS ID_METACLASS) {
+      else if (Object->classID() IS CLASSID::METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR::True;
          else return ERR::False;
       }
@@ -764,7 +764,7 @@ objMetaClass * FindClass(CLASSID ClassID)
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
 
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
+         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ULONG(ClassID));
 
          objModule::create mod = { fl::Name(path) };
          if (mod.ok()) {
@@ -776,7 +776,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       }
       else log.warning("No module path defined for class \"%s\"", glClassDB[ClassID].Name.c_str());
    }
-   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ClassID, LONG(glClassDB.size()));
+   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ULONG(ClassID), LONG(glClassDB.size()));
 
    return NULL;
 }
@@ -793,7 +793,7 @@ with a given name:
 
 <pre>
 OBJECTID id;
-FindObject("SystemPointer", ID_POINTER, 0, &id);
+FindObject("SystemPointer", CLASSID::POINTER, 0, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
@@ -863,7 +863,7 @@ ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result
    if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
       if (glObjectLookup.contains(InitialName)) {
          auto &list = glObjectLookup[InitialName];
-         if (!ClassID) {
+         if (ClassID IS CLASSID::NIL) {
             *Result = list.back()->UID;
             return ERR::Okay;
          }
@@ -930,7 +930,7 @@ cid: Returns the base class ID of the object or zero if failure.
 CLASSID GetClassID(OBJECTID ObjectID)
 {
    if (auto object = GetObjectPtr(ObjectID)) return object->Class->BaseClassID;
-   else return 0;
+   else return CLASSID::NIL;
 }
 
 /*********************************************************************************************************************
@@ -1134,8 +1134,8 @@ ERR InitObject(OBJECTPTR Object)
    else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
       if (IdentifyFile(path, &class_id, &subclass_id) IS ERR::Okay) {
-         if ((class_id IS Object->classID()) and (subclass_id)) {
-            log.msg("Searching for subclass $%.8x", subclass_id);
+         if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {
+            log.msg("Searching for subclass $%.8x", ULONG(subclass_id));
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
                   if ((error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL)) IS ERR::Okay) {
@@ -1147,10 +1147,10 @@ ERR InitObject(OBJECTPTR Object)
                }
                else return ERR::Okay;
             }
-            else log.warning("Failed to load module for class #%d.", subclass_id);
+            else log.warning("Failed to load module for class #%d.", ULONG(subclass_id));
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), class_id);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), ULONG(class_id));
 
       Object->Class = cl;  // Put back the original to retain object integrity
    }
@@ -1225,7 +1225,7 @@ owner by using the ~SetOwner() function.
 To destroy an object, call ~FreeResource().
 
 -INPUT-
-large ClassID: A class ID from `system/register.h` or generated by ~ResolveClassName().
+cid ClassID: A class ID from `system/register.h` or generated by ~ResolveClassName().
 flags(NF) Flags:  Optional flags.
 &obj Object: Pointer to an address variable that will store a reference to the new object.
 
@@ -1233,25 +1233,24 @@ flags(NF) Flags:  Optional flags.
 Okay
 NullArgs
 MissingClass: The `ClassID` is invalid or refers to a class that is not installed.
-Failed
-ObjectExists: An object with the provided Name already exists in the system (applies only when the `NF::UNIQUE` flag has been used).
+AllocMemory
 -END-
 
 *********************************************************************************************************************/
 
-ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
+ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 {
    pf::Log log(__FUNCTION__);
 
-   auto class_id = ULONG(ClassID & 0xffffffff);
-   if ((!class_id) or (!Object)) return log.warning(ERR::NullArgs);
+   auto class_id = ClassID;
+   if ((class_id IS CLASSID::NIL) or (!Object)) return log.warning(ERR::NullArgs);
 
    auto mc = (extMetaClass *)FindClass(class_id);
    if (!mc) {
       if (glClassMap.contains(class_id)) {
          log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
       }
-      else log.function("Class $%.8x was not found in the system.", class_id);
+      else log.function("Class $%.8x was not found in the system.", ULONG(class_id));
       return ERR::MissingClass;
    }
 
@@ -1284,7 +1283,7 @@ ERR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       if ((mc->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) { } // Used by classes like RootModule to avoid tracking back to the task.
       else if ((Flags & NF::UNTRACKED) != NF::NIL) {
-         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
+         if (class_id IS CLASSID::MODULE); // Untracked modules have no owner, due to the expunge process.
          else {
             // Untracked objects are owned by the current task.  This ensures that the object
             // is deallocated correctly when the Core is closed.
@@ -1530,12 +1529,12 @@ CLASSID ResolveClassName(CSTRING ClassName)
    if ((!ClassName) or (!*ClassName)) {
       pf::Log log(__FUNCTION__);
       log.warning(ERR::NullArgs);
-      return 0;
+      return CLASSID::NIL;
    }
 
-   CLASSID cid = StrHash(ClassName, FALSE);
+   CLASSID cid = CLASSID(StrHash(ClassName, FALSE));
    if (glClassDB.contains(cid)) return cid;
-   else return 0;
+   else return CLASSID::NIL;
 }
 
 /*********************************************************************************************************************
@@ -1562,7 +1561,7 @@ CSTRING ResolveClassID(CLASSID ID)
    if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
 
    pf::Log log(__FUNCTION__);
-   log.warning("Failed to resolve ID $%.8x", ID);
+   log.warning("Failed to resolve ID $%.8x", ULONG(ID));
    return NULL;
 }
 
@@ -1665,7 +1664,7 @@ allocations.  For example:
 InitObject(display);
 auto ctx = SetContext(display);
 
-   NewObject(ID_BITMAP, &bitmap);
+   NewObject(CLASSID::BITMAP, &bitmap);
    AllocMemory(1000, MEM::DATA, &memory, NULL);
 
 SetContext(ctx);
@@ -1680,7 +1679,7 @@ on the display's existence.  Please keep in mind that the following is incorrect
 InitObject(display);
 auto ctx = SetContext(display);
 
-   NewObject(ID_BITMAP, &bitmap);
+   NewObject(CLASSID::BITMAP, &bitmap);
    AllocMemory(1000, MEM::DATA, &memory, NULL);
 
 SetContext(ctx);

@@ -811,7 +811,7 @@ static ERR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
-   if ((Args->Dest->classID() != ID_BITMAP)) return log.warning(ERR::Args);
+   if ((Args->Dest->classID() != CLASSID::BITMAP)) return log.warning(ERR::Args);
 
    auto target = (extBitmap *)Args->Dest;
 
@@ -1687,7 +1687,7 @@ static ERR BITMAP_Query(extBitmap *Self)
          Self->BitsPerPixel  = 32;
          Self->BytesPerPixel = 4;
 #if 1
-         if (FindObject("SystemDisplay", ID_DISPLAY, FOF::NIL, &display_id) IS ERR::Okay) {
+         if (FindObject("SystemDisplay", CLASSID::DISPLAY, FOF::NIL, &display_id) IS ERR::Okay) {
             if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
                Self->AmtColours    = display->Bitmap->AmtColours;
                Self->BytesPerPixel = display->Bitmap->BytesPerPixel;
@@ -1846,7 +1846,7 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
-   if ((Self->Owner) and (Self->Owner->classID() IS ID_DISPLAY)) goto setfields;
+   if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::DISPLAY)) goto setfields;
 
 #ifdef __xwindows__
 

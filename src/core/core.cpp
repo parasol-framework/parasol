@@ -728,15 +728,15 @@ void print_diagnosis(LONG Signal)
       glCodeIndex = CP_PRINT_CONTEXT;
 
       if (ctx->object()) {
-         CLASSID class_id = 0;
+         CLASSID class_id = CLASSID::NIL;
          CSTRING class_name;
          if (ctx != &glTopContext) {
-            if ((class_id = ctx->object()->classID())) class_name = ResolveClassID(class_id);
+            if ((class_id = ctx->object()->classID()) != CLASSID::NIL) class_name = ResolveClassID(class_id);
             else class_name = "None";
          }
          else class_name = "None";
 
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, class_id);
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, ULONG(class_id));
       }
 
       glPageFault = 0;

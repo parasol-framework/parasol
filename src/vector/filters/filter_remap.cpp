@@ -128,7 +128,7 @@ class Component {
 
 class extRemapFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_REMAPFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::REMAPFX;
    static constexpr CSTRING CLASS_NAME = "RemapFX";
    using create = pf::Create<extRemapFX>;
 
@@ -509,8 +509,8 @@ static const FieldArray clRemapFXFields[] = {
 ERR init_remapfx(void)
 {
    clRemapFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_REMAPFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::REMAPFX),
       fl::Name("RemapFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clRemapFXActions),

@@ -63,7 +63,7 @@ UnitX/Y is considerably smaller than a device pixel.
 
 class extConvolveFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_CONVOLVEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::CONVOLVEFX;
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
    using create = pf::Create<extConvolveFX>;
 
@@ -650,8 +650,8 @@ static const FieldArray clConvolveFXFields[] = {
 ERR init_convolvefx(void)
 {
    clConvolveFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_CONVOLVEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::CONVOLVEFX),
       fl::Name("ConvolveFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clConvolveFXActions),

@@ -296,7 +296,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
    if (!Self->Viewport) return log.warning(ERR::NoData);
 
-   if ((Args->ClassID) and (Args->ClassID != ID_SVG)) {
+   if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->getPtr(FID_ActionTable, &actions) IS ERR::Okay) and (actions)) {
          if ((actions[AC_SaveToObject]) and (actions[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
@@ -559,14 +559,14 @@ to terminate the SVG object without impacting the resources it created.
 
 static ERR SET_Target(extSVG *Self, OBJECTPTR Value)
 {
-   if (Value->classID() IS ID_VECTORSCENE) {
+   if (Value->classID() IS CLASSID::VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
       auto owner = Value->Owner;
-      while ((owner) and (owner->classID() != ID_VECTORSCENE)) {
+      while ((owner) and (owner->classID() != CLASSID::VECTORSCENE)) {
          owner = owner->Owner;
       }
 

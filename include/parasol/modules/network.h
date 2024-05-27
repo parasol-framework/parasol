@@ -182,7 +182,7 @@ inline ERR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
 
 class objClientSocket : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_CLIENTSOCKET;
+   static constexpr CLASSID CLASS_ID = CLASSID::CLIENTSOCKET;
    static constexpr CSTRING CLASS_NAME = "ClientSocket";
 
    using create = pf::Create<objClientSocket>;
@@ -273,7 +273,7 @@ inline ERR prxFind(APTR Ob, LONG Port, LONG Enabled) noexcept {
 
 class objProxy : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_PROXY;
+   static constexpr CLASSID CLASS_ID = CLASSID::PROXY;
    static constexpr CSTRING CLASS_NAME = "Proxy";
 
    using create = pf::Create<objProxy>;
@@ -400,7 +400,7 @@ inline ERR nlBlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
 
 class objNetLookup : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_NETLOOKUP;
+   static constexpr CLASSID CLASS_ID = CLASSID::NETLOOKUP;
    static constexpr CSTRING CLASS_NAME = "NetLookup";
 
    using create = pf::Create<objNetLookup>;
@@ -490,7 +490,7 @@ inline ERR nsWriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
 
 class objNetSocket : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_NETSOCKET;
+   static constexpr CLASSID CLASS_ID = CLASSID::NETSOCKET;
    static constexpr CSTRING CLASS_NAME = "NetSocket";
 
    using create = pf::Create<objNetSocket>;

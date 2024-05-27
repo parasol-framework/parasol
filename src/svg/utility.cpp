@@ -14,11 +14,11 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
    Level = Level + 1;
 
    while (Vector) {
-      if (Vector->classID() IS ID_VECTORSCENE) {
+      if (Vector->classID() IS CLASSID::VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, ((objVectorScene *)Vector)->Viewport, Level);
       }
-      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
+      else if (Vector->Class->BaseClassID IS CLASSID::VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing.c_str(), shape->className());
          if (shape->Child) debug_branch(Header, shape->Child, Level);
@@ -35,7 +35,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
    LONG level = 0;
    while (Vector) {
       debug_branch(Header, Vector, level);
-      if (Vector->Class->BaseClassID IS ID_VECTOR) {
+      if (Vector->Class->BaseClassID IS CLASSID::VECTOR) {
          Vector = (((objVector *)Vector)->Next);
       }
       else break;
@@ -108,11 +108,11 @@ static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB
       }
    }
 
-   if (Vector->Class->BaseClassID != ID_VECTOR) return ERR::Failed;
+   if (Vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Failed;
 
    Vector = (objVector *)Vector->Parent;
    while (Vector) {
-      if (Vector->Class->BaseClassID != ID_VECTOR) return ERR::Failed;
+      if (Vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Failed;
 
       if (GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL) IS ERR::Okay) {
          if (RGB.Alpha != 0) return ERR::Okay;
@@ -247,7 +247,7 @@ static CSTRING folder(extSVG *Self)
 
 static void parse_transform(objVector *Vector, const std::string Value, LONG Tag)
 {
-   if ((Vector->Class->BaseClassID IS ID_VECTOR) and (!Value.empty())) {
+   if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
       if (vecNewMatrix((objVector *)Vector, &matrix, false) IS ERR::Okay) {
          vecParseTransform(matrix, Value.c_str());
@@ -472,7 +472,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
    objXML *xml;
    ERR error = ERR::Okay;
-   if (NewObject(ID_XML, NF::LOCAL, &xml) IS ERR::Okay) {
+   if (NewObject(CLASSID::XML, NF::LOCAL, &xml) IS ERR::Okay) {
       objTask *task = CurrentTask();
       STRING working_path = NULL;
 
@@ -542,7 +542,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             auto view = Self->Scene->Viewport;
-            while ((view) and (view->classID() != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
+            while ((view) and (view->classID() != CLASSID::VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
             if (view) view->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)));
          }
       }

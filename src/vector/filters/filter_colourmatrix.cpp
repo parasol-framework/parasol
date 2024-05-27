@@ -319,7 +319,7 @@ public:
 
 class extColourFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COLOURFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::COLOURFX;
    static constexpr CSTRING CLASS_NAME = "ColourFX";
    using create = pf::Create<extColourFX>;
 
@@ -574,8 +574,8 @@ static const FieldArray clColourFXFields[] = {
 ERR init_colourfx(void)
 {
    clColourFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_COLOURFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::COLOURFX),
       fl::Name("ColourFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourFXActions),

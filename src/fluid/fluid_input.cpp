@@ -132,7 +132,7 @@ static int input_keyboard(lua_State *Lua)
    if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->UID;
    else object_id = lua_tointeger(Lua, 1);
 
-   if ((object_id) and (GetClassID(object_id) != ID_SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
+   if ((object_id) and (GetClassID(object_id) != CLASSID::SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
 
    LONG function_type = lua_type(Lua, 2);
    if ((function_type IS LUA_TFUNCTION) or (function_type IS LUA_TSTRING));

@@ -38,7 +38,7 @@ and A.
 
 class extTurbulenceFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_TURBULENCEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
    using create = pf::Create<extTurbulenceFX>;
 
@@ -488,8 +488,8 @@ static const FieldArray clTurbulenceFXFields[] = {
 ERR init_turbulencefx(void)
 {
    clTurbulenceFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_TURBULENCEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::TURBULENCEFX),
       fl::Name("TurbulenceFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clTurbulenceFXActions),
