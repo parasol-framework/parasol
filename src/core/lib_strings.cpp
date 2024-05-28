@@ -245,7 +245,7 @@ This function compares two strings against each other.  If the strings match the
 returns `ERR::False`.  By default the function is not case sensitive, but you can turn on case sensitivity by
 specifying the `STR::CASE` flag.
 
-If you set the `Length` to 0, the function will compare both strings for differences until a string terminates.  If all
+If the `Length` is 0, the function will compare both strings for differences until a string terminates.  If all
 characters matched up until the termination, `ERR::Okay` will be returned regardless of whether or not one of the strings
 happened to be longer than the other.
 
