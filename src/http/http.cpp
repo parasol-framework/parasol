@@ -99,6 +99,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <parasol/modules/http.h>
 //#include <parasol/modules/display.h>
 #include <parasol/modules/network.h>
+#include "../link/base64.h"
 
 #include "md5.c"
 

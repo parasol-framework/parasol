@@ -31,6 +31,7 @@ target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/katana-parser/src")
 
 target_link_libraries (${MOD} PUBLIC linear_rgb)
+target_link_libraries (${MOD} PUBLIC base64)
 
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 

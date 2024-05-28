@@ -443,6 +443,7 @@ endif (MINGW)
 
 add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
 add_library(unicode OBJECT src/link/unicode.cpp)
+add_library(base64 OBJECT src/link/base64.cpp)
 
 # --------------------------------------------------------------------------------------------------------------------
 

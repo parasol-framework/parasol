@@ -29,7 +29,6 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
 ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
-ERR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
 ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
@@ -90,7 +89,6 @@ ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, 
 ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args);
-LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 ERR SetResourcePath(RP PathType, CSTRING Path);
 objTask * CurrentTask();

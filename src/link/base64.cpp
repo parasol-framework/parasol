@@ -1,18 +1,11 @@
-/*********************************************************************************************************************
 
--CATEGORY-
-Name: Strings
--END-
-
-**********************************************************************************************************************/
+#include "base64.h"
 
 typedef enum { step_a=0, step_b, step_c, step_d } base64_decodestep;
 typedef enum { step_A=0, step_B, step_C } base64_encodestep;
 
 static const char * encoding = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char decoding[] = {62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-2,-1,-1,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51};
-
-const LONG CHARS_PER_LINE = 72;
 
 static int base64_decode_block(CSTRING, LONG, char *, pfBase64Decode *);
 static int base64_encode_block(CSTRING, LONG, char *, pfBase64Encode *);

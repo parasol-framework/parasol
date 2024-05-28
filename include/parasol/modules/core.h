@@ -1720,20 +1720,6 @@ struct ResourceManager {
    ERR (*Free)(APTR);     // A function that will remove the resource's content when terminated.
 };
 
-typedef struct pfBase64Decode {
-   UBYTE Step;             // Internal
-   UBYTE PlainChar;        // Internal
-   UBYTE Initialised:1;    // Internal
-  pfBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
-} BASE64DECODE;
-
-typedef struct pfBase64Encode {
-   UBYTE Step;        // Internal
-   UBYTE Result;      // Internal
-   LONG  StepCount;   // Internal
-  pfBase64Encode() : Step(0), Result(0), StepCount(0) { };
-} BASE64ENCODE;
-
 struct FunctionField {
    CSTRING Name;    // Name of the field
    ULONG   Type;    // Type of the field
@@ -2012,7 +1998,6 @@ struct CoreBase {
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
    ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
-   ERR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING * Result);
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
@@ -2073,7 +2058,6 @@ struct CoreBase {
    ERR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
-   LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
    ERR (*_SetResourcePath)(RP PathType, CSTRING Path);
    objTask * (*_CurrentTask)(void);
@@ -2114,7 +2098,6 @@ inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
-inline ERR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
@@ -2175,7 +2158,6 @@ inline ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Cal
 inline ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
-inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERR SetResourcePath(RP PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
@@ -2211,7 +2193,6 @@ extern ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG
 extern ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern const struct SystemState * GetSystemState(void);
 extern ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
-extern ERR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 extern ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 extern ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
 extern ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
@@ -2272,7 +2253,6 @@ extern ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Cal
 extern ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 extern void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 extern void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
-extern LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 extern ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 extern ERR SetResourcePath(RP PathType, CSTRING Path);
 extern objTask * CurrentTask(void);
