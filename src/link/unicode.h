@@ -3,7 +3,6 @@
 #include <parasol/main.h>
 
 LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size);
-LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
 ULONG UTF8ReadValue(CSTRING String, LONG *Length);
 //CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 LONG UTF8WriteValue(LONG Value, STRING String, LONG StringSize);
@@ -24,7 +23,7 @@ int: Returns the number of bytes used to create the UTF-8 character referred to 
 
 *********************************************************************************************************************/
 
-static inline LONG UTF8CharLength(CSTRING String)
+[[nodiscard]] static inline LONG UTF8CharLength(CSTRING String)
 {
    if ((!String) or (!*String)) return 0;
 
@@ -50,7 +49,7 @@ int: Returns the byte offset of the character.
 
 *********************************************************************************************************************/
 
-static inline LONG UTF8CharOffset(CSTRING String, LONG Index)
+[[nodiscard]] static inline LONG UTF8CharOffset(CSTRING String, LONG Index)
 {
    if (!String) return 0;
 
@@ -77,7 +76,7 @@ int: Returns the total number of characters used in the supplied UTF-8 string.
 
 *********************************************************************************************************************/
 
-static inline LONG UTF8Length(CSTRING String)
+[[nodiscard]] static inline LONG UTF8Length(CSTRING String)
 {
    if (!String) return 0;
 
@@ -104,7 +103,7 @@ int: Returns the number of the character at the given byte position.
 
 *********************************************************************************************************************/
 
-static inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset)
+[[nodiscard]] static inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset)
 {
    if (!String) return 0;
 
@@ -133,7 +132,7 @@ int: Returns the byte-length of the previous character.
 
 *********************************************************************************************************************/
 
-static inline LONG UTF8PrevLength(CSTRING String, LONG ByteIndex)
+[[nodiscard]] static inline LONG UTF8PrevLength(CSTRING String, LONG ByteIndex)
 {
    LONG len = 0;
    for (--ByteIndex; ByteIndex > 0; --ByteIndex) {
