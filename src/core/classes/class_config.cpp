@@ -1064,7 +1064,7 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
    if ((!Group) or (!*Group)) return NULL;
 
    for (auto & [group, keys] : Self->Groups[0]) {
-      if (StrCompare(Group, group.c_str(), 0, STR::WILDCARD) IS ERR::Okay) return &keys;
+      if (wildcmp(Group, group)) return &keys;
    }
 
    return NULL;

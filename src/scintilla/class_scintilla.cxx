@@ -2258,8 +2258,8 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
       while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
       Path = Path + i;
 
-      for (i=0; i < ARRAYSIZE(glLexers); i++) {
-         if (StrCompare(glLexers[i].File, Path, 0, STR::WILDCARD) IS ERR::Okay) {
+      for (i=0; i < std::ssize(glLexers); i++) {
+         if (wildcmp(glLexers[i].File, Path)) {
             pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
             log.branch("Lexer for the loaded file is %d.", LONG(Self->Lexer));

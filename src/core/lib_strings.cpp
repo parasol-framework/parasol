@@ -233,15 +233,11 @@ If the `STR::MATCH_LEN` flag is specified, you can force the function into retur
 condition that both strings are of matching lengths.  This flag is typically specified if the `Length` argument has
 been set to 0.
 
-If the `STR::WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
-meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance
-`ABC*` would match to `ABCDEF` and `1?3` would match to `1x3`.
-
 -INPUT-
 cstr String1: Pointer to the first string.
 cstr String2: Pointer to the second string.
 int Length:  The maximum number of characters to compare.  Does not apply to wildcard comparisons.
-int(STR) Flags:   Optional flags.
+int(STR) Flags: Optional flags.
 
 -ERRORS-
 True:  The strings match.
@@ -256,16 +252,9 @@ ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 
    if (String1 IS String2) return ERR::Okay; // Return a match if both addresses are equal
 
-   LONG len;
-   if (!Length) len = 0x7fffffff;
-   else len = Length;
+   LONG len = (!Length) ? 0x7fffffff : Length;
 
-   if ((Flags & STR::WILDCARD) != STR::NIL) {
-      auto matched = wildcmp(String1, String2, (Flags & STR::CASE) != STR::NIL);
-      if (matched) return ERR::True;
-      else return ERR::False;
-   }
-   else if ((Flags & STR::CASE) != STR::NIL) {
+   if ((Flags & STR::CASE) != STR::NIL) {
       while ((len) and (*String1) and (*String2)) {
          if (*String1++ != *String2++) return ERR::False;
          len--;
@@ -287,7 +276,7 @@ ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
    // If we get here, one of strings has terminated or we have exhausted the number of characters that we have been
    // requested to check.
 
-   if ((Flags & (STR::MATCH_LEN|STR::WILDCARD)) != STR::NIL) {
+   if ((Flags & STR::MATCH_LEN) != STR::NIL) {
       if ((*String1 IS 0) and (*String2 IS 0)) return ERR::Okay;
       else return ERR::False;
    }

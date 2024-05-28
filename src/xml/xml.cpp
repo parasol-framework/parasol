@@ -1431,12 +1431,12 @@ static ERR XML_Sort(extXML *Self, struct xmlSort *Args)
       for (auto &filter : filters) {
          XMLTag *tag = NULL;
          // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
-         if (StrCompare(filter.first, scan.Attribs[0].Name, 0, STR::WILDCARD) IS ERR::Okay) {
+         if (pf::wildcmp(filter.first, scan.Attribs[0].Name)) {
             tag = &scan;
          }
          else {
             for (auto &child : scan.Children) {
-               if (StrCompare(filter.first, child.Attribs[0].Name, 0, STR::WILDCARD) IS ERR::Okay) {
+               if (pf::wildcmp(filter.first, child.Attribs[0].Name)) {
                   tag = &child;
                   break;
                }
@@ -1464,7 +1464,7 @@ static ERR XML_Sort(extXML *Self, struct xmlSort *Args)
          }
          else { // Extract the sort data from the specified tag attribute
             for (auto attrib=tag->Attribs.begin()+1; attrib != tag->Attribs.end(); attrib++) {
-               if (StrCompare(filter.second, attrib->Name, 0, STR::WILDCARD) IS ERR::Okay) {
+               if (pf::wildcmp(filter.second, attrib->Name)) {
                   sortval += attrib->Value;
                   break;
                }

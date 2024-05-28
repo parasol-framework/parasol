@@ -132,7 +132,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (!rec.Match.empty()) {
-                  if (StrCompare(rec.Match.c_str(), filename, 0, STR::WILDCARD) IS ERR::Okay) {
+                  if (wildcmp(rec.Match, filename)) {
                      if (rec.ParentID != CLASSID::NIL) {
                         *ClassID = rec.ParentID;
                         if (SubClassID) *SubClassID = rec.ClassID;

@@ -653,7 +653,7 @@ static ERR FLUID_Init(objScript *Self)
    pf::Log log;
 
    if (Self->Path) {
-      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR::WILDCARD) != ERR::Okay) {
+      if (!wildcmp("*.fluid|*.fb|*.lua", Self->Path)) {
          log.trace("No support for path '%s'", Self->Path);
          return ERR::NoSupport;
       }
@@ -776,7 +776,7 @@ static ERR FLUID_Init(objScript *Self)
    //    \* $FLUID
    //    // $FLUID
 
-   if (StrCompare("?? $FLUID", str, 0, STR::WILDCARD) IS ERR::Okay) {
+   if (wildcmp("?? $FLUID", str)) {
 
    }
 

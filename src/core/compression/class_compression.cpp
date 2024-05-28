@@ -495,7 +495,7 @@ static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFile
       if (OpenDir(srcfolder.c_str(), RDF::FILE, &dir) IS ERR::Okay) {
          while (ScanDir(dir) IS ERR::Okay) {
             FileInfo *scan = dir->Info;
-            if (StrCompare(filename, scan->Name, 0, STR::WILDCARD) IS ERR::Okay) {
+            if (wildcmp(filename, scan->Name)) {
                auto folder = src.substr(0, pathlen);
                folder.append(scan->Name);
                error = compress_file(Self, folder, path, FALSE);
@@ -1132,7 +1132,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompress
 
    for (auto &zf : Self->Files) {
       log.trace("Found %s", zf.Name);
-      if (StrCompare(Args->Path, zf.Name, 0, STR::WILDCARD) IS ERR::Okay) {
+      if (wildcmp(Args->Path, zf.Name)) {
          log.trace("Extracting \"%s\"", zf.Name);
 
          if (Self->OutputID) {
@@ -1474,7 +1474,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecompre
    LONG total_scanned = 0;
    for (auto &list : Self->Files) {
       total_scanned++;
-      if (StrCompare(Args->Path, list.Name, 0, STR::WILDCARD) != ERR::Okay) continue;
+      if (!wildcmp(Args->Path, list.Name)) continue;
 
       log.trace("Decompressing \"%s\"", list.Name);
 
@@ -1638,17 +1638,16 @@ exit:
 Find: Find the first item that matches a given filter.
 
 Use the Find() method to search for a specific item in an archive.  The algorithm will return the first item that
-matches the `Path` parameter string in conjunction with the options in `Flags`.  The options match those in the
-~Core.StrCompare() function - in particular `STR::CASE`, `STR::MATCH_LEN` and `STR::WILDCARD` are the most
-useful.
+matches the `Path` string in conjunction with the `Case` and `Wildcard` options.
 
-Please refer to the #Scan() method for a break-down of the !CompressedItem structure that is returned by this
-method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If
-persistent values are required, copy the resulting structure immediately after the call.
+If successful, the discovered item is returned as a !CompressedItem.  The result is temporary and
+values will be discarded on the next call to this method.  If persistent values are required, copy the resulting
+structure immediately after the call.
 
 -INPUT-
 cstr Path: Search for a specific item or items, using wildcards.
-int(STR) Flags: String comparison flags used by ~Core.StrCompare().
+int CaseSensitive: Set to `true` if `Path` comparisons are case-sensitive.
+int Wildcard: Set to `true` if `Path` uses wildcards.
 &struct(*CompressedItem) Item: The discovered item is returned in this parameter, or `NULL` if the search failed.
 
 -ERRORS-
@@ -1668,9 +1667,16 @@ static ERR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
    if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
    if (Self->isSubClass()) return ERR::NoSupport;
 
-   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, LONG(Args->Flags));
+   log.traceBranch("Path: %s, Case: %d, Wildcard: %d", Args->Path, Args->CaseSensitive, Args->Wildcard);
    for (auto &item : Self->Files) {
-      if (StrCompare(Args->Path, item.Name, 0, Args->Flags) != ERR::Okay) continue;
+      if (Args->Wildcard) {
+         if (!wildcmp(Args->Path, item.Name, Args->CaseSensitive)) continue;
+      }
+      else {
+         STR flags = STR::MATCH_LEN;
+         if (Args->CaseSensitive) flags |= STR::CASE;
+         if (StrCompare(Args->Path, item.Name, 0, flags) != ERR::Okay) continue;
+      }
 
       zipfile_to_item(item, glFindMeta);
       Args->Item = &glFindMeta;
@@ -1912,7 +1918,7 @@ static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *Ar
    log.msg("%s", Args->Path);
 
    for (auto it = Self->Files.begin(); it != Self->Files.end(); ) {
-      if (StrCompare(Args->Path, it->Name, 0, STR::WILDCARD) IS ERR::Okay) {
+      if (wildcmp(Args->Path, it->Name)) {
          // Delete the file from the archive
 
          if (Self->OutputID) {
@@ -2000,7 +2006,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       }
 
       if ((Args->Filter) and (Args->Filter[0])) {
-         if (StrCompare(Args->Filter, item.Name, 0, STR::WILDCARD) IS ERR::Okay) break;
+         if (wildcmp(Args->Filter, item.Name)) break;
          else continue;
       }
 

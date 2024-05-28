@@ -61,7 +61,7 @@ FDEF maCompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BU
 FDEF maDecompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maDecompressObject[] = { { "Path", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maScan[] = { { "Folder", FD_STR }, { "Filter", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maFind[] = { { "Path", FD_STR }, { "Flags", FD_LONG }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
+FDEF maFind[] = { { "Path", FD_STR }, { "CaseSensitive", FD_LONG }, { "Wildcard", FD_LONG }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clCompressionMethods[] = {
    { -1, (APTR)COMPRESSION_CompressBuffer, "CompressBuffer", maCompressBuffer, sizeof(struct cmpCompressBuffer) },

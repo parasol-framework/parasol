@@ -60,7 +60,7 @@ ERR extXML::find_tag(CSTRING XPath)
    // Parse filter instructions
 
    std::string attribvalue, attribname;
-   auto cmpflags = STR::MATCH_LEN;
+   bool wild = false;
    LONG subscript = 0;
 
    if ((this->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("XPath: %s, TagName: %s", XPath, tagname.c_str());
@@ -114,7 +114,7 @@ ERR extXML::find_tag(CSTRING XPath)
                      escattrib = true;
                   }
                }
-               else if (XPath[end] IS '*') cmpflags = STR::WILDCARD;
+               else if (XPath[end] IS '*') wild = true;
                end++;
             }
 
@@ -138,7 +138,7 @@ ERR extXML::find_tag(CSTRING XPath)
          else {
             LONG end = pos;
             while ((XPath[end]) and (XPath[end] != endchar)) {
-               if (XPath[end] IS '*') cmpflags = STR::WILDCARD;
+               if (XPath[end] IS '*') wild = true;
                end++;
             }
             attribvalue.assign(XPath + pos, end - pos);
@@ -152,26 +152,37 @@ ERR extXML::find_tag(CSTRING XPath)
       pos++;
    }
 
-   auto tagwild = STR::MATCH_LEN;
-   if (tagname.find('*') != std::string::npos) tagwild = STR::WILDCARD;
+   auto tagwild = tagname.find('*') != std::string::npos;
 
    for (; Cursor != CursorTags->end(); Cursor++) {
       bool match = false;
-      if (StrCompare(tagname, Cursor->name(), 0, tagwild) IS ERR::Okay) { // Desired tag name found.
+      bool tag_matched = false;
+
+      if (tagwild) tag_matched = pf::wildcmp(tagname, Cursor->name());
+      else tag_matched = StrCompare(tagname, Cursor->name(), 0, STR::MATCH_LEN) IS ERR::Okay;
+     
+      if (tag_matched) { // Desired tag name found.
          if ((!attribname.empty()) or (!attribvalue.empty())) {
             if (Cursor->name()) {
                if (!attribname.empty()) { // Match by named attribute value
                   for (LONG a=1; a < std::ssize(Cursor->Attribs); ++a) {
-                     if ((StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size()) IS ERR::Okay) and
-                         (StrCompare(Cursor->Attribs[a].Value, attribvalue, 0, cmpflags) IS ERR::Okay)) {
-                        match = true;
-                        break;
+                     if (StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size()) IS ERR::Okay) {
+                        if (wild) {
+                           if ((match = pf::wildcmp(Cursor->Attribs[a].Value, attribvalue))) break;
+                        }
+                        else if (StrCompare(Cursor->Attribs[a].Value, attribvalue, 0, STR::MATCH_LEN) IS ERR::Okay) {
+                           match = true;
+                           break;
+                        }
                      }
                   }
                }
                else if (!attribvalue.empty()) {
                   if ((!Cursor->Children.empty()) and (Cursor->Children[0].Attribs[0].isContent())) {
-                     if (StrCompare(Cursor->Children[0].Attribs[0].Value, attribvalue, 0, cmpflags) IS ERR::Okay) {
+                     if (wild) {
+                        if ((match = pf::wildcmp(Cursor->Children[0].Attribs[0].Value, attribvalue))) break;
+                     }
+                     else if (StrCompare(Cursor->Children[0].Attribs[0].Value, attribvalue, 0, STR::MATCH_LEN) IS ERR::Okay) {
                         match = true;
                      }
                   }

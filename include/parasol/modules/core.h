@@ -616,7 +616,6 @@ enum class STR : ULONG {
    MATCH_CASE = 0x00000001,
    CASE = 0x00000001,
    MATCH_LEN = 0x00000002,
-   WILDCARD = 0x00000004,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(STR)
@@ -4385,7 +4384,7 @@ struct cmpCompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize;
 struct cmpDecompressStreamEnd { FUNCTION * Callback;  };
 struct cmpDecompressObject { CSTRING Path; OBJECTPTR Object;  };
 struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
-struct cmpFind { CSTRING Path; STR Flags; struct CompressedItem * Item;  };
+struct cmpFind { CSTRING Path; LONG CaseSensitive; LONG Wildcard; struct CompressedItem * Item;  };
 
 inline ERR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) noexcept {
    struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
@@ -4450,8 +4449,8 @@ inline ERR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)
    return(Action(MT_CmpScan, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) noexcept {
-   struct cmpFind args = { Path, Flags, (struct CompressedItem *)0 };
+inline ERR cmpFind(APTR Ob, CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item) noexcept {
+   struct cmpFind args = { Path, CaseSensitive, Wildcard, (struct CompressedItem *)0 };
    ERR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);

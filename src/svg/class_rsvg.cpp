@@ -47,7 +47,7 @@ static ERR RSVG_Init(extPicture *Self)
 
    char *buffer;
 
-   if (StrCompare("*.svg|*.svgz", path, 0, STR::WILDCARD) IS ERR::Okay);
+   if (wildcmp("*.svg|*.svgz", path));
    else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
       if (StrSearch("<svg", buffer) >= 0) {
       }

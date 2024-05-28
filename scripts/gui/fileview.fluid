@@ -416,7 +416,7 @@ local function createFileItem(self, Info)
    elseif bit.band(Info.Flags, RDF_FILE) != 0 then
       if lNoFiles then return end
 
-      if not lFilter or (mSys.StrCompare(lFilter, Info.name, 0, STR_WILDCARD) == ERR_Okay) then
+      if not lFilter or (string.find(Info.name, lFilter) != nil) then
          local filename
          if lNoExtensions then
             filename = Info.name:gsub('^(.-)%.[^:/\\]+$', '%1')
@@ -965,7 +965,7 @@ gui.fileview = function(View, Options)
       openFiles(self.view.selectedItems, 'Edit')
    end
 
-   -- Apply a file filter using wildcards.  E.g. '*.fluid', '*.*', '???.fluid'
+   -- Apply a file filter using wildcards.  E.g. '.*%.fluid$'
 
    self.filter = function(Filter)
       lFilter = Filter

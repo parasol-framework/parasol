@@ -43,8 +43,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("STR", { bits=32 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
-     "MATCH_LEN: The strings must be of equal length to be matched.",
-     "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
+     "MATCH_LEN: The strings must be of equal length to be matched.")
 
   flags("MSF", { comment="Message flags." },
      "WAIT: Wait before inserting the message if the queue is at maximum capacity.",

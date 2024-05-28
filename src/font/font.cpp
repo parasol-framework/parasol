@@ -816,7 +816,7 @@ restart:
       }
 
       for (auto & [group, keys] : groups[0]) {
-         if (StrCompare(name, keys["Name"], 0, STR::WILDCARD) IS ERR::Okay) {
+         if (pf::wildcmp(name, keys["Name"])) {
             if (auto it = keys.find("Alias"); it != keys.end()) {
                const std::string &alias = it->second;
                if (!alias.empty()) {

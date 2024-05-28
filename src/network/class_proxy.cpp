@@ -382,7 +382,7 @@ static ERR find_proxy(extProxy *Self)
 
             if (!port.compare("0")) { } // Port is set to 'All' (0) so the match is automatic.
             else {
-               if (StrCompare(port.c_str(), Self->FindPort, 0, STR::WILDCARD) != ERR::Okay) {
+               if (!pf::wildcmp(port, Self->FindPort)) {
                   log.trace("Port '%s' doesn't match requested port '%s'", port.c_str(), Self->FindPort);
                   match = false;
                }

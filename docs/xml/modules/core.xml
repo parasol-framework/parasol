@@ -1784,7 +1784,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>If the <code>Length</code> is 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, <code>ERR::Okay</code> will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
 <p>If the <code>Length</code> is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, <code>ERR::False</code> will be returned.</p>
 <p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an <code>ERR::Okay</code> code only on the condition that both strings are of matching lengths.  This flag is typically specified if the <code>Length</code> argument has been set to 0.</p>
-<p>If the <code>STR::WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
     </description>
     <result type="ERR">
       <error code="True">The strings match.</error>
@@ -2924,7 +2923,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="CASE">Perform a case-sensitive match.</const>
       <const name="MATCH_CASE">Perform a case-sensitive match.</const>
       <const name="MATCH_LEN">The strings must be of equal length to be matched.</const>
-      <const name="WILDCARD">Allow the use of wildcard characters '|', '?' and '*'.</const>
     </constants>
 
     <constants lookup="STT" comment="Types for StrDatatype().">

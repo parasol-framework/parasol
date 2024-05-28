@@ -731,7 +731,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
    if (!Tag.Children.empty()) {
       ERR error;
       auto &child = Tag.Children[0];
-      if (StrCompare("feDistantLight", child.name(), 0, STR::WILDCARD) IS ERR::Okay) {
+      if (StrCompare("feDistantLight", child.name()) IS ERR::Okay) {
          DOUBLE azimuth = 0, elevation = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
@@ -743,7 +743,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          error = ltSetDistantLight(fx, azimuth, elevation);
       }
-      else if (StrCompare("fePointLight", child.name(), 0, STR::WILDCARD) IS ERR::Okay) {
+      else if (StrCompare("fePointLight", child.name()) IS ERR::Okay) {
          DOUBLE x = 0, y = 0, z = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
@@ -756,7 +756,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          error = ltSetPointLight(fx, x, y, z);
       }
-      else if (StrCompare("feSpotLight", child.name(), 0, STR::WILDCARD) IS ERR::Okay) {
+      else if (StrCompare("feSpotLight", child.name()) IS ERR::Okay) {
          DOUBLE x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
          DOUBLE exponent = 1, cone_angle = 0;
 
@@ -881,7 +881,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
    }
 
    for (auto &child : Tag.Children) {
-      if (StrCompare("feFunc?", child.name(), 0, STR::WILDCARD) IS ERR::Okay) {
+      if (wildcmp("feFunc?", child.name())) {
          auto cmp = CMP::NIL;
          switch(child.name()[6]) {
             case 'R': cmp = CMP::RED; break;

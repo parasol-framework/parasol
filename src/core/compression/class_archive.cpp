@@ -10,8 +10,8 @@ FileArchive: Creates simple read-only volumes backed by compressed archives.
 
 The FileArchive class makes it possible to create virtual file system volumes that are based on compressed file
 archives.  It is not necessary for client programs to instantiate a FileArchive to make use of this functionality.
-Instead, create a @Compression object that declares a Path to the source archive file and set an
-ArchiveName for reference.  In the C++ example below, take note of the `untracked` specifier to prevent the
+Instead, create a @Compression object that declares a `Path` to the source archive file and set an
+ArchiveName for reference.  In the C++ example below, take note of the use of `untracked` to prevent the
 @Compression object from being collected when it goes out of scope:
 
 <pre>
@@ -233,7 +233,7 @@ static ERR ARCHIVE_Init(extFile *Self)
             if ((it IS prv->Archive->Files.end()) and ((Self->Flags & FL::APPROXIMATE) != FL::NIL)) {
                file_path.append(".*");
                for (it = prv->Archive->Files.begin(); it != prv->Archive->Files.end(); it++) {
-                  if (StrCompare(file_path, it->Name, 0, STR::WILDCARD) IS ERR::Okay) break;
+                  if (wildcmp(file_path, it->Name)) break;
                }
             }
 
@@ -582,7 +582,7 @@ static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    log.traceBranch("%s", Path);
 
    if (auto cmp = find_archive(Path, file_path)) {
-      struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR::CASE|STR::MATCH_LEN };
+      struct cmpFind find { file_path.c_str(), TRUE, FALSE };
       if ((error = Action(MT_CmpFind, cmp, &find)) != ERR::Okay) return error;
       item = find.Item;
    }
@@ -638,11 +638,11 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
    }
 
    CompressedItem *item;
-   ERR error = cmpFind(cmp, file_path.c_str(), STR::CASE|STR::MATCH_LEN, &item);
+   ERR error = cmpFind(cmp, file_path.c_str(), TRUE, FALSE, &item);
 
    if ((error != ERR::Okay) and ((Flags & RSF::APPROXIMATE) != RSF::NIL)) {
       file_path.append(".*");
-      if ((error = cmpFind(cmp, file_path.c_str(), STR::CASE|STR::WILDCARD, &item)) IS ERR::Okay) {
+      if ((error = cmpFind(cmp, file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
          // Point the path to the discovered item
          LONG i;
          for (i=0; (Path[i] != '/') and (Path[i]); i++);

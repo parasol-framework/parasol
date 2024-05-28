@@ -313,15 +313,16 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>Find</name>
       <comment>Find the first item that matches a given filter.</comment>
-      <prototype>ERR cmpFind(OBJECTPTR Object, CSTRING Path, STR Flags, struct CompressedItem ** Item)</prototype>
+      <prototype>ERR cmpFind(OBJECTPTR Object, CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item)</prototype>
       <input>
         <param type="CSTRING" name="Path">Search for a specific item or items, using wildcards.</param>
-        <param type="STR" name="Flags" lookup="STR">String comparison flags used by <function module="Core">StrCompare</function>.</param>
+        <param type="LONG" name="CaseSensitive">Set to <code>true</code> if <code>Path</code> comparisons are case-sensitive.</param>
+        <param type="LONG" name="Wildcard">Set to <code>true</code> if <code>Path</code> uses wildcards.</param>
         <param type="struct CompressedItem **" name="Item">The discovered item is returned in this parameter, or <code>NULL</code> if the search failed.</param>
       </input>
       <description>
-<p>Use the Find() method to search for a specific item in an archive.  The algorithm will return the first item that matches the <code>Path</code> parameter string in conjunction with the options in <code>Flags</code>.  The options match those in the <function module="Core">StrCompare</function> function - in particular <code>STR::CASE</code>, <code>STR::MATCH_LEN</code> and <code>STR::WILDCARD</code> are the most useful.</p>
-<p>Please refer to the <method>Scan</method> method for a break-down of the <st>CompressedItem</st> structure that is returned by this method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
+<p>Use the Find() method to search for a specific item in an archive.  The algorithm will return the first item that matches the <code>Path</code> string in conjunction with the <code>Case</code> and <code>Wildcard</code> options.</p>
+<p>If successful, the discovered item is returned as a !CompressedItem.  The result is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -555,13 +556,6 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       <const name="USER_READ">Synonym for <code>READ</code></const>
       <const name="USER_WRITE">Synonym for <code>WRITE</code></const>
       <const name="WRITE">User/Owner can write.</const>
-    </constants>
-
-    <constants lookup="STR">
-      <const name="CASE">Perform a case-sensitive match.</const>
-      <const name="MATCH_CASE">Perform a case-sensitive match.</const>
-      <const name="MATCH_LEN">The strings must be of equal length to be matched.</const>
-      <const name="WILDCARD">Allow the use of wildcard characters '|', '?' and '*'.</const>
     </constants>
 
   </types>

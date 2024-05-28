@@ -133,7 +133,7 @@ static ERR FONT_Init(extFont *Self)
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
    if (cache); // The font exists in the cache
-   else if (StrCompare("*.ttf", Self->Path, 0, STR::WILDCARD) IS ERR::Okay) return ERR::NoSupport;
+   else if (wildcmp("*.ttf", Self->Path)) return ERR::NoSupport;
    else {
       objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
       if (file.ok()) {

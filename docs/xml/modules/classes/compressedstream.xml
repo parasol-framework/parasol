@@ -345,7 +345,6 @@
       <const name="CASE">Perform a case-sensitive match.</const>
       <const name="MATCH_CASE">Perform a case-sensitive match.</const>
       <const name="MATCH_LEN">The strings must be of equal length to be matched.</const>
-      <const name="WILDCARD">Allow the use of wildcard characters '|', '?' and '*'.</const>
     </constants>
 
     <constants lookup="VLF" comment="VlogF flags">

@@ -2066,9 +2066,9 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       if (Self->Path[k]) {
          for (auto& [group, keys] : groups[0]) {
             if (keys.contains("Match")) {
-               if (StrCompare(keys["Match"].c_str(), Self->Path+k, 0, STR::WILDCARD) IS ERR::Okay) {
+               if (wildcmp(keys["Match"], std::string_view(Self->Path+k, StrLength(Self->Path)-k))) {
                   if (keys.contains("Icon")) {
-                     StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
+                     StrCopy(keys["Icon"], icon, sizeof(icon));
                      break;
                   }
                }
