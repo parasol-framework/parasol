@@ -39,11 +39,11 @@ It is required that the `Output` is sized to at least `(4 / 3) + 1` of `InputSiz
 the size must be at least 6 bytes.
 
 -INPUT-
-resource(pfBase64Encode) State: Pointer to an pfBase64Decode structure, initialised to zero.
+resource(BASE64ENCODE) State: Pointer to an BASE64ENCODE structure, initialised to zero.
 buf(cptr) Input:    The binary data to encode.
 bufsize InputSize:  The amount of data to encode.  Set to zero to finalise the output.
 buf(str) Output:    Destination buffer for the encoded output.
-bufsize OutputSize: Size of the destination buffer.  Must be at least (InputSize * 4 / 3) + 1.
+bufsize OutputSize: Size of the destination buffer.  Must be at least `(InputSize * 4 / 3) + 1`.
 
 -RESULT-
 int: The total number of bytes output is returned.
@@ -150,16 +150,12 @@ This function will decode a base 64 string to its binary form.  It is designed t
 To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.
 
 -INPUT-
-resource(pfBase64Decode) State: Pointer to an pfBase64Decode structure, initialised to zero.
+resource(BASE64DECODE) State: Pointer to a BASE64DECODE structure, initialised to zero.
 cstr Input: A base 64 input string.  The pointer will be updated when the function returns.
 bufsize InputSize: The size of the `Input` string.
 buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or equal to the size of Input.
 &int Written: The total number of bytes written to `Output` is returned here.
 
--ERRORS-
-Okay
-NullArgs
-Args
 -END-
 
 **********************************************************************************************************************/
