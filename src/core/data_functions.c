@@ -91,15 +91,6 @@ FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, 
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsUTF8CharLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsUTF8CharOffset[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8Copy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Chars", FD_LONG }, { "Size", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8Length[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsUTF8OffsetToChar[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8PrevLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8ReadValue[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "Length", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsUTF8ValidEncoding[] = { { "Result", FD_STR }, { "String", FD_STR }, { "Encoding", FD_STR }, { 0, 0 } };
-FDEF argsUTF8WriteValue[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUnloadFile[] = { { "Void", FD_VOID }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsUnsubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Handle", FD_PTR }, { 0, 0 } };
@@ -131,7 +122,6 @@ const struct Function glFunctions[] = {
    { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)FindClass, "FindClass", argsFindClass },
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
-   { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)FreeResource, "FreeResource", argsFreeResource },
    { (APTR)GetClassID, "GetClassID", argsGetClassID },
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
@@ -148,7 +138,6 @@ const struct Function glFunctions[] = {
    { (APTR)NewObject, "NewObject", argsNewObject },
    { (APTR)NotifySubscribers, "NotifySubscribers", argsNotifySubscribers },
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
-   { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)ReallocMemory, "ReallocMemory", argsReallocMemory },
@@ -209,13 +198,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)UTF8CharOffset, "UTF8CharOffset", argsUTF8CharOffset },
-   { (APTR)UTF8Length, "UTF8Length", argsUTF8Length },
-   { (APTR)UTF8OffsetToChar, "UTF8OffsetToChar", argsUTF8OffsetToChar },
-   { (APTR)UTF8PrevLength, "UTF8PrevLength", argsUTF8PrevLength },
-   { (APTR)UTF8CharLength, "UTF8CharLength", argsUTF8CharLength },
-   { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
-   { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { NULL, NULL, NULL }
 };
 

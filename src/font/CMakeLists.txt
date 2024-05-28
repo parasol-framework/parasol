@@ -23,6 +23,7 @@ set_module_defaults (${MOD})
 
 target_sources (${MOD} PRIVATE "font.cpp" ${FT_SOURCE})
 
+target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)
 
 # TODO: Kerning tests aren't working with the latest version of Freetype

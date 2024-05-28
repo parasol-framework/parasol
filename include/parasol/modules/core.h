@@ -2004,7 +2004,6 @@ struct CoreBase {
    ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERR (*_AnalysePath)(CSTRING Path, LOC * Type);
-   LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
    ERR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
@@ -2021,7 +2020,6 @@ struct CoreBase {
    ERR (*_NewObject)(CLASSID ClassID, NF Flags, APTR Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
    ERR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
    ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID);
@@ -2082,13 +2080,6 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
-   LONG (*_UTF8CharOffset)(CSTRING String, LONG Offset);
-   LONG (*_UTF8Length)(CSTRING String);
-   LONG (*_UTF8OffsetToChar)(CSTRING String, LONG Offset);
-   LONG (*_UTF8PrevLength)(CSTRING String, LONG Offset);
-   LONG (*_UTF8CharLength)(CSTRING String);
-   ULONG (*_UTF8ReadValue)(CSTRING String, LONG * Length);
-   LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
 #endif // PARASOL_STATIC
 };
 
@@ -2115,7 +2106,6 @@ inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * R
 inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERR AnalysePath(CSTRING Path, LOC * Type) { return CoreBase->_AnalysePath(Path,Type); }
-inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
@@ -2132,7 +2122,6 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { re
 inline ERR NewObject(CLASSID ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
-inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
 inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
@@ -2193,13 +2182,6 @@ inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
-inline LONG UTF8CharOffset(CSTRING String, LONG Offset) { return CoreBase->_UTF8CharOffset(String,Offset); }
-inline LONG UTF8Length(CSTRING String) { return CoreBase->_UTF8Length(String); }
-inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset) { return CoreBase->_UTF8OffsetToChar(String,Offset); }
-inline LONG UTF8PrevLength(CSTRING String, LONG Offset) { return CoreBase->_UTF8PrevLength(String,Offset); }
-inline LONG UTF8CharLength(CSTRING String) { return CoreBase->_UTF8CharLength(String); }
-inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UTF8ReadValue(String,Length); }
-inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
 #else
 extern "C" {
 extern ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
@@ -2221,7 +2203,6 @@ extern ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * R
 extern ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
 extern objMetaClass * FindClass(CLASSID ClassID);
 extern ERR AnalysePath(CSTRING Path, LOC * Type);
-extern LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 extern ERR FreeResource(MEMORYID ID);
 extern CLASSID GetClassID(OBJECTID Object);
 extern OBJECTID GetOwnerID(OBJECTID Object);
@@ -2238,7 +2219,6 @@ extern ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 extern ERR NewObject(CLASSID ClassID, NF Flags, APTR Object);
 extern void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
 extern ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-extern CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 extern ERR ProcessMessages(PMF Flags, LONG TimeOut);
 extern ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
 extern ERR ReallocMemory(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID);
@@ -2299,13 +2279,6 @@ extern objTask * CurrentTask(void);
 extern CSTRING ResolveGroupID(LONG Group);
 extern CSTRING ResolveUserID(LONG User);
 extern ERR CreateLink(CSTRING From, CSTRING To);
-extern LONG UTF8CharOffset(CSTRING String, LONG Offset);
-extern LONG UTF8Length(CSTRING String);
-extern LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
-extern LONG UTF8PrevLength(CSTRING String, LONG Offset);
-extern LONG UTF8CharLength(CSTRING String);
-extern ULONG UTF8ReadValue(CSTRING String, LONG * Length);
-extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 }
 #endif // PARASOL_STATIC
 #endif

@@ -21,7 +21,6 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
 objMetaClass * FindClass(CLASSID ClassID);
 ERR AnalysePath(CSTRING Path, LOC * Type);
-LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 ERR FreeResource(MEMORYID ID);
 CLASSID GetClassID(OBJECTID Object);
 OBJECTID GetOwnerID(OBJECTID Object);
@@ -38,7 +37,6 @@ ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR * Object);
 void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
 ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERR ProcessMessages(PMF Flags, LONG TimeOut);
 ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
 ERR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID);
@@ -99,12 +97,5 @@ objTask * CurrentTask();
 CSTRING ResolveGroupID(LONG Group);
 CSTRING ResolveUserID(LONG User);
 ERR CreateLink(CSTRING From, CSTRING To);
-LONG UTF8CharOffset(CSTRING String, LONG Offset);
-LONG UTF8Length(CSTRING String);
-LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
-LONG UTF8PrevLength(CSTRING String, LONG Offset);
-LONG UTF8CharLength(CSTRING String);
-ULONG UTF8ReadValue(CSTRING String, LONG * Length);
-LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 
 } // extern c

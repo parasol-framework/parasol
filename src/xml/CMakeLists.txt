@@ -8,7 +8,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
    APPEND_IDL "${MOD}_def.c")
 
 add_library (${MOD})
-
+target_link_libraries (${MOD} PUBLIC unicode)
 set_module_defaults (${MOD})
 
 target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp")

@@ -73,6 +73,7 @@ endif ()
 add_compile_definitions ("SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
 
 add_library (scintilla)
+target_link_libraries (${MOD} PUBLIC unicode)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")

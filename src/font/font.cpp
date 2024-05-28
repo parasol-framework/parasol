@@ -45,6 +45,8 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
+#include "../link/unicode.h"
+
 
 using namespace pf;
 

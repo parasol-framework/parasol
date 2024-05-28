@@ -10,6 +10,7 @@ idl_gen ("defs/${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${
 idl_gen ("defs/hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/defs/hashes.h")
 
 add_library (${MOD})
+target_link_libraries (${MOD} PUBLIC unicode)
 set_module_defaults (${MOD})
 target_sources (${MOD} PRIVATE "${MOD}.cpp")
 
