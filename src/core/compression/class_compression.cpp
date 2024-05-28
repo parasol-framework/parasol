@@ -373,12 +373,12 @@ static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompressBu
 -METHOD-
 CompressFile: Add files to a compression object.
 
-The CompressFile method is used to add new files and folders to a compression object. The client must supply the 
-`Location` of the file to compress, as well as the `Path` that is prefixed to the file name when it is in the 
-compression object.  The `Location` parameter accepts wildcards, allowing multiple files to be processed in a single 
+The CompressFile method is used to add new files and folders to a compression object. The client must supply the
+`Location` of the file to compress, as well as the `Path` that is prefixed to the file name when it is in the
+compression object.  The `Location` parameter accepts wildcards, allowing multiple files to be processed in a single
 function call.
 
-To compress all contents of a folder, specify its path in the `Location` parameter and ensure that it is fully 
+To compress all contents of a folder, specify its path in the `Location` parameter and ensure that it is fully
 qualified by appending a forward slash or colon character.
 
 The `Path` parameter must include a trailing slash when targeting a folder, otherwise the source file will be renamed
@@ -845,7 +845,7 @@ routine will call the routine that was specified in `Callback` for each block th
 
 The format of the `Callback` routine is `ERR Function(*Compression, APTR Buffer, LONG Length)`
 
-The `Buffer` will refer to the start of the decompressed data and its size will be indicated in `Length`.  If the 
+The `Buffer` will refer to the start of the decompressed data and its size will be indicated in `Length`.  If the
 `Callback` routine returns an error of any kind, the decompression process will be stopped and the error code will be
 immediately returned by the method.
 

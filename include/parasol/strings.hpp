@@ -57,7 +57,7 @@ inline void camelcase(std::string &s) {
    }
 }
 
-inline bool iequals(std::string_view lhs, std::string_view rhs)
+[[nodiscard]] inline bool iequals(std::string_view lhs, std::string_view rhs)
 {
    auto ichar_equals = [](char a, char b) {
        return std::tolower(static_cast<unsigned char>(a)) ==

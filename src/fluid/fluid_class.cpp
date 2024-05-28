@@ -6,6 +6,7 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <sstream>
 
 extern "C" {

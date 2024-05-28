@@ -89,6 +89,7 @@ using namespace std::chrono_literals;
 #include <parasol/system/errors.h>
 #include <parasol/system/types.h>
 #include <parasol/system/registry.h>
+#include <parasol/strings.hpp>
 
 #include <stdarg.h>
 

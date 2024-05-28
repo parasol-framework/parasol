@@ -864,7 +864,7 @@ static void scan_truetype_folder(objConfig *Config)
                }
 
                log.msg("Detected font file \"%s\", name: %s, style: %s", ttpath.c_str(), ftface->family_name, ftface->style_name);
-            
+
                std::string group;
                if (ftface->family_name) group.assign(ftface->family_name);
                else {
@@ -923,7 +923,7 @@ static void scan_truetype_folder(objConfig *Config)
                                        prev_unicode = unicode;
                                     }
                                     buffer[out] = 0;
-                                    
+
                                     std::string path("fonts:truetype/");
                                     path.append(dir->Info->Name);
                                     Config->write(group.c_str(), buffer, path);

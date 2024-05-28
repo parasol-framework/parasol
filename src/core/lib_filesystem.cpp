@@ -53,6 +53,7 @@ typedef int HANDLE;
 
 #include "defs.h"
 #include <parasol/main.h>
+#include <parasol/strings.hpp>
 
 #include <stdarg.h>
 #include <errno.h>

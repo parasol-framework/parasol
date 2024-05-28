@@ -29,6 +29,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
+#include <parasol/strings.hpp>
 
 #ifdef ENABLE_SSL
 #include <openssl/ssl.h>

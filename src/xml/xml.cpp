@@ -32,6 +32,7 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 #define PRV_XML
 #include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
 #include <functional>
 #include <sstream>
 #include "../link/unicode.h"
@@ -302,9 +303,9 @@ static ERR XML_Filter(extXML *Self, struct xmlFilter *Args)
 -METHOD-
 FindTag: Searches for a tag via XPath.
 
-This method will return the first tag that matches the search string specified in `XPath`.  Optionally, if the 
-`XPath` uses wildcards or would match multiple tags, a `Callback` function may be passed that will be called for 
-each matching tag that is discovered.  The prototype for the callback function is 
+This method will return the first tag that matches the search string specified in `XPath`.  Optionally, if the
+`XPath` uses wildcards or would match multiple tags, a `Callback` function may be passed that will be called for
+each matching tag that is discovered.  The prototype for the callback function is
 `ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
 
 The `Callback` routine can terminate the search early by returning `ERR::Terminate`.  All other error codes are ignored.
@@ -667,7 +668,7 @@ static ERR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
 -METHOD-
 GetTag: Returns a pointer to the !XMLTag structure for a given tag index.
 
-This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid 
+This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid
 prior to retrieval, and an `ERR::OutOfRange` error will be returned if it is invalid.
 
 -INPUT-
@@ -1202,7 +1203,7 @@ The data for the attribute is defined in the `Name` and `Value` parameters.  Use
 associated with the attribute.  Set the `Value` pointer to `NULL` to remove the attribute. If both `Name` and `Value` are `NULL`,
 an error will be returned.
 
-NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value 
+NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value
 declaration.  However, if the tag represents content within its parent, then the Name must be set to `NULL` and the
 `Value` string will determine the content.
 
@@ -1288,7 +1289,7 @@ static ERR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
 SetKey: Sets attributes and content in the XML tree using XPaths.
 
 Use SetKey to add tag attributes and content using XPaths.  The XPath is specified in the `Key` parameter and the data
-is specified in the `Value` parameter.  Setting the Value to `NULL` will remove the attribute or existing content, 
+is specified in the `Value` parameter.  Setting the Value to `NULL` will remove the attribute or existing content,
 while an empty string will keep an attribute but eliminate any associated data.
 
 It is not possible to add new tags using this action - it is only possible to update existing tags.

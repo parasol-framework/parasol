@@ -512,7 +512,7 @@ Leading: 'Internal leading' measured in pixels.  Applies to fixed fonts only.
 -FIELD-
 LineCount: The total number of lines in a font string.
 
-This field indicates the number of lines that are present in a #font's String field.  If word wrapping is enabled, 
+This field indicates the number of lines that are present in a #font's String field.  If word wrapping is enabled,
 this will be taken into account in the resulting figure.
 
 *********************************************************************************************************************/

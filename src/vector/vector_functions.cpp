@@ -605,8 +605,8 @@ ERR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
 -FUNCTION-
 TracePath: Returns the coordinates for a vector path, using callbacks.
 
-Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the 
-`Path` from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function 
+Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the
+`Path` from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function
 is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
 
 The `Index` is an incrementing counter that reflects the currently plotted point.  The `X` and `Y` parameters reflect the
@@ -970,7 +970,7 @@ RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is suppo
 component values range between `0.0` and `255.0`.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
-been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the 
+been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
 reference.  Any failure to lookup a reference will be silently discarded.
 
 A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers

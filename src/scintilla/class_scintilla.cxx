@@ -101,6 +101,7 @@ capabilities.
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/vector.h>
+#include <parasol/strings.hpp>
 
 #include "scintillaparasol.h"
 
@@ -674,7 +675,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
 -METHOD-
 GetLine: Copies the text content of any line to a user-supplied buffer.
 
-This method will retrieve the string for a `Line` at a given index.  The string is copied to a user supplied 
+This method will retrieve the string for a `Line` at a given index.  The string is copied to a user supplied
 `Buffer` of the indicated `Length` (in bytes).
 
 -INPUT-
