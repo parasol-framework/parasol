@@ -600,10 +600,10 @@ static ERR HTTP_Activate(extHTTP *Self)
             buffer.append(Self->Password);
             auto output = std::make_unique<char[]>(buffer.length() * 2);
 
-            pfBase64Encode state;
+            pf::BASE64ENCODE state;
 
             cmd << "Authorization: Basic ";
-            auto len = Base64Encode(&state, buffer.c_str(), buffer.length(), output.get(), buffer.length() * 2);
+            auto len = pf::Base64Encode(&state, buffer.c_str(), buffer.length(), output.get(), buffer.length() * 2);
             cmd.write(output.get(), len);
             cmd << CRLF;
          }

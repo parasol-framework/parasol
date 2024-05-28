@@ -1,14 +1,16 @@
 
 #include "base64.h"
 
+namespace pf {
+
 typedef enum { step_a=0, step_b, step_c, step_d } base64_decodestep;
 typedef enum { step_A=0, step_B, step_C } base64_encodestep;
 
 static const char * encoding = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char decoding[] = {62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-2,-1,-1,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51};
 
-static int base64_decode_block(CSTRING, LONG, char *, pfBase64Decode *);
-static int base64_encode_block(CSTRING, LONG, char *, pfBase64Encode *);
+static int base64_decode_block(CSTRING, LONG, char *, BASE64DECODE *);
+static int base64_encode_block(CSTRING, LONG, char *, BASE64ENCODE *);
 
 inline LONG base64_decode_value(LONG value_in)
 {
@@ -48,7 +50,7 @@ int: The total number of bytes output is returned.
 
 **********************************************************************************************************************/
 
-LONG Base64Encode(pfBase64Encode *State, const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
+LONG Base64Encode(BASE64ENCODE *State, const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
 {
    if ((!State) or (!Input) or (!Output) or (OutputSize < 1)) return 0;
 
@@ -81,7 +83,7 @@ LONG Base64Encode(pfBase64Encode *State, const void *Input, LONG InputSize, STRI
    }
 }
 
-static int base64_encode_block(CSTRING plaintext_in, LONG length_in, char *code_out, pfBase64Encode *State)
+static int base64_encode_block(CSTRING plaintext_in, LONG length_in, char *code_out, BASE64ENCODE *State)
 {
    const char *plainchar = plaintext_in;
    const char *const plaintextend = plaintext_in + length_in;
@@ -162,7 +164,7 @@ Args
 
 **********************************************************************************************************************/
 
-ERR Base64Decode(pfBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
+ERR Base64Decode(BASE64DECODE *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
 {
    if ((!State) or (!Input) or (!Output) or (!Written)) return ERR::NullArgs;
    if (InputSize < 4) return ERR::Args;
@@ -177,7 +179,7 @@ ERR Base64Decode(pfBase64Decode *State, CSTRING Input, LONG InputSize, APTR Outp
    return ERR::Okay;
 }
 
-static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintext_out, pfBase64Decode *State)
+static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintext_out, BASE64DECODE *State)
 {
    const char* codechar = code_in;
    char* plainchar = plaintext_out;
@@ -237,3 +239,5 @@ static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintex
    // control should not reach here
    return plainchar - plaintext_out;
 }
+
+} // namespace pf

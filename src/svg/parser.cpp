@@ -1713,14 +1713,14 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
             while ((*val) and (*val != ',')) val++;
             if (*val IS ',') val++;
 
-            pfBase64Decode state;
+            pf::BASE64DECODE state;
             ClearMemory(&state, sizeof(state));
 
             UBYTE *output;
             LONG size = strlen(val);
             if (AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &output) IS ERR::Okay) {
                LONG written;
-               if ((error = Base64Decode(&state, val, size, output, &written)) IS ERR::Okay) {
+               if ((error = pf::Base64Decode(&state, val, size, output, &written)) IS ERR::Okay) {
                   Path = "temp:svg.img";
                   if ((file = objFile::create::local(fl::Path(Path), fl::Flags(FL::NEW|FL::WRITE)))) {
                      LONG result;
