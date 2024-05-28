@@ -166,8 +166,6 @@ void CloseCore(void)
          free_file_cache();
 
          if (glInotify != -1) { close(glInotify); glInotify = -1; }
-
-         free_iconv();
       }
 
       Expunge(true); // Third and final expunge.  Forcibly unloads modules.

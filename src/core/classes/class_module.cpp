@@ -80,9 +80,7 @@ static STRUCTS glStructures = {
    { "dcAudio",             sizeof(dcAudio) },
    { "dcDeviceInput",       sizeof(dcDeviceInput) },
    { "dcKeyEntry",          sizeof(dcKeyEntry) },
-   { "dcRequest",           sizeof(dcRequest) },
-   { "pfBase64Decode",      sizeof(pfBase64Decode) },
-   { "pfBase64Encode",      sizeof(pfBase64Encode) }
+   { "dcRequest",           sizeof(dcRequest) }
 };
 
 #include "../idl.h"
