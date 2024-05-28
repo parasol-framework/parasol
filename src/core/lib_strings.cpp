@@ -244,7 +244,7 @@ int Length:  The maximum number of characters to compare.  Does not apply to wil
 int(STR) Flags:   Optional flags.
 
 -ERRORS-
-Okay:  The strings match.
+True:  The strings match.
 False: The strings do not match.
 NullArgs:
 
@@ -252,108 +252,18 @@ NullArgs:
 
 ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 {
-   LONG len, i, j;
-   UBYTE char1, char2;
-   bool fail;
-   CSTRING Original;
-   #define Wildcard String1
-
    if ((!String1) or (!String2)) return ERR::Args;
 
    if (String1 IS String2) return ERR::Okay; // Return a match if both addresses are equal
 
+   LONG len;
    if (!Length) len = 0x7fffffff;
    else len = Length;
 
-   Original = String2;
-
    if ((Flags & STR::WILDCARD) != STR::NIL) {
-      if (!Wildcard[0]) return ERR::Okay;
-
-      while ((*Wildcard) and (*String2)) {
-         fail = false;
-         if (*Wildcard IS '*') {
-            while (*Wildcard IS '*') Wildcard++;
-
-            for (i=0; (Wildcard[i]) and (Wildcard[i] != '*') and (Wildcard[i] != '|'); i++); // Count the number of printable characters after the '*'
-
-            if (i IS 0) return ERR::Okay; // Nothing left to compare as wildcard string terminates with a *, so return match
-
-            if ((!Wildcard[i]) or (Wildcard[i] IS '|')) {
-               // Scan to the end of the string for wildcard situation like "*.txt"
-
-               for (j=0; String2[j]; j++); // Get the number of characters left in the second string
-               if (j < i) fail = true; // Quit if the second string has run out of characters to cover itself for the wildcard
-               else String2 += j - i; // Skip everything in the second string that covers us for the '*' character
-            }
-            else {
-               // Scan to the first matching wildcard character in the string, for handling wildcards like "*.1*.2"
-
-               while (*String2) {
-                  if ((Flags & STR::CASE) != STR::NIL) {
-                     if (*Wildcard IS *String2) break;
-                  }
-                  else {
-                     char1 = *String1; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-                     char2 = *String2; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-                     if (char1 IS char2) break;
-                  }
-                  String2++;
-               }
-            }
-         }
-         else if (*Wildcard IS '?') {
-            // Do not compare ? wildcards
-            Wildcard++;
-            String2++;
-         }
-         else if ((*Wildcard IS '\\') and (Wildcard[1])) {
-            Wildcard++;
-            if ((Flags & STR::CASE) != STR::NIL) {
-               if (*Wildcard++ != *String2++) fail = true;
-            }
-            else {
-               char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-               char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-               if (char1 != char2) fail = true;
-            }
-         }
-         else if ((*Wildcard IS '|') and (Wildcard[1])) {
-            Wildcard++;
-            String2 = Original; // Restart the comparison
-         }
-         else {
-            if ((Flags & STR::CASE) != STR::NIL) {
-               if (*Wildcard++ != *String2++) fail = true;
-            }
-            else {
-               char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-               char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-               if (char1 != char2) fail = true;
-            }
-         }
-
-         if (fail) {
-            // Check for an or character, if we find one, we can restart the comparison process.
-
-            while ((*Wildcard) and (*Wildcard != '|')) Wildcard++;
-
-            if (*Wildcard IS '|') {
-               Wildcard++;
-               String2 = Original;
-            }
-            else return ERR::False;
-         }
-      }
-
-      if (!String2[0]) {
-         if (!Wildcard[0]) return ERR::Okay;
-         else if (Wildcard[0] IS '|') return ERR::Okay;
-      }
-
-      if ((Wildcard[0] IS '*') and (Wildcard[1] IS 0)) return ERR::Okay;
-
-      return ERR::False;
+      auto matched = wildcmp(String1, String2, (Flags & STR::CASE) != STR::NIL);
+      if (matched) return ERR::True;
+      else return ERR::False;
    }
    else if ((Flags & STR::CASE) != STR::NIL) {
       while ((len) and (*String1) and (*String2)) {
@@ -363,8 +273,8 @@ ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
    }
    else  {
       while ((len) and (*String1) and (*String2)) {
-         char1 = *String1;
-         char2 = *String2;
+         auto char1 = *String1;
+         auto char2 = *String2;
          if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
          if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
          if (char1 != char2) return ERR::False;

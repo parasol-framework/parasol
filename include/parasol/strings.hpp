@@ -67,4 +67,92 @@ inline void camelcase(std::string &s) {
    return std::ranges::equal(lhs, rhs, ichar_equals);
 }
 
+[[nodiscard]] inline bool wildcmp(std::string_view Wildcard, std::string_view String, bool Case = false)
+{
+   auto Original = String;
+
+   if (Wildcard.empty()) return true;
+
+   std::size_t w = 0, s = 0;
+   while ((w < Wildcard.size()) and (s < String.size())) {
+      bool fail = false;
+      if (Wildcard[w] IS '*') {
+         while ((Wildcard[w] IS '*') and (w < Wildcard.size())) w++;
+         if (w IS Wildcard.size()) return true; // Wildcard terminated with a '*'; rest of String will match.
+
+         auto i = Wildcard.find_first_of("*|", w); // Count the printable characters after the '*'
+
+         if ((i != std::string::npos) and (Wildcard[i] IS '|')) {
+            // Scan to the end of the string for wildcard situation like "*.txt"
+            
+            auto printable = i - w;
+            auto j = String.size() - s; // Number of characters left in the String
+            if (j < printable) fail = true; // The string has run out of characters to cover itself for the wildcard
+            else s += j - printable; // Skip everything in the second string that covers us for the '*' character
+         }
+         else { // Skip past the non-matching characters
+            while (s < String.size()) {
+               if (Case) {
+                  if (Wildcard[w] IS String[s]) break;
+               }
+               else {
+                  auto char1 = Wildcard[w]; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+                  auto char2 = String[s]; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+                  if (char1 IS char2) break;
+               }
+               s++;
+            }
+         }
+      }
+      else if (Wildcard[w] IS '?') { // Do not compare ? wildcards
+         w++;
+         s++;
+      }
+      else if ((Wildcard[w] IS '\\') and (w+1 < Wildcard.size())) { // Escape character
+         w++;
+         if (Case) {
+            if (Wildcard[w++] != String[s++]) fail = true;
+         }
+         else {
+            auto char1 = Wildcard[w++]; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+            auto char2 = String[s++]; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+            if (char1 != char2) fail = true;
+         }
+      }
+      else if ((Wildcard[w] IS '|') and (w + 1 < Wildcard.size())) {
+         w++;
+         String = Original; // Restart the comparison
+      }
+      else {
+         if (Case) {
+            if (Wildcard[w++] != String[s++]) fail = true;
+         }
+         else {
+            auto char1 = Wildcard[w++]; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+            auto char2 = String[s++]; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+            if (char1 != char2) fail = true;
+         }
+      }
+
+      if (fail) {
+         // Check for an or character, if we find one, we can restart the comparison process.
+
+         auto or_index = Wildcard.find('|', w);
+         if (or_index IS std::string::npos) return false;
+
+         w = or_index + 1;
+         String = Original;
+      }
+   }
+
+   if (String.size() IS s) {
+      if (Wildcard.size() IS w) return true;
+      else if (Wildcard[w] IS '|') return true;
+   }
+
+   if ((w < Wildcard.size()) and (Wildcard[w] IS '*')) return true;
+
+   return false;
+}
+
 } // namespace

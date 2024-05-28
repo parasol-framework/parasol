@@ -1787,7 +1787,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>If the <code>STR::WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">The strings match.</error>
+      <error code="True">The strings match.</error>
       <error code="False">The strings do not match.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
