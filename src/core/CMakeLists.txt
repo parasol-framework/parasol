@@ -5,7 +5,6 @@
 set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/core.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_objects.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_base64.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_events.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_read.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_write.cpp"

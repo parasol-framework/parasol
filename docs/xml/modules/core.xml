@@ -327,48 +327,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>Base64Decode</name>
-    <category>Strings</category>
-    <comment>Decodes a base 64 string to its binary form.</comment>
-    <prototype>ERR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
-    <input>
-      <param type="struct pfBase64Decode *" name="State">Pointer to an pfBase64Decode structure, initialised to zero.</param>
-      <param type="CSTRING" name="Input">A base 64 input string.  The pointer will be updated when the function returns.</param>
-      <param type="LONG" name="InputSize">The size of the <code>Input</code> string.</param>
-      <param type="APTR" name="Output">The output buffer.  The size of the buffer must be greater or equal to the size of Input.</param>
-      <param type="LONG *" name="Written">The total number of bytes written to <code>Output</code> is returned here.</param>
-    </input>
-    <description>
-<p>This function will decode a base 64 string to its binary form.  It is designed to support streaming from the source <code>Input</code> and gracefully handles buffer over-runs by forwarding data to the next call.</p>
-<p>To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>Base64Encode</name>
-    <category>Strings</category>
-    <comment>Encodes a binary source into a base 64 string.</comment>
-    <prototype>LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
-    <input>
-      <param type="struct pfBase64Encode *" name="State">Pointer to an pfBase64Decode structure, initialised to zero.</param>
-      <param type="const void *" name="Input">The binary data to encode.</param>
-      <param type="LONG" name="InputSize">The amount of data to encode.  Set to zero to finalise the output.</param>
-      <param type="STRING" name="Output">Destination buffer for the encoded output.</param>
-      <param type="LONG" name="OutputSize">Size of the destination buffer.  Must be at least (InputSize * 4 / 3) + 1.</param>
-    </input>
-    <description>
-<p>This is a state-based function that will encode raw data and output it as base-64 encoded text.  To use, the <code>State</code> structure must initially be set to zero (automatic if using C++).  Call this function repeatedly with new Input data and it will be written to the supplied <code>Output</code> pointer.  Once all incoming data has been consumed, call this function a final time with an <code>Input</code> of <code>NULL</code> and InputSize of zero.</p>
-<p>It is required that the <code>Output</code> is sized to at least <code>(4 / 3) + 1</code> of <code>InputSize</code> when encoding.  For the final output, the size must be at least 6 bytes.</p>
-    </description>
-    <result type="LONG">The total number of bytes output is returned.</result>
-  </function>
-
-  <function>
     <name>BroadcastEvent</name>
     <category>Events</category>
     <comment>Broadcast an event to all event listeners in the system.</comment>
@@ -3312,18 +3270,6 @@ SetField(Object, FID_Statement|TSTR, "string");
     <struct name="dcRequest" comment="Data feed item request">
       <field name="Item" type="LONG">Identifier for retrieval from the source</field>
       <field name="Preference" type="char" size="4">Data preferences for the returned item(s)</field>
-    </struct>
-
-    <struct name="pfBase64Decode" comment="Private structure for the Base64Decode() function." typeName="BASE64DECODE">
-      <field name="Step" type="UBYTE">Internal</field>
-      <field name="PlainChar" type="UBYTE">Internal</field>
-      <field name="Initialised" type="UBYTE">Internal</field>
-    </struct>
-
-    <struct name="pfBase64Encode" comment="Private structure for the Base64Encode() function." typeName="BASE64ENCODE">
-      <field name="Step" type="UBYTE">Internal</field>
-      <field name="Result" type="UBYTE">Internal</field>
-      <field name="StepCount" type="LONG">Internal</field>
     </struct>
 
   </structs>

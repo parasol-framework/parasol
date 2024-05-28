@@ -15,8 +15,6 @@ FDEF argsAdjustLogLevel[] = { { "Result", FD_LONG }, { "Adjust", FD_LONG }, { 0,
 FDEF argsAllocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Size", FD_LONG }, { "Flags", FD_LONG }, { "Address", FD_PTR|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "pfBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsBase64Encode[] = { { "Result", FD_LONG }, { "pfBase64Encode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_LONG }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
@@ -130,7 +128,6 @@ const struct Function glFunctions[] = {
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
-   { (APTR)Base64Decode, "Base64Decode", argsBase64Decode },
    { (APTR)RegisterFD, "RegisterFD", argsRegisterFD },
    { (APTR)ResolvePath, "ResolvePath", argsResolvePath },
    { (APTR)MemoryIDInfo, "MemoryIDInfo", argsMemoryIDInfo },
@@ -191,7 +188,6 @@ const struct Function glFunctions[] = {
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)VLogF, "VLogF", argsVLogF },
-   { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)ReadInfoTag, "ReadInfoTag", argsReadInfoTag },
    { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
    { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },

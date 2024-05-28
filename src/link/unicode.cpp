@@ -1,6 +1,28 @@
 
 #include <parasol/main.h>
 
+/*
+typedef void * iconv_t;
+iconv_t (*iconv_open)(const char* tocode, const char* fromcode);
+size_t  (*iconv)(iconv_t cd, const char** inbuf, size_t* inbytesleft,   char** outbuf, size_t* outbytesleft);
+int     (*iconv_close)(iconv_t cd);
+void    (*iconvlist)(int (*do_one)(unsigned int namescount, const char* const* names, void* data), void* data);
+
+STRING glIconvBuffer = NULL;
+OBJECTPTR modIconv = NULL;
+static iconv_t glIconv = NULL;
+
+void free_iconv(void)
+{
+   if (modIconv) {
+      if (glIconv) { iconv_close(glIconv); glIconv = NULL; }
+      if (glIconvBuffer) { FreeResource(glIconvBuffer); glIconvBuffer = NULL; }
+
+      FreeResource(modIconv);
+      modIconv = NULL;
+   }
+}
+*/
 /*********************************************************************************************************************
 
 -FUNCTION-

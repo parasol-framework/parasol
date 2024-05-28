@@ -99,6 +99,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <parasol/modules/http.h>
 //#include <parasol/modules/display.h>
 #include <parasol/modules/network.h>
+#include "../link/base64.h"
 
 #include "md5.c"
 
@@ -599,10 +600,10 @@ static ERR HTTP_Activate(extHTTP *Self)
             buffer.append(Self->Password);
             auto output = std::make_unique<char[]>(buffer.length() * 2);
 
-            pfBase64Encode state;
+            pf::BASE64ENCODE state;
 
             cmd << "Authorization: Basic ";
-            auto len = Base64Encode(&state, buffer.c_str(), buffer.length(), output.get(), buffer.length() * 2);
+            auto len = pf::Base64Encode(&state, buffer.c_str(), buffer.length(), output.get(), buffer.length() * 2);
             cmd.write(output.get(), len);
             cmd << CRLF;
          }

@@ -670,8 +670,6 @@ extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
-extern OBJECTPTR modIconv;
-extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern objConfig *glDatatypes;
 extern objFile *glClassFile;
@@ -1035,7 +1033,6 @@ ERR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
 ERR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
 extern "C" ERR validate_process(LONG);
-void   free_iconv(void);
 ERR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 

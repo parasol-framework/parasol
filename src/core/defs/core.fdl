@@ -789,24 +789,6 @@ class FloatRect {
      fptr(error ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
-  struct("pfBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
-    uchar Step                # Internal
-    uchar PlainChar           # Internal
-    bit(uchar) Initialised    # Internal
-  ]],
-  [[
-  pfBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
-  ]])
-
-  struct("pfBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
-    uchar Step             # Internal
-    uchar Result           # Internal
-    int StepCount          # Internal
-  ]],
-  [[
-  pfBase64Encode() : Step(0), Result(0), StepCount(0) { };
-  ]])
-
   struct("FunctionField", { comment="Used by ActionTable and Function structures to declare lists of parameters." }, [[
     cstr Name   # Name of the field
     uint Type   # Type of the field
@@ -1101,7 +1083,6 @@ struct ScriptArg { // For use with scExec
     "CompareFilePaths",
     "GetSystemState",
     "ListChildren",
-    "Base64Decode",
     "RegisterFD",
     "ResolvePath",
     "MemoryIDInfo",
@@ -1162,7 +1143,6 @@ struct ScriptArg { // For use with scExec
     "AddInfoTag",
     "SetDefaultPermissions",
     "VLogF",
-    "Base64Encode",
     "ReadInfoTag",
     "SetResourcePath",
     "CurrentTask",

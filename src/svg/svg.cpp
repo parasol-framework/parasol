@@ -31,6 +31,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include "svg_def.c"
 #include <katana.h>
 #include <math.h>
+#include "../link/base64.h"
 
 using namespace pf;
 

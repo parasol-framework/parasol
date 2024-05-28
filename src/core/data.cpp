@@ -202,7 +202,6 @@ struct Object glDummyObject = {
 class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
 THREADVAR ObjectContext *tlContext = &glTopContext;
 
-OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
