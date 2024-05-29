@@ -20,6 +20,7 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
+#include <parasol/strings.hpp>
 
 using namespace pf;
 

@@ -96,7 +96,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
 
       auto replace_file = Self->Files.begin();
       for (; replace_file != Self->Files.end(); replace_file++) {
-         if (StrMatch(replace_file->Name, Location) IS ERR::Okay) break;
+         if (iequals(replace_file->Name, Location)) break;
       }
 
       // Allocate the file entry structure and set up some initial variables.
@@ -284,7 +284,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    auto replace_file = Self->Files.begin();
    for (; replace_file != Self->Files.end(); replace_file++) {
-      if (StrCompare(replace_file->Name, filename, 0, STR::MATCH_LEN) IS ERR::Okay) break;
+      if (iequals(replace_file->Name, filename)) break;
    }
 
    // Allocate the file entry structure and set up some initial variables.

@@ -206,7 +206,7 @@ static ERR PROXY_Find(extProxy *Self, struct prxFind *Args)
 
             CSTRING override;
             if (taskGetEnv(task, HKEY_PROXY "ProxyOverride", &override) IS ERR::Okay) {
-               if (StrMatch("<local>", override) IS ERR::Okay) bypass = true;
+               if (pf::iequals("<local>", override)) bypass = true;
             }
 
             CSTRING servers;
@@ -218,17 +218,17 @@ static ERR PROXY_Find(extProxy *Self, struct prxFind *Args)
                LONG i     = 0;
                LONG index = 0;
                while (true) {
-                  if (StrCompare("ftp=", servers+i, 4) IS ERR::Okay) {
+                  if (pf::startswith("ftp=", servers+i)) {
                      name = "Windows FTP";
                      port = 21;
                      index = i + 4;
                   }
-                  else if (StrCompare("http=", servers+i, 5) IS ERR::Okay) {
+                  else if (pf::startswith("http=", servers+i)) {
                      name = "Windows HTTP";
                      port = 80;
                      index = i + 5;
                   }
-                  else if (StrCompare("https=", servers+i, 6) IS ERR::Okay) {
+                  else if (pf::startswith("https=", servers+i)) {
                      name = "Windows HTTPS";
                      port = 443;
                      index = i + 6;

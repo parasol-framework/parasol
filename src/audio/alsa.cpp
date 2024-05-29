@@ -48,7 +48,7 @@ static ERR init_audio(extAudio *Self)
 
    // Convert english pcm_name to the device number
 
-   if (StrMatch("default", pcm_name.c_str()) != ERR::Okay) {
+   if (!iequals("default", pcm_name)) {
       STRING cardid, cardname;
 
       LONG card = -1;
@@ -65,7 +65,7 @@ static ERR init_audio(extAudio *Self)
                cardid = (STRING)snd_ctl_card_info_get_id(info);
                cardname = (STRING)snd_ctl_card_info_get_name(info);
 
-               if (StrMatch(cardid, pcm_name.c_str()) IS ERR::Okay) {
+               if (iequals(cardid, pcm_name)) {
                   pcm_name = name;
                   snd_ctl_close(ctlhandle);
                   break;
@@ -81,7 +81,7 @@ static ERR init_audio(extAudio *Self)
    // Check if the default ALSA device is a real sound card.  We don't want to use it if it's a modem or other
    // unexpected device.
 
-   if (StrMatch("default", pcm_name.c_str()) IS ERR::Okay) {
+   if (iequals("default", pcm_name)) {
       // If there are no sound devices in the system, abort
 
       LONG card = -1;
@@ -106,7 +106,7 @@ static ERR init_audio(extAudio *Self)
 
                log.msg("Identified card %s, name %s", cardid, cardname);
 
-               if (StrMatch("modem", cardid) IS ERR::Okay) goto next_card;
+               if (iequals("modem", cardid)) goto next_card;
 
                snd_mixer_t *mixhandle;
                if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {

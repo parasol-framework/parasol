@@ -4,6 +4,7 @@
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 #include <mutex>
 
@@ -588,7 +589,7 @@ int fcmd_loadfile(lua_State *Lua)
       #if 0
       LONG pathlen = strlen(path);
       char fbpath[pathlen+6];
-      if (!StrMatch(".fluid", path + pathlen - 6)) {
+      if (iequals(".fluid", path + pathlen - 6)) {
          // File is a .fluid.  Let's check if a .fb exists and is date-stamped for the same date as the .fluid version.
          // Note: The developer can also delete the .fluid file in favour of a .fb that is already present (for
          // production releases)
@@ -632,7 +633,7 @@ int fcmd_loadfile(lua_State *Lua)
                LONG len, i;
                char header[256];
                if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
-                  if (StrCompare(LUA_COMPILED, header) IS ERR::Okay) {
+                  if (pf::startswith(LUA_COMPILED, header)) {
                      recompile = FALSE; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
@@ -721,7 +722,7 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (StrCompare(LUA_COMPILED, statement) IS ERR::Okay) {
+         if (pf::startswith(LUA_COMPILED, statement)) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             if (!statement[i]) statement += i + 1;

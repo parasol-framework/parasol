@@ -32,6 +32,7 @@ To convert the C array values to a Lua table:
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 
 extern "C" {
  #include "lauxlib.h"
@@ -222,7 +223,7 @@ static int array_new(lua_State *Lua)
       pf::Log log(__FUNCTION__);
 
       log.trace("");
-      if (StrMatch("bytestring", type) IS ERR::Okay) { // Represent a string as an array of bytes
+      if (iequals("bytestring", type)) { // Represent a string as an array of bytes
          size_t len;
          if (auto str = lua_tolstring(Lua, 1, &len)) {
             log.trace("Generating byte array from string of length %d: %.30s", (int)len, str);
@@ -373,7 +374,7 @@ static int array_get(lua_State *Lua)
       else if ((field = luaL_checkstring(Lua, 2))) {
          log.trace("Field: %s", field);
 
-         if (StrMatch("table", field) IS ERR::Okay) { // Convert the array to a standard Lua table.
+         if (iequals("table", field)) { // Convert the array to a standard Lua table.
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
             switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
@@ -397,12 +398,12 @@ static int array_get(lua_State *Lua)
 
             return 1;
          }
-         else if (StrMatch("getstring", field) IS ERR::Okay) {
+         else if (iequals("getstring", field)) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
             return 1;
          }
-         else if (StrMatch("copy", field) IS ERR::Okay) {
+         else if (iequals("copy", field)) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
             return 1;

@@ -512,7 +512,7 @@ static ERR AUDIO_NewObject(extAudio *Self)
    Self->MaxChannels = 8;
 
    const SystemState *state = GetSystemState();
-   if ((StrMatch(state->Platform, "Native") IS ERR::Okay) or (StrMatch(state->Platform, "Linux") IS ERR::Okay)) {
+   if ((iequals(state->Platform, "Native")) or (iequals(state->Platform, "Linux"))) {
       Self->Flags |= ADF::SYSTEM_WIDE;
    }
 
@@ -850,7 +850,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (Args->Name) {
       for (index=0; index < std::ssize(Self->Volumes); index++) {
-         if (StrMatch(Args->Name, Self->Volumes[index].Name.c_str()) IS ERR::Okay) break;
+         if (iequals(Args->Name, Self->Volumes[index].Name)) break;
       }
 
       if (index IS (LONG)Self->Volumes.size()) return ERR::Search;
@@ -860,7 +860,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR::OutOfRange;
    }
 
-   if (StrMatch("Master", Self->Volumes[index].Name.c_str()) IS ERR::Okay) {
+   if (iequals("Master", Self->Volumes[index].Name)) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
@@ -967,7 +967,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (Args->Name) {
       for (index=0; index < (LONG)Self->Volumes.size(); index++) {
-         if (StrMatch(Args->Name, Self->Volumes[index].Name.c_str()) IS ERR::Okay) break;
+         if (iequals(Args->Name, Self->Volumes[index].Name)) break;
       }
 
       if (index IS (LONG)Self->Volumes.size()) return ERR::Search;
@@ -977,7 +977,7 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR::OutOfRange;
    }
 
-   if (StrMatch("Master", Self->Volumes[index].Name.c_str()) IS ERR::Okay) {
+   if (iequals("Master", Self->Volumes[index].Name)) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
@@ -1154,7 +1154,7 @@ static ERR GET_Mute(extAudio *Self, LONG *Value)
 {
    *Value = FALSE;
    for (LONG i=0; i < std::ssize(Self->Volumes); i++) {
-      if (StrMatch("Master", Self->Volumes[i].Name.c_str()) IS ERR::Okay) {
+      if (iequals("Master", Self->Volumes[i].Name)) {
          if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) *Value = TRUE;
          break;
       }
@@ -1308,7 +1308,7 @@ static void load_config(extAudio *Self)
       std::string str;
       Self->Flags |= ADF::STEREO;
       if (config->read("AUDIO", "Stereo", str) IS ERR::Okay) {
-         if (StrMatch("FALSE", str.c_str()) IS ERR::Okay) Self->Flags &= ~ADF::STEREO;
+         if (iequals("FALSE", str)) Self->Flags &= ~ADF::STEREO;
       }
 
       if ((Self->BitDepth != 8) and (Self->BitDepth != 16) and (Self->BitDepth != 24)) Self->BitDepth = 16;
@@ -1319,7 +1319,7 @@ static void load_config(extAudio *Self)
       ConfigGroups *groups;
       if (config->getPtr(FID_Data, &groups) IS ERR::Okay) {
          for (auto& [group, keys] : groups[0]) {
-            if (StrMatch("MIXER", group.c_str()) IS ERR::Okay) {
+            if (iequals("MIXER", group)) {
                Self->Volumes.clear();
                Self->Volumes.resize(keys.size());
 

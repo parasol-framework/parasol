@@ -11,6 +11,10 @@
 #ifdef __cplusplus
 #include <functional>
 #include <sstream>
+#ifndef STRINGS_HPP
+#include <parasol/strings.hpp>
+#endif
+
 #endif
 
 class objXML;
@@ -117,7 +121,7 @@ typedef struct XMLTag {
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (StrMatch(Attribs[a].Name, Name) IS ERR::Okay) return &Attribs[a].Value;
+         if (pf::iequals(Attribs[a].Name, Name)) return &Attribs[a].Value;
       }
       return NULL;
    }
@@ -362,7 +366,7 @@ template <class T> inline ERR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flag
 inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
-      if (StrMatch(Name, a->Name) IS ERR::Okay) {
+      if (pf::iequals(Name, a->Name)) {
          a->Name  = Name;
          a->Value = Value;
          return;

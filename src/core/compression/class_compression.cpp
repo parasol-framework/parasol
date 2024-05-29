@@ -1672,11 +1672,10 @@ static ERR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
       if (Args->Wildcard) {
          if (!wildcmp(Args->Path, item.Name, Args->CaseSensitive)) continue;
       }
-      else {
-         STR flags = STR::MATCH_LEN;
-         if (Args->CaseSensitive) flags |= STR::CASE;
-         if (StrCompare(Args->Path, item.Name, 0, flags) != ERR::Okay) continue;
+      else if (Args->CaseSensitive) {
+         if (item.Name != Args->Path) continue;
       }
+      else if (!iequals(item.Name, Args->Path)) continue;
 
       zipfile_to_item(item, glFindMeta);
       Args->Item = &glFindMeta;
@@ -1987,8 +1986,8 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       log.trace("Item: %s", item.Name);
 
       if (Args->Folder) {
-         if ((LONG)item.Name.size() > folder_len) {
-            if (StrCompare(Args->Folder, item.Name) IS ERR::Okay) {
+         if (std::ssize(item.Name) > folder_len) {
+            if (iequals(Args->Folder, item.Name)) {
                if ((folder_len > 0) and (item.Name[folder_len] != '/')) continue;
                if ((item.Name[folder_len] IS '/') and (!item.Name[folder_len+1])) continue;
 

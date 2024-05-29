@@ -204,7 +204,7 @@ static ERR ARCHIVE_Init(extFile *Self)
 
    if (!Self->Path) return ERR::FieldNotSet;
 
-   if (StrCompare("archive:", Self->Path, LEN_ARCHIVE) != ERR::Okay) return ERR::NoSupport;
+   if (!startswith("archive:", Self->Path)) return ERR::NoSupport;
 
    if ((Self->Flags & (FL::NEW|FL::WRITE)) != FL::NIL) return log.warning(ERR::ReadOnly);
 
@@ -227,7 +227,7 @@ static ERR ARCHIVE_Init(extFile *Self)
 
             auto it = prv->Archive->Files.begin();
             for (; it != prv->Archive->Files.end(); it++) {
-               if (StrCompare(file_path, it->Name, 0, STR::CASE|STR::MATCH_LEN) IS ERR::Okay) break;
+               if (file_path == it->Name) break;
             }
 
             if ((it IS prv->Archive->Files.end()) and ((Self->Flags & FL::APPROXIMATE) != FL::NIL)) {
@@ -489,7 +489,7 @@ static ERR scan_folder(DirInfo *Dir)
       ZipFile &zf = *it;
 
       if (!path.empty()) {
-         if (StrCompare(path, zf.Name) != ERR::Okay) continue;
+         if (!startswith(path, zf.Name)) continue;
       }
 
       // Single folders will appear as 'ABCDEF/'

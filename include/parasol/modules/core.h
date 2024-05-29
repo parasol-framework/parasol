@@ -2018,7 +2018,6 @@ struct CoreBase {
    ERR (*_ScanDir)(struct DirInfo * Info);
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
-   ERR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
    ERR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
    ERR (*_SubscribeEvent)(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
    ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
@@ -2118,7 +2117,6 @@ inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); 
 inline ERR ScanDir(struct DirInfo * Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
-inline ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
 inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
@@ -2213,7 +2211,6 @@ extern CSTRING FieldName(ULONG FieldID);
 extern ERR ScanDir(struct DirInfo * Info);
 extern ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern void LogReturn(void);
-extern ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
 extern ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
 extern ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
 extern ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
@@ -2285,10 +2282,6 @@ inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
-template <class T, class U> inline ERR StrMatch(T &&A, U &&B) {
-   return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
-}
-
 template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
 {
    auto src = to_cstring(Source);
@@ -2351,10 +2344,6 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 inline ERR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
-}
-
-template <class T, class U> inline ERR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
-   return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
 inline ULONG StrHash(const std::string Value) {

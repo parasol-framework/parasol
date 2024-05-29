@@ -422,7 +422,7 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
 
                if ((lookup = (FieldDef *)field->Arg)) {
                   while (lookup->Name) {
-                     if (StrMatch(lookup->Name, ext) IS ERR::Okay) {
+                     if (iequals(lookup->Name, ext)) {
                         if (field->Flags & FD_FLAGS) {
                            if (large & lookup->Value) Buffer[0] = '1';
                         }

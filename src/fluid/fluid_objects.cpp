@@ -16,6 +16,7 @@ through obj.find(), push_object(), or children created with some_object.new() ar
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 
 extern "C" {
@@ -316,7 +317,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       ACTIONID action_id;
       if ((GetFieldArray(mc, FID_Methods, &table, &total_methods) IS ERR::Okay) and (table)) {
          for (LONG i=1; i < total_methods; i++) {
-            if ((table[i].Name) and (StrMatch(action, table[i].Name) IS ERR::Okay)) {
+            if ((table[i].Name) and (iequals(action, table[i].Name))) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
                i = 0x7ffffff0;
@@ -397,7 +398,7 @@ static int object_new(lua_State *Lua)
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
-               if (StrMatch("owner", field_name) IS ERR::Okay) field_error = ERR::UnsupportedOwner; // Setting the owner is not permitted.
+               if (iequals("owner", field_name)) field_error = ERR::UnsupportedOwner; // Setting the owner is not permitted.
                else field_error = set_object_field(Lua, obj, field_name, -1);
             }
             else field_error = ERR::UnsupportedField;
@@ -540,7 +541,7 @@ static int object_newchild(lua_State *Lua)
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
-               if (StrMatch("owner", field_name) IS ERR::Okay) field_error = ERR::UnsupportedOwner; // Setting the owner is not permitted.
+               if (iequals("owner", field_name)) field_error = ERR::UnsupportedOwner; // Setting the owner is not permitted.
                else field_error = set_object_field(Lua, obj, field_name, -1);
             }
             else field_error = ERR::UnsupportedField;
@@ -675,10 +676,10 @@ static int object_find(lua_State *Lua)
 
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
-      if ((StrMatch("self", object_name) IS ERR::Okay) and (class_id IS CLASSID::NIL)) {
+      if ((iequals("self", object_name)) and (class_id IS CLASSID::NIL)) {
          return object_find_ptr(Lua, Lua->Script);
       }
-      else if (StrMatch("owner", object_name) IS ERR::Okay) {
+      else if (iequals("owner", object_name)) {
          if (auto obj = Lua->Script->Owner) {
             return object_find_ptr(Lua, obj);
          }

@@ -851,7 +851,7 @@ ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result
          else return ERR::Search;
       }
 
-      if (StrMatch("owner", InitialName) IS ERR::Okay) {
+      if (iequals("owner", InitialName)) {
          if ((tlContext != &glTopContext) and (tlContext->object()->Owner)) {
             *Result = tlContext->object()->Owner->UID;
             return ERR::Okay;

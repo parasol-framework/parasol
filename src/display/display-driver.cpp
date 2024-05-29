@@ -463,8 +463,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
       glDGAAvailable = FALSE;
 
       displayname = XDisplayName(NULL);
-      if ((!StrCompare(displayname, ":", 1)) or
-          (!StrCompare(displayname, "unix:", 5)) ) {
+      if ((startswith(displayname, ":")) or (startswith(displayname, "unix:")) ) {
          LONG events, errors, major, minor, screen;
 
          if (XDGAQueryExtension(XDisplay, &events, &errors) and XDGAQueryVersion(XDisplay, &major, &minor)) {
@@ -857,7 +856,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (auto driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER)) {
       log.msg("User requested display driver '%s'", driver_name);
-      if ((StrMatch(driver_name, "none") IS ERR::Okay) or (StrMatch(driver_name, "headless") IS ERR::Okay)) {
+      if ((iequals(driver_name, "none")) or (iequals(driver_name, "headless"))) {
          glHeadless = true;
       }
    }

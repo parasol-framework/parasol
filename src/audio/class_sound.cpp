@@ -710,8 +710,8 @@ static ERR SOUND_Init(extSound *Self)
 
    Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-   if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR::Okay) or
-       (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR::Okay)) {
+   if ((!pf::strcompare(std::string_view((char *)Self->Header, sizeof(Self->Header)), "RIFF", 4)) or
+       (!pf::strcompare(std::string_view((char *)Self->Header+8, sizeof(Self->Header)-8), "WAVE", 4))) {
       FreeResource(Self->File);
       Self->File = NULL;
       return ERR::NoSupport;
@@ -817,8 +817,8 @@ static ERR SOUND_Init(extSound *Self)
 
    Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-   if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR::Okay) or
-       (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR::Okay)) {
+   if ((!pf::strcompare(std::string_view((char *)Self->Header, sizeof(Self->Header)), "RIFF", 4)) or
+       (!pf::strcompare(std::string_view((char *)Self->Header+8, sizeof(Self->Header)-8), "WAVE", 4))) {
       FreeResource(Self->File);
       Self->File = NULL;
       return ERR::NoSupport;
@@ -1660,7 +1660,7 @@ static ERR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
          return ERR::Read;
       }
 
-      if (StrCompare(ChunkName, chunk, 4, STR::CASE) IS ERR::Okay) return ERR::Okay;
+      if (pf::strcompare(ChunkName, chunk, 4)) return ERR::Okay;
 
       flReadLE(Self->File, &len); // Length of data in this chunk
       Self->File->seekCurrent(len);

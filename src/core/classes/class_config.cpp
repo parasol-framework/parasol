@@ -1015,9 +1015,9 @@ static void apply_key_filter(extConfig *Self, CSTRING Filter)
    for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
       bool matched = (f.reverse) ? true : false;
       for (auto & [k, v] : group->second) {
-         if (StrMatch(f.name.c_str(), k.c_str()) IS ERR::Okay) {
+         if (iequals(f.name, k)) {
             for (auto const &cmp : f.values) {
-               if (StrMatch(cmp.c_str(), v.c_str()) IS ERR::Okay) {
+               if (iequals(cmp, v)) {
                   matched = f.reverse ? false : true;
                   break;
                }

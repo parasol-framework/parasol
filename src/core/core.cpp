@@ -318,34 +318,34 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          if ((arg[0] != '-') or (arg[1] != '-')) { newargs.push_back(arg); continue; }
          arg += 2; // Skip '--' as this prepends all Core arguments
 
-         if (ERR::Okay IS StrMatch(arg, "log-memory")) {
+         if (iequals(arg, "log-memory")) {
             glShowPrivate = true;
             glDebugMemory = true;
          }
-         else if (ERR::Okay IS StrCompare(arg, "gfx-driver=", 11)) {
+         else if (startswith("gfx-driver=", arg)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
-         else if ((ERR::Okay IS StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
+         else if ((iequals(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
-         else if (ERR::Okay IS StrMatch(arg, "no-crash-handler")) glEnableCrashHandler = false;
-         else if (ERR::Okay IS StrMatch(arg, "sync"))        glSync = true;
-         else if (ERR::Okay IS StrMatch(arg, "log-threads")) glLogThreads = true;
-         else if (ERR::Okay IS StrMatch(arg, "log-none"))    glLogLevel = 0;
-         else if (ERR::Okay IS StrMatch(arg, "log-error"))   glLogLevel = 1;
-         else if (ERR::Okay IS StrMatch(arg, "log-warn"))    glLogLevel = 2;
-         else if (ERR::Okay IS StrMatch(arg, "log-warning")) glLogLevel = 2;
-         else if (ERR::Okay IS StrMatch(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
-         else if (ERR::Okay IS StrMatch(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
-         else if (ERR::Okay IS StrMatch(arg, "log-extapi"))  glLogLevel = 6;
-         else if (ERR::Okay IS StrMatch(arg, "log-debug"))   glLogLevel = 7;
-         else if (ERR::Okay IS StrMatch(arg, "log-trace"))   glLogLevel = 9;
-         else if (ERR::Okay IS StrMatch(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
-         else if (ERR::Okay IS StrMatch(arg, "time"))        glTimeLog = PreciseTime();
+         else if (iequals(arg, "no-crash-handler")) glEnableCrashHandler = false;
+         else if (iequals(arg, "sync"))        glSync = true;
+         else if (iequals(arg, "log-threads")) glLogThreads = true;
+         else if (iequals(arg, "log-none"))    glLogLevel = 0;
+         else if (iequals(arg, "log-error"))   glLogLevel = 1;
+         else if (iequals(arg, "log-warn"))    glLogLevel = 2;
+         else if (iequals(arg, "log-warning")) glLogLevel = 2;
+         else if (iequals(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
+         else if (iequals(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
+         else if (iequals(arg, "log-extapi"))  glLogLevel = 6;
+         else if (iequals(arg, "log-debug"))   glLogLevel = 7;
+         else if (iequals(arg, "log-trace"))   glLogLevel = 9;
+         else if (iequals(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
+         else if (iequals(arg, "time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
-         else if (ERR::Okay IS StrMatch(arg, "holdpriority")) hold_priority = true;
+         else if (iequals(arg, "holdpriority")) hold_priority = true;
          #endif
-         else if (ERR::Okay IS StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
+         else if (startswith("home=", arg)) glHomeFolderName.assign(arg + 7);
          else newargs.push_back(Info->Args[i]);
       }
 
@@ -1146,7 +1146,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    std::string buffer("config:users/default/");
 
    #ifdef __unix__
-      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (StrMatch("/", homedir) != ERR::Okay)) {
+      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (std::string_view("/") != homedir))) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
@@ -1280,18 +1280,18 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 
          CSTRING str = buffer;
          while (*str) {
-            if (ERR::Okay IS StrCompare("/dev/hd", str)) {
+            if (std::string_view(str, size).starts_with("/dev/hd")) {
                // Extract mount point
 
                LONG i = 0;
                while ((*str) and (*str > 0x20)) {
-                  if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
+                  if (i < std::ssize(devpath)-1) devpath[i++] = *str;
                   str++;
                }
                devpath[i] = 0;
 
                while ((*str) and (*str <= 0x20)) str++;
-               for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+               for (i=0; (*str) and (*str > 0x20) and (i < std::ssize(mount)-1); i++) mount[i] = *str++;
                mount[i] = 0;
 
                if ((mount[0] IS '/') and (!mount[1]));

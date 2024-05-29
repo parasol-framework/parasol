@@ -708,7 +708,7 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
 
    log.traceBranch("Module Name: %s", ModuleName);
 
-   if (StrMatch("core", ModuleName) IS ERR::Okay) {
+   if (iequals("core", ModuleName)) {
       log.msg("Self-reference to the Core detected.");
       if (!kminit) {
          kminit = true;

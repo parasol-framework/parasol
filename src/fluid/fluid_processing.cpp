@@ -182,12 +182,12 @@ static int processing_signal(lua_State *Lua)
 static int processing_get(lua_State *Lua)
 {
    if (auto fieldname = luaL_checkstring(Lua, 2)) {
-      if (StrCompare("sleep", fieldname, 0, STR::MATCH_CASE) IS ERR::Okay) {
+      if (std::string_view("sleep") IS fieldname) {
          lua_pushvalue(Lua, 1);
          lua_pushcclosure(Lua, &processing_sleep, 1);
          return 1;
       }
-      else if (StrCompare("signal", fieldname, 0, STR::MATCH_CASE) IS ERR::Okay) {
+      else if (std::string_view("signal") IS fieldname) {
          lua_pushvalue(Lua, 1);
          lua_pushcclosure(Lua, &processing_signal, 1);
          return 1;

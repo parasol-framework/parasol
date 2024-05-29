@@ -167,7 +167,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 
    std::vector<Transition> stops;
    for (auto &scan : Tags) {
-      if (StrMatch("stop", scan.name()) IS ERR::Okay) {
+      if (iequals("stop", scan.name())) {
          Transition stop;
          stop.Offset = 0;
          stop.Transform = NULL;
@@ -176,7 +176,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
             auto &value = scan.Attribs[a].Value;
             if (value.empty()) continue;
 
-            if (StrMatch("offset", name) IS ERR::Okay) {
+            if (iequals("offset", name)) {
                char *end;
                stop.Offset = strtod(value.c_str(), &end);
                if (*end IS '%') {
@@ -186,7 +186,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
                if (stop.Offset < 0.0) stop.Offset = 0;
                else if (stop.Offset > 1.0) stop.Offset = 1.0;
             }
-            else if (StrMatch("transform", name) IS ERR::Okay) {
+            else if (iequals("transform", name)) {
                stop.Transform = value.c_str();
             }
             else log.warning("Unable to process stop attribute '%s'", name.c_str());
@@ -270,7 +270,7 @@ static const std::string uri_name(const std::string Ref)
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
-   else if (StrCompare("url(#", Ref.c_str() + skip, 5) IS ERR::Okay) {
+   else if (startswith("url(#", Ref.c_str() + skip)) {
       LONG i;
       skip += 5;
       for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
@@ -521,7 +521,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          objVector *sibling = NULL;
          for (auto &scan : xml->Tags) {
-            if (StrMatch("svg", scan.name()) IS ERR::Okay) {
+            if (iequals("svg", scan.name())) {
                svgState state(Self);
                if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
                else xtag_svg(Self, state, scan, Self->Scene, sibling);
@@ -571,7 +571,7 @@ static void convert_styles(objXML::TAGS &Tags)
 
    for (auto &tag : Tags) {
       for (LONG style=1; style < std::ssize(tag.Attribs); style++) {
-         if (StrMatch("style", tag.Attribs[style].Name) != ERR::Okay) continue;
+         if (!iequals("style", tag.Attribs[style].Name)) continue;
 
          // Convert all the style values into real attributes.
 

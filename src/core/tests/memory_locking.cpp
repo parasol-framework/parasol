@@ -114,20 +114,20 @@ int main(int argc, CSTRING *argv)
    pf::vector<std::string> *args;
    if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
-         if (StrMatch(args[0][i], "-threads") IS ERR::Okay) {
+         if (iequals(args[0][i], "-threads")) {
             if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
             else break;
          }
-         else if (StrMatch(args[0][i], "-attempts") IS ERR::Okay) {
+         else if (iequals(args[0][i], "-attempts")) {
             if (++i < args->size()) glLockAttempts = StrToInt(args[0][i]);
             else break;
          }
-         else if (StrMatch(args[0][i], "-gap") IS ERR::Okay) {
+         else if (iequals(args[0][i], "-gap")) {
             if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (StrMatch(args[0][i], "-terminate") IS ERR::Okay) glTerminateMemory = true;
-         else if (StrMatch(args[0][i], "-alloc") IS ERR::Okay) glTestAllocation = true;
+         else if (iequals(args[0][i], "-terminate")) glTerminateMemory = true;
+         else if (iequals(args[0][i], "-alloc")) glTestAllocation = true;
       }
    }
 

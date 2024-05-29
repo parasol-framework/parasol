@@ -4,6 +4,7 @@
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 
 extern "C" {
@@ -106,8 +107,7 @@ static int module_index(lua_State *Lua)
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (auto list = mod->Functions) {
             for (LONG i=0; list[i].Name; i++) {
-               CSTRING name = list[i].Name;
-               if (StrMatch(name, function) IS ERR::Okay) { // Function call stack management
+               if (pf::iequals(list[i].Name, function)) { // Function call stack management
                   lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                   lua_pushinteger(Lua, i); // Arg2: Index of the function that is being called
                   lua_pushcclosure(Lua, module_call, 2);

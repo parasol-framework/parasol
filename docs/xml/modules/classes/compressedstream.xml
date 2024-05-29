@@ -341,12 +341,6 @@
       <const name="PATH">Use the <code>PATH</code> environment variable to resolve the file name in the <code>Path</code> parameter.</const>
     </constants>
 
-    <constants lookup="STR">
-      <const name="CASE">Perform a case-sensitive match.</const>
-      <const name="MATCH_CASE">Perform a case-sensitive match.</const>
-      <const name="MATCH_LEN">The strings must be of equal length to be matched.</const>
-    </constants>
-
     <constants lookup="VLF" comment="VlogF flags">
       <const name="API"/>
       <const name="BRANCH"/>

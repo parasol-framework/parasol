@@ -44,7 +44,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
             pf::vector<std::string> &args = *params;
             for (unsigned a=0; a < args.size(); a++) {
-               if (StrMatch("--sandbox", args[a]) IS ERR::Okay) continue;
+               if (pf::iequals("--sandbox", args[a])) continue;
 
                if (i < sizeof(cmdline)-2) {
                   cmdline[i++] = ' ';

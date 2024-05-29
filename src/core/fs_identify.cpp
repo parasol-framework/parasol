@@ -99,22 +99,17 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
 
-         if (StrCompare("string:", Path, 7) IS ERR::Okay) { // Do not check for '|' when string: is in use
+         if (startswith("string:", Path)) { // Do not check for '|' when string: is in use
             return ERR::FileNotFound;
          }
 
-         for (i=0; (Path[i]) and (Path[i] != '|'); i++) {
-            if (Path[i] IS ';') log.warning("Use of ';' obsolete, use '|' in path %s", Path);
-         }
+         for (i=0; Path[i] and (Path[i] != '|'); i++);
 
          if (Path[i] IS '|') {
-            STRING tmp = StrClone(Path);
-            tmp[i] = 0;
-            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR::Okay) {
-               FreeResource(tmp);
+            auto tmp = std::string(Path, i);
+            if (ResolvePath(tmp.c_str(), RSF::APPROXIMATE, &res_path) != ERR::Okay) {
                return ERR::FileNotFound;
             }
-            else FreeResource(tmp);
          }
          else return ERR::FileNotFound;
       }

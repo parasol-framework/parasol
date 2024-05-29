@@ -1,45 +1,46 @@
 
 //********************************************************************************************************************
+// Aspect ratios are case insensitive
 
-static ARF parse_aspect_ratio(const std::string Value)
+static ARF parse_aspect_ratio(std::string_view Value)
 {
-   CSTRING v = Value.c_str();
-   while ((*v) and (*v <= 0x20)) v++;
+   Value.remove_prefix(std::min(Value.find_first_not_of(" \t\r\n"), Value.size()));
 
-   if (StrMatch("none", v) IS ERR::Okay) return ARF::NONE;
-   else {
-      ARF flags = ARF::NIL;
-      if (StrCompare("xMin", v, 4) IS ERR::Okay) { flags |= ARF::X_MIN; v += 4; }
-      else if (StrCompare("xMid", v, 4) IS ERR::Okay) { flags |= ARF::X_MID; v += 4; }
-      else if (StrCompare("xMax", v, 4) IS ERR::Okay) { flags |= ARF::X_MAX; v += 4; }
+   if (iequals("none", Value)) return ARF::NONE;
 
-      if (StrCompare("yMin", v, 4) IS ERR::Okay) { flags |= ARF::Y_MIN; v += 4; }
-      else if (StrCompare("yMid", v, 4) IS ERR::Okay) { flags |= ARF::Y_MID; v += 4; }
-      else if (StrCompare("yMax", v, 4) IS ERR::Okay) { flags |= ARF::Y_MAX; v += 4; }
+   ARF flags = ARF::NIL;
+   if (startswith("xMin", Value)) { flags |= ARF::X_MIN; Value.remove_prefix(4); }
+   else if (startswith("xMid", Value)) { flags |= ARF::X_MID; Value.remove_prefix(4); }
+   else if (startswith("xMax", Value)) { flags |= ARF::X_MAX; Value.remove_prefix(4); }
 
-      while ((*v) and (*v <= 0x20)) v++;
+   if (startswith("yMin", Value)) { flags |= ARF::Y_MIN; Value.remove_prefix(4); }
+   else if (startswith("yMid", Value)) { flags |= ARF::Y_MID; Value.remove_prefix(4); }
+   else if (startswith("yMax", Value)) { flags |= ARF::Y_MAX; Value.remove_prefix(4); }
 
-      if (StrCompare("meet", v, 4) IS ERR::Okay) { flags |= ARF::MEET; }
-      else if (StrCompare("slice", v, 5) IS ERR::Okay) { flags |= ARF::SLICE; }
-      return flags;
-   }
+   Value.remove_prefix(std::min(Value.find_first_not_of(" \t\r\n"), Value.size()));
+
+   if (startswith("meet", Value)) { flags |= ARF::MEET; }
+   else if (startswith("slice", Value)) { flags |= ARF::SLICE; }
+
+   return flags;
 }
 
 //********************************************************************************************************************
 
-static RQ shape_rendering_to_render_quality(const std::string Value)
+static RQ shape_rendering_to_render_quality(const std::string_view Value)
 {
-   pf::Log log;
-
-   if (StrMatch("auto", Value) IS ERR::Okay) return RQ::AUTO;
-   else if (StrMatch("optimize-speed", Value) IS ERR::Okay) return RQ::FAST;
-   else if (StrMatch("optimizeSpeed", Value) IS ERR::Okay) return RQ::FAST;
-   else if (StrMatch("crisp-edges", Value) IS ERR::Okay) return RQ::CRISP;
-   else if (StrMatch("crispEdges", Value) IS ERR::Okay) return RQ::CRISP;
-   else if (StrMatch("geometric-precision", Value) IS ERR::Okay) return RQ::PRECISE;
-   else if (StrMatch("geometricPrecision", Value) IS ERR::Okay) return RQ::PRECISE;
-   else if (StrMatch("best", Value) IS ERR::Okay) return RQ::BEST;
-   else log.warning("Unknown shape-rendering value '%s'", Value.c_str());
+   if (iequals(Value, "auto")) return RQ::AUTO;
+   else if (iequals(Value, "optimize-speed")) return RQ::FAST;
+   else if (iequals(Value, "optimizeSpeed")) return RQ::FAST;
+   else if (iequals(Value, "crisp-edges")) return RQ::CRISP;
+   else if (iequals(Value, "crispEdges")) return RQ::CRISP;
+   else if (iequals(Value, "geometric-precision")) return RQ::PRECISE;
+   else if (iequals(Value, "geometricPrecision")) return RQ::PRECISE;
+   else if (iequals(Value, "best")) return RQ::BEST;
+   else {
+      pf::Log log;
+      log.warning("Unknown shape-rendering value '%s'", std::string(Value).c_str());
+   }
 
    return RQ::AUTO;
 }
@@ -250,8 +251,8 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
          if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
 
          if (!units.empty()) {
-            if (StrMatch("userSpaceOnUse", units) IS ERR::Okay) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
-            else if (StrMatch("objectBoundingBox", units) IS ERR::Okay) clip->set(FID_Units, LONG(VUNIT::BOUNDING_BOX));
+            if (iequals("userSpaceOnUse", units)) clip->set(FID_Units, LONG(VUNIT::USERSPACE));
+            else if (iequals("objectBoundingBox", units)) clip->set(FID_Units, LONG(VUNIT::BOUNDING_BOX));
          }
 
          if (InitObject(clip) IS ERR::Okay) {
@@ -294,8 +295,8 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
          case SVF_ID:        id = value; break;
          case SVF_TRANSFORM: transform = value; break;
          case SVF_MASKUNITS:
-            if (StrMatch("userSpaceOnUse", value) IS ERR::Okay) units = VUNIT::USERSPACE;
-            else if (StrMatch("objectBoundingBox", value) IS ERR::Okay) units = VUNIT::BOUNDING_BOX;
+            if (iequals("userSpaceOnUse", value)) units = VUNIT::USERSPACE;
+            else if (iequals("objectBoundingBox", value)) units = VUNIT::BOUNDING_BOX;
             break;
          case SVF_MASKCONTENTUNITS: // TODO
             break;
@@ -450,9 +451,9 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 
    std::vector<MergeSource> list;
    for (auto &child : Tag.Children) {
-      if (StrMatch("feMergeNode", child.name()) IS ERR::Okay) {
+      if (iequals("feMergeNode", child.name())) {
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
-            if (StrMatch("in", child.Attribs[a].Name) IS ERR::Okay) {
+            if (iequals("in", child.Attribs[a].Name)) {
                switch (StrHash(child.Attribs[a].Value)) {
                   case SVF_SOURCEGRAPHIC:   list.push_back(VSF::GRAPHIC); break;
                   case SVF_SOURCEALPHA:     list.push_back(VSF::ALPHA); break;
@@ -633,9 +634,9 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
          case SVF_TARGETY: fx->set(FID_TargetY, StrToInt(val)); break;
 
          case SVF_EDGEMODE:
-            if (StrMatch("duplicate", val) IS ERR::Okay) fx->set(FID_EdgeMode, LONG(EM::DUPLICATE));
-            else if (StrMatch("wrap", val) IS ERR::Okay) fx->set(FID_EdgeMode, LONG(EM::WRAP));
-            else if (StrMatch("none", val) IS ERR::Okay) fx->set(FID_EdgeMode, LONG(EM::NONE));
+            if (iequals("duplicate", val)) fx->set(FID_EdgeMode, LONG(EM::DUPLICATE));
+            else if (iequals("wrap", val)) fx->set(FID_EdgeMode, LONG(EM::WRAP));
+            else if (iequals("none", val)) fx->set(FID_EdgeMode, LONG(EM::NONE));
             break;
 
          case SVF_KERNELUNITLENGTH: {
@@ -650,7 +651,7 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
 
          // The modifications will apply to R,G,B only when preserveAlpha is true.
          case SVF_PRESERVEALPHA:
-            fx->set(FID_PreserveAlpha, (StrMatch("true", val) IS ERR::Okay) or (StrMatch("1", val) IS ERR::Okay));
+            fx->set(FID_PreserveAlpha, iequals("true", val) or (std::string_view("1") IS val));
             break;
 
          case SVF_X:      FUNIT(FID_X, val).set(fx); break;
@@ -693,7 +694,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
          case SVF_LIGHTING_COLOUR:
          case SVF_LIGHTING_COLOR: {
             VectorPainter painter;
-            if (StrMatch("currentColor", val) IS ERR::Okay) {
+            if (iequals("currentColor", val)) {
                FRGB rgb;
                if (current_colour(Self, Self->Scene->Viewport, State, rgb) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             }
@@ -731,7 +732,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
    if (!Tag.Children.empty()) {
       ERR error;
       auto &child = Tag.Children[0];
-      if (StrCompare("feDistantLight", child.name()) IS ERR::Okay) {
+      if (std::string_view("feDistantLight") == child.name()) {
          DOUBLE azimuth = 0, elevation = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
@@ -743,7 +744,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          error = ltSetDistantLight(fx, azimuth, elevation);
       }
-      else if (StrCompare("fePointLight", child.name()) IS ERR::Okay) {
+      else if (std::string_view("fePointLight") == child.name()) {
          DOUBLE x = 0, y = 0, z = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
@@ -756,7 +757,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          error = ltSetPointLight(fx, x, y, z);
       }
-      else if (StrCompare("feSpotLight", child.name()) IS ERR::Okay) {
+      else if (std::string_view("feSpotLight") == child.name()) {
          DOUBLE x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
          DOUBLE exponent = 1, cone_angle = 0;
 
@@ -1062,7 +1063,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
          case SVF_FLOOD_COLOR:
          case SVF_FLOOD_COLOUR: {
             VectorPainter painter;
-            if (StrMatch("currentColor", val) IS ERR::Okay) {
+            if (iequals("currentColor", val)) {
                if (current_colour(Self, Self->Scene->Viewport, State, painter.Colour) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             }
             else if (vecReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
@@ -1125,12 +1126,12 @@ static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
          case SVF_SEED: fx->set(FID_Seed, StrToInt(val)); break;
 
          case SVF_STITCHTILES:
-            if (StrMatch("stitch", val) IS ERR::Okay) fx->set(FID_Stitch, TRUE);
+            if (iequals("stitch", val)) fx->set(FID_Stitch, TRUE);
             else fx->set(FID_Stitch, FALSE);
             break;
 
          case SVF_TYPE:
-            if (StrMatch("fractalNoise", val) IS ERR::Okay) fx->set(FID_Type, LONG(TB::NOISE));
+            if (iequals("fractalNoise", val)) fx->set(FID_Type, LONG(TB::NOISE));
             else fx->set(FID_Type, 0);
             break;
 
@@ -1223,7 +1224,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
          case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
          case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); break;
          case SVF_XLINK_HREF: ref = val; break;
-         case SVF_EXTERNALRESOURCESREQUIRED: required = StrMatch("true", val) IS ERR::Okay; break;
+         case SVF_EXTERNALRESOURCESREQUIRED: required = iequals("true", val); break;
          case SVF_RESULT: result_name = val; break;
       }
    }
@@ -1267,7 +1268,7 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
    // case we need to divert to the SourceFX parser.
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
-      if ((StrMatch("xlink:href", Tag.Attribs[a].Name) IS ERR::Okay) or (StrMatch("href", Tag.Attribs[a].Name) IS ERR::Okay)) {
+      if ((iequals("xlink:href", Tag.Attribs[a].Name)) or (iequals("href", Tag.Attribs[a].Name))) {
          if ((Tag.Attribs[a].Value[0] IS '#')) {
             return parse_fe_source(Self, State, Filter, Tag);
          }
@@ -1294,10 +1295,10 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
          case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
 
          case SVF_IMAGE_RENDERING: {
-            if (StrMatch("optimizeSpeed", val) IS ERR::Okay) fx->set(FID_ResampleMethod, LONG(VSM::BILINEAR));
-            else if (StrMatch("optimizeQuality", val) IS ERR::Okay) fx->set(FID_ResampleMethod, LONG(VSM::LANCZOS3));
-            else if (StrMatch("auto", val) IS ERR::Okay);
-            else if (StrMatch("inherit", val) IS ERR::Okay);
+            if (iequals("optimizeSpeed", val)) fx->set(FID_ResampleMethod, LONG(VSM::BILINEAR));
+            else if (iequals("optimizeQuality", val)) fx->set(FID_ResampleMethod, LONG(VSM::LANCZOS3));
+            else if (iequals("auto", val));
+            else if (iequals("inherit", val));
             else log.warning("Unrecognised image-rendering option '%s'", val.c_str());
             break;
          }
@@ -1311,7 +1312,7 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
             break;
 
          case SVF_EXTERNALRESOURCESREQUIRED: // If true and the image cannot be loaded, return a fatal error code.
-            if (StrMatch("true", val) IS ERR::Okay) image_required = true;
+            if (iequals("true", val)) image_required = true;
             break;
 
          case SVF_RESULT: result_name = val; break;
@@ -1382,8 +1383,8 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
 
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_FILTERUNITS:
-               if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) filter->Units = VUNIT::USERSPACE;
-               else if (StrMatch("objectBoundingBox", val) IS ERR::Okay) filter->Units = VUNIT::BOUNDING_BOX;
+               if (iequals("userSpaceOnUse", val)) filter->Units = VUNIT::USERSPACE;
+               else if (iequals("objectBoundingBox", val)) filter->Units = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_ID:      if (add_id(Self, Tag, val)) id = val; break;
@@ -1402,15 +1403,15 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
             }
 
             case SVF_COLOR_INTERPOLATION_FILTERS: // The default is linearRGB
-               if (StrMatch("auto", val) IS ERR::Okay) filter->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
-               else if (StrMatch("sRGB", val) IS ERR::Okay) filter->set(FID_ColourSpace, LONG(VCS::SRGB));
-               else if (StrMatch("linearRGB", val) IS ERR::Okay) filter->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
-               else if (StrMatch("inherit", val) IS ERR::Okay) filter->set(FID_ColourSpace, LONG(VCS::INHERIT));
+               if (iequals("auto", val)) filter->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
+               else if (iequals("sRGB", val)) filter->set(FID_ColourSpace, LONG(VCS::SRGB));
+               else if (iequals("linearRGB", val)) filter->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
+               else if (iequals("inherit", val)) filter->set(FID_ColourSpace, LONG(VCS::INHERIT));
                break;
 
             case SVF_PRIMITIVEUNITS:
-               if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) filter->PrimitiveUnits = VUNIT::USERSPACE; // Default
-               else if (StrMatch("objectBoundingBox", val) IS ERR::Okay) filter->PrimitiveUnits = VUNIT::BOUNDING_BOX;
+               if (iequals("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT::USERSPACE; // Default
+               else if (iequals("objectBoundingBox", val)) filter->PrimitiveUnits = VUNIT::BOUNDING_BOX;
                break;
 
 /*
@@ -1506,13 +1507,13 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
                // objectBoundingBox: The user coordinate system for the contents of the 'pattern' element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute 'patternTransform'.
                // The default is userSpaceOnUse
 
-               if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) pattern->ContentUnits = VUNIT::USERSPACE;
-               else if (StrMatch("objectBoundingBox", val) IS ERR::Okay) pattern->ContentUnits = VUNIT::BOUNDING_BOX;
+               if (iequals("userSpaceOnUse", val)) pattern->ContentUnits = VUNIT::USERSPACE;
+               else if (iequals("objectBoundingBox", val)) pattern->ContentUnits = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_PATTERNUNITS:
-               if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) pattern->Units = VUNIT::USERSPACE;
-               else if (StrMatch("objectBoundingBox", val) IS ERR::Okay) pattern->Units = VUNIT::BOUNDING_BOX;
+               if (iequals("userSpaceOnUse", val)) pattern->Units = VUNIT::USERSPACE;
+               else if (iequals("objectBoundingBox", val)) pattern->Units = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_PATTERNTRANSFORM: pattern->set(FID_Transform, val); break;
@@ -1698,17 +1699,17 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
    auto val = Path.c_str();
 
    ERR error = ERR::Okay;
-   if (StrCompare("icons:", val, 5) IS ERR::Okay) {
+   if (startswith("icons:", val)) {
       // Parasol feature: Load an SVG image from the icon database.  Nothing needs to be done here
       // because the fielsystem volume is built-in.
    }
-   else if (StrCompare("data:", val, 5) IS ERR::Okay) { // Check for embedded content
+   else if (startswith("data:", val)) { // Check for embedded content
       log.branch("Detected embedded source data");
       val += 5;
-      if (StrCompare("image/", val, 6) IS ERR::Okay) { // Has to be an image type
+      if (startswith("image/", val)) { // Has to be an image type
          val += 6;
          while ((*val) and (*val != ';')) val++;
-         if (StrCompare(";base64", val, 7) IS ERR::Okay) { // Is it base 64?
+         if (startswith(";base64", val)) { // Is it base 64?
             val += 7;
             while ((*val) and (*val != ',')) val++;
             if (*val IS ',') val++;
@@ -1779,8 +1780,8 @@ static void def_image(extSVG *Self, XMLTag &Tag)
 
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_UNITS:
-               if (StrMatch("userSpaceOnUse", val) IS ERR::Okay) image->Units = VUNIT::USERSPACE;
-               else if (StrMatch("objectBoundingBox", val) IS ERR::Okay) image->Units = VUNIT::BOUNDING_BOX;
+               if (iequals("userSpaceOnUse", val)) image->Units = VUNIT::USERSPACE;
+               else if (iequals("objectBoundingBox", val)) image->Units = VUNIT::BOUNDING_BOX;
                else log.warning("Unknown <image> units reference '%s'", val.c_str());
                break;
 
@@ -1962,7 +1963,7 @@ static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
             // Anything not immediately recognised is added to the dictionary if it has an 'id' attribute.
             // No object is instantiated -- this is left to the referencee.
             for (LONG a=1; a < std::ssize(child.Attribs); a++) {
-               if (StrMatch("id", child.Attribs[a].Name) IS ERR::Okay) {
+               if (iequals("id", child.Attribs[a].Name)) {
                   add_id(Self, child, child.Attribs[a].Value);
                   break;
                }
@@ -1990,8 +1991,8 @@ static ERR xtag_style(extSVG *Self, XMLTag &Tag)
    }
 
    for (auto &a : Tag.Attribs) {
-      if (StrMatch("type", a.Name) IS ERR::Okay) {
-         if (StrMatch("text/css", a.Value) != ERR::Okay) {
+      if (iequals("type", a.Name)) {
+         if (!iequals("text/css", a.Value)) {
             log.warning("Unsupported stylesheet '%s'", a.Value.c_str());
             return ERR::NoSupport;
          }
@@ -2044,7 +2045,7 @@ static void xtag_symbol(extSVG *Self, XMLTag &Tag)
    log.traceBranch("Tag: %d", Tag.ID);
 
    for (auto &a : Tag.Attribs) {
-      if (StrMatch("id", a.Name) IS ERR::Okay) {
+      if (iequals("id", a.Name)) {
          add_id(Self, Tag, a.Value);
          return;
       }
@@ -2081,13 +2082,13 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
          case SVF_TRANSITION:  transition = val; break;
          case SVF_STARTOFFSET: offset = val; break;
          case SVF_METHOD:
-            if (StrMatch("align", val) IS ERR::Okay) flags &= ~VMF::STRETCH;
-            else if (StrMatch("stretch", val) IS ERR::Okay) flags |= VMF::STRETCH;
+            if (iequals("align", val)) flags &= ~VMF::STRETCH;
+            else if (iequals("stretch", val)) flags |= VMF::STRETCH;
             break;
 
          case SVF_SPACING:
-            if (StrMatch("auto", val) IS ERR::Okay) flags |= VMF::AUTO_SPACING;
-            else if (StrMatch("exact", val) IS ERR::Okay) flags &= ~VMF::AUTO_SPACING;
+            if (iequals("auto", val)) flags |= VMF::AUTO_SPACING;
+            else if (iequals("exact", val)) flags &= ~VMF::AUTO_SPACING;
             break;
 
          case SVF_ALIGN:
@@ -2195,7 +2196,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       Self->Cloning--;
    });
 
-   if ((StrMatch("symbol", tagref->name()) IS ERR::Okay) or (StrMatch("svg", tagref->name()) IS ERR::Okay)) {
+   if ((iequals("symbol", tagref->name())) or (iequals("svg", tagref->name()))) {
       // SVG spec requires that we create a VectorGroup and then create a Viewport underneath that.  However if there
       // are no attributes to apply to the group then there is no sense in creating an empty one.
 
@@ -2542,7 +2543,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
             break;
 
          case SVF_ZOOMANDPAN:
-            if (StrMatch("magnify", val) IS ERR::Okay) {
+            if (iequals("magnify", val)) {
                // This option indicates that the scene graph should be scaled to match the size of the client's
                // viewing window.
                log.warning("zoomAndPan not yet supported.");
@@ -2791,7 +2792,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       // Search for mpath references, e.g. <mpath xlink:href="#mpathRef"/>
 
       for (auto &child : Tag.Children) {
-         if ((child.isTag()) and (StrMatch("mpath", child.name()) IS ERR::Okay)) {
+         if ((child.isTag()) and (iequals("mpath", child.name()))) {
             auto href = child.attrib("xlink:href");
             if (!href) child.attrib("href");
 
@@ -2938,7 +2939,7 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
                case KatanaSelectorMatchTag: // Applies to all tags matching this name
                   log.trace("Processing selector: %s", (sel->tag) ? sel->tag->local : "UNNAMED");
                   for (auto &tag : Tags) {
-                     if (StrMatch(sel->tag->local, tag.name()) IS ERR::Okay) {
+                     if (iequals(sel->tag->local, tag.name())) {
                         apply_rule(Self, sr->declarations, tag);
                      }
 
@@ -2955,8 +2956,8 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
                   log.trace("Processing class selector: %s", (sel->data) ? sel->data->value : "UNNAMED");
                   for (auto &tag : Tags) {
                      for (auto &a : tag.Attribs) {
-                        if (StrMatch("class", a.Name) IS ERR::Okay) {
-                           if (StrMatch(sel->data->value, a.Value) IS ERR::Okay) {
+                        if (iequals("class", a.Name)) {
+                           if (iequals(sel->data->value, a.Value)) {
                               apply_rule(Self, sr->declarations, tag);
                            }
                            break;
@@ -3112,7 +3113,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_DY: Vector->set(FID_DY, StrValue); return ERR::Okay;
 
             case SVF_LENGTHADJUST: // Can be set to either 'spacing' or 'spacingAndGlyphs'
-               //if (StrMatch("spacingAndGlyphs", va_arg(list, STRING) IS ERR::Okay)) Vector->VT.SpacingAndGlyphs = TRUE;
+               //if (iequals("spacingAndGlyphs", va_arg(list, STRING))) Vector->VT.SpacingAndGlyphs = TRUE;
                //else Vector->VT.SpacingAndGlyphs = FALSE;
                return ERR::Okay;
 
@@ -3252,7 +3253,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_SPIRAL:   FUNIT(FID_Spiral, StrValue).set(Vector); return ERR::Okay;
             case SVF_REPEAT:   FUNIT(FID_Repeat, StrValue).set(Vector); return ERR::Okay;
             case SVF_CLOSE:
-               if ((StrMatch("true", StrValue) IS ERR::Okay) or (StrMatch("1", StrValue) IS ERR::Okay)) Vector->set(FID_Close, TRUE);
+               if ((iequals("true", StrValue)) or (iequals("1", StrValue))) Vector->set(FID_Close, TRUE);
                else Vector->set(FID_Close, FALSE);
                break;
          }
@@ -3299,10 +3300,10 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_COLOUR_INTERPOLATION:
       case SVF_COLOR_INTERPOLATION:
-         if (StrMatch("auto", StrValue) IS ERR::Okay) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
-         else if (StrMatch("sRGB", StrValue) IS ERR::Okay) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
-         else if (StrMatch("linearRGB", StrValue) IS ERR::Okay) Vector->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
-         else if (StrMatch("inherit", StrValue) IS ERR::Okay) Vector->set(FID_ColourSpace, LONG(VCS::INHERIT));
+         if (iequals("auto", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
+         else if (iequals("sRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
+         else if (iequals("linearRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
+         else if (iequals("inherit", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::INHERIT));
          else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue.c_str(), Tag.LineNo);
          break;
 
@@ -3337,29 +3338,29 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
 
       case SVF_VISIBILITY:
-         if (StrMatch("visible", StrValue) IS ERR::Okay)       Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (StrMatch("hidden", StrValue) IS ERR::Okay)   Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (StrMatch("collapse", StrValue) IS ERR::Okay) Vector->set(FID_Visibility, LONG(VIS::COLLAPSE)); // Same effect as hidden, kept for SVG compatibility
-         else if (StrMatch("inherit", StrValue) IS ERR::Okay)  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
+         if (iequals("visible", StrValue))       Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
+         else if (iequals("hidden", StrValue))   Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
+         else if (iequals("collapse", StrValue)) Vector->set(FID_Visibility, LONG(VIS::COLLAPSE)); // Same effect as hidden, kept for SVG compatibility
+         else if (iequals("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
          else log.warning("Unsupported visibility value '%s'", StrValue.c_str());
          break;
 
       case SVF_FILL_RULE:
-         if (StrMatch("nonzero", StrValue) IS ERR::Okay) Vector->set(FID_FillRule, LONG(VFR::NON_ZERO));
-         else if (StrMatch("evenodd", StrValue) IS ERR::Okay) Vector->set(FID_FillRule, LONG(VFR::EVEN_ODD));
-         else if (StrMatch("inherit", StrValue) IS ERR::Okay) Vector->set(FID_FillRule, LONG(VFR::INHERIT));
+         if (iequals("nonzero", StrValue)) Vector->set(FID_FillRule, LONG(VFR::NON_ZERO));
+         else if (iequals("evenodd", StrValue)) Vector->set(FID_FillRule, LONG(VFR::EVEN_ODD));
+         else if (iequals("inherit", StrValue)) Vector->set(FID_FillRule, LONG(VFR::INHERIT));
          else log.warning("Unsupported fill-rule value '%s'", StrValue.c_str());
          break;
 
       case SVF_CLIP_RULE:
-         if (StrMatch("nonzero", StrValue) IS ERR::Okay) Vector->set(FID_ClipRule, LONG(VFR::NON_ZERO));
-         else if (StrMatch("evenodd", StrValue) IS ERR::Okay) Vector->set(FID_ClipRule, LONG(VFR::EVEN_ODD));
-         else if (StrMatch("inherit", StrValue) IS ERR::Okay) Vector->set(FID_ClipRule, LONG(VFR::INHERIT));
+         if (iequals("nonzero", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::NON_ZERO));
+         else if (iequals("evenodd", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::EVEN_ODD));
+         else if (iequals("inherit", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::INHERIT));
          else log.warning("Unsupported clip-rule value '%s'", StrValue.c_str());
          break;
 
       case SVF_ENABLE_BACKGROUND:
-         if (StrMatch("new", StrValue) IS ERR::Okay) Vector->set(FID_EnableBkgd, TRUE);
+         if (iequals("new", StrValue)) Vector->set(FID_EnableBkgd, TRUE);
          break;
 
       case SVF_ID:
@@ -3376,9 +3377,9 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          // whitespace in document layout mode.  This has no relevance in our Vector Scene Graph, so 'display' is
          // treated as an obsolete feature and converted to visibility.
 
-         if (StrMatch("none", StrValue) IS ERR::Okay)          Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (StrMatch("inline", StrValue) IS ERR::Okay)   Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (StrMatch("inherit", StrValue) IS ERR::Okay)  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
+         if (iequals("none", StrValue))          Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
+         else if (iequals("inline", StrValue))   Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
+         else if (iequals("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
          break;
 
       case SVF_NUMERIC_ID: Vector->set(FID_NumericID, StrValue); break;
@@ -3396,7 +3397,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_COLOR:        Vector->set(FID_Fill, StrValue); break;
 
       case SVF_STROKE:
-         if (StrMatch("currentColor", StrValue) IS ERR::Okay) {
+         if (iequals("currentColor", StrValue)) {
             FRGB rgb;
             if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) SetArray(Vector, FID_Stroke|TFLOAT, &rgb, 4);
          }
@@ -3404,7 +3405,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
 
       case SVF_FILL:
-         if (StrMatch("currentColor", StrValue) IS ERR::Okay) {
+         if (iequals("currentColor", StrValue)) {
             FRGB rgb;
             if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) SetArray(Vector, FID_Fill|TFLOAT, &rgb, 4);
          }
