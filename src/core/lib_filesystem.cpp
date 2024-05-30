@@ -455,7 +455,7 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
       error = stricompare(path1, path2, 0, true) ? ERR::True : ERR::False;
    }
-   else error = strcompare(path1, path2, 0, true) ? ERR::True : ERR::False;
+   else error = (std::string_view(path1) IS std::string_view(path2)) ? ERR::True : ERR::False;
 
    if (error != ERR::Okay) {
       if (v1 IS v2) {

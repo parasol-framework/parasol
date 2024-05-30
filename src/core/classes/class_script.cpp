@@ -507,11 +507,11 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
 
       LONG i, len;
       if ((Value) and (*Value)) {
-         if (pf::strcompare("STRING:", Value, 7)) {
+         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
+
+         if (std::string_view(Value, len).starts_with("STRING:")) {
             return SET_String(Self, Value + 7);
          }
-
-         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
          if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];

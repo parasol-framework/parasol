@@ -141,7 +141,7 @@ static ERR FILE_Activate(extFile *Self)
    if ((Self->Flags & FL::DEVICE) != FL::NIL) {
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
    }
-   else if (pf::strcompare("/dev/", path, 5)) {
+   else if (std::string_view(path).starts_with("/dev/")) {
       log.warning("Opening devices not permitted without the DEVICE flag.");
       return ERR::NoPermission;
    }

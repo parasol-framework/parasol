@@ -157,26 +157,6 @@ inline void camelcase(std::string &s) {
    return false;
 }
 
-[[nodiscard]] inline bool strcompare(std::string_view StringA, std::string_view StringB, LONG Length = 0x7fffffff, bool MatchLength = false)
-{
-   if (StringA.data() IS StringB.data()) return true;
-
-   std::size_t a = 0, b = 0;
-   LONG len = (!Length) ? 0x7fffffff : Length;
-
-   while ((len) and (StringA[a]) and (StringB[b])) {
-      if (StringA[a++] != StringB[b++]) return false;
-      len--;
-   }
-
-   if (MatchLength) {
-      if ((a IS StringA.size()) and (b IS StringB.size())) return true;
-      else return false;
-   }
-   else if ((Length) and (len > 0)) return false;
-   else return true;
-}
-
 [[nodiscard]] inline bool stricompare(std::string_view StringA, std::string_view StringB, LONG Length = 0x7fffffff, bool MatchLength = false)
 {
    if (StringA.data() IS StringB.data()) return true;
