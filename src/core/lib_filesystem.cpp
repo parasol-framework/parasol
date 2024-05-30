@@ -1671,7 +1671,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
          if (srclen <= destlen) {
-            if (stricompare(src, dest, srclen)) {
+            if (pf::startswith(src, dest)) {
                log.warning("The requested copy would cause recursion.");
                error = ERR::Loop;
                goto exit;
@@ -1911,7 +1911,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
       if (srclen <= destlen) {
-         if (stricompare(src, dest, srclen)) {
+         if (pf::startswith(src, dest)) {
             log.warning("The requested copy would cause recursion.");
             error = ERR::Loop;
             goto exit;

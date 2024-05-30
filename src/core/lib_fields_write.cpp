@@ -368,8 +368,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    if (Flags & FD_STRING) {
       LARGE int64 = 0;
 
-      CSTRING str;
-      if ((str = (CSTRING)Data)) {
+      if (auto str = (CSTRING)Data) {
          // Check if the string is a number
          for (j=0; str[j] and (str[j] >= '0') and (str[j] <= '9'); j++);
          if (!str[j]) {
@@ -389,8 +388,9 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 
                   if (j > 0) {
                      FieldDef *lk = (FieldDef *)Field->Arg;
+                     std::string_view sv(str, j);
                      while (lk->Name) {
-                        if (stricompare(lk->Name, str, j) and (!lk->Name[j])) {
+                        if (iequals(lk->Name, sv)) {
                            int64 |= lk->Value;
                            break;
                         }
