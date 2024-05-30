@@ -553,7 +553,7 @@ static ERR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
    log.trace("Name: %s", Args->Name);
 
-   auto name_hash = StrHash(Args->Name);
+   auto name_hash = strihash(Args->Name);
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].code IS SCODE::INDEX_START) {
          auto &index = Self->Stream.lookup<bc_index>(i);
@@ -774,7 +774,7 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    log.msg("Index: %s", Args->Name);
 
    auto &stream = Self->Stream;
-   auto name_hash = StrHash(Args->Name);
+   auto name_hash = strihash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (stream[i].code IS SCODE::INDEX_START) {
          auto &index = Self->Stream.lookup<bc_index>(i);
@@ -1267,7 +1267,7 @@ static ERR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    log.branch("Index: %s", Args->Name);
 
    auto &stream = Self->Stream;
-   auto name_hash = StrHash(Args->Name);
+   auto name_hash = strihash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (stream[i].code IS SCODE::INDEX_START) {
          auto &index = Self->Stream.lookup<bc_index>(i);

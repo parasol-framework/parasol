@@ -9,13 +9,13 @@ void anim_base::set_orig_value(svgState &State)
 
    pf::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
-      switch(StrHash(target_attrib)) {
+      switch(strihash(target_attrib)) {
          case SVF_DISPLAY:
             if (obj->Visibility IS VIS::HIDDEN) target_attrib_orig = "none";
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
             else if (obj->Visibility IS VIS::VISIBLE) target_attrib_orig = "inline";
             break;
-            
+
          case SVF_STROKE_WIDTH:
             target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
             break;
@@ -45,7 +45,7 @@ void anim_base::set_orig_value(svgState &State)
             else if (State.m_opacity != -1) target_attrib_orig = State.m_opacity;
             else target_attrib_orig = 1.0;
             break;
-        
+
          default: {
             char buffer[400];
             if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
@@ -181,7 +181,7 @@ double anim_base::get_numeric_value(objVector &Vector, FIELD Field)
 {
    double from_val, to_val;
    double seek_to = seek;
-   
+
    if ((seek >= 1.0) and (!freeze)) {
       return strtod(target_attrib_orig.c_str(), NULL);
    }

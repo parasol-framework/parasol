@@ -193,7 +193,7 @@ end
 function hash(Prefix, Format, ...)
    for k, hash_def in ipairs({...}) do
       local hash_name = hash_def:gsub('[^%w]', '_')
-      local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
+      local hash_id = string.format('%08x', hash_name:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
    output()

@@ -419,7 +419,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
                         if (object.granted()) {
                            OBJECTPTR target;
                            auto fieldname = Output.substr(dot+1, end-(dot+1));
-                           if (auto classfield = FindField(object.obj, StrHash(fieldname), &target)) {
+                           if (auto classfield = FindField(object.obj, strihash(fieldname), &target)) {
                               if (classfield->Flags & FD_STRING) {
                                  CSTRING str;
                                  if (target->get(classfield->FieldID, &str) IS ERR::Okay) Output.replace(pos, end-pos, str);
@@ -901,7 +901,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
    auto tagname = Tag.Attribs[0].Name;
    if (tagname.starts_with('$')) tagname.erase(0, 1);
-   auto tag_hash = StrHash(tagname);
+   auto tag_hash = strihash(tagname);
    object_template = NULL;
 
    auto result = TRF::NIL;
@@ -934,7 +934,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          for (XMLTag &scan : Self->Templates->Tags) {
             for (unsigned i=0; i < scan.Attribs.size(); i++) {
                if (iequals("name", scan.Attribs[i].Name)) {
-                  Self->TemplateIndex[StrHash(scan.Attribs[i].Value)] = &scan;
+                  Self->TemplateIndex[strihash(scan.Attribs[i].Value)] = &scan;
                }
             }
          }
@@ -1300,7 +1300,7 @@ TRF parser::parse_tags_with_embedded_style(objXML::TAGS &Tags, bc_font &Style, I
 
 bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_font &Style)
 {
-   switch (StrHash(Attrib.Name)) {
+   switch (strihash(Attrib.Name)) {
       case HASH_no_wrap:
          Style.options |= FSO::NO_WRAP;
          return true;
@@ -1351,7 +1351,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
 {
    pf::Log log;
 
-   switch (StrHash(Attrib.Name)) {
+   switch (strihash(Attrib.Name)) {
       case HASH_colour:
          log.warning("Font 'colour' attrib is deprecated, use 'fill'");
          [[fallthrough]];
@@ -1429,7 +1429,7 @@ void parser::tag_advance(XMLTag &Tag)
    auto &adv = m_stream->emplace<bc_advance>(m_index);
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_x: adv.x = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
          case HASH_y: adv.y = DUNIT(Tag.Attribs[i].Value, DU::PIXEL); break;
       }
@@ -1452,7 +1452,7 @@ void parser::tag_body(XMLTag &Tag)
    // Body tag needs to be placed before any content
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_clip_path: {
             OBJECTPTR clip;
             if (scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip) IS ERR::Okay) {
@@ -1683,7 +1683,7 @@ void parser::tag_button(XMLTag &Tag)
    bc_button &widget = m_stream->emplace<bc_button>(m_index);
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto hash = strihash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_fill)          widget.fill   = value;
       else if (hash IS HASH_alt_fill) widget.alt_fill = value;
@@ -1780,7 +1780,7 @@ void parser::tag_checkbox(XMLTag &Tag)
    bc_checkbox &widget = m_stream->emplace<bc_checkbox>(m_index);
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto hash = strihash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
 
       if (hash IS HASH_label)      widget.label = value;
@@ -1873,7 +1873,7 @@ void parser::tag_combobox(XMLTag &Tag)
    bc_combobox &widget = m_stream->emplace<bc_combobox>(m_index);
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto hash = strihash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_label)          widget.label = value;
       else if (hash IS HASH_value)     widget.value = value;
@@ -1991,7 +1991,7 @@ void parser::tag_input(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &value = Tag.Attribs[i].Value;
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_label:     widget.label = value; break;
          case HASH_value:     widget.value = value; break;
          case HASH_fill:      widget.fill  = value; break;
@@ -2131,7 +2131,7 @@ void parser::tag_editdef(XMLTag &Tag)
    std::string name;
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_max_chars:
             edit.max_chars = StrToInt(Tag.Attribs[i].Value);
             if (edit.max_chars < 0) edit.max_chars = -1;
@@ -2291,12 +2291,12 @@ void parser::tag_image(XMLTag &Tag)
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &value = Tag.Attribs[i].Value;
 
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_float:
          case HASH_align:
             // Setting the horizontal alignment of an image will cause it to float above the text.
             // If the image is declared inside a paragraph, it will be completely de-anchored as a result.
-            switch (StrHash(value)) {
+            switch (strihash(value)) {
                case HASH_left:   img.align = ALIGN::LEFT; break;
                case HASH_right:  img.align = ALIGN::RIGHT; break;
                case HASH_center: img.align = ALIGN::CENTER; break;
@@ -2309,7 +2309,7 @@ void parser::tag_image(XMLTag &Tag)
 
          case HASH_v_align:
             // If the image is anchored and the line is taller than the image, the image can be vertically aligned.
-            switch(StrHash(value)) {
+            switch(strihash(value)) {
                case HASH_top:    img.align = ALIGN::TOP; break;
                case HASH_center: img.align = ALIGN::VERTICAL; break;
                case HASH_middle: img.align = ALIGN::VERTICAL; break; // synonym
@@ -2368,7 +2368,7 @@ void parser::tag_index(XMLTag &Tag)
    bool visible = true;
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("name", Tag.Attribs[i].Name)) {
-         name = StrHash(Tag.Attribs[i].Value);
+         name = strihash(Tag.Attribs[i].Value);
       }
       else if (iequals("hide", Tag.Attribs[i].Name)) {
          visible = false;
@@ -2377,7 +2377,7 @@ void parser::tag_index(XMLTag &Tag)
    }
 
    if ((!name) and (!Tag.Children.empty())) {
-      if (Tag.Children[0].isContent()) name = StrHash(Tag.Children[0].Attribs[0].Value);
+      if (Tag.Children[0].isContent()) name = strihash(Tag.Children[0].Attribs[0].Value);
    }
 
    if (name) {
@@ -2419,7 +2419,7 @@ void parser::tag_link(XMLTag &Tag)
    link.fill = Self->LinkFill;
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_href:
             if (link.type IS LINK::NIL) {
                link.ref = Tag.Attribs[i].Value;
@@ -2989,7 +2989,7 @@ void parser::tag_object(XMLTag &Tag)
       SetOwner(object, Self->CurrentObject);
    }
    else if (!pagetarget.empty()) {
-      auto field_id = StrHash(pagetarget);
+      auto field_id = strihash(pagetarget);
       if (Self->BkgdGfx) object->set(field_id, Self->View);
       else object->set(field_id, Self->Page);
    }
@@ -2997,8 +2997,8 @@ void parser::tag_object(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto argname = Tag.Attribs[i].Name.c_str();
       while (*argname IS '$') argname++;
-      if (Tag.Attribs[i].Value.empty()) object->set(StrHash(argname), "1");
-      else object->set(StrHash(argname), Tag.Attribs[i].Value);
+      if (Tag.Attribs[i].Value.empty()) object->set(strihash(argname), "1");
+      else object->set(strihash(argname), Tag.Attribs[i].Value);
    }
 
    // Check for the 'data' tag which can be used to send data feed information prior to initialisation.
@@ -3577,7 +3577,7 @@ void parser::tag_table(XMLTag &Tag)
    std::string columns;
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       auto &value = Tag.Attribs[i].Value;
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_columns:
             // Column preferences are processed only when the end of the table marker has been reached.
             columns = value;
@@ -3618,7 +3618,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_align:
-            switch(StrHash(value)) {
+            switch(strihash(value)) {
                case HASH_left:   table.align = ALIGN::LEFT; break;
                case HASH_right:  table.align = ALIGN::RIGHT; break;
                case HASH_center: table.align = ALIGN::CENTER; break;
@@ -3728,7 +3728,7 @@ void parser::tag_cell(XMLTag &Tag)
    bc_cell cell(glUID++, m_table_stack.top().row_col);
    bool select = false;
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_border: {
             std::vector<std::string> list;
             pf::split(Tag.Attribs[i].Value, std::back_inserter(list));
@@ -3880,7 +3880,7 @@ void parser::tag_trigger(XMLTag &Tag)
 
    std::string event, function_name;
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
-      switch (StrHash(Tag.Attribs[i].Name)) {
+      switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_event: event = Tag.Attribs[i].Value; break;
          case HASH_function: function_name = Tag.Attribs[i].Value; break;
       }
@@ -3889,7 +3889,7 @@ void parser::tag_trigger(XMLTag &Tag)
    if ((!event.empty()) and (!function_name.empty())) {
       // These are described in the documentation for the AddListener method
 
-      switch(StrHash(event)) {
+      switch(strihash(event)) {
          case HASH_after_layout:    trigger_code = DRT::AFTER_LAYOUT; break;
          case HASH_before_layout:   trigger_code = DRT::BEFORE_LAYOUT; break;
          case HASH_on_click:        trigger_code = DRT::USER_CLICK; break;

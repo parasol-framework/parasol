@@ -204,7 +204,7 @@ In some clases the field might not be present in the main class spec, but does a
 case, a reference to the class will be returned in the `Source` parameter.
 
 -INPUT-
-int ID: The field ID to search for.  Field names can be converted to ID's by using the ~StrHash() function.
+int ID: The field ID to search for.  Field names can be converted to ID's by using the `strihash()` function.
 &struct(*Field) Field: Pointer to the !Field if discovered, otherwise `NULL`.
 &obj(MetaClass) Source: Pointer to the class that is associated with the `Field` (which can match the caller), or `NULL` if the field was not found.
 
@@ -246,7 +246,7 @@ ERR CLASS_Init(extMetaClass *Self)
 
    if (!Self->ClassName) return log.warning(ERR::MissingClassName);
 
-   auto class_hash = CLASSID(StrHash(Self->ClassName, false));
+   auto class_hash = CLASSID(strihash(Self->ClassName));
 
    if (Self->BaseClassID != CLASSID::NIL) {
       if (class_hash != Self->BaseClassID) Self->ClassID = class_hash;
@@ -470,7 +470,7 @@ When defining a sub-class, it is required that the BaseClassID refers to the cla
 ClassID: Specifies the ID of a class object.
 
 The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined
-to be a sub-class.  The ClassID value always reflects the ~StrHash() computation of the #ClassName, and is
+to be a sub-class.  The ClassID value always reflects the `strihash()` computation of the #ClassName, and is
 automatically set on initialisation if not already set by the client.
 
 -FIELD-
@@ -819,7 +819,7 @@ static void field_setup(extMetaClass *Class)
          UWORD offset = 0;
          for (unsigned i=0; Class->SubFields[i].Name; i++) {
             bool found = false;
-            auto hash = StrHash(Class->SubFields[i].Name, false);
+            auto hash = strihash(Class->SubFields[i].Name);
             for (unsigned j=0; j < Class->FieldLookup.size(); j++) {
                if (Class->FieldLookup[j].FieldID IS hash) {
                   if (Class->SubFields[i].GetField) {
@@ -981,7 +981,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
       Source.SetField,
       writeval_default,
       Source.Name,
-      StrHash(Source.Name, false),
+      strihash(Source.Name),
       Offset,
       0,
       Source.Flags

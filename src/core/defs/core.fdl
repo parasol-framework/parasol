@@ -1134,7 +1134,6 @@ struct ScriptArg { // For use with scExec
     "GetActionMsg",
     "FuncError",
     "SetArray",
-    "StrHash",
     "LockObject",
     "ReleaseObject",
     "ActionThread",
@@ -1234,10 +1233,6 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 inline ERR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
-}
-
-inline ULONG StrHash(const std::string Value) {
-   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> &Array)
@@ -2364,10 +2359,6 @@ inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
 #define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-inline FIELD ResolveField(CSTRING Field) {
-   return StrHash(Field, FALSE);
-}
 
 #endif // PRV_CORE
 

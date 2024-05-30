@@ -111,7 +111,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
-         auto attrib = StrHash(Tag.Attribs[a].Name);
+         auto attrib = strihash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already checked gradientUnits earlier
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
@@ -190,7 +190,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
          if (val.empty()) continue;
          log.trace("Processing radial gradient attribute %s = %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag.Attribs[a].Name);
+         auto attrib = strihash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
@@ -261,7 +261,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
 
          log.trace("Processing diamond gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag.Attribs[a].Name);
+         auto attrib = strihash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
@@ -329,7 +329,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 
          log.trace("Processing contour gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag.Attribs[a].Name);
+         auto attrib = strihash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
@@ -398,7 +398,7 @@ static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
 
          log.trace("Processing diamond gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag.Attribs[a].Name);
+         auto attrib = strihash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS:
                if (iequals("userSpaceOnUse", val)) gradient->setUnits(VUNIT::USERSPACE);

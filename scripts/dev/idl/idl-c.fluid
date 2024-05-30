@@ -521,7 +521,7 @@ function hash(Prefix, Format, ...)
    for _, v in ipairs({...}) do
       local hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
+      local hash_id = string.format('%08x', v:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
    output()
@@ -534,7 +534,7 @@ function typedHash(Prefix, Type, ...)
    for _, v in ipairs({...}) do
       local hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
+      local hash_id = string.format('%08x', v:hash()):sub(-8)
       output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
    end
    output('};')
@@ -914,14 +914,14 @@ function class(Name, Options, Spec, Private, Custom)
       -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
 
       if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
-         class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+         class.meta = mSys.FindClass(Name:hash(), 0)
       else
          if (glFeedback == 'verbose') then
             print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
          end
       end
    else
-      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+      class.meta = mSys.FindClass(Name:hash(), 0)
    end
 
    -- Process methods and fields defined in the source code (if available)
@@ -1635,7 +1635,7 @@ function outputClassHeader(class, Private, Custom)
                      output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
                   end
 
-                  local err, fl, target = class.meta.mtFindField(mSys.StrHash(f.name, false))
+                  local err, fl, target = class.meta.mtFindField(f.name:hash())
 
                   if (err != ERR_Okay) then
                      print('Failed to field ' .. f.name .. ' in class ' .. class.name)

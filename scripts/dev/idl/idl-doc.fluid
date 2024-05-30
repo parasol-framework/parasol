@@ -587,7 +587,7 @@ function substituteReferences(String, Class)
    -- Substitute external method/action references, identified as @File.Init()
 
    String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ClassName, MethodName)
-      if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
+      if mSys.FindClass(ClassName:hash(), 0) then
          -- TODO: Check that the method name is valid according to the class spec
          return '<class name="' .. ClassName .. '" method="' .. MethodName .. '">' .. ClassName .. '.' .. MethodName .. '()</class>'
       else
@@ -598,9 +598,9 @@ function substituteReferences(String, Class)
    -- Substitute external field references, identified as @File.Size or #File.Size
 
    String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
-      local meta = mSys.FindClass(mSys.StrHash(ClassName, false), 0)
+      local meta = mSys.FindClass(ClassName:hash(), 0)
       if (meta) then
-         local err, field, src = meta.mtFindField(mSys.StrHash(FieldName))
+         local err, field, src = meta.mtFindField(FieldName:hash())
          if (field != nil) then
             return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
          else
@@ -615,7 +615,7 @@ function substituteReferences(String, Class)
    -- Substitute class references, identified as @File
 
    String = String:gsub('@([A-Z]%w+)', function(ClassName)
-      if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
+      if mSys.FindClass(ClassName:hash(), 0) then
          return '<class name="' .. ClassName .. '">' .. ClassName .. '</class>'
       else
          print('Unrecognised class name reference @' .. ClassName)
@@ -650,7 +650,7 @@ function docClass(Class)
    if nz(meta.fileExtension) then out = out .. '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
    if nz(meta.fileDescription) then out = out .. '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
    out = out .. '    <version>' .. nz(meta.classVersion,1) .. '</version>\n'
-   local class_hash = string.format('%08x', mSys.StrHash(Class.name, false)):sub(-8)
+   local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out = out .. '    <id>' .. class_hash .. '</id>\n'
    out = out .. '    <idstring>ID_' .. Class.name:upper() .. '</idstring>\n'
    out = out .. '    <category>' .. nz(meta.get('$category'),'') .. '</category>\n'

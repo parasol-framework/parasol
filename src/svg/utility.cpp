@@ -136,7 +136,7 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
-   switch (StrHash(Input)) {
+   switch (strihash(Input)) {
       case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, LONG(VSF::GRAPHIC)); break;
       case SVF_SOURCEALPHA:     Effect->set(SourceField, LONG(VSF::ALPHA)); break;
       case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, LONG(VSF::BKGD)); break;

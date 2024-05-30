@@ -20,7 +20,7 @@ static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Sourc
       else break;
    }
 
-   return FindField(Object, StrHash(Name, false), Source);
+   return FindField(Object, strihash(Name), Source);
 }
 
 //********************************************************************************************************************

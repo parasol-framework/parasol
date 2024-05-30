@@ -120,7 +120,7 @@ SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
 
-Fields are referenced as hashed UID's calculated from the ~StrHash() function.  The majority of field ID's are
+Fields are referenced as hashed UID's calculated from the C++ `strihash()` function.  The majority of field ID's are
 predefined in the `parasol/system/fields.h` include file.
 
 The type of the `Value` parameter must be OR'd into the `Field` parameter.  If the provided type does not match that of

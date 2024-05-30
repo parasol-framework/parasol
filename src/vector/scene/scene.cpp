@@ -493,7 +493,7 @@ to this method to find them all.  This is achieved by calling this method on the
 as a `Result`.
 
 Note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash
-with ~Core.StrHash() and using that as the ID.
+with `strhash()` and using that as the ID.
 
 -INPUT-
 int ID: The ID to search for.

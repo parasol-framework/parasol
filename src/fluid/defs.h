@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <set>
 #include <array>
+#include <parasol/strings.hpp>
 
 using namespace pf;
 
@@ -127,7 +128,7 @@ struct struct_field {
    LONG  ArraySize = 0;    // Set if the field is an array
 
    ULONG nameHash() {
-      if (!NameHash) NameHash = StrHash(Name);
+      if (!NameHash) NameHash = strihash(Name);
       return NameHash;
    }
 

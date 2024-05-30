@@ -282,7 +282,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
          // Initialise iconv
 
-         enchash = StrHash(Encoding, 0);
+         enchash = strihash(Encoding);
          if ((glIconv) and (enchash IS icvhash)); // Correct iconv encoding is already loaded.
          else {
             if (glIconv) iconv_close(glIconv);

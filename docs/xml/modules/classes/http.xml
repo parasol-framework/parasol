@@ -409,7 +409,7 @@ http.acActivate()
     <field>
       <name>Realm</name>
       <comment>Identifies the realm during HTTP authentication.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
 <p>During the user authentication process, a realm name may be returned by the HTTP server and this will be reflected here.</p>

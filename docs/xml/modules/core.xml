@@ -26,7 +26,6 @@
       <category>Memory</category>
       <category>Messages</category>
       <category>Objects</category>
-      <category>Strings</category>
       <category>System</category>
     </categories>
   </info>
@@ -768,7 +767,7 @@ FindObject("SystemPointer", CLASSID::POINTER, 0, &amp;id);
 <pre>GetField(Object, FID_X|TLONG, &amp;x);
 GetField(Object, FID_Y|TLONG, &amp;y);
 </pre>
-<p>As GetField() is based on field ID's that reflect field names (<code>FID</code>'s), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the <function>StrHash</function> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
+<p>As GetField() is based on field ID's that reflect field names (<code>FID</code>'s), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the C++ <code>strihash()</code> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
 <p>The type of the <code>Result</code> parameter must be OR'd into the <code>Field</code> parameter.  When reading a field you must give consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
 <types>
@@ -1632,7 +1631,7 @@ FreeResource(memory);  // Reference is no longer valid
 <pre>SetField(Object, FID_X|TLONG, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
-<p>Fields are referenced as hashed UID's calculated from the <function>StrHash</function> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
+<p>Fields are referenced as hashed UID's calculated from the C++ <code>strihash()</code> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
 <p>The type of the <code>Value</code> parameter must be OR'd into the <code>Field</code> parameter.  If the provided type does not match that of the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be converted to a numeric value automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
 <types>
@@ -1766,22 +1765,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NullArgs">A valid name and path string was not provided.</error>
     </result>
-  </function>
-
-  <function>
-    <name>StrHash</name>
-    <category>Strings</category>
-    <comment>Convert a string into a 32-bit hash.</comment>
-    <prototype>ULONG StrHash(CSTRING String, LONG CaseSensitive)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Reference to a string that will be processed.</param>
-      <param type="LONG" name="CaseSensitive">Set to <code>true</code> to enable case sensitivity.</param>
-    </input>
-    <description>
-<p>This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our platform and is therefore guaranteed to be compatible with all areas that make use of hashed values.</p>
-<p>Hashing is case insensitive by default.  If case sensitive hashing is desired, set <code>CaseSensitive</code> to <code>true</code> when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a case insensitive hash of the same string.</p>
-    </description>
-    <result type="ULONG">The 32-bit hash is returned.</result>
   </function>
 
   <function>

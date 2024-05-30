@@ -1570,7 +1570,7 @@ static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
 
    if (Value) {
       Self->ID = StrClone(Value);
-      Self->NumericID = StrHash(Value, TRUE);
+      Self->NumericID = strhash(Value);
    }
    else {
       Self->ID = NULL;

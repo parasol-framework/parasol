@@ -25,7 +25,7 @@ end
 local function reportFeedback(self)
    if not self.events.activate then return end
    local text = self.text.string
-   local hash = mSys.StrHash(text)
+   local hash = string.hash(text)
    if (hash != self.hash) then
       self.hash = hash
       self.events.activate(self, text)

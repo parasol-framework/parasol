@@ -81,7 +81,6 @@ CSTRING GetErrorMsg(ERR Error);
 struct Message * GetActionMsg();
 ERR FuncError(CSTRING Header, ERR Error);
 ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 void ReleaseObject(OBJECTPTR Object);
 ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);

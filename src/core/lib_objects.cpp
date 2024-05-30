@@ -1532,7 +1532,7 @@ CLASSID ResolveClassName(CSTRING ClassName)
       return CLASSID::NIL;
    }
 
-   CLASSID cid = CLASSID(StrHash(ClassName, FALSE));
+   auto cid = CLASSID(strihash(ClassName));
    if (glClassDB.contains(cid)) return cid;
    else return CLASSID::NIL;
 }

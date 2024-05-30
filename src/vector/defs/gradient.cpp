@@ -357,7 +357,7 @@ static ERR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
 
    if (Value) {
       Self->ID = StrClone(Value);
-      Self->NumericID = StrHash(Value, TRUE);
+      Self->NumericID = strhash(Value);
    }
    else {
       Self->ID = NULL;

@@ -248,7 +248,7 @@ static int array_new(lua_State *Lua)
       else if (auto total = lua_tointeger(Lua, 1)) {
          LONG fieldtype;
          CSTRING s_name = NULL;
-         switch (StrHash(type)) {
+         switch (strihash(type)) {
             case HASH_LONG:
             case HASH_INTEGER: fieldtype = FD_LONG; break;
             case HASH_STRING:  fieldtype = FD_STRING; break;
@@ -284,7 +284,7 @@ static int array_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: string = array:getstring(start, len)
+// Usage: string = array.getstring(start, len)
 //
 // Creates a string from a byte array.  If len is nil, the entire buffer from the starting index up to the end of the
 // byte array is returned.
@@ -469,9 +469,9 @@ static int array_set(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: string = array:copy(source, [DestIndex], [Total])
+// Usage: array.copy(source, [DestIndex], [Total])
 //
-// Copies a string or data sequence to the memory block.
+// Copies a string or data sequence to the array.
 
 static int array_copy(lua_State *Lua)
 {
