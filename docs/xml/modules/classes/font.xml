@@ -309,7 +309,7 @@ Charter:120%::255,128,255
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>The String field must be defined in order to draw text with a font object.  A string must consist of a valid sequence of UTF-8 characters.  Line feeds are allowed (whenever a line feed is reached, the Draw action will start printing on the next line).  Drawing will stop when the null termination character is reached.</p>
+<p>The String field must be defined in order to draw text with a font object.  A string must consist of a valid sequence of UTF-8 characters.  Line feeds are allowed (whenever a line feed is reached, the Draw() action will start printing on the next line).  Drawing will stop when the null termination character is reached.</p>
 <p>If a string contains characters that are not supported by a font, those characters will be printed using a default character from the font.</p>
       </description>
     </field>

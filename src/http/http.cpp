@@ -241,23 +241,23 @@ static const FieldDef clStatus[] = {
 //********************************************************************************************************************
 
 static CSTRING adv_crlf(CSTRING);
-static ERR check_incoming_end(extHTTP *);
-static ERR parse_file(extHTTP *, STRING, LONG);
+static ERR  check_incoming_end(extHTTP *);
+static ERR  parse_file(extHTTP *, STRING, LONG);
 static void parse_file(extHTTP *, std::ostringstream &);
-static ERR parse_response(extHTTP *, CSTRING);
-static ERR process_data(extHTTP *, APTR, LONG);
-static LONG  extract_value(CSTRING, STRING *);
-static void  writehex(HASH, HASHHEX);
-static void  digest_calc_ha1(extHTTP *, HASHHEX);
-static void  digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERR write_socket(extHTTP *, CPTR, LONG, LONG *);
+static ERR  parse_response(extHTTP *, CSTRING);
+static ERR  process_data(extHTTP *, APTR, LONG);
+static LONG extract_value(CSTRING, STRING *);
+static void writehex(HASH, HASHHEX);
+static void digest_calc_ha1(extHTTP *, HASHHEX);
+static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
+static ERR  write_socket(extHTTP *, CPTR, LONG, LONG *);
 static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &);
-static ERR SET_Path(extHTTP *, CSTRING);
-static ERR SET_Location(extHTTP *, CSTRING);
-static ERR timeout_manager(extHTTP *, LARGE, LARGE);
-static void  socket_feedback(objNetSocket *, objClientSocket *, NTC);
-static ERR socket_incoming(objNetSocket *);
-static ERR socket_outgoing(objNetSocket *);
+static ERR  SET_Path(extHTTP *, CSTRING);
+static ERR  SET_Location(extHTTP *, CSTRING);
+static ERR  timeout_manager(extHTTP *, LARGE, LARGE);
+static void socket_feedback(objNetSocket *, objClientSocket *, NTC);
+static ERR  socket_incoming(objNetSocket *);
+static ERR  socket_outgoing(objNetSocket *);
 
 /*   if (Object->UID IS Self->DialogWindow) {
       Self->DialogWindow = 0;
