@@ -166,7 +166,7 @@ ERR extXML::find_tag(CSTRING XPath)
             if (Cursor->name()) {
                if (!attribname.empty()) { // Match by named attribute value
                   for (LONG a=1; a < std::ssize(Cursor->Attribs); ++a) {
-                     if (pf::stricompare(Cursor->Attribs[a].Name, attribname, attribname.size())) {
+                     if (pf::iequals(Cursor->Attribs[a].Name, attribname)) {
                         if (wild) {
                            if ((match = pf::wildcmp(Cursor->Attribs[a].Value, attribvalue))) break;
                         }

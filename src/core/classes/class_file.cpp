@@ -605,7 +605,7 @@ static ERR FILE_Init(extFile *Self)
 
    if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
-   if (pf::stricompare("string:", Self->Path, 7)) {
+   if (pf::startswith("string:", Self->Path)) {
       Self->Size = StrLength(Self->Path + 7);
 
       if (Self->Size > 0) {
@@ -2117,7 +2117,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   if (!pf::stricompare("icons:", icon, 6)) {
+   if (!pf::startswith("icons:", icon)) {
       CopyMemory(icon, icon+6, sizeof(icon) - 6);
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
@@ -2231,7 +2231,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
 
    LONG i, j, len;
    if ((Value) and (*Value)) {
-      if (!pf::stricompare("string:", Value, 7)) {
+      if (!pf::startswith("string:", Value)) {
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
       }
       else len = StrLength(Value);
@@ -2251,7 +2251,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
             // e.g. "drive1:documents//tutorials/"
 
             for (j=0; Value[j] IS ':'; j++);
-            if (pf::stricompare("string:", Value, 7)) {
+            if (pf::startswith("string:", Value)) {
                i = StrCopy(Value, Self->Path);
             }
             else {

@@ -207,7 +207,7 @@ static ERROR ASSET_Init(objFile *Self)
 
    log.trace("Path: %s", Self->Path);
 
-   if (!pf::stricompare("assets:", Self->Path, LEN_ASSETS)) return ERR::NoSupport;
+   if (!pf::startswith("assets:", Self->Path)) return ERR::NoSupport;
 
    if (Self->Flags & (FL::NEW|FL::WRITE)) return log.warning(ERR::ReadOnly);
 
@@ -475,7 +475,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    if (mgr) {
       AAsset *asset;
       AAssetDir *assetdir;
-      if (pf::stricompare("assets:", Path, LEN_ASSETS)) { // Just a sanity check - the Path is always meant to be resolved.
+      if (pf::startswith("assets:", Path)) { // Just a sanity check - the Path is always meant to be resolved.
          if ((asset = AAssetManager_open(mgr, Path+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
             Info->Size = AAsset_getLength(asset);
             AAsset_close(asset);
