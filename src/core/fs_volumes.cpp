@@ -212,7 +212,7 @@ ERR VirtualVolume(CSTRING Name, ...)
 
    log.branch("%s", Name);
 
-   auto id = StrHash(Name, FALSE);
+   auto id = strihash(Name);
 
    if (glVirtual.contains(id)) return ERR::Exists;
 

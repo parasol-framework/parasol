@@ -111,6 +111,26 @@ end
 
 ------------------------------------------------------------------------------
 
+string.hash = function(s, c)
+   if type(s) != 'string' then return 0 end
+
+   local hash = 5381
+   if (c) then
+      for i = 1, #s do
+         hash = bit.lshift(hash,5) + hash + s:byte(i)
+      end
+   else
+      for i = 1, #s do
+         local low = s:byte(i)
+         if (low >= 0x41 and low <= 0x5a) then low = low + 0x20 end
+         hash = bit.lshift(hash,5) + hash + low
+      end
+   end
+   return hash
+end
+
+------------------------------------------------------------------------------
+
 string.split = function(s, sep)
    if (s == nil) then return { } end
    if sep == nil then

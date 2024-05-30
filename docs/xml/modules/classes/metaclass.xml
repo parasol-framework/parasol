@@ -29,7 +29,7 @@
       <comment>Search a class definition for a specific field.</comment>
       <prototype>ERR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
       <input>
-        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function>StrHash</function> function.</param>
+        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <code>strihash()</code> function.</param>
         <param type="struct Field **" name="Field">Pointer to the <st>Field</st> if discovered, otherwise <code>NULL</code>.</param>
         <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the <code>Field</code> (which can match the caller), or <code>NULL</code> if the field was not found.</param>
       </input>
@@ -106,7 +106,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID value always reflects the <function>StrHash</function> computation of the <fl>ClassName</fl>, and is automatically set on initialisation if not already set by the client.</p>
+<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID value always reflects the <code>strihash()</code> computation of the <fl>ClassName</fl>, and is automatically set on initialisation if not already set by the client.</p>
       </description>
     </field>
 

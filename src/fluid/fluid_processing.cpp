@@ -45,7 +45,7 @@ static int processing_new(lua_State *Lua)
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 1) != 0) {
             if (auto field_name = luaL_checkstring(Lua, -2)) {
-               auto field_hash = StrHash(field_name, 0);
+               auto field_hash = strihash(field_name);
 
                switch (field_hash) {
                   case HASH_TIMEOUT:

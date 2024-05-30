@@ -84,7 +84,7 @@ void svgState::applyTag(XMLTag &Tag) noexcept
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch (StrHash(Tag.Attribs[a].Name)) {
+      switch (strihash(Tag.Attribs[a].Name)) {
          case SVF_COLOR:  m_color = val; break; // Affects 'currentColor'
          case SVF_FILL:   m_fill = val; break;
          case SVF_STROKE:
@@ -97,7 +97,7 @@ void svgState::applyTag(XMLTag &Tag) noexcept
          case SVF_FONT_WEIGHT: {
             m_font_weight = StrToFloat(val);
             if (!m_font_weight) {
-               switch(StrHash(val)) {
+               switch(strihash(val)) {
                   case SVF_NORMAL:  m_font_weight = 400; break;
                   case SVF_LIGHTER: m_font_weight = 300; break; // -100 off the inherited weight
                   case SVF_BOLD:    m_font_weight = 700; break;
@@ -140,7 +140,7 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
    for (auto &child : Tag.Children) {
       if (!child.isTag()) continue;
 
-      switch(StrHash(child.name())) {
+      switch(strihash(child.name())) {
          case SVF_ANIMATE:          xtag_animate(Self, State, child, Tag, Vector); break;
          case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, State, child, Tag, Vector); break;
          case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, Vector); break;
@@ -187,7 +187,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
       for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (Tag.Attribs[a].Value.empty()) continue;
 
-         switch(StrHash(Tag.Attribs[a].Name)) {
+         switch(strihash(Tag.Attribs[a].Name)) {
             case SVF_ID: id = Tag.Attribs[a].Value; break;
          }
       }
@@ -223,7 +223,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_ID:            id        = value; break;
          case SVF_TRANSFORM:     transform = value; break;
          case SVF_CLIPPATHUNITS: units     = value; break;
@@ -291,7 +291,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_ID:        id = value; break;
          case SVF_TRANSFORM: transform = value; break;
          case SVF_MASKUNITS:
@@ -360,7 +360,7 @@ static ERR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_STDDEVIATION: { // Y is optional, if not set then it is equivalent to X.
             DOUBLE x = -1, y = -1;
             read_numseq(val, { &x, &y });
@@ -409,7 +409,7 @@ static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_DX: fx->set(FID_XOffset, StrToInt(val)); break;
          case SVF_DY: fx->set(FID_YOffset, StrToInt(val)); break;
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
@@ -441,7 +441,7 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_X: FUNIT(FID_X, val).set(fx); break;
          case SVF_Y: FUNIT(FID_Y, val).set(fx); break;
          case SVF_WIDTH: FUNIT(FID_Width, val).set(fx); break;
@@ -454,7 +454,7 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
       if (iequals("feMergeNode", child.name())) {
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             if (iequals("in", child.Attribs[a].Name)) {
-               switch (StrHash(child.Attribs[a].Value)) {
+               switch (strihash(child.Attribs[a].Value)) {
                   case SVF_SOURCEGRAPHIC:   list.push_back(VSF::GRAPHIC); break;
                   case SVF_SOURCEALPHA:     list.push_back(VSF::ALPHA); break;
                   case SVF_BACKGROUNDIMAGE: list.push_back(VSF::BKGD); break;
@@ -521,11 +521,11 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_TYPE: {
             const DOUBLE *m = NULL;
             CM mode = CM::NIL;
-            switch(StrHash(val)) {
+            switch(strihash(val)) {
                case SVF_NONE:          mode = CM::NONE; break;
                case SVF_MATRIX:        mode = CM::MATRIX; break;
                case SVF_SATURATE:      mode = CM::SATURATE; break;
@@ -598,7 +598,7 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_ORDER: {
             DOUBLE ox = 0, oy = 0;
             read_numseq(val, { &ox, &oy });
@@ -690,7 +690,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_LIGHTING_COLOUR:
          case SVF_LIGHTING_COLOR: {
             VectorPainter painter;
@@ -736,7 +736,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
          DOUBLE azimuth = 0, elevation = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
-            switch(StrHash(child.Attribs[a].Name)) {
+            switch(strihash(child.Attribs[a].Name)) {
                case SVF_AZIMUTH:   azimuth   = StrToFloat(child.Attribs[a].Value); break;
                case SVF_ELEVATION: elevation = StrToFloat(child.Attribs[a].Value); break;
             }
@@ -748,7 +748,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
          DOUBLE x = 0, y = 0, z = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
-            switch(StrHash(child.Attribs[a].Name)) {
+            switch(strihash(child.Attribs[a].Name)) {
                case SVF_X: x = StrToFloat(child.Attribs[a].Value); break;
                case SVF_Y: y = StrToFloat(child.Attribs[a].Value); break;
                case SVF_Z: z = StrToFloat(child.Attribs[a].Value); break;
@@ -763,7 +763,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             auto &val = child.Attribs[a].Value;
-            switch(StrHash(child.Attribs[a].Name)) {
+            switch(strihash(child.Attribs[a].Name)) {
                case SVF_X:                 x = StrToFloat(val); break;
                case SVF_Y:                 y = StrToFloat(val); break;
                case SVF_Z:                 z = StrToFloat(val); break;
@@ -813,7 +813,7 @@ static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLT
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_XCHANNELSELECTOR:
             switch(val[0]) {
                case 'r': case 'R': fx->set(FID_XChannel, LONG(CMP::RED)); break;
@@ -871,7 +871,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_X:      FUNIT(FID_X, val).set(fx); break;
          case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
          case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
@@ -899,8 +899,8 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
          DOUBLE amp = 1.0, offset = 0, exp = 1.0, slope = 1.0, intercept = 0.0;
          std::vector<DOUBLE> values;
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
-            switch(StrHash(child.Attribs[a].Name)) {
-               case SVF_TYPE:        type = StrHash(child.Attribs[a].Value); break;
+            switch(strihash(child.Attribs[a].Name)) {
+               case SVF_TYPE:        type = strihash(child.Attribs[a].Value); break;
                case SVF_AMPLITUDE:   read_numseq(child.Attribs[a].Value, { &amp }); break;
                case SVF_INTERCEPT:   read_numseq(child.Attribs[a].Value, { &intercept }); break;
                case SVF_SLOPE:       read_numseq(child.Attribs[a].Value, { &slope }); break;
@@ -957,10 +957,10 @@ static ERR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_MODE:
          case SVF_OPERATOR: {
-            switch (StrHash(val)) {
+            switch (strihash(val)) {
                // SVG Operator types
                case SVF_NORMAL:
                case SVF_OVER: fx->set(FID_Operator, LONG(OP::OVER)); break;
@@ -1059,7 +1059,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_FLOOD_COLOR:
          case SVF_FLOOD_COLOUR: {
             VectorPainter painter;
@@ -1111,7 +1111,7 @@ static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_BASEFREQUENCY: {
             DOUBLE bfx = -1, bfy = -1;
             read_numseq(val, { &bfx, &bfy });
@@ -1169,7 +1169,7 @@ static ERR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_RADIUS: {
             DOUBLE x = -1, y = -1;
             read_numseq(val, { &x, &y });
@@ -1217,7 +1217,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_X:      FUNIT(FID_X, val).set(fx); break;
          case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
          case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
@@ -1288,7 +1288,7 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_X:      FUNIT(FID_X, val).set(fx); break;
          case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
          case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
@@ -1381,7 +1381,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
          for (j=0; Tag.Attribs[a].Name[j] and (Tag.Attribs[a].Name[j] != ':'); j++);
          if (Tag.Attribs[a].Name[j] IS ':') continue;
 
-         switch(StrHash(Tag.Attribs[a].Name)) {
+         switch(strihash(Tag.Attribs[a].Name)) {
             case SVF_FILTERUNITS:
                if (iequals("userSpaceOnUse", val)) filter->Units = VUNIT::USERSPACE;
                else if (iequals("objectBoundingBox", val)) filter->Units = VUNIT::BOUNDING_BOX;
@@ -1434,7 +1434,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
          for (auto child : Tag.Children) {
             log.trace("Parsing filter element '%s'", child.name());
 
-            switch(StrHash(child.name())) {
+            switch(strihash(child.name())) {
                case SVF_FEBLUR:              parse_fe_blur(Self, filter, child); break;
                case SVF_FEGAUSSIANBLUR:      parse_fe_blur(Self, filter, child); break;
                case SVF_FEOFFSET:            parse_fe_offset(Self, filter, child); break;
@@ -1500,7 +1500,7 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          for (j=0; Tag.Attribs[a].Name[j] and (Tag.Attribs[a].Name[j] != ':'); j++);
          if (Tag.Attribs[a].Name[j] IS ':') continue;
 
-         switch(StrHash(Tag.Attribs[a].Name)) {
+         switch(strihash(Tag.Attribs[a].Name)) {
             case SVF_PATTERNCONTENTUNITS:
                // SVG: "This attribute has no effect if viewbox is specified"
                // userSpaceOnUse: The user coordinate system for the contents of the 'pattern' element is the coordinate system that results from taking the current user coordinate system in place at the time when the 'pattern' element is referenced (i.e., the user coordinate system for the element referencing the 'pattern' element via a 'fill' or 'stroke' property) and then applying the transform specified by attribute 'patternTransform'.
@@ -1609,7 +1609,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
 
    log.traceBranch("%s", Tag.name());
 
-   switch(StrHash(Tag.name())) {
+   switch(strihash(Tag.name())) {
       case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
       case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
       case SVF_SWITCH:           log.warning("<switch> not supported."); break;
@@ -1778,7 +1778,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
-         switch(StrHash(Tag.Attribs[a].Name)) {
+         switch(strihash(Tag.Attribs[a].Name)) {
             case SVF_UNITS:
                if (iequals("userSpaceOnUse", val)) image->Units = VUNIT::USERSPACE;
                else if (iequals("objectBoundingBox", val)) image->Units = VUNIT::BOUNDING_BOX;
@@ -1843,7 +1843,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &value = Tag.Attribs[a].Value;
-      switch (StrHash(Tag.Attribs[a].Name)) {
+      switch (strihash(Tag.Attribs[a].Name)) {
          case SVF_XLINK_HREF:
          case SVF_HREF:
             src = value;
@@ -1872,7 +1872,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
    if (id.empty()) {
       // An image always has an ID; this ensures that if the image bitmap is referenced repeatedly via a <symbol> then
       // we won't keep reloading it into the cache.
-      id = "img_" + std::to_string(StrHash(src));
+      id = "img_" + std::to_string(strihash(src));
       if (!width.empty()) id += "_" + std::to_string(width);
       if (!height.empty()) id += "_" + std::to_string(height);
       xmlNewAttrib(Tag, "id", id);
@@ -1946,7 +1946,7 @@ static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
    for (auto &child : Tag.Children) {
-      switch (StrHash(child.name())) {
+      switch (strihash(child.name())) {
          case SVF_CONTOURGRADIENT: xtag_contourgradient(Self, child); break;
          case SVF_RADIALGRADIENT:  xtag_radialgradient(Self, child); break;
          case SVF_DIAMONDGRADIENT: xtag_diamondgradient(Self, child); break;
@@ -2076,7 +2076,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_PATH:
          case SVF_XLINK_HREF:  ref = val; break;
          case SVF_TRANSITION:  transition = val; break;
@@ -2126,7 +2126,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
    auto &tagref = Self->IDs[uri];
 
    auto class_id = CLASSID::NIL;
-   switch (StrHash(tagref.name())) {
+   switch (strihash(tagref.name())) {
       case SVF_PATH:           class_id = CLASSID::VECTORPATH; break;
       case SVF_RECT:           class_id = CLASSID::VECTORRECTANGLE; break;
       case SVF_ELLIPSE:        class_id = CLASSID::VECTORELLIPSE; break;
@@ -2168,7 +2168,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
    std::string ref;
    for (LONG a=1; (a < std::ssize(Tag.Attribs)) and ref.empty(); a++) {
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_HREF: // SVG2
          case SVF_XLINK_HREF: ref = Tag.Attribs[a].Value; break;
       }
@@ -2211,7 +2211,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       objVector *group;
       bool need_group = false;
       for (LONG a=1; (a < std::ssize(Tag.Attribs)) and (!need_group); a++) {
-         switch(StrHash(Tag.Attribs[a].Name)) {
+         switch(strihash(Tag.Attribs[a].Name)) {
             case SVF_X: case SVF_Y: case SVF_WIDTH: case SVF_HEIGHT: break;
             default: need_group = true; break;
          }
@@ -2234,7 +2234,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
-         auto hash = StrHash(Tag.Attribs[a].Name);
+         auto hash = strihash(Tag.Attribs[a].Name);
          switch(hash) {
             // X,Y,Width,Height are applied to the viewport
             case SVF_X:      FUNIT(FID_X, val).set(viewport); break;
@@ -2256,7 +2256,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          auto &val = tagref->Attribs[a].Value;
          if (val.empty()) continue;
 
-         switch(StrHash(tagref->Attribs[a].Name)) {
+         switch(strihash(tagref->Attribs[a].Name)) {
             case SVF_X:      FUNIT(FID_X, val).set(viewport); break;
             case SVF_Y:      FUNIT(FID_Y, val).set(viewport); break;
             case SVF_WIDTH:  FUNIT(FID_Width, val).set(viewport); break;
@@ -2300,7 +2300,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
          FUNIT tx, ty;
          for (LONG t=1; t < std::ssize(use_attribs); t++) {
-            switch (StrHash(use_attribs[t].Name)) {
+            switch (strihash(use_attribs[t].Name)) {
                case SVF_X: tx = FUNIT(FID_X, use_attribs[t].Value); break;
                case SVF_Y: ty = FUNIT(FID_Y, use_attribs[t].Value); break;
                // SVG states that the following are not to be applied to the group...
@@ -2331,7 +2331,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
          FUNIT tx, ty;
          for (LONG t=1; t < std::ssize(use_attribs); t++) {
-            switch (StrHash(use_attribs[t].Name)) {
+            switch (strihash(use_attribs[t].Name)) {
                case SVF_X: tx = FUNIT(FID_X, use_attribs[t].Value); break;
                case SVF_Y: ty = FUNIT(FID_Y, use_attribs[t].Value); break;
                case SVF_WIDTH:
@@ -2400,7 +2400,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_HREF:
          case SVF_XLINK_HREF:
             link.get()->ref = val;
@@ -2496,7 +2496,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      switch(StrHash(Tag.Attribs[a].Name)) {
+      switch(strihash(Tag.Attribs[a].Name)) {
          // The viewbox determines what area of the vector definition is to be displayed (in a sense, zooming into the document).
          // The individual x, y, width and height values determine the position and clipping of the displayed SVG content.
 
@@ -2597,7 +2597,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       if (child.isTag()) {
          log.traceBranch("Processing <%s/>", child.name());
 
-         switch(StrHash(child.name())) {
+         switch(strihash(child.name())) {
             case SVF_DEFS: xtag_defs(Self, state, child, viewport); break;
             default:       xtag_default(Self, state, child, Tag, viewport, sibling);  break;
          }
@@ -2624,7 +2624,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      auto hash = StrHash(Tag.Attribs[a].Name);
+      auto hash = strihash(Tag.Attribs[a].Name);
       switch (hash) {
          case SVF_TYPE: // translate, scale, rotate, skewX, skewY
             if (iequals("translate", value))   anim.type = AT::TRANSLATE;
@@ -2660,7 +2660,7 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      auto hash = StrHash(Tag.Attribs[a].Name);
+      auto hash = strihash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
             if (value == "currentColor") {
@@ -2689,7 +2689,7 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      auto hash = StrHash(Tag.Attribs[a].Name);
+      auto hash = strihash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
             if (value == "currentColor") {
@@ -2720,7 +2720,7 @@ static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTa
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      auto hash = StrHash(Tag.Attribs[a].Name);
+      auto hash = strihash(Tag.Attribs[a].Name);
       switch (hash) {
          default:
             if (value == "currentColor") {
@@ -2747,7 +2747,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       auto &value = Tag.Attribs[a].Value;
       if (value.empty()) continue;
 
-      auto hash = StrHash(Tag.Attribs[a].Name);
+      auto hash = strihash(Tag.Attribs[a].Name);
       switch (hash) {
          case SVF_PATH: // List of standard path commands, e.g. "M 0 0 L 100 100"
             anim.path.set(objVectorPath::create::global(
@@ -2826,7 +2826,7 @@ static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector
 
       log.trace("%s = %.40s", name.c_str(), value.c_str());
 
-      if (auto error = set_property(Self, Vector, StrHash(name), Tag, State, value); error != ERR::Okay) {
+      if (auto error = set_property(Self, Vector, strihash(name), Tag, State, value); error != ERR::Okay) {
          if (Vector->classID() != CLASSID::VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
                name.c_str(), value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
@@ -3150,7 +3150,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
                return ERR::NoSupport;
 
             case SVF_FONT_STRETCH:
-               switch(StrHash(StrValue)) {
+               switch(strihash(StrValue)) {
                   case SVF_CONDENSED:       Vector->set(FID_Stretch, LONG(VTS::CONDENSED)); return ERR::Okay;
                   case SVF_EXPANDED:        Vector->set(FID_Stretch, LONG(VTS::EXPANDED)); return ERR::Okay;
                   case SVF_EXTRA_CONDENSED: Vector->set(FID_Stretch, LONG(VTS::EXTRA_CONDENSED)); return ERR::Okay;
@@ -3172,7 +3172,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_FONT_WEIGHT: { // SVG: normal | bold | bolder | lighter | inherit
                DOUBLE num = StrToFloat(StrValue);
                if (num) Vector->set(FID_Weight, num);
-               else switch(StrHash(StrValue)) {
+               else switch(strihash(StrValue)) {
                   case SVF_NORMAL:  Vector->set(FID_Weight, 400); return ERR::Okay;
                   case SVF_LIGHTER: Vector->set(FID_Weight, 300); return ERR::Okay; // -100 off the inherited weight
                   case SVF_BOLD:    Vector->set(FID_Weight, 700); return ERR::Okay;
@@ -3187,7 +3187,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_STRING: Vector->set(FID_String, StrValue); return ERR::Okay;
 
             case SVF_TEXT_ANCHOR:
-               switch(StrHash(StrValue)) {
+               switch(strihash(StrValue)) {
                   case SVF_START:   Vector->set(FID_Align, LONG(ALIGN::LEFT)); return ERR::Okay;
                   case SVF_MIDDLE:  Vector->set(FID_Align, LONG(ALIGN::HORIZONTAL)); return ERR::Okay;
                   case SVF_END:     Vector->set(FID_Align, LONG(ALIGN::RIGHT)); return ERR::Okay;
@@ -3210,7 +3210,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_PATHLENGTH: Vector->set(FID_PathLength, StrValue); return ERR::Okay;
             case SVF_WORD_SPACING:   Vector->set(FID_WordSpacing, StrValue); return ERR::Okay;
             case SVF_TEXT_DECORATION:
-               switch(StrHash(StrValue)) {
+               switch(strihash(StrValue)) {
                   case SVF_UNDERLINE:    Vector->set(FID_Flags, LONG(VTXF::UNDERLINE)); return ERR::Okay;
                   case SVF_OVERLINE:     Vector->set(FID_Flags, LONG(VTXF::OVERLINE)); return ERR::Okay;
                   case SVF_LINETHROUGH:  Vector->set(FID_Flags, LONG(VTXF::LINE_THROUGH)); return ERR::Okay;
@@ -3308,7 +3308,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
 
       case SVF_STROKE_LINEJOIN:
-         switch(StrHash(StrValue)) {
+         switch(strihash(StrValue)) {
             case SVF_MITER: Vector->set(FID_LineJoin, LONG(VLJ::MITER)); break;
             case SVF_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::ROUND)); break;
             case SVF_BEVEL: Vector->set(FID_LineJoin, LONG(VLJ::BEVEL)); break;
@@ -3319,7 +3319,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
-         switch(StrHash(StrValue)) {
+         switch(strihash(StrValue)) {
             case SVF_MITER:   Vector->set(FID_InnerJoin, LONG(VIJ::MITER));  break;
             case SVF_ROUND:   Vector->set(FID_InnerJoin, LONG(VIJ::ROUND)); break;
             case SVF_BEVEL:   Vector->set(FID_InnerJoin, LONG(VIJ::BEVEL)); break;
@@ -3329,7 +3329,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
 
       case SVF_STROKE_LINECAP:
-         switch(StrHash(StrValue)) {
+         switch(strihash(StrValue)) {
             case SVF_BUTT:    Vector->set(FID_LineCap, LONG(VLC::BUTT)); break;
             case SVF_SQUARE:  Vector->set(FID_LineCap, LONG(VLC::SQUARE)); break;
             case SVF_ROUND:   Vector->set(FID_LineCap, LONG(VLC::ROUND)); break;

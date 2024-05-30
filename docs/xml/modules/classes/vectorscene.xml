@@ -141,7 +141,7 @@
       </input>
       <description>
 <p>This method will search a scene for an object that matches a given <code>ID</code> (vector ID's can be set with the <class name="Vector" field="NumericID">Vector.NumericID</class> or <class name="Vector" field="ID">Vector.ID</class> fields).  If multiple vectors are using the same ID, repeated calls can be made to this method to find them all.  This is achieved by calling this method on the vector that was last returned as a <code>Result</code>.</p>
-<p>Note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash with <function module="Core">StrHash</function> and using that as the ID.</p>
+<p>Note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash with <code>strhash()</code> and using that as the ID.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

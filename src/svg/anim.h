@@ -159,7 +159,7 @@ public:
    void stop(double);
 
    ULONG hash_id() {
-      _hash_id = StrHash(id);
+      _hash_id = strihash(id);
       return _hash_id;
    }
 

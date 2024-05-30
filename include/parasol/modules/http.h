@@ -244,12 +244,6 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERR setRealm(T && Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[11];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
@@ -376,6 +370,12 @@ class objHTTP : public Object {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERR setRealm(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setStateChanged(FUNCTION Value) noexcept {

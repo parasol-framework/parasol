@@ -271,7 +271,7 @@ static int object_get(lua_State *Lua)
          release_object(def);
          return 1;
       }
-      else if (auto field = FindField(obj, StrHash(fieldname), &target)) {
+      else if (auto field = FindField(obj, strihash(fieldname), &target)) {
          LONG result = 0;
          if (field->Flags & FD_ARRAY) {
             if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, NULL, field), def);
@@ -362,7 +362,7 @@ static int object_set(lua_State *Lua)
 
    if (auto obj = access_object(def)) {
       LONG type = lua_type(Lua, 2);
-      ULONG fieldhash = StrHash(fieldname);
+      ULONG fieldhash = strihash(fieldname);
 
       ERR error;
       if (type IS LUA_TNUMBER) error = obj->set(fieldhash, luaL_checknumber(Lua, 2));
@@ -407,7 +407,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
    if (FName[0] IS '_') return acSetKey(obj, FName+1, lua_tostring(Lua, ValueIndex));
 
    OBJECTPTR target;
-   if (auto field = FindField(obj, StrHash(FName), &target)) {
+   if (auto field = FindField(obj, strihash(FName), &target)) {
       if (field->Flags & FD_ARRAY) {
          struct array *farray;
 

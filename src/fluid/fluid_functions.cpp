@@ -336,7 +336,7 @@ int fcmd_subscribe_event(lua_State *Lua)
          if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
          for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
          group[j] = 0;
-         group_hash = StrHash(group, 0);
+         group_hash = strihash(group);
          event += i + 1;
 
          for (LONG i=0; event[i]; i++) {
@@ -345,7 +345,7 @@ int fcmd_subscribe_event(lua_State *Lua)
                if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
                for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
                group[j] = 0;
-               subgroup_hash = StrHash(group, 0);
+               subgroup_hash = strihash(group);
                event += i + 1;
                break;
             }

@@ -284,7 +284,7 @@ static ERR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR::NullArgs);
-   Args->ProcedureID = StrHash(Args->Procedure, 0);
+   Args->ProcedureID = strihash(Args->Procedure);
    return ERR::Okay;
 }
 

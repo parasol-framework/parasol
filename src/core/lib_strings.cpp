@@ -1,23 +1,16 @@
 /*********************************************************************************************************************
 -CATEGORY-
-Name: Strings
+Name: System
 -END-
 *********************************************************************************************************************/
 
 #include "defs.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
 
 #ifdef __ANDROID__
+
 #include <android/configuration.h>
 #include <parasol/modules/android.h>
-#endif
 
-//********************************************************************************************************************
-
-#ifdef __ANDROID__
 struct LanguageCode {
    const char Two[2];
    const char Three[3];
@@ -212,43 +205,3 @@ static const struct LanguageCode glLanguages[] = {
    { { 'z','u' }, { 'z','u','l' }, "Zulu" }
 };
 #endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-StrHash: Convert a string into a 32-bit hash.
-
-This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our
-platform and is therefore guaranteed to be compatible with all areas that make use of hashed values.
-
-Hashing is case insensitive by default.  If case sensitive hashing is desired, set `CaseSensitive` to `true`
-when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a
-case insensitive hash of the same string.
-
--INPUT-
-cstr String: Reference to a string that will be processed.
-int CaseSensitive: Set to `true` to enable case sensitivity.
-
--RESULT-
-uint: The 32-bit hash is returned.
-
-*********************************************************************************************************************/
-
-ULONG StrHash(CSTRING String, LONG CaseSensitive)
-{
-   if (!String) return 0;
-
-   ULONG hash = 5381;
-   UBYTE c;
-   if (CaseSensitive) {
-      while ((c = *String++)) hash = ((hash<<5) + hash) + c;
-      return hash;
-   }
-   else {
-      while ((c = *String++)) {
-         if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-         else hash = (hash<<5) + hash + c;
-      }
-      return hash;
-   }
-}

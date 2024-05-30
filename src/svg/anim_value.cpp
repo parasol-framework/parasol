@@ -36,7 +36,7 @@ void anim_value::perform()
 
 void anim_value::set_value(objVector &Vector)
 {
-   auto hash = StrHash(target_attrib);
+   auto hash = strihash(target_attrib);
 
    switch(Vector.Class->ClassID) {
       case CLASSID::VECTORWAVE:
@@ -55,7 +55,7 @@ void anim_value::set_value(objVector &Vector)
             case SVF_DY: Vector.set(FID_DY, get_string()); return;
 
             case SVF_TEXT_ANCHOR:
-               switch(StrHash(get_string())) {
+               switch(strihash(get_string())) {
                   case SVF_START:   Vector.set(FID_Align, LONG(ALIGN::LEFT)); return;
                   case SVF_MIDDLE:  Vector.set(FID_Align, LONG(ALIGN::HORIZONTAL)); return;
                   case SVF_END:     Vector.set(FID_Align, LONG(ALIGN::RIGHT)); return;
@@ -131,7 +131,7 @@ void anim_value::set_value(objVector &Vector)
          return;
 
       case SVF_STROKE_LINEJOIN:
-         switch(StrHash(get_string())) {
+         switch(strihash(get_string())) {
             case SVF_MITER: Vector.set(FID_LineJoin, LONG(VLJ::MITER)); return;
             case SVF_ROUND: Vector.set(FID_LineJoin, LONG(VLJ::ROUND)); return;
             case SVF_BEVEL: Vector.set(FID_LineJoin, LONG(VLJ::BEVEL)); return;
@@ -142,7 +142,7 @@ void anim_value::set_value(objVector &Vector)
          return;
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
-         switch(StrHash(get_string())) {
+         switch(strihash(get_string())) {
             case SVF_MITER:   Vector.set(FID_InnerJoin, LONG(VIJ::MITER));  return;
             case SVF_ROUND:   Vector.set(FID_InnerJoin, LONG(VIJ::ROUND)); return;
             case SVF_BEVEL:   Vector.set(FID_InnerJoin, LONG(VIJ::BEVEL)); return;
@@ -152,7 +152,7 @@ void anim_value::set_value(objVector &Vector)
          return;
 
       case SVF_STROKE_LINECAP:
-         switch(StrHash(get_string())) {
+         switch(strihash(get_string())) {
             case SVF_BUTT:    Vector.set(FID_LineCap, LONG(VLC::BUTT)); return;
             case SVF_SQUARE:  Vector.set(FID_LineCap, LONG(VLC::SQUARE)); return;
             case SVF_ROUND:   Vector.set(FID_LineCap, LONG(VLC::ROUND)); return;

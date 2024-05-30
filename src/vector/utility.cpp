@@ -484,7 +484,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
       LocalResource loc(location);
 
       if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
-         auto key = StrHash(style + ":" + std::to_string(point_size) + ":" + location);
+         auto key = strihash(style + ":" + std::to_string(point_size) + ":" + location);
 
          if (glBitmapFonts.contains(key)) {
             *Handle = &glBitmapFonts[key];
@@ -507,7 +507,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
          // only once.  If the file is variable, it will contain multiple styles.  Otherwise, assume the file
          // represents one type of style.
 
-         auto key = StrHash(location);
+         auto key = strihash(location);
 
          if (!glFreetypeFonts.contains(key)) {
             STRING resolved;

@@ -107,7 +107,7 @@ static int input_index(lua_State *Lua)
 
       log.trace("input.index(#%d, %s)", input->SurfaceID, field);
 
-      switch (StrHash(field, 0)) {
+      switch (strihash(field)) {
          case HASH_UNSUBSCRIBE:
             lua_pushvalue(Lua, 1); // Duplicate the interface reference
             lua_pushcclosure(Lua, input_unsubscribe, 1);

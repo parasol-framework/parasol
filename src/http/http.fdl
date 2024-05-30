@@ -112,7 +112,6 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2024", version=1.0 }, funct
    large ContentLength    # Content length as reported in the content length response field, -1 if streamed or unknown
    large Size             # Content size to use when uploading data
    str Host               # Host / Domain
-   str Realm              # The realm names the protection space of a set of credentials.
    str Path               # Path for file retrieval
    str OutputFile         # Target file for downloaded content
    str InputFile          # Source file for uploads

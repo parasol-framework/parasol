@@ -29,7 +29,7 @@
    end
 
    if (hashString) then
-      print("Hash: 0x" .. string.format("%.8x", mSys.StrHash(hashString:lower(), 0)))
+      print("Hash: 0x" .. string.format("%.8x", hashString:hash()))
       return
    end
 
@@ -54,7 +54,7 @@
       _, _, hashname = hashname:find("([^%s]+)")
 
       if (nz(hashname)) then
-         local hash = string.format("%.8x", mSys.StrHash(hashname, 0))
+         local hash = string.format("%.8x", hashname:hash())
 
          hashname = string.gsub(hashname, "-", "_")
          hashname = string.gsub(hashname, ":", "_")

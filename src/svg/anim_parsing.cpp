@@ -16,12 +16,12 @@ static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y,
 static double parse_begin(anim_base &Anim, std::string_view Value)
 {
    if (Value.ends_with(".begin")) {
-      auto ref_id = StrHash(std::string(Value.substr(0, Value.size()-6)));
+      auto ref_id = strihash(std::string(Value.substr(0, Value.size()-6)));
       Anim.svg->StartOnBegin[ref_id].push_back(&Anim);
       return std::numeric_limits<double>::max();
    }
    else if (Value.ends_with(".end")) {
-      auto ref_id = StrHash(std::string(Value.substr(0, Value.size()-4)));
+      auto ref_id = strihash(std::string(Value.substr(0, Value.size()-4)));
       Anim.svg->StartOnEnd[ref_id].push_back(&Anim);
       return std::numeric_limits<double>::max();
    }
@@ -107,7 +107,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
          }
          else if (Value.find(';') != std::string::npos) {
             // A series of numbers has likely been provided, but '.begin' and '.end' references are possible also.
-         
+
             for (unsigned v=0; v < Value.size(); ) {
                 while ((Value[v]) and (Value[v] <= 0x20)) v++;
                 auto v_end = Value.find(';', v);

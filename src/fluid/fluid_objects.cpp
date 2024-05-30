@@ -365,7 +365,7 @@ static int object_new(lua_State *Lua)
          log.warning("Use of @ for allocating public objects is deprecated.");
          class_name++;
       }
-      class_id = CLASSID(StrHash(class_name, 0));
+      class_id = CLASSID(strihash(class_name));
       log.trace("%s, $%.8x", class_name, ULONG(class_id));
    }
    else {
@@ -503,7 +503,7 @@ static int object_newchild(lua_State *Lua)
          class_name++;
          log.warning("Use of @ for allocating public objects is deprecated.");
       }
-      class_id = CLASSID(StrHash(class_name, 0));
+      class_id = CLASSID(strihash(class_name));
       log.trace("%s, $%.8x", class_name, class_id);
    }
    else {
@@ -670,7 +670,7 @@ static int object_find(lua_State *Lua)
          class_id = CLASSID(lua_tointeger(Lua, 2));
       }
       else if (class_type IS LUA_TSTRING) {
-         class_id = CLASSID(StrHash(lua_tostring(Lua, 2), false));
+         class_id = CLASSID(strihash(lua_tostring(Lua, 2)));
       }
       else class_id = CLASSID::NIL;
 
@@ -752,7 +752,7 @@ static int object_children(lua_State *Lua)
    CLASSID class_id;
    CSTRING classfilter;
    if ((classfilter = luaL_optstring(Lua, 1, NULL)) and (classfilter[0])) {
-      class_id = CLASSID(StrHash(classfilter, 0));
+      class_id = CLASSID(strihash(classfilter));
    }
    else class_id = CLASSID::NIL;
 

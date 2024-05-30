@@ -84,7 +84,6 @@ FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_LONG }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Path", FD_STR }, { "Icon", FD_STR }, { "Label", FD_STR }, { "Device", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
@@ -179,7 +178,6 @@ const struct Function glFunctions[] = {
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
    { (APTR)SetArray, "SetArray", argsSetArray },
-   { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)LockObject, "LockObject", argsLockObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)ActionThread, "ActionThread", argsActionThread },

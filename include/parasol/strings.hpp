@@ -86,7 +86,7 @@ inline void camelcase(std::string &s) {
 
          if ((i != std::string::npos) and (Wildcard[i] IS '|')) {
             // Scan to the end of the string for wildcard situation like "*.txt"
-            
+
             auto printable = i - w;
             auto j = String.size() - s; // Number of characters left in the String
             if (j < printable) fail = true; // The string has run out of characters to cover itself for the wildcard
@@ -176,6 +176,30 @@ inline void camelcase(std::string &s) {
    }
 
    return true;
+}
+
+// Inline C++ implementations of the StrHash() function
+
+[[nodiscard]] inline ULONG strhash(std::string_view String)
+{
+   ULONG hash = 5381;
+   std::for_each(String.begin(), String.end(), [&hash](char a) {
+      hash = (hash<<5) + hash + a;
+   });
+   return hash;
+}
+
+[[nodiscard]] inline ULONG strihash(std::string_view String)
+{
+   ULONG hash = 5381;
+   std::for_each(String.begin(), String.end(), [&hash](char c) {
+       hash = (hash<<5) + hash + std::tolower(c);
+   });
+   return hash;
+}
+
+[[nodiscard]] inline FIELD ResolveField(CSTRING Field) {
+   return strihash(Field);
 }
 
 } // namespace

@@ -482,7 +482,7 @@ ERR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
 static struct_field * find_field(struct fstruct *Struct, CSTRING FieldName)
 {
    if (auto def = Struct->Def) {
-      auto field_hash = StrHash(FieldName);
+      auto field_hash = strihash(FieldName);
       for (auto &field : def->Fields) {
          if (field.nameHash() IS field_hash) return &field;
       }

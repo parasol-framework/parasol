@@ -2054,7 +2054,7 @@ static const FieldArray clTextFields[] = {
 
 static ERR init_text(void)
 {
-   FID_FreetypeFace = StrHash("FreetypeFace");
+   FID_FreetypeFace = strihash("FreetypeFace");
 
    clVectorText = objMetaClass::create::global(
       fl::BaseClassID(CLASSID::VECTOR),

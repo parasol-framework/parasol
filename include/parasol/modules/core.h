@@ -2049,7 +2049,6 @@ struct CoreBase {
    struct Message * (*_GetActionMsg)(void);
    ERR (*_FuncError)(CSTRING Header, ERR Error);
    ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
@@ -2148,7 +2147,6 @@ inline CSTRING GetErrorMsg(ERR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(Header,Error); }
 inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
-inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
@@ -2242,7 +2240,6 @@ extern CSTRING GetErrorMsg(ERR Error);
 extern struct Message * GetActionMsg(void);
 extern ERR FuncError(CSTRING Header, ERR Error);
 extern ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-extern ULONG StrHash(CSTRING String, LONG CaseSensitive);
 extern ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 extern void ReleaseObject(OBJECTPTR Object);
 extern ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
@@ -2344,10 +2341,6 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 inline ERR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
-}
-
-inline ULONG StrHash(const std::string Value) {
-   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> &Array)
@@ -4574,10 +4567,6 @@ class objCompressedStream : public Object {
 #define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
 #define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
 #define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
-
-inline FIELD ResolveField(CSTRING Field) {
-   return StrHash(Field, FALSE);
-}
 
 #endif // PRV_CORE
 

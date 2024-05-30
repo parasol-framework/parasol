@@ -1240,7 +1240,7 @@ next:
       else return ERR::Syntax;
    }
    else {
-      if (auto it = glNamedColours.find(StrHash(IRI)); it != glNamedColours.end()) {
+      if (auto it = glNamedColours.find(strihash(IRI)); it != glNamedColours.end()) {
          auto &src = it->second;
          auto &rgb = Painter->Colour;
          rgb.Red   = (FLOAT)src.Red   * (1.0 / 255.0);

@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file 
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
@@ -149,8 +149,8 @@ LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 
    if (Group IS EVG::NIL) return 0;
 
-   auto hash_subgroup = StrHash(SubGroup, true) & 0x00ffffff;
-   auto hash_event = StrHash(Event, true);
+   auto hash_subgroup = strhash(SubGroup) & 0x00ffffff;
+   auto hash_event = strhash(Event);
 
    LARGE event_id = LARGE(UBYTE(Group))<<56;
    if ((SubGroup) and (SubGroup[0] != '*')) event_id |= LARGE(hash_subgroup)<<32;

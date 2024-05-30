@@ -156,7 +156,7 @@ GetField(Object, FID_Y|TLONG, &y);
 
 As GetField() is based on field ID's that reflect field names (`FID`'s), you will find that there are occasions where
 there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call
-the ~StrHash() function.  Reserved field ID's are listed in the `parasol/system/fields.h` include file.
+the C++ `strihash()` function.  Reserved field ID's are listed in the `parasol/system/fields.h` include file.
 
 The type of the `Result` parameter must be OR'd into the `Field` parameter.  When reading a field you must give
 consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are

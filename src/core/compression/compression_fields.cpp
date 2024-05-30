@@ -11,7 +11,7 @@ This is achieved through use of the `archive:` volume, which is a virtual filesy
 
 static ERR SET_ArchiveName(extCompression *Self, CSTRING Value)
 {
-   if ((Value) and (*Value)) Self->ArchiveHash = StrHash(Value, 0);
+   if ((Value) and (*Value)) Self->ArchiveHash = strihash(Value);
    else Self->ArchiveHash = 0;
 
    if (Self->ArchiveHash) add_archive(Self);

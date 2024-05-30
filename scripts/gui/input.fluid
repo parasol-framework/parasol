@@ -12,7 +12,7 @@ local DEFAULT_WIDTH = 160
 local function reportActivate(self, State)
    if not self.events.activate then return end
    local text = self.text.string
-   local hash = mSys.StrHash(text)
+   local hash = string.hash(text)
    if (hash != self.hash) then
       self.hash = hash
       self.events.activate(self, { text=text, state=State })
