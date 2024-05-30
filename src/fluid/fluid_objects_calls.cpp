@@ -164,17 +164,17 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
          #ifdef _LP64
             j = ALIGN64(j);
          #endif
-         if (auto memory = (struct memory *)get_meta(Lua, n, "Fluid.mem")) {
+         if (auto array = (struct array *)get_meta(Lua, n, "Fluid.array")) {
             //log.trace("Arg: %s, Value: Buffer (Source is Memory)", args[i].Name);
 
-            ((APTR *)(argbuffer + j))[0] = memory->Memory;
+            ((APTR *)(argbuffer + j))[0] = array->ptrVoid;
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
                // Buffer size is optional, so set the buffer size parameter by default.  The user can override it if
                // more arguments are specified in the function call.
 
-               LONG memsize = memory->MemorySize;
+               LONG memsize = array->ArraySize;
                if (args[i+1].Type & FD_LONG)  ((LONG *)(argbuffer + j))[0] = memsize;
                else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = memsize;
                //log.trace("Preset buffer size of %d bytes.", memsize);
@@ -311,8 +311,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
          else {
             //log.trace("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));
 
-            if (auto memory = (struct memory *)get_meta(Lua, n, "Fluid.mem")) {
-               ((APTR *)(argbuffer + j))[0] = memory->Memory;
+            if (auto array = (struct array *)get_meta(Lua, n, "Fluid.array")) {
+               ((APTR *)(argbuffer + j))[0] = array->ptrVoid;
                //n--; // Adjustment required due to successful get_meta()
             }
             else if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {

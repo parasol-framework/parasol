@@ -220,25 +220,6 @@ struct array {
    };
 };
 
-// This structure is created & managed through the 'memory' interface
-// DEPRECATED
-
-struct memory {
-   union {
-      APTR Memory;
-      APTR Address;
-   };
-   MEMORYID MemoryID;
-   UBYTE    Linked:1;      // TRUE if the memory is an external reference
-   UBYTE    ElementSize;
-   LONG     ArrayType;
-   LONG     IndexType;
-   UBYTE    IndexSize;    // Byte size of each index element (e.g. LONG = 4)
-   LONG     MemorySize;   // Size of the allocated memory
-   LONG     MemFlags;
-   ULONG    AccessCount;
-};
-
 // This structure is created & managed through the 'struct' interface
 
 struct fstruct {

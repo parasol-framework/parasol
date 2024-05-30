@@ -409,22 +409,22 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if (auto memory = (struct memory *)get_meta(Lua, i, "Fluid.mem")) {
-            ((APTR *)(buffer + j))[0] = memory->Address;
+         else if (auto array = (struct array *)get_meta(Lua, i, "Fluid.array")) {
+            ((APTR *)(buffer + j))[0] = array->ptrVoid;
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_LONG) {
-                  ((LONG *)(buffer + j))[0] = memory->MemorySize;
+                  ((LONG *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
                   j += sizeof(LONG);
                }
                else if (args[i+1].Type & FD_LARGE) {
-                  ((LARGE *)(buffer + j))[0] = memory->MemorySize;
+                  ((LARGE *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;

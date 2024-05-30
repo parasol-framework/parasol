@@ -1109,10 +1109,10 @@ void scan_classes(void)
 
          if ((list->Flags & RDF::FILE) != RDF::NIL) {
             #ifdef __ANDROID__
-               if (pf::strcompare("libshim.", list->Name)) continue;
-               if (pf::strcompare("libcore.", list->Name)) continue;
+               if (pf::startswith("libshim.", list->Name)) continue;
+               if (pf::startswith("libcore.", list->Name)) continue;
             #else
-               if (pf::strcompare("core.", list->Name)) continue;
+               if (pf::startswith("core.", list->Name)) continue;
             #endif
 
             auto modules = std::string("modules:") + list->Name;
