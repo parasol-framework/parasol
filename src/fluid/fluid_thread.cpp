@@ -18,6 +18,7 @@ variables with its creator, except via existing conventional means such as a Key
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 
 extern "C" {
 #include "lauxlib.h"
@@ -125,7 +126,7 @@ static int thread_action(lua_State *Lua)
       luaL_argerror(Lua, 1, "Object required.");
       return 0;
    }
-   
+
    LONG type = lua_type(Lua, 2);
    ACTIONID action_id;
    CSTRING action = NULL;
@@ -234,7 +235,7 @@ static int thread_method(lua_State *Lua)
          if ((GetFieldArray(object->Class, FID_Methods, &table, &total_methods) IS ERR::Okay) and (table)) {
             bool found = false;
             for (i=1; i < total_methods; i++) {
-               if ((table[i].Name) and (StrMatch(table[i].Name, method) IS ERR::Okay)) { found = true; break; }
+               if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }
             }
 
             if (found) {

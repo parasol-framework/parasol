@@ -181,17 +181,17 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CSTRING driver_name;
    if ((driver_name = GetResourcePtr(RES::DISPLAY_DRIVER))) {
-      if (!StrMatch(driver_name, "native"))     display = DISPLAY_NATIVE;
-      else if (!StrMatch(driver_name, "vesa"))  display = DISPLAY_NATIVE;
-      else if (!StrMatch(driver_name, "vga"))   display = DISPLAY_NATIVE;
-      else if (!StrMatch(driver_name, "x11"))   display = DISPLAY_X11;
-      else if (!StrMatch(driver_name, "gles"))  display = DISPLAY_GLES1;
-      else if (!StrMatch(driver_name, "gles1")) display = DISPLAY_GLES1;
-      else if (!StrMatch(driver_name, "gles2")) display = DISPLAY_GLES2;
-      else if (!StrMatch(driver_name, "gles3")) display = DISPLAY_GLES3;
-      else if (!StrMatch(driver_name, "auto"))  display = DISPLAY_AUTO;
-      else if (!StrMatch(driver_name, "none"))  display = DISPLAY_HEADLESS;
-      else if (!StrMatch(driver_name, "none"))  display = DISPLAY_HEADLESS;
+      if (iequals(driver_name, "native"))     display = DISPLAY_NATIVE;
+      else if (iequals(driver_name, "vesa"))  display = DISPLAY_NATIVE;
+      else if (iequals(driver_name, "vga"))   display = DISPLAY_NATIVE;
+      else if (iequals(driver_name, "x11"))   display = DISPLAY_X11;
+      else if (iequals(driver_name, "gles"))  display = DISPLAY_GLES1;
+      else if (iequals(driver_name, "gles1")) display = DISPLAY_GLES1;
+      else if (iequals(driver_name, "gles2")) display = DISPLAY_GLES2;
+      else if (iequals(driver_name, "gles3")) display = DISPLAY_GLES3;
+      else if (iequals(driver_name, "auto"))  display = DISPLAY_AUTO;
+      else if (iequals(driver_name, "none"))  display = DISPLAY_HEADLESS;
+      else if (iequals(driver_name, "none"))  display = DISPLAY_HEADLESS;
       else display = DISPLAY_AUTO;
    }
    else display = DISPLAY_AUTO;

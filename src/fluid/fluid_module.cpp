@@ -4,6 +4,7 @@
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 
 extern "C" {
@@ -106,8 +107,7 @@ static int module_index(lua_State *Lua)
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (auto list = mod->Functions) {
             for (LONG i=0; list[i].Name; i++) {
-               CSTRING name = list[i].Name;
-               if (StrMatch(name, function) IS ERR::Okay) { // Function call stack management
+               if (pf::iequals(list[i].Name, function)) { // Function call stack management
                   lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                   lua_pushinteger(Lua, i); // Arg2: Index of the function that is being called
                   lua_pushcclosure(Lua, module_call, 2);
@@ -409,22 +409,22 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if (auto memory = (struct memory *)get_meta(Lua, i, "Fluid.mem")) {
-            ((APTR *)(buffer + j))[0] = memory->Address;
+         else if (auto array = (struct array *)get_meta(Lua, i, "Fluid.array")) {
+            ((APTR *)(buffer + j))[0] = array->ptrVoid;
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_LONG) {
-                  ((LONG *)(buffer + j))[0] = memory->MemorySize;
+                  ((LONG *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
                   j += sizeof(LONG);
                }
                else if (args[i+1].Type & FD_LARGE) {
-                  ((LARGE *)(buffer + j))[0] = memory->MemorySize;
+                  ((LARGE *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;

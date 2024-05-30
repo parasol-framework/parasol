@@ -99,6 +99,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <parasol/modules/http.h>
 //#include <parasol/modules/display.h>
 #include <parasol/modules/network.h>
+#include <parasol/strings.hpp>
 #include "../link/base64.h"
 
 #include "md5.c"
@@ -1253,8 +1254,8 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    Self->Port = 80;
 
-   if (StrCompare("http://", str, 7) IS ERR::Okay) str += 7;
-   else if (StrCompare("https://", str, 8) IS ERR::Okay) {
+   if (pf::startswith("http://", str)) str += 7;
+   else if (pf::startswith("https://", str)) {
       str += 8;
       Self->Port = 443;
       Self->Flags |= HTF::SSL;
@@ -1462,7 +1463,7 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
          while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
 
          if (i IS len) {
-            if (StrCompare(Self->Path, Self->AuthPath, len) IS ERR::Okay) {
+            if (pf::stricompare(Self->Path, Self->AuthPath, len)) {
                // No change to the current path
                Self->SecurePath = FALSE;
             }

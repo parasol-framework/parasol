@@ -53,6 +53,7 @@ It will be translated to the following when loaded into an XML object:
 #define PRV_XML
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
 #include <algorithm>
 #include <sstream>
 
@@ -620,7 +621,7 @@ static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
       number_tag.Children.emplace_back(XMLTag(glTagID++, Line, { { "", numbuf } }));
    }
-   else if (StrCompare("null", str, 4) IS ERR::Okay) { // Evaluates to <item name="item_name" type="null"/>
+   else if (pf::startswith("null", str)) { // Evaluates to <item name="item_name" type="null"/>
       str += 4;
 
       Tags.emplace_back(XMLTag(glTagID++, Line, {

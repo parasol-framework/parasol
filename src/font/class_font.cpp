@@ -123,9 +123,9 @@ static ERR FONT_Init(extFont *Self)
 
    // Check the bitmap cache to see if we have already loaded this font
 
-   if (StrMatch("Bold", Self->prvStyle) IS ERR::Okay) style = FTF::BOLD;
-   else if (StrMatch("Italic", Self->prvStyle) IS ERR::Okay) style = FTF::ITALIC;
-   else if (StrMatch("Bold Italic", Self->prvStyle) IS ERR::Okay) style = FTF::BOLD|FTF::ITALIC;
+   if (iequals("Bold", Self->prvStyle)) style = FTF::BOLD;
+   else if (iequals("Italic", Self->prvStyle)) style = FTF::ITALIC;
+   else if (iequals("Bold Italic", Self->prvStyle)) style = FTF::BOLD|FTF::ITALIC;
    else style = FTF::NIL;
 
    CACHE_LOCK lock(glCacheMutex);
@@ -629,7 +629,7 @@ static ERR SET_Point(extFont *Self, DOUBLE Value)
 String: The string to use when drawing a Font.
 
 The String field must be defined in order to draw text with a font object.  A string must consist of a valid sequence
-of UTF-8 characters.  Line feeds are allowed (whenever a line feed is reached, the Draw action will start printing on
+of UTF-8 characters.  Line feeds are allowed (whenever a line feed is reached, the Draw() action will start printing on
 the next line).  Drawing will stop when the null termination character is reached.
 
 If a string contains characters that are not supported by a font, those characters will be printed using a default
@@ -639,7 +639,7 @@ character from the font.
 
 static ERR SET_String(extFont *Self, CSTRING Value)
 {
-   if (StrCompare(Value, Self->String, 0, STR::MATCH_CASE|STR::MATCH_LEN) IS ERR::Okay) return ERR::Okay;
+   if ((Value) and (Self->String) and (std::string_view(Value) IS Self->String)) return ERR::Okay;
 
    Self->prvLineCount = 0;
    Self->prvStrWidth  = 0; // Reset the string width for GET_Width

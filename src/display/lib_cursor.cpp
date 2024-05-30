@@ -205,7 +205,7 @@ ERR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
 -FUNCTION-
 GetCursorPos: Returns the coordinates of the UI pointer.
 
-This function will return the current coordinates of the mouse cursor.  If the device is touch-screen based then the 
+This function will return the current coordinates of the mouse cursor.  If the device is touch-screen based then the
 coordinates will reflect the last position that a touch event occurred.
 
 -INPUT-
@@ -363,7 +363,7 @@ ERR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
       ReleaseObject(pointer);
       return ERR::Okay;
    }
-   else return ERR::Okay; // The cursor not existing is not necessarily a problem.   
+   else return ERR::Okay; // The cursor not existing is not necessarily a problem.
 }
 
 /*********************************************************************************************************************
@@ -432,7 +432,7 @@ ERR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJEC
    if (CursorID IS PTC::NIL) {
       if (Name) {
          for (LONG i=0; CursorLookup[i].Name; i++) {
-            if (StrMatch(CursorLookup[i].Name, Name) IS ERR::Okay) {
+            if (iequals(CursorLookup[i].Name, Name)) {
                CursorID = PTC(CursorLookup[i].Value);
                break;
             }

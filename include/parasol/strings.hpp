@@ -48,7 +48,7 @@ inline void trim(std::string &String, const std::string &Whitespace = " \n\r\t")
 
 inline void camelcase(std::string &s) {
    bool raise = true;
-   for (ULONG i=0; i < s.size(); i++) {
+   for (std::size_t i=0; i < s.size(); i++) {
       if (raise) {
          s[i] = std::toupper(s[i]);
          raise = false;
@@ -57,13 +57,15 @@ inline void camelcase(std::string &s) {
    }
 }
 
+// Case-insensitive string comparison, both of which must be the same length.
+
 [[nodiscard]] inline bool iequals(std::string_view lhs, std::string_view rhs)
 {
    auto ichar_equals = [](char a, char b) {
-       return std::tolower(static_cast<unsigned char>(a)) ==
-              std::tolower(static_cast<unsigned char>(b));
+       return std::tolower((unsigned char)(a)) == std::tolower((unsigned char)(b));
    };
 
+   if (lhs.size() != rhs.size()) return false;
    return std::ranges::equal(lhs, rhs, ichar_equals);
 }
 
@@ -153,6 +155,53 @@ inline void camelcase(std::string &s) {
    if ((w < Wildcard.size()) and (Wildcard[w] IS '*')) return true;
 
    return false;
+}
+
+[[nodiscard]] inline bool stricompare(std::string_view StringA, std::string_view StringB, LONG Length = 0x7fffffff, bool MatchLength = false)
+{
+   if (StringA.data() IS StringB.data()) return true;
+
+   std::size_t a = 0, b = 0;
+   LONG len = (!Length) ? 0x7fffffff : Length;
+
+   while ((len) and (a < StringA.size()) and (b < StringB.size())) {
+      auto char1 = StringA[a];
+      auto char2 = StringB[b];
+      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+      if (char1 != char2) return false;
+
+      a++; b++;
+      len--;
+   }
+
+   if (MatchLength) {
+      if ((a IS StringA.size()) and (b IS StringB.size())) return true;
+      else return false;
+   }
+   else if ((Length) and (len > 0)) return false;
+   else return true;
+}
+
+// A case insensitive alternative to std::string_view.starts_with()
+
+[[nodiscard]] inline bool startswith(std::string_view StringA, std::string_view StringB)
+{
+   std::size_t a = 0, b = 0;
+
+   if (StringA.size() > StringB.size()) return false;
+
+   while ((a < StringA.size()) and (b < StringB.size())) {
+      auto char1 = StringA[a];
+      auto char2 = StringB[b];
+      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+      if (char1 != char2) return false;
+
+      a++; b++;
+   }
+
+   return true;
 }
 
 } // namespace

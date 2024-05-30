@@ -104,6 +104,7 @@
 
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
 #include "../link/linear_rgb.h"
 #include "../link/unicode.h"
 

@@ -71,7 +71,7 @@ static const std::array<DOUBLE, 12> glScale = {
 
 static OBJECTPTR clSound = NULL;
 
-static ERR find_chunk(extSound *, objFile *, CSTRING);
+static ERR find_chunk(extSound *, objFile *, std::string_view);
 #ifdef USE_WIN32_PLAYBACK
 static ERR win32_audio_stream(extSound *, LARGE, LARGE);
 #endif
@@ -710,8 +710,8 @@ static ERR SOUND_Init(extSound *Self)
 
    Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-   if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR::Okay) or
-       (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR::Okay)) {
+   if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
+       (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
       FreeResource(Self->File);
       Self->File = NULL;
       return ERR::NoSupport;
@@ -817,8 +817,8 @@ static ERR SOUND_Init(extSound *Self)
 
    Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-   if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR::Okay) or
-       (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR::Okay)) {
+   if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
+       (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
       FreeResource(Self->File);
       Self->File = NULL;
       return ERR::NoSupport;
@@ -1651,16 +1651,16 @@ static ERR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 
 //********************************************************************************************************************
 
-static ERR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
+static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 {
-   while (1) {
+   while (true) {
       char chunk[4];
       LONG len;
       if ((File->read(chunk, sizeof(chunk), &len) != ERR::Okay) or (len != sizeof(chunk))) {
          return ERR::Read;
       }
 
-      if (StrCompare(ChunkName, chunk, 4, STR::CASE) IS ERR::Okay) return ERR::Okay;
+      if (ChunkName IS std::string_view(chunk, 4)) return ERR::Okay;
 
       flReadLE(Self->File, &len); // Length of data in this chunk
       Self->File->seekCurrent(len);

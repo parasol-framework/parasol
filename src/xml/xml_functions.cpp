@@ -104,8 +104,8 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    auto line_no = Self->LineNo;
    BYTE raw_content;
 
-   if (StrCompare("![CDATA[", str, 8, STR::MATCH_CASE) IS ERR::Okay) { raw_content = RAW_CDATA; str += 8; }
-   else if (StrCompare("![NDATA[", str, 8, STR::MATCH_CASE) IS ERR::Okay) { raw_content = RAW_NDATA; str += 8; }
+   if (!strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
+   else if (!strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }
    else raw_content = RAW_NONE;
 
    if (raw_content) {
@@ -159,9 +159,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    if ((State.Pos[1] IS '?') or (State.Pos[1] IS '!')) {
       if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
-         if (StrCompare("!DOCTYPE", State.Pos+1, 7) IS ERR::Okay) {
-            parse_doctype(Self, State.Pos+7);
-         }
+         if (pf::startswith("!DOCTYPE", State.Pos+1)) parse_doctype(Self, State.Pos+7);
       }
 
       if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {

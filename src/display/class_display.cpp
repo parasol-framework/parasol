@@ -98,7 +98,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 
 static void update_displayinfo(extDisplay *Self)
 {
-   if (StrMatch("SystemDisplay", Self->Name) != ERR::Okay) return;
+   if (!iequals("SystemDisplay", Self->Name)) return;
 
    glDisplayInfo.DisplayID = 0;
    get_display_info(Self->UID, &glDisplayInfo, sizeof(DISPLAYINFO));
@@ -425,7 +425,7 @@ static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
    STRING buffer = Args->Value;
    buffer[0] = 0;
 
-   if (StrCompare("resolution(", Args->Key, 11) IS ERR::Okay) {
+   if (pf::startswith("resolution(", Args->Key)) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Key + 11;
@@ -1835,7 +1835,7 @@ ERR DISPLAY_Show(extDisplay *Self)
 
       // Originally introduced as a hack to manage focusing for dropdown menus, possibly no longer required as focus should remain with the instigator.
 
-      //if (!StrMatch("SystemDisplay", Self->Name)) {
+      //if (iequals("SystemDisplay", Self->Name)) {
       //   XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
       //}
 

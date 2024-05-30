@@ -390,7 +390,7 @@ static ERR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
    }
 
    for (auto &attrib : tag->Attribs) {
-      if (StrMatch(Args->Attrib, attrib.Name) IS ERR::Okay) {
+      if (pf::iequals(Args->Attrib, attrib.Name)) {
          Args->Value = attrib.Value.c_str();
          log.trace("Attrib %s = %s", Args->Attrib, Args->Value);
          return ERR::Okay;
@@ -442,14 +442,14 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    CSTRING field = Args->Key;
    Args->Value[0] = 0;
 
-   if (StrCompare("count:", field, 6) IS ERR::Okay) {
+   if (pf::startswith("count:", field)) {
       if (xmlCount(Self, field+6, &count) IS ERR::Okay) {
          Args->Value[IntToStr(count, Args->Value, Args->Size)] = 0;
          return ERR::Okay;
       }
       else return ERR::Failed;
    }
-   else if (StrCompare("exists:", field, 7) IS ERR::Okay) {
+   else if (pf::startswith("exists:", field)) {
       Args->Value[0] = '0';
       Args->Value[1] = 0;
 
@@ -457,7 +457,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
       if (!Self->Attrib.empty()) {
          for (auto &scan : Self->Cursor->Attribs) {
-            if (StrMatch(scan.Name, Self->Attrib) IS ERR::Okay) {
+            if (pf::iequals(scan.Name, Self->Attrib)) {
                Args->Value[0] = '1';
                break;
             }
@@ -467,7 +467,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
       return ERR::Okay;
    }
-   else if (StrCompare("contentexists:", field, 14) IS ERR::Okay) {
+   else if (pf::startswith("contentexists:", field)) {
       Args->Value[0] = '0';
       Args->Value[1] = 0;
 
@@ -488,10 +488,10 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
       return ERR::Okay;
    }
-   else if ((StrCompare("xpath:", field, 6) IS ERR::Okay) or
-            (StrCompare("xml:", field, 4) IS ERR::Okay) or
-            (StrCompare("content:", field, 8) IS ERR::Okay) or
-            (StrCompare("extract:", field, 8) IS ERR::Okay) or
+   else if ((pf::startswith("xpath:", field)) or
+            (pf::startswith("xml:", field)) or
+            (pf::startswith("content:", field)) or
+            (pf::startswith("extract:", field)) or
             (field[0] IS '/')) {
       LONG j;
       for (j=0; field[j] and (field[j] != '/'); j++) j++;
@@ -503,7 +503,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
       if (!Self->Attrib.empty()) { // Extract attribute value
          for (auto &scan : Self->Cursor->Attribs) {
-            if (StrMatch(scan.Name, Self->Attrib) IS ERR::Okay) {
+            if (pf::iequals(scan.Name, Self->Attrib)) {
                StrCopy(scan.Value, Args->Value, Args->Size);
                return ERR::Okay;
             }
@@ -515,8 +515,8 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
          UBYTE extract;
 
-         if (StrCompare("content:", field, 8) IS ERR::Okay) extract = 1; // 'In-Depth' content extract.
-         else if (StrCompare("extract:", field, 8) IS ERR::Okay) extract = 2;
+         if (pf::startswith("content:", field)) extract = 1; // 'In-Depth' content extract.
+         else if (pf::startswith("extract:", field)) extract = 2;
          else extract = 0;
 
          Args->Value[0] = 0;
@@ -1123,7 +1123,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
 
       if (!Self->Attrib.empty()) { // Remove an attribute
          for (LONG a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
-            if (StrMatch(Self->Attrib, Self->Cursor->Attribs[a].Name) IS ERR::Okay) {
+            if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[a].Name)) {
                Self->Cursor->Attribs.erase(Self->Cursor->Attribs.begin() + a);
                break;
             }
@@ -1239,7 +1239,7 @@ static ERR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
    LONG cmd = Args->Attrib;
    if ((cmd IS XMS_UPDATE) or (cmd IS XMS_UPDATE_ONLY)) {
       for (auto a = tag->Attribs.begin(); a != tag->Attribs.end(); a++) {
-         if (StrMatch(Args->Name, a->Name) IS ERR::Okay) {
+         if (pf::iequals(Args->Name, a->Name)) {
             if (Args->Value) {
                a->Name  = Args->Name;
                a->Value = Args->Value;
@@ -1314,7 +1314,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
       if (!Self->Attrib.empty()) { // Updating or adding an attribute
          unsigned i;
          for (i=0; i < Self->Cursor->Attribs.size(); i++) {
-            if (StrMatch(Self->Attrib, Self->Cursor->Attribs[i].Name) IS ERR::Okay) break;
+            if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[i].Name)) break;
          }
 
          if (i < Self->Cursor->Attribs.size()) Self->Cursor->Attribs[i].Value = Args->Value; // Modify existing
@@ -1448,7 +1448,7 @@ static ERR XML_Sort(extXML *Self, struct xmlSort *Args)
          if ((Args->Flags & XSF::CHECK_SORT) != XSF::NIL) { // Give precedence for a 'sort' attribute in the XML tag
             auto attrib = tag->Attribs.begin()+1;
             for (; attrib != tag->Attribs.end(); attrib++) {
-               if (StrMatch("sort", attrib->Name) IS ERR::Okay) {
+               if (pf::iequals("sort", attrib->Name)) {
                   sortval.append(attrib->Value);
                   sortval.append("\x01");
                   break;
@@ -1528,7 +1528,7 @@ static ERR SET_Path(extXML *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
-   if (StrCompare("string:", Value, 7) IS ERR::Okay) {
+   if (pf::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
       // statement.
 

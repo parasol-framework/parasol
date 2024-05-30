@@ -13,6 +13,7 @@ This version of the Parasol launcher is intended for use from the command-line o
 #include <parasol/modules/core.h>
 #include <parasol/modules/display.h>
 #include <parasol/startup.h>
+#include <parasol/strings.hpp>
 #include <string.h>
 
 #include "common.h"
@@ -61,24 +62,24 @@ static ERR process_args(void)
    if ((glTask->getPtr(FID_Parameters, &glArgs) IS ERR::Okay) and (glArgs)) {
       pf::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
-         if (StrMatch(args[i], "--help") IS ERR::Okay) { // Print help for the user
+         if (pf::iequals(args[i], "--help")) { // Print help for the user
             printf(glHelp);
             return ERR::Terminate;
          }
-         else if (StrMatch(args[i], "--verify") IS ERR::Okay) { // Dummy option for verifying installs
+         else if (pf::iequals(args[i], "--verify")) { // Dummy option for verifying installs
             return ERR::Terminate;
          }
-         else if (StrMatch(args[i], "--sandbox") IS ERR::Okay) {
+         else if (pf::iequals(args[i], "--sandbox")) {
             glSandbox = true;
          }
-         else if (StrMatch(args[i], "--time") IS ERR::Okay) {
+         else if (pf::iequals(args[i], "--time")) {
             glTime = true;
          }
-         else if (StrMatch(args[i], "--relaunch") IS ERR::Okay) {
+         else if (pf::iequals(args[i], "--relaunch")) {
             // Internal argument to detect relaunching at an altered security level
             glRelaunched = true;
          }
-         else if (StrMatch(args[i], "--procedure") IS ERR::Okay) {
+         else if (pf::iequals(args[i], "--procedure")) {
             if (i + 1 < args.size()) {
                glProcedure.assign(args[i+1]);
                i++;

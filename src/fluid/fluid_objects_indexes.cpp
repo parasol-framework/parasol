@@ -156,8 +156,8 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
       }
       else return ERR::SetValueNotPointer;
    }
-   else if (auto memory = (struct memory *)get_meta(Lua, ValueIndex, "Fluid.mem")) {
-      return Object->set(Field->FieldID, memory->Memory);
+   else if (auto array = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
+      return Object->set(Field->FieldID, array->ptrVoid);
    }
    else if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
       return Object->set(Field->FieldID, fstruct->Data);
@@ -525,8 +525,8 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
             }
             else return ERR::SetValueNotPointer;
          }
-         else if (auto memory = (struct memory *)get_meta(Lua, ValueIndex, "Fluid.mem")) {
-            return obj->set(field->FieldID, memory->Memory);
+         else if (auto array = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
+            return obj->set(field->FieldID, array->ptrVoid);
          }
          else if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
             return obj->set(field->FieldID, fs->Data);

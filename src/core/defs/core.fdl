@@ -1103,7 +1103,6 @@ struct ScriptArg { // For use with scExec
     "ScanDir",
     "SetName",
     "LogReturn",
-    "StrCompare",
     "SubscribeAction",
     "SubscribeEvent",
     "SubscribeTimer",
@@ -1173,10 +1172,6 @@ inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
-template <class T, class U> inline ERR StrMatch(T &&A, U &&B) {
-   return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
-}
-
 template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
 {
    auto src = to_cstring(Source);
@@ -1239,10 +1234,6 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 inline ERR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
-}
-
-template <class T, class U> inline ERR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
-   return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
 inline ULONG StrHash(const std::string Value) {

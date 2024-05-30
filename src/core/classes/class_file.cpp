@@ -141,7 +141,7 @@ static ERR FILE_Activate(extFile *Self)
    if ((Self->Flags & FL::DEVICE) != FL::NIL) {
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
    }
-   else if (StrCompare("/dev/", path, 0) IS ERR::Okay) {
+   else if (std::string_view(path).starts_with("/dev/")) {
       log.warning("Opening devices not permitted without the DEVICE flag.");
       return ERR::NoPermission;
    }
@@ -605,7 +605,7 @@ static ERR FILE_Init(extFile *Self)
 
    if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
-   if (StrCompare("string:", Self->Path, 7) IS ERR::Okay) {
+   if (pf::startswith("string:", Self->Path)) {
       Self->Size = StrLength(Self->Path + 7);
 
       if (Self->Size > 0) {
@@ -684,7 +684,7 @@ retrydir:
       if (error IS ERR::VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR::UseSubClass to have support delegated to the correct File sub-class.
-         if (StrMatch(Self->Path, Self->prvResolvedPath) != ERR::Okay) {
+         if (!iequals(Self->Path, Self->prvResolvedPath)) {
             SET_Path(Self, Self->prvResolvedPath);
          }
          log.trace("ResolvePath() reports virtual volume, will delegate to sub-class...");
@@ -2097,11 +2097,11 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
          if ((!subclass.empty()) or (!baseclass.empty())) {
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Class")) {
-                  if (StrMatch(keys["Class"].c_str(), subclass.c_str()) IS ERR::Okay) {
+                  if (iequals(keys["Class"], subclass)) {
                      if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      break;
                   }
-                  else if (StrMatch(keys["Class"].c_str(), baseclass.c_str()) IS ERR::Okay) {
+                  else if (iequals(keys["Class"], baseclass)) {
                      if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      // Don't break as sub-class would have priority
                   }
@@ -2117,7 +2117,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   if (StrCompare("icons:", icon, 6) != ERR::Okay) {
+   if (!pf::startswith("icons:", icon)) {
       CopyMemory(icon, icon+6, sizeof(icon) - 6);
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
@@ -2231,7 +2231,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
 
    LONG i, j, len;
    if ((Value) and (*Value)) {
-      if (StrCompare("string:", Value, 7) != ERR::Okay) {
+      if (!pf::startswith("string:", Value)) {
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
       }
       else len = StrLength(Value);
@@ -2251,7 +2251,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
             // e.g. "drive1:documents//tutorials/"
 
             for (j=0; Value[j] IS ':'; j++);
-            if (StrCompare("string:", Value, 7) IS ERR::Okay) {
+            if (pf::startswith("string:", Value)) {
                i = StrCopy(Value, Self->Path);
             }
             else {

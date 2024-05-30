@@ -447,7 +447,7 @@ std::string weight_to_style(CSTRING Style, LONG Weight)
    else if (Weight <= 200) weight_name = "Extra Light";
    else if (Weight <= 300) weight_name = "Light";
 
-   if (StrMatch("Italic", Style) IS ERR::Okay) {
+   if (iequals("Italic", Style)) {
       if (weight_name.empty()) return "Italic";
       else return weight_name + " Italic";
    }

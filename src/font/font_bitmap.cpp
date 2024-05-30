@@ -89,9 +89,9 @@ public:
       Result    = ERR::Okay;
       Header    = pFace;
 
-      if (StrMatch("Bold", pStyle) IS ERR::Okay) StyleFlags = FTF::BOLD;
-      else if (StrMatch("Italic", pStyle) IS ERR::Okay) StyleFlags = FTF::ITALIC;
-      else if (StrMatch("Bold Italic", pStyle) IS ERR::Okay) StyleFlags = FTF::BOLD|FTF::ITALIC;
+      if (iequals("Bold", pStyle)) StyleFlags = FTF::BOLD;
+      else if (iequals("Italic", pStyle)) StyleFlags = FTF::ITALIC;
+      else if (iequals("Bold Italic", pStyle)) StyleFlags = FTF::BOLD|FTF::ITALIC;
       else StyleFlags = FTF::NIL;
 
       Path = pPath;
@@ -323,7 +323,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
    for (auto & cache : glBitmapCache) {
       if (cache.Result != ERR::Okay) continue;
 
-      if (StrMatch(cache.Path.c_str(), Self->Path) IS ERR::Okay) {
+      if (iequals(cache.Path.c_str(), Self->Path)) {
          if (cache.StyleFlags IS Style) {
             if (Self->Point IS cache.Header.nominal_point_size) {
                log.trace("Exists in cache (count %d) %s : %s", cache.OpenCount, cache.Path.c_str(), Self->prvStyle);

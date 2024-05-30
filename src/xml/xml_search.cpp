@@ -159,18 +159,18 @@ ERR extXML::find_tag(CSTRING XPath)
       bool tag_matched = false;
 
       if (tagwild) tag_matched = pf::wildcmp(tagname, Cursor->name());
-      else tag_matched = StrCompare(tagname, Cursor->name(), 0, STR::MATCH_LEN) IS ERR::Okay;
-     
+      else tag_matched = pf::iequals(tagname, Cursor->name());
+
       if (tag_matched) { // Desired tag name found.
          if ((!attribname.empty()) or (!attribvalue.empty())) {
             if (Cursor->name()) {
                if (!attribname.empty()) { // Match by named attribute value
                   for (LONG a=1; a < std::ssize(Cursor->Attribs); ++a) {
-                     if (StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size()) IS ERR::Okay) {
+                     if (pf::iequals(Cursor->Attribs[a].Name, attribname)) {
                         if (wild) {
                            if ((match = pf::wildcmp(Cursor->Attribs[a].Value, attribvalue))) break;
                         }
-                        else if (StrCompare(Cursor->Attribs[a].Value, attribvalue, 0, STR::MATCH_LEN) IS ERR::Okay) {
+                        else if (pf::iequals(Cursor->Attribs[a].Value, attribvalue)) {
                            match = true;
                            break;
                         }
@@ -182,9 +182,7 @@ ERR extXML::find_tag(CSTRING XPath)
                      if (wild) {
                         if ((match = pf::wildcmp(Cursor->Children[0].Attribs[0].Value, attribvalue))) break;
                      }
-                     else if (StrCompare(Cursor->Children[0].Attribs[0].Value, attribvalue, 0, STR::MATCH_LEN) IS ERR::Okay) {
-                        match = true;
-                     }
+                     else match = pf::iequals(Cursor->Children[0].Attribs[0].Value, attribvalue);
                   }
                }
                else match = true;

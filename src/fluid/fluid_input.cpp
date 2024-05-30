@@ -31,6 +31,7 @@ For drag and drop operations, data can be requested from a source as follows:
 #include <parasol/main.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 
 extern "C" {
@@ -223,17 +224,17 @@ static int input_request_item(lua_State *Lua)
    DATA datatype;
    if (lua_isstring(Lua, 3)) {
       CSTRING dt = lua_tostring(Lua, 3);
-      if (StrMatch("text", dt) IS ERR::Okay)              datatype = DATA::TEXT;
-      else if (StrMatch("raw", dt) IS ERR::Okay)          datatype = DATA::RAW;
-      else if (StrMatch("device_input", dt) IS ERR::Okay) datatype = DATA::DEVICE_INPUT;
-      else if (StrMatch("xml", dt) IS ERR::Okay)          datatype = DATA::XML;
-      else if (StrMatch("audio", dt) IS ERR::Okay)        datatype = DATA::AUDIO;
-      else if (StrMatch("record", dt) IS ERR::Okay)       datatype = DATA::RECORD;
-      else if (StrMatch("image", dt) IS ERR::Okay)        datatype = DATA::IMAGE;
-      else if (StrMatch("request", dt) IS ERR::Okay)      datatype = DATA::REQUEST;
-      else if (StrMatch("receipt", dt) IS ERR::Okay)      datatype = DATA::RECEIPT;
-      else if (StrMatch("file", dt) IS ERR::Okay)         datatype = DATA::FILE;
-      else if (StrMatch("content", dt) IS ERR::Okay)      datatype = DATA::CONTENT;
+      if (pf::iequals("text", dt))              datatype = DATA::TEXT;
+      else if (pf::iequals("raw", dt))          datatype = DATA::RAW;
+      else if (pf::iequals("device_input", dt)) datatype = DATA::DEVICE_INPUT;
+      else if (pf::iequals("xml", dt))          datatype = DATA::XML;
+      else if (pf::iequals("audio", dt))        datatype = DATA::AUDIO;
+      else if (pf::iequals("record", dt))       datatype = DATA::RECORD;
+      else if (pf::iequals("image", dt))        datatype = DATA::IMAGE;
+      else if (pf::iequals("request", dt))      datatype = DATA::REQUEST;
+      else if (pf::iequals("receipt", dt))      datatype = DATA::RECEIPT;
+      else if (pf::iequals("file", dt))         datatype = DATA::FILE;
+      else if (pf::iequals("content", dt))      datatype = DATA::CONTENT;
       else {
          luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;

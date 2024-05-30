@@ -50,8 +50,8 @@ LONG array[100];
 SetArray(Object, FID_Table|TLONG, array, 100);
 </pre>
 
-An indicator of the type of the elements in the `Array` must be OR'd into the `Field` parameter.  Available field 
-types are listed in ~SetField().  Note that the type that you choose must be a match to the type expected for 
+An indicator of the type of the elements in the `Array` must be OR'd into the `Field` parameter.  Available field
+types are listed in ~SetField().  Note that the type that you choose must be a match to the type expected for
 elements in the array.
 
 -INPUT-
@@ -390,7 +390,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
                   if (j > 0) {
                      FieldDef *lk = (FieldDef *)Field->Arg;
                      while (lk->Name) {
-                        if ((StrCompare(lk->Name, str, j) IS ERR::Okay) and (!lk->Name[j])) {
+                        if (stricompare(lk->Name, str, j) and (!lk->Name[j])) {
                            int64 |= lk->Value;
                            break;
                         }
@@ -445,7 +445,7 @@ static ERR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
          int32 = StrToInt((CSTRING)Data); // If the Data string is a number rather than a lookup, this will extract it
          if ((lookup = (FieldDef *)Field->Arg)) {
             while (lookup->Name) {
-               if (StrCompare((CSTRING)Data, lookup->Name, 0, STR::MATCH_LEN) IS ERR::Okay) {
+               if (iequals((CSTRING)Data, lookup->Name)) {
                   int32 = lookup->Value;
                   break;
                }

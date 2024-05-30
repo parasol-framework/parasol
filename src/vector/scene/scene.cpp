@@ -342,7 +342,7 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
    CSTRING name = Args->Name;
 
    if (*name IS '#') name = name + 1;
-   else if (StrCompare("url(#", name, 5) IS ERR::Okay) {
+   else if (startswith("url(#", name)) {
       LONG i;
       for (i=5; (name[i] != ')') and name[i]; i++);
       std::string lookup;

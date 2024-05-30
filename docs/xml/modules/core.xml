@@ -1769,30 +1769,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrCompare</name>
-    <category>Strings</category>
-    <comment>Compares strings to see if they are identical.</comment>
-    <prototype>ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)</prototype>
-    <input>
-      <param type="CSTRING" name="String1">Pointer to the first string.</param>
-      <param type="CSTRING" name="String2">Pointer to the second string.</param>
-      <param type="LONG" name="Length">The maximum number of characters to compare.  Does not apply to wildcard comparisons.</param>
-      <param type="STR" name="Flags" lookup="STR">Optional flags.</param>
-    </input>
-    <description>
-<p>This function compares two strings against each other.  If the strings match then it returns <code>ERR::Okay</code>, otherwise it returns <code>ERR::False</code>.  By default the function is not case sensitive, but you can turn on case sensitivity by specifying the <code>STR::CASE</code> flag.</p>
-<p>If the <code>Length</code> is 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, <code>ERR::Okay</code> will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
-<p>If the <code>Length</code> is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, <code>ERR::False</code> will be returned.</p>
-<p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an <code>ERR::Okay</code> code only on the condition that both strings are of matching lengths.  This flag is typically specified if the <code>Length</code> argument has been set to 0.</p>
-    </description>
-    <result type="ERR">
-      <error code="True">The strings match.</error>
-      <error code="False">The strings do not match.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>StrHash</name>
     <category>Strings</category>
     <comment>Convert a string into a 32-bit hash.</comment>

@@ -158,12 +158,12 @@ static ERROR process_args(void)
 
    if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
-         if (!StrMatch(args[i], "--help")) {
+         if (iequals(args[i], "--help")) {
             // Print help for the user
             print(glHelp);
             return ERR_Terminate;
          }
-         else if (!StrMatch(args[i], "--verify")) {
+         else if (iequals(args[i], "--verify")) {
             // Special internal function that checks that the installation is valid, returning 1 if checks pass.
 
             static CSTRING modules[] = { // These modules must be present for an installation to be valid.
@@ -176,22 +176,21 @@ static ERROR process_args(void)
                while (!ScanDir(dir)) {
                   struct FileInfo *folder = dir->Info;
                   if (folder->Flags & RDF::FILE) {
-                     LONG m;
-                     for (m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name)) total++;
+                     for (LONG m=0; m < std::ssize(modules); m++) {
+                        if (iequals(modules[m], folder->Name)) total++;
                      }
                   }
                }
                FreeResource(dir);
             }
 
-            if (total >= ARRAYSIZE(modules)) print("1");
+            if (total >= std::ssize(modules)) print("1");
             return ERR_Terminate;
          }
-         else if (!StrMatch(args[i], "--time")) {
+         else if (iequals(args[i], "--time")) {
             glTime = true;
          }
-         else if (!StrMatch(args[i], "--procedure")) {
+         else if (iequals(args[i], "--procedure")) {
             if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
 
             if (args[i+1]) {

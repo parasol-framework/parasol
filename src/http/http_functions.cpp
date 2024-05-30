@@ -425,7 +425,7 @@ static ERR socket_incoming(objNetSocket *Socket)
          // Advance search for terminated double CRLF
 
          for (; Self->SearchIndex+4 <= Self->ResponseIndex; Self->SearchIndex++) {
-            if (StrCompare(Self->Response + Self->SearchIndex, "\r\n\r\n", 4, STR::MATCH_CASE) IS ERR::Okay) {
+            if (!strncmp(Self->Response + Self->SearchIndex, "\r\n\r\n", 4)) {
                Self->Response[Self->SearchIndex] = 0; // Terminate the header at the CRLF point
 
                if (parse_response(Self, Self->Response) != ERR::Okay) {
@@ -469,8 +469,8 @@ static ERR socket_incoming(objNetSocket *Socket)
                      char buffer[512];
                      if (acGetKey(Self, "Location", buffer, sizeof(buffer)) IS ERR::Okay) {
                         log.msg("MovedPermanently to %s", buffer);
-                        if (StrCompare("http:", buffer, 5) IS ERR::Okay) Self->setLocation(buffer);
-                        else if (StrCompare("https:", buffer, 6) IS ERR::Okay) Self->setLocation(buffer);
+                        if (pf::startswith("http:", buffer)) Self->setLocation(buffer);
+                        else if (pf::startswith("https:", buffer)) Self->setLocation(buffer);
                         else Self->setPath(buffer);
                         acActivate(Self); // Try again
                         Self->Flags |= HTF::MOVED;
@@ -522,7 +522,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   std::string& authenticate = Self->Args[0]["WWW-Authenticate"];
                   if (!authenticate.empty()) {
                      CSTRING auth = authenticate.c_str();
-                     if (StrCompare("Digest", auth, 6) IS ERR::Okay) {
+                     if (pf::startswith("Digest", auth)) {
                         log.trace("Digest authentication mode.");
 
                         if (Self->Realm)      { FreeResource(Self->Realm);      Self->Realm = NULL; }
@@ -536,16 +536,16 @@ static ERR socket_incoming(objNetSocket *Socket)
                         while ((auth[i]) and (auth[i] <= 0x20)) i++;
 
                         while (auth[i]) {
-                           if (StrCompare("realm=", auth+i) IS ERR::Okay)       i += extract_value(auth+i, &Self->Realm);
-                           else if (StrCompare("nonce=", auth+i) IS ERR::Okay)  i += extract_value(auth+i, &Self->AuthNonce);
-                           else if (StrCompare("opaque=", auth+i) IS ERR::Okay) i += extract_value(auth+i, &Self->AuthOpaque);
-                           else if (StrCompare("algorithm=", auth+i) IS ERR::Okay) {
+                           if (pf::startswith("realm=", auth+i))       i += extract_value(auth+i, &Self->Realm);
+                           else if (pf::startswith("nonce=", auth+i))  i += extract_value(auth+i, &Self->AuthNonce);
+                           else if (pf::startswith("opaque=", auth+i)) i += extract_value(auth+i, &Self->AuthOpaque);
+                           else if (pf::startswith("algorithm=", auth+i)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
                               StrCopy(value, (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
                               FreeResource(value);
                            }
-                           else if (StrCompare("qop=", auth+i) IS ERR::Okay) {
+                           else if (pf::startswith("qop=", auth+i)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
                               if (StrSearch("auth-int", value) >= 0) {
@@ -887,7 +887,7 @@ static ERR parse_response(extHTTP *Self, CSTRING Buffer)
 
    // First line: HTTP/1.1 200 OK
 
-   if (StrCompare("HTTP/", Buffer, 5) != ERR::Okay) {
+   if (!pf::startswith("HTTP/", Buffer)) {
       log.warning("Invalid response header, missing 'HTTP/'");
       return ERR::InvalidHTTPResponse;
    }
@@ -931,11 +931,11 @@ static ERR parse_response(extHTTP *Self, CSTRING Buffer)
          }
          value[i] = 0;
 
-         if (StrMatch(field, "Content-Length") IS ERR::Okay) {
+         if (pf::iequals(field, "Content-Length")) {
             Self->ContentLength = StrToInt(value);
          }
-         else if (StrMatch(field, "Transfer-Encoding") IS ERR::Okay) {
-            if (StrMatch(value, "chunked") IS ERR::Okay) {
+         else if (pf::iequals(field, "Transfer-Encoding")) {
+            if (pf::iequals(value, "chunked")) {
                if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = TRUE;
                Self->ContentLength = -1;
             }
@@ -1128,7 +1128,7 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 
    MD5Final((UBYTE *)HA1, &md5);
 
-   if (StrMatch((CSTRING)Self->AuthAlgorithm, "md5-sess") IS ERR::Okay) {
+   if (pf::iequals((CSTRING)Self->AuthAlgorithm, "md5-sess")) {
       MD5Init(&md5);
       MD5Update(&md5, (UBYTE *)HA1, HASHLEN);
       MD5Update(&md5, (UBYTE *)":", 1);
@@ -1168,7 +1168,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    for (i=0; req[i] > 0x20; i++);
    MD5Update(&md5, (UBYTE *)req, i); // Compute MD5 from the path of the HTTP method that we are calling
 
-   if (StrMatch((CSTRING)Self->AuthQOP, "auth-int") IS ERR::Okay) {
+   if (pf::iequals((CSTRING)Self->AuthQOP, "auth-int")) {
       MD5Update(&md5, (UBYTE *)":", 1);
       MD5Update(&md5, (UBYTE *)HEntity, HASHHEXLEN);
    }

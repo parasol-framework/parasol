@@ -50,7 +50,6 @@ CSTRING FieldName(ULONG FieldID);
 ERR ScanDir(struct DirInfo * Info);
 ERR SetName(OBJECTPTR Object, CSTRING Name);
 void LogReturn();
-ERR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
 ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
 ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle);
 ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription);

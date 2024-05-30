@@ -314,7 +314,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    }
 
    if ((error IS ERR::Okay) and (Vector->get(FID_Fill, &str) IS ERR::Okay) and (str)) {
-      if (StrMatch("rgb(0,0,0)", str) != ERR::Okay) xmlNewAttrib(tag, "fill", str);
+      if (!iequals("rgb(0,0,0)", str)) xmlNewAttrib(tag, "fill", str);
    }
    else if ((error IS ERR::Okay) and (GetFieldArray(Vector, FID_FillColour, &colour, &array_size) IS ERR::Okay) and (colour[3] != 0)) {
       snprintf(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);

@@ -151,7 +151,7 @@ static bool parse_id3v1(objSound *Self)
 
    LONG result;
    if ((prv->File->read(&id3, sizeof(id3), &result) IS ERR::Okay) and (result IS sizeof(id3))) {
-      if (StrCompare("TAG", (STRING)&id3, 3, STR::CASE) IS ERR::Okay) {
+      if (!strncmp("TAG", (STRING)&id3, 3)) {
          char buffer[sizeof(id3)];
 
          log.detail("ID3v1 tag found.");
@@ -195,7 +195,7 @@ static bool parse_id3v1(objSound *Self)
 
 static LONG detect_id3v2(const char *Buffer)
 {
-   if (StrCompare(Buffer, "ID3", 3, STR::CASE) IS ERR::Okay) {
+   if (!strncmp(Buffer, "ID3", 3)) {
       if (!((Buffer[5] & 15) or (Buffer[6] & 0x80) or (Buffer[7] & 0x80) or (Buffer[8] & 0x80) or (Buffer[9] & 0x80))) {
          LONG id3v2size = (((Buffer[6] & 0x7f) << 21) | ((Buffer[7] & 0x7f) << 14) | ((Buffer[8] & 0x7f) << 7) | (Buffer[9] & 0x7f)) + 10;
          if ((Buffer[5] & 16)) id3v2size += 10; // footer
@@ -230,7 +230,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    if (L3_read_side_info(bs, gr_info, Frame) < 0) return 0; // side info corrupted
 
    const UBYTE *tag = Frame + HDR_SIZE + bs->pos / 8;
-   if ((StrCompare("Xing", (CSTRING)tag, 4, STR::CASE) IS ERR::Okay) and (StrCompare("Info", (CSTRING)tag, 4, STR::CASE) IS ERR::Okay)) return 0;
+   if ((!strncmp("Xing", (CSTRING)tag, 4)) and (!strncmp("Info", (CSTRING)tag, 4))) return 0;
    const LONG flags = tag[7];
    if (!(flags & XING_FRAMES)) return -1;
    tag += 8;

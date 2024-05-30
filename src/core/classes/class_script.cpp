@@ -159,10 +159,10 @@ static ERR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 -METHOD-
 Exec: Executes a procedure in the script.
 
-Use the Exec() method to execute a named procedure in a script, optionally passing that procedure a series of 
+Use the Exec() method to execute a named procedure in a script, optionally passing that procedure a series of
 parameters.
 
-The behaviour of this process matches that of the #Activate() action and will return the same error codes in the 
+The behaviour of this process matches that of the #Activate() action and will return the same error codes in the
 event of failure.  If the `Procedure` returns results, they will be available from the #Results field after execution.
 
 Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:
@@ -507,11 +507,11 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
 
       LONG i, len;
       if ((Value) and (*Value)) {
-         if (StrCompare("STRING:", Value, 7) IS ERR::Okay) {
+         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
+
+         if (std::string_view(Value, len).starts_with("STRING:")) {
             return SET_String(Self, Value + 7);
          }
-
-         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
          if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
@@ -568,7 +568,7 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
                         }
                      }
 
-                     if (StrMatch("target", arg) IS ERR::Okay) Self->setTarget(StrToInt(argval));
+                     if (iequals("target", arg)) Self->setTarget(StrToInt(argval));
                      else acSetKey(Self, arg, argval.c_str());
                   }
                }

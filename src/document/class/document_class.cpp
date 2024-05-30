@@ -1198,7 +1198,7 @@ static ERR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
       for (i=0; i < Self->Tabs.size(); i++) {
          if (Self->Tabs[i].Type IS TT::OBJECT) {
             name = GetObjectName(?)
-            if (!(StrMatch(args->name, name))) {
+            if (iequals(args->name, name)) {
 
             }
          }

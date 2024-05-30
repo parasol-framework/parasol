@@ -466,7 +466,7 @@ ERR fntGetList(FontList **Result)
             }
 
             if (keys.contains("Hidden")) {
-               if (StrMatch("Yes", keys["Hidden"]) IS ERR::Okay) list->Hidden = TRUE;
+               if (iequals("Yes", keys["Hidden"])) list->Hidden = TRUE;
             }
 
             auto it = keys.find("Alias");
@@ -482,17 +482,17 @@ ERR fntGetList(FontList **Result)
                }
 
                if (keys.contains("Scalable")) {
-                  if (StrMatch("Yes", keys["Scalable"]) IS ERR::Okay) list->Scalable = TRUE;
+                  if (iequals("Yes", keys["Scalable"])) list->Scalable = TRUE;
                }
 
                if (keys.contains("Variable")) {
-                  if (StrMatch("Yes", keys["Variable"]) IS ERR::Okay) list->Variable = TRUE;
+                  if (iequals("Yes", keys["Variable"])) list->Variable = TRUE;
                }
 
                if (keys.contains("Hinting")) {
-                  if (StrMatch("Normal", keys["Hinting"]) IS ERR::Okay) list->Hinting = HINT::NORMAL;
-                  else if (StrMatch("Internal", keys["Hinting"]) IS ERR::Okay) list->Hinting = HINT::INTERNAL;
-                  else if (StrMatch("Light", keys["Hinting"]) IS ERR::Okay) list->Hinting = HINT::LIGHT;
+                  if (iequals("Normal", keys["Hinting"])) list->Hinting = HINT::NORMAL;
+                  else if (iequals("Internal", keys["Hinting"])) list->Hinting = HINT::INTERNAL;
+                  else if (iequals("Light", keys["Hinting"])) list->Hinting = HINT::LIGHT;
                }
 
                if (keys.contains("Axes")) {
@@ -640,9 +640,9 @@ ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    auto get_meta = [](ConfigKeys &Group) {
       FMETA meta = FMETA::NIL;
       if (Group.contains("Hinting")) {
-         if (StrMatch("Normal", Group["Hinting"]) IS ERR::Okay) meta |= FMETA::HINT_NORMAL;
-         else if (StrMatch("Internal", Group["Hinting"]) IS ERR::Okay) meta |= FMETA::HINT_INTERNAL;
-         else if (StrMatch("Light", Group["Hinting"]) IS ERR::Okay) meta |= FMETA::HINT_LIGHT;
+         if (iequals("Normal", Group["Hinting"])) meta |= FMETA::HINT_NORMAL;
+         else if (iequals("Internal", Group["Hinting"])) meta |= FMETA::HINT_INTERNAL;
+         else if (iequals("Light", Group["Hinting"])) meta |= FMETA::HINT_LIGHT;
       }
 
       if (Group.contains("Variable")) meta |= FMETA::VARIABLE;
@@ -653,7 +653,7 @@ ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 
    auto get_font_path = [](ConfigKeys &Keys, const std::string &Style) {
       if (Keys.contains(Style)) return StrClone(Keys[Style].c_str());
-      else if (StrMatch("Regular", Style.c_str()) != ERR::Okay) {
+      else if (!iequals("Regular", Style.c_str())) {
          if (Keys.contains("Regular")) return StrClone(Keys["Regular"].c_str());
       }
       return STRING(NULL);
@@ -663,7 +663,7 @@ ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    pf::camelcase(style_name);
 
    for (auto & [group, keys] : groups[0]) {
-      if (StrMatch(Name, keys["Name"]) != ERR::Okay) continue;
+      if (!iequals(Name, keys["Name"])) continue;
 
       if ((*Path = get_font_path(keys, style_name))) {
          if (Meta) *Meta = get_meta(keys);
@@ -951,7 +951,7 @@ static void scan_truetype_folder(objConfig *Config)
                   std::string path("fonts:truetype/");
                   path.append(dir->Info->Name);
 
-                  if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR::Okay)) {
+                  if ((ftface->style_name) and (!iequals("regular", ftface->style_name))) {
                      Config->write(group.c_str(), ftface->style_name, path);
                   }
                   else {

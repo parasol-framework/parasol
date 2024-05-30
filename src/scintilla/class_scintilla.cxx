@@ -471,11 +471,11 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
       if (xml.ok()) {
          for (auto &tag : xml->Tags) {
-            if (StrMatch("file", tag.name()) IS ERR::Okay) {
+            if (iequals("file", tag.name())) {
                // If the file is being dragged within the same device, it will be moved instead of copied.
 
                for (auto &a : tag.Attribs) {
-                  if (StrMatch("path", a.Name) IS ERR::Okay) {
+                  if (iequals("path", a.Name)) {
                      if (Self->FileDrop.isC()) {
                         pf::SwitchContext ctx(Self->FileDrop.Context);
                         auto routine = (void (*)(extScintilla *, CSTRING, APTR))Self->FileDrop.Routine;
@@ -498,7 +498,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                   }
                }
             }
-            else if (StrMatch("text", tag.name()) IS ERR::Okay) {
+            else if (iequals("text", tag.name())) {
                struct sciInsertText insert;
 
                if ((!tag.Children.empty()) and (tag.Children[0].isContent())) {

@@ -82,37 +82,37 @@ extern "C" void program(void)
    STRING *Args;
    if ((!glTask->getPtr(FID_ArgsList, &Args)) and (Args)) {
       for (i=0; Args[i]; i++) {
-         if (!StrMatch(Args[i], "--help")) {
+         if (iequals(Args[i], "--help")) {
             // Print help for the user
             printf(Help);
             goto exit;
          }
-         else if (!StrMatch(Args[i], "--time")) {
+         else if (iequals(Args[i], "--time")) {
             time = true;
          }
-         else if (!StrMatch(Args[i], "--info")) {
+         else if (iequals(Args[i], "--info")) {
             printf("Instance: %d\n", GetResource(RES::INSTANCE));
          }
-         else if (!StrMatch(Args[i], "--instance")) {
+         else if (iequals(Args[i], "--instance")) {
             glTask->get(FID_Instance, &j);
             printf("Instance: %d\n", j);
          }
-         else if (!StrMatch(Args[i], "--winhandle")) { // Target a desktop window in the host environment
+         else if (iequals(Args[i], "--winhandle")) { // Target a desktop window in the host environment
             if (Args[i+1]) {
                if ((winhandle = StrToInt(Args[i+1]))) i++;
             }
          }
-         else if (!StrMatch(Args[i], "--width")) {
+         else if (iequals(Args[i], "--width")) {
             if (Args[i+1]) {
                if ((width = StrToInt(Args[i+1]))) i++;
             }
          }
-         else if (!StrMatch(Args[i], "--height")) {
+         else if (iequals(Args[i], "--height")) {
             if (Args[i+1]) {
                if ((height = StrToInt(Args[i+1]))) i++;
             }
          }
-         else if (!StrMatch(Args[i], "--procedure")) {
+         else if (iequals(Args[i], "--procedure")) {
             if (procedure) { FreeResource(procedure); procedure = NULL; }
 
             if (Args[i+1]) {
@@ -124,7 +124,7 @@ extern "C" void program(void)
                i++;
             }
          }
-         else if (!StrMatch(Args[i], "--target")) {
+         else if (iequals(Args[i], "--target")) {
             if (Args[i+1]) {
                if (FindObject(Args[i+1], 0, FOF::SMART_NAMES, &TargetID) != ERR_Okay) {
                   printf("Warning - could not find target object \"%s\".\n", Args[i+1]);
@@ -132,7 +132,7 @@ extern "C" void program(void)
                else log.msg("Using target %d", TargetID);
             }
          }
-         else if (!StrMatch(Args[i], "--hash")) {
+         else if (iequals(Args[i], "--hash")) {
             if (Args[i+1]) {
                auto hash = LCASEHASH(Args[i+1]);
                printf("Hash for %s = 0x%.8x\n", Args[i+1], hash);

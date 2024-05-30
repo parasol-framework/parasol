@@ -737,8 +737,8 @@ gui.fileview = function(View, Options)
          self.path = nil
       end
 
-      if self.limitPath then
-         if mSys.StrCompare(self.limitPath, self.path, self.limitPath:len(), 0) != ERR_Okay then
+      if self.limitPath then -- Limit browsing to the limitPath folder and its sub-folders.
+         if not self.path or (self.path:sub(1, self.limitPath:len()) != self.limitPath) then
             self.path = self.limitPath
          end
       end

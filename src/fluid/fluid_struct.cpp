@@ -625,7 +625,7 @@ static int struct_get(lua_State *Lua)
 {
    if (auto fs = (struct fstruct *)lua_touserdata(Lua, 1)) {
       if (auto fieldname = luaL_checkstring(Lua, 2)) {
-         if (StrCompare("structsize", fieldname, 0, STR::MATCH_CASE) IS ERR::Okay) {
+         if (std::string_view("structsize") IS fieldname) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &struct_structsize, 1);
             return 1;

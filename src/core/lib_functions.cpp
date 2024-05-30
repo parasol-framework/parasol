@@ -49,7 +49,7 @@ using namespace pf;
 -FUNCTION-
 AllocateID: Generates unique ID's for general purposes.
 
-This function generates unique ID's that can be used in other Core functions.  A `Type` indicator is required and the 
+This function generates unique ID's that can be used in other Core functions.  A `Type` indicator is required and the
 resulting number will be unique to that `Type` only.
 
 ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.
@@ -453,15 +453,9 @@ LARGE GetResource(RES Resource)
          if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
             LONG i = 0;
             while (i < result) {
-               if (StrCompare("Cached", str+i, sizeof("Cached")-1) IS ERR::Okay) {
-                  freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               }
-               else if (StrCompare("Buffers", str+i, sizeof("Buffers")-1) IS ERR::Okay) {
-                  freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               }
-               else if (StrCompare("MemFree", str+i, sizeof("MemFree")-1) IS ERR::Okay) {
-                  freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               }
+               if (startswith("Cached", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
+               else if (startswith("Buffers", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
+               else if (startswith("MemFree", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
 
                while ((i < result) and (str[i] != '\n')) i++;
                i++;
@@ -494,9 +488,7 @@ LARGE GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
-               if (StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1) IS ERR::Okay) {
-                  cpu_mhz = StrToInt(line);
-               }
+               if (startswith("cpu Mhz", line)) cpu_mhz = StrToInt(line);
             }
          }
 
@@ -1002,8 +994,8 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
 -FUNCTION-
 WaitTime: Waits for a specified amount of seconds and/or microseconds.
 
-This function waits for a period of time as specified by the `Seconds` and `MicroSeconds` parameters.  While waiting, 
-your process will continue to process incoming messages in order to prevent the process' message queue from 
+This function waits for a period of time as specified by the `Seconds` and `MicroSeconds` parameters.  While waiting,
+your process will continue to process incoming messages in order to prevent the process' message queue from
 developing a back-log.
 
 WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a

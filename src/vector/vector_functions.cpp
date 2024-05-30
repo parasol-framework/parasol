@@ -853,13 +853,13 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    auto str = Commands;
    while (*str) {
       if ((*str >= 'a') and (*str <= 'z')) {
-         if (StrCompare(str, "matrix", 6) IS ERR::Okay) {
+         if (startswith("matrix", str)) {
             cmd m(M_MUL);
             str += 6;
             read_numseq(str, { &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (StrCompare(str, "translate", 9) IS ERR::Okay) {
+         else if (startswith("translate", str)) {
             cmd m(M_TRANSLATE);
             str += 9;
             bool scaled_x, scaled_y;
@@ -870,13 +870,13 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             read_numseq(str, { &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (StrCompare(str, "rotate", 6) IS ERR::Okay) {
+         else if (startswith("rotate", str)) {
             cmd m(M_ROTATE);
             str += 6;
             read_numseq(str, { &m.angle, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (StrCompare(str, "scale", 5) IS ERR::Okay) {
+         else if (startswith("scale", str)) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
@@ -885,14 +885,14 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
-         else if (StrCompare(str, "skewX", 5) IS ERR::Okay) {
+         else if (startswith("skewX", str)) {
             cmd m(M_SKEW);
             m.ty = 0;
             str += 5;
             read_numseq(str, { &m.tx });
             list.push_back(std::move(m));
          }
-         else if (StrCompare(str, "skewY", 5) IS ERR::Okay) {
+         else if (startswith("skewY", str)) {
             cmd m(M_SKEW);
             m.tx = 0;
             str += 5;
@@ -1008,7 +1008,7 @@ next:
    if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
-   if (StrCompare("url(", IRI, 4) IS ERR::Okay) {
+   if (startswith("url(", IRI)) {
       if (!Scene) return log.warning(ERR::NullArgs);
 
       if (Scene->Class->BaseClassID IS CLASSID::VECTOR) Scene = ((objVector *)Scene)->Scene;
@@ -1056,7 +1056,7 @@ next:
          return ERR::Syntax;
       }
    }
-   else if (StrCompare("rgb(", IRI, 4) IS ERR::Okay) {
+   else if (startswith("rgb(", IRI)) {
       auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
@@ -1104,7 +1104,7 @@ next:
       }
       return ERR::Okay;
    }
-   else if ((StrCompare("hsl(", IRI, 4) IS ERR::Okay) or (StrCompare("hsla(", IRI, 5) IS ERR::Okay)) {
+   else if ((startswith("hsl(", IRI)) or (startswith("hsla(", IRI))) {
       // Hue is a number expressing an angle in degrees
       // S&L are expressed as a percentage from 0 to 100.  The '%' is ignored.  'none' is also valid.
       // Alpha is a number from 0 to 1
@@ -1159,7 +1159,7 @@ next:
       }
       return ERR::Okay;
    }
-   else if (StrCompare("hsv(", IRI, 4) IS ERR::Okay) {
+   else if (startswith("hsv(", IRI)) {
       // Rules apply as for HSL, but the conversion algorithm is different.
       auto &rgb = Painter->Colour;
       IRI += 4;

@@ -361,7 +361,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 
-   if (StrCompare("string:", Path, 7) IS ERR::Okay) {
+   if (startswith("string:", Path)) {
       if (PathType) *PathType = LOC::FILE;
       return ERR::Okay;
    }
@@ -453,9 +453,9 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    v2 = get_fs(path2);
 
    if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
-      error = StrCompare(path1, path2, 0, STR::MATCH_LEN);
+      error = stricompare(path1, path2, 0, true) ? ERR::True : ERR::False;
    }
-   else error = StrCompare(path1, path2, 0, STR::MATCH_LEN|STR::MATCH_CASE);
+   else error = (std::string_view(path1) IS std::string_view(path2)) ? ERR::True : ERR::False;
 
    if (error != ERR::Okay) {
       if (v1 IS v2) {
@@ -1116,26 +1116,24 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
    ERR error;
    STRING res_path;
    if ((error = ResolvePath(Path, RSF::CHECK_VIRTUAL | (approx ? RSF::APPROXIMATE : RSF::NIL), &res_path)) IS ERR::Okay) {
-      if (StrCompare("/dev/", res_path, 5) != ERR::Okay) {
-         if (auto handle = open(res_path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL); handle != -1) {
-            if (auto result = read(handle, Buffer, BufferSize); result IS -1) {
-               error = ERR::Read;
-               #ifdef __unix__
-                  log.warning("read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
-               #endif
-            }
-            else if (BytesRead) *BytesRead = result;
-
-            close(handle);
-         }
-         else {
+      if (!strncmp("/dev/", res_path, 5)) error = ERR::InvalidPath;
+      else if (auto handle = open(res_path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL); handle != -1) {
+         if (auto result = read(handle, Buffer, BufferSize); result IS -1) {
+            error = ERR::Read;
             #ifdef __unix__
-               log.warning("open(%s): %s", Path, strerror(errno));
+               log.warning("read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
             #endif
-            error = ERR::OpenFile;
          }
+         else if (BytesRead) *BytesRead = result;
+
+         close(handle);
       }
-      else error = ERR::InvalidPath;
+      else {
+         #ifdef __unix__
+            log.warning("open(%s): %s", Path, strerror(errno));
+         #endif
+         error = ERR::OpenFile;
+      }
 
       FreeResource(res_path);
    }
@@ -1377,7 +1375,7 @@ ERR findfile(STRING Path)
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((StrCompare(Path+len, entry->d_name) IS ERR::Okay) and
+         if ((iequals(Path+len, entry->d_name)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len);
 
@@ -1411,7 +1409,7 @@ ERR findfile(STRING Path)
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-            if ((!StrCompare(Path+len, entry->d_name)) and
+            if ((iequals(Path+len, entry->d_name)) and
                 ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
                StrCopy(entry->d_name, Path+len);
 
@@ -1673,7 +1671,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
          if (srclen <= destlen) {
-            if (StrCompare(src, dest, srclen) IS ERR::True) {
+            if (stricompare(src, dest, srclen)) {
                log.warning("The requested copy would cause recursion.");
                error = ERR::Loop;
                goto exit;
@@ -1913,7 +1911,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
       if (srclen <= destlen) {
-         if (StrCompare(src, dest, srclen) IS ERR::True) {
+         if (stricompare(src, dest, srclen)) {
             log.warning("The requested copy would cause recursion.");
             error = ERR::Loop;
             goto exit;

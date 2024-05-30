@@ -44,6 +44,7 @@ its low-level mixer capabilities only if your needs are not met by the @Sound cl
 
 #include <parasol/main.h>
 #include <parasol/modules/audio.h>
+#include <parasol/strings.hpp>
 #include <sstream>
 #include <algorithm>
 

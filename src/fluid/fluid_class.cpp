@@ -395,7 +395,7 @@ static ERR FLUID_Activate(objScript *Self)
       prv->Lua->ProtectedGlobals = true;
 
       LONG result;
-      if (StrCompare(LUA_COMPILED, Self->String) IS ERR::Okay) { // The source is compiled
+      if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          LONG headerlen = StrLength(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
@@ -539,7 +539,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                   if (!xml->Tags.empty()) {
                      auto &tag = xml->Tags[0];
                      LONG i = 1;
-                     if (StrMatch("receipt", tag.name()) IS ERR::Okay) {
+                     if (iequals("receipt", tag.name())) {
                         for (auto &scan : tag.Children) {
                            lua_pushinteger(prv->Lua, i++);
                            lua_newtable(prv->Lua);

@@ -1255,12 +1255,11 @@ static ERR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
          { HKEY_LOCAL_MACHINE,  "\\HKEY_LOCAL_MACHINE\\" },
          { HKEY_CURRENT_USER,   "\\HKEY_CURRENT_USER\\" },
          { HKEY_CLASSES_ROOT,   "\\HKEY_CLASSES_ROOT\\" },
-         { HKEY_USERS,          "\\HKEY_USERS\\" },
-         { 0, 0 }
+         { HKEY_USERS,          "\\HKEY_USERS\\" }
       };
 
       for (LONG ki=0; ki < std::ssize(keys); ki++) {
-         if (StrCompare(keys[ki].HKey, Args->Name) IS ERR::Okay) {
+         if (startswith(keys[ki].HKey, Args->Name)) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
             len = StrLength(str); // End of string
 
@@ -1565,14 +1564,13 @@ static ERR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
          { HKEY_LOCAL_MACHINE,  "\\HKEY_LOCAL_MACHINE\\" },
          { HKEY_CURRENT_USER,   "\\HKEY_CURRENT_USER\\" },
          { HKEY_CLASSES_ROOT,   "\\HKEY_CLASSES_ROOT\\" },
-         { HKEY_USERS,          "\\HKEY_USERS\\" },
-         { 0, 0 }
+         { HKEY_USERS,          "\\HKEY_USERS\\" }
       };
 
       log.msg("Registry: %s = %s", Args->Name, Args->Value);
 
-      for (ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (StrCompare(keys[ki].HKey, Args->Name) IS ERR::Okay) {
+      for (ki=0; ki < std::ssize(keys); ki++) {
+         if (startswith(keys[ki].HKey, Args->Name)) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
 
             for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);

@@ -138,33 +138,37 @@ function testArchiveVolume()
    local file = obj.new('file', { path='system:scripts/dev/flute.fluid' } )
    local file_size = file.size
 
-   local cmpbuffer = string.rep(' ', file_size)
-   local cmpsrc = string.rep(' ', file_size)
+   local cmpbuffer = array.new(file_size, 'byte')
+   local cmpsrc = array.new(file_size, 'byte')
 
    local err = mSys.ReadFileToBuffer('system:scripts/dev/flute.fluid', cmpsrc)
    assert(err == ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
+   local cmpstr = tostring(cmpsrc)
 
    -- Big buffer test
 
    local cmpfile = obj.new('file', { src='archive:test/scripts/flute.fluid', flags='!READ' })
    local err, len = cmpfile.acRead(cmpbuffer)
    assert(err == ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
-   assert(cmpbuffer == cmpsrc, "The decompressed data does not match the original file.")
+   assert(tostring(cmpbuffer) == cmpstr, "The decompressed data does not match the original file.")
 
    -- Small buffer test
 
    cmpfile.acSeek(0, SEEK_START)
-   local smallbuffer = string.rep(' ', 256)
+   local smallbuffer = array.new(256, 'byte')
    local len
    local cmpbuffer = ''
    repeat
       err, len = cmpfile.acRead(smallbuffer)
       assert(err == ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
-      if (len < smallbuffer:len()) then smallbuffer = smallbuffer:sub(1, len) end
-      cmpbuffer = cmpbuffer .. smallbuffer
+      if (len < #smallbuffer) then
+         cmpbuffer = cmpbuffer .. smallbuffer.getstring(0, len)
+      else
+         cmpbuffer = cmpbuffer .. tostring(smallbuffer)
+      end
    until (len == 0)
 
-   assert(mSys.StrCompare(cmpbuffer, cmpsrc, 0, STR_MATCH_LEN) == ERR_Okay, "The decompressed data does not match the original file.")
+   assert(cmpbuffer == cmpstr, "The decompressed data does not match the original file.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
