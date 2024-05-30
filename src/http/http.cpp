@@ -94,6 +94,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <unordered_map>
 #include <map>
 #include <sstream>
+#include <charconv>
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
@@ -133,25 +134,29 @@ class extHTTP : public objHTTP {
    FUNCTION Outgoing;
    FUNCTION AuthCallback;
    FUNCTION StateChanged;
-   std::unordered_map<std::string, std::string> *Args;
-   std::unordered_map<std::string, std::string> *Headers;
-   STRING Response;         // Response header buffer
-   STRING URI;              // Temporary string, used only when the user reads the URI
-   STRING Username;
-   STRING Password;
-   STRING AuthNonce;
-   STRING AuthOpaque;
-   STRING AuthPath;
-   STRING ContentType;
-   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
+   std::unordered_map<std::string, std::string> Args;
+   std::unordered_map<std::string, std::string> Headers;
+   std::string Response;   // Response header buffer
+   std::string URI;        // Temporary string, used only when the user reads the URI
+   std::string Username;
+   std::string Password;
+   std::string Realm;
+   std::string AuthNonce;
+   std::string AuthOpaque;
+   std::string AuthPath;    // Equivalent to Path, sans file name
+   std::string ContentType;
+   std::string AuthQOP;
+   std::string AuthAlgorithm;
+   std::string AuthCNonce;
+   std::vector<char> RecvBuffer; // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
    UBYTE  *WriteBuffer;
-   LONG   WriteSize;
-   LONG   WriteOffset;
    APTR   Buffer;           // Temporary buffer for storing outgoing data
    objFile *flOutput;
    objFile *flInput;
    objNetSocket *Socket;    // Socket over which the communication is taking place
    UBYTE  *Chunk;           // Chunk buffer
+   LONG   WriteSize;
+   LONG   WriteOffset;
    LONG   ChunkSize;        // Size of the chunk buffer
    LONG   ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
    LONG   ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
@@ -160,15 +165,10 @@ class extHTTP : public objHTTP {
    LARGE  LastReceipt;      // Last time (microseconds) at which data was received
    LARGE  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
    OBJECTID DialogWindow;
-   LONG   RecvSize;
    LONG   ResponseIndex;    // Next element to write to in 'Buffer'
    LONG   SearchIndex;      // Current position of the CRLFCRLF search.
-   LONG   ResponseSize;
    WORD   InputPos;         // File name parsing position in InputFile
    UBYTE  RedirectCount;
-   UBYTE  AuthCNonce[10];
-   UBYTE  AuthQOP[12];
-   UBYTE  AuthAlgorithm[12];
    UBYTE  AuthRetries;
    UWORD  Connecting:1;
    UWORD  AuthAttempt:1;
@@ -240,13 +240,12 @@ static const FieldDef clStatus[] = {
 
 //********************************************************************************************************************
 
-static CSTRING adv_crlf(CSTRING);
 static ERR  check_incoming_end(extHTTP *);
 static ERR  parse_file(extHTTP *, STRING, LONG);
 static void parse_file(extHTTP *, std::ostringstream &);
-static ERR  parse_response(extHTTP *, CSTRING);
+static ERR  parse_response(extHTTP *, std::string_view);
 static ERR  process_data(extHTTP *, APTR, LONG);
-static LONG extract_value(CSTRING, STRING *);
+static LONG extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
@@ -389,15 +388,11 @@ static ERR HTTP_Activate(extHTTP *Self)
       Self->SecurePath = TRUE;
    }
 
-   if (Self->Response) { FreeResource(Self->Response); Self->Response = NULL; }
+   Self->Response.clear();
    if (Self->flInput)  { FreeResource(Self->flInput); Self->flInput = NULL; }
    if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = NULL; }
 
-   if (Self->RecvBuffer) {
-      FreeResource(Self->RecvBuffer);
-      Self->RecvBuffer = NULL;
-      Self->RecvSize = 0;
-   }
+   Self->RecvBuffer.resize(0);
 
    std::ostringstream cmd;
 
@@ -421,11 +416,11 @@ static ERR HTTP_Activate(extHTTP *Self)
       if (Self->Method IS HTM::COPY) {
          // Copies a source (indicated by Path) to a Destination.  The Destination is referenced as an variable field.
 
-         if (Self->Args->contains("Destination")) {
+         if (Self->Args.contains("Destination")) {
             set_http_method(Self, "COPY", cmd);
-            cmd << "Destination: http://" << Self->Host << "/" << Self->Args[0]["Destination"] << CRLF;
+            cmd << "Destination: http://" << Self->Host << "/" << Self->Args["Destination"] << CRLF;
 
-            auto & overwrite = Self->Args[0]["Overwrite"];
+            auto & overwrite = Self->Args["Overwrite"];
             if (!overwrite.empty()) {
                // If the overwrite is 'F' then copy will fail if the destination exists
                cmd << "Overwrite: " << overwrite << CRLF;
@@ -453,9 +448,9 @@ static ERR HTTP_Activate(extHTTP *Self)
       else if (Self->Method IS HTM::MOVE) {
          // Moves a source (indicated by Path) to a Destination.  The Destination is referenced as a variable field.
 
-         if (Self->Args->contains("Destination")) {
+         if (Self->Args.contains("Destination")) {
             set_http_method(Self, "MOVE", cmd);
-            cmd << "Destination: http://" << Self->Host << "/" << Self->Args[0]["Destination"] << CRLF;
+            cmd << "Destination: http://" << Self->Host << "/" << Self->Args["Destination"] << CRLF;
          }
          else {
             log.warning("HTTP MOVE request requires a destination path.");
@@ -551,8 +546,8 @@ static ERR HTTP_Activate(extHTTP *Self)
                }
             }
 
-            if (Self->ContentType) {
-               log.trace("User content type: %s", Self->ContentType);
+            if (!Self->ContentType.empty()) {
+               log.trace("User content type: %s", Self->ContentType.c_str());
                cmd << "Content-type: " << Self->ContentType << CRLF;
             }
             else if (Self->Method IS HTM::POST) {
@@ -574,13 +569,13 @@ static ERR HTTP_Activate(extHTTP *Self)
       // username and password, as it is necessary to be told the method of authentication required (in the case of digest
       // authentication, the nonce value is also required from the server).
 
-      if ((Self->AuthRetries > 0) and (Self->Username) and (Self->Password)) {
+      if ((Self->AuthRetries > 0) and (!Self->Username.empty()) and (!Self->Password.empty())) {
          if (Self->AuthDigest) {
             char nonce_count[9] = "00000001";
             HASHHEX HA1, HA2 = "", response;
 
+            Self->AuthCNonce.resize(8);
             for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + (rand() % 10);
-            Self->AuthCNonce[i] = 0;
 
             digest_calc_ha1(Self, HA1);
             digest_calc_response(Self, cmd.str(), nonce_count, HA1, HA2, response);
@@ -591,21 +586,19 @@ static ERR HTTP_Activate(extHTTP *Self)
             cmd << "qop=" << Self->AuthQOP << ", nc=" << nonce_count << ", ";
             cmd << "cnonce=\"" << Self->AuthCNonce << "\", response=\"" << response << "\"";
 
-            if (Self->AuthOpaque) cmd << ", opaque=\"" << Self->AuthOpaque << "\"";
+            if (!Self->AuthOpaque.empty()) cmd << ", opaque=\"" << Self->AuthOpaque << "\"";
 
             cmd << CRLF;
          }
          else {
-            std::string buffer(Self->Username);
-            buffer.append(":");
-            buffer.append(Self->Password);
-            auto output = std::make_unique<char[]>(buffer.length() * 2);
+            std::string buffer = Self->Username + ':' + Self->Password;
+            std::vector<char> output(buffer.size() * 2);
 
             pf::BASE64ENCODE state;
 
             cmd << "Authorization: Basic ";
-            auto len = pf::Base64Encode(&state, buffer.c_str(), buffer.length(), output.get(), buffer.length() * 2);
-            cmd.write(output.get(), len);
+            auto len = pf::Base64Encode(&state, buffer.c_str(), buffer.size(), output.data(), buffer.length() * 2);
+            cmd.write(output.data(), len);
             cmd << CRLF;
          }
 
@@ -613,15 +606,14 @@ static ERR HTTP_Activate(extHTTP *Self)
 
    /*
          for (i=0; Self->Password[i]; i++) Self->Password[i] = 0;
-         FreeResource(Self->Password);
-         Self->Password = NULL;
+         Self->Password.clear();
    */
       }
 
       // Add any custom headers
 
-      if ((Self->CurrentState != HGS::AUTHENTICATING) and (Self->Headers)) {
-         for (const auto& [k, v] : Self->Headers[0]) {
+      if (Self->CurrentState != HGS::AUTHENTICATING) {
+         for (const auto& [k, v] : Self->Headers) {
             log.trace("Custom header: %s: %s", k.c_str(), v.c_str());
             cmd << k << ": " << v << CRLF;
          }
@@ -747,9 +739,6 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 
 static ERR HTTP_Free(extHTTP *Self)
 {
-   if (Self->Args) { delete Self->Args; Self->Args = NULL; }
-   if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
-
    if (Self->Socket)     {
       Self->Socket->set(FID_Feedback, (APTR)NULL);
       FreeResource(Self->Socket);
@@ -766,23 +755,12 @@ static ERR HTTP_Free(extHTTP *Self)
    if (Self->InputFile)   { FreeResource(Self->InputFile);   Self->InputFile = NULL; }
    if (Self->OutputFile)  { FreeResource(Self->OutputFile);  Self->OutputFile = NULL; }
    if (Self->Host)        { FreeResource(Self->Host);        Self->Host = NULL; }
-   if (Self->Response)    { FreeResource(Self->Response);    Self->Response = NULL; }
    if (Self->UserAgent)   { FreeResource(Self->UserAgent);   Self->UserAgent = NULL; }
-   if (Self->Username)    { FreeResource(Self->Username);    Self->Username = NULL; }
-   if (Self->AuthNonce)   { FreeResource(Self->AuthNonce);   Self->AuthNonce = NULL; }
-   if (Self->Realm)       { FreeResource(Self->Realm);       Self->Realm = NULL; }
-   if (Self->AuthOpaque)  { FreeResource(Self->AuthOpaque);  Self->AuthOpaque = NULL; }
-   if (Self->AuthPath)    { FreeResource(Self->AuthPath);    Self->AuthPath = NULL; }
-   if (Self->ContentType) { FreeResource(Self->ContentType); Self->ContentType = NULL; }
-   if (Self->RecvBuffer)  { FreeResource(Self->RecvBuffer);  Self->RecvBuffer = NULL; }
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
-   if (Self->Password) {
-      for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = char(0xff);
-      FreeResource(Self->Password);
-      Self->Password = NULL;
-   }
-
+   for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
+   
+   Self->~extHTTP();
    return ERR::Okay;
 }
 
@@ -796,13 +774,13 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if ((Self->Args) and (Self->Args->contains(Args->Key))) {
-      StrCopy(Self->Args[0][Args->Key].c_str(), Args->Value, Args->Size);
+   if (Self->Args.contains(Args->Key)) {
+      StrCopy(Self->Args[Args->Key].c_str(), Args->Value, Args->Size);
       return ERR::Okay;
    }
 
-   if ((Self->Headers) and (Self->Headers->contains(Args->Key))) {
-      StrCopy(Self->Headers[0][Args->Key].c_str(), Args->Value, Args->Size);
+   if (Self->Headers.contains(Args->Key)) {
+      StrCopy(Self->Headers[Args->Key].c_str(), Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -836,14 +814,15 @@ static ERR HTTP_Init(extHTTP *Self)
 
 static ERR HTTP_NewObject(extHTTP *Self)
 {
+   new (Self) extHTTP;
    Self->Error          = ERR::Okay;
    Self->UserAgent      = StrClone("Parasol Client");
    Self->DataTimeout    = 5.0;
    Self->ConnectTimeout = 10.0;
    Self->Datatype       = DATA::RAW;
    Self->BufferSize     = 16 * 1024;
-   StrCopy("auth", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
-   StrCopy("md5", (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
+   Self->AuthQOP        = "auth";
+   Self->AuthAlgorithm  = "md5";
    return ERR::Okay;
 }
 
@@ -857,11 +836,7 @@ static ERR HTTP_SetKey(extHTTP *Self, struct acSetKey *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if (!Self->Headers) {
-      Self->Headers = new (std::nothrow) std::unordered_map<std::string, std::string>;
-      if (!Self->Headers) return ERR::Memory;
-   }
-   Self->Headers[0][Args->Key] = Args->Value;
+   Self->Headers[Args->Key] = Args->Value;
    return ERR::Okay;
 }
 
@@ -972,14 +947,14 @@ The ContentType should be set prior to sending a `PUT` or `POST` request.  If `N
 
 static ERR GET_ContentType(extHTTP *Self, STRING *Value)
 {
-   *Value = Self->ContentType;
+   *Value = Self->ContentType.data();
    return ERR::Okay;
 }
 
 static ERR SET_ContentType(extHTTP *Self, CSTRING Value)
 {
-   if (Self->ContentType) { FreeResource(Self->ContentType); Self->ContentType = NULL; }
-   if (Value) Self->ContentType = StrClone(Value);
+   if (Value) Self->ContentType.assign(Value);
+   else Self->ContentType.clear();
    return ERR::Okay;
 }
 
@@ -1205,31 +1180,19 @@ static ERR GET_Location(extHTTP *Self, STRING *Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
-   if (Self->URI) { FreeResource(Self->URI); Self->URI = NULL; }
+   std::ostringstream str;
 
-   ERR error;
-   LONG len;
-   {
-      pf::SwitchContext context(Self);
-      len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
-      error = AllocMemory(len, MEM::STRING|MEM::NO_CLEAR, &Self->URI);
+   if (Self->Port IS 80) str << "http://" << Self->Host << '/' << Self->Path; // http
+   else if (Self->Port IS 443) {
+      str << "https://" << Self->Host << '/' << Self->Path; // https
+      Self->Flags |= HTF::SSL;
    }
+   else if (Self->Port IS 21) str << "ftp://" << Self->Host << '/' << Self->Path; // ftp
+   else str << "http://" << Self->Host << ':' << Self->Port << '/' << Self->Path;
 
-   if (error IS ERR::Okay) {
-      if (Self->Port IS 80) snprintf(Self->URI, len, "http://%s/%s", Self->Host, Self->Path); // http
-      else if (Self->Port IS 443) {
-         snprintf(Self->URI, len, "https://%s/%s", Self->Host, Self->Path); // https
-         Self->Flags |= HTF::SSL;
-      }
-      else if (Self->Port IS 21) snprintf(Self->URI, len, "ftp://%s/%s", Self->Host, Self->Path); // ftp
-      else snprintf(Self->URI, len, "http://%s:%d/%s", Self->Host, Self->Port, Self->Path);
-      *Value = Self->URI;
-      return ERR::Okay;
-   }
-   else {
-      *Value = NULL;
-      return ERR::AllocMemory;
-   }
+   Self->URI = str.str();
+   *Value = Self->URI.data();
+   return ERR::Okay;
 }
 
 static ERR SET_Location(extHTTP *Self, CSTRING Value)
@@ -1308,8 +1271,8 @@ Method: The HTTP instruction to execute is defined here (defaults to `GET`).
 static ERR SET_Method(extHTTP *Self, HTM Value)
 {
    // Changing/Setting the method results in a reset of the variable fields
-   if (Self->Args) { delete Self->Args; Self->Args = NULL; }
-   if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
+   Self->Args.clear();
+   Self->Headers.clear();
    Self->Method = Value;
    return ERR::Okay;
 }
@@ -1405,8 +1368,7 @@ A `401` status code is returned in the event of an authorisation failure.
 
 static ERR SET_Password(extHTTP *Self, CSTRING Value)
 {
-   if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
-   Self->Password = StrClone(Value);
+   Self->Password.assign(Value);
    Self->AuthPreset = TRUE;
    return ERR::Okay;
 }
@@ -1455,23 +1417,21 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
       // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
       // do this if a PUT instruction is executed against the path and we're not authenticated yet.
 
-      while ((len > 0) and (Self->Path[len-1] != '/')) len--;
+      auto pview = std::string_view(Self->Path, len);
+      auto folder_len = pview.find_last_of('/');
+      if (folder_len IS std::string::npos) folder_len = 0;
 
-      Self->SecurePath = TRUE;
-      if (Self->AuthPath) {
-         LONG i = StrLength(Self->AuthPath);
-         while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
-
-         if (i IS len) {
-            if (pf::stricompare(Self->Path, Self->AuthPath, len)) {
-               // No change to the current path
-               Self->SecurePath = FALSE;
+      Self->SecurePath = true;
+      if (!Self->AuthPath.empty()) {
+         if (Self->AuthPath.size() IS folder_len) {
+            pview.remove_suffix(pview.size() - folder_len);
+            if (pview == Self->AuthPath) { // No change to the current path
+               Self->SecurePath = false;
             }
          }
       }
 
-      Self->AuthPath = StrClone(Self->Path);
-      Self->AuthPath[len] = 0;
+      Self->AuthPath.assign(Self->Path, folder_len);
       return ERR::Okay;
    }
    else return ERR::AllocMemory;
@@ -1517,10 +1477,17 @@ here.
 
 *********************************************************************************************************************/
 
+static ERR GET_Realm(extHTTP *Self, CSTRING *Value)
+{
+   if (Self->Realm.empty()) *Value = NULL;
+   else *Value = Self->Realm.c_str();
+   return ERR::Okay;
+}
+
 static ERR SET_Realm(extHTTP *Self, CSTRING Value)
 {
-   if (Self->Realm) { FreeResource(Self->Realm); Self->Realm = NULL; }
-   if (Value) Self->Realm = StrClone(Value);
+   if (Value) Self->Realm.assign(Value);
+   else Self->Realm.clear();
    return ERR::Okay;
 }
 
@@ -1539,8 +1506,8 @@ The buffer is null-terminated if you wish to use it as a string.
 
 static ERR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
 {
-   *Value = Self->RecvBuffer;
-   *Elements = Self->RecvSize;
+   *Value = (UBYTE *)Self->RecvBuffer.data();
+   *Elements = Self->RecvBuffer.size();
    return ERR::Okay;
 }
 
@@ -1625,8 +1592,7 @@ presented with a dialog box and asked to enter the correct username and password
 
 static ERR SET_Username(extHTTP *Self, CSTRING Value)
 {
-   if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
-   Self->Username = StrClone(Value);
+   Self->Username.assign(Value);
    return ERR::Okay;
 }
 
@@ -1641,7 +1607,6 @@ static const FieldArray clFields[] = {
    { "ContentLength",  FDF_LARGE|FDF_RW },
    { "Size",           FDF_LARGE|FDF_RW },
    { "Host",           FDF_STRING|FDF_RI, NULL, SET_Host },
-   { "Realm",          FDF_STRING|FDF_RW, NULL, SET_Realm },
    { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
    { "OutputFile",     FDF_STRING|FDF_RW, NULL, SET_OutputFile },
    { "InputFile",      FDF_STRING|FDF_RW, NULL, SET_InputFile },
@@ -1666,6 +1631,7 @@ static const FieldArray clFields[] = {
    { "Incoming",       FDF_FUNCTIONPTR|FDF_RW,   GET_Incoming, SET_Incoming },
    { "Location",       FDF_STRING|FDF_RW,        GET_Location, SET_Location },
    { "Outgoing",       FDF_FUNCTIONPTR|FDF_RW,   GET_Outgoing, SET_Outgoing },
+   { "Realm",          FDF_STRING|FDF_RW,        GET_Realm, SET_Realm },
    { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, GET_RecvBuffer },
    { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
    { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   GET_StateChanged, SET_StateChanged },

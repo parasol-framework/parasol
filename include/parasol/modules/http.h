@@ -149,7 +149,6 @@ class objHTTP : public Object {
    LARGE    ContentLength;   // The byte length of incoming or outgoing content.
    LARGE    Size;            // Set this field to define the length of a data transfer when issuing a POST command.
    STRING   Host;            // The targeted HTTP server is specified here, either by name or IP address.
-   STRING   Realm;           // Identifies the realm during HTTP authentication.
    STRING   Path;            // The HTTP path targeted at the host server.
    STRING   OutputFile;      // To download HTTP content to a file, set a file path here.
    STRING   InputFile;       // To upload HTTP content from a file, set a file path here.
