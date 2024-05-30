@@ -21,6 +21,7 @@
 #define LUA_BITLIBNAME	"bit"
 #define LUA_JITLIBNAME	"jit"
 #define LUA_FFILIBNAME	"ffi"
+#define LUA_BUFFERLIBNAME "buffer"
 
 LUALIB_API int luaopen_base(lua_State *L);
 LUALIB_API int luaopen_math(lua_State *L);
@@ -33,7 +34,7 @@ LUALIB_API int luaopen_debug(lua_State *L);
 LUALIB_API int luaopen_bit(lua_State *L);
 LUALIB_API int luaopen_jit(lua_State *L);
 LUALIB_API int luaopen_ffi(lua_State *L);
-LUALIB_API int luaopen_string_buffer(lua_State *L);
+LUALIB_API int luaopen_buffer(lua_State *L);
 
 LUALIB_API void luaL_openlibs(lua_State *L);
 

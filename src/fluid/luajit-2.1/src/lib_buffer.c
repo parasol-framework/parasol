@@ -346,12 +346,12 @@ LJLIB_CF(buffer_decode)			LJLIB_REC(.)
 
 #include "lj_libdef.h"
 
-int luaopen_string_buffer(lua_State *L)
+int luaopen_buffer(lua_State *L)
 {
   LJ_LIB_REG(L, NULL, buffer_method);
   lua_getfield(L, -1, "__tostring");
   lua_setfield(L, -2, "tostring");
-  LJ_LIB_REG(L, NULL, buffer);
+  LJ_LIB_REG(L, LUA_BUFFERLIBNAME, buffer);
   return 1;
 }
 
