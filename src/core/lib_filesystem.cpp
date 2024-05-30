@@ -453,7 +453,7 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    v2 = get_fs(path2);
 
    if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
-      error = stricompare(path1, path2, 0, true) ? ERR::True : ERR::False;
+      error = iequals(path1, path2) ? ERR::True : ERR::False;
    }
    else error = (std::string_view(path1) IS std::string_view(path2)) ? ERR::True : ERR::False;
 
@@ -1666,7 +1666,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             goto exit;
          }
 
-         srclen  = StrCopy(src, srcbuffer, sizeof(srcbuffer));
+         srclen = StrCopy(src, srcbuffer, sizeof(srcbuffer));
 
          // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
