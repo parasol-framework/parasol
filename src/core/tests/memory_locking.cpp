@@ -11,6 +11,9 @@ This program tests the locking of memory between threads.
 
 #include <pthread.h>
 #include <parasol/startup.h>
+#include <parasol/strings.hpp>
+
+using namespace pf;
 
 CSTRING ProgName = "MemoryLocking";
 static volatile MEMORYID glMemoryID = 0;

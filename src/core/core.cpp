@@ -1146,7 +1146,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    std::string buffer("config:users/default/");
 
    #ifdef __unix__
-      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (std::string_view("/") != homedir))) {
+      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (std::string_view("/") != homedir)) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 

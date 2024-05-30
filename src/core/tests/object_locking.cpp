@@ -12,6 +12,9 @@ This program tests the locking of private objects between threads.
 #include <pthread.h>
 #include <parasol/startup.h>
 #include <parasol/vector.hpp>
+#include <parasol/strings.hpp>
+
+using namespace pf;
 
 CSTRING ProgName = "ObjectLocking";
 static volatile OBJECTPTR glConfig = NULL;
