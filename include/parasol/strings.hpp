@@ -198,8 +198,4 @@ inline void camelcase(std::string &s) {
    return hash;
 }
 
-[[nodiscard]] inline FIELD ResolveField(CSTRING Field) {
-   return strihash(Field);
-}
-
 } // namespace
