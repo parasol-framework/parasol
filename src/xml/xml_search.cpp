@@ -222,7 +222,7 @@ ERR extXML::find_tag(CSTRING XPath)
             error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.Meta);
          }
          else if (Callback.isScript()) {
-            if (scCall(Callback, std::to_array<ScriptArg>({
+            if (sc::Call(Callback, std::to_array<ScriptArg>({
                { "XML",  this, FD_OBJECTPTR },
                { "Tag",  Cursor->ID },
                { "Attrib", Attrib.empty() ? CSTRING(NULL) : Attrib.c_str() }

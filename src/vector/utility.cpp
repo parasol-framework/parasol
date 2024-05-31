@@ -145,7 +145,7 @@ static void update_dpi(void)
 
    if (current_time - last_update > 3000000LL) {
       DISPLAYINFO *display;
-      if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
+      if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
          last_update = PreciseTime();
          if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
             glDisplayVDPI = display->VDensity;

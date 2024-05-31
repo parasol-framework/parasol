@@ -458,11 +458,11 @@ static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERR Result,
    log.traceBranch("Display exposure received - redrawing display.");
 
    if (Args) {
-      struct drwExpose expose = { Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN };
+      struct drw::Expose expose = { Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN };
       Action(MT_DrwExpose, Self, &expose);
    }
    else {
-      struct drwExpose expose = { 0, 0, 20000, 20000, EXF::CHILDREN };
+      struct drw::Expose expose = { 0, 0, 20000, 20000, EXF::CHILDREN };
       Action(MT_DrwExpose, Self, &expose);
    }
 }
@@ -613,7 +613,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
+static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
 {
    pf::Log log;
 
@@ -854,7 +854,7 @@ static ERR SURFACE_Focus(extSurface *Self)
 
    // Send a Focus action to all parent surface objects in our generated focus list.
 
-   struct drwInheritedFocus inherit = { .FocusID = Self->UID, .Flags = Self->Flags };
+   struct drw::InheritedFocus inherit = { .FocusID = Self->UID, .Flags = Self->Flags };
    auto it = glFocusList.begin() + 1; // Skip Self
    while (it != glFocusList.end()) {
       pf::ScopedObjectLock obj(*it);
@@ -937,7 +937,7 @@ static ERR SURFACE_Free(extSurface *Self)
       if (auto error = AccessObject(Self->ParentID, 5000, &parent); error IS ERR::Okay) {
          UnsubscribeAction(parent, 0);
          if (Self->transparent()) {
-            drwRemoveCallback(parent, NULL);
+            drw::RemoveCallback(parent, NULL);
          }
          ReleaseObject(parent);
       }
@@ -1135,7 +1135,7 @@ static ERR SURFACE_Init(extSurface *Self)
 
       if (Self->transparent()) {
          auto func = C_FUNCTION(draw_region);
-         struct drwAddCallback args = { &func };
+         struct drw::AddCallback args = { &func };
          Action(MT_DrwAddCallback, *parent, &args);
 
          // Turn off flags that should never be combined with transparent surfaces.
@@ -1348,7 +1348,7 @@ static ERR SURFACE_Init(extSurface *Self)
             fl::PopOver(pop_display),
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
-         gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF::SAVE);
+         gfx::SetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF::SAVE);
          gfxSetHostOption(HOST::TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
 
          // Get the true coordinates of the client area of the surface
@@ -1358,7 +1358,7 @@ static ERR SURFACE_Init(extSurface *Self)
          Self->Width  = display->Width;
          Self->Height = display->Height;
 
-         struct gfxSizeHints hints;
+         struct gfx::SizeHints hints;
 
          if ((Self->MaxWidth) or (Self->MaxHeight) or (Self->MinWidth) or (Self->MinHeight)) {
             if (Self->MaxWidth > 0)  hints.MaxWidth  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MaxWidth  = 0;
@@ -1558,7 +1558,7 @@ static ERR SURFACE_Minimise(extSurface *Self)
 {
    if (Self->DisplayID) {
       pf::ScopedObjectLock display(Self->DisplayID);
-      if (display.granted()) gfxMinimise(*display);
+      if (display.granted()) gfx::Minimise(*display);
    }
    return ERR::Okay;
 }
@@ -1944,7 +1944,7 @@ Search
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Args)
+static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *Args)
 {
    pf::Log log;
    OBJECTPTR context = NULL;
@@ -2044,7 +2044,7 @@ AccessMemory: Unable to access internal surface list.
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions *Args)
+static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions *Args)
 {
    pf::Log log;
 
@@ -2252,7 +2252,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
+static ERR SURFACE_SetOpacity(extSurface *Self, struct drw::SetOpacity *Args)
 {
    pf::Log log;
 

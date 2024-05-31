@@ -87,7 +87,7 @@ static void sound_stopped_event(extSound *Self)
       routine(Self, Self->OnStop.Meta);
    }
    else if (Self->OnStop.isScript()) {
-      scCall(Self->OnStop, std::to_array<ScriptArg>({ { "Sound", Self, FD_OBJECTPTR } }));
+      sc::Call(Self->OnStop, std::to_array<ScriptArg>({ { "Sound", Self, FD_OBJECTPTR } }));
    }
 }
 
@@ -613,7 +613,7 @@ static ERR SOUND_Free(extSound *Self)
    if ((Self->Handle) and (Self->AudioID)) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
-         sndRemoveSample(*audio, Self->Handle);
+         snd::RemoveSample(*audio, Self->Handle);
          Self->Handle = 0;
       }
    }
@@ -680,7 +680,7 @@ static ERR SOUND_Init(extSound *Self)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
+         if (snd::OpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -720,8 +720,8 @@ static ERR SOUND_Init(extSound *Self)
    // Read the RIFF header
 
    Self->File->seekStart(12);
-   if (flReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
-   if (flReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
+   if (fl::ReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
+   if (fl::ReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
 
    WAVEFormat WAVE;
    LONG result;
@@ -742,7 +742,7 @@ static ERR SOUND_Init(extSound *Self)
       return log.warning(ERR::Read);
    }
 
-   if (flReadLE(Self->File, &Self->Length) != ERR::Okay) return ERR::Read; // Length of audio data in this chunk
+   if (fl::ReadLE(Self->File, &Self->Length) != ERR::Okay) return ERR::Read; // Length of audio data in this chunk
 
    if (Self->Length & 1) Self->Length++;
 
@@ -827,8 +827,8 @@ static ERR SOUND_Init(extSound *Self)
    // Read the FMT header
 
    Self->File->seek(12, SEEK::START);
-   if (flReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
-   if (flReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
+   if (fl::ReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
+   if (fl::ReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
 
    WAVEFormat WAVE;
    if ((Self->File->read(&WAVE, len, &result) != ERR::Okay) or (result < len)) {
@@ -849,12 +849,12 @@ static ERR SOUND_Init(extSound *Self)
 #if 0
    if (find_chunk(Self, Self->File, "cue ") IS ERR::Okay) {
       data_p += 32;
-      flReadLE(Self->File, &info.loopstart);
+      fl::ReadLE(Self->File, &info.loopstart);
       // if the next chunk is a LIST chunk, look for a cue length marker
       if (find_chunk(Self, Self->File, "LIST") IS ERR::Okay) {
          if (!strncmp (data_p + 28, "mark", 4)) {
             data_p += 24;
-            flReadLE(Self->File, &i);	// samples in loop
+            fl::ReadLE(Self->File, &i);	// samples in loop
             info.samples = info.loopstart + i;
          }
       }
@@ -870,7 +870,7 @@ static ERR SOUND_Init(extSound *Self)
 
    // Setup the sound structure
 
-   flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
+   fl::ReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
    Self->DataOffset = Self->File->get<LONG>(FID_Position);
 
@@ -1662,7 +1662,7 @@ static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 
       if (ChunkName IS std::string_view(chunk, 4)) return ERR::Okay;
 
-      flReadLE(Self->File, &len); // Length of data in this chunk
+      fl::ReadLE(Self->File, &len); // Length of data in this chunk
       Self->File->seekCurrent(len);
    }
 }

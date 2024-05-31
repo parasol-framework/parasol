@@ -21,14 +21,14 @@ FDEF maBeep[] = { { "Pitch", FD_LONG }, { "Duration", FD_LONG }, { "Volume", FD_
 FDEF maSetVolume[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { "Flags", FD_LONG }, { "Channel", FD_LONG }, { "Volume", FD_DOUBLE }, { 0, 0 } };
 
 static const struct MethodEntry clAudioMethods[] = {
-   { -1, (APTR)AUDIO_OpenChannels, "OpenChannels", maOpenChannels, sizeof(struct sndOpenChannels) },
-   { -2, (APTR)AUDIO_CloseChannels, "CloseChannels", maCloseChannels, sizeof(struct sndCloseChannels) },
-   { -3, (APTR)AUDIO_AddSample, "AddSample", maAddSample, sizeof(struct sndAddSample) },
-   { -4, (APTR)AUDIO_RemoveSample, "RemoveSample", maRemoveSample, sizeof(struct sndRemoveSample) },
-   { -5, (APTR)AUDIO_SetSampleLength, "SetSampleLength", maSetSampleLength, sizeof(struct sndSetSampleLength) },
-   { -6, (APTR)AUDIO_AddStream, "AddStream", maAddStream, sizeof(struct sndAddStream) },
-   { -7, (APTR)AUDIO_Beep, "Beep", maBeep, sizeof(struct sndBeep) },
-   { -8, (APTR)AUDIO_SetVolume, "SetVolume", maSetVolume, sizeof(struct sndSetVolume) },
+   { -1, (APTR)AUDIO_OpenChannels, "OpenChannels", maOpenChannels, sizeof(struct snd::OpenChannels) },
+   { -2, (APTR)AUDIO_CloseChannels, "CloseChannels", maCloseChannels, sizeof(struct snd::CloseChannels) },
+   { -3, (APTR)AUDIO_AddSample, "AddSample", maAddSample, sizeof(struct snd::AddSample) },
+   { -4, (APTR)AUDIO_RemoveSample, "RemoveSample", maRemoveSample, sizeof(struct snd::RemoveSample) },
+   { -5, (APTR)AUDIO_SetSampleLength, "SetSampleLength", maSetSampleLength, sizeof(struct snd::SetSampleLength) },
+   { -6, (APTR)AUDIO_AddStream, "AddStream", maAddStream, sizeof(struct snd::AddStream) },
+   { -7, (APTR)AUDIO_Beep, "Beep", maBeep, sizeof(struct snd::Beep) },
+   { -8, (APTR)AUDIO_SetVolume, "SetVolume", maSetVolume, sizeof(struct snd::SetVolume) },
    { 0, 0, 0, 0, 0 }
 };
 

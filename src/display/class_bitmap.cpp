@@ -485,7 +485,7 @@ CreateObject: A Compression object could not be created.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
+static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 {
    pf::Log log;
 
@@ -521,7 +521,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 
    APTR buffer;
    if (AllocMemory(Self->Size, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-      struct cmpCompressBuffer cbuf;
+      struct cmp::CompressBuffer cbuf;
       cbuf.Input      = Self->Data;
       cbuf.InputSize  = Self->Size;
       cbuf.Output     = buffer;
@@ -724,7 +724,7 @@ Mismatch: The target bitmap is not a close enough match to the source bitmap in 
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
+static ERR BITMAP_CopyArea(objBitmap *Self, struct bmp::CopyArea *Args)
 {
    if (Args) return gfxCopyArea((extBitmap *)Self, (extBitmap *)Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest);
    else return ERR::NullArgs;
@@ -750,10 +750,10 @@ AllocMemory: Insufficient memory in recreating the bitmap data buffer.
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
+static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
 {
    pf::Log log;
-   struct cmpDecompressBuffer dbuf;
+   struct cmp::DecompressBuffer dbuf;
 
    if (!Self->prvCompress) return ERR::Okay;
 
@@ -947,7 +947,7 @@ Args
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_DrawRectangle(extBitmap *Self, struct bmpDrawRectangle *Args)
+static ERR BITMAP_DrawRectangle(extBitmap *Self, struct bmp::DrawRectangle *Args)
 {
    if (!Args) return ERR::NullArgs;
    gfxDrawRectangle(Self, Args->X, Args->Y, Args->Width, Args->Height, Args->Colour, Args->Flags);
@@ -971,7 +971,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
+static ERR BITMAP_Flip(extBitmap *Self, struct bmp::Flip *Args)
 {
    pf::Log log;
 
@@ -1111,7 +1111,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_GetColour(extBitmap *Self, struct bmpGetColour *Args)
+static ERR BITMAP_GetColour(extBitmap *Self, struct bmp::GetColour *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -2184,7 +2184,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR BITMAP_SetClipRegion(extBitmap *Self, struct bmpSetClipRegion *Args)
+static ERR BITMAP_SetClipRegion(extBitmap *Self, struct bmp::SetClipRegion *Args)
 {
    if (!Args) return ERR::NullArgs;
 

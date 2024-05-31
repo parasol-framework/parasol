@@ -174,7 +174,7 @@ AllocMemory: Failed to allocate enough memory to hold the sample data.
 
 *********************************************************************************************************************/
 
-ERR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
+ERR AUDIO_AddSample(extAudio *Self, struct snd::AddSample *Args)
 {
    pf::Log log;
 
@@ -288,7 +288,7 @@ AllocMemory: Failed to allocate the stream buffer.
 
 static const LONG MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in bytes
 
-static ERR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
+static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
 {
    pf::Log log;
 
@@ -373,7 +373,7 @@ NoSupport: PC speaker support is not available.
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
+static ERR AUDIO_Beep(extAudio *Self, struct snd::Beep *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -407,7 +407,7 @@ Args
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
+static ERR AUDIO_CloseChannels(extAudio *Self, struct snd::CloseChannels *Args)
 {
    pf::Log log;
 
@@ -564,7 +564,7 @@ AllocMemory: Memory for the audio channels could not be allocated.
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
+static ERR AUDIO_OpenChannels(extAudio *Self, struct snd::OpenChannels *Args)
 {
    pf::Log log;
 
@@ -617,7 +617,7 @@ OutOfRange: The provided sample handle is not within the valid range.
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
+static ERR AUDIO_RemoveSample(extAudio *Self, struct snd::RemoveSample *Args)
 {
    pf::Log log;
 
@@ -773,7 +773,7 @@ Failed: Sample is not a stream.
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Args)
+static ERR AUDIO_SetSampleLength(extAudio *Self, struct snd::SetSampleLength *Args)
 {
    pf::Log log;
 
@@ -828,7 +828,7 @@ OutOfRange: The `Volume` or `Index` is out of the acceptable range.
 
 *********************************************************************************************************************/
 
-static ERR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
+static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 {
    pf::Log log;
 
@@ -1115,7 +1115,7 @@ static ERR SET_MasterVolume(extAudio *Self, DOUBLE Value)
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
 
-   struct sndSetVolume setvol;
+   struct snd::SetVolume setvol;
    setvol.Index   = 0;
    setvol.Name    = "Master";
    setvol.Volume  = Value;
@@ -1164,7 +1164,7 @@ static ERR GET_Mute(extAudio *Self, LONG *Value)
 
 static ERR SET_Mute(extAudio *Self, LONG Value)
 {
-   struct sndSetVolume setvol = {
+   struct snd::SetVolume setvol = {
       .Index   = 0,
       .Name    = "Master",
       .Volume  = -1

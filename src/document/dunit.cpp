@@ -41,7 +41,7 @@ DOUBLE DUNIT::px(class layout &Layout) {
       case DU::FONT_SIZE:        return std::trunc(value * Layout.m_font->metrics.Height); //Layout.m_font->font_size * 72.0 / 96.0);
       case DU::TRUE_LINE_HEIGHT: return std::trunc(value * Layout.m_line.height);
       case DU::LINE_HEIGHT:      return std::trunc(value * Layout.m_font->metrics.LineSpacing);
-      case DU::CHAR:             return std::trunc(value * DOUBLE(vecCharWidth(Layout.m_font->handle, '0', 0, NULL))); // Equivalent to CSS
+      case DU::CHAR:             return std::trunc(value * DOUBLE(vec::CharWidth(Layout.m_font->handle, '0', 0, NULL))); // Equivalent to CSS
       case DU::VP_WIDTH:         return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Width) * 0.01);
       case DU::VP_HEIGHT:        return std::trunc(value * Layout.m_viewport->Parent->get<DOUBLE>(FID_Height) * 0.01);
       case DU::ROOT_FONT_SIZE:   return std::trunc(value * Layout.Self->FontSize); // Measured in 72DPI pixels

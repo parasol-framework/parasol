@@ -80,7 +80,7 @@
     <method>
       <name>Debug</name>
       <comment>Internal functionality for debugging.</comment>
-      <prototype>ERR vecDebug(OBJECTPTR Object)</prototype>
+      <prototype>ERR vec::Debug(OBJECTPTR Object)</prototype>
       <description>
 <p>This internal method prints comprehensive debugging information to the log.</p>
       </description>
@@ -92,7 +92,7 @@
     <method>
       <name>FreeMatrix</name>
       <comment>Remove an allocated VectorMatrix structure.</comment>
-      <prototype>ERR vecFreeMatrix(OBJECTPTR Object, struct VectorMatrix * Matrix)</prototype>
+      <prototype>ERR vec::FreeMatrix(OBJECTPTR Object, struct VectorMatrix * Matrix)</prototype>
       <input>
         <param type="struct VectorMatrix *" name="Matrix">Reference to the structure that requires removal.</param>
       </input>
@@ -108,7 +108,7 @@
     <method>
       <name>GetBoundary</name>
       <comment>Returns the graphical boundary of a vector.</comment>
-      <prototype>ERR vecGetBoundary(OBJECTPTR Object, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
+      <prototype>ERR vec::GetBoundary(OBJECTPTR Object, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
       <input>
         <param type="VBF" name="Flags" lookup="VBF">Optional flags.</param>
         <param type="DOUBLE *" name="X">The left-most position of the boundary is returned here.</param>
@@ -133,7 +133,7 @@
     <method>
       <name>NewMatrix</name>
       <comment>Returns a VectorMatrix structure that allows transformations to be applied to the vector.</comment>
-      <prototype>ERR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</prototype>
+      <prototype>ERR vec::NewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</prototype>
       <input>
         <param type="struct VectorMatrix **" name="Transform">A reference to the new transform structure is returned here.</param>
         <param type="LONG" name="End">If <code>true</code>, the matrix priority is lowered by inserting it at the end of the transform list.</param>
@@ -152,7 +152,7 @@
     <method>
       <name>PointInPath</name>
       <comment>Checks if point at (X,Y) is within a vector's path.</comment>
-      <prototype>ERR vecPointInPath(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
+      <prototype>ERR vec::PointInPath(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
       <input>
         <param type="DOUBLE" name="X">The X coordinate of the point.</param>
         <param type="DOUBLE" name="Y">The Y coordinate of the point.</param>
@@ -172,7 +172,7 @@
     <method>
       <name>Push</name>
       <comment>Push a vector to a new position within its area of the vector stack.</comment>
-      <prototype>ERR vecPush(OBJECTPTR Object, LONG Position)</prototype>
+      <prototype>ERR vec::Push(OBJECTPTR Object, LONG Position)</prototype>
       <input>
         <param type="LONG" name="Position">Specify a relative position index here (-ve to move backwards, +ve to move forwards)</param>
       </input>
@@ -189,7 +189,7 @@
     <method>
       <name>SubscribeFeedback</name>
       <comment>Subscribe to events that relate to the vector.</comment>
-      <prototype>ERR vecSubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::SubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
       <input>
         <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to <code>0xffffffff</code> if all messages are required.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
@@ -208,7 +208,7 @@
     <method>
       <name>SubscribeInput</name>
       <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERR vecSubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::SubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
       <input>
         <param type="JTYPE" name="Mask" lookup="JTYPE">Combine <code>JTYPE</code> flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
@@ -232,7 +232,7 @@
     <method>
       <name>SubscribeKeyboard</name>
       <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERR vecSubscribeKeyboard(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::SubscribeKeyboard(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       </input>
@@ -255,7 +255,7 @@
     <method>
       <name>Trace</name>
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
-      <prototype>ERR vecTrace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
+      <prototype>ERR vec::Trace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
         <param type="DOUBLE" name="Scale">Set to <code>1.0</code> (recommended) to trace the path at a scale of 1 to 1.</param>

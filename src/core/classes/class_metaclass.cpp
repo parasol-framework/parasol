@@ -140,7 +140,7 @@ static const FieldArray glMetaFields[] = {
    END_FIELD
 };
 
-extern "C" ERR CLASS_FindField(extMetaClass *, struct mcFindField *);
+extern "C" ERR CLASS_FindField(extMetaClass *, struct mc::FindField *);
 extern "C" ERR CLASS_Free(extMetaClass *);
 extern "C" ERR CLASS_Init(extMetaClass *);
 extern "C" ERR CLASS_NewObject(extMetaClass *);
@@ -178,7 +178,7 @@ void init_metaclass(void)
    glMetaClass.Local[0]        = 0xff;
 
    glMetaClass.Methods.resize(2);
-   glMetaClass.Methods[1] = { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mcFindField) };
+   glMetaClass.Methods[1] = { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mc::FindField) };
 
    glMetaClass.ActionTable[AC_Free].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Free;
    glMetaClass.ActionTable[AC_Init].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Init;
@@ -217,7 +217,7 @@ Search
 
 *********************************************************************************************************************/
 
-ERR CLASS_FindField(extMetaClass *Self, struct mcFindField *Args)
+ERR CLASS_FindField(extMetaClass *Self, struct mc::FindField *Args)
 {
    if ((!Args) or (!Args->ID)) return ERR::NullArgs;
 

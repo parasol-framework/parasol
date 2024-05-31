@@ -62,9 +62,9 @@ void anim_motion::perform()
 
          points.clear();
          if (mpath) {
-            if ((vecTrace(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
+            if ((vec::Trace(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
          }
-         else if ((vecTrace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
+         else if ((vec::Trace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
 
          path_timestamp = vector->get<LONG>(FID_PathTimestamp);
 
@@ -175,20 +175,20 @@ void anim_motion::perform()
    // intermixed with other transforms.
 
    if (not matrix) {
-      vecNewMatrix(*vector, &matrix, true);
+      vec::NewMatrix(*vector, &matrix, true);
       matrix->Tag = MTAG_ANIMATE_MOTION;
    }
-   vecResetMatrix(matrix);
+   vec::ResetMatrix(matrix);
 
-   if (angle != -1) vecRotate(matrix, angle, 0, 0);
-   else if (auto_rotate IS ART::FIXED) vecRotate(matrix, rotate, 0, 0);
+   if (angle != -1) vec::Rotate(matrix, angle, 0, 0);
+   else if (auto_rotate IS ART::FIXED) vec::Rotate(matrix, rotate, 0, 0);
 
    if (calc_mode IS CMODE::DISCRETE) {
-      if (seek_to < 0.5) vecTranslate(matrix, a.x, a.y);
-      else vecTranslate(matrix, b.x, b.y);
+      if (seek_to < 0.5) vec::Translate(matrix, a.x, a.y);
+      else vec::Translate(matrix, b.x, b.y);
    }
    else { // CMODE::LINEAR
       pf::POINT<double> final { a.x + ((b.x - a.x) * seek_to), a.y + ((b.y - a.y) * seek_to) };
-      vecTranslate(matrix, final.x, final.y);
+      vec::Translate(matrix, final.x, final.y);
    }
 }

@@ -1179,21 +1179,23 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     )
 
     c_insert([[
-
-INLINE ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
-   struct vecSubscribeInput args = { Mask, &Callback };
+namespace vec {
+inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
+   struct SubscribeInput args = { Mask, &Callback };
    return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR vecSubscribeKeyboard(APTR Ob, FUNCTION Callback) {
-   struct vecSubscribeKeyboard args = { &Callback };
+inline ERR SubscribeKeyboard(APTR Ob, FUNCTION Callback) {
+   struct SubscribeKeyboard args = { &Callback };
    return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
-   struct vecSubscribeFeedback args = { Mask, &Callback };
+inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
+   struct SubscribeFeedback args = { Mask, &Callback };
    return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }
+
+} // namespace
 
 namespace fl {
    using namespace pf;

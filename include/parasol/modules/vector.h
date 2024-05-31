@@ -638,31 +638,35 @@ class objVectorTransition : public Object {
 #define MT_ScFindDef -3
 #define MT_ScDebug -4
 
-struct scAddDef { CSTRING Name; OBJECTPTR Def;  };
-struct scSearchByID { LONG ID; OBJECTPTR Result;  };
-struct scFindDef { CSTRING Name; OBJECTPTR Def;  };
+namespace sc {
+struct AddDef { CSTRING Name; OBJECTPTR Def;  };
+struct SearchByID { LONG ID; OBJECTPTR Result;  };
+struct FindDef { CSTRING Name; OBJECTPTR Def;  };
 
-inline ERR scAddDef(APTR Ob, CSTRING Name, OBJECTPTR Def) noexcept {
-   struct scAddDef args = { Name, Def };
+inline ERR AddDef(APTR Ob, CSTRING Name, OBJECTPTR Def) noexcept {
+   struct AddDef args = { Name, Def };
    return(Action(MT_ScAddDef, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR scSearchByID(APTR Ob, LONG ID, OBJECTPTR * Result) noexcept {
-   struct scSearchByID args = { ID, (OBJECTPTR)0 };
+inline ERR SearchByID(APTR Ob, LONG ID, OBJECTPTR * Result) noexcept {
+   struct SearchByID args = { ID, (OBJECTPTR)0 };
    ERR error = Action(MT_ScSearchByID, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-inline ERR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) noexcept {
-   struct scFindDef args = { Name, (OBJECTPTR)0 };
+inline ERR FindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) noexcept {
+   struct FindDef args = { Name, (OBJECTPTR)0 };
    ERR error = Action(MT_ScFindDef, (OBJECTPTR)Ob, &args);
    if (Def) *Def = args.Def;
    return(error);
 }
 
-#define scDebug(obj) Action(MT_ScDebug,(obj),0)
+inline ERR Debug(APTR Ob) noexcept {
+   return(Action(MT_ScDebug, (OBJECTPTR)Ob, NULL));
+}
 
+} // namespace
 
 class objVectorScene : public Object {
    public:
@@ -1287,25 +1291,27 @@ class objFloodFX : public objFilterEffect {
 #define MT_LTSetPointLight -22
 #define MT_LTSetSpotLight -21
 
-struct ltSetDistantLight { DOUBLE Azimuth; DOUBLE Elevation;  };
-struct ltSetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z;  };
-struct ltSetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle;  };
+namespace lt {
+struct SetDistantLight { DOUBLE Azimuth; DOUBLE Elevation;  };
+struct SetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z;  };
+struct SetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle;  };
 
-inline ERR ltSetDistantLight(APTR Ob, DOUBLE Azimuth, DOUBLE Elevation) noexcept {
-   struct ltSetDistantLight args = { Azimuth, Elevation };
+inline ERR SetDistantLight(APTR Ob, DOUBLE Azimuth, DOUBLE Elevation) noexcept {
+   struct SetDistantLight args = { Azimuth, Elevation };
    return(Action(MT_LTSetDistantLight, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR ltSetPointLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
-   struct ltSetPointLight args = { X, Y, Z };
+inline ERR SetPointLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   struct SetPointLight args = { X, Y, Z };
    return(Action(MT_LTSetPointLight, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR ltSetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) noexcept {
-   struct ltSetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
+inline ERR SetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) noexcept {
+   struct SetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
    return(Action(MT_LTSetSpotLight, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objLightingFX : public objFilterEffect {
    public:
@@ -1365,49 +1371,51 @@ class objOffsetFX : public objFilterEffect {
 #define MT_RFSelectInvert -25
 #define MT_RFSelectMask -26
 
-struct rfSelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
-struct rfSelectTable { CMP Component; DOUBLE * Values; LONG Size;  };
-struct rfSelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept;  };
-struct rfSelectIdentity { CMP Component;  };
-struct rfSelectDiscrete { CMP Component; DOUBLE * Values; LONG Size;  };
-struct rfSelectInvert { CMP Component;  };
-struct rfSelectMask { CMP Component; LONG Mask;  };
+namespace rf {
+struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
+struct SelectTable { CMP Component; DOUBLE * Values; LONG Size;  };
+struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept;  };
+struct SelectIdentity { CMP Component;  };
+struct SelectDiscrete { CMP Component; DOUBLE * Values; LONG Size;  };
+struct SelectInvert { CMP Component;  };
+struct SelectMask { CMP Component; LONG Mask;  };
 
-inline ERR rfSelectGamma(APTR Ob, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) noexcept {
-   struct rfSelectGamma args = { Component, Amplitude, Offset, Exponent };
+inline ERR SelectGamma(APTR Ob, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) noexcept {
+   struct SelectGamma args = { Component, Amplitude, Offset, Exponent };
    return(Action(MT_RFSelectGamma, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR rfSelectTable(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) noexcept {
-   struct rfSelectTable args = { Component, Values, Size };
+inline ERR SelectTable(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) noexcept {
+   struct SelectTable args = { Component, Values, Size };
    return(Action(MT_RFSelectTable, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR rfSelectLinear(APTR Ob, CMP Component, DOUBLE Slope, DOUBLE Intercept) noexcept {
-   struct rfSelectLinear args = { Component, Slope, Intercept };
+inline ERR SelectLinear(APTR Ob, CMP Component, DOUBLE Slope, DOUBLE Intercept) noexcept {
+   struct SelectLinear args = { Component, Slope, Intercept };
    return(Action(MT_RFSelectLinear, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR rfSelectIdentity(APTR Ob, CMP Component) noexcept {
-   struct rfSelectIdentity args = { Component };
+inline ERR SelectIdentity(APTR Ob, CMP Component) noexcept {
+   struct SelectIdentity args = { Component };
    return(Action(MT_RFSelectIdentity, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR rfSelectDiscrete(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) noexcept {
-   struct rfSelectDiscrete args = { Component, Values, Size };
+inline ERR SelectDiscrete(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) noexcept {
+   struct SelectDiscrete args = { Component, Values, Size };
    return(Action(MT_RFSelectDiscrete, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR rfSelectInvert(APTR Ob, CMP Component) noexcept {
-   struct rfSelectInvert args = { Component };
+inline ERR SelectInvert(APTR Ob, CMP Component) noexcept {
+   struct SelectInvert args = { Component };
    return(Action(MT_RFSelectInvert, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR rfSelectMask(APTR Ob, CMP Component, LONG Mask) noexcept {
-   struct rfSelectMask args = { Component, Mask };
+inline ERR SelectMask(APTR Ob, CMP Component, LONG Mask) noexcept {
+   struct SelectMask args = { Component, Mask };
    return(Action(MT_RFSelectMask, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objRemapFX : public objFilterEffect {
    public:
@@ -1583,28 +1591,29 @@ class objVectorFilter : public Object {
 #define MT_VecNewMatrix -9
 #define MT_VecFreeMatrix -10
 
-struct vecPush { LONG Position;  };
-struct vecTrace { FUNCTION * Callback; DOUBLE Scale; LONG Transform;  };
-struct vecGetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
-struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
-struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
-struct vecSubscribeKeyboard { FUNCTION * Callback;  };
-struct vecSubscribeFeedback { FM Mask; FUNCTION * Callback;  };
-struct vecNewMatrix { struct VectorMatrix * Transform; LONG End;  };
-struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
+namespace vec {
+struct Push { LONG Position;  };
+struct Trace { FUNCTION * Callback; DOUBLE Scale; LONG Transform;  };
+struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
+struct PointInPath { DOUBLE X; DOUBLE Y;  };
+struct SubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
+struct SubscribeKeyboard { FUNCTION * Callback;  };
+struct SubscribeFeedback { FM Mask; FUNCTION * Callback;  };
+struct NewMatrix { struct VectorMatrix * Transform; LONG End;  };
+struct FreeMatrix { struct VectorMatrix * Matrix;  };
 
-inline ERR vecPush(APTR Ob, LONG Position) noexcept {
-   struct vecPush args = { Position };
+inline ERR Push(APTR Ob, LONG Position) noexcept {
+   struct Push args = { Position };
    return(Action(MT_VecPush, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecTrace(APTR Ob, FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
-   struct vecTrace args = { Callback, Scale, Transform };
+inline ERR Trace(APTR Ob, FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
+   struct Trace args = { Callback, Scale, Transform };
    return(Action(MT_VecTrace, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecGetBoundary(APTR Ob, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
-   struct vecGetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
+inline ERR GetBoundary(APTR Ob, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
+   struct GetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
    ERR error = Action(MT_VecGetBoundary, (OBJECTPTR)Ob, &args);
    if (X) *X = args.X;
    if (Y) *Y = args.Y;
@@ -1613,40 +1622,43 @@ inline ERR vecGetBoundary(APTR Ob, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * W
    return(error);
 }
 
-inline ERR vecPointInPath(APTR Ob, DOUBLE X, DOUBLE Y) noexcept {
-   struct vecPointInPath args = { X, Y };
+inline ERR PointInPath(APTR Ob, DOUBLE X, DOUBLE Y) noexcept {
+   struct PointInPath args = { X, Y };
    return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION * Callback) noexcept {
-   struct vecSubscribeInput args = { Mask, Callback };
+inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION * Callback) noexcept {
+   struct SubscribeInput args = { Mask, Callback };
    return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecSubscribeKeyboard(APTR Ob, FUNCTION * Callback) noexcept {
-   struct vecSubscribeKeyboard args = { Callback };
+inline ERR SubscribeKeyboard(APTR Ob, FUNCTION * Callback) noexcept {
+   struct SubscribeKeyboard args = { Callback };
    return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) noexcept {
-   struct vecSubscribeFeedback args = { Mask, Callback };
+inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) noexcept {
+   struct SubscribeFeedback args = { Mask, Callback };
    return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }
 
-#define vecDebug(obj) Action(MT_VecDebug,(obj),0)
+inline ERR Debug(APTR Ob) noexcept {
+   return(Action(MT_VecDebug, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform, LONG End) noexcept {
-   struct vecNewMatrix args = { (struct VectorMatrix *)0, End };
+inline ERR NewMatrix(APTR Ob, struct VectorMatrix ** Transform, LONG End) noexcept {
+   struct NewMatrix args = { (struct VectorMatrix *)0, End };
    ERR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);
 }
 
-inline ERR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) noexcept {
-   struct vecFreeMatrix args = { Matrix };
+inline ERR FreeMatrix(APTR Ob, struct VectorMatrix * Matrix) noexcept {
+   struct FreeMatrix args = { Matrix };
    return(Action(MT_VecFreeMatrix, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objVector : public Object {
    public:
@@ -1912,39 +1924,41 @@ class objVector : public Object {
 #define MT_VPGetCommand -33
 #define MT_VPSetCommandList -34
 
-struct vpAddCommand { struct PathCommand * Commands; LONG Size;  };
-struct vpRemoveCommand { LONG Index; LONG Total;  };
-struct vpSetCommand { LONG Index; struct PathCommand * Command; LONG Size;  };
-struct vpGetCommand { LONG Index; struct PathCommand * Command;  };
-struct vpSetCommandList { APTR Commands; LONG Size;  };
+namespace vp {
+struct AddCommand { struct PathCommand * Commands; LONG Size;  };
+struct RemoveCommand { LONG Index; LONG Total;  };
+struct SetCommand { LONG Index; struct PathCommand * Command; LONG Size;  };
+struct GetCommand { LONG Index; struct PathCommand * Command;  };
+struct SetCommandList { APTR Commands; LONG Size;  };
 
-inline ERR vpAddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) noexcept {
-   struct vpAddCommand args = { Commands, Size };
+inline ERR AddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) noexcept {
+   struct AddCommand args = { Commands, Size };
    return(Action(MT_VPAddCommand, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vpRemoveCommand(APTR Ob, LONG Index, LONG Total) noexcept {
-   struct vpRemoveCommand args = { Index, Total };
+inline ERR RemoveCommand(APTR Ob, LONG Index, LONG Total) noexcept {
+   struct RemoveCommand args = { Index, Total };
    return(Action(MT_VPRemoveCommand, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vpSetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LONG Size) noexcept {
-   struct vpSetCommand args = { Index, Command, Size };
+inline ERR SetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LONG Size) noexcept {
+   struct SetCommand args = { Index, Command, Size };
    return(Action(MT_VPSetCommand, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR vpGetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) noexcept {
-   struct vpGetCommand args = { Index, (struct PathCommand *)0 };
+inline ERR GetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) noexcept {
+   struct GetCommand args = { Index, (struct PathCommand *)0 };
    ERR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
    if (Command) *Command = args.Command;
    return(error);
 }
 
-inline ERR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) noexcept {
-   struct vpSetCommandList args = { Commands, Size };
+inline ERR SetCommandList(APTR Ob, APTR Commands, LONG Size) noexcept {
+   struct SetCommandList args = { Commands, Size };
    return(Action(MT_VPSetCommandList, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objVectorPath : public objVector {
    public:
@@ -1962,13 +1976,15 @@ class objVectorPath : public objVector {
 
 #define MT_VTDeleteLine -30
 
-struct vtDeleteLine { LONG Line;  };
+namespace vt {
+struct DeleteLine { LONG Line;  };
 
-inline ERR vtDeleteLine(APTR Ob, LONG Line) noexcept {
-   struct vtDeleteLine args = { Line };
+inline ERR DeleteLine(APTR Ob, LONG Line) noexcept {
+   struct DeleteLine args = { Line };
    return(Action(MT_VTDeleteLine, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objVectorText : public objVector {
    public:
@@ -2718,21 +2734,23 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
 
-
-INLINE ERR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
-   struct vecSubscribeInput args = { Mask, &Callback };
+namespace vec {
+inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
+   struct SubscribeInput args = { Mask, &Callback };
    return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR vecSubscribeKeyboard(APTR Ob, FUNCTION Callback) {
-   struct vecSubscribeKeyboard args = { &Callback };
+inline ERR SubscribeKeyboard(APTR Ob, FUNCTION Callback) {
+   struct SubscribeKeyboard args = { &Callback };
    return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
-   struct vecSubscribeFeedback args = { Mask, &Callback };
+inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
+   struct SubscribeFeedback args = { Mask, &Callback };
    return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }
+
+} // namespace
 
 namespace fl {
    using namespace pf;

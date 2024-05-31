@@ -1031,7 +1031,7 @@ class FloatRect {
   ]]) -- [32/52]
 
   c_insert([[
-struct ScriptArg { // For use with scExec
+struct ScriptArg { // For use with sc::Exec
    CSTRING Name;
    ULONG Type;
    union {
@@ -2132,28 +2132,30 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
    }
 
    inline ERR write(CSTRING Group, CSTRING Key, CSTRING Value) {
-      struct cfgWriteValue write = { Group, Key, Value };
+      struct cfg::WriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);
    }
    inline ERR write(CSTRING Group, CSTRING Key, STRING Value) {
-      struct cfgWriteValue write = { Group, Key, Value };
+      struct cfg::WriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);
    }
    inline ERR write(CSTRING Group, CSTRING Key, std::string Value) {
-      struct cfgWriteValue write = { Group, Key, Value.c_str() };
+      struct cfg::WriteValue write = { Group, Key, Value.c_str() };
       return Action(MT_CfgWriteValue, this, &write);
    }
    template <class T> inline ERR write(CSTRING Group, CSTRING Key, T Value) {
       auto str = std::to_string(Value);
-      struct cfgWriteValue write = { Group, Key, str.c_str() };
+      struct cfg::WriteValue write = { Group, Key, str.c_str() };
       return Action(MT_CfgWriteValue, this, &write);
    }
   ]])
 
   c_insert([[
-inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+namespace cfg {
+
+inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {
-   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   struct ReadValue read = { .Group = Group, .Key = Key };
    if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
       *Value = strtod(read.Data, NULL);
       return ERR::Okay;
@@ -2161,15 +2163,17 @@ inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
    else { *Value = 0; return error; }
 }
 
-inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 {
-   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   struct ReadValue read = { .Group = Group, .Key = Key };
    if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
       *Value = strtol(read.Data, NULL, 0);
       return ERR::Okay;
    }
    else { *Value = 0; return error; }
 }
+
+} // namespace
   ]])
 
   methods("Script", "Sc", {
@@ -2206,29 +2210,31 @@ inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]])
 
   c_insert([[
-template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
-   struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+namespace sc {
+template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
+   struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
    return Action(MT_ScCallback, Function.Context, &args);
 }
 
-template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
-   struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
+   struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
    ERR error = Action(MT_ScCallback, Function.Context, &args);
    Result = args.Error;
    return(error);
 }
 
-inline ERR scCall(const FUNCTION &Function) noexcept {
-   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+inline ERR Call(const FUNCTION &Function) noexcept {
+   struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
    return Action(MT_ScCallback, Function.Context, &args);
 }
 
-inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
-   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
+   struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
    ERR error = Action(MT_ScCallback, Function.Context, &args);
    Result = args.Error;
    return(error);
 }
+} // namespace
   ]])
 
   struct("ActionEntry", { restrict='c', comment="For the Task Actions field." }, [[
@@ -2297,7 +2303,7 @@ inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
 
   -- Note that the fields following SystemTime are identical to struct DateTime
 
-  methods("Time", "Tm", {
+  methods("Time", "Pt", {
     { id=1, name="SetTime" },
   })
 
@@ -2454,15 +2460,17 @@ struct evHotplug {
 
 // File Methods.
 
-inline CSTRING flReadLine(OBJECTPTR Object) {
-   struct flReadLine args;
+namespace fl {
+
+inline CSTRING ReadLine(OBJECTPTR Object) {
+   struct ReadLine args;
    if (Action(MT_FlReadLine, Object, &args) IS ERR::Okay) return args.Result;
    else return NULL;
 }
 
 // Read endian values from files and objects.
 
-template<class T> ERR flReadLE(OBJECTPTR Object, T *Result)
+template<class T> ERR ReadLE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
@@ -2486,7 +2494,7 @@ template<class T> ERR flReadLE(OBJECTPTR Object, T *Result)
    else return ERR::Read;
 }
 
-template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
+template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
@@ -2509,6 +2517,8 @@ template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
    }
    else return ERR::Read;
 }
+
+} // namespace
 
 // Function construction (refer types.h)
 

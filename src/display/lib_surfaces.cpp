@@ -378,7 +378,7 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
 
       OBJECTPTR display;
       if (AccessObject(Self->DisplayID, 5000, &display) IS ERR::Okay) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
-         if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
+         if (gfx::SetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
             ReleaseObject(display);
             return log.warning(ERR::Redimension);
          }
@@ -531,7 +531,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
          else routine(Self->Callback[i].Object, Self, Bitmap, cb.Meta);
       }
       else if (cb.isScript()) {
-         scCall(cb, std::to_array<ScriptArg>({
+         sc::Call(cb, std::to_array<ScriptArg>({
             { "Surface", Self, FD_OBJECTPTR },
             { "Bitmap",  Bitmap, FD_OBJECTPTR }
          }));

@@ -78,7 +78,7 @@
     <method>
       <name>ParseSymbol</name>
       <comment>Generate a vector scene graph from an SVG symbol, targeting a viewport.</comment>
-      <prototype>ERR svgParseSymbol(OBJECTPTR Object, CSTRING ID, objVectorViewport * Viewport)</prototype>
+      <prototype>ERR svg::ParseSymbol(OBJECTPTR Object, CSTRING ID, objVectorViewport * Viewport)</prototype>
       <input>
         <param type="CSTRING" name="ID">Name of the symbol to parse.</param>
         <param type="objVectorViewport *" name="Viewport">The target viewport.</param>
@@ -92,7 +92,7 @@
     <method>
       <name>Render</name>
       <comment>Render the scene to a target Bitamp.</comment>
-      <prototype>ERR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <prototype>ERR svg::Render(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
       <input>
         <param type="objBitmap *" name="Bitmap">The target <class name="Bitmap">Bitmap</class>.</param>
         <param type="LONG" name="X">Target X coordinate.</param>

@@ -670,7 +670,7 @@ ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, double Scale)
             args[2].Long = cmd;
             args[3].Double = x;
             args[4].Double = y;
-            if (scCall(*Callback, args, result) != ERR::Okay) return ERR::Failed;
+            if (sc::Call(*Callback, args, result) != ERR::Okay) return ERR::Failed;
             if (result IS ERR::Terminate) return ERR::Okay;
          }
       } while (cmd != agg::path_cmd_stop);

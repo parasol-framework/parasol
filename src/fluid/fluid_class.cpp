@@ -79,8 +79,8 @@ static const ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-static ERR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
-static ERR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
+static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
+static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
 
 static const MethodEntry clMethods[] = {
    { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
@@ -586,7 +586,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
 //********************************************************************************************************************
 
-static ERR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
+static ERR FLUID_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
    pf::Log log;
 
@@ -620,7 +620,7 @@ static ERR FLUID_Free(objScript *Self)
 
 //********************************************************************************************************************
 
-static ERR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
+static ERR FLUID_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
    pf::Log log;
 

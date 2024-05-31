@@ -139,7 +139,7 @@ static ERR MODExpunge(void)
       // NB: Most Audio objects will be disposed of prior to this module being expunged.
       if (handle) {
          pf::ScopedObjectLock<extAudio> audio(id, 3000);
-         if (audio.granted()) sndCloseChannels(*audio, handle);
+         if (audio.granted()) snd::CloseChannels(*audio, handle);
       }
    }
    glSoundChannels.clear();

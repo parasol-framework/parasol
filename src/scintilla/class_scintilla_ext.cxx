@@ -277,7 +277,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
 
    auto clipboard = objClipboard::create { };
    if (clipboard.ok()) {
-      if (clipAddText(*clipboard, selectedText.s) IS ERR::Okay) {
+      if (clip::AddText(*clipboard, selectedText.s) IS ERR::Okay) {
 
       }
    }
@@ -326,7 +326,7 @@ void ScintillaParasol::Paste()
 
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
-      struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
+      struct clip::GetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
       if (Action(MT_ClipGetFiles, *clipboard, &get) IS ERR::Okay) {
          objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {

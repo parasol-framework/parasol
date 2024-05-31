@@ -109,7 +109,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                         result = callback(surface_id, func->Meta);
                      }
                      else if (func->isScript()) {
-                        scCall(*func, std::to_array<ScriptArg>({ { "SurfaceID", surface_id, FDF_OBJECTID } }), result);
+                        sc::Call(*func, std::to_array<ScriptArg>({ { "SurfaceID", surface_id, FDF_OBJECTID } }), result);
                      }
                      else result = ERR::Okay;
 

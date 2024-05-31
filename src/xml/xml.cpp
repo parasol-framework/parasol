@@ -214,7 +214,7 @@ static ERR xml_count(extXML *Self, XMLTag &Tag, CSTRING Attrib)
    return ERR::Okay;
 }
 
-static ERR XML_Count(extXML *Self, struct xmlCount *Args)
+static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 {
    pf::Log log;
 
@@ -285,7 +285,7 @@ Search: A matching tag could not be found.
 
 *********************************************************************************************************************/
 
-static ERR XML_Filter(extXML *Self, struct xmlFilter *Args)
+static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
    if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
 
@@ -323,7 +323,7 @@ Search: A matching tag could not be found.
 
 *********************************************************************************************************************/
 
-static ERR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
+static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 {
    pf::Log log;
 
@@ -375,7 +375,7 @@ NotFound: The `Attrib` name was not found.
 
 *********************************************************************************************************************/
 
-static ERR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
+static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 {
    pf::Log log;
 
@@ -443,7 +443,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    Args->Value[0] = 0;
 
    if (pf::startswith("count:", field)) {
-      if (xmlCount(Self, field+6, &count) IS ERR::Okay) {
+      if (xml::Count(Self, field+6, &count) IS ERR::Okay) {
          Args->Value[IntToStr(count, Args->Value, Args->Size)] = 0;
          return ERR::Okay;
       }
@@ -525,7 +525,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
          }
          else if (extract IS 2) {
             STRING str;
-            ERR error = xmlSerialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
+            ERR error = xml::Serialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (error IS ERR::Okay) {
                StrCopy(str, Args->Value, Args->Size);
                FreeResource(str);
@@ -584,7 +584,7 @@ BufferOverflow: The `Buffer` was not large enough to hold the content (the resul
 
 *********************************************************************************************************************/
 
-static ERR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
+static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 {
    pf::Log log;
 
@@ -620,7 +620,7 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 *********************************************************************************************************************/
 
-static ERR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
+static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
 {
    pf::Log log;
 
@@ -682,7 +682,7 @@ NotFound: The Index is not recognised.
 
 *********************************************************************************************************************/
 
-static ERR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
+static ERR XML_GetTag(extXML *Self, struct xml::GetTag *Args)
 {
    pf::Log log;
 
@@ -758,7 +758,7 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
+static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
 {
    pf::Log log;
 
@@ -822,7 +822,7 @@ ReadOnly: Changes to the XML data are not permitted.
 
 *********************************************************************************************************************/
 
-static ERR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
+static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
 {
    pf::Log log;
 
@@ -889,7 +889,7 @@ Search: The `XPath` could not be resolved.
 
 *********************************************************************************************************************/
 
-ERR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
+ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
 {
    pf::Log log;
 
@@ -899,7 +899,7 @@ ERR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
    log.branch("Insert: %d, XPath: %s", LONG(Args->Where), Args->XPath);
 
    if (Self->findTag(Args->XPath) IS ERR::Okay) {
-      struct xmlInsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
+      struct xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
       if (auto error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
          Args->Result = insert.Result;
          return ERR::Okay;
@@ -937,7 +937,7 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
+static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
 {
    pf::Log log;
 
@@ -1043,7 +1043,7 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
+static ERR XML_RemoveTag(extXML *Self, struct xml::RemoveTag *Args)
 {
    pf::Log log;
 
@@ -1106,7 +1106,7 @@ ReadOnly
 
 *********************************************************************************************************************/
 
-static ERR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
+static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
 {
    pf::Log log;
 
@@ -1183,7 +1183,7 @@ static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 
    ERR error;
    STRING str;
-   if ((error = xmlSerialise(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str)) IS ERR::Okay) {
+   if ((error = xml::Serialise(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str)) IS ERR::Okay) {
       struct acWrite write = { str, StrLength(str) };
       if (Action(AC_Write, Args->Dest, &write) != ERR::Okay) error = ERR::Write;
       FreeResource(str);
@@ -1224,7 +1224,7 @@ ReadOnly: The XML object is read-only.
 
 *********************************************************************************************************************/
 
-static ERR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
+static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
 {
    pf::Log log;
 
@@ -1369,7 +1369,7 @@ AllocMemory:
 
 *********************************************************************************************************************/
 
-static ERR XML_Sort(extXML *Self, struct xmlSort *Args)
+static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 {
    pf::Log log;
 

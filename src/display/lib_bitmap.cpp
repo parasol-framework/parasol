@@ -1905,7 +1905,7 @@ int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.  If set to neit
 
 void gfxFlipBitmap(extBitmap *Bitmap, FLIP Orientation)
 {
-   bmpFlip(Bitmap, Orientation);
+   bmp::Flip(Bitmap, Orientation);
 }
 
 /*********************************************************************************************************************

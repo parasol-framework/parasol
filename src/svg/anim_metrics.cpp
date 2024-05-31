@@ -393,16 +393,16 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
    if (not values.empty()) {
       LONG vi = F2T((values.size()-1) * seek);
       if (vi >= LONG(values.size())-1) vi = values.size() - 2;
-      vecReadPainter(NULL, values[vi].c_str(), &from_col, NULL);
-      vecReadPainter(NULL, values[vi+1].c_str(), &to_col, NULL);
+      vec::ReadPainter(NULL, values[vi].c_str(), &from_col, NULL);
+      vec::ReadPainter(NULL, values[vi+1].c_str(), &to_col, NULL);
 
       const double mod = 1.0 / double(values.size() - 1);
       seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
    }
    else if (not from.empty()) {
       if (not to.empty()) {
-         vecReadPainter(NULL, from.c_str(), &from_col, NULL);
-         vecReadPainter(NULL, to.c_str(), &to_col, NULL);
+         vec::ReadPainter(NULL, from.c_str(), &from_col, NULL);
+         vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
       }
       else if (not by.empty()) {
          return { 0, 0, 0, 0 };
@@ -410,15 +410,15 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
    }
    else if (not to.empty()) {
       // The original value will be the 'from' in this situation
-      vecReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
-      vecReadPainter(NULL, to.c_str(), &to_col, NULL);
+      vec::ReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
+      vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
    }
    else if (not by.empty()) {
       FLOAT *colour;
       LONG elements;
       if ((GetFieldArray(&Vector, Field, &colour, &elements) IS ERR::Okay) and (elements IS 4)) {
          from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
-         vecReadPainter(NULL, to.c_str(), &to_col, NULL);
+         vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
          to_col.Colour.Red   = std::clamp<float>(to_col.Colour.Red   + colour[0], 0.0, 1.0);
          to_col.Colour.Green = std::clamp<float>(to_col.Colour.Green + colour[1], 0.0, 1.0);
          to_col.Colour.Blue  = std::clamp<float>(to_col.Colour.Blue  + colour[2], 0.0, 1.0);
@@ -430,7 +430,7 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
 
    if ((seek_to >= 1.0) and (!freeze)) {
       VectorPainter painter;
-      vecReadPainter(NULL, target_attrib_orig.c_str(), &painter, NULL);
+      vec::ReadPainter(NULL, target_attrib_orig.c_str(), &painter, NULL);
       return painter.Colour;
    }
 

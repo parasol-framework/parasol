@@ -37,7 +37,7 @@ constexpr DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
    VectorPainter painter;
-   if (vecReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
+   if (vec::ReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
       RGB->Red   = F2T(painter.Colour.Red   * 255.0);
       RGB->Green = F2T(painter.Colour.Green * 255.0);
       RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
@@ -886,7 +886,7 @@ void ui_link::exec(extDocument *Self)
             }
          }
 
-         scExec(script, function_name.c_str(), sa.data(), sa.size());
+         sc::Exec(script, function_name.c_str(), sa.data(), sa.size());
       }
    }
    else if (origin.type IS LINK::HREF) {
@@ -959,7 +959,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
    // Find the indexes for the bookmark name
 
    LONG start, end;
-   if (docFindIndex(Self, Bookmark.c_str(), &start, &end) IS ERR::Okay) {
+   if (doc::FindIndex(Self, Bookmark.c_str(), &start, &end) IS ERR::Okay) {
       // Get the vertical position of the index and scroll to it
 
       auto &esc_index = Self->Stream.lookup<bc_index>(start);
@@ -996,7 +996,7 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
       }
       else if (Self->EventCallback.isScript()) {
          if (EventData) {
-            scCall(Self->EventCallback, std::to_array<ScriptArg>({
+            sc::Call(Self->EventCallback, std::to_array<ScriptArg>({
                { "Document", Self, FD_OBJECTPTR },
                { "EventMask", LONG(Event) },
                { "KeyValue:Parameters", EventData, FD_STRUCT },
@@ -1004,7 +1004,7 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
             }), result);
          }
          else {
-            scCall(Self->EventCallback, std::to_array<ScriptArg>({
+            sc::Call(Self->EventCallback, std::to_array<ScriptArg>({
                { "Document",  Self, FD_OBJECTPTR },
                { "EventMask", LONG(Event) },
                { "KeyValue",  LONG(0) },

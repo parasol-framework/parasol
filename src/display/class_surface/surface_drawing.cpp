@@ -161,7 +161,7 @@ ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, LON
       else {
          log.trace("Unable to access internal bitmap, sending delayed expose message.  Error: %s", GetErrorMsg(error));
 
-         struct drwExpose expose = {
+         struct drw::Expose expose = {
             .X      = childexpose.Left   - List[i].Left,
             .Y      = childexpose.Top    - List[i].Top,
             .Width  = childexpose.Right  - childexpose.Left,
@@ -392,20 +392,20 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
+static ERR SURFACE_Expose(extSurface *Self, struct drw::Expose *Args)
 {
    if (tlNoExpose) return ERR::Okay;
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    LONG msgindex = 0;
    while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
       if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs) {
-            auto msgexpose = (struct drwExpose *)(action + 1);
+            auto msgexpose = (struct drw::Expose *)(action + 1);
 
             if (!Args) {
                // Invalidate everything
@@ -434,7 +434,7 @@ static ERR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
                msgexpose->Flags  |= Args->Flags;
             }
 
-            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drw::Expose));
          }
          else {
             // We do nothing here because the next expose message will draw everything.
@@ -481,7 +481,7 @@ AccessMemory: Failed to access the internal surface list.
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegion *Args)
+static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegion *Args)
 {
    if (Self->invisible() or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
       return ERR::Okay|ERR::Notified;
@@ -494,12 +494,12 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegion
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    LONG msgindex = 0;
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
       if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs IS TRUE) {
-            auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
+            auto msginvalid = (struct drw::InvalidateRegion *)(action + 1);
 
             if (!Args) { // Invalidate everything
                action->SendArgs = FALSE;
@@ -517,7 +517,7 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegion
                msginvalid->Height = bottom - msginvalid->Y;
             }
 
-            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drw::InvalidateRegion));
          }
          else { } // We do nothing here because the next invalidation message will draw everything.
 

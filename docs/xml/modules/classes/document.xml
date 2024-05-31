@@ -148,7 +148,7 @@
     <method>
       <name>AddListener</name>
       <comment>Adds a listener to a document trigger for receiving special callbacks.</comment>
-      <prototype>ERR docAddListener(OBJECTPTR Object, DRT Trigger, FUNCTION * Function)</prototype>
+      <prototype>ERR doc::AddListener(OBJECTPTR Object, DRT Trigger, FUNCTION * Function)</prototype>
       <input>
         <param type="DRT" name="Trigger" lookup="DRT">The unique identifier for the trigger.</param>
         <param type="FUNCTION *" name="Function">The function to call when the trigger activates.</param>
@@ -179,7 +179,7 @@
     <method>
       <name>CallFunction</name>
       <comment>Executes any registered function in the currently open document.</comment>
-      <prototype>ERR docCallFunction(OBJECTPTR Object, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs)</prototype>
+      <prototype>ERR doc::CallFunction(OBJECTPTR Object, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Function">The name of the function that will be called.</param>
         <param type="struct ScriptArg *" name="Args">Pointer to an optional list of parameters to pass to the procedure.</param>
@@ -198,7 +198,7 @@
     <method>
       <name>Edit</name>
       <comment>Activates a user editing section within a document.</comment>
-      <prototype>ERR docEdit(OBJECTPTR Object, CSTRING Name, LONG Flags)</prototype>
+      <prototype>ERR doc::Edit(OBJECTPTR Object, CSTRING Name, LONG Flags)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the edit cell that will be activated.</param>
         <param type="LONG" name="Flags">Optional flags.</param>
@@ -217,7 +217,7 @@
     <method>
       <name>FindIndex</name>
       <comment>Searches the document stream for an index, returning the start and end points if found.</comment>
-      <prototype>ERR docFindIndex(OBJECTPTR Object, CSTRING Name, LONG * Start, LONG * End)</prototype>
+      <prototype>ERR doc::FindIndex(OBJECTPTR Object, CSTRING Name, LONG * Start, LONG * End)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the index to search for.</param>
         <param type="LONG *" name="Start">The byte position of the index is returned in this parameter.</param>
@@ -237,7 +237,7 @@
     <method>
       <name>HideIndex</name>
       <comment>Hides the content held within a named index.</comment>
-      <prototype>ERR docHideIndex(OBJECTPTR Object, CSTRING Name)</prototype>
+      <prototype>ERR doc::HideIndex(OBJECTPTR Object, CSTRING Name)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the index.</param>
       </input>
@@ -255,7 +255,7 @@
     <method>
       <name>InsertText</name>
       <comment>Inserts new content into a loaded document (raw text format).</comment>
-      <prototype>ERR docInsertText(OBJECTPTR Object, CSTRING Text, LONG Index, LONG Char, LONG Preformat)</prototype>
+      <prototype>ERR doc::InsertText(OBJECTPTR Object, CSTRING Text, LONG Index, LONG Char, LONG Preformat)</prototype>
       <input>
         <param type="CSTRING" name="Text">A UTF-8 text string.</param>
         <param type="LONG" name="Index">Reference to a <code>TEXT</code> control code that will receive the content.  If <code>-1</code>, the text will be inserted at the end of the document stream.</param>
@@ -278,7 +278,7 @@
     <method>
       <name>InsertXML</name>
       <comment>Inserts new content into a loaded document (XML format).</comment>
-      <prototype>ERR docInsertXML(OBJECTPTR Object, CSTRING XML, LONG Index)</prototype>
+      <prototype>ERR doc::InsertXML(OBJECTPTR Object, CSTRING XML, LONG Index)</prototype>
       <input>
         <param type="CSTRING" name="XML">An XML string in RIPL format.</param>
         <param type="LONG" name="Index">The byte position at which to insert the new content.</param>
@@ -300,7 +300,7 @@
     <method>
       <name>ReadContent</name>
       <comment>Returns selected content from the document, either as plain text or original byte code.</comment>
-      <prototype>ERR docReadContent(OBJECTPTR Object, DATA Format, LONG Start, LONG End, STRING * Result)</prototype>
+      <prototype>ERR doc::ReadContent(OBJECTPTR Object, DATA Format, LONG Start, LONG End, STRING * Result)</prototype>
       <input>
         <param type="DATA" name="Format" lookup="DATA">Set to <code>TEXT</code> to receive plain-text, or <code>RAW</code> to receive the original byte-code.</param>
         <param type="LONG" name="Start">An index in the document stream from which data will be extracted.</param>
@@ -323,7 +323,7 @@
     <method>
       <name>RemoveContent</name>
       <comment>Removes content from a loaded document.</comment>
-      <prototype>ERR docRemoveContent(OBJECTPTR Object, LONG Start, LONG End)</prototype>
+      <prototype>ERR doc::RemoveContent(OBJECTPTR Object, LONG Start, LONG End)</prototype>
       <input>
         <param type="LONG" name="Start">The byte position at which to start the removal.</param>
         <param type="LONG" name="End">The byte position at which the removal ends.</param>
@@ -342,7 +342,7 @@
     <method>
       <name>RemoveListener</name>
       <comment>Removes a previously configured listener from the document.</comment>
-      <prototype>ERR docRemoveListener(OBJECTPTR Object, LONG Trigger, FUNCTION * Function)</prototype>
+      <prototype>ERR doc::RemoveListener(OBJECTPTR Object, LONG Trigger, FUNCTION * Function)</prototype>
       <input>
         <param type="LONG" name="Trigger">The unique identifier for the trigger.</param>
         <param type="FUNCTION *" name="Function">The function that is called when the trigger activates.</param>
@@ -359,7 +359,7 @@
     <method>
       <name>SelectLink</name>
       <comment>Selects links in the document.</comment>
-      <prototype>ERR docSelectLink(OBJECTPTR Object, LONG Index, CSTRING Name)</prototype>
+      <prototype>ERR doc::SelectLink(OBJECTPTR Object, LONG Index, CSTRING Name)</prototype>
       <input>
         <param type="LONG" name="Index">Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the <code>Name</code> parameter is set.</param>
         <param type="CSTRING" name="Name">The name of the link to select (set to <code>NULL</code> if an <code>Index</code> is defined).</param>
@@ -379,7 +379,7 @@
     <method>
       <name>ShowIndex</name>
       <comment>Shows the content held within a named index.</comment>
-      <prototype>ERR docShowIndex(OBJECTPTR Object, CSTRING Name)</prototype>
+      <prototype>ERR doc::ShowIndex(OBJECTPTR Object, CSTRING Name)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the index.</param>
       </input>

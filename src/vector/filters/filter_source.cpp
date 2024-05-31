@@ -145,7 +145,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       mark_dirty(Self->Scene->Viewport, RC::TRANSFORM);
 
       Self->Scene->Bitmap = cache;
-      gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF::FILL);
+      gfx::DrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF::FILL);
       acDraw(Self->Scene);
 
       filter->Disabled = false;
@@ -156,7 +156,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       mark_dirty(Self->Source, RC::ALL);
    }
 
-   gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
+   gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
 
    Self->Render = false;
    return ERR::Okay;
@@ -278,7 +278,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    }
 
    objVector *src;
-   if (scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src) IS ERR::Okay) {
+   if (sc::FindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src) IS ERR::Okay) {
       if (src->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
       Self->Source = src;
       SubscribeAction(src, AC_Free, C_FUNCTION(notify_free_source));

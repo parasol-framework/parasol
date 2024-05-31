@@ -187,7 +187,7 @@ redo_upload:
       }
       else if (Self->Outgoing.isScript()) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
-         if (scCall(Self->Outgoing, std::to_array<ScriptArg>({
+         if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({
                { "HTTP",       Self, FD_OBJECTPTR },
                { "BufferSize", Self->WriteSize }
             }), error) != ERR::Okay) error = ERR::Failed;
@@ -949,7 +949,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
          log.trace("Calling script procedure %" PF64, Self->Incoming.ProcedureID);
 
-         if (scCall(Self->Incoming, std::to_array<ScriptArg>({
+         if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({
                { "HTTP",       Self,   FD_OBJECTPTR },
                { "Buffer",     Buffer, FD_PTRBUFFER },
                { "BufferSize", Length, FD_LONG|FD_BUFSIZE }

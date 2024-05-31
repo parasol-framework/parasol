@@ -201,7 +201,7 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
             }
          }
          else if (sub.Callback.isScript()) {
-            scCall(sub.Callback, std::to_array<ScriptArg>({
+            sc::Call(sub.Callback, std::to_array<ScriptArg>({
                { "Events:InputEvent", first, FD_PTR|FDF_STRUCT },
                { "Handle", handle }
             }));

@@ -140,7 +140,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       // attribute.
 
       if (not vt.matrix) {
-         vecNewMatrix(*vector, &vt.matrix, false);
+         vec::NewMatrix(*vector, &vt.matrix, false);
          vt.matrix->Tag = MTAG_ANIMATE_TRANSFORM;
       }
 
@@ -172,13 +172,13 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
          }
       }
 
-      if (!m) vecResetMatrix(vt.matrix);
+      if (!m) vec::ResetMatrix(vt.matrix);
 
       // Apply the transforms in reverse.
 
       for (auto t = vt.transforms.rbegin(); t != vt.transforms.rend(); t++) {
          vt.matrix[0] *= t[0]->matrix;
-         vecFlushMatrix(vt.matrix);
+         vec::FlushMatrix(vt.matrix);
          if (t[0]->additive IS ADD::REPLACE) break;
       }
    }
@@ -192,7 +192,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
          routine(SVG, SVG->FrameCallback.Meta);
       }
       else if (SVG->FrameCallback.isScript()) {
-         scCall(SVG->FrameCallback, std::to_array<ScriptArg>({ { "SVG", SVG, FD_OBJECTPTR } }));
+         sc::Call(SVG->FrameCallback, std::to_array<ScriptArg>({ { "SVG", SVG, FD_OBJECTPTR } }));
       }
    }
 

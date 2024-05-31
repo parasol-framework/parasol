@@ -161,11 +161,12 @@ struct NetClient {
 #define MT_csReadClientMsg -1
 #define MT_csWriteClientMsg -2
 
-struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
-struct csWriteClientMsg { APTR Message; LONG Length;  };
+namespace cs {
+struct ReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
+struct WriteClientMsg { APTR Message; LONG Length;  };
 
-inline ERR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
-   struct csReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
+inline ERR ReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+   struct ReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
@@ -174,11 +175,12 @@ inline ERR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progre
    return(error);
 }
 
-inline ERR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
-   struct csWriteClientMsg args = { Message, Length };
+inline ERR WriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
+   struct WriteClientMsg args = { Message, Length };
    return(Action(MT_csWriteClientMsg, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objClientSocket : public Object {
    public:
@@ -259,17 +261,23 @@ class objClientSocket : public Object {
 #define MT_prxFind -2
 #define MT_prxFindNext -3
 
-struct prxFind { LONG Port; LONG Enabled;  };
+namespace prx {
+struct Find { LONG Port; LONG Enabled;  };
 
-#define prxDelete(obj) Action(MT_prxDelete,(obj),0)
+inline ERR Delete(APTR Ob) noexcept {
+   return(Action(MT_prxDelete, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR prxFind(APTR Ob, LONG Port, LONG Enabled) noexcept {
-   struct prxFind args = { Port, Enabled };
+inline ERR Find(APTR Ob, LONG Port, LONG Enabled) noexcept {
+   struct Find args = { Port, Enabled };
    return(Action(MT_prxFind, (OBJECTPTR)Ob, &args));
 }
 
-#define prxFindNext(obj) Action(MT_prxFindNext,(obj),0)
+inline ERR FindNext(APTR Ob) noexcept {
+   return(Action(MT_prxFindNext, (OBJECTPTR)Ob, NULL));
+}
 
+} // namespace
 
 class objProxy : public Object {
    public:
@@ -372,31 +380,33 @@ class objProxy : public Object {
 #define MT_nlBlockingResolveName -3
 #define MT_nlBlockingResolveAddress -4
 
-struct nlResolveName { CSTRING HostName;  };
-struct nlResolveAddress { CSTRING Address;  };
-struct nlBlockingResolveName { CSTRING HostName;  };
-struct nlBlockingResolveAddress { CSTRING Address;  };
+namespace nl {
+struct ResolveName { CSTRING HostName;  };
+struct ResolveAddress { CSTRING Address;  };
+struct BlockingResolveName { CSTRING HostName;  };
+struct BlockingResolveAddress { CSTRING Address;  };
 
-inline ERR nlResolveName(APTR Ob, CSTRING HostName) noexcept {
-   struct nlResolveName args = { HostName };
+inline ERR ResolveName(APTR Ob, CSTRING HostName) noexcept {
+   struct ResolveName args = { HostName };
    return(Action(MT_nlResolveName, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nlResolveAddress(APTR Ob, CSTRING Address) noexcept {
-   struct nlResolveAddress args = { Address };
+inline ERR ResolveAddress(APTR Ob, CSTRING Address) noexcept {
+   struct ResolveAddress args = { Address };
    return(Action(MT_nlResolveAddress, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nlBlockingResolveName(APTR Ob, CSTRING HostName) noexcept {
-   struct nlBlockingResolveName args = { HostName };
+inline ERR BlockingResolveName(APTR Ob, CSTRING HostName) noexcept {
+   struct BlockingResolveName args = { HostName };
    return(Action(MT_nlBlockingResolveName, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nlBlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
-   struct nlBlockingResolveAddress args = { Address };
+inline ERR BlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
+   struct BlockingResolveAddress args = { Address };
    return(Action(MT_nlBlockingResolveAddress, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objNetLookup : public Object {
    public:
@@ -445,35 +455,36 @@ class objNetLookup : public Object {
 #define MT_nsReadMsg -5
 #define MT_nsWriteMsg -6
 
-struct nsConnect { CSTRING Address; LONG Port;  };
-struct nsGetLocalIPAddress { struct IPAddress * Address;  };
-struct nsDisconnectClient { struct NetClient * Client;  };
-struct nsDisconnectSocket { objClientSocket * Socket;  };
-struct nsReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
-struct nsWriteMsg { APTR Message; LONG Length;  };
+namespace ns {
+struct Connect { CSTRING Address; LONG Port;  };
+struct GetLocalIPAddress { struct IPAddress * Address;  };
+struct DisconnectClient { struct NetClient * Client;  };
+struct DisconnectSocket { objClientSocket * Socket;  };
+struct ReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
+struct WriteMsg { APTR Message; LONG Length;  };
 
-inline ERR nsConnect(APTR Ob, CSTRING Address, LONG Port) noexcept {
-   struct nsConnect args = { Address, Port };
+inline ERR Connect(APTR Ob, CSTRING Address, LONG Port) noexcept {
+   struct Connect args = { Address, Port };
    return(Action(MT_nsConnect, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) noexcept {
-   struct nsGetLocalIPAddress args = { Address };
+inline ERR GetLocalIPAddress(APTR Ob, struct IPAddress * Address) noexcept {
+   struct GetLocalIPAddress args = { Address };
    return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nsDisconnectClient(APTR Ob, struct NetClient * Client) noexcept {
-   struct nsDisconnectClient args = { Client };
+inline ERR DisconnectClient(APTR Ob, struct NetClient * Client) noexcept {
+   struct DisconnectClient args = { Client };
    return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) noexcept {
-   struct nsDisconnectSocket args = { Socket };
+inline ERR DisconnectSocket(APTR Ob, objClientSocket * Socket) noexcept {
+   struct DisconnectSocket args = { Socket };
    return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
-   struct nsReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
+inline ERR ReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+   struct ReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
@@ -482,11 +493,12 @@ inline ERR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LO
    return(error);
 }
 
-inline ERR nsWriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
-   struct nsWriteMsg args = { Message, Length };
+inline ERR WriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
+   struct WriteMsg args = { Message, Length };
    return(Action(MT_nsWriteMsg, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objNetSocket : public Object {
    public:

@@ -12,10 +12,10 @@ FDEF maCallback[] = { { "ProcedureID", FD_LARGE }, { "ScriptArg:Args", FD_PTR|FD
 FDEF maGetProcedureID[] = { { "Procedure", FD_STR }, { "ProcedureID", FD_LARGE|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clScriptMethods[] = {
-   { -1, (APTR)SCRIPT_Exec, "Exec", maExec, sizeof(struct scExec) },
-   { -2, (APTR)SCRIPT_DerefProcedure, "DerefProcedure", maDerefProcedure, sizeof(struct scDerefProcedure) },
-   { -3, (APTR)SCRIPT_Callback, "Callback", maCallback, sizeof(struct scCallback) },
-   { -4, (APTR)SCRIPT_GetProcedureID, "GetProcedureID", maGetProcedureID, sizeof(struct scGetProcedureID) },
+   { -1, (APTR)SCRIPT_Exec, "Exec", maExec, sizeof(struct sc::Exec) },
+   { -2, (APTR)SCRIPT_DerefProcedure, "DerefProcedure", maDerefProcedure, sizeof(struct sc::DerefProcedure) },
+   { -3, (APTR)SCRIPT_Callback, "Callback", maCallback, sizeof(struct sc::Callback) },
+   { -4, (APTR)SCRIPT_GetProcedureID, "GetProcedureID", maGetProcedureID, sizeof(struct sc::GetProcedureID) },
    { 0, 0, 0, 0, 0 }
 };
 

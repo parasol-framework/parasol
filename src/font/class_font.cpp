@@ -155,12 +155,12 @@ static ERR FONT_Init(extFont *Self)
                WORD size_shift = 0;
                UWORD font_count = 0;
                LONG font_offset = 0;
-               flReadLE(*file, &size_shift);
+               fl::ReadLE(*file, &size_shift);
 
                WORD type_id;
-               for ((error = flReadLE(*file, &type_id)); (error IS ERR::Okay) and (type_id); error = flReadLE(*file, &type_id)) {
+               for ((error = fl::ReadLE(*file, &type_id)); (error IS ERR::Okay) and (type_id); error = fl::ReadLE(*file, &type_id)) {
                   WORD count = 0;
-                  flReadLE(*file, &count);
+                  fl::ReadLE(*file, &count);
 
                   if ((UWORD)type_id IS 0x8008) {
                      font_count  = count;
@@ -184,8 +184,8 @@ static ERR FONT_Init(extFont *Self)
 
                for (LONG i=0; i < font_count; i++) {
                   UWORD offset, size;
-                  flReadLE(*file, &offset);
-                  flReadLE(*file, &size);
+                  fl::ReadLE(*file, &offset);
+                  fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
                   fonts[i].Size   = size<<size_shift;
                   file->seek(8, SEEK::CURRENT);
@@ -835,7 +835,7 @@ static ERR draw_bitmap_font(extFont *Self)
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
          if (Self->Underline.Alpha > 0) {
-            gfxDrawRectangle(bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
+            gfx::DrawRectangle(bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
          }
 
          str++;
@@ -1085,7 +1085,7 @@ static ERR draw_bitmap_font(extFont *Self)
    if (Self->Underline.Alpha > 0) {
       if ((Self->Flags & FTF::BASE_LINE) != FTF::NIL) sy = dycoord;
       else sy = dycoord + Self->Height + Self->Leading + 1;
-      gfxDrawRectangle(bitmap, startx, sy, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
+      gfx::DrawRectangle(bitmap, startx, sy, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
    }
 
    Self->EndX = dxcoord;

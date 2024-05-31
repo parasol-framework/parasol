@@ -1940,7 +1940,7 @@ struct Field {
    ULONG   Flags;                                                              // Special flags that describe the field
 };
 
-struct ScriptArg { // For use with scExec
+struct ScriptArg { // For use with sc::Exec
    CSTRING Name;
    ULONG Type;
    union {
@@ -3122,16 +3122,18 @@ inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
 
 #define MT_mcFindField -1
 
-struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+namespace mc {
+struct FindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
 
-inline ERR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) noexcept {
-   struct mcFindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
+inline ERR FindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) noexcept {
+   struct FindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
    ERR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
    if (Field) *Field = args.Field;
    if (Source) *Source = args.Source;
    return(error);
 }
 
+} // namespace
 
 class objMetaClass : public Object {
    public:
@@ -3297,56 +3299,62 @@ class objStorageDevice : public Object {
 #define MT_FlNext -9
 #define MT_FlWatch -10
 
-struct flStartStream { OBJECTID SubscriberID; FL Flags; LONG Length;  };
-struct flDelete { FUNCTION * Callback;  };
-struct flMove { CSTRING Dest; FUNCTION * Callback;  };
-struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
-struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type;  };
-struct flReadLine { STRING Result;  };
-struct flNext { objFile * File;  };
-struct flWatch { FUNCTION * Callback; LARGE Custom; MFF Flags;  };
+namespace fl {
+struct StartStream { OBJECTID SubscriberID; FL Flags; LONG Length;  };
+struct Delete { FUNCTION * Callback;  };
+struct Move { CSTRING Dest; FUNCTION * Callback;  };
+struct Copy { CSTRING Dest; FUNCTION * Callback;  };
+struct SetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type;  };
+struct ReadLine { STRING Result;  };
+struct Next { objFile * File;  };
+struct Watch { FUNCTION * Callback; LARGE Custom; MFF Flags;  };
 
-inline ERR flStartStream(APTR Ob, OBJECTID SubscriberID, FL Flags, LONG Length) noexcept {
-   struct flStartStream args = { SubscriberID, Flags, Length };
+inline ERR StartStream(APTR Ob, OBJECTID SubscriberID, FL Flags, LONG Length) noexcept {
+   struct StartStream args = { SubscriberID, Flags, Length };
    return(Action(MT_FlStartStream, (OBJECTPTR)Ob, &args));
 }
 
-#define flStopStream(obj) Action(MT_FlStopStream,(obj),0)
+inline ERR StopStream(APTR Ob) noexcept {
+   return(Action(MT_FlStopStream, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR flDelete(APTR Ob, FUNCTION * Callback) noexcept {
-   struct flDelete args = { Callback };
+inline ERR Delete(APTR Ob, FUNCTION * Callback) noexcept {
+   struct Delete args = { Callback };
    return(Action(MT_FlDelete, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR flMove(APTR Ob, CSTRING Dest, FUNCTION * Callback) noexcept {
-   struct flMove args = { Dest, Callback };
+inline ERR Move(APTR Ob, CSTRING Dest, FUNCTION * Callback) noexcept {
+   struct Move args = { Dest, Callback };
    return(Action(MT_FlMove, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) noexcept {
-   struct flCopy args = { Dest, Callback };
+inline ERR Copy(APTR Ob, CSTRING Dest, FUNCTION * Callback) noexcept {
+   struct Copy args = { Dest, Callback };
    return(Action(MT_FlCopy, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) noexcept {
-   struct flSetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
+inline ERR SetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) noexcept {
+   struct SetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
    return(Action(MT_FlSetDate, (OBJECTPTR)Ob, &args));
 }
 
-#define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
+inline ERR BufferContent(APTR Ob) noexcept {
+   return(Action(MT_FlBufferContent, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR flNext(APTR Ob, objFile ** File) noexcept {
-   struct flNext args = { (objFile *)0 };
+inline ERR Next(APTR Ob, objFile ** File) noexcept {
+   struct Next args = { (objFile *)0 };
    ERR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
    return(error);
 }
 
-inline ERR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) noexcept {
-   struct flWatch args = { Callback, Custom, Flags };
+inline ERR Watch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) noexcept {
+   struct Watch args = { Callback, Custom, Flags };
    return(Action(MT_FlWatch, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objFile : public Object {
    public:
@@ -3518,65 +3526,67 @@ class objFile : public Object {
 #define MT_CfgMergeFile -9
 #define MT_CfgMerge -10
 
-struct cfgReadValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
-struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
-struct cfgWriteValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
-struct cfgDeleteKey { CSTRING Group; CSTRING Key;  };
-struct cfgDeleteGroup { CSTRING Group;  };
-struct cfgGetGroupFromIndex { LONG Index; CSTRING Group;  };
-struct cfgSortByKey { CSTRING Key; LONG Descending;  };
-struct cfgMergeFile { CSTRING Path;  };
-struct cfgMerge { OBJECTPTR Source;  };
+namespace cfg {
+struct ReadValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct Set { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct WriteValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct DeleteKey { CSTRING Group; CSTRING Key;  };
+struct DeleteGroup { CSTRING Group;  };
+struct GetGroupFromIndex { LONG Index; CSTRING Group;  };
+struct SortByKey { CSTRING Key; LONG Descending;  };
+struct MergeFile { CSTRING Path;  };
+struct Merge { OBJECTPTR Source;  };
 
-inline ERR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) noexcept {
-   struct cfgReadValue args = { Group, Key, (CSTRING)0 };
+inline ERR ReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) noexcept {
+   struct ReadValue args = { Group, Key, (CSTRING)0 };
    ERR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
 }
 
-inline ERR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
-   struct cfgSet args = { Group, Key, Data };
+inline ERR Set(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
+   struct Set args = { Group, Key, Data };
    return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
-   struct cfgWriteValue args = { Group, Key, Data };
+inline ERR WriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
+   struct WriteValue args = { Group, Key, Data };
    return(Action(MT_CfgWriteValue, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cfgDeleteKey(APTR Ob, CSTRING Group, CSTRING Key) noexcept {
-   struct cfgDeleteKey args = { Group, Key };
+inline ERR DeleteKey(APTR Ob, CSTRING Group, CSTRING Key) noexcept {
+   struct DeleteKey args = { Group, Key };
    return(Action(MT_CfgDeleteKey, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cfgDeleteGroup(APTR Ob, CSTRING Group) noexcept {
-   struct cfgDeleteGroup args = { Group };
+inline ERR DeleteGroup(APTR Ob, CSTRING Group) noexcept {
+   struct DeleteGroup args = { Group };
    return(Action(MT_CfgDeleteGroup, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) noexcept {
-   struct cfgGetGroupFromIndex args = { Index, (CSTRING)0 };
+inline ERR GetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) noexcept {
+   struct GetGroupFromIndex args = { Index, (CSTRING)0 };
    ERR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
    if (Group) *Group = args.Group;
    return(error);
 }
 
-inline ERR cfgSortByKey(APTR Ob, CSTRING Key, LONG Descending) noexcept {
-   struct cfgSortByKey args = { Key, Descending };
+inline ERR SortByKey(APTR Ob, CSTRING Key, LONG Descending) noexcept {
+   struct SortByKey args = { Key, Descending };
    return(Action(MT_CfgSortByKey, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cfgMergeFile(APTR Ob, CSTRING Path) noexcept {
-   struct cfgMergeFile args = { Path };
+inline ERR MergeFile(APTR Ob, CSTRING Path) noexcept {
+   struct MergeFile args = { Path };
    return(Action(MT_CfgMergeFile, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cfgMerge(APTR Ob, OBJECTPTR Source) noexcept {
-   struct cfgMerge args = { Source };
+inline ERR Merge(APTR Ob, OBJECTPTR Source) noexcept {
+   struct Merge args = { Source };
    return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objConfig : public Object {
    public:
@@ -3640,20 +3650,20 @@ class objConfig : public Object {
    }
 
    inline ERR write(CSTRING Group, CSTRING Key, CSTRING Value) {
-      struct cfgWriteValue write = { Group, Key, Value };
+      struct cfg::WriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);
    }
    inline ERR write(CSTRING Group, CSTRING Key, STRING Value) {
-      struct cfgWriteValue write = { Group, Key, Value };
+      struct cfg::WriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);
    }
    inline ERR write(CSTRING Group, CSTRING Key, std::string Value) {
-      struct cfgWriteValue write = { Group, Key, Value.c_str() };
+      struct cfg::WriteValue write = { Group, Key, Value.c_str() };
       return Action(MT_CfgWriteValue, this, &write);
    }
    template <class T> inline ERR write(CSTRING Group, CSTRING Key, T Value) {
       auto str = std::to_string(Value);
-      struct cfgWriteValue write = { Group, Key, str.c_str() };
+      struct cfg::WriteValue write = { Group, Key, str.c_str() };
       return Action(MT_CfgWriteValue, this, &write);
    }
 
@@ -3699,9 +3709,11 @@ class objConfig : public Object {
 
 };
 
-inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+namespace cfg {
+
+inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {
-   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   struct ReadValue read = { .Group = Group, .Key = Key };
    if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
       *Value = strtod(read.Data, NULL);
       return ERR::Okay;
@@ -3709,15 +3721,17 @@ inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
    else { *Value = 0; return error; }
 }
 
-inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 {
-   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   struct ReadValue read = { .Group = Group, .Key = Key };
    if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
       *Value = strtol(read.Data, NULL, 0);
       return ERR::Okay;
    }
    else { *Value = 0; return error; }
 }
+
+} // namespace
 // Script class definition
 
 #define VER_SCRIPT (1.000000)
@@ -3729,35 +3743,37 @@ inline ERR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 #define MT_ScCallback -3
 #define MT_ScGetProcedureID -4
 
-struct scExec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs;  };
-struct scDerefProcedure { FUNCTION * Procedure;  };
-struct scCallback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error;  };
-struct scGetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
+namespace sc {
+struct Exec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs;  };
+struct DerefProcedure { FUNCTION * Procedure;  };
+struct Callback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error;  };
+struct GetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
 
-inline ERR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) noexcept {
-   struct scExec args = { Procedure, Args, TotalArgs };
+inline ERR Exec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) noexcept {
+   struct Exec args = { Procedure, Args, TotalArgs };
    return(Action(MT_ScExec, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR scDerefProcedure(APTR Ob, FUNCTION * Procedure) noexcept {
-   struct scDerefProcedure args = { Procedure };
+inline ERR DerefProcedure(APTR Ob, FUNCTION * Procedure) noexcept {
+   struct DerefProcedure args = { Procedure };
    return(Action(MT_ScDerefProcedure, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
-   struct scCallback args = { ProcedureID, Args, TotalArgs, (ERR)0 };
+inline ERR Callback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
+   struct Callback args = { ProcedureID, Args, TotalArgs, (ERR)0 };
    ERR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
    if (Error) *Error = args.Error;
    return(error);
 }
 
-inline ERR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) noexcept {
-   struct scGetProcedureID args = { Procedure, (LARGE)0 };
+inline ERR GetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) noexcept {
+   struct GetProcedureID args = { Procedure, (LARGE)0 };
    ERR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
    if (ProcedureID) *ProcedureID = args.ProcedureID;
    return(error);
 }
 
+} // namespace
 
 class objScript : public Object {
    public:
@@ -3885,29 +3901,31 @@ class objScript : public Object {
 
 };
 
-template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
-   struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+namespace sc {
+template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
+   struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
    return Action(MT_ScCallback, Function.Context, &args);
 }
 
-template <std::size_t SIZE> ERR scCall(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
-   struct scCallback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
+   struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
    ERR error = Action(MT_ScCallback, Function.Context, &args);
    Result = args.Error;
    return(error);
 }
 
-inline ERR scCall(const FUNCTION &Function) noexcept {
-   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+inline ERR Call(const FUNCTION &Function) noexcept {
+   struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
    return Action(MT_ScCallback, Function.Context, &args);
 }
 
-inline ERR scCall(const FUNCTION &Function, ERR &Result) noexcept {
-   struct scCallback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
+inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
+   struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
    ERR error = Action(MT_ScCallback, Function.Context, &args);
    Result = args.Error;
    return(error);
 }
+} // namespace
 struct ActionEntry {
    ERR (*PerformAction)(OBJECTPTR, APTR);     // Pointer to a custom action hook.
 };
@@ -3924,31 +3942,37 @@ struct ActionEntry {
 #define MT_TaskGetEnv -4
 #define MT_TaskSetEnv -5
 
-struct taskAddArgument { CSTRING Argument;  };
-struct taskGetEnv { CSTRING Name; CSTRING Value;  };
-struct taskSetEnv { CSTRING Name; CSTRING Value;  };
+namespace task {
+struct AddArgument { CSTRING Argument;  };
+struct GetEnv { CSTRING Name; CSTRING Value;  };
+struct SetEnv { CSTRING Name; CSTRING Value;  };
 
-#define taskExpunge(obj) Action(MT_TaskExpunge,(obj),0)
+inline ERR Expunge(APTR Ob) noexcept {
+   return(Action(MT_TaskExpunge, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR taskAddArgument(APTR Ob, CSTRING Argument) noexcept {
-   struct taskAddArgument args = { Argument };
+inline ERR AddArgument(APTR Ob, CSTRING Argument) noexcept {
+   struct AddArgument args = { Argument };
    return(Action(MT_TaskAddArgument, (OBJECTPTR)Ob, &args));
 }
 
-#define taskQuit(obj) Action(MT_TaskQuit,(obj),0)
+inline ERR Quit(APTR Ob) noexcept {
+   return(Action(MT_TaskQuit, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) noexcept {
-   struct taskGetEnv args = { Name, (CSTRING)0 };
+inline ERR GetEnv(APTR Ob, CSTRING Name, CSTRING * Value) noexcept {
+   struct GetEnv args = { Name, (CSTRING)0 };
    ERR error = Action(MT_TaskGetEnv, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
 }
 
-inline ERR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) noexcept {
-   struct taskSetEnv args = { Name, Value };
+inline ERR SetEnv(APTR Ob, CSTRING Name, CSTRING Value) noexcept {
+   struct SetEnv args = { Name, Value };
    return(Action(MT_TaskSetEnv, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objTask : public Object {
    public:
@@ -4105,13 +4129,15 @@ class objTask : public Object {
 
 #define MT_ThSetData -1
 
-struct thSetData { APTR Data; LONG Size;  };
+namespace th {
+struct SetData { APTR Data; LONG Size;  };
 
-inline ERR thSetData(APTR Ob, APTR Data, LONG Size) noexcept {
-   struct thSetData args = { Data, Size };
+inline ERR SetData(APTR Ob, APTR Data, LONG Size) noexcept {
+   struct SetData args = { Data, Size };
    return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objThread : public Object {
    public:
@@ -4167,15 +4193,17 @@ class objThread : public Object {
 
 #define MT_ModResolveSymbol -1
 
-struct modResolveSymbol { CSTRING Name; APTR Address;  };
+namespace mod {
+struct ResolveSymbol { CSTRING Name; APTR Address;  };
 
-inline ERR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) noexcept {
-   struct modResolveSymbol args = { Name, (APTR)0 };
+inline ERR ResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) noexcept {
+   struct ResolveSymbol args = { Name, (APTR)0 };
    ERR error = Action(MT_ModResolveSymbol, (OBJECTPTR)Ob, &args);
    if (Address) *Address = args.Address;
    return(error);
 }
 
+} // namespace
 
 class objModule : public Object {
    public:
@@ -4246,10 +4274,15 @@ class objModule : public Object {
 
 // Time methods
 
-#define MT_TmSetTime -1
+#define MT_PtSetTime -1
 
-#define tmSetTime(obj) Action(MT_TmSetTime,(obj),0)
+namespace pt {
 
+inline ERR SetTime(APTR Ob) noexcept {
+   return(Action(MT_PtSetTime, (OBJECTPTR)Ob, NULL));
+}
+
+} // namespace
 
 class objTime : public Object {
    public:
@@ -4355,89 +4388,95 @@ class objTime : public Object {
 #define MT_CmpScan -13
 #define MT_CmpFind -14
 
-struct cmpCompressBuffer { APTR Input; LONG InputSize; APTR Output; LONG OutputSize; LONG Result;  };
-struct cmpCompressFile { CSTRING Location; CSTRING Path;  };
-struct cmpDecompressBuffer { APTR Input; APTR Output; LONG OutputSize; LONG Result;  };
-struct cmpDecompressFile { CSTRING Path; CSTRING Dest; LONG Flags;  };
-struct cmpRemoveFile { CSTRING Path;  };
-struct cmpCompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize;  };
-struct cmpDecompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize;  };
-struct cmpCompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize;  };
-struct cmpDecompressStreamEnd { FUNCTION * Callback;  };
-struct cmpDecompressObject { CSTRING Path; OBJECTPTR Object;  };
-struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
-struct cmpFind { CSTRING Path; LONG CaseSensitive; LONG Wildcard; struct CompressedItem * Item;  };
+namespace cmp {
+struct CompressBuffer { APTR Input; LONG InputSize; APTR Output; LONG OutputSize; LONG Result;  };
+struct CompressFile { CSTRING Location; CSTRING Path;  };
+struct DecompressBuffer { APTR Input; APTR Output; LONG OutputSize; LONG Result;  };
+struct DecompressFile { CSTRING Path; CSTRING Dest; LONG Flags;  };
+struct RemoveFile { CSTRING Path;  };
+struct CompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize;  };
+struct DecompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize;  };
+struct CompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize;  };
+struct DecompressStreamEnd { FUNCTION * Callback;  };
+struct DecompressObject { CSTRING Path; OBJECTPTR Object;  };
+struct Scan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
+struct Find { CSTRING Path; LONG CaseSensitive; LONG Wildcard; struct CompressedItem * Item;  };
 
-inline ERR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) noexcept {
-   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
+inline ERR CompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) noexcept {
+   struct CompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
    ERR error = Action(MT_CmpCompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-inline ERR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) noexcept {
-   struct cmpCompressFile args = { Location, Path };
+inline ERR CompressFile(APTR Ob, CSTRING Location, CSTRING Path) noexcept {
+   struct CompressFile args = { Location, Path };
    return(Action(MT_CmpCompressFile, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) noexcept {
-   struct cmpDecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
+inline ERR DecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) noexcept {
+   struct DecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
    ERR error = Action(MT_CmpDecompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-inline ERR cmpDecompressFile(APTR Ob, CSTRING Path, CSTRING Dest, LONG Flags) noexcept {
-   struct cmpDecompressFile args = { Path, Dest, Flags };
+inline ERR DecompressFile(APTR Ob, CSTRING Path, CSTRING Dest, LONG Flags) noexcept {
+   struct DecompressFile args = { Path, Dest, Flags };
    return(Action(MT_CmpDecompressFile, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpRemoveFile(APTR Ob, CSTRING Path) noexcept {
-   struct cmpRemoveFile args = { Path };
+inline ERR RemoveFile(APTR Ob, CSTRING Path) noexcept {
+   struct RemoveFile args = { Path };
    return(Action(MT_CmpRemoveFile, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpCompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
-   struct cmpCompressStream args = { Input, Length, Callback, Output, OutputSize };
+inline ERR CompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
+   struct CompressStream args = { Input, Length, Callback, Output, OutputSize };
    return(Action(MT_CmpCompressStream, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpDecompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
-   struct cmpDecompressStream args = { Input, Length, Callback, Output, OutputSize };
+inline ERR DecompressStream(APTR Ob, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
+   struct DecompressStream args = { Input, Length, Callback, Output, OutputSize };
    return(Action(MT_CmpDecompressStream, (OBJECTPTR)Ob, &args));
 }
 
-#define cmpCompressStreamStart(obj) Action(MT_CmpCompressStreamStart,(obj),0)
+inline ERR CompressStreamStart(APTR Ob) noexcept {
+   return(Action(MT_CmpCompressStreamStart, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR cmpCompressStreamEnd(APTR Ob, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
-   struct cmpCompressStreamEnd args = { Callback, Output, OutputSize };
+inline ERR CompressStreamEnd(APTR Ob, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
+   struct CompressStreamEnd args = { Callback, Output, OutputSize };
    return(Action(MT_CmpCompressStreamEnd, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpDecompressStreamEnd(APTR Ob, FUNCTION * Callback) noexcept {
-   struct cmpDecompressStreamEnd args = { Callback };
+inline ERR DecompressStreamEnd(APTR Ob, FUNCTION * Callback) noexcept {
+   struct DecompressStreamEnd args = { Callback };
    return(Action(MT_CmpDecompressStreamEnd, (OBJECTPTR)Ob, &args));
 }
 
-#define cmpDecompressStreamStart(obj) Action(MT_CmpDecompressStreamStart,(obj),0)
+inline ERR DecompressStreamStart(APTR Ob) noexcept {
+   return(Action(MT_CmpDecompressStreamStart, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR cmpDecompressObject(APTR Ob, CSTRING Path, OBJECTPTR Object) noexcept {
-   struct cmpDecompressObject args = { Path, Object };
+inline ERR DecompressObject(APTR Ob, CSTRING Path, OBJECTPTR Object) noexcept {
+   struct DecompressObject args = { Path, Object };
    return(Action(MT_CmpDecompressObject, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callback) noexcept {
-   struct cmpScan args = { Folder, Filter, Callback };
+inline ERR Scan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callback) noexcept {
+   struct Scan args = { Folder, Filter, Callback };
    return(Action(MT_CmpScan, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR cmpFind(APTR Ob, CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item) noexcept {
-   struct cmpFind args = { Path, CaseSensitive, Wildcard, (struct CompressedItem *)0 };
+inline ERR Find(APTR Ob, CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item) noexcept {
+   struct Find args = { Path, CaseSensitive, Wildcard, (struct CompressedItem *)0 };
    ERR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);
 }
 
+} // namespace
 
 class objCompression : public Object {
    public:
@@ -4662,15 +4701,17 @@ struct evHotplug {
 
 // File Methods.
 
-inline CSTRING flReadLine(OBJECTPTR Object) {
-   struct flReadLine args;
+namespace fl {
+
+inline CSTRING ReadLine(OBJECTPTR Object) {
+   struct ReadLine args;
    if (Action(MT_FlReadLine, Object, &args) IS ERR::Okay) return args.Result;
    else return NULL;
 }
 
 // Read endian values from files and objects.
 
-template<class T> ERR flReadLE(OBJECTPTR Object, T *Result)
+template<class T> ERR ReadLE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
@@ -4694,7 +4735,7 @@ template<class T> ERR flReadLE(OBJECTPTR Object, T *Result)
    else return ERR::Read;
 }
 
-template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
+template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
@@ -4717,6 +4758,8 @@ template<class T> ERR flReadBE(OBJECTPTR Object, T *Result)
    }
    else return ERR::Read;
 }
+
+} // namespace
 
 // Function construction (refer types.h)
 

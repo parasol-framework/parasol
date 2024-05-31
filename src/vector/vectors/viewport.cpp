@@ -52,7 +52,7 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
                routine(Viewport, x, y, glDragOriginX, glDragOriginY, Viewport->vpDragCallback.Meta);
             }
             else if (Viewport->vpDragCallback.isScript()) {
-               scCall(Viewport->vpDragCallback, std::to_array<ScriptArg>({
+               sc::Call(Viewport->vpDragCallback, std::to_array<ScriptArg>({
                   { "Viewport", Viewport, FD_OBJECTPTR }, { "X", x }, { "Y", y },
                   { "OriginX", glDragOriginX }, { "OriginY", glDragOriginY }
                }));
@@ -108,7 +108,7 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
       }
    }
 
-   if (Self->vpDragCallback.defined()) vecSubscribeInput(Self, JTYPE::NIL, C_FUNCTION(drag_callback));
+   if (Self->vpDragCallback.defined()) vec::SubscribeInput(Self, JTYPE::NIL, C_FUNCTION(drag_callback));
 
    return ERR::Okay;
 }
@@ -346,7 +346,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
          return log.warning(ERR::FieldNotSet);
       }
 
-      if (vecSubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(drag_callback)) != ERR::Okay) {
+      if (vec::SubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(drag_callback)) != ERR::Okay) {
          return ERR::Failed;
       }
 
@@ -354,7 +354,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
    }
    else {
       Self->vpDragCallback.clear();
-      vecSubscribeInput(Self, JTYPE::NIL, C_FUNCTION(drag_callback));
+      vec::SubscribeInput(Self, JTYPE::NIL, C_FUNCTION(drag_callback));
    }
    return ERR::Okay;
 }

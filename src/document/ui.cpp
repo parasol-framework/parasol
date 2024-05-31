@@ -10,7 +10,7 @@ static ERR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR Event
    auto combo = std::get<bc_combobox *>(Self->VPToEntity[Viewport->UID].widget);
 
    if (Event IS FM::LOST_FOCUS) {
-      if (gfxGetUserFocus() IS combo->menu.m_surface.id) {
+      if (gfx::GetUserFocus() IS combo->menu.m_surface.id) {
          // The drop-down surface has been given the focus - so don't hide it.
       }
       else {
@@ -100,7 +100,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
 
          char string[12];
          UTF8WriteValue(Unicode, string, sizeof(string));
-         docInsertText(Self, string, Self->CursorIndex.index, Self->CursorIndex.offset, true); // Will set UpdatingLayout to true
+         doc::InsertText(Self, string, Self->CursorIndex.index, Self->CursorIndex.offset, true); // Will set UpdatingLayout to true
          Self->CursorIndex += StrLength(string); // Reposition the cursor
 
          layout_doc_fast(Self);
@@ -453,7 +453,7 @@ static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char Cu
 
       if (extract_script(Self, edit.on_enter, &script, function_name, argstring) IS ERR::Okay) {
          ScriptArg args[] = { { "ID", edit.name } };
-         scExec(script, function_name.c_str(), args, ARRAYSIZE(args));
+         sc::Exec(script, function_name.c_str(), args, ARRAYSIZE(args));
       }
    }
 
@@ -509,7 +509,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 
                for (auto &cell_arg : cell.args) args.emplace_back("", cell_arg.second);
 
-               scExec(script, function_name.c_str(), args.data(), args.size());
+               sc::Exec(script, function_name.c_str(), args.data(), args.size());
             }
          }
       }
@@ -790,7 +790,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
                { "Y", Event->Y },
                { "Args", argstring }
             };
-            scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
    }
@@ -804,7 +804,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
                { "Y", Event->Y },
                { "Args", argstring }
             };
-            scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
 
@@ -827,7 +827,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
             const ScriptArg args[] = {
                { "Element", link->origin.uid },
                { "Args", argstring } };
-            scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
 
@@ -921,7 +921,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
                DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
                   if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
-                     vecGetBoundary(*link.origin.path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
+                     vec::GetBoundary(*link.origin.path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
                   }
                }
 
@@ -1000,7 +1000,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
    // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
 
-   OBJECTID currentfocus = gfxGetUserFocus();
+   OBJECTID currentfocus = gfx::GetUserFocus();
    for (unsigned i=0; i < Self->Tabs.size(); i++) {
       if (std::get<OBJECTID>(Self->Tabs[i].ref) IS currentfocus) {
          Self->FocusIndex = i;
@@ -1117,7 +1117,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                   { "Y", Event->Y },
                   { "Args", s_args }
                };
-               scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+               sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
             }
          }
       }
@@ -1133,7 +1133,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+                  sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
                }
             }
          }
@@ -1150,7 +1150,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+                  sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
                }
             }
          }
@@ -1167,7 +1167,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+                  sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
                }
             }
          }
@@ -1205,7 +1205,7 @@ static ERR inputevent_button(objVectorViewport *Viewport, const InputEvent *Even
 
             if (!button->viewport->Matrices) {
                VectorMatrix *matrix;
-               vecNewMatrix(*button->viewport, &matrix, false);
+               vec::NewMatrix(*button->viewport, &matrix, false);
             }
 
             const auto width  = button->viewport->get<DOUBLE>(FID_Width);
@@ -1215,17 +1215,17 @@ static ERR inputevent_button(objVectorViewport *Viewport, const InputEvent *Even
                const auto SCALE = 0.95;
                m->TranslateX -= width * 0.5;
                m->TranslateY -= height * 0.5;
-               vecScale(m, SCALE, SCALE);
+               vec::Scale(m, SCALE, SCALE);
                m->TranslateX += width * 0.5;
                m->TranslateY += height * 0.5;
-               vecFlushMatrix(button->viewport->Matrices);
+               vec::FlushMatrix(button->viewport->Matrices);
             }
          }
          else {
             if (!button->alt_fill.empty()) button->viewport->setFill(button->fill);
 
             if (button->viewport->Matrices) {
-               vecResetMatrix(button->viewport->Matrices);
+               vec::ResetMatrix(button->viewport->Matrices);
             }
          }
 
@@ -1313,7 +1313,7 @@ static ERR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE &C
       auto i = Self->Segments[segment].start;
       while ((i <= Self->Segments[segment].stop) and (i < Char)) {
          if (Self->Stream[i.index].code IS SCODE::TEXT) {
-            CharX = vecStringWidth(font->handle, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
+            CharX = vec::StringWidth(font->handle, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
             return ERR::Okay;
          }
          i.next_code();

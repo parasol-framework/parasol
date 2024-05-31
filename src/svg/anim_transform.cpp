@@ -7,7 +7,7 @@ void anim_transform::perform()
 
    pf::ScopedObjectLock<objVector> vector(target_vector, 1000);
    if (vector.granted()) {
-      vecResetMatrix(&matrix);
+      vec::ResetMatrix(&matrix);
       switch(type) {
          case AT::TRANSLATE: {
             POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
@@ -187,7 +187,7 @@ void anim_transform::perform()
                r_from.cy + ((r_to.cy - r_from.cy) * seek_to)
             };
 
-            vecRotate(&matrix, r_new.angle, r_new.cx, r_new.cy);
+            vec::Rotate(&matrix, r_new.angle, r_new.cx, r_new.cy);
             break;
          }
 

@@ -91,7 +91,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
+static ERR SCRIPT_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
    // It is the responsibility of the sub-class to override this method with something appropriate.
    return ERR::Okay;
@@ -118,7 +118,7 @@ Args:
 
 *********************************************************************************************************************/
 
-static ERR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
+static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
 {
    pf::Log log;
 
@@ -208,7 +208,7 @@ Args: The `TotalArgs` value is invalid.
 
 *********************************************************************************************************************/
 
-static ERR SCRIPT_Exec(objScript *Self, struct scExec *Args)
+static ERR SCRIPT_Exec(objScript *Self, struct sc::Exec *Args)
 {
    pf::Log log;
 
@@ -279,7 +279,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
+static ERR SCRIPT_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
    pf::Log log;
 

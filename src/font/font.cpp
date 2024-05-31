@@ -358,7 +358,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       // Merge tailored font options into the machine-generated database
 
-      cfgMergeFile(glConfig, "fonts:options.cfg");
+      cfg::MergeFile(glConfig, "fonts:options.cfg");
    }
    else {
       log.error("Failed to load or prepare the font configuration file.");
@@ -720,7 +720,7 @@ ERR fntRefreshFonts(void)
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   cfgSortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
+   cfg::SortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
 
    // Create a style list for each font, e.g.
    //
@@ -1083,11 +1083,11 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
             font_count  = 0;
             font_offset = 0;
             size_shift  = 0;
-            flReadLE(*file, &size_shift);
+            fl::ReadLE(*file, &size_shift);
 
             UWORD type_id = 0;
-            for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
-               if (flReadLE(*file, &count) IS ERR::Okay) {
+            for (fl::ReadLE(*file, &type_id); type_id; fl::ReadLE(*file, &type_id)) {
+               if (fl::ReadLE(*file, &count) IS ERR::Okay) {
                   if (type_id IS 0x8008) {
                      font_count  = count;
                      file->get(FID_Position, &font_offset);
@@ -1113,8 +1113,8 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
 
                for (LONG i=0; i < font_count; i++) {
                   UWORD offset = 0, size = 0;
-                  flReadLE(*file, &offset);
-                  flReadLE(*file, &size);
+                  fl::ReadLE(*file, &offset);
+                  fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
                   fonts[i].Size   = size<<size_shift;
                   file->seekCurrent(8);

@@ -92,7 +92,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>Connect</name>
       <comment>Connects a NetSocket to an address.</comment>
-      <prototype>ERR nsConnect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
+      <prototype>ERR ns::Connect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
       <input>
         <param type="CSTRING" name="Address">String containing either a domain name (e.g. <code>www.google.com</code>) or an IP address (e.g. <code>123.123.123.123</code>)</param>
         <param type="LONG" name="Port">Remote port to connect to.</param>
@@ -115,7 +115,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERR nsDisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
+      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
       <input>
         <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
       </input>
@@ -132,7 +132,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectSocket</name>
       <comment>Disconnects a single socket that is connected to a client IP address.</comment>
-      <prototype>ERR nsDisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</prototype>
+      <prototype>ERR ns::DisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</prototype>
       <input>
         <param type="objClientSocket *" name="Socket">The client socket to be disconnected.</param>
       </input>
@@ -148,7 +148,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>GetLocalIPAddress</name>
       <comment>Returns the IP address that the socket is locally bound to.</comment>
-      <prototype>ERR nsGetLocalIPAddress(OBJECTPTR Object, struct IPAddress * Address)</prototype>
+      <prototype>ERR ns::GetLocalIPAddress(OBJECTPTR Object, struct IPAddress * Address)</prototype>
       <input>
         <param type="struct IPAddress *" name="Address">Pointer to an IPAddress structure which will be set to the result of the query if successful.</param>
       </input>
@@ -165,7 +165,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>ReadMsg</name>
       <comment>Read a message from the socket.</comment>
-      <prototype>ERR nsReadMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <prototype>ERR ns::ReadMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
       <input>
         <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
         <param type="LONG *" name="Length">The length of the message is returned here.</param>
@@ -190,7 +190,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>WriteMsg</name>
       <comment>Writes a message to the socket.</comment>
-      <prototype>ERR nsWriteMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <prototype>ERR ns::WriteMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
         <param type="LONG" name="Length">The length of the message.</param>

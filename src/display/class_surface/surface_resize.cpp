@@ -142,7 +142,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_SetDisplay(extSurface *Self, struct gfxSetDisplay *Args)
+static ERR SURFACE_SetDisplay(extSurface *Self, struct gfx::SetDisplay *Args)
 {
    pf::Log log;
 

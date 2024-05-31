@@ -301,7 +301,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
       if (tmp_bitmap.ok()) {
          if ((error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height)) IS ERR::Okay) {
-            gfxCopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+            gfx::CopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
       }
    }

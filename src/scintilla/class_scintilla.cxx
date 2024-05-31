@@ -221,7 +221,7 @@ extern ERR init_search(void);
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
    VectorPainter painter;
-   if (vecReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
+   if (vec::ReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
       RGB->Red   = F2T(painter.Colour.Red   * 255.0);
       RGB->Green = F2T(painter.Colour.Green * 255.0);
       RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
@@ -487,7 +487,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                            ScriptArg("Path",      a.Value.c_str(), FD_STR)
                         };
 
-                        struct scCallback exec;
+                        struct sc::Callback exec;
                         exec.ProcedureID = Self->FileDrop.ProcedureID;
                         exec.Args      = args;
                         exec.TotalArgs = ARRAYSIZE(args);
@@ -499,7 +499,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                }
             }
             else if (iequals("text", tag.name())) {
-               struct sciInsertText insert;
+               struct sci::InsertText insert;
 
                if ((!tag.Children.empty()) and (tag.Children[0].isContent())) {
                   insert.String = tag.Children[0].Attribs[0].Value.c_str();
@@ -534,7 +534,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_DeleteLine(extScintilla *Self, struct sciDeleteLine *Args)
+static ERR SCINTILLA_DeleteLine(extScintilla *Self, struct sci::DeleteLine *Args)
 {
    pf::Log log;
    LONG line, pos, start, end, linecount;
@@ -645,7 +645,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
 
    if (Self->SurfaceID) {
       if (AccessObject(Self->SurfaceID, 500, &object) IS ERR::Okay) {
-         drwRemoveCallback(object, (APTR)&draw_scintilla);
+         drw::RemoveCallback(object, (APTR)&draw_scintilla);
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
       }
@@ -665,7 +665,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    if (Self->ItalicFont)   { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
    if (Self->BIFont)       { FreeResource(Self->BIFont);     Self->BIFont = NULL; }
 
-   gfxUnsubscribeInput(Self->InputHandle);
+   gfx::UnsubscribeInput(Self->InputHandle);
 
    return ERR::Okay;
 }
@@ -691,7 +691,7 @@ BufferOverflow: The supplied `Buffer` is not large enough to contain the result.
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_GetLine(extScintilla *Self, struct sciGetLine *Args)
+static ERR SCINTILLA_GetLine(extScintilla *Self, struct sci::GetLine *Args)
 {
    pf::Log log;
 
@@ -725,7 +725,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_GetPos(extScintilla *Self, struct sciGetPos *Args)
+static ERR SCINTILLA_GetPos(extScintilla *Self, struct sci::GetPos *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -751,7 +751,7 @@ OutOfRange: The Line is less than zero.
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_GotoLine(extScintilla *Self, struct sciGotoLine *Args)
+static ERR SCINTILLA_GotoLine(extScintilla *Self, struct sci::GotoLine *Args)
 {
    pf::Log log;
 
@@ -811,7 +811,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->Surface.Width  = surface->Width;
       Self->Surface.Height = surface->Height;
 
-      drwAddCallback(surface, (APTR)&draw_scintilla);
+      drw::AddCallback(surface, (APTR)&draw_scintilla);
 
       //SubscribeFeed(surface); TODO: Deprecated
 
@@ -830,7 +830,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    {
       auto callback = C_FUNCTION(consume_input_events);
-      gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
+      gfx::SubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
    }
 
    // TODO: Run the scrollbar script here
@@ -969,7 +969,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args)
+static ERR SCINTILLA_InsertText(extScintilla *Self, struct sci::InsertText *Args)
 {
    pf::Log log;
    LONG pos;
@@ -1095,7 +1095,7 @@ OutOfRange: The line index is less than zero or greater than the available numbe
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_ReplaceLine(extScintilla *Self, struct sciReplaceLine *Args)
+static ERR SCINTILLA_ReplaceLine(extScintilla *Self, struct sci::ReplaceLine *Args)
 {
    pf::Log log;
 
@@ -1140,7 +1140,7 @@ Search: The keyword could not be found.
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Args)
+static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Args)
 {
    pf::Log log;
    LONG start, end;
@@ -1282,7 +1282,7 @@ CreateObject: Failed to create a Font object.
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
+static ERR SCINTILLA_SetFont(extScintilla *Self, struct sci::SetFont *Args)
 {
    pf::Log log;
 
@@ -1315,7 +1315,7 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_ScrollToPoint(extScintilla *Self, struct sciScrollToPoint *Args)
+static ERR SCINTILLA_ScrollToPoint(extScintilla *Self, struct sci::ScrollToPoint *Args)
 {
    pf::Log log;
 
@@ -1347,7 +1347,7 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Args)
+static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sci::SelectRange *Args)
 {
    pf::Log log;
 
@@ -2159,7 +2159,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
    glBitmap = NULL;
 
    if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
-      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
+      gfx::DrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
    }
 }
 
@@ -2216,7 +2216,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
    if (auto file = objFile::create::local(fl::Flags(FL::READ), fl::Path(Path))) {
       if ((file->Flags & FL::STREAM) != FL::NIL) {
-         if (flStartStream(file, Self->UID, FL::READ, 0) IS ERR::Okay) {
+         if (fl::StartStream(file, Self->UID, FL::READ, 0) IS ERR::Okay) {
             acClear(Self);
 
             SubscribeAction(file, AC_Write, C_FUNCTION(notify_write));
@@ -2380,7 +2380,7 @@ static void report_event(extScintilla *Self, SEF Event)
          routine(Self, Event, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {
-         scCall(Self->EventCallback, std::to_array<ScriptArg>({ { "Scintilla", Self, FD_OBJECTPTR }, { "EventFlags", LARGE(Event) } }));
+         sc::Call(Self->EventCallback, std::to_array<ScriptArg>({ { "Scintilla", Self, FD_OBJECTPTR }, { "EventFlags", LARGE(Event) } }));
       }
    }
 }

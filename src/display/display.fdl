@@ -374,7 +374,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
    inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
       else {
-         struct bmpGetColour args = { Red, Green, Blue, Alpha };
+         struct bmp::GetColour args = { Red, Green, Blue, Alpha };
          if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
@@ -383,7 +383,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
    inline ULONG getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
-         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
+         struct bmp::GetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
          if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
@@ -653,30 +653,33 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
 
 // Stubs
 
-inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
+namespace drw {
+
+inline ERR AddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = C_FUNCTION(Callback);
-      struct drwAddCallback args = { &call };
+      struct AddCallback args = { &call };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
    else {
-      struct drwAddCallback args = { NULL };
+      struct AddCallback args = { NULL };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
 }
 
-inline ERR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
+inline ERR RemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = C_FUNCTION(Callback);
-      struct drwRemoveCallback args = { &call };
+      struct RemoveCallback args = { &call };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
    else {
-      struct drwRemoveCallback args = { NULL };
+      struct RemoveCallback args = { NULL };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
 }
 
+} // namespace
 
 namespace fl {
    using namespace pf;

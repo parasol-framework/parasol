@@ -221,7 +221,7 @@ font_entry * bc_font::get_font()
    if (fntResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
       face.assign(resolved_face);
 
-      if (vecGetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
+      if (vec::GetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
          for (unsigned i=0; i < glFonts.size(); i++) {
             if (new_handle IS glFonts[i].handle) {
                font_index = i;

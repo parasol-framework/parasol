@@ -61,7 +61,7 @@
     <method>
       <name>ReadClientMsg</name>
       <comment>Read a message from the socket.</comment>
-      <prototype>ERR csReadClientMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <prototype>ERR cs::ReadClientMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
       <input>
         <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
         <param type="LONG *" name="Length">The length of the message is returned here.</param>
@@ -86,7 +86,7 @@
     <method>
       <name>WriteClientMsg</name>
       <comment>Writes a message to the socket.</comment>
-      <prototype>ERR csWriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <prototype>ERR cs::WriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
         <param type="LONG" name="Length">The length of the <code>Message</code>.</param>

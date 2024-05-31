@@ -118,7 +118,7 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
       routine(DisplayID, X, Y, Width, Height, Feedback->Meta);
    }
    else if (Feedback->isScript()) {
-      scCall(*Feedback, std::to_array<ScriptArg>({
+      sc::Call(*Feedback, std::to_array<ScriptArg>({
          { "Display", DisplayID, FD_OBJECTID },
          { "X",       X },
          { "Y",       Y },
@@ -880,7 +880,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
 
    if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
-   struct gfxUpdatePalette pal = { .NewPalette = bmp->Palette };
+   struct gfx::UpdatePalette pal = { .NewPalette = bmp->Palette };
    Action(MT_GfxUpdatePalette, Self, &pal);
 
    // Take a record of the pixel format for GetDisplayInfo()
@@ -1381,7 +1381,7 @@ NoSupport: The host platform does not support this feature.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
+static ERR DISPLAY_SizeHints(extDisplay *Self, struct gfx::SizeHints *Args)
 {
 #ifdef __xwindows__
    XSizeHints hints = { .flags = 0 };
@@ -1446,7 +1446,7 @@ Failed: Failed to switch to the requested display mode.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
+static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfx::SetDisplay *Args)
 {
    pf::Log log;
 
@@ -1547,7 +1547,7 @@ NoSupport: The graphics hardware does not support gamma correction.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
+static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfx::SetGamma *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1609,7 +1609,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *Args)
+static ERR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfx::SetGammaLinear *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1687,7 +1687,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
+static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfx::SetMonitor *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1909,7 +1909,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Args)
+static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfx::UpdatePalette *Args)
 {
    pf::Log log;
 

@@ -38,7 +38,7 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
     <method>
       <name>ResolveSymbol</name>
       <comment>Resolves library symbol names to their address pointers.</comment>
-      <prototype>ERR modResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
+      <prototype>ERR mod::ResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the symbol to resolve.</param>
         <param type="APTR *" name="Address">The address of the symbol will be returned in this parameter.</param>

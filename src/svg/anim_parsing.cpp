@@ -46,7 +46,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
       case SVF_HREF:
       case SVF_XLINK_HREF: {
          OBJECTPTR ref_vector;
-         if (scFindDef(Anim.svg->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
+         if (sc::FindDef(Anim.svg->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
             Anim.target_vector = ref_vector->UID;
          }
          break;
@@ -276,11 +276,11 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
             // Convert the splines into bezier paths and generate a point-based path in advance.
             for (auto &sp : Anim.splines) {
                APTR path;
-               if (vecGeneratePath(NULL, &path) IS ERR::Okay) {
+               if (vec::GeneratePath(NULL, &path) IS ERR::Okay) {
                   anim_base::SPLINE_POINTS lookup;
-                  vecMoveTo(path, 0, 0);
-                  vecCurve4(path, sp.first.x, sp.first.y, sp.second.x, sp.second.y, 1.0, 1.0);
-                  vecTracePath(path, C_FUNCTION(parse_spline, &lookup), 512.0);
+                  vec::MoveTo(path, 0, 0);
+                  vec::Curve4(path, sp.first.x, sp.first.y, sp.second.x, sp.second.y, 1.0, 1.0);
+                  vec::TracePath(path, C_FUNCTION(parse_spline, &lookup), 512.0);
                   Anim.spline_paths.push_back(lookup);
                   FreeResource(path);
                }

@@ -48,7 +48,7 @@ static ERR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
       else bmp = get_source_graphic(Self->Filter);
       if (!bmp) continue;
 
-      gfxCopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
+      gfx::CopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
 
       copy_flags |= BAF::BLEND|BAF::COPY; // Any subsequent copies are to be blended
    }

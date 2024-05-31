@@ -17,8 +17,8 @@ static ERR RSVG_Activate(extPicture *Self)
       if (InitObject(bmp) != ERR::Okay) return ERR::Init;
    }
 
-   gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF::FILL); // Black background
-   svgRender(prv->SVG, bmp, 0, 0, bmp->Width, bmp->Height);
+   gfx::DrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF::FILL); // Black background
+   svg::Render(prv->SVG, bmp, 0, 0, bmp->Width, bmp->Height);
    return ERR::Okay;
 }
 
@@ -172,7 +172,7 @@ static ERR RSVG_Resize(extPicture *Self, struct acResize *Args)
             scene->setPageWidth(Self->Bitmap->Width);
             scene->setPageHeight(Self->Bitmap->Height);
 
-            gfxDrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, BAF::FILL);
+            gfx::DrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, BAF::FILL);
             acDraw(prv->SVG);
          }
          else return ERR::GetField;

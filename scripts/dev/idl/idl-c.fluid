@@ -1062,49 +1062,51 @@ function class(Name, Options, Spec, Private, Custom)
             return name
          end
 
-         if (method.params != nil) and (#method.params > 0) then
-            local def     = '' -- struct definition
-            local values  = '' -- struct values
-            local call    = 'APTR Ob' -- Inline function parameters
-            local results = false
-            for _, param in ipairs(method.params) do
-               def = def .. param.basicType .. ' ' .. pName(param) .. '; '
+         local def     = '' -- struct definition
+         local values  = '' -- struct values
+         local call    = 'APTR Ob' -- Inline function parameters
+         local results = false
+         for _, param in ipairs(method.params) do
+            def = def .. param.basicType .. ' ' .. pName(param) .. '; '
 
-               if nz(call) then call = call .. ', ' end
-               call = call .. param.type .. ' ' .. pName(param)
+            if nz(call) then call = call .. ', ' end
+            call = call .. param.type .. ' ' .. pName(param)
 
-               if nz(values) then values = values .. ', ' end
-               if (param.resultValue) then
-                  values  = values .. '(' .. param.basicType .. ')0'
-                  results = true
-               else
-                  values = values .. pName(param)
-               end
-            end
-
-            class.methods[k].struct = 'struct ' .. lpfx .. method.name .. ' { ' .. def .. ' };'
-
-            if (method.inline != false) then
-               local inline = 'inline ERR ' .. lpfx .. method.name .. '(' .. call .. ') noexcept {\n'
-               inline = inline .. '   struct ' .. lpfx .. method.name .. ' args = { ' .. values .. ' };\n'
-               if (results) then
-                  inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args);\n'
-                  for _, p in pairs(method.params) do
-                     if (p.resultValue) then
-                        inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
-                     end
-                  end
-                  inline = inline .. '   return(error);\n'
-               else
-                  inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args));\n'
-               end
-               inline = inline .. '}\n'
-               class.methods[k].inline = inline
+            if nz(values) then values = values .. ', ' end
+            if (param.resultValue) then
+               values  = values .. '(' .. param.basicType .. ')0'
+               results = true
             else
-               class.methods[k].inline = nil
+               values = values .. pName(param)
             end
+         end
+
+         if (method.params != nil) and (#method.params > 0) then
+            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. def .. ' };'
+         end
+
+         if (method.inline != false) then
+            local inline = 'inline ERR ' .. method.name .. '(' .. call .. ') noexcept {\n'
+            local args = 'NULL'
+            if (method.params != nil) and (#method.params > 0) then
+               inline = inline .. '   struct ' .. method.name .. ' args = { ' .. values .. ' };\n'
+               args = '&args'
+            end
+            if (results) then
+               inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, ' .. args .. ');\n'
+               for _, p in pairs(method.params) do
+                  if (p.resultValue) then
+                     inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+                  end
+               end
+               inline = inline .. '   return(error);\n'
+            else
+               inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, ' .. args .. '));\n'
+            end
+            inline = inline .. '}\n'
+            class.methods[k].inline = inline
          else
-            class.methods[k].inline = '#define ' .. lpfx .. method.name .. '(obj) Action(MT_' .. pfx .. method.name .. ',(obj),0)\n'
+            class.methods[k].inline = nil
          end
       end
 
@@ -1115,6 +1117,8 @@ function class(Name, Options, Spec, Private, Custom)
          output('#define MT_' .. pfx .. method.name .. ' -' .. method.id)
       end
       output()
+
+      output('namespace ' .. lpfx .. ' {')
 
       for _, method in ipairs(class.methods) do
          if nz(method.struct) then
@@ -1128,6 +1132,7 @@ function class(Name, Options, Spec, Private, Custom)
             output(method.inline)
          end
       end
+      output('} // namespace')
       output()
    end
 
@@ -1160,7 +1165,7 @@ function class(Name, Options, Spec, Private, Custom)
             if not nz(m.params) then
                mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
             else
-               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. m.name .. ')'
+               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
                mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
             end
          end
@@ -2354,7 +2359,7 @@ function buildPrototypes()
                      proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
                   end
                end
-               method.prototype = "ERR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
+               method.prototype = "ERR " .. cl.methodPrefix:lower() .. '::' .. method.name .. "(" .. proto .. ")"
             end
          end
       end

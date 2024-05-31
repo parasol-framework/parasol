@@ -233,7 +233,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
+static ERR VECTORPATH_AddCommand(extVectorPath *Self, struct vp::AddCommand *Args)
 {
    pf::Log log;
 
@@ -271,7 +271,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
+static ERR VECTORPATH_GetCommand(extVectorPath *Self, struct vp::GetCommand *Args)
 {
    pf::Log log;
 
@@ -302,7 +302,7 @@ NothingDone
 
 *********************************************************************************************************************/
 
-static ERR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
+static ERR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vp::RemoveCommand *Args)
 {
    pf::Log log;
 
@@ -338,7 +338,7 @@ BufferOverflow
 
 *********************************************************************************************************************/
 
-static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
+static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vp::SetCommand *Args)
 {
    pf::Log log;
 
@@ -376,7 +376,7 @@ Args
 
 *********************************************************************************************************************/
 
-static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
+static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vp::SetCommandList *Args)
 {
    pf::Log log;
 

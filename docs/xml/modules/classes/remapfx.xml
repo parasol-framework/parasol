@@ -40,7 +40,7 @@
     <method>
       <name>SelectDiscrete</name>
       <comment>Apply the discrete function to a pixel component.</comment>
-      <prototype>ERR rfSelectDiscrete(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
+      <prototype>ERR rf::SelectDiscrete(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the discrete function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the discrete function.</param>
@@ -54,7 +54,7 @@
     <method>
       <name>SelectGamma</name>
       <comment>Apply the gamma function to a pixel component.</comment>
-      <prototype>ERR rfSelectGamma(OBJECTPTR Object, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent)</prototype>
+      <prototype>ERR rf::SelectGamma(OBJECTPTR Object, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the gamma function must be applied.</param>
         <param type="DOUBLE" name="Amplitude">The amplitude of the gamma function.</param>
@@ -69,7 +69,7 @@
     <method>
       <name>SelectIdentity</name>
       <comment>Apply the identity function to a pixel component.</comment>
-      <prototype>ERR rfSelectIdentity(OBJECTPTR Object, CMP Component)</prototype>
+      <prototype>ERR rf::SelectIdentity(OBJECTPTR Object, CMP Component)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the identity function must be applied.</param>
       </input>
@@ -81,7 +81,7 @@
     <method>
       <name>SelectInvert</name>
       <comment>Apply the invert function to a pixel component.</comment>
-      <prototype>ERR rfSelectInvert(OBJECTPTR Object, CMP Component)</prototype>
+      <prototype>ERR rf::SelectInvert(OBJECTPTR Object, CMP Component)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
       </input>
@@ -94,7 +94,7 @@
     <method>
       <name>SelectLinear</name>
       <comment>Apply the linear function to a pixel component.</comment>
-      <prototype>ERR rfSelectLinear(OBJECTPTR Object, CMP Component, DOUBLE Slope, DOUBLE Intercept)</prototype>
+      <prototype>ERR rf::SelectLinear(OBJECTPTR Object, CMP Component, DOUBLE Slope, DOUBLE Intercept)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
         <param type="DOUBLE" name="Slope">The slope of the linear function.</param>
@@ -108,7 +108,7 @@
     <method>
       <name>SelectMask</name>
       <comment>Apply the mask function to a pixel component.</comment>
-      <prototype>ERR rfSelectMask(OBJECTPTR Object, CMP Component, LONG Mask)</prototype>
+      <prototype>ERR rf::SelectMask(OBJECTPTR Object, CMP Component, LONG Mask)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
         <param type="LONG" name="Mask">The bit mask to be AND'd with each value.</param>
@@ -122,7 +122,7 @@
     <method>
       <name>SelectTable</name>
       <comment>Apply the table function to a pixel component.</comment>
-      <prototype>ERR rfSelectTable(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
+      <prototype>ERR rf::SelectTable(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the table function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the table function.</param>

@@ -21,7 +21,7 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
       routine(&Audio, SampleHandle, sample.OnStop.Meta);
    }
    else if (sample.OnStop.isScript()) {
-      scCall(sample.OnStop, std::to_array<ScriptArg>({ { "Audio", &Audio, FD_OBJECTPTR }, { "Handle", SampleHandle } }));
+      sc::Call(sample.OnStop, std::to_array<ScriptArg>({ { "Audio", &Audio, FD_OBJECTPTR }, { "Handle", SampleHandle } }));
    }
 }
 
@@ -44,7 +44,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
       });
 
       ERR result;
-      if (scCall(Sample.Callback, args, result) IS ERR::Okay) return BYTELEN(result);
+      if (sc::Call(Sample.Callback, args, result) IS ERR::Okay) return BYTELEN(result);
       else return BYTELEN(0);
    }
 

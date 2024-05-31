@@ -60,7 +60,7 @@ static LONG glLastClipID = -1;
 static std::string get_datatype(CLIPTYPE);
 static ERR add_clip(CLIPTYPE, const std::vector<ClipItem> &, CEF = CEF::NIL);
 static ERR add_clip(CSTRING);
-static ERR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
+static ERR CLIPBOARD_AddObjects(objClipboard *, struct clip::AddObjects *);
 
 //********************************************************************************************************************
 // Remove stale clipboard files that are over 24hrs old
@@ -218,7 +218,7 @@ MissingPath: The Files argument was not correctly specified.
 
 *********************************************************************************************************************/
 
-static ERR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
+static ERR CLIPBOARD_AddFile(objClipboard *Self, struct clip::AddFile *Args)
 {
    pf::Log log;
 
@@ -268,7 +268,7 @@ Args
 
 *********************************************************************************************************************/
 
-static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
+static ERR CLIPBOARD_AddObjects(objClipboard *Self, struct clip::AddObjects *Args)
 {
    pf::Log log;
 
@@ -330,7 +330,7 @@ CreateFile
 
 *********************************************************************************************************************/
 
-static ERR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
+static ERR CLIPBOARD_AddText(objClipboard *Self, struct clip::AddText *Args)
 {
    pf::Log log;
 
@@ -406,7 +406,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          error = routine(Self, Args->Object, request->Item, request->Preference, Self->RequestHandler.Meta);
       }
       else if (Self->RequestHandler.isScript()) {
-         if (scCall(Self->RequestHandler, std::to_array<ScriptArg>({
+         if (sc::Call(Self->RequestHandler, std::to_array<ScriptArg>({
             { "Clipboard", Self, FD_OBJECTPTR },
             { "Requester", Args->Object, FD_OBJECTPTR },
             { "Item",      request->Item },
@@ -473,7 +473,7 @@ NoData: No clip was available that matched the requested data type.
 
 *********************************************************************************************************************/
 
-static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
+static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
 {
    pf::Log log;
 
@@ -581,7 +581,7 @@ AccessMemory: The clipboard memory data was not accessible.
 
 *********************************************************************************************************************/
 
-static ERR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
+static ERR CLIPBOARD_Remove(objClipboard *Self, struct clip::Remove *Args)
 {
    pf::Log log;
 

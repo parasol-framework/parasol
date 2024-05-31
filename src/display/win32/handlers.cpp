@@ -244,7 +244,7 @@ void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
    pf::ScopedObjectLock surface(SurfaceID);
 
    if (surface.granted()) {
-      if ((Width) and (Height)) drwExpose(*surface, X, Y, Width, Height, EXF::CHILDREN);
+      if ((Width) and (Height)) drw::Expose(*surface, X, Y, Width, Height, EXF::CHILDREN);
       else Action(MT_DrwExpose, *surface, NULL);
    }
 }
@@ -275,7 +275,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
             result = callback(SurfaceID, func->Meta);
          }
          else if (func->isScript()) {
-            scCall(*func, std::to_array<ScriptArg>({ { "SurfaceID", SurfaceID, FDF_OBJECTID } }), result);
+            sc::Call(*func, std::to_array<ScriptArg>({ { "SurfaceID", SurfaceID, FDF_OBJECTID } }), result);
          }
          else result = ERR::Okay;
 

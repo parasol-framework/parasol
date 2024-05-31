@@ -702,7 +702,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          objBitmap *bmp;
          if (render_filter(filter, mView, shape, mBitmap, &bmp) IS ERR::Okay) {
             bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
-            gfxCopyArea(bmp, mBitmap, BAF::BLEND|BAF::COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
+            gfx::CopyArea(bmp, mBitmap, BAF::BLEND|BAF::COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
          continue;
       }
@@ -823,7 +823,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // applied in realtime.
 
                   if (!view->Fill[0].Pattern->Scene->Viewport->Matrices) {
-                     vecNewMatrix(view->Fill[0].Pattern->Scene->Viewport, NULL, false);
+                     vec::NewMatrix(view->Fill[0].Pattern->Scene->Viewport, NULL, false);
                   }
 
                   // Use transforms for the purpose of placing the pattern correctly
@@ -859,7 +859,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   if ((view->FGFill) and (view->Fill[1].Pattern)) {
                      // Support for foreground fill patterns
                      if (!view->Fill[1].Pattern->Scene->Viewport->Matrices) {
-                        vecNewMatrix(view->Fill[1].Pattern->Scene->Viewport, NULL, false);
+                        vec::NewMatrix(view->Fill[1].Pattern->Scene->Viewport, NULL, false);
                      }
 
                      auto &matrix = view->Fill[1].Pattern->Scene->Viewport->Matrices;

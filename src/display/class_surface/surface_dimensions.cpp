@@ -425,7 +425,7 @@ static ERR SET_MaxHeight(extSurface *Self, LONG Value)
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
-      if (display.granted()) gfxSizeHints(*display, -1, -1,
+      if (display.granted()) gfx::SizeHints(*display, -1, -1,
          Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
          Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
          (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
@@ -455,7 +455,7 @@ static ERR SET_MaxWidth(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) {
-         gfxSizeHints(*display, -1, -1,
+         gfx::SizeHints(*display, -1, -1,
             Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
             Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
             (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
@@ -486,7 +486,7 @@ static ERR SET_MinHeight(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) {
-         gfxSizeHints(*display,
+         gfx::SizeHints(*display,
             Self->MinWidth + Self->LeftMargin + Self->RightMargin,
             Self->MinHeight + Self->TopMargin + Self->BottomMargin,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
@@ -517,7 +517,7 @@ static ERR SET_MinWidth(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) {
-         gfxSizeHints(*display,
+         gfx::SizeHints(*display,
             Self->MinWidth + Self->LeftMargin + Self->RightMargin,
             Self->MinHeight + Self->TopMargin + Self->BottomMargin,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);

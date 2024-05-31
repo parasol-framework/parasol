@@ -175,7 +175,7 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
    else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Context;
       if (LockObject(script, 5000) IS ERR::Okay) {
-         scCall(msg->Callback, std::to_array<ScriptArg>({
+         sc::Call(msg->Callback, std::to_array<ScriptArg>({
             { "ActionID", msg->ActionID },
             { "Object",   msg->Object, FD_OBJECTPTR },
             { "Error",    LONG(msg->Error) },
@@ -206,7 +206,7 @@ ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    }
    else if (msg->Callback.isScript()) {
       ScopedObjectLock<objScript> script(msg->Callback.Context, 5000);
-      if (script.granted()) scCall(msg->Callback, std::to_array<ScriptArg>({ { "Thread", uid, FD_OBJECTID } }));
+      if (script.granted()) sc::Call(msg->Callback, std::to_array<ScriptArg>({ { "Thread", uid, FD_OBJECTID } }));
    }
 
    // NB: Assume 'msg' is unstable after this point because the callback may have modified the message table.
@@ -265,7 +265,7 @@ static void * thread_entry(extThread *Self)
       else if (Self->Routine.isScript()) {
          ScopedObjectLock<objScript> script(Self->Routine.Context, 5000);
          if (script.granted()) {
-            scCall(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
+            sc::Call(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
          }
       }
    }
@@ -474,7 +474,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-static ERR THREAD_SetData(extThread *Self, struct thSetData *Args)
+static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 {
    pf::Log log;
 

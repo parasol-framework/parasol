@@ -14,11 +14,11 @@ FDEF maAddText[] = { { "String", FD_STR }, { 0, 0 } };
 FDEF maRemove[] = { { "Datatype", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clClipboardMethods[] = {
-   { -1, (APTR)CLIPBOARD_AddFile, "AddFile", maAddFile, sizeof(struct clipAddFile) },
-   { -2, (APTR)CLIPBOARD_AddObjects, "AddObjects", maAddObjects, sizeof(struct clipAddObjects) },
-   { -3, (APTR)CLIPBOARD_GetFiles, "GetFiles", maGetFiles, sizeof(struct clipGetFiles) },
-   { -4, (APTR)CLIPBOARD_AddText, "AddText", maAddText, sizeof(struct clipAddText) },
-   { -5, (APTR)CLIPBOARD_Remove, "Remove", maRemove, sizeof(struct clipRemove) },
+   { -1, (APTR)CLIPBOARD_AddFile, "AddFile", maAddFile, sizeof(struct clip::AddFile) },
+   { -2, (APTR)CLIPBOARD_AddObjects, "AddObjects", maAddObjects, sizeof(struct clip::AddObjects) },
+   { -3, (APTR)CLIPBOARD_GetFiles, "GetFiles", maGetFiles, sizeof(struct clip::GetFiles) },
+   { -4, (APTR)CLIPBOARD_AddText, "AddText", maAddText, sizeof(struct clip::AddText) },
+   { -5, (APTR)CLIPBOARD_Remove, "Remove", maRemove, sizeof(struct clip::Remove) },
    { 0, 0, 0, 0, 0 }
 };
 

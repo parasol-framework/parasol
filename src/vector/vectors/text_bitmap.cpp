@@ -116,7 +116,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 
    Vector->txBitmapFont->Bitmap = Vector->txAlphaBitmap;
 
-   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
+   gfx::DrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
 
    if (Vector->txInlineSize) Vector->txBitmapFont->WrapEdge = Vector->txInlineSize;
 

@@ -487,7 +487,7 @@ LARGE GetResource(RES Resource)
          auto file = objFile::create { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
-            while ((line = flReadLine(*file))) {
+            while ((line = fl::ReadLine(*file))) {
                if (startswith("cpu Mhz", line)) cpu_mhz = StrToInt(line);
             }
          }
@@ -973,7 +973,7 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
          lock.release();
 
          if (timer->Routine.isScript()) {
-            scDerefProcedure(timer->Routine.Context, &timer->Routine);
+            sc::DerefProcedure(timer->Routine.Context, &timer->Routine);
          }
 
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {

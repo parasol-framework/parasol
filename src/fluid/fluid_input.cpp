@@ -62,7 +62,7 @@ static ERR consume_input_events(const InputEvent *Events, LONG Handle)
 
    if (!list) {
       log.warning("Dangling input feed subscription %d", Handle);
-      gfxUnsubscribeInput(Handle);
+      gfx::UnsubscribeInput(Handle);
       return ERR::NotFound;
    }
 
@@ -280,7 +280,7 @@ static int input_request_item(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: input = input.subscribe(MaskFlags (JTYPE), SurfaceFilter (Optional), DeviceFilter (Optional), Function)
 //
-// This functionality is a wrapper for the gfxSubscribeInput() function.
+// This functionality is a wrapper for the gfx::SubscribeInput() function.
 
 static int input_subscribe(lua_State *Lua)
 {
@@ -341,7 +341,7 @@ static int input_subscribe(lua_State *Lua)
       prv->InputList = input;
 
       auto callback = C_FUNCTION(consume_input_events);
-      if ((error = gfxSubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle)) != ERR::Okay) goto failed;
+      if ((error = gfx::SubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle)) != ERR::Okay) goto failed;
 
       return 1;
    }
@@ -368,7 +368,7 @@ static int input_unsubscribe(lua_State *Lua)
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
    if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
-   if (input->InputHandle) { gfxUnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
+   if (input->InputHandle) { gfx::UnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
 
    input->Script = NULL;
    input->Mode   = 0;
@@ -387,7 +387,7 @@ static int input_destruct(lua_State *Lua)
       log.traceBranch("Surface: %d, CallbackRef: %d, KeyEvent: %p", input->SurfaceID, input->Callback, input->KeyEvent);
 
       if (input->SurfaceID)   input->SurfaceID = 0;
-      if (input->InputHandle) { gfxUnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
+      if (input->InputHandle) { gfx::UnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
       if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
       if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
       if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }

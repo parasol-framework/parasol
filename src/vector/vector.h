@@ -921,7 +921,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
       fl::ColourSpace(Bitmap->ColourSpace) };
 
    if (pic.ok()) {
-      gfxCopyArea(Bitmap, pic->Bitmap, BAF::NIL, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
+      gfx::CopyArea(Bitmap, pic->Bitmap, BAF::NIL, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
       pic->saveImage(NULL);
    }
 }

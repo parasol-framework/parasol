@@ -163,7 +163,7 @@ Failed: The address could not be resolved
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
+static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::BlockingResolveAddress *Args)
 {
    pf::Log log;
    ERR error;
@@ -210,7 +210,7 @@ Failed:
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
+static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
    pf::Log log;
    ERR error;
@@ -306,7 +306,7 @@ Failed: The address could not be resolved
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
+static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddress *Args)
 {
    pf::Log log;
 
@@ -336,7 +336,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress 
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
          CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
-         if ((thSetData(th, rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
+         if ((th::SetData(th, rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
             return ERR::Okay;
@@ -373,7 +373,7 @@ Failed:
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
+static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
    pf::Log log;
 
@@ -400,7 +400,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
       rb->NetLookupID = Self->UID;
       rb->ThreadID    = th->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
-      if ((thSetData(th, buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
+      if ((th::SetData(th, buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
          return ERR::Okay;
@@ -680,7 +680,7 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
       routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
    else if (Self->Callback.isScript()) {
-      scCall(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
+      sc::Call(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
    }
 }
 

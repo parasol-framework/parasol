@@ -661,7 +661,7 @@ static ERR HTTP_Activate(extHTTP *Self)
    if (write_socket(Self, cstr.c_str(), cstr.length(), NULL) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
          ERR result;
-         if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR::Okay) {
+         if ((result = ns::Connect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR::Okay) {
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
@@ -795,7 +795,7 @@ static ERR HTTP_Init(extHTTP *Self)
 
    if (!Self->ProxyDefined) {
       if (glProxy) {
-         if (prxFind(glProxy, Self->Port, TRUE) IS ERR::Okay) {
+         if (prx::Find(glProxy, Self->Port, TRUE) IS ERR::Okay) {
             if (Self->ProxyServer) FreeResource(Self->ProxyServer);
             Self->ProxyServer = StrClone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
@@ -991,7 +991,7 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
          error = routine(Self, Self->CurrentState, Self->StateChanged.Meta);
       }
       else if (Self->StateChanged.isScript()) {
-         if (scCall(Self->StateChanged, std::to_array<ScriptArg>({
+         if (sc::Call(Self->StateChanged, std::to_array<ScriptArg>({
             { "HTTP", Self->UID, FD_OBJECTID },
             { "State", LONG(Self->CurrentState) }
          }), error) != ERR::Okay) error = ERR::Terminate;

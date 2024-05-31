@@ -47,12 +47,12 @@ FDEF maSetMonitor[] = { { "Name", FD_STR }, { "MinH", FD_LONG }, { "MaxH", FD_LO
 
 static const struct MethodEntry clDisplayMethods[] = {
    { -1, (APTR)DISPLAY_WaitVBL, "WaitVBL", 0, 0 },
-   { -2, (APTR)DISPLAY_UpdatePalette, "UpdatePalette", maUpdatePalette, sizeof(struct gfxUpdatePalette) },
-   { -3, (APTR)DISPLAY_SetDisplay, "SetDisplay", maSetDisplay, sizeof(struct gfxSetDisplay) },
-   { -4, (APTR)DISPLAY_SizeHints, "SizeHints", maSizeHints, sizeof(struct gfxSizeHints) },
-   { -5, (APTR)DISPLAY_SetGamma, "SetGamma", maSetGamma, sizeof(struct gfxSetGamma) },
-   { -6, (APTR)DISPLAY_SetGammaLinear, "SetGammaLinear", maSetGammaLinear, sizeof(struct gfxSetGammaLinear) },
-   { -7, (APTR)DISPLAY_SetMonitor, "SetMonitor", maSetMonitor, sizeof(struct gfxSetMonitor) },
+   { -2, (APTR)DISPLAY_UpdatePalette, "UpdatePalette", maUpdatePalette, sizeof(struct gfx::UpdatePalette) },
+   { -3, (APTR)DISPLAY_SetDisplay, "SetDisplay", maSetDisplay, sizeof(struct gfx::SetDisplay) },
+   { -4, (APTR)DISPLAY_SizeHints, "SizeHints", maSizeHints, sizeof(struct gfx::SizeHints) },
+   { -5, (APTR)DISPLAY_SetGamma, "SetGamma", maSetGamma, sizeof(struct gfx::SetGamma) },
+   { -6, (APTR)DISPLAY_SetGammaLinear, "SetGammaLinear", maSetGammaLinear, sizeof(struct gfx::SetGammaLinear) },
+   { -7, (APTR)DISPLAY_SetMonitor, "SetMonitor", maSetMonitor, sizeof(struct gfx::SetMonitor) },
    { -8, (APTR)DISPLAY_Minimise, "Minimise", 0, 0 },
    { -9, (APTR)DISPLAY_CheckXWindow, "CheckXWindow", 0, 0 },
    { 0, 0, 0, 0, 0 }
