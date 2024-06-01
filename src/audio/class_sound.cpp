@@ -276,7 +276,7 @@ static ERR SOUND_Activate(extSound *Self)
       if (Self->Length > buffer_len) {
          log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, buffer_len);
          Self->Flags |= SDF::STREAM;
-         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
+         strerr = snd::CreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
       }
       else {
          // Create the buffer and fill it completely with sample data.
@@ -284,7 +284,7 @@ static ERR SOUND_Activate(extSound *Self)
          Self->Flags &= ~SDF::STREAM;
          auto client_pos = Self->Position; // Save the seek cursor from pollution
          if (client_pos) Self->seekStart(0);
-         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
+         strerr = snd::CreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
          Self->seekStart(client_pos);
       }
 
@@ -299,20 +299,20 @@ static ERR SOUND_Activate(extSound *Self)
    if (Self->AudioID) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
+         snd::Volume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
    }
-   else sndVolume((PlatformData *)Self->PlatformData, Self->Volume);
+   else snd::Volume((PlatformData *)Self->PlatformData, Self->Volume);
 
-   sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
-   sndPan((PlatformData *)Self->PlatformData, Self->Pan);
+   snd::Frequency((PlatformData *)Self->PlatformData, Self->Playback);
+   snd::Pan((PlatformData *)Self->PlatformData, Self->Pan);
 
    if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
       if (SubscribeTimer(0.25, C_FUNCTION(win32_audio_stream), &Self->StreamTimer) != ERR::Okay) return log.warning(ERR::Failed);
    }
    else if (set_playback_trigger(Self) != ERR::Okay) return log.warning(ERR::Failed);
 
-   auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? TRUE : FALSE, Self->Position);
+   auto response = snd::Play((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? TRUE : FALSE, Self->Position);
    return response ? log.warning(ERR::Failed) : ERR::Okay;
 #else
 
@@ -340,7 +340,7 @@ static ERR SOUND_Activate(extSound *Self)
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
          log.msg("Streaming enabled for playback in format $%.8x; Length: %d", LONG(sampleformat), Self->Length);
 
-         struct sndAddStream stream;
+         struct snd::AddStream stream;
          AudioLoop loop;
          if ((Self->Flags & SDF::LOOP) != SDF::NIL) {
             loop.LoopMode   = LOOP::SINGLE;
@@ -389,7 +389,7 @@ static ERR SOUND_Activate(extSound *Self)
 
             Self->seekStart(client_pos);
 
-            struct sndAddSample add;
+            struct snd::AddSample add;
             AudioLoop loop;
 
             if ((Self->Flags & SDF::LOOP) != SDF::NIL) {
@@ -471,13 +471,13 @@ static ERR SOUND_Activate(extSound *Self)
          }
       }
 
-      sndMixStop(*audio, Self->ChannelIndex);
+      snd::MixStop(*audio, Self->ChannelIndex);
 
-      if (sndMixSample(*audio, Self->ChannelIndex, Self->Handle) IS ERR::Okay) {
-         if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume) != ERR::Okay) return log.warning(ERR::Failed);
-         if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan) != ERR::Okay) return log.warning(ERR::Failed);
-         if (sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback) != ERR::Okay) return log.warning(ERR::Failed);
-         if (sndMixPlay(*audio, Self->ChannelIndex, Self->Position) != ERR::Okay) return log.warning(ERR::Failed);
+      if (snd::MixSample(*audio, Self->ChannelIndex, Self->Handle) IS ERR::Okay) {
+         if (snd::MixVolume(*audio, Self->ChannelIndex, Self->Volume) != ERR::Okay) return log.warning(ERR::Failed);
+         if (snd::MixPan(*audio, Self->ChannelIndex, Self->Pan) != ERR::Okay) return log.warning(ERR::Failed);
+         if (snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback) != ERR::Okay) return log.warning(ERR::Failed);
+         if (snd::MixPlay(*audio, Self->ChannelIndex, Self->Position) != ERR::Okay) return log.warning(ERR::Failed);
 
          return ERR::Okay;
       }
@@ -515,13 +515,13 @@ static ERR SOUND_Deactivate(extSound *Self)
    Self->Position = 0;
 
 #ifdef USE_WIN32_PLAYBACK
-   sndStop((PlatformData *)Self->PlatformData);
+   snd::Stop((PlatformData *)Self->PlatformData);
 #else
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) { // Stop the sample if it's live.
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-            if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
+            if (channel->SampleHandle IS Self->Handle) snd::MixStop(*audio, Self->ChannelIndex);
          }
       }
       else return log.warning(ERR::AccessObject);
@@ -544,14 +544,14 @@ static ERR SOUND_Disable(extSound *Self)
    log.branch();
 
 #ifdef USE_WIN32_PLAYBACK
-   sndStop((PlatformData *)Self->PlatformData);
+   snd::Stop((PlatformData *)Self->PlatformData);
 #else
    if (!Self->ChannelIndex) return ERR::Okay;
 
    pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) snd::MixStop(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR::AccessObject);
@@ -574,8 +574,8 @@ static ERR SOUND_Enable(extSound *Self)
 #ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
       log.msg("Playing back from position %" PF64, Self->Position);
-      if ((Self->Flags & SDF::LOOP) != SDF::NIL) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
-      else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
+      if ((Self->Flags & SDF::LOOP) != SDF::NIL) snd::Play((PlatformData *)Self->PlatformData, TRUE, Self->Position);
+      else snd::Play((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
 #else
    if (!Self->ChannelIndex) return ERR::Okay;
@@ -583,7 +583,7 @@ static ERR SOUND_Enable(extSound *Self)
    pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SampleHandle IS Self->Handle) sndMixContinue(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) snd::MixContinue(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR::AccessObject);
@@ -605,7 +605,7 @@ static ERR SOUND_Free(extSound *Self)
    }
 
 #if defined(USE_WIN32_PLAYBACK)
-   if (!Self->Handle) sndFree((PlatformData *)Self->PlatformData);
+   if (!Self->Handle) snd::Free((PlatformData *)Self->PlatformData);
 #endif
 
    Self->deactivate();
@@ -784,7 +784,7 @@ static ERR SOUND_Init(extSound *Self)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
+         if (snd::OpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -1023,9 +1023,9 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
       }
 
       #ifdef USE_WIN32_PLAYBACK
-         if (sndCheckActivity((PlatformData *)Self->PlatformData) > 0) {
+         if (snd::CheckActivity((PlatformData *)Self->PlatformData) > 0) {
             set_playback_trigger(Self);
-            sndSetPosition((PlatformData *)Self->PlatformData, Self->Position);
+            snd::SetPosition((PlatformData *)Self->PlatformData, Self->Position);
          }
       #else
          if (Self->Handle) {
@@ -1037,7 +1037,7 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
                if (Self->ChannelIndex) {
                   if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                      if (!channel->isStopped()) {
-                        sndMixPlay(*audio, Self->ChannelIndex, Self->Position);
+                        snd::MixPlay(*audio, Self->ChannelIndex, Self->Position);
                      }
                   }
                }
@@ -1076,7 +1076,7 @@ static ERR SOUND_GET_Active(extSound *Self, LONG *Value)
    pf::Log log;
 
    if (Self->Active) {
-      WORD status = sndCheckActivity((PlatformData *)Self->PlatformData);
+      WORD status = snd::CheckActivity((PlatformData *)Self->PlatformData);
 
       if (status IS 0) *Value = FALSE;
       else if (status > 0) *Value = TRUE;
@@ -1208,14 +1208,14 @@ static ERR SOUND_SET_Length(extSound *Self, LONG Value)
 
       #ifdef USE_WIN32_PLAYBACK
          if (Self->initialised()) {
-            sndLength((PlatformData *)Self->PlatformData, Value);
+            snd::Length((PlatformData *)Self->PlatformData, Value);
          }
          return ERR::Okay;
       #else
          if ((Self->Handle) and (Self->AudioID)) {
             pf::ScopedObjectLock<objAudio> audio(Self->AudioID);
             if (audio.granted()) {
-               return sndSetSampleLength(*audio, Self->Handle, Value);
+               return snd::SetSampleLength(*audio, Self->Handle, Value);
             }
             else return log.warning(ERR::AccessObject);
          }
@@ -1400,13 +1400,13 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
-      sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
+      snd::Frequency((PlatformData *)Self->PlatformData, Self->Playback);
    }
 #else
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback);
+         snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
       else return ERR::AccessObject;
    }
@@ -1489,13 +1489,13 @@ static ERR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
-      sndPan((PlatformData *)Self->PlatformData, Self->Pan);
+      snd::Pan((PlatformData *)Self->PlatformData, Self->Pan);
    }
 #else
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixPan(*audio, Self->ChannelIndex, Self->Pan);
+         snd::MixPan(*audio, Self->ChannelIndex, Self->Pan);
       }
       else return ERR::AccessObject;
    }
@@ -1558,14 +1558,14 @@ static ERR SOUND_SET_Playback(extSound *Self, LONG Value)
 
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
-      sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
+      snd::Frequency((PlatformData *)Self->PlatformData, Self->Playback);
       if (Self->PlaybackTimer) set_playback_trigger(Self);
    }
 #else
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback);
+         snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
       else return log.warning(ERR::AccessObject);
    }
@@ -1633,14 +1633,14 @@ static ERR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
    if (Self->initialised()) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
+         snd::Volume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
    }
 #else
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixVolume(*audio, Self->ChannelIndex, Self->Volume);
+         snd::MixVolume(*audio, Self->ChannelIndex, Self->Volume);
       }
       else return ERR::AccessObject;
    }
@@ -1674,9 +1674,9 @@ static ERR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
-   // See sndStreamAudio() for further information on streaming in Win32
+   // See snd::StreamAudio() for further information on streaming in Win32
 
-   auto response = sndStreamAudio((PlatformData *)Self->PlatformData);
+   auto response = snd::StreamAudio((PlatformData *)Self->PlatformData);
    if (response IS -1) {
       log.warning("Sound streaming failed.");
       sound_stopped_event(Self);

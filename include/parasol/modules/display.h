@@ -1354,7 +1354,7 @@ class objPointer : public Object {
 // Surface methods
 
 #define MT_DrwInheritedFocus -1
-#define MT_DrwExpose -2
+#define MT_DrwExposeToDisplay -2
 #define MT_DrwInvalidateRegion -3
 #define MT_DrwSetDisplay -4
 #define MT_DrwSetOpacity -5
@@ -1366,7 +1366,7 @@ class objPointer : public Object {
 
 namespace drw {
 struct InheritedFocus { OBJECTID FocusID; RNF Flags;  };
-struct Expose { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
+struct ExposeToDisplay { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
 struct InvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height;  };
 struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
 struct SetOpacity { DOUBLE Value; DOUBLE Adjustment;  };
@@ -1379,9 +1379,9 @@ inline ERR InheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
    return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR Expose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
-   struct Expose args = { X, Y, Width, Height, Flags };
-   return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
+inline ERR ExposeToDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
+   struct ExposeToDisplay args = { X, Y, Width, Height, Flags };
+   return(Action(MT_DrwExposeToDisplay, (OBJECTPTR)Ob, &args));
 }
 
 inline ERR InvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {

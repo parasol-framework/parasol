@@ -159,14 +159,14 @@ ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, LON
       else {
          log.trace("Unable to access internal bitmap, sending delayed expose message.  Error: %s", GetErrorMsg(bitmap.error));
 
-         struct drw::Expose expose = {
+         struct drw::ExposeToDisplay expose = {
             .X      = childexpose.Left   - List[i].Left,
             .Y      = childexpose.Top    - List[i].Top,
             .Width  = childexpose.Right  - childexpose.Left,
             .Height = childexpose.Bottom - childexpose.Top,
             .Flags  = EXF::NIL
          };
-         QueueAction(MT_DrwExpose, List[i].SurfaceID, &expose);
+         QueueAction(MT_DrwExposeToDisplay, List[i].SurfaceID, &expose);
       }
    }
 
@@ -372,9 +372,9 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Expose: Redraws a surface region to the display, preferably from its graphics buffer.
+ExposeToDisplay: Redraws a surface region to the display, preferably from its graphics buffer.
 
-Call the Expose() method to copy a surface region to the display.  The functionality is identical to that of the
+Call the ExposeToDisplay() method to copy a surface region to the display.  The functionality is identical to that of the
 ~Surface.ExposeSurface() function.  Please refer to it for further documentation.
 
 -INPUT-
@@ -390,7 +390,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_Expose(extSurface *Self, struct drw::Expose *Args)
+static ERR SURFACE_ExposeToDisplay(extSurface *Self, struct drw::ExposeToDisplay *Args)
 {
    if (tlNoExpose) return ERR::Okay;
 
@@ -401,9 +401,9 @@ static ERR SURFACE_Expose(extSurface *Self, struct drw::Expose *Args)
    while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-      if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS MT_DrwExposeToDisplay) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs) {
-            auto msgexpose = (struct drw::Expose *)(action + 1);
+            auto msgexpose = (struct drw::ExposeToDisplay *)(action + 1);
 
             if (!Args) {
                // Invalidate everything
@@ -432,7 +432,7 @@ static ERR SURFACE_Expose(extSurface *Self, struct drw::Expose *Args)
                msgexpose->Flags  |= Args->Flags;
             }
 
-            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drw::Expose));
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drw::ExposeToDisplay));
          }
          else {
             // We do nothing here because the next expose message will draw everything.
@@ -463,7 +463,7 @@ To quickly redraw an entire surface object's content, call this method directly 
 If you want to redraw a surface object and ignore all of its surface children then you should use the Draw action
 instead of this method.
 
-If you want to refresh a surface area to the display then you should use the #Expose() method instead.  Exposing
+If you want to refresh a surface area to the display then you should use the #ExposeToDisplay() method instead.  Exposing
 will use the graphics buffer to refresh the graphics, thus avoiding the speed loss of a complete redraw.
 
 -INPUT-

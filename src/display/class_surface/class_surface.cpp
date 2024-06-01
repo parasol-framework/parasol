@@ -457,12 +457,12 @@ static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERR Result,
    log.traceBranch("Display exposure received - redrawing display.");
 
    if (Args) {
-      struct drw::Expose expose = { Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN };
-      Action(MT_DrwExpose, Self, &expose);
+      struct drw::ExposeToDisplay expose = { Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN };
+      Action(MT_DrwExposeToDisplay, Self, &expose);
    }
    else {
-      struct drw::Expose expose = { 0, 0, 20000, 20000, EXF::CHILDREN };
-      Action(MT_DrwExpose, Self, &expose);
+      struct drw::ExposeToDisplay expose = { 0, 0, 20000, 20000, EXF::CHILDREN };
+      Action(MT_DrwExposeToDisplay, Self, &expose);
    }
 }
 

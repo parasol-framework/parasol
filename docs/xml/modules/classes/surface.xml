@@ -196,9 +196,9 @@ the surface area first).</li>
     </method>
 
     <method>
-      <name>Expose</name>
+      <name>ExposeToDisplay</name>
       <comment>Redraws a surface region to the display, preferably from its graphics buffer.</comment>
-      <prototype>ERR drw::Expose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+      <prototype>ERR drw::ExposeToDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
       <input>
         <param type="LONG" name="X">X coordinate of the expose area.</param>
         <param type="LONG" name="Y">Y coordinate of the expose area.</param>
@@ -207,7 +207,7 @@ the surface area first).</li>
         <param type="EXF" name="Flags" lookup="EXF">Optional flags.</param>
       </input>
       <description>
-<p>Call the Expose() method to copy a surface region to the display.  The functionality is identical to that of the <function module="Surface">ExposeSurface</function> function.  Please refer to it for further documentation.</p>
+<p>Call the ExposeToDisplay() method to copy a surface region to the display.  The functionality is identical to that of the <function module="Surface">ExposeSurface</function> function.  Please refer to it for further documentation.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -227,7 +227,7 @@ the surface area first).</li>
       <description>
 <p>Invalidating a surface object will cause everything within a specified area to be redrawn.  This includes child surface objects that intersect with the area that you have specified.  Parent regions that overlap are not included in the redraw.</p>
 <p>To quickly redraw an entire surface object's content, call this method directly without supplying an argument structure. If you want to redraw a surface object and ignore all of its surface children then you should use the Draw action instead of this method.</p>
-<p>If you want to refresh a surface area to the display then you should use the <method>Expose</method> method instead.  Exposing will use the graphics buffer to refresh the graphics, thus avoiding the speed loss of a complete redraw.</p>
+<p>If you want to refresh a surface area to the display then you should use the <method>ExposeToDisplay</method> method instead.  Exposing will use the graphics buffer to refresh the graphics, thus avoiding the speed loss of a complete redraw.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

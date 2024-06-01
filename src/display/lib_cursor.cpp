@@ -499,23 +499,23 @@ ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID
          #ifdef __xwindows__
 
             APTR xwin;
-            objSurface *surface;
-            objDisplay *display;
             Cursor xcursor;
 
-            if ((pointer->SurfaceID) and (AccessObject(pointer->SurfaceID, 1000, &surface) IS ERR::Okay)) {
-               if ((surface->DisplayID) and (AccessObject(surface->DisplayID, 1000, &display) IS ERR::Okay)) {
-                  if ((display->getPtr(FID_WindowHandle, &xwin) IS ERR::Okay) and (xwin)) {
-                     xcursor = get_x11_cursor(CursorID);
-                     XDefineCursor(XDisplay, (Window)xwin, xcursor);
-                     XFlush(XDisplay);
-                     pointer->CursorID = CursorID;
+            if (pointer->SurfaceID) {
+               if (ScopedObjectLock<objSurface> surface(pointer->SurfaceID, 1000); surface.granted()) {
+                  if (surface->DisplayID) {
+                     if (ScopedObjectLock<objDisplay> display(surface->DisplayID, 1000); display.granted()) {
+                        if ((display->getPtr(FID_WindowHandle, &xwin) IS ERR::Okay) and (xwin)) {
+                           xcursor = get_x11_cursor(CursorID);
+                           XDefineCursor(XDisplay, (Window)xwin, xcursor);
+                           XFlush(XDisplay);
+                           pointer->CursorID = CursorID;
+                        }
+                        else log.warning("Failed to acquire window handle for surface #%d.", pointer->SurfaceID);
+                     }
+                     else log.warning("Display of surface #%d undefined or inaccessible.", pointer->SurfaceID);
                   }
-                  else log.warning("Failed to acquire window handle for surface #%d.", pointer->SurfaceID);
-                  ReleaseObject(display);
                }
-               else log.warning("Display of surface #%d undefined or inaccessible.", pointer->SurfaceID);
-               ReleaseObject(surface);
             }
             else log.warning("Pointer surface undefined or inaccessible.");
 

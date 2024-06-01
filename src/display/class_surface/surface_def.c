@@ -188,7 +188,7 @@ static const struct FieldDef clSurfaceALIGN[] = {
 };
 
 FDEF maInheritedFocus[] = { { "FocusID", FD_OBJECTID }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maExpose[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
+FDEF maExposeToDisplay[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maInvalidateRegion[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
 FDEF maSetDisplay[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "InsideWidth", FD_LONG }, { "InsideHeight", FD_LONG }, { "BitsPerPixel", FD_LONG }, { "RefreshRate", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetOpacity[] = { { "Value", FD_DOUBLE }, { "Adjustment", FD_DOUBLE }, { 0, 0 } };
@@ -198,7 +198,7 @@ FDEF maRemoveCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
 static const struct MethodEntry clSurfaceMethods[] = {
    { -1, (APTR)SURFACE_InheritedFocus, "InheritedFocus", maInheritedFocus, sizeof(struct drw::InheritedFocus) },
-   { -2, (APTR)SURFACE_Expose, "Expose", maExpose, sizeof(struct drw::Expose) },
+   { -2, (APTR)SURFACE_ExposeToDisplay, "ExposeToDisplay", maExposeToDisplay, sizeof(struct drw::ExposeToDisplay) },
    { -3, (APTR)SURFACE_InvalidateRegion, "InvalidateRegion", maInvalidateRegion, sizeof(struct drw::InvalidateRegion) },
    { -4, (APTR)SURFACE_SetDisplay, "SetDisplay", maSetDisplay, sizeof(struct drw::SetDisplay) },
    { -5, (APTR)SURFACE_SetOpacity, "SetOpacity", maSetOpacity, sizeof(struct drw::SetOpacity) },

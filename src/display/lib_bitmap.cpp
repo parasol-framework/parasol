@@ -579,7 +579,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
             }
          }
          else { // Source is an ximage, destination is a pixmap
-            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpPremultiply(src);
+            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmp::Premultiply(src);
 
             if (src->x11.XShmImage IS true)  {
                XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &src->x11.ximage, X, Y, DestX, DestY, Width, Height, False);
@@ -591,7 +591,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
             }
             else XClearWindow(XDisplay, dest->x11.window); // 'Clear' the window to the pixmap background
 
-            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpDemultiply(src);
+            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmp::Demultiply(src);
          }
       }
       else { // Both the source and the destination are pixmaps
@@ -1293,14 +1293,14 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
 
    // Use this routine if the destination is a pixmap (write only memory).  X11 windows are always represented as pixmaps.
 
-   if (src->x11.drawable) {
+   if (dest->x11.drawable) {
       // Source is an ximage, destination is a pixmap.  NB: If DGA is enabled, we will avoid using these routines because mem-copying from software
       // straight to video RAM is a lot faster.
 
       WORD alignment;
 
-      if (src->LineWidth & 0x0001) alignment = 8;
-      else if (src->LineWidth & 0x0002) alignment = 16;
+      if (dest->LineWidth & 0x0001) alignment = 8;
+      else if (dest->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
       XImage ximage;
@@ -1313,7 +1313,7 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       ximage.bitmap_unit      = alignment;       // Quant. of scanline - 8, 16, 32
       ximage.bitmap_bit_order = LSBFirst;        // LSBFirst / MSBFirst
       ximage.bitmap_pad       = alignment;       // 8, 16, 32, either XY or Zpixmap
-      if ((Surface->BitsPerPixel IS 32) and ((src->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) ximage.depth = 24;
+      if ((Surface->BitsPerPixel IS 32) and ((dest->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) ximage.depth = 24;
       else ximage.depth = Surface->BitsPerPixel;
       ximage.bytes_per_line   = Surface->LineWidth;
       ximage.bits_per_pixel   = Surface->BytesPerPixel * 8;
@@ -1322,7 +1322,7 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       ximage.blue_mask        = 0;
       XInitImage(&ximage);
 
-      XPutImage(XDisplay, src->x11.drawable, src->getGC(),
+      XPutImage(XDisplay, dest->x11.drawable, dest->getGC(),
          &ximage, X, Y, XDest, YDest, Width, Height);
 
       return ERR::Okay;

@@ -524,7 +524,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
 
   methods("surface", "Drw", {
     { id=1, name="InheritedFocus" },
-    { id=2, name="Expose" },
+    { id=2, name="ExposeToDisplay" },
     { id=3, name="InvalidateRegion" },
     { id=4, name="SetDisplay" },
     { id=5, name="SetOpacity" },
