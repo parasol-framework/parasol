@@ -821,10 +821,8 @@ static ERR DISPLAY_Init(extDisplay *Self)
          CurrentTask()->get(FID_Name, &name);
          HWND popover = 0;
          if (Self->PopOverID) {
-            extDisplay *other_display;
-            if (AccessObject(Self->PopOverID, 3000, &other_display) IS ERR::Okay) {
+            if (ScopedObjectLock<extDisplay> other_display(Self->PopOverID, 3000); other_display.granted()) {
                popover = other_display->WindowHandle;
-               ReleaseObject(other_display);
             }
             else log.warning(ERR::AccessObject);
          }
@@ -1096,7 +1094,7 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
 {
    new (Self) extDisplay;
 
-   if (NewObject(CLASSID::BITMAP, NF::LOCAL, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
+   if (NewLocalObject(CLASSID::BITMAP, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
 
    OBJECTID id;
    if (FindObject("SystemVideo", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay) SetName(Self->Bitmap, "SystemVideo");
@@ -1869,7 +1867,7 @@ ERR DISPLAY_Show(extDisplay *Self)
    objPointer *pointer;
    OBJECTID pointer_id;
    if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &pointer_id) != ERR::Okay) {
-      if (NewObject(CLASSID::POINTER, NF::UNTRACKED, &pointer) IS ERR::Okay) {
+      if (NewObject(CLASSID::POINTER, NF::UNTRACKED, (OBJECTPTR *)&pointer) IS ERR::Okay) {
          SetName(pointer, "SystemPointer");
          if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::SURFACE)) pointer->setSurface(Self->Owner->UID);
 
@@ -2584,17 +2582,15 @@ static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
 #ifdef __xwindows__
 
    if (Self->initialised()) {
-      extDisplay *popover;
       if (!Value) {
          Self->PopOverID = 0;
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
-      else if (AccessObject(Value, 2000, &popover) IS ERR::Okay) {
+      else if (ScopedObjectLock<extDisplay> popover(Value, 2000); popover.granted()) {
          if (popover->Class->BaseClassID IS CLASSID::DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
          }
-         ReleaseObject(popover);
       }
       else return ERR::AccessObject;
    }

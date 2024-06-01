@@ -50,8 +50,7 @@ static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   extNetLookup *nl;
-   if (AccessObject(r->NetLookupID, 2000, &nl) IS ERR::Okay) {
+   if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -60,11 +59,9 @@ static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
       auto it = glHosts.find((CSTRING)(r + 1));
       if (it != glHosts.end()) {
          nl->Info = it->second;
-         resolve_callback(nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
+         resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR::Failed);
-
-      ReleaseObject(nl);
+      else resolve_callback(*nl, ERR::Failed);
    }
    return ERR::Okay;
 }
@@ -79,8 +76,7 @@ static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   extNetLookup *nl;
-   if (AccessObject(r->NetLookupID, 2000, &nl) IS ERR::Okay) {
+   if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -89,11 +85,9 @@ static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
       auto it = glAddresses.find((CSTRING)(r + 1));
       if (it != glAddresses.end()) {
          nl->Info = it->second;
-         resolve_callback(nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
+         resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR::Failed);
-
-      ReleaseObject(nl);
+      else resolve_callback(*nl, ERR::Failed);
    }
    return ERR::Okay;
 }

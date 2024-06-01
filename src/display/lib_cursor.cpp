@@ -144,14 +144,14 @@ objPointer * AccessPointer(void)
 
    if (!glPointerID) {
       if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
-         AccessObject(glPointerID, 2000, &pointer);
+         AccessObject(glPointerID, 2000, (OBJECTPTR *)&pointer);
       }
       return pointer;
    }
 
-   if (AccessObject(glPointerID, 2000, &pointer) IS ERR::NoMatchingObject) {
+   if (AccessObject(glPointerID, 2000, (OBJECTPTR *)&pointer) IS ERR::NoMatchingObject) {
       if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
-         AccessObject(glPointerID, 2000, &pointer);
+         AccessObject(glPointerID, 2000, (OBJECTPTR *)&pointer);
       }
    }
 

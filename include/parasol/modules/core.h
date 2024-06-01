@@ -1969,26 +1969,26 @@ struct ScriptArg { // For use with sc::Exec
 
 struct CoreBase {
 #ifndef PARASOL_STATIC
-   ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
+   ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
    ERR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
-   void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
-   ERR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
+   void (*_ActionList)(struct ActionTable **Actions, LONG *Size);
+   ERR (*_DeleteFile)(CSTRING Path, FUNCTION *Callback);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(IDTYPE Type);
-   ERR (*_AllocMemory)(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
-   ERR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
+   ERR (*_AllocMemory)(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID);
+   ERR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result);
    ERR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERR (*_CheckMemoryExists)(MEMORYID ID);
    ERR (*_CheckObjectExists)(OBJECTID Object);
    ERR (*_InitObject)(OBJECTPTR Object);
    ERR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
-   ERR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
-   LONG (*_AdjustLogLevel)(LONG Adjust);
-   ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-   ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
+   ERR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR *Result, LONG *Elements);
+   LONG (*_AdjustLogLevel)(LONG Delta);
+   ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *Result);
+   ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
-   ERR (*_AnalysePath)(CSTRING Path, LOC * Type);
+   ERR (*_AnalysePath)(CSTRING Path, LOC *Type);
    ERR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
@@ -1996,17 +1996,17 @@ struct CoreBase {
    ERR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
-   ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
+   ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-   ERR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING * Result);
-   ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
-   ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
-   ERR (*_NewObject)(CLASSID ClassID, NF Flags, APTR Object);
+   ERR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING *Result);
+   ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
+   ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo *MemInfo, LONG Size);
+   ERR (*_NewObject)(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
-   ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+   ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
-   ERR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
-   ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID);
+   ERR (*_IdentifyFile)(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
+   ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
    ERR (*_GetMessage)(LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
@@ -2015,12 +2015,12 @@ struct CoreBase {
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
    CSTRING (*_FieldName)(ULONG FieldID);
-   ERR (*_ScanDir)(struct DirInfo * Info);
+   ERR (*_ScanDir)(struct DirInfo *Info);
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
-   ERR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
-   ERR (*_SubscribeEvent)(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
-   ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
+   ERR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION *Callback);
+   ERR (*_SubscribeEvent)(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle);
+   ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
    ERR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, LONG Action);
    void (*_UnsubscribeEvent)(APTR Handle);
@@ -2030,32 +2030,32 @@ struct CoreBase {
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
-   ERR (*_ScanMessages)(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
-   ERR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
-   void (*_UnloadFile)(struct CacheFile * Cache);
+   ERR (*_ScanMessages)(LONG *Handle, LONG Type, APTR Buffer, LONG Size);
+   ERR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals);
+   void (*_UnloadFile)(struct CacheFile *Cache);
    ERR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
-   ERR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
+   ERR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile **Cache);
    ERR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERR (*_DeleteVolume)(CSTRING Name);
-   ERR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+   ERR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_UpdateMessage)(LONG Message, LONG Type, APTR Data, LONG Size);
-   ERR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
+   ERR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
    ERR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
-   ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo ** Info);
+   ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
-   struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, APTR Target);
+   struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target);
    CSTRING (*_GetErrorMsg)(ERR Error);
    struct Message * (*_GetActionMsg)(void);
    ERR (*_FuncError)(CSTRING Header, ERR Error);
    ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
    ERR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-   ERR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+   ERR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
+   ERR (*_AddInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING Value);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
-   ERR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
+   ERR (*_ReadInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING *Value);
    ERR (*_SetResourcePath)(RP PathType, CSTRING Path);
    objTask * (*_CurrentTask)(void);
    CSTRING (*_ResolveGroupID)(LONG Group);
@@ -2067,26 +2067,26 @@ struct CoreBase {
 #ifndef PRV_CORE_MODULE
 #ifndef PARASOL_STATIC
 extern struct CoreBase *CoreBase;
-inline ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
+inline ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
-inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
-inline ERR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
+inline void ActionList(struct ActionTable **Actions, LONG *Size) { return CoreBase->_ActionList(Actions,Size); }
+inline ERR DeleteFile(CSTRING Path, FUNCTION *Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
-inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
-inline ERR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
+inline ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
+inline ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
 inline ERR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
-inline ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
-inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
-inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
-inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
+inline ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, LONG *Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
+inline LONG AdjustLogLevel(LONG Delta) { return CoreBase->_AdjustLogLevel(Delta); }
+inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
+inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
-inline ERR AnalysePath(CSTRING Path, LOC * Type) { return CoreBase->_AnalysePath(Path,Type); }
+inline ERR AnalysePath(CSTRING Path, LOC *Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
@@ -2094,17 +2094,17 @@ inline ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBas
 inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
-inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
+inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
-inline ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
-inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
-inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
-inline ERR NewObject(CLASSID ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
+inline ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
+inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
+inline ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
+inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
-inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
+inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
-inline ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
-inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
+inline ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
+inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
@@ -2113,12 +2113,12 @@ inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOw
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
 inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); }
-inline ERR ScanDir(struct DirInfo * Info) { return CoreBase->_ScanDir(Info); }
+inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
-inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
-inline ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
-inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
+inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
+inline ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
+inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
@@ -2128,57 +2128,57 @@ inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return Cor
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
-inline ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
-inline ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
-inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
+inline ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
+inline ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
+inline void UnloadFile(struct CacheFile *Cache) { return CoreBase->_UnloadFile(Cache); }
 inline ERR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
-inline ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
+inline ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile **Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 inline ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
-inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
+inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
-inline ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
+inline ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
-inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
+inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
-inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target) { return CoreBase->_FindField(Object,FieldID,Target); }
+inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) { return CoreBase->_FindField(Object,FieldID,Target); }
 inline CSTRING GetErrorMsg(ERR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(Header,Error); }
 inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
-inline ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
+inline ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
+inline ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
-inline ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
+inline ERR ReadInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING *Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERR SetResourcePath(RP PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 #else
-extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
+extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
 extern "C" ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
-extern "C" void ActionList(struct ActionTable ** Actions, LONG * Size);
-extern "C" ERR DeleteFile(CSTRING Path, FUNCTION * Callback);
+extern "C" void ActionList(struct ActionTable **Actions, LONG *Size);
+extern "C" ERR DeleteFile(CSTRING Path, FUNCTION *Callback);
 extern "C" CSTRING ResolveClassID(CLASSID ID);
 extern "C" LONG AllocateID(IDTYPE Type);
-extern "C" ERR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
-extern "C" ERR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result);
+extern "C" ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID);
+extern "C" ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result);
 extern "C" ERR CheckAction(OBJECTPTR Object, LONG Action);
 extern "C" ERR CheckMemoryExists(MEMORYID ID);
 extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" OBJECTPTR CurrentContext(void);
-extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
-extern "C" LONG AdjustLogLevel(LONG Adjust);
-extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
+extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, LONG *Elements);
+extern "C" LONG AdjustLogLevel(LONG Delta);
+extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *Result);
+extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
 extern "C" objMetaClass * FindClass(CLASSID ClassID);
-extern "C" ERR AnalysePath(CSTRING Path, LOC * Type);
+extern "C" ERR AnalysePath(CSTRING Path, LOC *Type);
 extern "C" ERR FreeResource(MEMORYID ID);
 extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
@@ -2186,17 +2186,17 @@ extern "C" ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
-extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
+extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-extern "C" ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
-extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
-extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
-extern "C" ERR NewObject(CLASSID ClassID, NF Flags, APTR Object);
+extern "C" ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result);
+extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
+extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size);
+extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
 extern "C" void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
-extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR ProcessMessages(PMF Flags, LONG TimeOut);
-extern "C" ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
-extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID);
+extern "C" ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
+extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
 extern "C" ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
 extern "C" CLASSID ResolveClassName(CSTRING Name);
@@ -2205,12 +2205,12 @@ extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
 extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
 extern "C" CSTRING FieldName(ULONG FieldID);
-extern "C" ERR ScanDir(struct DirInfo * Info);
+extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern "C" void LogReturn(void);
-extern "C" ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
-extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
-extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
+extern "C" ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION *Callback);
+extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle);
+extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
 extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, LONG Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
@@ -2220,32 +2220,32 @@ extern "C" LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
 extern "C" LARGE GetResource(RES Resource);
 extern "C" LARGE SetResource(RES Resource, LARGE Value);
-extern "C" ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
-extern "C" ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
-extern "C" void UnloadFile(struct CacheFile * Cache);
+extern "C" ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG Size);
+extern "C" ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals);
+extern "C" void UnloadFile(struct CacheFile *Cache);
 extern "C" ERR CreateFolder(CSTRING Path, PERMIT Permissions);
-extern "C" ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
+extern "C" ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile **Cache);
 extern "C" ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
 extern "C" ERR DeleteVolume(CSTRING Name);
-extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size);
-extern "C" ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
+extern "C" ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
 extern "C" ERR QueueAction(LONG Action, OBJECTID Object, APTR Args);
 extern "C" LARGE PreciseTime(void);
-extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info);
+extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);
 extern "C" OBJECTPTR GetObjectPtr(OBJECTID Object);
-extern "C" struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target);
+extern "C" struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target);
 extern "C" CSTRING GetErrorMsg(ERR Error);
 extern "C" struct Message * GetActionMsg(void);
 extern "C" ERR FuncError(CSTRING Header, ERR Error);
 extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
-extern "C" ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-extern "C" ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+extern "C" ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
+extern "C" ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value);
 extern "C" void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 extern "C" void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
-extern "C" ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
+extern "C" ERR ReadInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING *Value);
 extern "C" ERR SetResourcePath(RP PathType, CSTRING Path);
 extern "C" objTask * CurrentTask(void);
 extern "C" CSTRING ResolveGroupID(LONG Group);
@@ -2326,7 +2326,11 @@ inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address) {
 }
 
 template<class T> inline ERR NewObject(CLASSID ClassID, T **Result) {
-   return NewObject(ClassID, NF::NIL, Result);
+   return NewObject(ClassID, NF::NIL, (OBJECTPTR *)Result);
+}
+
+template<class T> inline ERR NewLocalObject(CLASSID ClassID, T **Result) {
+   return NewObject(ClassID, NF::LOCAL, (OBJECTPTR *)Result);
 }
 
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {

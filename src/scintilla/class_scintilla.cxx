@@ -629,7 +629,6 @@ static ERR SCINTILLA_Focus(extScintilla *Self)
 static ERR SCINTILLA_Free(extScintilla *Self, APTR)
 {
    pf::Log log;
-   OBJECTPTR object;
 
    delete Self->API;
    Self->API = NULL;
@@ -637,17 +636,16 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    if (Self->TimerID) { UpdateTimer(Self->TimerID, 0); Self->TimerID = 0; }
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
-      if (AccessObject(Self->FocusID, 500, &object) IS ERR::Okay) {
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
+
+      if (pf::ScopedObjectLock object(Self->FocusID, 500); object.granted()) {
+         UnsubscribeAction(*object, 0);         
       }
    }
 
    if (Self->SurfaceID) {
-      if (AccessObject(Self->SurfaceID, 500, &object) IS ERR::Okay) {
-         drw::RemoveCallback(object, (APTR)&draw_scintilla);
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
+      if (pf::ScopedObjectLock object(Self->SurfaceID, 500); object.granted()) {
+         drw::RemoveCallback(*object, (APTR)&draw_scintilla);
+         UnsubscribeAction(*object, 0);
       }
    }
 
@@ -791,19 +789,16 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    // Subscribe to the object responsible for the user focus
 
-   OBJECTPTR object;
-   if (AccessObject(Self->FocusID, 5000, &object) IS ERR::Okay) {
-      SubscribeAction(object, AC_Focus, C_FUNCTION(notify_focus));
-      SubscribeAction(object, AC_LostFocus, C_FUNCTION(notify_lostfocus));
-      ReleaseObject(object);
+   if (pf::ScopedObjectLock object(Self->FocusID, 5000); object.granted()) {
+      SubscribeAction(*object, AC_Focus, C_FUNCTION(notify_focus));
+      SubscribeAction(*object, AC_LostFocus, C_FUNCTION(notify_lostfocus));
    }
 
    // Set up the target surface
 
    log.trace("Configure target surface #%d", Self->SurfaceID);
 
-   objSurface *surface;
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 3000); surface.granted()) {
       surface->setFlags(surface->Flags|RNF::GRAB_FOCUS);
 
       Self->Surface.X = surface->X;
@@ -811,20 +806,18 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->Surface.Width  = surface->Width;
       Self->Surface.Height = surface->Height;
 
-      drw::AddCallback(surface, (APTR)&draw_scintilla);
+      drw::AddCallback(*surface, (APTR)&draw_scintilla);
 
       //SubscribeFeed(surface); TODO: Deprecated
 
-      SubscribeAction(surface, AC_DragDrop, C_FUNCTION(notify_dragdrop));
-      SubscribeAction(surface, AC_Hide, C_FUNCTION(notify_hide));
-      SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_redimension));
-      SubscribeAction(surface, AC_Show, C_FUNCTION(notify_show));
+      SubscribeAction(*surface, AC_DragDrop, C_FUNCTION(notify_dragdrop));
+      SubscribeAction(*surface, AC_Hide, C_FUNCTION(notify_hide));
+      SubscribeAction(*surface, AC_Redimension, C_FUNCTION(notify_redimension));
+      SubscribeAction(*surface, AC_Show, C_FUNCTION(notify_show));
 
       if (surface->hasFocus()) {
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->prvKeyEvent);
       }
-
-      ReleaseObject(surface);
    }
    else return log.warning(ERR::AccessObject);
 
@@ -1005,7 +998,7 @@ static ERR SCINTILLA_InsertText(extScintilla *Self, struct sci::InsertText *Args
 
 static ERR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
-   if (NewObject(CLASSID::FONT, NF::LOCAL, &Self->Font) IS ERR::Okay) {
+   if (NewLocalObject(CLASSID::FONT, (OBJECTPTR *)&Self->Font) IS ERR::Okay) {
       Self->Font->setFace("courier:10");
       Self->LeftMargin  = 4;
       Self->RightMargin = 30;

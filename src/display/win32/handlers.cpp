@@ -154,26 +154,24 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
-   objSurface *surface;
-   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
-      extDisplay *display;
-      OBJECTID display_id = surface->DisplayID;
-      if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
-         FUNCTION feedback = display->ResizeFeedback;
+   FUNCTION feedback;
+   OBJECTID display_id = 0;
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
+      display_id = surface->DisplayID;
+      if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
+         feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
          display->Width  = WinWidth;
          display->Height = WinHeight;
-         ReleaseObject(display);
-         ReleaseObject(surface);
-
-         // Notification occurs with the display and surface released so as to reduce the potential for dead-locking.
-
-         resize_feedback(&feedback, display_id, ClientX, ClientY, ClientWidth, ClientHeight);
-         return;
       }
-      ReleaseObject(surface);
+      else return;
    }
+   else return;
+
+   // Notification occurs with the display and surface released so as to reduce the potential for dead-locking.
+
+   resize_feedback(&feedback, display_id, ClientX, ClientY, ClientWidth, ClientHeight);
 }
 
 //********************************************************************************************************************
@@ -186,15 +184,13 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
 void MsgSetFocus(OBJECTID SurfaceID)
 {
-   pf::Log log;
-   objSurface *surface;
-   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
+      pf::Log log;
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
-      ReleaseObject(surface);
    }
 }
 
@@ -205,8 +201,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 {
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
-   objSurface *surface;
-   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
       auto minwidth  = surface->get<LONG>(FID_MinWidth);
       auto minheight = surface->get<LONG>(FID_MinHeight);
       auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
@@ -231,8 +226,6 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
             *Width = *Height * scale;
          }
       }
-
-      ReleaseObject(surface);
    }
 }
 

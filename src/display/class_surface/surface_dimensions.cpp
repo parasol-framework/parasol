@@ -286,12 +286,10 @@ static ERR SET_Height(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_SCALED) {
       if (Self->ParentID) {
-         extSurface *parent;
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->HeightPercent = value;
             Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_SCALED_HEIGHT;
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -783,7 +781,6 @@ static ERR SET_Width(extSurface *Self, Variable *Value)
 {
    pf::Log log;
    Variable var;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -802,11 +799,10 @@ static ERR SET_Width(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_SCALED) {
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->WidthPercent = value;
             Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_SCALED_WIDTH;
             resize_layer(Self, Self->X, Self->Y, parent->Width * value, 0, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
          else return ERR::AccessObject;
       }
@@ -868,7 +864,6 @@ static ERR GET_XCoord(extSurface *Self, Variable *Value)
 static ERR SET_XCoord(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -880,9 +875,8 @@ static ERR SET_XCoord(extSurface *Self, Variable *Value)
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_SCALED_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width * value, Self->Y);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -894,9 +888,8 @@ static ERR SET_XCoord(extSurface *Self, Variable *Value)
       // If our right-hand side is relative, we need to resize our surface to counteract the movement.
 
       if ((Self->ParentID) and (Self->Dimensions & (DMF_SCALED_X_OFFSET|DMF_FIXED_X_OFFSET))) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -926,7 +919,6 @@ static ERR GET_XOffset(extSurface *Self, Variable *Value)
 {
    pf::Log log;
    Variable xoffset;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_SCALED) {
@@ -941,12 +933,9 @@ static ERR GET_XOffset(extSurface *Self, Variable *Value)
       if (Self->Dimensions & DMF_X_OFFSET) {
          value = Self->XOffset;
       }
-      else if ((Self->Dimensions & DMF_WIDTH) and
-               (Self->Dimensions & DMF_X) and
-               (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+      else if ((Self->Dimensions & DMF_WIDTH) and (Self->Dimensions & DMF_X) and (Self->ParentID)) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Width - Self->X - Self->Width;
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -963,7 +952,6 @@ static ERR GET_XOffset(extSurface *Self, Variable *Value)
 static ERR SET_XOffset(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -978,13 +966,12 @@ static ERR SET_XOffset(extSurface *Self, Variable *Value)
       Self->XOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->XOffset = parent->Width * F2I(Self->XOffsetPercent);
             if (!(Self->Dimensions & DMF_X)) Self->X = parent->Width - Self->XOffset - Self->Width;
             if (!(Self->Dimensions & DMF_WIDTH)) {
                resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             }
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -994,16 +981,14 @@ static ERR SET_XOffset(extSurface *Self, Variable *Value)
       Self->XOffset = value;
 
       if ((Self->Dimensions & DMF_WIDTH) and (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width - Self->XOffset - Self->Width, Self->Y);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
       else if ((Self->Dimensions & DMF_X) and (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -1044,7 +1029,6 @@ static ERR GET_YCoord(extSurface *Self, Variable *Value)
 static ERR SET_YCoord(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)     value = Value->Double;
@@ -1056,9 +1040,8 @@ static ERR SET_YCoord(extSurface *Self, Variable *Value)
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_SCALED_Y;
       Self->YPercent = value;
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, Self->X, parent->Height * value);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -1092,7 +1075,6 @@ static ERR GET_YOffset(extSurface *Self, Variable *Value)
 {
    pf::Log log;
    Variable yoffset;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_SCALED) {
@@ -1108,9 +1090,8 @@ static ERR GET_YOffset(extSurface *Self, Variable *Value)
          value = Self->YOffset;
       }
       else if ((Self->Dimensions & DMF_HEIGHT) and (Self->Dimensions & DMF_Y) and (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Height - Self->Y - Self->Height;
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -1127,7 +1108,6 @@ static ERR GET_YOffset(extSurface *Self, Variable *Value)
 static ERR SET_YOffset(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -1142,14 +1122,13 @@ static ERR SET_YOffset(extSurface *Self, Variable *Value)
       Self->YOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->YOffset = parent->Height * F2I(Self->YOffsetPercent);
             if (!(Self->Dimensions & DMF_Y))Self->Y = parent->Height - Self->YOffset - Self->Height;
             if (!(Self->Dimensions & DMF_HEIGHT)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
@@ -1159,19 +1138,17 @@ static ERR SET_YOffset(extSurface *Self, Variable *Value)
       Self->YOffset = value;
 
       if ((Self->Dimensions & DMF_HEIGHT) and (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             if (!(Self->Dimensions & DMF_HEIGHT)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }
       else if ((Self->Dimensions & DMF_Y) and (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR::Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
          else return log.warning(ERR::AccessObject);
       }

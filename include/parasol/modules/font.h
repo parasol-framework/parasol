@@ -277,12 +277,12 @@ class objFont : public Object {
 
 struct FontBase {
 #ifndef PARASOL_STATIC
-   ERR (*_GetList)(struct FontList ** Result);
-   LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
-   LONG (*_CharWidth)(objFont * Font, ULONG Char);
+   ERR (*_GetList)(struct FontList **Result);
+   LONG (*_StringWidth)(objFont *Font, CSTRING String, LONG Chars);
+   LONG (*_CharWidth)(objFont *Font, ULONG Char);
    ERR (*_RefreshFonts)(void);
-   ERR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
-   ERR (*_ResolveFamilyName)(CSTRING String, CSTRING * Result);
+   ERR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
+   ERR (*_ResolveFamilyName)(CSTRING String, CSTRING *Result);
 #endif // PARASOL_STATIC
 };
 
@@ -290,21 +290,21 @@ struct FontBase {
 #ifndef PARASOL_STATIC
 extern struct FontBase *FontBase;
 namespace fnt {
-inline ERR GetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
-inline LONG StringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
-inline LONG CharWidth(objFont * Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
+inline ERR GetList(struct FontList **Result) { return FontBase->_GetList(Result); }
+inline LONG StringWidth(objFont *Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
+inline LONG CharWidth(objFont *Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
 inline ERR RefreshFonts(void) { return FontBase->_RefreshFonts(); }
-inline ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
-inline ERR ResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
+inline ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
+inline ERR ResolveFamilyName(CSTRING String, CSTRING *Result) { return FontBase->_ResolveFamilyName(String,Result); }
 } // namespace
 #else
 namespace fnt {
-extern ERR GetList(struct FontList ** Result);
-extern LONG StringWidth(objFont * Font, CSTRING String, LONG Chars);
-extern LONG CharWidth(objFont * Font, ULONG Char);
+extern ERR GetList(struct FontList **Result);
+extern LONG StringWidth(objFont *Font, CSTRING String, LONG Chars);
+extern LONG CharWidth(objFont *Font, ULONG Char);
 extern ERR RefreshFonts(void);
-extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
-extern ERR ResolveFamilyName(CSTRING String, CSTRING * Result);
+extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
+extern ERR ResolveFamilyName(CSTRING String, CSTRING *Result);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

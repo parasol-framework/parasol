@@ -611,13 +611,12 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       return log.warning(ERR::Args);
    }
 
-   extDisplay *display;
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
          CopyMemory(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
-      else if (AccessObject(DisplayID, 5000, &display) IS ERR::Okay) {
+      else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -625,8 +624,8 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->BitsPerPixel  = display->Bitmap->BitsPerPixel;
          Info->BytesPerPixel = display->Bitmap->BytesPerPixel;
          Info->AmtColours    = display->Bitmap->AmtColours;
-         GET_HDensity(display, &Info->HDensity);
-         GET_VDensity(display, &Info->VDensity);
+         GET_HDensity(*display, &Info->HDensity);
+         GET_VDensity(*display, &Info->VDensity);
 
          #ifdef __xwindows__
             Info->AccelFlags = ACF(-1);
@@ -649,8 +648,6 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->PixelFormat.GreenPos   = display->Bitmap->ColourFormat->GreenPos;
          Info->PixelFormat.BluePos    = display->Bitmap->ColourFormat->BluePos;
          Info->PixelFormat.AlphaPos   = display->Bitmap->ColourFormat->AlphaPos;
-
-         ReleaseObject(display);
          return ERR::Okay;
       }
       else return log.warning(ERR::AccessObject);

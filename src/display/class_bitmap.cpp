@@ -1592,7 +1592,6 @@ that the bitmap is a 16 bit, 64k colour bitmap.
 static ERR BITMAP_Query(extBitmap *Self)
 {
    pf::Log log;
-   objDisplay *display;
    OBJECTID display_id;
    LONG i;
 
@@ -1688,11 +1687,10 @@ static ERR BITMAP_Query(extBitmap *Self)
          Self->BytesPerPixel = 4;
 #if 1
          if (FindObject("SystemDisplay", CLASSID::DISPLAY, FOF::NIL, &display_id) IS ERR::Okay) {
-            if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
+            if (ScopedObjectLock<objDisplay> display(display_id, 3000); display.granted()) {
                Self->AmtColours    = display->Bitmap->AmtColours;
                Self->BytesPerPixel = display->Bitmap->BytesPerPixel;
                Self->BitsPerPixel  = display->Bitmap->BitsPerPixel;
-               ReleaseObject(display);
             }
          }
 #else

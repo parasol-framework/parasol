@@ -227,33 +227,25 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
 
    // Draw the surface graphics into the bitmap buffer
 
-   extSurface *surface;
-   if (auto error = AccessObject(list[index].SurfaceID, 5000, &surface); error IS ERR::Okay) {
+   if (ScopedObjectLock<extSurface> surface(list[index].SurfaceID, 5000); surface.granted()) {
       log.trace("Area: %dx%d,%dx%d", Left, Top, Right-Left, Bottom-Top);
 
-      extBitmap *bitmap;
-      if (AccessObject(list[index].BitmapID, 5000, &bitmap) IS ERR::Okay) {
+      if (ScopedObjectLock<extBitmap> bitmap(list[index].BitmapID, 5000); bitmap.granted()) {
          // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
 
-         check_bmp_buffer_depth(surface, bitmap);
+         check_bmp_buffer_depth(*surface, *bitmap);
          auto clip = ClipRectangle(Left, Top, Right, Bottom);
-         _redraw_surface_do(surface, list, index, clip, bitmap, Flags & (IRF::FORCE_DRAW|IRF::IGNORE_CHILDREN|IRF::IGNORE_NV_CHILDREN));
-         ReleaseObject(bitmap);
+         _redraw_surface_do(*surface, list, index, clip, *bitmap, Flags & (IRF::FORCE_DRAW|IRF::IGNORE_CHILDREN|IRF::IGNORE_NV_CHILDREN));
       }
-      else {
-         ReleaseObject(surface);
-         return log.warning(ERR::AccessObject);
-      }
-
-      ReleaseObject(surface);
+      else return log.warning(ERR::AccessObject);
    }
    else { // If the object does not exist then its task has crashed and we need to remove it from the surface list.
-      if (error IS ERR::NoMatchingObject) {
+      if (surface.error IS ERR::NoMatchingObject) {
          log.warning("Removing references to surface object #%d (owner crashed).", list[index].SurfaceID);
          untrack_layer(list[index].SurfaceID);
       }
-      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, LONG(error));
-      return error;
+      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, LONG(surface.error));
+      return surface.error;
    }
 
    // We have done the redraw, so now we can send invalidation messages to any intersecting -child- surfaces for this region.  This process is
@@ -747,16 +739,13 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
       if (InsideWidth < Width) InsideWidth = Width;
       if (InsideHeight < Height) InsideHeight = Height;
 
-      OBJECTPTR display;
-      if (AccessObject(Self->DisplayID, 5000, &display) IS ERR::Okay) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
-         if (gfx::SetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
-            ReleaseObject(display);
+      if (ScopedObjectLock display(Self->DisplayID, 5000); display.granted()) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+         if (gfx::SetDisplay(*display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
             return log.warning(ERR::Redimension);
          }
 
          Width = display->get<LONG>(FID_Width);
          Height = display->get<LONG>(FID_Height);
-         ReleaseObject(display);
       }
       else return log.warning(ERR::AccessObject);
    }
@@ -1080,8 +1069,7 @@ ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
          }
 
          if (((Flags & BDF::DITHER) != BDF::NIL) or (!list_root.Data)) {
-            extBitmap *src;
-            if (AccessObject(list_root.BitmapID, 4000, &src) IS ERR::Okay) {
+            if (ScopedObjectLock<extBitmap> src(list_root.BitmapID, 4000); src.granted()) {
                src->XOffset     = list_i.Left - list_root.Left;
                src->YOffset     = list_i.Top - list_root.Top;
                src->Clip.Left   = 0;
@@ -1089,14 +1077,10 @@ ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
                src->Clip.Right  = list_i.Width;
                src->Clip.Bottom = list_i.Height;
 
-               bool composite = ((list_i.Flags & RNF::COMPOSITE) != RNF::NIL);
-
-               if (composite) {
-                  gfx::CopyArea(src, Bitmap, BAF::BLEND|(((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL), X, Y, Width, Height, XDest, YDest);
+               if (((list_i.Flags & RNF::COMPOSITE) != RNF::NIL)) {
+                  gfx::CopyArea(*src, Bitmap, BAF::BLEND|(((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL), X, Y, Width, Height, XDest, YDest);
                }
-               else gfx::CopyArea(src, Bitmap, ((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL, X, Y, Width, Height, XDest, YDest);
-
-               ReleaseObject(src);
+               else gfx::CopyArea(*src, Bitmap, ((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL, X, Y, Width, Height, XDest, YDest);
                return ERR::Okay;
             }
             else return log.warning(ERR::AccessObject);
@@ -1462,14 +1446,12 @@ OBJECTID SetModalSurface(OBJECTID SurfaceID)
    // targetted or turned off altogether if there was no previously modal surface.
 
    if (SurfaceID) {
-      extSurface *surface;
       OBJECTID divert = 0;
-      if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
+      if (ScopedObjectLock<extSurface> surface(SurfaceID, 3000); surface.granted()) {
          if (surface->invisible()) {
             divert = surface->PrevModalID;
             if (!divert) SurfaceID = 0;
          }
-         ReleaseObject(surface);
       }
       if (divert) return gfx::SetModalSurface(divert);
    }
@@ -1535,23 +1517,15 @@ ERR LockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
 
    *Bitmap = 0;
 
-   extSurface *surface;
-   if (!AccessObject(SurfaceID, 5000, &surface)) {
-      extBitmap *bitmap;
-      if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR::Okay) {
-         ReleaseObject(surface);
-         return log.warning(ERR::AccessObject);
-      }
-
-      ReleaseObject(surface);
+   if (ScopedObjectLock<extSurface> surface(SurfaceID, 5000); surface.granted()) {
+      ScopedObjectLock<extBitmap> bitmap(surface->BufferID, 5000)
+      if (!bitmap.granted()) return log.warning(ERR::AccessObject);
+      surface.release();
 
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       LONG i;
-      if ((i = find_surface_list(SurfaceID)) IS -1) {
-         ReleaseObject(bitmap);
-         return ERR::Search;
-      }
+      if ((i = find_surface_list(SurfaceID)) IS -1) return ERR::Search;
 
       LONG root = find_bitmap_owner(glSurfaces, i);
 
@@ -1572,18 +1546,12 @@ ERR LockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
 
       if (bitmap->Clip.Right + bitmap->XOffset > bitmap->Width){
          bitmap->Clip.Right = bitmap->Width - bitmap->XOffset;
-         if (bitmap->Clip.Right < 0) {
-            ReleaseObject(bitmap);
-            return ERR::Failed;
-         }
+         if (bitmap->Clip.Right < 0) return ERR::Failed;
       }
 
       if (bitmap->Clip.Bottom + bitmap->YOffset > bitmap->Height) {
          bitmap->Clip.Bottom = bitmap->Height - bitmap->YOffset;
-         if (bitmap->ClipBottom < 0) {
-            ReleaseObject(bitmap);
-            return ERR::Failed;
-         }
+         if (bitmap->ClipBottom < 0) return ERR::Failed;
       }
 
       *Bitmap = bitmap;
@@ -1626,7 +1594,7 @@ ERR LockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LVF *Info)
    // Gain access to the bitmap buffer and set the clipping and offsets to the correct values.
 
    extBitmap *bmp;
-   if (AccessObject(list_root.BitmapID, 5000, &bmp) IS ERR::Okay) {
+   if (AccessObject(list_root.BitmapID, 5000, (OBJECTPTR *)&bmp) IS ERR::Okay) {
       bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
       bmp->YOffset = expose.Top - list_root.Top;
 

@@ -185,7 +185,6 @@ void Scintilla::Window::SetFont(Scintilla::Font &)
 
 void Scintilla::Window::SetCursor(Cursor curs)
 {
-   objSurface *surface;
    PTC cursorid;
 
    if (curs IS cursorLast) return;
@@ -202,10 +201,9 @@ void Scintilla::Window::SetCursor(Cursor curs)
    }
 
    if (wid) {
-      if (AccessObject(getSurfaceID(this), 500, &surface) IS ERR::Okay) {
+      if (pf::ScopedObjectLock<objSurface> surface(getSurfaceID(this), 500); surface.granted()) {
          surface->setCursor(cursorid);
          cursorLast = curs;
-         ReleaseObject(surface);
       }
    }
 }

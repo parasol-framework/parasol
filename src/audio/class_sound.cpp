@@ -209,7 +209,7 @@ static ERR snd_init_audio(extSound *Self)
 
    extAudio *audio;
    ERR error;
-   if ((error = NewObject(CLASSID::AUDIO, NF::NIL, &audio)) IS ERR::Okay) {
+   if ((error = NewObject(CLASSID::AUDIO, &audio)) IS ERR::Okay) {
       SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 

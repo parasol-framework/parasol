@@ -1220,7 +1220,11 @@ inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address) {
 }
 
 template<class T> inline ERR NewObject(CLASSID ClassID, T **Result) {
-   return NewObject(ClassID, NF::NIL, Result);
+   return NewObject(ClassID, NF::NIL, (OBJECTPTR *)Result);
+}
+
+template<class T> inline ERR NewLocalObject(CLASSID ClassID, T **Result) {
+   return NewObject(ClassID, NF::LOCAL, (OBJECTPTR *)Result);
 }
 
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {

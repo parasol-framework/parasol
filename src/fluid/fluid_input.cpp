@@ -150,10 +150,8 @@ static int input_keyboard(lua_State *Lua)
          SubscribeEvent(EVID_GUI_SURFACE_FOCUS, C_FUNCTION(focus_event), Lua, &prv->FocusEventHandle);
       }
 
-      objSurface *surface;
-      if (AccessObject(object_id, 5000, &surface) IS ERR::Okay) {
+      if (ScopedObjectLock<objSurface> surface(object_id, 5000); surface.granted()) {
          if (surface->hasFocus()) sub_keyevent = true;
-         ReleaseObject(surface);
       }
       else {
          luaL_error(Lua, "Failed to access surface #%d.", object_id);

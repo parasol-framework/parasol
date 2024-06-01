@@ -318,10 +318,8 @@ static ERR SET_PopOver(extSurface *Self, OBJECTID Value)
    if (Value) {
       CLASSID class_id = GetClassID(Value);
       if (class_id != CLASSID::SURFACE) {
-         OBJECTPTR obj;
-         if (AccessObject(Value, 3000, &obj) IS ERR::Okay) {
+         if (ScopedObjectLock obj(Value, 3000); obj.granted()) {
             Value = obj->get<OBJECTID>(FID_Surface);
-            ReleaseObject(obj);
          }
          else return ERR::AccessObject;
 
@@ -431,8 +429,7 @@ static ERR SET_WindowType(extSurface *Self, SWIN Value)
       }
 
       if (Self->DisplayID) {
-         objDisplay *display;
-         if (AccessObject(Self->DisplayID, 2000, &display) IS ERR::Okay) {
+         if (ScopedObjectLock<objDisplay> display(Self->DisplayID, 2000); display.granted()) {
             log.trace("Changing window type to %d.", Value);
 
             bool border;
@@ -460,7 +457,6 @@ static ERR SET_WindowType(extSurface *Self, SWIN Value)
             }
 
             Self->WindowType = Value;
-            ReleaseObject(display);
          }
          else return ERR::AccessObject;
       }

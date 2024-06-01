@@ -1062,10 +1062,10 @@ function docStructures(References)
    for _, struct in ipairs(sortedStructs) do
       if nz(struct.restrict) then
          -- Don't output restricted structures.
-         if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
+         --if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
       elseif References and (References['STRUCT:' .. struct.name] == nil) then
          -- Don't output unreferenced structures.
-         if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
+         --if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
       else
          local comment = ''
          local typeName = ''

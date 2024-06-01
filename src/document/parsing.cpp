@@ -1629,7 +1629,7 @@ void parser::tag_call(XMLTag &Tag)
 
    CSTRING *results;
    LONG size;
-   if ((GetFieldArray(script, FID_Results, &results, &size) IS ERR::Okay) and (size > 0)) {
+   if ((GetFieldArray(script, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
       auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
       if (xmlinc) {
          auto old_xml = change_xml(xmlinc);
@@ -2973,10 +2973,10 @@ void parser::tag_object(XMLTag &Tag)
    /*
    pf::Log log(__FUNCTION__);
 
-   // NF::INTEGRAL is only set when the object is owned by the document
+   // NF::LOCAL is only set when the object is owned by the document
 
    OBJECTPTR object;
-   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object)) {
+   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::LOCAL, (OBJECTPTR *)&object)) {
       log.warning("Failed to create object of class #%d.", class_id);
       return;
    }
@@ -3323,7 +3323,7 @@ void parser::tag_script(XMLTag &Tag)
    }
 
    if (iequals("fluid", type)) {
-      error = NewObject(CLASSID::FLUID, NF::LOCAL, &script);
+      error = NewLocalObject(CLASSID::FLUID, &script);
    }
    else {
       error = ERR::NoSupport;
@@ -3374,7 +3374,7 @@ void parser::tag_script(XMLTag &Tag)
 
             CSTRING *results;
             LONG size;
-            if ((GetFieldArray(script, FID_Results, &results, &size) IS ERR::Okay) and (size > 0)) {
+            if ((GetFieldArray(script, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
                auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
                if (xmlinc) {
                   auto old_xml = change_xml(xmlinc);

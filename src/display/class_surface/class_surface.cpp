@@ -76,7 +76,7 @@ void refresh_pointer(extSurface *Self)
 
 static ERR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
 {
-   if (AccessObject(DisplayID, 5000, Display) IS ERR::Okay) {
+   if (AccessObject(DisplayID, 5000, (OBJECTPTR *)Display) IS ERR::Okay) {
       #ifdef _WIN32
       APTR winhandle;
       if (Display[0]->getPtr(FID_WindowHandle, &winhandle) IS ERR::Okay) {
@@ -392,20 +392,19 @@ skipcontent:
 static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
-   extSurface *surface;
-   if (AccessObject(surface_id, 4000, &surface) IS ERR::Okay) {
+
+   if (pf::ScopedObjectLock<extSurface> surface(surface_id, 4000); surface.granted()) {
       if (surface->classID() IS CLASSID::SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
             surface->Y = Y;
-            UpdateSurfaceRecord(surface);
+            UpdateSurfaceRecord(*surface);
          }
 
          if ((surface->Width != Width) or (surface->Height != Height)) {
-            acResize(surface, Width, Height, 0);
+            acResize(*surface, Width, Height, 0);
          }
       }
-      ReleaseObject(surface);
    }
 }
 
@@ -933,13 +932,11 @@ static ERR SURFACE_Free(extSurface *Self)
    }
 
    if (Self->ParentID) {
-      extSurface *parent;
-      if (auto error = AccessObject(Self->ParentID, 5000, &parent); error IS ERR::Okay) {
-         UnsubscribeAction(parent, 0);
+      if (pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
+         UnsubscribeAction(*parent, 0);
          if (Self->transparent()) {
-            drw::RemoveCallback(parent, NULL);
+            drw::RemoveCallback(*parent, NULL);
          }
-         ReleaseObject(parent);
       }
    }
 
@@ -1087,7 +1084,6 @@ static ERR SURFACE_InheritedFocus(extSurface *Self, struct drw::InheritedFocus *
 static ERR SURFACE_Init(extSurface *Self)
 {
    pf::Log log;
-   objBitmap *bitmap;
 
    bool require_store = false;
    OBJECTID parent_bitmap = 0;
@@ -1324,10 +1320,8 @@ static ERR SURFACE_Init(extSurface *Self)
       CSTRING name = FindObject("SystemDisplay", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay ? "SystemDisplay" : (CSTRING)NULL;
 
       if (Self->PopOverID) {
-         extSurface *popsurface;
-         if (AccessObject(Self->PopOverID, 2000, &popsurface) IS ERR::Okay) {
+         if (pf::ScopedObjectLock<extSurface> popsurface(Self->PopOverID, 2000); popsurface.granted()) {
             pop_display = popsurface->DisplayID;
-            ReleaseObject(popsurface);
 
             if (!pop_display) log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
          }
@@ -1464,9 +1458,8 @@ static ERR SURFACE_Init(extSurface *Self)
    // If the FIXED_BUFFER option is set, pass the NEVER_SHRINK option to the bitmap
 
    if ((Self->Flags & RNF::FIXED_BUFFER) != RNF::NIL) {
-      if (AccessObject(Self->BufferID, 5000, &bitmap) IS ERR::Okay) {
+      if (pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000); bitmap.granted()) {
          bitmap->Flags |= BMF::NEVER_SHRINK;
-         ReleaseObject(bitmap);
       }
    }
 
@@ -1839,11 +1832,9 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
       //   Any volatile regions that were in front of our surface prior to the move-to-front (by moving to the front, their background has been changed).
       //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
 
-      objBitmap *bitmap;
-      if (AccessObject(Self->BufferID, 5000, &bitmap) IS ERR::Okay) {
+      if (pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000); bitmap.granted()) {
          auto area = ClipRectangle(cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom);
-         invalidate_overlap(Self, cplist, currentindex, i, area, bitmap);
-         ReleaseObject(bitmap);
+         invalidate_overlap(Self, cplist, currentindex, i, area, *bitmap);
       }
 
       if (check_volatile(cplist, i)) _redraw_surface(Self->UID, cplist, i, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
@@ -1856,8 +1847,9 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
       for (LONG i=index-1; i > 0; i--) {
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
-               pf::ScopedObjectLock<objSurface> pop(Self->PopOverID);
-               if (pop.granted()) pop->moveToFront();
+               if (pf::ScopedObjectLock<objSurface> pop(Self->PopOverID); pop.granted()) {
+                  pop->moveToFront();
+               }
                return ERR::Okay;
             }
             break;

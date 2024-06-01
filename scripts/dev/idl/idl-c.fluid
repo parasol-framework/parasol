@@ -2163,13 +2163,15 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. ","
             end
 
-            if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
-               argSeq = argSeq .. "APTR " .. param.name
-            elseif (param.type == '...') then
+            if (param.type == '...') then
                jumpArgs = argSeq .. "..."
                argSeq = argSeq .. "Args... Tags"
             else
-               argSeq = argSeq .. param.type .. " " .. cName(param)
+               if param.type:find('*$') then
+                  argSeq = argSeq .. param.type .. cName(param)
+               else
+                  argSeq = argSeq .. param.type .. " " .. cName(param)
+               end
             end
 
             if (param.type == "...") then

@@ -519,18 +519,18 @@ class objSound : public Object {
 
 struct AudioBase {
 #ifndef PARASOL_STATIC
-   ERR (*_MixContinue)(objAudio * Audio, LONG Handle);
-   ERR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
-   ERR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
-   ERR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
-   ERR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Position);
-   ERR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
-   ERR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
-   ERR (*_MixStop)(objAudio * Audio, LONG Handle);
-   ERR (*_MixStopLoop)(objAudio * Audio, LONG Handle);
-   ERR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
-   ERR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
-   ERR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
+   ERR (*_MixContinue)(objAudio *Audio, LONG Handle);
+   ERR (*_MixFrequency)(objAudio *Audio, LONG Handle, LONG Frequency);
+   ERR (*_MixMute)(objAudio *Audio, LONG Handle, LONG Mute);
+   ERR (*_MixPan)(objAudio *Audio, LONG Handle, DOUBLE Pan);
+   ERR (*_MixPlay)(objAudio *Audio, LONG Handle, LONG Position);
+   ERR (*_MixRate)(objAudio *Audio, LONG Handle, LONG Rate);
+   ERR (*_MixSample)(objAudio *Audio, LONG Handle, LONG Sample);
+   ERR (*_MixStop)(objAudio *Audio, LONG Handle);
+   ERR (*_MixStopLoop)(objAudio *Audio, LONG Handle);
+   ERR (*_MixVolume)(objAudio *Audio, LONG Handle, DOUBLE Volume);
+   ERR (*_MixStartSequence)(objAudio *Audio, LONG Handle);
+   ERR (*_MixEndSequence)(objAudio *Audio, LONG Handle);
 #endif // PARASOL_STATIC
 };
 
@@ -538,33 +538,33 @@ struct AudioBase {
 #ifndef PARASOL_STATIC
 extern struct AudioBase *AudioBase;
 namespace snd {
-inline ERR MixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
-inline ERR MixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
-inline ERR MixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
-inline ERR MixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
-inline ERR MixPlay(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
-inline ERR MixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
-inline ERR MixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
-inline ERR MixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
-inline ERR MixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
-inline ERR MixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
-inline ERR MixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
-inline ERR MixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
+inline ERR MixContinue(objAudio *Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
+inline ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
+inline ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
+inline ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
+inline ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
+inline ERR MixSample(objAudio *Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
+inline ERR MixStop(objAudio *Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
+inline ERR MixStopLoop(objAudio *Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
+inline ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERR MixStartSequence(objAudio *Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
+inline ERR MixEndSequence(objAudio *Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
 } // namespace
 #else
 namespace snd {
-extern ERR MixContinue(objAudio * Audio, LONG Handle);
-extern ERR MixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
-extern ERR MixMute(objAudio * Audio, LONG Handle, LONG Mute);
-extern ERR MixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
-extern ERR MixPlay(objAudio * Audio, LONG Handle, LONG Position);
-extern ERR MixRate(objAudio * Audio, LONG Handle, LONG Rate);
-extern ERR MixSample(objAudio * Audio, LONG Handle, LONG Sample);
-extern ERR MixStop(objAudio * Audio, LONG Handle);
-extern ERR MixStopLoop(objAudio * Audio, LONG Handle);
-extern ERR MixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume);
-extern ERR MixStartSequence(objAudio * Audio, LONG Handle);
-extern ERR MixEndSequence(objAudio * Audio, LONG Handle);
+extern ERR MixContinue(objAudio *Audio, LONG Handle);
+extern ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency);
+extern ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute);
+extern ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan);
+extern ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position);
+extern ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate);
+extern ERR MixSample(objAudio *Audio, LONG Handle, LONG Sample);
+extern ERR MixStop(objAudio *Audio, LONG Handle);
+extern ERR MixStopLoop(objAudio *Audio, LONG Handle);
+extern ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume);
+extern ERR MixStartSequence(objAudio *Audio, LONG Handle);
+extern ERR MixEndSequence(objAudio *Audio, LONG Handle);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

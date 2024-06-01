@@ -207,7 +207,7 @@ the surface area first).</li>
         <param type="EXF" name="Flags" lookup="EXF">Optional flags.</param>
       </input>
       <description>
-<p>Call the Expose method to copy a surface region to the display.  The functionality is identical to that of the ExposeSurface() function in the Surface module.  Please refer to it for further documentation.</p>
+<p>Call the Expose() method to copy a surface region to the display.  The functionality is identical to that of the <function module="Surface">ExposeSurface</function> function.  Please refer to it for further documentation.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

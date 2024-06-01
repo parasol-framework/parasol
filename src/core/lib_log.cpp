@@ -62,31 +62,31 @@ static THREADVAR LONG tlBaseLine = 0;
 -FUNCTION-
 AdjustLogLevel: Adjusts the base-line of all log messages.
 
-This function adjusts the detail level of all outgoing log messages.  To illustrate by example, setting the Adjust
-value to 1 would result in level 5 log messages being bumped to level 6.  If the user's maximum log level output is
-5, no further log messages will be output until the base-line is reduced to normal.
+This function adjusts the detail level of all outgoing log messages.  To illustrate, setting the `Delta`
+value to 1 would result in level 5 (API) log messages being bumped to level 6.  If the user's maximum log level
+output is 5, no further API messages will be output until the base-line is reduced to normal.
 
 The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result
-in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable
-means of eliminating that noise if the user has the log level set to 5 (API level).  If there is a need to see the
-messages, re-running the program with a deeper log level of 7 or more would make them visible.
+in a large number of new log messages.  Raising the base-line by 2 before creating the window would eliminate the
+noise if the user has the log level set to 5 (API).  Re-running the program with a log level of 7 or more would
+make the messages visible again.
 
 Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the
 previous base-line, call this function again with a negation of the previously passed value.
 
 -INPUT-
-int Adjust: The level of adjustment to make to new log messages.  Zero is the default (no change).  The maximum level is 6.
+int Delta: The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.
 
 -RESULT-
 int: Returns the absolute base-line value that was active prior to calling this function.
 
 *********************************************************************************************************************/
 
-LONG AdjustLogLevel(LONG BaseLine)
+LONG AdjustLogLevel(LONG Delta)
 {
    if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
    LONG old_level = tlBaseLine;
-   if ((BaseLine >= -6) and (BaseLine <= 6)) tlBaseLine += BaseLine;
+   if ((Delta >= -6) and (Delta <= 6)) tlBaseLine += Delta;
    return old_level;
 }
 

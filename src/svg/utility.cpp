@@ -114,7 +114,7 @@ static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB
    while (Vector) {
       if (Vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Failed;
 
-      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL) IS ERR::Okay) {
+      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, (APTR *)&RGB, NULL) IS ERR::Okay) {
          if (RGB.Alpha != 0) return ERR::Okay;
       }
       Vector = (objVector *)Vector->Parent;
@@ -472,7 +472,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
    objXML *xml;
    ERR error = ERR::Okay;
-   if (NewObject(CLASSID::XML, NF::LOCAL, &xml) IS ERR::Okay) {
+   if (NewLocalObject(CLASSID::XML, &xml) IS ERR::Okay) {
       objTask *task = CurrentTask();
       STRING working_path = NULL;
 

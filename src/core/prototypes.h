@@ -15,7 +15,7 @@ extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" ERR VirtualVolume(CSTRING Name, ...);
 extern "C" OBJECTPTR CurrentContext();
 extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
-extern "C" LONG AdjustLogLevel(LONG Adjust);
+extern "C" LONG AdjustLogLevel(LONG Delta);
 extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
 extern "C" objMetaClass * FindClass(CLASSID ClassID);

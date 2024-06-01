@@ -657,13 +657,13 @@ inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR Cl
 
 struct NetworkBase {
 #ifndef PARASOL_STATIC
-   ERR (*_StrToAddress)(CSTRING String, struct IPAddress * Address);
-   CSTRING (*_AddressToStr)(struct IPAddress * IPAddress);
+   ERR (*_StrToAddress)(CSTRING String, struct IPAddress *Address);
+   CSTRING (*_AddressToStr)(struct IPAddress *IPAddress);
    ULONG (*_HostToShort)(ULONG Value);
    ULONG (*_HostToLong)(ULONG Value);
    ULONG (*_ShortToHost)(ULONG Value);
    ULONG (*_LongToHost)(ULONG Value);
-   ERR (*_SetSSL)(objNetSocket * NetSocket, ...);
+   ERR (*_SetSSL)(objNetSocket *NetSocket, ...);
 #endif // PARASOL_STATIC
 };
 
@@ -671,23 +671,23 @@ struct NetworkBase {
 #ifndef PARASOL_STATIC
 extern struct NetworkBase *NetworkBase;
 namespace net {
-inline ERR StrToAddress(CSTRING String, struct IPAddress * Address) { return NetworkBase->_StrToAddress(String,Address); }
-inline CSTRING AddressToStr(struct IPAddress * IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
+inline ERR StrToAddress(CSTRING String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
+inline CSTRING AddressToStr(struct IPAddress *IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
 inline ULONG HostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }
 inline ULONG HostToLong(ULONG Value) { return NetworkBase->_HostToLong(Value); }
 inline ULONG ShortToHost(ULONG Value) { return NetworkBase->_ShortToHost(Value); }
 inline ULONG LongToHost(ULONG Value) { return NetworkBase->_LongToHost(Value); }
-template<class... Args> ERR SetSSL(objNetSocket * NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
+template<class... Args> ERR SetSSL(objNetSocket *NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
 } // namespace
 #else
 namespace net {
-extern ERR StrToAddress(CSTRING String, struct IPAddress * Address);
-extern CSTRING AddressToStr(struct IPAddress * IPAddress);
+extern ERR StrToAddress(CSTRING String, struct IPAddress *Address);
+extern CSTRING AddressToStr(struct IPAddress *IPAddress);
 extern ULONG HostToShort(ULONG Value);
 extern ULONG HostToLong(ULONG Value);
 extern ULONG ShortToHost(ULONG Value);
 extern ULONG LongToHost(ULONG Value);
-extern ERR SetSSL(objNetSocket * NetSocket, ...);
+extern ERR SetSSL(objNetSocket *NetSocket, ...);
 } // namespace
 #endif // PARASOL_STATIC
 #endif
