@@ -1388,11 +1388,11 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
    CSTRING next;
-   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
+   if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = StrClone(Value);
 
       if (next) {
-         vecReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
          Self->FGFill = true;
       }
       else Self->FGFill = false;
@@ -2175,7 +2175,7 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
-   vecReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+   vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
    Self->Stroked = Self->is_stroked();
    return ERR::Okay;
 }

@@ -289,21 +289,23 @@ struct FontBase {
 #ifndef PRV_FONT_MODULE
 #ifndef PARASOL_STATIC
 extern struct FontBase *FontBase;
-inline ERR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
-inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
-inline LONG fntCharWidth(objFont * Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
-inline ERR fntRefreshFonts(void) { return FontBase->_RefreshFonts(); }
-inline ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
-inline ERR fntResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
+namespace fnt {
+inline ERR GetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
+inline LONG StringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
+inline LONG CharWidth(objFont * Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
+inline ERR RefreshFonts(void) { return FontBase->_RefreshFonts(); }
+inline ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
+inline ERR ResolveFamilyName(CSTRING String, CSTRING * Result) { return FontBase->_ResolveFamilyName(String,Result); }
+} // namespace
 #else
-extern "C" {
-extern ERR fntGetList(struct FontList ** Result);
-extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
-extern LONG fntCharWidth(objFont * Font, ULONG Char);
-extern ERR fntRefreshFonts(void);
-extern ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
-extern ERR fntResolveFamilyName(CSTRING String, CSTRING * Result);
-}
+namespace fnt {
+extern ERR GetList(struct FontList ** Result);
+extern LONG StringWidth(objFont * Font, CSTRING String, LONG Chars);
+extern LONG CharWidth(objFont * Font, ULONG Char);
+extern ERR RefreshFonts(void);
+extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
+extern ERR ResolveFamilyName(CSTRING String, CSTRING * Result);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 

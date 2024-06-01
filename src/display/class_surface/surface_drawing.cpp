@@ -366,8 +366,8 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
-   gfxRedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
-   gfxExposeSurface(Self->UID, x, y, width, height, EXF::REDRAW_VOLATILE);
+   RedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
+   gfx::ExposeSurface(Self->UID, x, y, width, height, EXF::REDRAW_VOLATILE);
    return ERR::Okay|ERR::Notified;
 }
 
@@ -446,8 +446,8 @@ static ERR SURFACE_Expose(extSurface *Self, struct drw::Expose *Args)
 
 
    ERR error;
-   if (Args) error = gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
-   else error = gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::NIL);
+   if (Args) error = gfx::ExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
+   else error = gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::NIL);
 
    return error;
 }
@@ -527,12 +527,12 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
 
 
    if (Args) {
-      gfxRedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);
-      gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      RedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);
+      gfx::ExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
    }
    else {
-      gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
-      gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      RedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
+      gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
    }
 
    return ERR::Okay|ERR::Notified;
@@ -804,7 +804,7 @@ void copy_bkgd(const SURFACELIST &List, LONG Index, LONG End, LONG Master, ClipR
 
    if (Opacity < 255) SrcBitmap->Opacity = 255 - Opacity;
 
-   gfxCopyArea(SrcBitmap, DestBitmap, BAF::BLEND, expose.Left - List[owner].Left, expose.Top - List[owner].Top,
+   gfx::CopyArea(SrcBitmap, DestBitmap, BAF::BLEND, expose.Left - List[owner].Left, expose.Top - List[owner].Top,
       expose.Right - expose.Left, expose.Bottom - expose.Top, expose.Left - List[Master].Left, expose.Top - List[Master].Top);
 
    SrcBitmap->Opacity = 255;

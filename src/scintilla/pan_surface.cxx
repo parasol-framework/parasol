@@ -412,7 +412,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
                unicode = UTF8ReadValue((STRING)(str+i), &copy);
             }
 
-            charpos += fntCharWidth(font, unicode);
+            charpos += fnt::CharWidth(font, unicode);
          }
          positions[i++] = charpos;
 
@@ -435,7 +435,7 @@ int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
 
    if (font) {
       // Note: The length must be passed as the number of characters, not bytes
-      return fntStringWidth((objFont *)font, (STRING)s, len);
+      return fnt::StringWidth((objFont *)font, (STRING)s, len);
    }
 
    return 5; // crashes if you return 0 here !!!
@@ -446,7 +446,7 @@ int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
 int SurfacePan::WidthChar(Scintilla::Font &font_, char ch)
 {
    objFont *font = (objFont *)GetFont(font_);
-   return fntCharWidth(font, ch);
+   return fnt::CharWidth(font, ch);
 }
 
 /****************************************************************************/

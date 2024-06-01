@@ -3,7 +3,7 @@
 -CLASS-
 VectorTransition: Transitions are used to gradually apply transforms over distance.
 
-The VectorTransition class is used to gradually transform vector shapes over the length of a path.  This feature is 
+The VectorTransition class is used to gradually transform vector shapes over the length of a path.  This feature is
 not SVG compliant, though it can be utilised from SVG files via the 'parasol:' name space.
 
 The transition is defined as a series of stops and transform instructions, of which at least 2 are required in order to
@@ -119,7 +119,7 @@ static ERR set_stop_transform(extVectorTransition *Self, TransitionStop *Stop, C
    Self->Dirty = true;
    if (!Commands) Commands = ""; // Empty transforms are permitted - it will result in an identity matrix being created.
 
-   vecParseTransform(&Stop->Matrix, Commands);
+   vec::ParseTransform(&Stop->Matrix, Commands);
 
    auto &m = Stop->Matrix;
    if (Stop->AGGTransform) {

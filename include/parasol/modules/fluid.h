@@ -23,11 +23,13 @@ struct FluidBase {
 #ifndef PRV_FLUID_MODULE
 #ifndef PARASOL_STATIC
 extern struct FluidBase *FluidBase;
-template<class... Args> ERR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
+namespace fl {
+template<class... Args> ERR SetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
+} // namespace
 #else
-extern "C" {
-extern ERR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
-}
+namespace fl {
+extern ERR SetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 

@@ -121,6 +121,8 @@ HCURSOR GetWinCursor(PTC CursorID)
 }
 #endif
 
+namespace gfx {
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -136,7 +138,7 @@ obj(Pointer): Returns the address of the default pointer object.
 
 *********************************************************************************************************************/
 
-objPointer * gfxAccessPointer(void)
+objPointer * AccessPointer(void)
 {
    objPointer *pointer = NULL;
 
@@ -183,7 +185,7 @@ NoSupport: The device does not support a cursor (common for touch screen display
 
 *********************************************************************************************************************/
 
-ERR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
+ERR GetCursorInfo(CursorInfo *Info, LONG Size)
 {
    if (!Info) return ERR::NullArgs;
 
@@ -218,11 +220,11 @@ AccessObject: Failed to access the SystemPointer object.
 
 *********************************************************************************************************************/
 
-ERR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
+ERR GetCursorPos(DOUBLE *X, DOUBLE *Y)
 {
    objPointer *pointer;
 
-   if ((pointer = gfxAccessPointer())) {
+   if ((pointer = gfx::AccessPointer())) {
       if (X) *X = pointer->X;
       if (Y) *Y = pointer->Y;
       ReleaseObject(pointer);
@@ -256,7 +258,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 *********************************************************************************************************************/
 
-ERR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
+ERR GetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 {
    pf::Log log(__FUNCTION__);
    objPointer *pointer;
@@ -267,7 +269,7 @@ ERR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
       return ERR::Failed;
    }
 
-   if ((pointer = gfxAccessPointer())) {
+   if ((pointer = gfx::AccessPointer())) {
       if (X) *X = pointer->X - absx;
       if (Y) *Y = pointer->Y - absy;
 
@@ -304,7 +306,7 @@ AccessObject: Failed to access the pointer object.
 
 *********************************************************************************************************************/
 
-ERR gfxLockCursor(OBJECTID SurfaceID)
+ERR LockCursor(OBJECTID SurfaceID)
 {
    return ERR::NoSupport;
 }
@@ -331,11 +333,11 @@ Args
 
 *********************************************************************************************************************/
 
-ERR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
+ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 {
    pf::Log log(__FUNCTION__);
 
-   if (auto pointer = (extPointer *)gfxAccessPointer()) {
+   if (auto pointer = (extPointer *)gfx::AccessPointer()) {
 /*
       OBJECTPTR caller;
       caller = CurrentContext();
@@ -343,8 +345,8 @@ ERR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
-         if (!OwnerID) gfxSetCursor(0, CRF::RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
-         else gfxSetCursor(0, CRF::RESTRICT, Cursor, NULL, OwnerID);
+         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
+         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, NULL, OwnerID);
 
          pointer->CursorOwnerID   = 0;
          pointer->CursorRelease   = 0;
@@ -355,7 +357,7 @@ ERR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
 
       if (pointer->BufferOwner) {
          if (OwnerID != pointer->BufferOwner) {
-            gfxSetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, NULL, pointer->BufferOwner);
+            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, NULL, pointer->BufferOwner);
          }
          else pointer->BufferOwner = 0; // Owner and Buffer are identical, so clear due to restored pointer
       }
@@ -403,7 +405,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 *********************************************************************************************************************/
 
-ERR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
+ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
 {
    pf::Log log(__FUNCTION__);
    extPointer *pointer;
@@ -419,7 +421,7 @@ ERR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJEC
 
    if ((LONG(CursorID) < 0) or (LONG(CursorID) >= LONG(PTC::END))) return log.warning(ERR::OutOfRange);
 
-   if (!(pointer = (extPointer *)gfxAccessPointer())) {
+   if (!(pointer = (extPointer *)gfx::AccessPointer())) {
       log.warning("Failed to access the mouse pointer.");
       return ERR::AccessObject;
    }
@@ -590,7 +592,7 @@ to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap 
 alpha-enabled graphics area.  The following code illustrates this process:
 
 <pre>
-if (auto pointer = gfxAccessPointer()) {
+if (auto pointer = gfx::AccessPointer()) {
    objBitmap *bitmap;
    if (!AccessObject(pointer->BitmapID, 3000, &bitmap)) {
       // Adjust clipping to match the cursor size.
@@ -602,10 +604,10 @@ if (auto pointer = gfxAccessPointer()) {
       // Draw to the bitmap here.
       ...
 
-      gfxSetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
+      gfx::SetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
       ReleaseObject(bitmap);
    }
-   gfxReleasePointer(pointer);
+   gfx::ReleasePointer(pointer);
 }
 </pre>
 
@@ -626,10 +628,10 @@ AccessObject: Failed to access the internally maintained image object.
 
 *********************************************************************************************************************/
 
-ERR gfxSetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
+ERR SetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
-   // If the driver doesn't support custom cursors then divert to gfxSetCursor()
-   return gfxSetCursor(ObjectID, Flags, PTC::DEFAULT, NULL, OwnerID);
+   // If the driver doesn't support custom cursors then divert to gfx::SetCursor()
+   return gfx::SetCursor(ObjectID, Flags, PTC::DEFAULT, NULL, OwnerID);
 }
 
 /*********************************************************************************************************************
@@ -649,10 +651,10 @@ AccessObject: Failed to access the SystemPointer object.
 
 *********************************************************************************************************************/
 
-ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
+ERR SetCursorPos(DOUBLE X, DOUBLE Y)
 {
    struct acMoveToPoint move = { X, Y, 0, MTF::X|MTF::Y };
-   if (auto pointer = gfxAccessPointer()) {
+   if (auto pointer = gfx::AccessPointer()) {
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
    }
@@ -703,7 +705,7 @@ InUse: A drag and drop operation has already been started.
 
 *********************************************************************************************************************/
 
-ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
+ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
 {
    pf::Log log(__FUNCTION__);
 
@@ -711,14 +713,14 @@ ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID S
 
    if (!Source) return log.warning(ERR::NullArgs);
 
-   if (auto pointer = (extPointer *)gfxAccessPointer()) {
+   if (auto pointer = (extPointer *)gfx::AccessPointer()) {
       if (!pointer->Buttons[0].LastClicked) {
-         gfxReleasePointer(pointer);
+         ReleaseObject(pointer);
          return log.warning(ERR::Failed);
       }
 
       if (pointer->DragSourceID) {
-         gfxReleasePointer(pointer);
+         ReleaseObject(pointer);
          return ERR::InUse;
       }
 
@@ -728,7 +730,7 @@ ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID S
       StrCopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
 
       SURFACEINFO *info;
-      if (gfxGetSurfaceInfo(Surface, &info) IS ERR::Okay) {
+      if (gfx::GetSurfaceInfo(Surface, &info) IS ERR::Okay) {
          pointer->DragParent = info->ParentID;
       }
 
@@ -743,7 +745,7 @@ ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID S
          }
       }
 
-      gfxReleasePointer(pointer);
+      ReleaseObject(pointer);
       return ERR::Okay;
    }
    else return log.warning(ERR::AccessObject);
@@ -768,13 +770,13 @@ NotLocked: A lock is not present, or the lock belongs to another surface.
 
 *********************************************************************************************************************/
 
-ERR gfxUnlockCursor(OBJECTID SurfaceID)
+ERR UnlockCursor(OBJECTID SurfaceID)
 {
    pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) return log.warning(ERR::NullArgs);
 
-   if (auto pointer = (extPointer *)gfxAccessPointer()) {
+   if (auto pointer = (extPointer *)gfx::AccessPointer()) {
       if (pointer->AnchorID IS SurfaceID) {
          pointer->AnchorID = 0;
          ReleaseObject(pointer);
@@ -791,3 +793,4 @@ ERR gfxUnlockCursor(OBJECTID SurfaceID)
    }
 }
 
+} // namespace

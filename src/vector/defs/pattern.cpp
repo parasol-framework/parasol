@@ -293,13 +293,13 @@ static ERR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
          matrix->TranslateY = 0;
 
          Self->Matrices = matrix;
-         return vecParseTransform(Self->Matrices, Commands);
+         return vec::ParseTransform(Self->Matrices, Commands);
       }
       else return ERR::AllocMemory;
    }
    else {
-      vecResetMatrix(Self->Matrices);
-      return vecParseTransform(Self->Matrices, Commands);
+      vec::ResetMatrix(Self->Matrices);
+      return vec::ParseTransform(Self->Matrices, Commands);
    }
 }
 

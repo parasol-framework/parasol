@@ -280,7 +280,8 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
                   anim_base::SPLINE_POINTS lookup;
                   vec::MoveTo(path, 0, 0);
                   vec::Curve4(path, sp.first.x, sp.first.y, sp.second.x, sp.second.y, 1.0, 1.0);
-                  vec::TracePath(path, C_FUNCTION(parse_spline, &lookup), 512.0);
+                  auto func = C_FUNCTION(parse_spline, &lookup);
+                  vec::TracePath(path, &func, 512.0);
                   Anim.spline_paths.push_back(lookup);
                   FreeResource(path);
                }

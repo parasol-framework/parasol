@@ -452,7 +452,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
 
    LONG opacity = Self->Opacity;
    Self->Opacity = 255;
-   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
+   gfx::DrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    Self->Opacity = opacity;
    return ERR::Okay;
 }
@@ -726,7 +726,7 @@ Mismatch: The target bitmap is not a close enough match to the source bitmap in 
 
 static ERR BITMAP_CopyArea(objBitmap *Self, struct bmp::CopyArea *Args)
 {
-   if (Args) return gfxCopyArea((extBitmap *)Self, (extBitmap *)Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest);
+   if (Args) return gfx::CopyArea((extBitmap *)Self, (extBitmap *)Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest);
    else return ERR::NullArgs;
 }
 
@@ -818,17 +818,17 @@ static ERR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
    LONG max_height = Self->Height > target->Height ? target->Height : Self->Height;
 
    if (Self->Width >= target->Width) { // Source is wider or equal to the target
-      gfxCopyArea(Self, target, BAF::NIL, 0, 0, target->Width, max_height, 0, 0);
+      gfx::CopyArea(Self, target, BAF::NIL, 0, 0, target->Width, max_height, 0, 0);
    }
    else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
-      gfxCopyArea(Self, target, BAF::NIL, 0, 0, Self->Width, max_height, 0, 0);
-      gfxDrawRectangle(target, Self->Width, 0, target->Width - Self->Width, max_height, target->BkgdIndex, BAF::FILL);
+      gfx::CopyArea(Self, target, BAF::NIL, 0, 0, Self->Width, max_height, 0, 0);
+      gfx::DrawRectangle(target, Self->Width, 0, target->Width - Self->Width, max_height, target->BkgdIndex, BAF::FILL);
    }
 
    // If the target height is greater, we will need to clear the pixels trailing at the bottom.
 
    if (Self->Height < target->Height) {
-      gfxDrawRectangle(target, 0, Self->Height, target->Width, target->Height - Self->Height, target->BkgdIndex, BAF::FILL);
+      gfx::DrawRectangle(target, 0, Self->Height, target->Width, target->Height - Self->Height, target->BkgdIndex, BAF::FILL);
    }
 
    return ERR::Okay;
@@ -919,7 +919,7 @@ Draw: Clears a bitmap's image to #BkgdIndex.
 
 static ERR BITMAP_Draw(extBitmap *Self)
 {
-   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
+   gfx::DrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    return ERR::Okay;
 }
 
@@ -950,7 +950,7 @@ Args
 static ERR BITMAP_DrawRectangle(extBitmap *Self, struct bmp::DrawRectangle *Args)
 {
    if (!Args) return ERR::NullArgs;
-   gfxDrawRectangle(Self, Args->X, Args->Y, Args->Width, Args->Height, Args->Colour, Args->Flags);
+   gfx::DrawRectangle(Self, Args->X, Args->Y, Args->Width, Args->Height, Args->Colour, Args->Flags);
    return ERR::Okay;
 }
 
@@ -1310,14 +1310,14 @@ static ERR BITMAP_Init(extBitmap *Self)
          LONG items;
          visual.bits_per_rgb = Self->BytesPerPixel * 8;
          if ((info = XGetVisualInfo(XDisplay, VisualBitsPerRGBMask, &visual, &items))) {
-            gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
+            gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
             XFree(info);
          }
-         else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+         else gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
       }
-      else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, Self->x11.ximage.red_mask, Self->x11.ximage.green_mask, Self->x11.ximage.blue_mask, 0xff000000);
+      else gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, Self->x11.ximage.red_mask, Self->x11.ximage.green_mask, Self->x11.ximage.blue_mask, 0xff000000);
    }
-   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+   else gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
 
 #elif _WIN32
 
@@ -1325,22 +1325,22 @@ static ERR BITMAP_Init(extBitmap *Self)
       LONG red, green, blue, alpha;
 
       if (!winGetPixelFormat(&red, &green, &blue, &alpha)) {
-         gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, red, green, blue, alpha);
+         gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, red, green, blue, alpha);
       }
-      else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+      else gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
    }
-   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+   else gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
 
 #elif _GLES_
 
-   if (Self->BitsPerPixel >= 24) gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0x0000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-   else if (Self->BitsPerPixel IS 16) gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0xf800, 0x07e0, 0x001f, 0x0000);
-   else if (Self->BitsPerPixel IS 15) gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0x7c00, 0x03e0, 0x001f, 0x0000);
-   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+   if (Self->BitsPerPixel >= 24) gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0x0000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+   else if (Self->BitsPerPixel IS 16) gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0xf800, 0x07e0, 0x001f, 0x0000);
+   else if (Self->BitsPerPixel IS 15) gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0x7c00, 0x03e0, 0x001f, 0x0000);
+   else gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
 
 #else
 
-   gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+   gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
 
 #endif
 
@@ -1962,13 +1962,13 @@ setfields:
 #endif
 
    if (origbpp != Self->BitsPerPixel) {
-      gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+      gfx::GetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
    }
 
    CalculatePixelRoutines(Self);
 
    if ((Self->Flags & BMF::CLEAR) != BMF::NIL) {
-      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->Bkgd), BAF::FILL);
+      gfx::DrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->Bkgd), BAF::FILL);
    }
 
    return ERR::Okay;
@@ -2188,7 +2188,7 @@ static ERR BITMAP_SetClipRegion(extBitmap *Self, struct bmp::SetClipRegion *Args
 {
    if (!Args) return ERR::NullArgs;
 
-   gfxSetClipRegion(Self, Args->Number, Args->Left, Args->Top, Args->Right, Args->Bottom, Args->Terminate);
+   gfx::SetClipRegion(Self, Args->Number, Args->Left, Args->Top, Args->Right, Args->Bottom, Args->Terminate);
    return ERR::Okay;
 }
 

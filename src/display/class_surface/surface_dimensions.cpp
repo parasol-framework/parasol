@@ -166,7 +166,7 @@ static ERR SET_Dimensions(extSurface *Self, LONG Value)
 {
    SURFACEINFO *parent;
 
-   if (gfxGetSurfaceInfo(Self->ParentID, &parent) IS ERR::Okay) {
+   if (gfx::GetSurfaceInfo(Self->ParentID, &parent) IS ERR::Okay) {
       if (Value & DMF_Y) {
          if ((Value & DMF_HEIGHT) or (Value & DMF_Y_OFFSET)) {
             Self->Dimensions &= ~DMF_VERTICAL_FLAGS;

@@ -677,7 +677,7 @@ static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
       CSTRING name;
-      if (fntResolveFamilyName(Value, &name) IS ERR::Okay) {
+      if (fnt::ResolveFamilyName(Value, &name) IS ERR::Okay) {
          Self->txFamily = StrClone(name);
       }
       else Self->txFamily = StrClone("Noto Sans"); // Better to resort to a default than fail completely
@@ -785,11 +785,11 @@ static ERR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
    CSTRING next;
-   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
+   if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = StrClone(Value);
 
       if (next) {
-         vecReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
          Self->FGFill = true;
       }
       else Self->FGFill = false;
@@ -1305,7 +1305,7 @@ static ERR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
    LONG width = 0;
    for (auto &line : Self->txLines) {
       if (Self->txBitmapFont) {
-         auto w = fntStringWidth(Self->txBitmapFont, line.c_str(), -1);
+         auto w = fnt::StringWidth(Self->txBitmapFont, line.c_str(), -1);
          if (w > width) width = w;
       }
       else {

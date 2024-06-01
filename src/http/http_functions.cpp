@@ -419,7 +419,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   if (Self->Status IS HTS::OKAY) {
                      // Proxy tunnel established.  Convert the socket to an SSL connection, then send the HTTP command.
 
-                     if (netSetSSL(Socket, NSL::CONNECT, TRUE, TAGEND) IS ERR::Okay) {
+                     if (net::SetSSL(Socket, NSL::CONNECT, TRUE, TAGEND) IS ERR::Okay) {
                         return acActivate(Self);
                      }
                      else {

@@ -50,7 +50,7 @@ void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value));
 
 void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY, bool NonClient)
 {
-   if (auto pointer = gfxAccessPointer(); pointer) {
+   if (auto pointer = gfx::AccessPointer(); pointer) {
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
 
       struct dcDeviceInput joy = {
@@ -61,7 +61,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
       };
 
       acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
-      gfxReleasePointer(pointer);
+      ReleaseObject(pointer);
    }
 }
 
@@ -73,7 +73,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
       if (FindObject("SystemPointer", CLASSID::NIL, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
    
-   if (auto pointer = gfxAccessPointer(); pointer) {
+   if (auto pointer = gfx::AccessPointer(); pointer) {
       struct dcDeviceInput joy = {
          .Values    = { Wheel, 0 },
          .Timestamp = PreciseTime(),
@@ -82,7 +82,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
       };
 
       acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
-      gfxReleasePointer(pointer);
+      ReleaseObject(pointer);
    }
 }
 
@@ -108,7 +108,7 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 
 void MsgButtonPress(LONG button, LONG State)
 {
-   if (auto pointer = gfxAccessPointer()) {
+   if (auto pointer = gfx::AccessPointer()) {
       struct dcDeviceInput joy[3];
 
       LONG i = 0;
@@ -140,8 +140,7 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (i) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(struct dcDeviceInput) * i);
 
-      gfxReleasePointer(pointer);
-
+      ReleaseObject(pointer);
    }
 }
 
@@ -263,7 +262,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
    pf::Log log(__FUNCTION__);
 
    if (SurfaceID) {
-      const WindowHook hook(SurfaceID, WH::CLOSE);
+      const WinHook hook(SurfaceID, WH::CLOSE);
 
       if (glWindowHooks.contains(hook)) {
          auto func = &glWindowHooks[hook];

@@ -11,7 +11,7 @@ Name: Input
 static std::unordered_map<LONG, InputCallback> glInputCallbacks;
 static std::vector<std::pair<LONG, InputCallback>> glNewSubscriptions;
 EventBuffer glInputEvents;
-
+namespace gfx{
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -27,7 +27,7 @@ cstr: A string describing the input type is returned or NULL if the Type is inva
 
 *********************************************************************************************************************/
 
-CSTRING gfxGetInputTypeName(JET Type)
+CSTRING GetInputTypeName(JET Type)
 {
    if ((LONG(Type) < 1) or (LONG(Type) >= LONG(JET::END))) return NULL;
    return glInputNames[LONG(Type)];
@@ -89,7 +89,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
+ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
 {
    static LONG counter = 1;
    pf::Log log(__FUNCTION__);
@@ -132,7 +132,7 @@ NotFound
 
 *********************************************************************************************************************/
 
-ERR gfxUnsubscribeInput(LONG Handle)
+ERR UnsubscribeInput(LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -153,6 +153,8 @@ ERR gfxUnsubscribeInput(LONG Handle)
 
    return ERR::Okay;
 }
+
+} // namespace
 
 //********************************************************************************************************************
 // This routine is called on every cycle of ProcessMessages() so that we can check if there are input events

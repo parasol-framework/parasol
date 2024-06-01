@@ -148,7 +148,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
    Self->Port = Args->Port;
 
    IPAddress server_ip;
-   if (netStrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
+   if (net::StrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
       std::vector<IPAddress> list;
       list.emplace_back(server_ip);
       connect_name_resolved(Self, ERR::Okay, "", list);
@@ -195,8 +195,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
    ClearMemory(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
-   server_address.sin_port = netHostToShort((UWORD)Socket->Port);
-   server_address.sin_addr.s_addr = netHostToLong(IPs[0].Data[0]);
+   server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
+   server_address.sin_addr.s_addr = net::HostToLong(IPs[0].Data[0]);
 
 #ifdef __linux__
    LONG result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -418,7 +418,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 #endif
 
    if (!result) {
-      Args->Address->Data[0] = netLongToHost(addr.sin_addr.s_addr);
+      Args->Address->Data[0] = net::LongToHost(addr.sin_addr.s_addr);
       Args->Address->Data[1] = 0;
       Args->Address->Data[2] = 0;
       Args->Address->Data[3] = 0;
@@ -526,7 +526,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          struct sockaddr_in addr;
          ClearMemory(&addr, sizeof(addr));
          addr.sin_family = AF_INET;
-         addr.sin_port   = netHostToShort(Self->Port); // Must be passed in in network byte order
+         addr.sin_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
          addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
 
          #ifdef __linux__

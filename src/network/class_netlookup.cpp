@@ -173,7 +173,7 @@ static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::Block
    log.branch("Address: %s", Args->Address);
 
    IPAddress ip;
-   if (netStrToAddress(Args->Address, &ip) IS ERR::Okay) {
+   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       DNSEntry *info;
       if ((error = resolve_address(Args->Address, &ip, &info)) IS ERR::Okay) {
          Self->Info = *info;
@@ -326,7 +326,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
    }
 
    IPAddress ip;
-   if (netStrToAddress(Args->Address, &ip) IS ERR::Okay) {
+   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
       if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {

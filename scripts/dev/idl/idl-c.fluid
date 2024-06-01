@@ -1118,7 +1118,9 @@ function class(Name, Options, Spec, Private, Custom)
       end
       output()
 
-      output('namespace ' .. lpfx .. ' {')
+      if nz(lpfx) then
+         output('namespace ' .. lpfx .. ' {')
+      end
 
       for _, method in ipairs(class.methods) do
          if nz(method.struct) then
@@ -1132,7 +1134,11 @@ function class(Name, Options, Spec, Private, Custom)
             output(method.inline)
          end
       end
-      output('} // namespace')
+
+      if nz(lpfx) then
+         output('} // namespace')
+      end
+
       output()
    end
 
@@ -2218,25 +2224,30 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if (variadic) then
       func.macro = function()
-         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. func.name ..
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
       end
 
       func.staticMacro = function()
-         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(jumpArgs,"void") .. ");"
+         if nz(glFunctionPrefix) then
+            return 'extern ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         else
+            return 'extern "C" ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         end
       end
    else
       func.macro = function()
-         return "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(argSeq,"void") .. ")" ..
-            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+         return 'inline ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(argSeq,'void') .. ')' ..
+            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. nz(outValues,'') .. '); }'
       end
 
       func.staticMacro = function()
-         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(jumpArgs,"void") .. ");"
+         if nz(glFunctionPrefix) then
+            return 'extern ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         else
+            return 'extern "C" ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         end
       end
    end
 end
@@ -2311,19 +2322,29 @@ function saveOutput()
 
             out = out .. "#ifndef PARASOL_STATIC\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            if nz(glFunctionPrefix) then
+               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+            end
             for k, func in ipairs(glFunctions) do
                if nz(func.macro) then
                   out = out .. func.macro() .. "\n"
                end
             end
+            if nz(glFunctionPrefix) then
+               out = out .. "} // namespace\n"
+            end
             out = out .. "#else\n"
-            out = out .. 'extern "C" {\n'
+            if nz(glFunctionPrefix) then
+               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+            end
             for k, func in ipairs(glFunctions) do
                if nz(func.staticMacro) and (func.status != 'private') then
                   out = out .. func.staticMacro() .. "\n"
                end
             end
-            out = out .. "}\n"
+            if nz(glFunctionPrefix) then
+               out = out .. "} // namespace\n"
+            end
             out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "#endif\n\n"
             file.acWrite(out, out:len())
@@ -2366,11 +2387,14 @@ function buildPrototypes()
    end
 
    if nz(glFunctions) then
-      local proto = 'extern "C" {\n'
+      local proto = ''
+      local prefix = ''
+      if nz(glFunctionPrefix) then
+         proto = 'namespace ' .. glFunctionPrefix .. ' {\n'
+         prefix = glFunctionPrefix .. '::'
+      end
 
       for k, func in ipairs(glFunctions) do
-         if (glPrototypes == "static") then proto = proto .. "static " end
-
          local response
          if (func.result != nil) and (func.result.type != nil) then
             response = func.result.fullType.c_type
@@ -2378,11 +2402,20 @@ function buildPrototypes()
             response = "void"
          end
 
-         func.prototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
-         func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
-         proto = proto .. func.prototype .. ";\n"
+         func.prototype = nz(func.c_response,"void") .. " " .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
+         func.docPrototype = nz(func.c_response,"void") .. " " .. prefix .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
+
+         if nz(glFunctionPrefix) then
+            proto = proto .. 'extern ' .. func.prototype .. ";\n"
+         else
+            proto = proto .. 'extern "C" ' .. func.prototype .. ";\n"
+         end
       end
-      proto = proto .. '\n} // extern c\n'
+
+      if nz(glFunctionPrefix) then
+         proto = proto .. '\n} // namespace\n'
+      end
+
       return proto
    else
       return ""
@@ -2395,9 +2428,12 @@ end
 function buildDefs()
    if not nz(glFunctions) then return "" end
 
+   local prefix = ''
+   if nz(glFunctionPrefix) then prefix = glFunctionPrefix .. '::' end
+
    local flist = "\nconst struct Function glFunctions[] = {\n"
    for _, func in ipairs(glFunctions) do
-      flist = flist .. "   { (APTR)" .. nz(glFunctionPrefix,"") .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
+      flist = flist .. "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
    flist = flist .. "   { NULL, NULL, NULL }\n"
    flist = flist .. "};\n\n"

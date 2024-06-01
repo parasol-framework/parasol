@@ -1767,7 +1767,7 @@ struct DisplayBase {
    objPointer * (*_AccessPointer)(void);
    ERR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
    ERR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    ERR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    void (*_DrawPixel)(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
    void (*_DrawRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
@@ -1814,97 +1814,99 @@ struct DisplayBase {
 #ifndef PRV_DISPLAY_MODULE
 #ifndef PARASOL_STATIC
 extern struct DisplayBase *DisplayBase;
-inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(); }
-inline ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
-inline ERR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
-inline void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
-inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
-inline ERR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
-inline void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
-inline void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
-inline ERR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
-inline ERR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetCursorPos(X,Y); }
-inline ERR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
-inline DT gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
-inline CSTRING gfxGetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
-inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
-inline ERR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
-inline ERR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
-inline ERR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
-inline OBJECTID gfxGetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
-inline ERR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
-inline ERR gfxLockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
-inline ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
-inline void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
-inline ERR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
-inline ERR gfxRestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
-inline DOUBLE gfxScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
-inline ERR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
-inline void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
-inline ERR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
-inline ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
-inline ERR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
-inline ERR gfxSetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
-inline OBJECTID gfxSetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
-inline ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
-inline ERR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
-inline void gfxSync(objBitmap * Bitmap) { return DisplayBase->_Sync(Bitmap); }
-inline ERR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
-inline ERR gfxUnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
-inline ERR gfxUnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
-inline ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
+namespace gfx {
+inline objPointer * AccessPointer(void) { return DisplayBase->_AccessPointer(); }
+inline ERR CheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
+inline ERR CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERR CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERR CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
+inline void DrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
+inline void DrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
+inline void DrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
+inline ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
+inline void FlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
+inline void GetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
+inline ERR GetCursorInfo(struct CursorInfo * Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
+inline ERR GetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetCursorPos(X,Y); }
+inline ERR GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
+inline DT GetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
+inline CSTRING GetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
+inline OBJECTID GetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
+inline ERR GetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
+inline ERR GetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
+inline ERR GetSurfaceFlags(OBJECTID Surface, RNF * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
+inline ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
+inline OBJECTID GetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
+inline ERR GetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
+inline ERR LockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
+inline ERR LockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
+inline ULONG ReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
+inline void ReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
+inline ERR Resample(objBitmap * Bitmap, struct ColourFormat * ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
+inline ERR RestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
+inline DOUBLE ScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
+inline ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
+inline void SetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
+inline ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
+inline ERR SetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
+inline ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
+inline ERR SetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
+inline OBJECTID SetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
+inline ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
+inline ERR SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
+inline void Sync(objBitmap * Bitmap) { return DisplayBase->_Sync(Bitmap); }
+inline ERR UnlockBitmap(OBJECTID Surface, objBitmap * Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
+inline ERR UnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
+inline ERR UnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
+inline ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
+} // namespace
 #else
-extern "C" {
-extern objPointer * gfxAccessPointer(void);
-extern ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
-extern ERR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-extern ERR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-extern ERR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-extern void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
-extern void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
-extern void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
-extern ERR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
-extern void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation);
-extern void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
-extern ERR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size);
-extern ERR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y);
-extern ERR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info);
-extern DT gfxGetDisplayType(void);
-extern CSTRING gfxGetInputTypeName(JET Type);
-extern OBJECTID gfxGetModalSurface(void);
-extern ERR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
-extern ERR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-extern ERR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags);
-extern ERR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info);
-extern OBJECTID gfxGetUserFocus(void);
-extern ERR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-extern ERR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info);
-extern ERR gfxLockCursor(OBJECTID Surface);
-extern ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y);
-extern void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
-extern ERR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
-extern ERR gfxRestoreCursor(PTC Cursor, OBJECTID Owner);
-extern DOUBLE gfxScaleToDPI(DOUBLE Value);
-extern ERR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
-extern void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-extern ERR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
-extern ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y);
-extern ERR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-extern ERR gfxSetHostOption(HOST Option, LARGE Value);
-extern OBJECTID gfxSetModalSurface(OBJECTID Surface);
-extern ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
-extern ERR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
-extern void gfxSync(objBitmap * Bitmap);
-extern ERR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap);
-extern ERR gfxUnlockCursor(OBJECTID Surface);
-extern ERR gfxUnsubscribeInput(LONG Handle);
-extern ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
-}
+namespace gfx {
+extern objPointer * AccessPointer(void);
+extern ERR CheckIfChild(OBJECTID Parent, OBJECTID Child);
+extern ERR CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern ERR CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern ERR CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern void DrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
+extern void DrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
+extern void DrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
+extern ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
+extern void FlipBitmap(objBitmap * Bitmap, FLIP Orientation);
+extern void GetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
+extern ERR GetCursorInfo(struct CursorInfo * Info, LONG Size);
+extern ERR GetCursorPos(DOUBLE * X, DOUBLE * Y);
+extern ERR GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info);
+extern DT GetDisplayType(void);
+extern CSTRING GetInputTypeName(JET Type);
+extern OBJECTID GetModalSurface(void);
+extern ERR GetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
+extern ERR GetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
+extern ERR GetSurfaceFlags(OBJECTID Surface, RNF * Flags);
+extern ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info);
+extern OBJECTID GetUserFocus(void);
+extern ERR GetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
+extern ERR LockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info);
+extern ERR LockCursor(OBJECTID Surface);
+extern ULONG ReadPixel(objBitmap * Bitmap, LONG X, LONG Y);
+extern void ReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
+extern ERR Resample(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
+extern ERR RestoreCursor(PTC Cursor, OBJECTID Owner);
+extern DOUBLE ScaleToDPI(DOUBLE Value);
+extern ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
+extern void SetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
+extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
+extern ERR SetCursorPos(DOUBLE X, DOUBLE Y);
+extern ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
+extern ERR SetHostOption(HOST Option, LARGE Value);
+extern OBJECTID SetModalSurface(OBJECTID Surface);
+extern ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
+extern ERR SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
+extern void Sync(objBitmap * Bitmap);
+extern ERR UnlockBitmap(OBJECTID Surface, objBitmap * Bitmap);
+extern ERR UnlockCursor(OBJECTID Surface);
+extern ERR UnsubscribeInput(LONG Handle);
+extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 
@@ -1919,8 +1921,6 @@ extern ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
 #define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-
-#define gfxReleasePointer(a)    (ReleaseObject(a))
 
 // Stubs
 

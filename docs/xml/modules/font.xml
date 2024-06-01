@@ -15,7 +15,7 @@
   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
-    <prototype>LONG fntCharWidth(objFont * Font, ULONG Char)</prototype>
+    <prototype>LONG fnt::CharWidth(objFont * Font, ULONG Char)</prototype>
     <input>
       <param type="objFont *" name="Font">The font to use for calculating the character width.</param>
       <param type="ULONG" name="Char">A unicode character.</param>
@@ -30,7 +30,7 @@
   <function>
     <name>GetList</name>
     <comment>Returns a list of all available system fonts.</comment>
-    <prototype>ERR fntGetList(struct FontList ** Result)</prototype>
+    <prototype>ERR fnt::GetList(struct FontList ** Result)</prototype>
     <input>
       <param type="struct FontList **" name="Result">The font list is returned here.</param>
     </input>
@@ -47,7 +47,7 @@
   <function>
     <name>RefreshFonts</name>
     <comment>Refreshes the system font list with up-to-date font information.</comment>
-    <prototype>ERR fntRefreshFonts()</prototype>
+    <prototype>ERR fnt::RefreshFonts()</prototype>
     <description>
 <p>This function scans the <code>fonts:</code> volume and refreshes the font database.</p>
 <p>Refreshing fonts can take an extensive amount of time as each font file needs to be completely analysed for information.  The <code>fonts:fonts.cfg</code> file will be re-written on completion to reflect current font settings.</p>
@@ -61,7 +61,7 @@
   <function>
     <name>ResolveFamilyName</name>
     <comment>Convert a CSV family string to a single family name.</comment>
-    <prototype>ERR fntResolveFamilyName(CSTRING String, CSTRING * Result)</prototype>
+    <prototype>ERR fnt::ResolveFamilyName(CSTRING String, CSTRING * Result)</prototype>
     <input>
       <param type="CSTRING" name="String">A CSV family string to resolve.</param>
       <param type="CSTRING *" name="Result">The nominated family name is returned in this parameter.</param>
@@ -82,7 +82,7 @@
   <function>
     <name>SelectFont</name>
     <comment>Searches for a 'best fitting' font file, based on family name and style.</comment>
-    <prototype>ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta)</prototype>
+    <prototype>ERR fnt::SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of a font face to search for (case insensitive).</param>
       <param type="CSTRING" name="Style">The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.</param>
@@ -104,7 +104,7 @@
   <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
-    <prototype>LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>
+    <prototype>LONG fnt::StringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>
     <input>
       <param type="objFont *" name="Font">An initialised font object.</param>
       <param type="CSTRING" name="String">The string to be calculated.</param>

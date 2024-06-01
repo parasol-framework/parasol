@@ -20,7 +20,7 @@
   <function>
     <name>AddressToStr</name>
     <comment>Converts an IPAddress structure to an IPAddress in dotted string form.</comment>
-    <prototype>CSTRING netAddressToStr(struct IPAddress * IPAddress)</prototype>
+    <prototype>CSTRING net::AddressToStr(struct IPAddress * IPAddress)</prototype>
     <input>
       <param type="struct IPAddress *" name="IPAddress">A pointer to the IPAddress structure.</param>
     </input>
@@ -33,7 +33,7 @@
   <function>
     <name>HostToLong</name>
     <comment>Converts a 32 bit (unsigned) long from host to network byte order.</comment>
-    <prototype>ULONG netHostToLong(ULONG Value)</prototype>
+    <prototype>ULONG net::HostToLong(ULONG Value)</prototype>
     <input>
       <param type="ULONG" name="Value">Data in host byte order to be converted to network byte order</param>
     </input>
@@ -46,7 +46,7 @@
   <function>
     <name>HostToShort</name>
     <comment>Converts a 16 bit (unsigned) word from host to network byte order.</comment>
-    <prototype>ULONG netHostToShort(ULONG Value)</prototype>
+    <prototype>ULONG net::HostToShort(ULONG Value)</prototype>
     <input>
       <param type="ULONG" name="Value">Data in host byte order to be converted to network byte order</param>
     </input>
@@ -59,7 +59,7 @@
   <function>
     <name>LongToHost</name>
     <comment>Converts a 32 bit (unsigned) long from network to host byte order.</comment>
-    <prototype>ULONG netLongToHost(ULONG Value)</prototype>
+    <prototype>ULONG net::LongToHost(ULONG Value)</prototype>
     <input>
       <param type="ULONG" name="Value">Data in network byte order to be converted to host byte order</param>
     </input>
@@ -72,7 +72,7 @@
   <function>
     <name>SetSSL</name>
     <comment>Alters SSL settings on an initialised NetSocket object.</comment>
-    <prototype>ERR netSetSSL(objNetSocket * NetSocket, ...)</prototype>
+    <prototype>ERR net::SetSSL(objNetSocket * NetSocket, ...)</prototype>
     <input>
       <param type="objNetSocket *" name="NetSocket">The target NetSocket object.</param>
       <param type="..." name="Tags">Series of tags terminated by TAGEND.</param>
@@ -90,7 +90,7 @@
   <function>
     <name>ShortToHost</name>
     <comment>Converts a 16 bit (unsigned) word from network to host byte order.</comment>
-    <prototype>ULONG netShortToHost(ULONG Value)</prototype>
+    <prototype>ULONG net::ShortToHost(ULONG Value)</prototype>
     <input>
       <param type="ULONG" name="Value">Data in network byte order to be converted to host byte order</param>
     </input>
@@ -102,14 +102,14 @@
 
   <function>
     <name>StrToAddress</name>
-    <comment>Converts an IP Address in string form to an IPAddress structure.</comment>
-    <prototype>ERR netStrToAddress(CSTRING String, struct IPAddress * Address)</prototype>
+    <comment>Converts an IP Address in string form to an <st>IPAddress</st> structure.</comment>
+    <prototype>ERR net::StrToAddress(CSTRING String, struct IPAddress * Address)</prototype>
     <input>
       <param type="CSTRING" name="String">A null-terminated string containing the IP Address in dotted format.</param>
-      <param type="struct IPAddress *" name="Address">Must point to an IPAddress structure that will be filled in.</param>
+      <param type="struct IPAddress *" name="Address">Must point to an <st>IPAddress</st> structure that will be filled in.</param>
     </input>
     <description>
-<p>Converts an IPv4 or an IPv6 address in dotted string format to an IPAddress structure.  The String must be of form <code>1.2.3.4</code> (IPv4).</p>
+<p>Converts an IPv4 or an IPv6 address in dotted string format to an <st>IPAddress</st> structure.  The <code>String</code> must be of form <code>1.2.3.4</code> (IPv4).</p>
 <pre>struct IPAddress addr;
 if (!StrToAddress("127.0.0.1", &amp;addr)) {
    ...
@@ -117,9 +117,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 </pre>
     </description>
     <result type="ERR">
-      <error code="Okay">The Address was converted successfully.</error>
-      <error code="Failed">The String was not a valid IP Address.</error>
-      <error code="Args">Either the string or the IPAddress pointer were NULL.</error>
+      <error code="Okay">The <code>Address</code> was converted successfully.</error>
+      <error code="Failed">The <code>String</code> was not a valid IP Address.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 

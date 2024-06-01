@@ -1099,7 +1099,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
 
-   glDisplayType = gfxGetDisplayType();
+   glDisplayType = gfx::GetDisplayType();
 
 #ifdef __ANDROID__
       glpFullScreen = TRUE;

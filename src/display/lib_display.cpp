@@ -8,7 +8,9 @@ Name: Display
 
 #include "defs.h"
 
-std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
+std::unordered_map<WinHook, FUNCTION> glWindowHooks;
+
+namespace gfx {
 
 /*********************************************************************************************************************
 
@@ -33,7 +35,7 @@ AllocMemory:
 
 *********************************************************************************************************************/
 
-ERR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
+ERR GetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
    static THREADVAR DISPLAYINFO *t_info = NULL;
 
@@ -68,7 +70,7 @@ int(DT): Returns an integer indicating the display type.
 
 *********************************************************************************************************************/
 
-DT gfxGetDisplayType(void)
+DT GetDisplayType(void)
 {
 #ifdef _WIN32
    return DT::WINGDI;
@@ -109,7 +111,7 @@ Search: There are no more display modes to return that are a match for the Filte
 
 *********************************************************************************************************************/
 
-ERR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
+ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 {
 #ifdef __snap__
 
@@ -243,7 +245,7 @@ Okay
 
 *********************************************************************************************************************/
 
-ERR gfxSetHostOption(HOST Option, LARGE Value)
+ERR SetHostOption(HOST Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    pf::Log log(__FUNCTION__);
@@ -292,8 +294,10 @@ double: The scaled value is returned.
 
 *********************************************************************************************************************/
 
-DOUBLE gfxScaleToDPI(DOUBLE Value)
+DOUBLE ScaleToDPI(DOUBLE Value)
 {
    if ((!glDisplayInfo.HDensity) or (!glDisplayInfo.VDensity)) return Value;
    else return 96.0 / (((DOUBLE)glDisplayInfo.HDensity + (DOUBLE)glDisplayInfo.VDensity) * 0.5) * Value;
 }
+
+} // namespace

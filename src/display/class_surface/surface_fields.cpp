@@ -12,7 +12,7 @@ the display and as such is not recommended.
 static ERR GET_BitsPerPixel(extSurface *Self, LONG *Value)
 {
    SURFACEINFO *info;
-   if (gfxGetSurfaceInfo(Self->UID, &info) IS ERR::Okay) {
+   if (gfx::GetSurfaceInfo(Self->UID, &info) IS ERR::Okay) {
       *Value = info->BitsPerPixel;
    }
    else *Value = 0;
@@ -69,9 +69,9 @@ static ERR SET_Cursor(extSurface *Self, PTC Value)
    if (Self->initialised()) {
       UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
 
-      if (auto pointer = gfxAccessPointer()) {
+      if (auto pointer = gfx::AccessPointer()) {
          acRefresh(pointer);
-         gfxReleasePointer(pointer);
+         ReleaseObject(pointer);
       }
    }
    return ERR::Okay;
@@ -103,14 +103,14 @@ static ERR SET_Drag(extSurface *Self, OBJECTID Value)
 {
    if (Value) {
       auto callback = C_FUNCTION(consume_input_events);
-      if (gfxSubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle) IS ERR::Okay) {
+      if (gfx::SubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle) IS ERR::Okay) {
          Self->DragID = Value;
          return ERR::Okay;
       }
       else return ERR::Failed;
    }
    else {
-      if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+      if (Self->InputHandle) { gfx::UnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
       Self->DragID = 0;
       return ERR::Okay;
    }
@@ -160,10 +160,10 @@ static ERR SET_Modal(extSurface *Self, LONG Value)
 {
    if ((!Value) and (Self->Modal)) {
       if (Self->PrevModalID) {
-         gfxSetModalSurface(Self->PrevModalID);
+         gfx::SetModalSurface(Self->PrevModalID);
          Self->PrevModalID = 0;
       }
-      else if (gfxGetModalSurface() IS Self->UID) gfxSetModalSurface(0);
+      else if (gfx::GetModalSurface() IS Self->UID) gfx::SetModalSurface(0);
    }
 
    Self->Modal = Value;
@@ -380,7 +380,7 @@ subject to the properties of the container that the surface object resides in.  
 visible but is contained within a surface object that is invisible, the end result is that both objects are actually
 invisible.
 
-Visibility is directly affected by the #Hide() and #Show() actions if you wish to change the visibility of a 
+Visibility is directly affected by the #Hide() and #Show() actions if you wish to change the visibility of a
 surface object.
 
 *********************************************************************************************************************/

@@ -15,7 +15,7 @@ end
 -- Test the ability to inspect the MetaClass Fields array.
 
 function testMetaClassArrays()
-   local metaFile = mSys.FindClass('File':hash(), 0)
+   local metaFile = mSys.FindClass(string.hash('File'), 0)
    for k,f in ipairs(metaFile.fields) do
       print(k .. ' ' .. f.name)
    end

@@ -2100,7 +2100,7 @@ struct VectorBase {
 #ifndef PARASOL_STATIC
    ERR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
    ERR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
-   ERR (*_GeneratePath)(CSTRING Sequence, APTR Path);
+   ERR (*_GeneratePath)(CSTRING Sequence, APTR *Path);
    ERR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
    ERR (*_ReadPainter)(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
    void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
@@ -2114,7 +2114,7 @@ struct VectorBase {
    void (*_ClosePath)(APTR Path);
    void (*_RewindPath)(APTR Path);
    LONG (*_GetVertex)(APTR Path, DOUBLE * X, DOUBLE * Y);
-   ERR (*_ApplyPath)(APTR Path, OBJECTPTR VectorPath);
+   ERR (*_ApplyPath)(APTR Path, objVectorPath * VectorPath);
    ERR (*_Rotate)(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
    ERR (*_Translate)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
    ERR (*_Skew)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
@@ -2123,83 +2123,85 @@ struct VectorBase {
    ERR (*_Scale)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
    ERR (*_ParseTransform)(struct VectorMatrix * Matrix, CSTRING Transform);
    ERR (*_ResetMatrix)(struct VectorMatrix * Matrix);
-   ERR (*_GetFontHandle)(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle);
+   ERR (*_GetFontHandle)(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
    ERR (*_GetFontMetrics)(APTR Handle, struct FontMetrics * Info);
    DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
    DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
    ERR (*_FlushMatrix)(struct VectorMatrix * Matrix);
-   ERR (*_TracePath)(APTR Path, FUNCTION Callback, DOUBLE Scale);
+   ERR (*_TracePath)(APTR Path, FUNCTION * Callback, DOUBLE Scale);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_VECTOR_MODULE
 #ifndef PARASOL_STATIC
 extern struct VectorBase *VectorBase;
-inline ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
-inline ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
-inline ERR vecGeneratePath(CSTRING Sequence, APTR Path) { return VectorBase->_GeneratePath(Sequence,Path); }
-inline ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
-inline ERR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
-inline void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
-inline void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
-inline void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
-inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
-inline void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
-inline void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
-inline void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
-inline void vecSmooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
-inline void vecClosePath(APTR Path) { return VectorBase->_ClosePath(Path); }
-inline void vecRewindPath(APTR Path) { return VectorBase->_RewindPath(Path); }
-inline LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y) { return VectorBase->_GetVertex(Path,X,Y); }
-inline ERR vecApplyPath(APTR Path, OBJECTPTR VectorPath) { return VectorBase->_ApplyPath(Path,VectorPath); }
-inline ERR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
-inline ERR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Translate(Matrix,X,Y); }
-inline ERR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Skew(Matrix,X,Y); }
-inline ERR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY) { return VectorBase->_Multiply(Matrix,ScaleX,ShearY,ShearX,ScaleY,TranslateX,TranslateY); }
-inline ERR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source) { return VectorBase->_MultiplyMatrix(Target,Source); }
-inline ERR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
-inline ERR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
-inline ERR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
-inline ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
-inline ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
-inline DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
-inline DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
-inline ERR vecFlushMatrix(struct VectorMatrix * Matrix) { return VectorBase->_FlushMatrix(Matrix); }
-inline ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
+namespace vec {
+inline ERR DrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
+inline ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
+inline ERR GeneratePath(CSTRING Sequence, APTR *Path) { return VectorBase->_GeneratePath(Sequence,Path); }
+inline ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
+inline ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
+inline void TranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
+inline void MoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
+inline void LineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
+inline void ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
+inline void Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
+inline void Smooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
+inline void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
+inline void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
+inline void ClosePath(APTR Path) { return VectorBase->_ClosePath(Path); }
+inline void RewindPath(APTR Path) { return VectorBase->_RewindPath(Path); }
+inline LONG GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y) { return VectorBase->_GetVertex(Path,X,Y); }
+inline ERR ApplyPath(APTR Path, objVectorPath * VectorPath) { return VectorBase->_ApplyPath(Path,VectorPath); }
+inline ERR Rotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
+inline ERR Translate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Translate(Matrix,X,Y); }
+inline ERR Skew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Skew(Matrix,X,Y); }
+inline ERR Multiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY) { return VectorBase->_Multiply(Matrix,ScaleX,ShearY,ShearX,ScaleY,TranslateX,TranslateY); }
+inline ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source) { return VectorBase->_MultiplyMatrix(Target,Source); }
+inline ERR Scale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
+inline ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
+inline ERR ResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
+inline ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
+inline ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
+inline DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
+inline DOUBLE StringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
+inline ERR FlushMatrix(struct VectorMatrix * Matrix) { return VectorBase->_FlushMatrix(Matrix); }
+inline ERR TracePath(APTR Path, FUNCTION * Callback, DOUBLE Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
+} // namespace
 #else
-extern "C" {
-extern ERR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern ERR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
-extern ERR vecGeneratePath(CSTRING Sequence, APTR Path);
-extern ERR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
-extern ERR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
-extern void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
-extern void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y);
-extern void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y);
-extern void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y);
-extern void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern void vecSmooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern void vecClosePath(APTR Path);
-extern void vecRewindPath(APTR Path);
-extern LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y);
-extern ERR vecApplyPath(APTR Path, OBJECTPTR VectorPath);
-extern ERR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
-extern ERR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
-extern ERR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
-extern ERR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
-extern ERR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source);
-extern ERR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
-extern ERR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
-extern ERR vecResetMatrix(struct VectorMatrix * Matrix);
-extern ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR Handle);
-extern ERR vecGetFontMetrics(APTR Handle, struct FontMetrics * Info);
-extern DOUBLE vecCharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
-extern DOUBLE vecStringWidth(APTR FontHandle, CSTRING String, LONG Chars);
-extern ERR vecFlushMatrix(struct VectorMatrix * Matrix);
-extern ERR vecTracePath(APTR Path, FUNCTION Callback, DOUBLE Scale);
-}
+namespace vec {
+extern ERR DrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
+extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
+extern ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
+extern ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
+extern void TranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
+extern void MoveTo(APTR Path, DOUBLE X, DOUBLE Y);
+extern void LineTo(APTR Path, DOUBLE X, DOUBLE Y);
+extern void ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
+extern void Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void Smooth3(APTR Path, DOUBLE X, DOUBLE Y);
+extern void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+extern void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void ClosePath(APTR Path);
+extern void RewindPath(APTR Path);
+extern LONG GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y);
+extern ERR ApplyPath(APTR Path, objVectorPath * VectorPath);
+extern ERR Rotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
+extern ERR Translate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR Skew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR Multiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+extern ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source);
+extern ERR Scale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
+extern ERR ResetMatrix(struct VectorMatrix * Matrix);
+extern ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
+extern ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info);
+extern DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
+extern DOUBLE StringWidth(APTR FontHandle, CSTRING String, LONG Chars);
+extern ERR FlushMatrix(struct VectorMatrix * Matrix);
+extern ERR TracePath(APTR Path, FUNCTION * Callback, DOUBLE Scale);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 

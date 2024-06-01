@@ -649,8 +649,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
 
-#define gfxReleasePointer(a)    (ReleaseObject(a))
-
 // Stubs
 
 namespace drw {

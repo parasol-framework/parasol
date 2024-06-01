@@ -29,7 +29,7 @@
     <name>AccessPointer</name>
     <category>Cursor</category>
     <comment>Returns a lock on the default pointer object.</comment>
-    <prototype>objPointer * gfxAccessPointer()</prototype>
+    <prototype>objPointer * gfx::AccessPointer()</prototype>
     <description>
 <p>Use AccessPointer() to grab a lock on the default pointer object that is active in the system.  This is typically the first object created from the Pointer class with a name of <code>SystemPointer</code>.</p>
 <p>Call <function module="Core">ReleaseObject</function> to free the lock once it is no longer required.</p>
@@ -41,7 +41,7 @@
     <name>CheckIfChild</name>
     <category>Surfaces</category>
     <comment>Check if a surface is the child of another surface.</comment>
-    <prototype>ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
+    <prototype>ERR gfx::CheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
     <input>
       <param type="OBJECTID" name="Parent">The surface that is assumed to be the parent.</param>
       <param type="OBJECTID" name="Child">The child surface to check.</param>
@@ -61,7 +61,7 @@
     <name>CopyArea</name>
     <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
       <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
@@ -91,10 +91,10 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
-      <param type="objBitmap *" name="Bitmap">Destination bitmap.</param>
+      <param type="objBitmap *" name="Dest">Destination bitmap.</param>
       <param type="CSRF" name="Flags" lookup="CSRF">Optional flags.</param>
       <param type="LONG" name="X">Horizontal source coordinate.</param>
       <param type="LONG" name="Y">Vertical source coordinate.</param>
@@ -118,7 +118,7 @@
     <name>CopySurface</name>
     <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
       <param type="objBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
@@ -145,7 +145,7 @@
     <name>DrawPixel</name>
     <category>Bitmap</category>
     <comment>Draws a single pixel to a bitmap.</comment>
-    <prototype>void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
+    <prototype>void gfx::DrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
@@ -161,7 +161,7 @@
     <name>DrawRGBPixel</name>
     <category>Bitmap</category>
     <comment>Draws a 24 bit pixel to a <class name="Bitmap">Bitmap</class>.</comment>
-    <prototype>void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
+    <prototype>void gfx::DrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
       <param type="LONG" name="X">Horizontal coordinate of the pixel.</param>
@@ -177,7 +177,7 @@
     <name>DrawRectangle</name>
     <category>Bitmap</category>
     <comment>Draws rectangles, both filled and unfilled.</comment>
-    <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
+    <prototype>void gfx::DrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
       <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
@@ -196,7 +196,7 @@
     <name>ExposeSurface</name>
     <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
-    <prototype>ERR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+    <prototype>ERR gfx::ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
       <param type="LONG" name="X">The horizontal coordinate of the area to expose.</param>
@@ -220,7 +220,7 @@
     <name>FlipBitmap</name>
     <category>Bitmap</category>
     <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
-    <prototype>void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation)</prototype>
+    <prototype>void gfx::FlipBitmap(objBitmap * Bitmap, FLIP Orientation)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="FLIP" name="Orientation" lookup="FLIP">Set to either <code>HORIZONTAL</code> or <code>VERTICAL</code>.  If set to neither, the function does nothing.</param>
@@ -234,7 +234,7 @@
     <name>GetColourFormat</name>
     <category>Bitmap</category>
     <comment>Generates the values for a <st>ColourFormat</st> structure for a given bit depth.</comment>
-    <prototype>void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
+    <prototype>void gfx::GetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
     <input>
       <param type="struct ColourFormat *" name="Format">Pointer to an empty <st>ColourFormat</st> structure.</param>
       <param type="LONG" name="BitsPerPixel">The depth that you would like to generate colour values for.  Ignored if mask values are set.</param>
@@ -261,7 +261,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetCursorInfo</name>
     <category>Cursor</category>
     <comment>Retrieves graphics information from the active mouse cursor.</comment>
-    <prototype>ERR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
+    <prototype>ERR gfx::GetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
     <input>
       <param type="struct CursorInfo *" name="Info">Pointer to a CursorInfo structure.</param>
       <param type="LONG" name="Size">The byte-size of the Info structure.</param>
@@ -282,7 +282,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetCursorPos</name>
     <category>Cursor</category>
     <comment>Returns the coordinates of the UI pointer.</comment>
-    <prototype>ERR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
+    <prototype>ERR gfx::GetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
       <param type="DOUBLE *" name="X">Variable that will store the pointer's horizontal coordinate.</param>
       <param type="DOUBLE *" name="Y">Variable that will store the pointer's vertical coordinate.</param>
@@ -300,7 +300,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetDisplayInfo</name>
     <category>Display</category>
     <comment>Retrieves display information.</comment>
-    <prototype>ERR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
+    <prototype>ERR gfx::GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
     <input>
       <param type="OBJECTID" name="Display">Object ID of the display to be analysed.</param>
       <param type="struct DisplayInfoV3 **" name="Info">This reference will receive a pointer to a DISPLAYINFO structure.</param>
@@ -320,7 +320,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetDisplayType</name>
     <category>Display</category>
     <comment>Returns the type of display supported.</comment>
-    <prototype>DT gfxGetDisplayType()</prototype>
+    <prototype>DT gfx::GetDisplayType()</prototype>
     <description>
 <p>This function returns the type of display supported by the loaded Display module.  Current return values are:</p>
 <types lookup="DT"/>
@@ -332,7 +332,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetInputTypeName</name>
     <category>Input</category>
     <comment>Returns the string name for an input type.</comment>
-    <prototype>CSTRING gfxGetInputTypeName(JET Type)</prototype>
+    <prototype>CSTRING gfx::GetInputTypeName(JET Type)</prototype>
     <input>
       <param type="JET" name="Type" lookup="JET">JET type integer.</param>
     </input>
@@ -346,7 +346,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetModalSurface</name>
     <category>Surfaces</category>
     <comment>Returns the current modal surface (if defined).</comment>
-    <prototype>OBJECTID gfxGetModalSurface()</prototype>
+    <prototype>OBJECTID gfx::GetModalSurface()</prototype>
     <description>
 <p>This function returns the modal surface for the running process.  Returns zero if no modal surface is active.</p>
     </description>
@@ -357,7 +357,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetRelativeCursorPos</name>
     <category>Cursor</category>
     <comment>Returns the coordinates of the pointer cursor, relative to a surface object.</comment>
-    <prototype>ERR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
+    <prototype>ERR gfx::GetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Unique ID of the surface that the coordinates need to be relative to.</param>
       <param type="DOUBLE *" name="X">Variable that will store the pointer's horizontal coordinate.</param>
@@ -377,7 +377,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceCoords</name>
     <category>Surfaces</category>
     <comment>Returns the dimensions of a surface.</comment>
-    <prototype>ERR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfx::GetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display is queried.</param>
       <param type="LONG *" name="X">The X coordinate of the surface is returned here.</param>
@@ -401,7 +401,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceFlags</name>
     <category>Surfaces</category>
     <comment>Retrieves the Flags field from a surface.</comment>
-    <prototype>ERR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
+    <prototype>ERR gfx::GetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level surface is queried.</param>
       <param type="RNF *" name="Flags" lookup="RNF">The flags value is returned here.</param>
@@ -421,7 +421,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceInfo</name>
     <category>Surfaces</category>
     <comment>Retrieves display information for any surface object without having to access it directly.</comment>
-    <prototype>ERR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
+    <prototype>ERR gfx::GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The unique ID of a surface to query.  If zero, the root surface is returned.</param>
       <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a SurfaceInfo pointer that describes the Surface object.</param>
@@ -441,7 +441,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetUserFocus</name>
     <category>Surfaces</category>
     <comment>Returns the ID of the surface that currently has the user's focus.</comment>
-    <prototype>OBJECTID gfxGetUserFocus()</prototype>
+    <prototype>OBJECTID gfx::GetUserFocus()</prototype>
     <description>
 <p>This function returns the unique ID of the surface that has the user's focus.</p>
     </description>
@@ -452,7 +452,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetVisibleArea</name>
     <category>Surfaces</category>
     <comment>Returns the visible region of a surface.</comment>
-    <prototype>ERR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfx::GetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display will be queried.</param>
       <param type="LONG *" name="X">The X coordinate of the visible area.</param>
@@ -476,7 +476,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>LockBitmap</name>
     <category>Surfaces</category>
     <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
+    <prototype>ERR gfx::LockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
       <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
@@ -496,7 +496,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>LockCursor</name>
     <category>Cursor</category>
     <comment>Anchors the cursor so that it cannot move without explicit movement signals.</comment>
-    <prototype>ERR gfxLockCursor(OBJECTID Surface)</prototype>
+    <prototype>ERR gfx::LockCursor(OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should send movement signals to.</param>
     </input>
@@ -516,7 +516,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>ReadPixel</name>
     <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y)</prototype>
+    <prototype>ULONG gfx::ReadPixel(objBitmap * Bitmap, LONG X, LONG Y)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
@@ -532,7 +532,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>ReadRGBPixel</name>
     <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
+    <prototype>void gfx::ReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
@@ -549,7 +549,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>Resample</name>
     <category>Bitmap</category>
     <comment>Resamples a bitmap by dithering it to a new set of colour masks.</comment>
-    <prototype>ERR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
+    <prototype>ERR gfx::Resample(objBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The bitmap object to be resampled.</param>
       <param type="struct ColourFormat *" name="ColourFormat">The new colour format to be applied to the bitmap.</param>
@@ -568,7 +568,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>RestoreCursor</name>
     <category>Cursor</category>
     <comment>Returns the pointer image to its original state.</comment>
-    <prototype>ERR gfxRestoreCursor(PTC Cursor, OBJECTID Owner)</prototype>
+    <prototype>ERR gfx::RestoreCursor(PTC Cursor, OBJECTID Owner)</prototype>
     <input>
       <param type="PTC" name="Cursor" lookup="PTC">The cursor image that the pointer will be restored to (0 for the default).</param>
       <param type="OBJECTID" name="Owner">The ownership ID that was given in the initial call to SetCursor().</param>
@@ -587,7 +587,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>ScaleToDPI</name>
     <category>Display</category>
     <comment>Scales a value to the active display's DPI.</comment>
-    <prototype>DOUBLE gfxScaleToDPI(DOUBLE Value)</prototype>
+    <prototype>DOUBLE gfx::ScaleToDPI(DOUBLE Value)</prototype>
     <input>
       <param type="DOUBLE" name="Value">The number to be scaled.</param>
     </input>
@@ -602,7 +602,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetClipRegion</name>
     <category>Bitmap</category>
     <comment>Sets a clipping region for a bitmap object.</comment>
-    <prototype>void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
       <param type="LONG" name="Number">The number of the clip region to set.</param>
@@ -615,7 +615,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>The SetClipRegion() method is used to manage the clipping regions assigned to a bitmap object.  Each new bitmap that is created has at least one clip region assigned to it, but by using SetClipRegion() you can also define multiple clipping areas, which is useful for complex graphics management.</p>
 <p>Each clipping region that you set is assigned a Number, starting from zero which is the default.  Each time that you set a new clip region you must specify the number of the region that you wish to set.  If you attempt to 'skip' regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5, the routine will set region 4 instead. If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last region that you want in your list and set the <code>Terminate</code> parameter to <code>true</code> to kill the regions specified beyond it.</p>
-<p>The <code>ClipLeft</code>, <code>ClipTop</code>, <code>ClipRight</code> and <code>ClipBottom</code> fields in the target Bitmap will be updated to reflect the overall area that is covered by the clipping regions that have been set.</p>
+<p>The <code>ClipLeft</code>, <code>ClipTop</code>, <code>ClipRight</code> and <code>ClipBottom</code> fields in the target <code>Bitmap</code> will be updated to reflect the overall area that is covered by the clipping regions that have been set.</p>
     </description>
   </function>
 
@@ -623,7 +623,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
-    <prototype>ERR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <prototype>ERR gfx::SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
@@ -651,7 +651,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursorPos</name>
     <category>Cursor</category>
     <comment>Changes the position of the pointer cursor.</comment>
-    <prototype>ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR gfx::SetCursorPos(DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="DOUBLE" name="X">The new horizontal coordinate for the pointer.</param>
       <param type="DOUBLE" name="Y">The new vertical coordinate for the pointer.</param>
@@ -669,7 +669,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCustomCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERR gfx::SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
@@ -682,7 +682,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some minor adjustments to allow custom images to be set.</p>
 <p>The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or resampled appropriately when the cursor is downloaded to the video card.</p>
 <p>It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit, alpha-enabled graphics area.  The following code illustrates this process:</p>
-<pre>if (auto pointer = gfxAccessPointer()) {
+<pre>if (auto pointer = gfx::AccessPointer()) {
    objBitmap *bitmap;
    if (!AccessObject(pointer-&gt;BitmapID, 3000, &amp;bitmap)) {
       // Adjust clipping to match the cursor size.
@@ -694,10 +694,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       // Draw to the bitmap here.
       ...
 
-      gfxSetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
+      gfx::SetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
       ReleaseObject(bitmap);
    }
-   gfxReleasePointer(pointer);
+   gfx::ReleasePointer(pointer);
 }
 </pre>
     </description>
@@ -713,7 +713,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetHostOption</name>
     <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
-    <prototype>ERR gfxSetHostOption(HOST Option, LARGE Value)</prototype>
+    <prototype>ERR gfx::SetHostOption(HOST Option, LARGE Value)</prototype>
     <input>
       <param type="HOST" name="Option" lookup="HOST">One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</param>
       <param type="LARGE" name="Value">The value to be applied to the option.</param>
@@ -730,7 +730,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetModalSurface</name>
     <category>Surfaces</category>
     <comment>Enables a modal surface for the current task.</comment>
-    <prototype>OBJECTID gfxSetModalSurface(OBJECTID Surface)</prototype>
+    <prototype>OBJECTID gfx::SetModalSurface(OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to enable as modal.</param>
     </input>
@@ -746,7 +746,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>StartCursorDrag</name>
     <category>Cursor</category>
     <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
-    <prototype>ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
+    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Source">Refers to an object that is managing the source data.</param>
       <param type="LONG" name="Item">A custom number that represents the item being dragged from the source.</param>
@@ -773,7 +773,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SubscribeInput</name>
     <category>Input</category>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
-    <prototype>ERR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
+    <prototype>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given surface ID will be received.</param>
@@ -814,7 +814,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>Sync</name>
     <category>Bitmap</category>
     <comment>Waits for the completion of all active bitmap operations.</comment>
-    <prototype>void gfxSync(objBitmap * Bitmap)</prototype>
+    <prototype>void gfx::Sync(objBitmap * Bitmap)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to the bitmap that you want to synchronise or <code>NULL</code> to sleep on the graphics accelerator.</param>
     </input>
@@ -826,8 +826,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>UnlockBitmap</name>
     <category>Surfaces</category>
-    <comment>Unlocks any earlier call to gfxLockBitmap().</comment>
-    <prototype>ERR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
+    <comment>Unlocks any earlier call to gfx::LockBitmap().</comment>
+    <prototype>ERR gfx::UnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
       <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
@@ -845,7 +845,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnlockCursor</name>
     <category>Cursor</category>
     <comment>Undoes an earlier call to LockCursor()</comment>
-    <prototype>ERR gfxUnlockCursor(OBJECTID Surface)</prototype>
+    <prototype>ERR gfx::UnlockCursor(OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object used for calling LockCursor().</param>
     </input>
@@ -864,7 +864,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnsubscribeInput</name>
     <category>Input</category>
     <comment>Removes an input subscription.</comment>
-    <prototype>ERR gfxUnsubscribeInput(LONG Handle)</prototype>
+    <prototype>ERR gfx::UnsubscribeInput(LONG Handle)</prototype>
     <input>
       <param type="LONG" name="Handle">Reference to a handle returned by SubscribeInput().</param>
     </input>
@@ -882,7 +882,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>WindowHook</name>
     <category>Surfaces</category>
     <comment>Adds a function hook for receiving window messages from a host desktop.</comment>
-    <prototype>ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback)</prototype>
+    <prototype>ERR gfx::WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTID" name="SurfaceID">A hosted surface to be monitored.</param>
       <param type="WH" name="Event" lookup="WH">A window hook event.</param>

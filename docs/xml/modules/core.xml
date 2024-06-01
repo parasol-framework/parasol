@@ -1321,20 +1321,20 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="HOSTHANDLE" name="FD">The file descriptor that is to be watched.</param>
       <param type="RFD" name="Flags" lookup="RFD">Set to at least one of <code>READ</code>, <code>WRITE</code>, <code>EXCEPT</code>, <code>REMOVE</code>.</param>
-      <param type="void (*Routine)(HOSTHANDLE, APTR)" name="Routine">The routine that will read from the descriptor when data is detected on it.  The template for the function is <code>void Routine(LONG FD, APTR Data)</code>.</param>
-      <param type="APTR" name="Data">User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.</param>
+      <param type="void (*Routine)(HOSTHANDLE, APTR)" name="Routine">The routine that will read from the descriptor when data is detected on it.  The prototype is <code>void Routine(HOSTHANDLE FD, APTR Data)</code>.</param>
+      <param type="APTR" name="Data">User specific data pointer that will be passed to the <code>Routine</code>.  Separate data pointers apply to the read and write states of operation.</param>
     </input>
     <description>
-<p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If activity occurs on the descriptor then the function specified in the <code>Routine</code> parameter will be called.  The routine must read all of information from the descriptor, as the running process will not be able to sleep until all the data is cleared.</p>
+<p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  When activity occurs on the descriptor, the callback referenced in <code>Routine</code> will be called.  The callback should read all information from the descriptor, as the process will not be able to sleep if data is back-logged.</p>
 <p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the program to hang if not handled carefully.</p>
-<p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the <code>RFD::READ</code> flag to apply the <code>Routine</code> to the read callback and <code>RFD::WRITE</code> for the write callback.  If neither flag is specified, <code>RFD::READ</code> is assumed.  A file descriptor may have up to one subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD::REMOVE</code>.</p>
+<p>File descriptors support read and write states simultaneously, and a callback routine can be applied to either state. Set the <code>RFD::READ</code> flag to apply the <code>Routine</code> to the read callback and <code>RFD::WRITE</code> for the write callback.  If neither flag is specified, <code>RFD::READ</code> is assumed.  A file descriptor may have up to one subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD::REMOVE</code>.</p>
 <p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
 <p>Call the <code>DeregisterFD()</code> macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">The FD was successfully registered.</error>
-      <error code="Args">The FD was set to a value of -1.</error>
-      <error code="NoSupport">The host platform does not support file descriptors.</error>
+      <error code="Okay">The <code>FD</code> was successfully registered.</error>
+      <error code="Args">The <code>FD</code> was set to a value of <code>-1</code>.</error>
+      <error code="NoSupport">The host platform does not support the provided <code>FD</code>.</error>
     </result>
   </function>
 

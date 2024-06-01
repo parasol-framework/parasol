@@ -56,7 +56,7 @@ static ERR redraw_timer(extSurface *, LARGE, LARGE);
 static ERR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentTime)
 {
    objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
+   if ((pointer = gfx::AccessPointer())) {
       acRefresh(pointer);
       ReleaseObject(pointer);
    }
@@ -281,7 +281,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
       // Blend the surface's graphics into the composited buffer
       // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
 
-      gfxCopyArea(Bitmap, glComposite, BAF::BLEND, 0, 0, list[Index].Width, list[Index].Height, 0, 0);
+      gfx::CopyArea(Bitmap, glComposite, BAF::BLEND, 0, 0, list[Index].Width, list[Index].Height, 0, 0);
 
       Bitmap = glComposite;
       sx = 0;  // Always zero as composites own their bitmap
@@ -495,7 +495,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
    }
    else {
       DISPLAYINFO *display;
-      if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
+      if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
          parentwidth  = display->Width;
          parentheight = display->Height;
       }
@@ -767,10 +767,10 @@ static ERR SURFACE_Focus(extSurface *Self)
 
    FOCUSMSG("Focussing...  HasFocus: %c", (Self->hasFocus()) ? 'Y' : 'N');
 
-   if (auto modal = gfxGetModalSurface()) {
+   if (auto modal = gfx::GetModalSurface()) {
       if (modal != Self->UID) {
          ERR error;
-         error = gfxCheckIfChild(modal, Self->UID);
+         error = gfx::CheckIfChild(modal, Self->UID);
 
          if ((error != ERR::True) and (error != ERR::LimitedSuccess)) {
             // Focussing is not OK - surface is out of the modal's scope
@@ -976,7 +976,7 @@ static ERR SURFACE_Free(extSurface *Self)
       SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
    }
 
-   if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
+   if (Self->InputHandle) gfx::UnsubscribeInput(Self->InputHandle);
 
    for (auto it = glWindowHooks.begin(); it != glWindowHooks.end();) {
       if (it->first.SurfaceID IS Self->UID) {
@@ -1016,20 +1016,20 @@ static ERR SURFACE_Hide(extSurface *Self)
       UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
       if (Self->BitmapOwnerID != Self->UID) {
-         gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF::RELATIVE);
+         RedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF::RELATIVE);
       }
-      gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE);
+      gfx::ExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE);
    }
 
    // Check if the surface is modal, if so, switch it off
 
    if (Self->PrevModalID) {
-      gfxSetModalSurface(Self->PrevModalID);
+      gfx::SetModalSurface(Self->PrevModalID);
       Self->PrevModalID = 0;
    }
-   else if (gfxGetModalSurface() IS Self->UID) {
+   else if (gfx::GetModalSurface() IS Self->UID) {
       log.msg("Surface is modal, switching off modal mode.");
-      gfxSetModalSurface(0);
+      gfx::SetModalSurface(0);
    }
 
    refresh_pointer(Self);
@@ -1053,7 +1053,7 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *Args)
+static ERR SURFACE_InheritedFocus(extSurface *Self, struct drw::InheritedFocus *Args)
 {
    if (auto msg = GetActionMsg()) {
       // This is a message - in which case it could have been delayed and thus superseded by a more recent message.
@@ -1100,7 +1100,7 @@ static ERR SURFACE_Init(extSurface *Self)
    // If no parent surface is set, check if the client has set the FULL_SCREEN flag.  If not, try to give the
    // surface a parent.
 
-   if ((!Self->ParentID) and (gfxGetDisplayType() IS DT::NATIVE)) {
+   if ((!Self->ParentID) and (gfx::GetDisplayType() IS DT::NATIVE)) {
       if ((Self->Flags & RNF::FULL_SCREEN) IS RNF::NIL) {
          if (FindObject("desktop", CLASSID::SURFACE, FOF::NIL, &Self->ParentID) != ERR::Okay) {
             if (!glSurfaces.empty()) Self->ParentID = glSurfaces[0].SurfaceID;
@@ -1229,41 +1229,41 @@ static ERR SURFACE_Init(extSurface *Self)
       SCR scrflags = SCR::NIL;
 
       if ((Self->Type & RT::ROOT) != RT::NIL) {
-         gfxSetHostOption(HOST::TASKBAR, 1);
-         gfxSetHostOption(HOST::TRAY_ICON, 0);
+         gfx::SetHostOption(HOST::TASKBAR, 1);
+         gfx::SetHostOption(HOST::TRAY_ICON, 0);
       }
       else switch(Self->WindowType) {
          default: // SWIN::HOST
             log.trace("Enabling standard hosted window mode.");
-            gfxSetHostOption(HOST::TASKBAR, 1);
+            gfx::SetHostOption(HOST::TASKBAR, 1);
             break;
 
          case SWIN::TASKBAR:
             log.trace("Enabling borderless taskbar based surface.");
             scrflags |= SCR::BORDERLESS; // Stop the display from creating a host window for the surface
             if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR::MAXIMISE;
-            gfxSetHostOption(HOST::TASKBAR, 1);
+            gfx::SetHostOption(HOST::TASKBAR, 1);
             break;
 
          case SWIN::ICON_TRAY:
             log.trace("Enabling borderless icon-tray based surface.");
             scrflags |= SCR::BORDERLESS; // Stop the display from creating a host window for the surface
             if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR::MAXIMISE;
-            gfxSetHostOption(HOST::TRAY_ICON, 1);
+            gfx::SetHostOption(HOST::TRAY_ICON, 1);
             break;
 
          case SWIN::NONE:
             log.trace("Enabling borderless, presence-less surface.");
             scrflags |= SCR::BORDERLESS; // Stop the display from creating a host window for the surface
             if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR::MAXIMISE;
-            gfxSetHostOption(HOST::TASKBAR, 0);
-            gfxSetHostOption(HOST::TRAY_ICON, 0);
+            gfx::SetHostOption(HOST::TASKBAR, 0);
+            gfx::SetHostOption(HOST::TRAY_ICON, 0);
             break;
       }
 
-      if (gfxGetDisplayType() IS DT::NATIVE) Self->Flags &= ~(RNF::COMPOSITE);
+      if (gfx::GetDisplayType() IS DT::NATIVE) Self->Flags &= ~(RNF::COMPOSITE);
 
-      if (((gfxGetDisplayType() IS DT::WINGDI) or (gfxGetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
+      if (((gfx::GetDisplayType() IS DT::WINGDI) or (gfx::GetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
          if (glpMaximise) scrflags |= SCR::MAXIMISE;
          if (glpFullScreen) scrflags |= SCR::MAXIMISE|SCR::BORDERLESS;
       }
@@ -1295,11 +1295,11 @@ static ERR SURFACE_Init(extSurface *Self)
          Self->Height = 480;
       }
 
-      if (gfxGetDisplayType() != DT::NATIVE) {
+      if (gfx::GetDisplayType() != DT::NATIVE) {
          // Alignment adjustments
 
          DISPLAYINFO *display;
-         if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
+         if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
             if ((Self->Align & ALIGN::LEFT) != ALIGN::NIL) { Self->X = 0; Self->setX(Self->X); }
             else if ((Self->Align & ALIGN::RIGHT) != ALIGN::NIL) { Self->X = display->Width - Self->Width; Self->setX(Self->X); }
             else if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) { Self->X = (display->Width - Self->Width) / 2; Self->setX(Self->X); }
@@ -1315,8 +1315,8 @@ static ERR SURFACE_Init(extSurface *Self)
       if (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
 
-      if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfxSetHostOption(HOST::STICK_TO_FRONT, 1);
-      else gfxSetHostOption(HOST::STICK_TO_FRONT, 0);
+      if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfx::SetHostOption(HOST::STICK_TO_FRONT, 1);
+      else gfx::SetHostOption(HOST::STICK_TO_FRONT, 0);
 
       if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) scrflags |= SCR::COMPOSITE;
 
@@ -1349,7 +1349,7 @@ static ERR SURFACE_Init(extSurface *Self)
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
          gfx::SetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF::SAVE);
-         gfxSetHostOption(HOST::TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
+         gfx::SetHostOption(HOST::TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
 
          // Get the true coordinates of the client area of the surface
 
@@ -1403,7 +1403,7 @@ static ERR SURFACE_Init(extSurface *Self)
    else {
       if (Self->BitsPerPixel >= 8) {
          DISPLAYINFO *info;
-         if (gfxGetDisplayInfo(Self->DisplayID, &info) IS ERR::Okay) {
+         if (gfx::GetDisplayInfo(Self->DisplayID, &info) IS ERR::Okay) {
             if (info->BitsPerPixel != Self->BitsPerPixel) require_store = true;
          }
       }
@@ -2065,7 +2065,7 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 
    // Turn off drawing and adjust the dimensions of the surface
 
-   //gfxForbidDrawing();
+   //gfx::ForbidDrawing();
 
    if (dimensions & DMF_SCALED_X) SetField(Self, FID_X|TDOUBLE|TSCALE, Args->X);
    else if (dimensions & DMF_FIXED_X) SetField(Self, FID_X|TDOUBLE, Args->X);
@@ -2085,7 +2085,7 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
    if (dimensions & DMF_SCALED_WIDTH) SetField(Self, FID_Width|TDOUBLE|TSCALE, Args->Width);
    else if (dimensions & DMF_FIXED_WIDTH) SetField(Self, FID_Width|TDOUBLE, Args->Width);
 
-   //gfxPermitDrawing();
+   //gfx::PermitDrawing();
 
    // Now redraw everything within the area that was adjusted
 
@@ -2217,7 +2217,7 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
                   extBitmap *picbmp;
                   picture->getPtr(FID_Bitmap, &picbmp);
-                  gfxCopySurface(list[j].SurfaceID, picbmp, BDF::NIL, 0, 0, list[j].Width, list[j].Height,
+                  gfx::CopySurface(list[j].SurfaceID, picbmp, BDF::NIL, 0, 0, list[j].Width, list[j].Height,
                      list[j].Left - list[i].Left, list[j].Top - list[i].Top);
                }
             }
@@ -2309,13 +2309,13 @@ static ERR SURFACE_Show(extSurface *Self)
    }
    else Self->Flags |= RNF::VISIBLE;
 
-   if (Self->Modal) Self->PrevModalID = gfxSetModalSurface(Self->UID);
+   if (Self->Modal) Self->PrevModalID = gfx::SetModalSurface(Self->UID);
 
    if (notified IS ERR::NIL) {
       UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
-      gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
-      gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      RedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
+      gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
    }
 
    refresh_pointer(Self);
@@ -2392,7 +2392,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
       // Clear the Bitmap to the background colour if necessary
 
       if (Self->Colour.Alpha > 0) {
-         gfxDrawRectangle(Bitmap, 0, 0, Self->Width, Self->Height, Bitmap->packPixel(Self->Colour, 255), BAF::FILL);
+         gfx::DrawRectangle(Bitmap, 0, 0, Self->Width, Self->Height, Bitmap->packPixel(Self->Colour, 255), BAF::FILL);
       }
 
       process_surface_callbacks(Self, Bitmap);
@@ -2475,7 +2475,7 @@ static ERR consume_input_events(const InputEvent *Events, LONG Handle)
                if ((dragindex = find_surface_list(Self)) != -1) {
                   DOUBLE absx = glSurfaces[dragindex].Left + glAnchorX;
                   DOUBLE absy = glSurfaces[dragindex].Top + glAnchorY;
-                  gfxSetCursorPos(absx, absy);
+                  gfx::SetCursorPos(absx, absy);
                }
             }
          }
@@ -2494,13 +2494,13 @@ static ERR consume_input_events(const InputEvent *Events, LONG Handle)
 
                glAnchorX  = event->X;
                glAnchorY  = event->Y;
-               if (gfxLockCursor(Self->UID) IS ERR::Okay) Self->DragStatus = DRAG::ANCHOR;
+               if (gfx::LockCursor(Self->UID) IS ERR::Okay) Self->DragStatus = DRAG::ANCHOR;
                else Self->DragStatus = DRAG::NORMAL;
             }
          }
          else { // Click released
             if (Self->DragStatus != DRAG::NIL) {
-               gfxUnlockCursor(Self->UID);
+               gfx::UnlockCursor(Self->UID);
                Self->DragStatus = DRAG::NONE;
             }
          }

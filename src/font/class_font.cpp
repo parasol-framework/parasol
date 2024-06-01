@@ -111,7 +111,7 @@ static ERR FONT_Init(extFont *Self)
 
    if (!Self->Path) {
       CSTRING path = NULL;
-      if (fntSelectFont(Self->prvFace, Self->prvStyle, &path, &meta) IS ERR::Okay) {
+      if (fnt::SelectFont(Self->prvFace, Self->prvStyle, &path, &meta) IS ERR::Okay) {
          Self->set(FID_Path, path);
          FreeResource(path);
       }
@@ -398,7 +398,7 @@ static ERR SET_Face(extFont *Self, STRING Value)
 {
    if ((Value) and (Value[0])) {
       CSTRING final_name;
-      if (fntResolveFamilyName(Value, &final_name) IS ERR::Okay) {
+      if (fnt::ResolveFamilyName(Value, &final_name) IS ERR::Okay) {
          StrCopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
       }
 
