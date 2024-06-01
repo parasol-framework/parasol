@@ -360,7 +360,7 @@ timer_cycle:
                glmTimer.unlock();
                relock = true;
 
-               if (scCall(timer->Routine, std::to_array<ScriptArg>({
+               if (sc::Call(timer->Routine, std::to_array<ScriptArg>({
                      { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
                      { "Elapsed",     elapsed },
                      { "CurrentTime", current_time }
@@ -372,7 +372,7 @@ timer_cycle:
 
             if (error IS ERR::Terminate) {
                if (timer->Routine.isScript()) {
-                  scDerefProcedure(timer->Routine.Context, &timer->Routine);
+                  sc::DerefProcedure(timer->Routine.Context, &timer->Routine);
                }
 
                timer = glTimers.erase(timer);
@@ -407,7 +407,7 @@ timer_cycle:
                   else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
                }
                else if (hdl->Function.isScript()) {
-                  if (scCall(hdl->Function, std::to_array<ScriptArg>({
+                  if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
                      { "Custom", hdl->Custom },
                      { "UID",    glQueue[i].UID },
                      { "Type",   glQueue[i].Type },

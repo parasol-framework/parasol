@@ -118,7 +118,7 @@ restart:
          error = routine(Self, Self->Incoming.Meta);
       }
       else if (Self->Incoming.isScript()) {
-         if (scCall(Self->Incoming, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
+         if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
       }
 
       if (error IS ERR::Terminate) log.trace("Termination of socket requested by channel subscriber.");
@@ -234,7 +234,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
             error = routine(Self, Self->Outgoing.Meta);
          }
          else if (Self->Outgoing.isScript()) {
-            if (scCall(Self->Outgoing, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
+            if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
          if (error != ERR::Okay) Self->Outgoing.clear();

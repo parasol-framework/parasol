@@ -15,7 +15,7 @@
   <function>
     <name>SetVariable</name>
     <comment>Sets any variable in a loaded Fluid script.</comment>
-    <prototype>ERR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...)</prototype>
+    <prototype>ERR fl::SetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...)</prototype>
     <input>
       <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
       <param type="CSTRING" name="Name">The name of the variable to set.</param>

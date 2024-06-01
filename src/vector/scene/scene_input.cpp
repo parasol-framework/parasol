@@ -74,7 +74,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
             result = callback(Vector, Event, sub.Callback.Meta);
          }
          else if (sub.Callback.isScript()) {
-            scCall(sub.Callback, std::to_array<ScriptArg>({
+            sc::Call(sub.Callback, std::to_array<ScriptArg>({
                { "Vector", Vector, FDF_OBJECT },
                { "InputEvent:Events", Event, FDF_STRUCT }
             }), result);
@@ -249,7 +249,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                   if (!lock.granted()) continue;
                   auto vector = lock.obj;
 
-                  if (vecPointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
+                  if (vec::PointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
 
                   if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
@@ -320,7 +320,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             // Additional bounds check to cater for transforms, clip masks etc.
 
             if (in_bounds) {
-               if (vecPointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
+               if (vec::PointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
             }
 
             if (Self->ActiveVector != bounds.vector_id) {

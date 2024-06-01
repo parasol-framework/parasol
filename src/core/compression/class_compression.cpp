@@ -331,7 +331,7 @@ BufferOverflow: The output buffer is not large enough.
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompressBuffer *Args)
+static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmp::CompressBuffer *Args)
 {
    pf::Log log;
 
@@ -398,7 +398,7 @@ NoSupport: The sub-class does not support this method.
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFile *Args)
+static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFile *Args)
 {
    pf::Log log;
 
@@ -623,7 +623,7 @@ Retry: Please recall the method using a larger output buffer.
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressStream *Args)
+static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::CompressStream *Args)
 {
    pf::Log log;
 
@@ -685,7 +685,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressSt
             error = routine(Self, output, len, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
-            if (scCall(*Args->Callback, std::to_array<ScriptArg>({
+            if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                   { "Compression",  Self, FD_OBJECTPTR },
                   { "Output",       output, FD_BUFFER },
                   { "OutputLength", LARGE(len), FD_LARGE|FD_BUFSIZE }
@@ -731,7 +731,7 @@ BufferOverflow: The supplied Output buffer is not large enough (check the #MinOu
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompressStreamEnd *Args)
+static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::CompressStreamEnd *Args)
 {
    pf::Log log;
 
@@ -774,7 +774,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompres
          error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->Meta);
       }
       else if (Args->Callback->isScript()) {
-         if (scCall(*Args->Callback, std::to_array<ScriptArg>({
+         if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
             { "Compression",  Self,   FD_OBJECTPTR },
             { "Output",       output, FD_BUFFER },
             { "OutputLength", LARGE(outputsize - Self->DeflateStream.avail_out), FD_LARGE|FD_BUFSIZE }
@@ -870,7 +870,7 @@ BufferOverflow: The output buffer is not large enough.
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompressStream *Args)
+static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::DecompressStream *Args)
 {
    pf::Log log;
 
@@ -925,7 +925,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompre
             error = routine(Self, output, len, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
-            if (scCall(*Args->Callback, std::to_array<ScriptArg>({
+            if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                { "Compression",  Self,   FD_OBJECTPTR },
                { "Output",       output, FD_BUFFER },
                { "OutputLength", len,    FD_LONG|FD_BUFSIZE }
@@ -968,7 +968,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDecompressStreamEnd *Args)
+static ERR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmp::DecompressStreamEnd *Args)
 {
    pf::Log log;
 
@@ -1005,7 +1005,7 @@ BufferOverflow: The output buffer is not large enough to hold the decompressed i
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecompressBuffer *Args)
+static ERR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmp::DecompressBuffer *Args)
 {
    pf::Log log;
 
@@ -1070,7 +1070,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompressFile *Args)
+static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::DecompressFile *Args)
 {
    pf::Log log;
 
@@ -1194,8 +1194,8 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompress
          }
 
          UWORD namelen, extralen;
-         if (flReadLE(Self->FileIO, &namelen) != ERR::Okay) { error = ERR::Read; goto exit; }
-         if (flReadLE(Self->FileIO, &extralen) != ERR::Okay) { error = ERR::Read; goto exit; }
+         if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) { error = ERR::Read; goto exit; }
+         if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) { error = ERR::Read; goto exit; }
          if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR::Okay) {
             error = log.warning(ERR::Seek);
             goto exit;
@@ -1401,7 +1401,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompress
 
             // Give the file a date that matches the original
 
-            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, FDT::NIL);
+            fl::SetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, FDT::NIL);
          }
 
          if (feedback.Progress < feedback.OriginalSize) {
@@ -1453,7 +1453,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecompressObject *Args)
+static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::DecompressObject *Args)
 {
    pf::Log log;
 
@@ -1503,8 +1503,8 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecompre
       }
 
       UWORD namelen, extralen;
-      if (flReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
-      if (flReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
+      if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
+      if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
       if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR::Okay) {
          return log.warning(ERR::Seek);
       }
@@ -1660,7 +1660,7 @@ Search
 
 static THREADVAR CompressedItem glFindMeta;
 
-static ERR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
+static ERR COMPRESSION_Find(extCompression *Self, struct cmp::Find *Args)
 {
    pf::Log log;
 
@@ -1904,7 +1904,7 @@ NoSupport
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *Args)
+static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmp::RemoveFile *Args)
 {
    pf::Log log;
 
@@ -1964,7 +1964,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
+static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 {
    pf::Log log;
 
@@ -2019,7 +2019,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
             error = routine(Self, &meta, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
-            if (scCall(*Args->Callback, std::to_array<ScriptArg>({
+            if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                { "Compression", Self, FD_OBJECTPTR },
                { "CompressedItem:Item", &meta, FD_STRUCT|FD_PTR }
             }), error) != ERR::Okay) error = ERR::Failed;

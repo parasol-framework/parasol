@@ -104,7 +104,7 @@ static ERR PATTERN_Init(extVectorPattern *Self)
 
 static ERR PATTERN_NewObject(extVectorPattern *Self)
 {
-   if (NewObject(CLASSID::VECTORSCENE, NF::LOCAL, &Self->Scene) IS ERR::Okay) {
+   if (NewLocalObject(CLASSID::VECTORSCENE, &Self->Scene) IS ERR::Okay) {
       if (NewObject(CLASSID::VECTORVIEWPORT, &Self->Viewport) IS ERR::Okay) {
          SetOwner(Self->Viewport, Self->Scene);
          Self->SpreadMethod = VSPREAD::REPEAT;
@@ -293,13 +293,13 @@ static ERR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
          matrix->TranslateY = 0;
 
          Self->Matrices = matrix;
-         return vecParseTransform(Self->Matrices, Commands);
+         return vec::ParseTransform(Self->Matrices, Commands);
       }
       else return ERR::AllocMemory;
    }
    else {
-      vecResetMatrix(Self->Matrices);
-      return vecParseTransform(Self->Matrices, Commands);
+      vec::ResetMatrix(Self->Matrices);
+      return vec::ParseTransform(Self->Matrices, Commands);
    }
 }
 

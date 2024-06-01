@@ -241,13 +241,13 @@ void anim_value::set_value(objVector &Vector)
             for (m=Vector.Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
 
             if (!m) {
-               vecNewMatrix(&Vector, &m, false);
+               vec::NewMatrix(&Vector, &m, false);
                m->Tag = MTAG_SVG_TRANSFORM;
             }
 
             if (m) {
                m->TranslateX = get_dimension(Vector, FID_X);
-               vecFlushMatrix(m);
+               vec::FlushMatrix(m);
             }
          }
          else Vector.set(FID_X, get_dimension(Vector, FID_X));
@@ -260,13 +260,13 @@ void anim_value::set_value(objVector &Vector)
             for (m=Vector.Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
 
             if (!m) {
-               vecNewMatrix(&Vector, &m, false);
+               vec::NewMatrix(&Vector, &m, false);
                m->Tag = MTAG_SVG_TRANSFORM;
             }
 
             if (m) {
                m->TranslateY = get_dimension(Vector, FID_Y);
-               vecFlushMatrix(m);
+               vec::FlushMatrix(m);
             }
          }
          else Vector.set(FID_Y, get_dimension(Vector, FID_Y));

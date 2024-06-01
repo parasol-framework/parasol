@@ -29,7 +29,7 @@ unless otherwise documented.
 static std::unordered_map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
 static std::mutex glResizeLock;
 
-static ERR VECTOR_Push(extVector *, struct vecPush *);
+static ERR VECTOR_Push(extVector *, struct vec::Push *);
 
 //********************************************************************************************************************
 // For the use of the VectorScene's Debug() method.
@@ -381,7 +381,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
+static ERR VECTOR_FreeMatrix(extVector *Self, struct vec::FreeMatrix *Args)
 {
    if ((!Args) or (!Args->Matrix)) return ERR::NullArgs;
 
@@ -438,7 +438,7 @@ NotPossible: The vector does not support path generation.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
+static ERR VECTOR_GetBoundary(extVector *Self, struct vec::GetBoundary *Args)
 {
    pf::Log log;
 
@@ -547,7 +547,7 @@ MoveToBack: Move a vector to the back of its stack.
 
 static ERR VECTOR_MoveToBack(extVector *Self)
 {
-   struct vecPush push = { -32768 };
+   struct vec::Push push = { -32768 };
    return VECTOR_Push(Self, &push);
 }
 
@@ -559,7 +559,7 @@ MoveToFront: Move a vector to the front of its stack.
 
 static ERR VECTOR_MoveToFront(extVector *Self)
 {
-   struct vecPush push = { 32767 };
+   struct vec::Push push = { 32767 };
    return VECTOR_Push(Self, &push);
 }
 
@@ -630,7 +630,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
+static ERR VECTOR_NewMatrix(extVector *Self, struct vec::NewMatrix *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -685,7 +685,7 @@ NoSupport: The vector type does not support path generation.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
+static ERR VECTOR_PointInPath(extVector *Self, struct vec::PointInPath *Args)
 {
    pf::Log log;
 
@@ -760,7 +760,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_Push(extVector *Self, struct vecPush *Args)
+static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
 {
    pf::Log log;
 
@@ -842,7 +842,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
+static ERR VECTOR_SubscribeFeedback(extVector *Self, struct vec::SubscribeFeedback *Args)
 {
    pf::Log log;
 
@@ -898,7 +898,7 @@ Function: A call to ~Display.SubscribeInput() failed.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Args)
+static ERR VECTOR_SubscribeInput(extVector *Self, struct vec::SubscribeInput *Args)
 {
    pf::Log log;
 
@@ -963,7 +963,7 @@ Function: A call to ~Display.SubscribeInput() failed.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard *Args)
+static ERR VECTOR_SubscribeKeyboard(extVector *Self, struct vec::SubscribeKeyboard *Args)
 {
    pf::Log log;
 
@@ -1007,7 +1007,7 @@ NoData: The vector does not define a path.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_Trace(extVector *Self, struct vecTrace *Args)
+static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 {
    pf::Log log;
 
@@ -1071,7 +1071,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vecTrace *Args)
                args[2].Long = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (scCall(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1085,7 +1085,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vecTrace *Args)
                args[2].Long = cmd;
                args[3].Double = x;
                args[4].Double = y;
-               if (scCall(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
+               if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
                if (result IS ERR::Terminate) return ERR::Okay;
             }
          } while (cmd != agg::path_cmd_stop);
@@ -1203,8 +1203,8 @@ static ERR VECTOR_SET_Cursor(extVector *Self, PTC Value)
 
       DOUBLE x, y, absx, absy;
 
-      gfxGetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
-      gfxGetCursorPos(&absx, &absy);
+      gfx::GetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
+      gfx::GetCursorPos(&absx, &absy);
 
       const InputEvent event = {
          .Next        = NULL,
@@ -1388,11 +1388,11 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
    CSTRING next;
-   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
+   if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = StrClone(Value);
 
       if (next) {
-         vecReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
          Self->FGFill = true;
       }
       else Self->FGFill = false;
@@ -1512,7 +1512,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
    }
 
    OBJECTPTR def = NULL;
-   if (scFindDef(Self->Scene, Value, &def) != ERR::Okay) {
+   if (sc::FindDef(Self->Scene, Value, &def) != ERR::Okay) {
       log.warning("Failed to resolve filter '%s'", Value);
       return ERR::Search;
    }
@@ -2175,7 +2175,7 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
-   vecReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+   vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
    Self->Stroked = Self->is_stroked();
    return ERR::Okay;
 }
@@ -2383,7 +2383,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
          }
          else if (sub.Callback.isScript()) {
             // In this implementation the script function will receive all the events chained via the Next field
-            scCall(sub.Callback, std::to_array<ScriptArg>({
+            sc::Call(sub.Callback, std::to_array<ScriptArg>({
                { "Vector", Vector, FDF_OBJECT },
                { "Event",  LONG(Event) },
                { "EventObject", EventObject, FDF_OBJECT }

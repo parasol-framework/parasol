@@ -497,7 +497,7 @@ NoSupport: The host platform does not support this method.
 
 **********************************************************************************************************************/
 
-static ERR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args)
+static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args)
 {
    pf::Log log;
 
@@ -764,7 +764,7 @@ static void free_module(MODHANDLE handle)
 static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
 
 static const MethodEntry glModuleMethods[] = {
-   { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
+   { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct mod::ResolveSymbol) },
    { 0, NULL, NULL, NULL, 0 }
 };
 

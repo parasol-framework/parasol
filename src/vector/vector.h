@@ -921,7 +921,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
       fl::ColourSpace(Bitmap->ColourSpace) };
 
    if (pic.ok()) {
-      gfxCopyArea(Bitmap, pic->Bitmap, BAF::NIL, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
+      gfx::CopyArea(Bitmap, pic->Bitmap, BAF::NIL, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
       pic->saveImage(NULL);
    }
 }
@@ -1105,38 +1105,39 @@ extern DOUBLE glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 
 extern void set_text_final_xy(extVectorText *);
 
-extern "C" void vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern "C" ERR  vecApplyPath(class SimpleVector *, extVectorPath *);
-extern "C" DOUBLE vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
-extern "C" void vecClosePath(class SimpleVector *);
-extern "C" void vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern "C" void vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern "C" ERR  vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern "C" ERR  vecFlushMatrix(VectorMatrix *);
-extern "C" void vecFreePath(APTR);
-extern "C" ERR  vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
-extern "C" ERR  vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
-extern "C" ERR  vecGeneratePath(CSTRING, APTR *);
-extern "C" ERR  vecGetFontHandle(CSTRING, CSTRING, LONG, LONG, APTR *);
-extern "C" ERR  vecGetFontMetrics(APTR, struct FontMetrics *);
-extern "C" LONG vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
-extern "C" void vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" void vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" ERR  vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern "C" ERR  vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
-extern "C" ERR  vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern "C" ERR  vecReadPainter(objVectorScene *, CSTRING, VectorPainter *, CSTRING *);
-extern "C" ERR  vecResetMatrix(struct VectorMatrix *);
-extern "C" void vecRewindPath(class SimpleVector *);
-extern "C" ERR  vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-extern "C" ERR  vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" ERR  vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" void vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
-extern "C" void vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern "C" DOUBLE vecStringWidth(APTR, CSTRING, LONG);
-extern "C" ERR  vecTracePath(SimpleVector *, FUNCTION *, DOUBLE);
-extern "C" ERR  vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern "C" void vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
+namespace vec {
+extern ERR DrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path);
+extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
+extern ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
+extern ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
+extern void TranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
+extern void MoveTo(APTR Path, DOUBLE X, DOUBLE Y);
+extern void LineTo(APTR Path, DOUBLE X, DOUBLE Y);
+extern void ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
+extern void Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void Smooth3(APTR Path, DOUBLE X, DOUBLE Y);
+extern void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+extern void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void ClosePath(APTR Path);
+extern void RewindPath(APTR Path);
+extern LONG GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y);
+extern ERR ApplyPath(APTR Path, objVectorPath * VectorPath);
+extern ERR Rotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
+extern ERR Translate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR Skew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR Multiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+extern ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source);
+extern ERR Scale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
+extern ERR ResetMatrix(struct VectorMatrix * Matrix);
+extern ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
+extern ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info);
+extern DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
+extern DOUBLE StringWidth(APTR FontHandle, CSTRING String, LONG Chars);
+extern ERR FlushMatrix(struct VectorMatrix * Matrix);
+extern ERR TracePath(APTR Path, FUNCTION *Callback, DOUBLE Scale);
+}
 
 template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {
    *this = pVector->Bounds;

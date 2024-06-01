@@ -27,7 +27,7 @@
     <method>
       <name>FindField</name>
       <comment>Search a class definition for a specific field.</comment>
-      <prototype>ERR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
+      <prototype>ERR mc::FindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
       <input>
         <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <code>strihash()</code> function.</param>
         <param type="struct Field **" name="Field">Pointer to the <st>Field</st> if discovered, otherwise <code>NULL</code>.</param>

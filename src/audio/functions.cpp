@@ -21,7 +21,7 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
       routine(&Audio, SampleHandle, sample.OnStop.Meta);
    }
    else if (sample.OnStop.isScript()) {
-      scCall(sample.OnStop, std::to_array<ScriptArg>({ { "Audio", &Audio, FD_OBJECTPTR }, { "Handle", SampleHandle } }));
+      sc::Call(sample.OnStop, std::to_array<ScriptArg>({ { "Audio", &Audio, FD_OBJECTPTR }, { "Handle", SampleHandle } }));
    }
 }
 
@@ -44,7 +44,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
       });
 
       ERR result;
-      if (scCall(Sample.Callback, args, result) IS ERR::Okay) return BYTELEN(result);
+      if (sc::Call(Sample.Callback, args, result) IS ERR::Okay) return BYTELEN(result);
       else return BYTELEN(0);
    }
 
@@ -186,16 +186,16 @@ ERR process_commands(extAudio *Self, SAMPLE Elements)
          auto &cmds = Self->Sets[index].Commands;
          for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
             switch(cmds[i].CommandID) {
-               case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
-               case CMD::MUTE:         sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PLAY:         sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::FREQUENCY:    sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PAN:          sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::RATE:         sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::SAMPLE:       sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::VOLUME:       sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
-               case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
+               case CMD::CONTINUE:     snd::MixContinue(Self, cmds[i].Handle); break;
+               case CMD::MUTE:         snd::MixMute(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::PLAY:         snd::MixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::FREQUENCY:    snd::MixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::PAN:          snd::MixPan(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::RATE:         snd::MixRate(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::SAMPLE:       snd::MixSample(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::VOLUME:       snd::MixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::STOP:         snd::MixStop(Self, cmds[i].Handle); break;
+               case CMD::STOP_LOOPING: snd::MixStopLoop(Self, cmds[i].Handle); break;
                case CMD::END_SEQUENCE: stop = true; break;
 
                default:

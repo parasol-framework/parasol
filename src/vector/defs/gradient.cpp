@@ -578,13 +578,13 @@ static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Command
          matrix->TranslateY = 0;
 
          Self->Matrices = matrix;
-         return vecParseTransform(Self->Matrices, Commands);
+         return vec::ParseTransform(Self->Matrices, Commands);
       }
       else return ERR::AllocMemory;
    }
    else {
-      vecResetMatrix(Self->Matrices);
-      return vecParseTransform(Self->Matrices, Commands);
+      vec::ResetMatrix(Self->Matrices);
+      return vec::ParseTransform(Self->Matrices, Commands);
    }
 }
 

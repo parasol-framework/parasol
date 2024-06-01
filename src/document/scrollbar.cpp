@@ -277,9 +277,9 @@ void scroll_mgr::scroll_bar::init(scroll_mgr *Manager, char Direction, objVector
 
    // Capture user interactivity within the bar area.
 
-   vecSubscribeInput(m_slider_host, JTYPE::BUTTON|JTYPE::REPEATED, C_FUNCTION(bkgd_input, Manager));
+   vec::SubscribeInput(m_slider_host, JTYPE::BUTTON|JTYPE::REPEATED, C_FUNCTION(bkgd_input, Manager));
 
-   vecSubscribeInput(m_slider_vp, JTYPE::CROSSING, C_FUNCTION(slider_input, Manager));
+   vec::SubscribeInput(m_slider_vp, JTYPE::CROSSING, C_FUNCTION(slider_input, Manager));
 }
 
 //********************************************************************************************************************
@@ -343,7 +343,7 @@ void scroll_mgr::init(extDocument *pDoc, objVectorViewport *pPage, objVectorView
 
    // The slider and possibly the page need to be repositioned whenever the view is resized.
 
-   vecSubscribeFeedback(m_view, FM::PATH_CHANGED, C_FUNCTION(view_path_changed, this));
-   vecSubscribeFeedback(m_page, FM::PATH_CHANGED, C_FUNCTION(page_path_changed, this));
-   vecSubscribeInput(m_page, JTYPE::EXT_MOVEMENT, C_FUNCTION(page_movement, this));
+   vec::SubscribeFeedback(m_view, FM::PATH_CHANGED, C_FUNCTION(view_path_changed, this));
+   vec::SubscribeFeedback(m_page, FM::PATH_CHANGED, C_FUNCTION(page_path_changed, this));
+   vec::SubscribeInput(m_page, JTYPE::EXT_MOVEMENT, C_FUNCTION(page_movement, this));
 }

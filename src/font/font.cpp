@@ -348,7 +348,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR::Okay) or (type != LOC::FILE);
 
    if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
-      if (refresh) fntRefreshFonts();
+      if (refresh) fnt::RefreshFonts();
 
       ConfigGroups *groups;
       if (not ((glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) and (!groups->empty()))) {
@@ -358,7 +358,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       // Merge tailored font options into the machine-generated database
 
-      cfgMergeFile(glConfig, "fonts:options.cfg");
+      cfg::MergeFile(glConfig, "fonts:options.cfg");
    }
    else {
       log.error("Failed to load or prepare the font configuration file.");
@@ -385,6 +385,8 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
+namespace fnt {
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -396,7 +398,7 @@ in the Char parameter.
 The font's GlyphSpacing value is not used in calculating the character width.
 
 -INPUT-
-ext(Font) Font: The font to use for calculating the character width.
+obj(Font) Font: The font to use for calculating the character width.
 uint Char: A unicode character.
 
 -RESULT-
@@ -404,11 +406,12 @@ int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-LONG fntCharWidth(extFont *Font, ULONG Char)
+LONG CharWidth(objFont *Font, ULONG Char)
 {
+   auto font = (extFont *)Font;
    if (Font->FixedWidth > 0) return Font->FixedWidth;
-   else if ((Char < 256) and (Font->prvChar)) return Font->prvChar[Char].Advance;
-   else return Font->prvChar ? Font->prvChar[(LONG)Font->prvDefaultChar].Advance : 0;
+   else if ((Char < 256) and (font->prvChar)) return font->prvChar[Char].Advance;
+   else return font->prvChar ? font->prvChar[(LONG)font->prvDefaultChar].Advance : 0;
 }
 
 /*********************************************************************************************************************
@@ -429,7 +432,7 @@ AccessObject: Access to the font database was denied, or the object does not exi
 
 *********************************************************************************************************************/
 
-ERR fntGetList(FontList **Result)
+ERR GetList(FontList **Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -541,7 +544,7 @@ of the longest line will be returned.
 Word wrapping will not be taken into account, even if it has been enabled in the font object.
 
 -INPUT-
-ext(Font) Font: An initialised font object.
+obj(Font) Font: An initialised font object.
 cstr String: The string to be calculated.
 int Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.
 
@@ -550,11 +553,12 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *********************************************************************************************************************/
 
-LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
+LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
 {
    if ((!Font) or (!String)) return 0;
    if (!Font->initialised()) return 0;
 
+   auto font = (extFont *)Font;
    CSTRING str = String;
    if (Chars < 0) Chars = 0x7fffffff;
 
@@ -570,7 +574,7 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
          whitespace = 0;
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
+         WORD tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
          if (tabwidth) len = pf::roundup(len, tabwidth);
          str++;
          Chars--;
@@ -583,10 +587,10 @@ LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 
          LONG advance;
          if (Font->FixedWidth > 0) advance = Font->FixedWidth;
-         else if ((unicode < 256) and (Font->prvChar[unicode].Advance)) {
-            advance = Font->prvChar[unicode].Advance;
+         else if ((unicode < 256) and (font->prvChar[unicode].Advance)) {
+            advance = font->prvChar[unicode].Advance;
          }
-         else advance = Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
+         else advance = font->prvChar[(LONG)font->prvDefaultChar].Advance;
 
          LONG final_advance = advance * Font->GlyphSpacing;
          len += final_advance;
@@ -623,7 +627,7 @@ Search: Unable to find a suitable font.
 
 *********************************************************************************************************************/
 
-ERR fntSelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
+ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
 {
    pf::Log log(__FUNCTION__);
 
@@ -706,7 +710,7 @@ AccessObject: Access to the font database was denied, or the object does not exi
 
 *********************************************************************************************************************/
 
-ERR fntRefreshFonts(void)
+ERR RefreshFonts(void)
 {
    pf::Log log(__FUNCTION__);
 
@@ -720,7 +724,7 @@ ERR fntRefreshFonts(void)
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   cfgSortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
+   cfg::SortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
 
    // Create a style list for each font, e.g.
    //
@@ -782,7 +786,7 @@ Search: It was not possible to resolve the String to a known font family.
 
 *********************************************************************************************************************/
 
-ERR fntResolveFamilyName(CSTRING String, CSTRING *Result)
+ERR ResolveFamilyName(CSTRING String, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -834,6 +838,8 @@ restart:
    log.msg("Failed to resolve family \"%s\"", String);
    return ERR::Search;
 }
+
+} // namespace
 
 //********************************************************************************************************************
 
@@ -1083,11 +1089,11 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
             font_count  = 0;
             font_offset = 0;
             size_shift  = 0;
-            flReadLE(*file, &size_shift);
+            fl::ReadLE(*file, &size_shift);
 
             UWORD type_id = 0;
-            for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
-               if (flReadLE(*file, &count) IS ERR::Okay) {
+            for (fl::ReadLE(*file, &type_id); type_id; fl::ReadLE(*file, &type_id)) {
+               if (fl::ReadLE(*file, &count) IS ERR::Okay) {
                   if (type_id IS 0x8008) {
                      font_count  = count;
                      file->get(FID_Position, &font_offset);
@@ -1113,8 +1119,8 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
 
                for (LONG i=0; i < font_count; i++) {
                   UWORD offset = 0, size = 0;
-                  flReadLE(*file, &offset);
-                  flReadLE(*file, &size);
+                  fl::ReadLE(*file, &offset);
+                  fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
                   fonts[i].Size   = size<<size_shift;
                   file->seekCurrent(8);

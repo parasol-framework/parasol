@@ -501,7 +501,7 @@ static ERR parse_source(extXML *Self)
 
             pos += result;
             if (pos >= size-1024) {
-               if (ReallocMemory(buffer, (size * 2) + 1, &buffer, NULL) != ERR::Okay) {
+               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, NULL) != ERR::Okay) {
                   Self->ParseError = ERR::ReallocMemory;
                   break;
                }

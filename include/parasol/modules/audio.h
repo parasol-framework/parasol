@@ -169,61 +169,63 @@ struct AudioLoop {
 #define MT_SndBeep -7
 #define MT_SndSetVolume -8
 
-struct sndOpenChannels { LONG Total; LONG Result;  };
-struct sndCloseChannels { LONG Handle;  };
-struct sndAddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
-struct sndRemoveSample { LONG Handle;  };
-struct sndSetSampleLength { LONG Sample; LARGE Length;  };
-struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
-struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
-struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
+namespace snd {
+struct OpenChannels { LONG Total; LONG Result;  };
+struct CloseChannels { LONG Handle;  };
+struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct RemoveSample { LONG Handle;  };
+struct SetSampleLength { LONG Sample; LARGE Length;  };
+struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct Beep { LONG Pitch; LONG Duration; LONG Volume;  };
+struct SetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
-inline ERR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) noexcept {
-   struct sndOpenChannels args = { Total, (LONG)0 };
+inline ERR OpenChannels(APTR Ob, LONG Total, LONG * Result) noexcept {
+   struct OpenChannels args = { Total, (LONG)0 };
    ERR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-inline ERR sndCloseChannels(APTR Ob, LONG Handle) noexcept {
-   struct sndCloseChannels args = { Handle };
+inline ERR CloseChannels(APTR Ob, LONG Handle) noexcept {
+   struct CloseChannels args = { Handle };
    return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
-   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
+inline ERR AddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
+   struct AddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
    ERR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-inline ERR sndRemoveSample(APTR Ob, LONG Handle) noexcept {
-   struct sndRemoveSample args = { Handle };
+inline ERR RemoveSample(APTR Ob, LONG Handle) noexcept {
+   struct RemoveSample args = { Handle };
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) noexcept {
-   struct sndSetSampleLength args = { Sample, Length };
+inline ERR SetSampleLength(APTR Ob, LONG Sample, LARGE Length) noexcept {
+   struct SetSampleLength args = { Sample, Length };
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
-   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
+inline ERR AddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
+   struct AddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
    ERR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
-inline ERR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) noexcept {
-   struct sndBeep args = { Pitch, Duration, Volume };
+inline ERR Beep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) noexcept {
+   struct Beep args = { Pitch, Duration, Volume };
    return(Action(MT_SndBeep, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
-   struct sndSetVolume args = { Index, Name, Flags, Channel, Volume };
+inline ERR SetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
+   struct SetVolume args = { Index, Name, Flags, Channel, Volume };
    return(Action(MT_SndSetVolume, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objAudio : public Object {
    public:
@@ -517,51 +519,53 @@ class objSound : public Object {
 
 struct AudioBase {
 #ifndef PARASOL_STATIC
-   ERR (*_MixContinue)(objAudio * Audio, LONG Handle);
-   ERR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
-   ERR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
-   ERR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
-   ERR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Position);
-   ERR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
-   ERR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
-   ERR (*_MixStop)(objAudio * Audio, LONG Handle);
-   ERR (*_MixStopLoop)(objAudio * Audio, LONG Handle);
-   ERR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
-   ERR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
-   ERR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
+   ERR (*_MixContinue)(objAudio *Audio, LONG Handle);
+   ERR (*_MixFrequency)(objAudio *Audio, LONG Handle, LONG Frequency);
+   ERR (*_MixMute)(objAudio *Audio, LONG Handle, LONG Mute);
+   ERR (*_MixPan)(objAudio *Audio, LONG Handle, DOUBLE Pan);
+   ERR (*_MixPlay)(objAudio *Audio, LONG Handle, LONG Position);
+   ERR (*_MixRate)(objAudio *Audio, LONG Handle, LONG Rate);
+   ERR (*_MixSample)(objAudio *Audio, LONG Handle, LONG Sample);
+   ERR (*_MixStop)(objAudio *Audio, LONG Handle);
+   ERR (*_MixStopLoop)(objAudio *Audio, LONG Handle);
+   ERR (*_MixVolume)(objAudio *Audio, LONG Handle, DOUBLE Volume);
+   ERR (*_MixStartSequence)(objAudio *Audio, LONG Handle);
+   ERR (*_MixEndSequence)(objAudio *Audio, LONG Handle);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_AUDIO_MODULE
 #ifndef PARASOL_STATIC
 extern struct AudioBase *AudioBase;
-inline ERR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
-inline ERR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
-inline ERR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
-inline ERR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
-inline ERR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
-inline ERR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
-inline ERR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
-inline ERR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
-inline ERR sndMixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
-inline ERR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
-inline ERR sndMixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
-inline ERR sndMixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
+namespace snd {
+inline ERR MixContinue(objAudio *Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
+inline ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
+inline ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
+inline ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
+inline ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
+inline ERR MixSample(objAudio *Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
+inline ERR MixStop(objAudio *Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
+inline ERR MixStopLoop(objAudio *Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
+inline ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERR MixStartSequence(objAudio *Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
+inline ERR MixEndSequence(objAudio *Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
+} // namespace
 #else
-extern "C" {
-extern ERR sndMixContinue(objAudio * Audio, LONG Handle);
-extern ERR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
-extern ERR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute);
-extern ERR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
-extern ERR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position);
-extern ERR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate);
-extern ERR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample);
-extern ERR sndMixStop(objAudio * Audio, LONG Handle);
-extern ERR sndMixStopLoop(objAudio * Audio, LONG Handle);
-extern ERR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume);
-extern ERR sndMixStartSequence(objAudio * Audio, LONG Handle);
-extern ERR sndMixEndSequence(objAudio * Audio, LONG Handle);
-}
+namespace snd {
+extern ERR MixContinue(objAudio *Audio, LONG Handle);
+extern ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency);
+extern ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute);
+extern ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan);
+extern ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position);
+extern ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate);
+extern ERR MixSample(objAudio *Audio, LONG Handle, LONG Sample);
+extern ERR MixStop(objAudio *Audio, LONG Handle);
+extern ERR MixStopLoop(objAudio *Audio, LONG Handle);
+extern ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume);
+extern ERR MixStartSequence(objAudio *Audio, LONG Handle);
+extern ERR MixEndSequence(objAudio *Audio, LONG Handle);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 

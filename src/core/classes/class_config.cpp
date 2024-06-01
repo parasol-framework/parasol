@@ -237,7 +237,7 @@ Search
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
+static ERR CONFIG_DeleteKey(extConfig *Self, struct cfg::DeleteKey *Args)
 {
    pf::Log log;
 
@@ -272,7 +272,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_DeleteGroup(extConfig *Self, struct cfgDeleteGroup *Args)
+static ERR CONFIG_DeleteGroup(extConfig *Self, struct cfg::DeleteGroup *Args)
 {
    if ((!Args) or (!Args->Group)) return ERR::NullArgs;
 
@@ -343,7 +343,7 @@ NoData: There is no data loaded into the config object.
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex *Args)
+static ERR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfg::GetGroupFromIndex *Args)
 {
    pf::Log log;
 
@@ -397,7 +397,7 @@ AccessObject: The source configuration object could not be accessed.
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
+static ERR CONFIG_Merge(extConfig *Self, struct cfg::Merge *Args)
 {
    if ((!Args) or (!Args->Source)) return ERR::NullArgs;
    if (Args->Source->classID() != CLASSID::CONFIG) return ERR::Args;
@@ -427,7 +427,7 @@ File: Failed to load the source file.
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
+static ERR CONFIG_MergeFile(extConfig *Self, struct cfg::MergeFile *Args)
 {
    pf::Log log;
 
@@ -479,7 +479,7 @@ Search: The requested configuration entry does not exist.
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
+static ERR CONFIG_ReadValue(extConfig *Self, struct cfg::ReadValue *Args)
 {
    pf::Log log;
 
@@ -582,7 +582,7 @@ Search: The referred group does not exist.
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
+static ERR CONFIG_Set(extConfig *Self, struct cfg::Set *Args)
 {
    if (!Args) return ERR::NullArgs;
    if ((!Args->Group) or (!Args->Group[0])) return ERR::NullArgs;
@@ -612,7 +612,7 @@ NoData
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
+static ERR CONFIG_SortByKey(extConfig *Self, struct cfg::SortByKey *Args)
 {
    if ((!Args) or (!Args->Key)) { // Sort by group name if no args provided.
       std::sort(Self->Groups->begin(), Self->Groups->end(),
@@ -670,7 +670,7 @@ AllocMemory: The additional memory required for the new entry could not be alloc
 
 *********************************************************************************************************************/
 
-static ERR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
+static ERR CONFIG_WriteValue(extConfig *Self, struct cfg::WriteValue *Args)
 {
    pf::Log log;
 

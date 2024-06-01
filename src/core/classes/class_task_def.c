@@ -20,10 +20,10 @@ FDEF maSetEnv[] = { { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 
 static const struct MethodEntry clTaskMethods[] = {
    { -1, (APTR)TASK_Expunge, "Expunge", 0, 0 },
-   { -2, (APTR)TASK_AddArgument, "AddArgument", maAddArgument, sizeof(struct taskAddArgument) },
+   { -2, (APTR)TASK_AddArgument, "AddArgument", maAddArgument, sizeof(struct task::AddArgument) },
    { -3, (APTR)TASK_Quit, "Quit", 0, 0 },
-   { -4, (APTR)TASK_GetEnv, "GetEnv", maGetEnv, sizeof(struct taskGetEnv) },
-   { -5, (APTR)TASK_SetEnv, "SetEnv", maSetEnv, sizeof(struct taskSetEnv) },
+   { -4, (APTR)TASK_GetEnv, "GetEnv", maGetEnv, sizeof(struct task::GetEnv) },
+   { -5, (APTR)TASK_SetEnv, "SetEnv", maSetEnv, sizeof(struct task::SetEnv) },
    { 0, 0, 0, 0, 0 }
 };
 

@@ -20,7 +20,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    if ((!Vector->txInlineSize) and (!(Vector->txCursor.vector))) { // Fast calculation if no wrapping or active cursor
       for (auto &line : Vector->txLines) {
          line.chars.clear();
-         LONG line_width = fntStringWidth(Vector->txBitmapFont, line.c_str(), -1);
+         LONG line_width = fnt::StringWidth(Vector->txBitmapFont, line.c_str(), -1);
          if (line_width > longest_line_width) longest_line_width = line_width;
          dy += Vector->txBitmapFont->LineSpacing;
       }
@@ -35,7 +35,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
             LONG char_len;
             auto unicode = UTF8ReadValue(str, &char_len);
 
-            auto char_width = fntCharWidth(Vector->txBitmapFont, unicode);
+            auto char_width = fnt::CharWidth(Vector->txBitmapFont, unicode);
 
             if (unicode <= 0x20) wrap_state = WS_NO_WORD;
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
@@ -53,7 +53,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
                   word_length++;
                }
 
-               LONG word_width = fntStringWidth(Vector->txBitmapFont, str, word_length);
+               LONG word_width = fnt::StringWidth(Vector->txBitmapFont, str, word_length);
 
                if (dx + word_width >= Vector->txInlineSize) {
                   if (dx > longest_line_width) longest_line_width = dx;
@@ -116,7 +116,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 
    Vector->txBitmapFont->Bitmap = Vector->txAlphaBitmap;
 
-   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
+   gfx::DrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
 
    if (Vector->txInlineSize) Vector->txBitmapFont->WrapEdge = Vector->txInlineSize;
 

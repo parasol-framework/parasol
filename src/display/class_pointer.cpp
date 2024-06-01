@@ -197,7 +197,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Restore the cursor to its default state if cursor release flags have been met
 
       if ((Self->CursorRelease & buttonflag) and (Self->CursorOwnerID)) {
-         gfxRestoreCursor(PTC::DEFAULT, 0);
+         gfx::RestoreCursor(PTC::DEFAULT, 0);
       }
 
       if (Self->Buttons[bi].LastClicked) {
@@ -228,14 +228,14 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // positioned over that surface (or its children).  The modal_id is therefore zero if the pointer is over the modal
    // surface, or if no modal surface is defined.
 
-   auto modal_id = gfxGetModalSurface();
+   auto modal_id = gfx::GetModalSurface();
    if (modal_id) {
       if (modal_id IS Self->OverObjectID) {
          // If the pointer is interacting with the modal surface, modality is irrelevant.
          modal_id = 0;
       }
       else { // Check if the OverObject is one of the children of modal_id.
-         ERR error = gfxCheckIfChild(modal_id, Self->OverObjectID);
+         ERR error = gfx::CheckIfChild(modal_id, Self->OverObjectID);
          if ((error IS ERR::True) or (error IS ERR::LimitedSuccess)) modal_id = 0;
       }
    }
@@ -429,7 +429,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             DOUBLE sy = Self->Y + DRAG_YOFFSET;
             if (Self->DragParent) {
                LONG absx, absy;
-               if (gfxGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL) IS ERR::Okay) {
+               if (gfx::GetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL) IS ERR::Okay) {
                   sx -= absx;
                   sy -= absy;
                }
@@ -488,7 +488,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
    if ((userinput.Flags & JTYPE::SECONDARY) != JTYPE::NIL); // No cursor manipulation when it's in a Win32 area
    else if ((Self->CursorReleaseID) and (Self->CursorReleaseID != Self->OverObjectID)) {
-      gfxRestoreCursor(PTC::DEFAULT, 0);
+      gfx::RestoreCursor(PTC::DEFAULT, 0);
    }
 }
 
@@ -1047,12 +1047,12 @@ static void set_pointer_defaults(extPointer *Self)
    if (config.ok()) {
       DOUBLE dbl;
       CSTRING str;
-      if (cfgRead(*config, "POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
-      if (cfgRead(*config, "POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
-      if (cfgRead(*config, "POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
-      if (cfgRead(*config, "POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
-      if (cfgRead(*config, "POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
-      if (cfgReadValue(*config, "POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
+      if (cfg::Read(*config, "POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
+      if (cfg::Read(*config, "POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
+      if (cfg::Read(*config, "POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
+      if (cfg::Read(*config, "POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
+      if (cfg::Read(*config, "POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
+      if (cfg::ReadValue(*config, "POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;
@@ -1134,11 +1134,11 @@ static bool get_over_object(extPointer *Self)
    Self->OverY = Self->Y - li_top;
 
    if (cursor_image != PTC::NIL) {
-      if (cursor_image != Self->CursorID) gfxSetCursor(0, CRF::NIL, cursor_image, NULL, 0);
+      if (cursor_image != Self->CursorID) gfx::SetCursor(0, CRF::NIL, cursor_image, NULL, 0);
    }
    else if ((Self->CursorID != PTC::DEFAULT) and (!Self->CursorOwnerID)) {
       // Restore the pointer to the default image if the cursor isn't locked
-      gfxSetCursor(0, CRF::NIL, PTC::DEFAULT, NULL, 0);
+      gfx::SetCursor(0, CRF::NIL, PTC::DEFAULT, NULL, 0);
    }
 
    return changed;

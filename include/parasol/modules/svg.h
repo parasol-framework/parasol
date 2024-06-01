@@ -29,19 +29,21 @@ DEFINE_ENUM_FLAG_OPERATORS(SVF)
 #define MT_SvgRender -1
 #define MT_SvgParseSymbol -2
 
-struct svgRender { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
-struct svgParseSymbol { CSTRING ID; objVectorViewport * Viewport;  };
+namespace svg {
+struct Render { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
+struct ParseSymbol { CSTRING ID; objVectorViewport * Viewport;  };
 
-inline ERR svgRender(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
-   struct svgRender args = { Bitmap, X, Y, Width, Height };
+inline ERR Render(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   struct Render args = { Bitmap, X, Y, Width, Height };
    return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR svgParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noexcept {
-   struct svgParseSymbol args = { ID, Viewport };
+inline ERR ParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noexcept {
+   struct ParseSymbol args = { ID, Viewport };
    return(Action(MT_SvgParseSymbol, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objSVG : public Object {
    public:

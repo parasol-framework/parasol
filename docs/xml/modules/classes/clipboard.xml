@@ -52,7 +52,7 @@
     <method>
       <name>AddFile</name>
       <comment>Add files to the clipboard.</comment>
-      <prototype>ERR clipAddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
+      <prototype>ERR clip::AddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">Set this argument to indicate the type of data you are copying to the clipboard.</param>
         <param type="CSTRING" name="Path">The path of the file to add.</param>
@@ -75,7 +75,7 @@
     <method>
       <name>AddObjects</name>
       <comment>Extract data from objects and add it all to the clipboard.</comment>
-      <prototype>ERR clipAddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
+      <prototype>ERR clip::AddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The type of data representing the objects, or NULL for automatic recognition.</param>
         <param type="OBJECTID *" name="Objects">Array of object ID's to add to the clipboard.</param>
@@ -96,7 +96,7 @@
     <method>
       <name>AddText</name>
       <comment>Adds a block of text to the clipboard.</comment>
-      <prototype>ERR clipAddText(OBJECTPTR Object, CSTRING String)</prototype>
+      <prototype>ERR clip::AddText(OBJECTPTR Object, CSTRING String)</prototype>
       <input>
         <param type="CSTRING" name="String">The text to add to the clipboard.</param>
       </input>
@@ -113,7 +113,7 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERR clipGetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
+      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
         <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
         <param type="LONG" name="Index">If the <code>Datatype</code> parameter is zero, this parameter may be set to the index of the desired clip item.</param>
@@ -137,7 +137,7 @@
     <method>
       <name>Remove</name>
       <comment>Remove items from the clipboard.</comment>
-      <prototype>ERR clipRemove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
+      <prototype>ERR clip::Remove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
       </input>

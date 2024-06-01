@@ -50,8 +50,7 @@ static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   extNetLookup *nl;
-   if (AccessObject(r->NetLookupID, 2000, &nl) IS ERR::Okay) {
+   if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -60,11 +59,9 @@ static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
       auto it = glHosts.find((CSTRING)(r + 1));
       if (it != glHosts.end()) {
          nl->Info = it->second;
-         resolve_callback(nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
+         resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR::Failed);
-
-      ReleaseObject(nl);
+      else resolve_callback(*nl, ERR::Failed);
    }
    return ERR::Okay;
 }
@@ -79,8 +76,7 @@ static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   extNetLookup *nl;
-   if (AccessObject(r->NetLookupID, 2000, &nl) IS ERR::Okay) {
+   if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -89,11 +85,9 @@ static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
       auto it = glAddresses.find((CSTRING)(r + 1));
       if (it != glAddresses.end()) {
          nl->Info = it->second;
-         resolve_callback(nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
+         resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR::Failed);
-
-      ReleaseObject(nl);
+      else resolve_callback(*nl, ERR::Failed);
    }
    return ERR::Okay;
 }
@@ -163,7 +157,7 @@ Failed: The address could not be resolved
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
+static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::BlockingResolveAddress *Args)
 {
    pf::Log log;
    ERR error;
@@ -173,7 +167,7 @@ static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockin
    log.branch("Address: %s", Args->Address);
 
    IPAddress ip;
-   if (netStrToAddress(Args->Address, &ip) IS ERR::Okay) {
+   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       DNSEntry *info;
       if ((error = resolve_address(Args->Address, &ip, &info)) IS ERR::Okay) {
          Self->Info = *info;
@@ -210,7 +204,7 @@ Failed:
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
+static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
    pf::Log log;
    ERR error;
@@ -306,7 +300,7 @@ Failed: The address could not be resolved
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
+static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddress *Args)
 {
    pf::Log log;
 
@@ -326,7 +320,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress 
    }
 
    IPAddress ip;
-   if (netStrToAddress(Args->Address, &ip) IS ERR::Okay) {
+   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
       if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
@@ -336,7 +330,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress 
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
          CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
-         if ((thSetData(th, rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
+         if ((th::SetData(th, rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
             return ERR::Okay;
@@ -373,7 +367,7 @@ Failed:
 
 *********************************************************************************************************************/
 
-static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
+static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
    pf::Log log;
 
@@ -400,7 +394,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
       rb->NetLookupID = Self->UID;
       rb->ThreadID    = th->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
-      if ((thSetData(th, buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
+      if ((th::SetData(th, buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
          return ERR::Okay;
@@ -680,7 +674,7 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
       routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
    else if (Self->Callback.isScript()) {
-      scCall(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
+      sc::Call(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
    }
 }
 

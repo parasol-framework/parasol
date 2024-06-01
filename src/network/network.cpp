@@ -370,6 +370,8 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
+namespace net {
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -386,7 +388,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 *********************************************************************************************************************/
 
-CSTRING netAddressToStr(IPAddress *Address)
+CSTRING AddressToStr(IPAddress *Address)
 {
    pf::Log log(__FUNCTION__);
 
@@ -398,7 +400,7 @@ CSTRING netAddressToStr(IPAddress *Address)
    }
 
    struct in_addr addr;
-   addr.s_addr = netHostToLong(Address->Data[0]);
+   addr.s_addr = net::HostToLong(Address->Data[0]);
 
    STRING result;
 #ifdef __linux__
@@ -414,9 +416,9 @@ CSTRING netAddressToStr(IPAddress *Address)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrToAddress: Converts an IP Address in string form to an IPAddress structure.
+StrToAddress: Converts an IP Address in string form to an !IPAddress structure.
 
-Converts an IPv4 or an IPv6 address in dotted string format to an IPAddress structure.  The String must be of form
+Converts an IPv4 or an IPv6 address in dotted string format to an !IPAddress structure.  The `String` must be of form
 `1.2.3.4` (IPv4).
 
 <pre>
@@ -428,16 +430,16 @@ if (!StrToAddress("127.0.0.1", &addr)) {
 
 -INPUT-
 cstr String:  A null-terminated string containing the IP Address in dotted format.
-struct(IPAddress) Address: Must point to an IPAddress structure that will be filled in.
+struct(IPAddress) Address: Must point to an !IPAddress structure that will be filled in.
 
 -ERRORS-
-Okay:    The Address was converted successfully.
-Args:    Either the string or the IPAddress pointer were NULL.
-Failed:  The String was not a valid IP Address.
+Okay:    The `Address` was converted successfully.
+NullArgs
+Failed:  The `String` was not a valid IP Address.
 
 *********************************************************************************************************************/
 
-ERR netStrToAddress(CSTRING Str, IPAddress *Address)
+ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
@@ -449,7 +451,7 @@ ERR netStrToAddress(CSTRING Str, IPAddress *Address)
 
    if (result IS INADDR_NONE) return ERR::Failed;
 
-   Address->Data[0] = netLongToHost(result);
+   Address->Data[0] = net::LongToHost(result);
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
@@ -473,7 +475,7 @@ uint: The word in network byte order
 
 *********************************************************************************************************************/
 
-ULONG netHostToShort(ULONG Value)
+ULONG HostToShort(ULONG Value)
 {
    return (ULONG)htons((UWORD)Value);
 }
@@ -493,7 +495,7 @@ uint: The long in network byte order
 
 *********************************************************************************************************************/
 
-ULONG netHostToLong(ULONG Value)
+ULONG HostToLong(ULONG Value)
 {
    return htonl(Value);
 }
@@ -513,7 +515,7 @@ uint: The Value in host byte order
 
 *********************************************************************************************************************/
 
-ULONG netShortToHost(ULONG Value)
+ULONG ShortToHost(ULONG Value)
 {
    return (ULONG)ntohs((UWORD)Value);
 }
@@ -533,7 +535,7 @@ uint: The Value in host byte order.
 
 *********************************************************************************************************************/
 
-ULONG netLongToHost(ULONG Value)
+ULONG LongToHost(ULONG Value)
 {
    return ntohl(Value);
 }
@@ -554,7 +556,7 @@ If a failure occurs when executing a command, the execution of all further comma
 returned immediately.
 
 -INPUT-
-ext(NetSocket) NetSocket: The target NetSocket object.
+obj(NetSocket) NetSocket: The target NetSocket object.
 tags Tags: Series of tags terminated by TAGEND.
 
 -ERRORS-
@@ -564,7 +566,7 @@ NullArgs: The NetSocket argument was not specified.
 
 *********************************************************************************************************************/
 
-ERR netSetSSL(extNetSocket *Socket, ...)
+ERR SetSSL(objNetSocket *Socket, ...)
 {
 #ifdef ENABLE_SSL
    LONG value, tagid;
@@ -582,9 +584,9 @@ ERR netSetSSL(extNetSocket *Socket, ...)
          case NSL::CONNECT:
             value = va_arg(list, LONG);
             if (value) { // Initiate an SSL connection on this socket
-               if ((error = sslSetup(Socket)) IS ERR::Okay) {
-                  sslLinkSocket(Socket);
-                  error = sslConnect(Socket);
+               if ((error = sslSetup((extNetSocket *)Socket)) IS ERR::Okay) {
+                  sslLinkSocket((extNetSocket *)Socket);
+                  error = sslConnect((extNetSocket *)Socket);
                }
 
                if (error != ERR::Okay) {
@@ -593,7 +595,7 @@ ERR netSetSSL(extNetSocket *Socket, ...)
                }
             }
             else { // Disconnect SSL (i.e. go back to unencrypted mode)
-               sslDisconnect(Socket);
+               sslDisconnect((extNetSocket *)Socket);
             }
             break;
          default:
@@ -607,6 +609,8 @@ ERR netSetSSL(extNetSocket *Socket, ...)
    return ERR::NoSupport;
 #endif
 }
+
+} // namespace
 
 #ifdef ENABLE_SSL
 #include "ssl.cpp"

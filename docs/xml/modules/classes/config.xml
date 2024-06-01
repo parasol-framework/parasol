@@ -95,7 +95,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>DeleteGroup</name>
       <comment>Deletes entire groups of configuration data.</comment>
-      <prototype>ERR cfgDeleteGroup(OBJECTPTR Object, CSTRING Group)</prototype>
+      <prototype>ERR cfg::DeleteGroup(OBJECTPTR Object, CSTRING Group)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the group that will be deleted.</param>
       </input>
@@ -111,7 +111,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>DeleteKey</name>
       <comment>Deletes single key entries.</comment>
-      <prototype>ERR cfgDeleteKey(OBJECTPTR Object, CSTRING Group, CSTRING Key)</prototype>
+      <prototype>ERR cfg::DeleteKey(OBJECTPTR Object, CSTRING Group, CSTRING Key)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the targeted group.</param>
         <param type="CSTRING" name="Key">The name of the targeted key.</param>
@@ -129,7 +129,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>GetGroupFromIndex</name>
       <comment>Converts an index number into its matching group string.</comment>
-      <prototype>ERR cfgGetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
+      <prototype>ERR cfg::GetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
       <input>
         <param type="LONG" name="Index">The group index that you want to identify.</param>
         <param type="CSTRING *" name="Group">Points to the group string that matches the index number.</param>
@@ -148,7 +148,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>Merge</name>
       <comment>Merges two config objects together.</comment>
-      <prototype>ERR cfgMerge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
+      <prototype>ERR cfg::Merge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
       <input>
         <param type="OBJECTPTR" name="Source">The Config object to be merged.</param>
       </input>
@@ -165,7 +165,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>MergeFile</name>
       <comment>Merges a configuration file into existing configuration data.</comment>
-      <prototype>ERR cfgMergeFile(OBJECTPTR Object, CSTRING Path)</prototype>
+      <prototype>ERR cfg::MergeFile(OBJECTPTR Object, CSTRING Path)</prototype>
       <input>
         <param type="CSTRING" name="Path">The location of the configuration file that you want to merge.</param>
       </input>
@@ -182,7 +182,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>ReadValue</name>
       <comment>Reads a key-value string.</comment>
-      <prototype>ERR cfgReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
+      <prototype>ERR cfg::ReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of a group to examine for a key.  If <code>NULL</code>, all groups are scanned.</param>
         <param type="CSTRING" name="Key">The name of a key to retrieve (case sensitive).</param>
@@ -202,7 +202,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>Set</name>
       <comment>Sets keys in existing config groups (aborts if the group does not exist).</comment>
-      <prototype>ERR cfgSet(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
+      <prototype>ERR cfg::Set(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the group.  Wildcards are supported.</param>
         <param type="CSTRING" name="Key">The name of the key.</param>
@@ -221,7 +221,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>SortByKey</name>
       <comment>Sorts config data using a sequence of sort instructions.</comment>
-      <prototype>ERR cfgSortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
+      <prototype>ERR cfg::SortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of the key to sort on.</param>
         <param type="LONG" name="Descending">Set to true if a descending sort is required.</param>
@@ -238,7 +238,7 @@ print('The Action class is located at ' .. str)
     <method>
       <name>WriteValue</name>
       <comment>Adds new entries to config objects.</comment>
-      <prototype>ERR cfgWriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
+      <prototype>ERR cfg::WriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
       <input>
         <param type="CSTRING" name="Group">The name of the group.</param>
         <param type="CSTRING" name="Key">The name of the key.</param>

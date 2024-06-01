@@ -100,7 +100,7 @@
     <method>
       <name>Count</name>
       <comment>Count all tags that match a given XPath.</comment>
-      <prototype>ERR xmlCount(OBJECTPTR Object, CSTRING XPath, LONG * Result)</prototype>
+      <prototype>ERR xml::Count(OBJECTPTR Object, CSTRING XPath, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">The XPath on which to perform the count.</param>
         <param type="LONG *" name="Result">The total number of matching tags is returned here.</param>
@@ -117,7 +117,7 @@
     <method>
       <name>Filter</name>
       <comment>Filters the XML data down to a single tag and its children.</comment>
-      <prototype>ERR xmlFilter(OBJECTPTR Object, CSTRING XPath)</prototype>
+      <prototype>ERR xml::Filter(OBJECTPTR Object, CSTRING XPath)</prototype>
       <input>
         <param type="CSTRING" name="XPath">Refers to a valid XPath string.</param>
       </input>
@@ -135,7 +135,7 @@
     <method>
       <name>FindTag</name>
       <comment>Searches for a tag via XPath.</comment>
-      <prototype>ERR xmlFindTag(OBJECTPTR Object, CSTRING XPath, FUNCTION * Callback, LONG * Result)</prototype>
+      <prototype>ERR xml::FindTag(OBJECTPTR Object, CSTRING XPath, FUNCTION * Callback, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XPath string.</param>
         <param type="FUNCTION *" name="Callback">Optional reference to a function that should be called for each matching tag.</param>
@@ -156,7 +156,7 @@
     <method>
       <name>GetAttrib</name>
       <comment>Retrieves the value of an XML attribute.</comment>
-      <prototype>ERR xmlGetAttrib(OBJECTPTR Object, LONG Index, CSTRING Attrib, CSTRING * Value)</prototype>
+      <prototype>ERR xml::GetAttrib(OBJECTPTR Object, LONG Index, CSTRING Attrib, CSTRING * Value)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the XML tag to search.</param>
         <param type="CSTRING" name="Attrib">The name of the attribute to search for (case insensitive).  If <code>NULL</code> or an empty string, the tag name is returned as the result.</param>
@@ -176,7 +176,7 @@
     <method>
       <name>GetContent</name>
       <comment>Extracts the content of an XML tag.</comment>
-      <prototype>ERR xmlGetContent(OBJECTPTR Object, LONG Index, STRING Buffer, LONG Length)</prototype>
+      <prototype>ERR xml::GetContent(OBJECTPTR Object, LONG Index, STRING Buffer, LONG Length)</prototype>
       <input>
         <param type="LONG" name="Index">Index of a tag that contains content.</param>
         <param type="STRING" name="Buffer">Pointer to a buffer that will receive the string data.</param>
@@ -203,7 +203,7 @@
     <method>
       <name>GetTag</name>
       <comment>Returns a pointer to the <st>XMLTag</st> structure for a given tag index.</comment>
-      <prototype>ERR xmlGetTag(OBJECTPTR Object, LONG Index, struct XMLTag ** Result)</prototype>
+      <prototype>ERR xml::GetTag(OBJECTPTR Object, LONG Index, struct XMLTag ** Result)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the tag that is being retrieved.</param>
         <param type="struct XMLTag **" name="Result">The <st>XMLTag</st> is returned in this parameter.</param>
@@ -221,7 +221,7 @@
     <method>
       <name>InsertContent</name>
       <comment>Inserts XML content into the XML tree.</comment>
-      <prototype>ERR xmlInsertContent(OBJECTPTR Object, LONG Index, XMI Where, CSTRING Content, LONG * Result)</prototype>
+      <prototype>ERR xml::InsertContent(OBJECTPTR Object, LONG Index, XMI Where, CSTRING Content, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the target XML tag.</param>
         <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</param>
@@ -242,7 +242,7 @@
     <method>
       <name>InsertXML</name>
       <comment>Parse an XML string and insert it in the XML tree.</comment>
-      <prototype>ERR xmlInsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
+      <prototype>ERR xml::InsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">The new data will target the tag specified here.</param>
         <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> or <code>CHILD_END</code> for a child insert.</param>
@@ -264,7 +264,7 @@
     <method>
       <name>InsertXPath</name>
       <comment>Inserts an XML statement in an XML tree.</comment>
-      <prototype>ERR xmlInsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result)</prototype>
+      <prototype>ERR xml::InsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XPath string that refers to the target insertion point.</param>
         <param type="XMI" name="Where" lookup="XMI">Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</param>
@@ -284,7 +284,7 @@
     <method>
       <name>MoveTags</name>
       <comment>Move an XML tag group to a new position in the XML tree.</comment>
-      <prototype>ERR xmlMoveTags(OBJECTPTR Object, LONG Index, LONG Total, LONG DestIndex, XMI Where)</prototype>
+      <prototype>ERR xml::MoveTags(OBJECTPTR Object, LONG Index, LONG Total, LONG DestIndex, XMI Where)</prototype>
       <input>
         <param type="LONG" name="Index">Index of the source tag to be moved.</param>
         <param type="LONG" name="Total">The total number of sibling tags to be moved from the source index.  Minimum value of 1.</param>
@@ -306,7 +306,7 @@
     <method>
       <name>RemoveTag</name>
       <comment>Removes tag(s) from the XML structure.</comment>
-      <prototype>ERR xmlRemoveTag(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
+      <prototype>ERR xml::RemoveTag(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
       <input>
         <param type="LONG" name="Index">Reference to the tag that will be removed.</param>
         <param type="LONG" name="Total">The total number of sibling (neighbouring) tags that should also be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all tags up to the end of the branch will be affected.</param>
@@ -327,7 +327,7 @@
     <method>
       <name>RemoveXPath</name>
       <comment>Removes tag(s) from the XML structure, using an xpath lookup.</comment>
-      <prototype>ERR xmlRemoveXPath(OBJECTPTR Object, CSTRING XPath, LONG Limit)</prototype>
+      <prototype>ERR xml::RemoveXPath(OBJECTPTR Object, CSTRING XPath, LONG Limit)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XML path string.</param>
         <param type="LONG" name="Limit">The maximum number of matching tags that should be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all matching tags up to the end of the tree will be affected.</param>
@@ -348,7 +348,7 @@
     <method>
       <name>Serialise</name>
       <comment>Serialise part of the XML tree to an XML string.</comment>
-      <prototype>ERR xmlSerialise(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
+      <prototype>ERR xml::Serialise(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</param>
         <param type="XMF" name="Flags" lookup="XMF">Use <code>INCLUDE_SIBLINGS</code> to include siblings of the tag found at Index.</param>
@@ -369,7 +369,7 @@
     <method>
       <name>SetAttrib</name>
       <comment>Adds, updates and removes XML attributes.</comment>
-      <prototype>ERR xmlSetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
+      <prototype>ERR xml::SetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the tag that is to be updated.</param>
         <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to <code>NEW</code>, <code>UPDATE</code> or <code>UPDATE_ONLY</code>.</param>
@@ -394,7 +394,7 @@
     <method>
       <name>Sort</name>
       <comment>Sorts XML tags to your specifications.</comment>
-      <prototype>ERR xmlSort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
+      <prototype>ERR xml::Sort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
       <input>
         <param type="CSTRING" name="XPath">Sort everything under the specified tag, or <code>NULL</code> to sort the entire top level.</param>
         <param type="CSTRING" name="Sort">Pointer to a sorting instruction string.</param>

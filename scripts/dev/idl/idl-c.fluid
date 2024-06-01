@@ -1062,49 +1062,51 @@ function class(Name, Options, Spec, Private, Custom)
             return name
          end
 
-         if (method.params != nil) and (#method.params > 0) then
-            local def     = '' -- struct definition
-            local values  = '' -- struct values
-            local call    = 'APTR Ob' -- Inline function parameters
-            local results = false
-            for _, param in ipairs(method.params) do
-               def = def .. param.basicType .. ' ' .. pName(param) .. '; '
+         local def     = '' -- struct definition
+         local values  = '' -- struct values
+         local call    = 'APTR Ob' -- Inline function parameters
+         local results = false
+         for _, param in ipairs(method.params) do
+            def = def .. param.basicType .. ' ' .. pName(param) .. '; '
 
-               if nz(call) then call = call .. ', ' end
-               call = call .. param.type .. ' ' .. pName(param)
+            if nz(call) then call = call .. ', ' end
+            call = call .. param.type .. ' ' .. pName(param)
 
-               if nz(values) then values = values .. ', ' end
-               if (param.resultValue) then
-                  values  = values .. '(' .. param.basicType .. ')0'
-                  results = true
-               else
-                  values = values .. pName(param)
-               end
-            end
-
-            class.methods[k].struct = 'struct ' .. lpfx .. method.name .. ' { ' .. def .. ' };'
-
-            if (method.inline != false) then
-               local inline = 'inline ERR ' .. lpfx .. method.name .. '(' .. call .. ') noexcept {\n'
-               inline = inline .. '   struct ' .. lpfx .. method.name .. ' args = { ' .. values .. ' };\n'
-               if (results) then
-                  inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args);\n'
-                  for _, p in pairs(method.params) do
-                     if (p.resultValue) then
-                        inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
-                     end
-                  end
-                  inline = inline .. '   return(error);\n'
-               else
-                  inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args));\n'
-               end
-               inline = inline .. '}\n'
-               class.methods[k].inline = inline
+            if nz(values) then values = values .. ', ' end
+            if (param.resultValue) then
+               values  = values .. '(' .. param.basicType .. ')0'
+               results = true
             else
-               class.methods[k].inline = nil
+               values = values .. pName(param)
             end
+         end
+
+         if (method.params != nil) and (#method.params > 0) then
+            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. def .. ' };'
+         end
+
+         if (method.inline != false) then
+            local inline = 'inline ERR ' .. method.name .. '(' .. call .. ') noexcept {\n'
+            local args = 'NULL'
+            if (method.params != nil) and (#method.params > 0) then
+               inline = inline .. '   struct ' .. method.name .. ' args = { ' .. values .. ' };\n'
+               args = '&args'
+            end
+            if (results) then
+               inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, ' .. args .. ');\n'
+               for _, p in pairs(method.params) do
+                  if (p.resultValue) then
+                     inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+                  end
+               end
+               inline = inline .. '   return(error);\n'
+            else
+               inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, ' .. args .. '));\n'
+            end
+            inline = inline .. '}\n'
+            class.methods[k].inline = inline
          else
-            class.methods[k].inline = '#define ' .. lpfx .. method.name .. '(obj) Action(MT_' .. pfx .. method.name .. ',(obj),0)\n'
+            class.methods[k].inline = nil
          end
       end
 
@@ -1115,6 +1117,10 @@ function class(Name, Options, Spec, Private, Custom)
          output('#define MT_' .. pfx .. method.name .. ' -' .. method.id)
       end
       output()
+
+      if nz(lpfx) then
+         output('namespace ' .. lpfx .. ' {')
+      end
 
       for _, method in ipairs(class.methods) do
          if nz(method.struct) then
@@ -1128,6 +1134,11 @@ function class(Name, Options, Spec, Private, Custom)
             output(method.inline)
          end
       end
+
+      if nz(lpfx) then
+         output('} // namespace')
+      end
+
       output()
    end
 
@@ -1160,7 +1171,7 @@ function class(Name, Options, Spec, Private, Custom)
             if not nz(m.params) then
                mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
             else
-               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. m.name .. ')'
+               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
                mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
             end
          end
@@ -2152,13 +2163,15 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. ","
             end
 
-            if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
-               argSeq = argSeq .. "APTR " .. param.name
-            elseif (param.type == '...') then
+            if (param.type == '...') then
                jumpArgs = argSeq .. "..."
                argSeq = argSeq .. "Args... Tags"
             else
-               argSeq = argSeq .. param.type .. " " .. cName(param)
+               if param.type:find('*$') then
+                  argSeq = argSeq .. param.type .. cName(param)
+               else
+                  argSeq = argSeq .. param.type .. " " .. cName(param)
+               end
             end
 
             if (param.type == "...") then
@@ -2213,25 +2226,30 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if (variadic) then
       func.macro = function()
-         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. func.name ..
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
       end
 
       func.staticMacro = function()
-         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(jumpArgs,"void") .. ");"
+         if nz(glFunctionPrefix) then
+            return 'extern ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         else
+            return 'extern "C" ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         end
       end
    else
       func.macro = function()
-         return "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(argSeq,"void") .. ")" ..
-            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+         return 'inline ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(argSeq,'void') .. ')' ..
+            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. nz(outValues,'') .. '); }'
       end
 
       func.staticMacro = function()
-         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(jumpArgs,"void") .. ");"
+         if nz(glFunctionPrefix) then
+            return 'extern ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         else
+            return 'extern "C" ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         end
       end
    end
 end
@@ -2306,19 +2324,29 @@ function saveOutput()
 
             out = out .. "#ifndef PARASOL_STATIC\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            if nz(glFunctionPrefix) then
+               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+            end
             for k, func in ipairs(glFunctions) do
                if nz(func.macro) then
                   out = out .. func.macro() .. "\n"
                end
             end
+            if nz(glFunctionPrefix) then
+               out = out .. "} // namespace\n"
+            end
             out = out .. "#else\n"
-            out = out .. 'extern "C" {\n'
+            if nz(glFunctionPrefix) then
+               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+            end
             for k, func in ipairs(glFunctions) do
                if nz(func.staticMacro) and (func.status != 'private') then
                   out = out .. func.staticMacro() .. "\n"
                end
             end
-            out = out .. "}\n"
+            if nz(glFunctionPrefix) then
+               out = out .. "} // namespace\n"
+            end
             out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "#endif\n\n"
             file.acWrite(out, out:len())
@@ -2354,18 +2382,21 @@ function buildPrototypes()
                      proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
                   end
                end
-               method.prototype = "ERR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
+               method.prototype = "ERR " .. cl.methodPrefix:lower() .. '::' .. method.name .. "(" .. proto .. ")"
             end
          end
       end
    end
 
    if nz(glFunctions) then
-      local proto = 'extern "C" {\n'
+      local proto = ''
+      local prefix = ''
+      if nz(glFunctionPrefix) then
+         proto = 'namespace ' .. glFunctionPrefix .. ' {\n'
+         prefix = glFunctionPrefix .. '::'
+      end
 
       for k, func in ipairs(glFunctions) do
-         if (glPrototypes == "static") then proto = proto .. "static " end
-
          local response
          if (func.result != nil) and (func.result.type != nil) then
             response = func.result.fullType.c_type
@@ -2373,11 +2404,20 @@ function buildPrototypes()
             response = "void"
          end
 
-         func.prototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
-         func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
-         proto = proto .. func.prototype .. ";\n"
+         func.prototype = nz(func.c_response,"void") .. " " .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
+         func.docPrototype = nz(func.c_response,"void") .. " " .. prefix .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
+
+         if nz(glFunctionPrefix) then
+            proto = proto .. 'extern ' .. func.prototype .. ";\n"
+         else
+            proto = proto .. 'extern "C" ' .. func.prototype .. ";\n"
+         end
       end
-      proto = proto .. '\n} // extern c\n'
+
+      if nz(glFunctionPrefix) then
+         proto = proto .. '\n} // namespace\n'
+      end
+
       return proto
    else
       return ""
@@ -2390,9 +2430,12 @@ end
 function buildDefs()
    if not nz(glFunctions) then return "" end
 
+   local prefix = ''
+   if nz(glFunctionPrefix) then prefix = glFunctionPrefix .. '::' end
+
    local flist = "\nconst struct Function glFunctions[] = {\n"
    for _, func in ipairs(glFunctions) do
-      flist = flist .. "   { (APTR)" .. nz(glFunctionPrefix,"") .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
+      flist = flist .. "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
    flist = flist .. "   { NULL, NULL, NULL }\n"
    flist = flist .. "};\n\n"

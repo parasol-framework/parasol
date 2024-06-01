@@ -161,7 +161,7 @@ static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VS
    if (SourceType IS VSF::GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp); error != ERR::Okay) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
-         gfxCopyArea(sg, bmp, BAF::NIL, sg->Clip.Left, sg->Clip.Top,
+         gfx::CopyArea(sg, bmp, BAF::NIL, sg->Clip.Left, sg->Clip.Top,
             sg->Clip.Right - sg->Clip.Left, sg->Clip.Bottom - sg->Clip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
       }
@@ -191,7 +191,7 @@ static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VS
       if (auto error = get_banked_bitmap(Self, &bmp); error != ERR::Okay) return log.warning(error);
 
       if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
-         gfxCopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.left, Self->VectorClip.top,
+         gfx::CopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.left, Self->VectorClip.top,
             Self->VectorClip.right - Self->VectorClip.left, Self->VectorClip.bottom - Self->VectorClip.top,
             bmp->Clip.Left, bmp->Clip.Top);
       }
@@ -243,7 +243,7 @@ static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VS
       save_bitmap(bmp, std::to_string(Self->UID) + "_" + std::to_string(Self->ClientVector->UID) + "_source");
    #endif
 
-   if (Premultiply) bmpPremultiply(bmp);
+   if (Premultiply) bmp::Premultiply(bmp);
 
    *BitmapResult = bmp;
    return ERR::Okay;
@@ -314,7 +314,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    Self->ClientVector->Next = NULL;
    Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
-   gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF::FILL);
+   gfx::DrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF::FILL);
    Self->SourceScene->Bitmap = Self->SourceGraphic;
    acDraw(Self->SourceScene);
 
@@ -458,12 +458,12 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
 
       if (e->UsageCount > 0) { // This effect is an input to something else
          if (auto error = get_banked_bitmap(Self, &e->Target); error != ERR::Okay) return error;
-         gfxDrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF::FILL);
+         gfx::DrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF::FILL);
       }
       else { // This effect can render directly to the shared output bitmap
          if (!out) {
             if (auto error = get_banked_bitmap(Self, &out); error != ERR::Okay) return error;
-            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
+            gfx::DrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
          }
          e->Target = out;
       }
@@ -475,7 +475,7 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
    if (!out) {
       log.warning("Effect pipeline did not produce an output bitmap.");
       if (auto error = get_banked_bitmap(Self, &out); error != ERR::Okay) return error;
-      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
+      gfx::DrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
@@ -483,7 +483,7 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
    #endif
 
    #ifdef DEBUG_FILTER_BITMAP
-      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, BAF::NIL);
+      gfx::DrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, BAF::NIL);
    #endif
 
    *Output = out;

@@ -67,6 +67,8 @@ static ERR fade_out(extAudio *Audio, LONG Handle)
    return ERR::Okay;
 }
 
+namespace snd {
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -89,7 +91,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixStartSequence(objAudio *Audio, LONG Handle)
+ERR MixStartSequence(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -120,7 +122,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixEndSequence(objAudio *Audio, LONG Handle)
+ERR MixEndSequence(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -156,7 +158,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixContinue(objAudio *Audio, LONG Handle)
+ERR MixContinue(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -216,7 +218,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
+ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute)
 {
    pf::Log log(__FUNCTION__);
 
@@ -256,7 +258,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
+ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 {
    pf::Log log(__FUNCTION__);
 
@@ -294,7 +296,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
+ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 {
    pf::Log log(__FUNCTION__);
 
@@ -337,7 +339,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
+ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position)
 {
    pf::Log log(__FUNCTION__);
 
@@ -528,7 +530,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
+ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate)
 {
    pf::Log log(__FUNCTION__);
 
@@ -576,7 +578,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
+ERR MixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 {
    pf::Log log(__FUNCTION__);
 
@@ -619,7 +621,7 @@ ERR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 
       if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) {
          channel->State = CHS::PLAYING;
-         sndMixPlay(Audio, Handle, s.Loop1Start);
+         snd::MixPlay(Audio, Handle, s.Loop1Start);
       }
    }
 
@@ -644,7 +646,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR sndMixStop(objAudio *Audio, LONG Handle)
+ERR MixStop(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -689,7 +691,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixStopLoop(objAudio *Audio, LONG Handle)
+ERR MixStopLoop(objAudio *Audio, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -735,7 +737,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
+ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
 {
    pf::Log log(__FUNCTION__);
 
@@ -757,3 +759,5 @@ static ERR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
    set_channel_volume((extAudio *)Audio, channel);
    return ERR::Okay;
 }
+
+} // namespace

@@ -250,7 +250,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rfSelectDiscrete *Args)
+static ERR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rf::SelectDiscrete *Args)
 {
    pf::Log log;
 
@@ -282,7 +282,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectIdentity(extRemapFX *Self, struct rfSelectIdentity *Args)
+static ERR REMAPFX_SelectIdentity(extRemapFX *Self, struct rf::SelectIdentity *Args)
 {
    pf::Log log;
 
@@ -316,7 +316,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectGamma(extRemapFX *Self, struct rfSelectGamma *Args)
+static ERR REMAPFX_SelectGamma(extRemapFX *Self, struct rf::SelectGamma *Args)
 {
    pf::Log log;
 
@@ -350,7 +350,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectInvert(extRemapFX *Self, struct rfSelectInvert *Args)
+static ERR REMAPFX_SelectInvert(extRemapFX *Self, struct rf::SelectInvert *Args)
 {
    pf::Log log;
 
@@ -384,7 +384,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectLinear(extRemapFX *Self, struct rfSelectLinear *Args)
+static ERR REMAPFX_SelectLinear(extRemapFX *Self, struct rf::SelectLinear *Args)
 {
    pf::Log log;
 
@@ -421,7 +421,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectMask(extRemapFX *Self, struct rfSelectMask *Args)
+static ERR REMAPFX_SelectMask(extRemapFX *Self, struct rf::SelectMask *Args)
 {
    pf::Log log;
 
@@ -457,7 +457,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR REMAPFX_SelectTable(extRemapFX *Self, struct rfSelectTable *Args)
+static ERR REMAPFX_SelectTable(extRemapFX *Self, struct rf::SelectTable *Args)
 {
    pf::Log log;
 

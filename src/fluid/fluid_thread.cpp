@@ -99,12 +99,10 @@ static ERR thread_script_callback(OBJECTID ThreadID)
 {
    if (auto it = glThreadCB.find(ThreadID); it != glThreadCB.end()) {
       thread_callback &cb = it->second;
-      objScript *script;
-      if (AccessObject(cb.mainScriptID, 4000, &script) IS ERR::Okay) {
+      if (ScopedObjectLock<objScript> script(cb.mainScriptID, 4000); script.granted()) {
          auto prv= (prvFluid *)script->ChildPrivate;
-         scCallback(script, cb.callbackID, NULL, 0, NULL);
+         sc::Callback(*script, cb.callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
-         ReleaseObject(script);
       }
       glThreadCB.erase(it);
    }
@@ -232,7 +230,7 @@ static int thread_method(lua_State *Lua)
 
          // TODO: We should be using a hashmap here.
 
-         if ((GetFieldArray(object->Class, FID_Methods, &table, &total_methods) IS ERR::Okay) and (table)) {
+         if ((GetFieldArray(object->Class, FID_Methods, (APTR *)&table, &total_methods) IS ERR::Okay) and (table)) {
             bool found = false;
             for (i=1; i < total_methods; i++) {
                if ((table[i].Name) and (iequals(table[i].Name, method))) { found = true; break; }

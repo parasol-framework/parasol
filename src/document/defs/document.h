@@ -359,7 +359,7 @@ struct font_entry {
 
    font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) : 
       handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) { 
-      vecGetFontMetrics(pHandle, &metrics);
+      vec::GetFontMetrics(pHandle, &metrics);
    }
 
    ~font_entry() { }

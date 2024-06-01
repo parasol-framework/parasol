@@ -60,7 +60,7 @@ if (thread.ok()) thread-&gt;activate(thread);
     <method>
       <name>SetData</name>
       <comment>Attaches data to the thread.</comment>
-      <prototype>ERR thSetData(OBJECTPTR Object, APTR Data, LONG Size)</prototype>
+      <prototype>ERR th::SetData(OBJECTPTR Object, APTR Data, LONG Size)</prototype>
       <input>
         <param type="APTR" name="Data">Pointer to the data buffer.</param>
         <param type="LONG" name="Size">Size of the data buffer.  If zero, the pointer is stored directly, with no copy operation taking place.</param>

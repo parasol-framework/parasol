@@ -102,7 +102,7 @@ static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB
 {
    if (!State.m_color.empty()) {
       VectorPainter painter;
-      if (vecReadPainter(NULL, State.m_color.c_str(), &painter, NULL) IS ERR::Okay) {
+      if (vec::ReadPainter(NULL, State.m_color.c_str(), &painter, NULL) IS ERR::Okay) {
          RGB = painter.Colour;
          return ERR::Okay;
       }
@@ -114,7 +114,7 @@ static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB
    while (Vector) {
       if (Vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Failed;
 
-      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL) IS ERR::Okay) {
+      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, (APTR *)&RGB, NULL) IS ERR::Okay) {
          if (RGB.Alpha != 0) return ERR::Okay;
       }
       Vector = (objVector *)Vector->Parent;
@@ -249,8 +249,8 @@ static void parse_transform(objVector *Vector, const std::string Value, LONG Tag
 {
    if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
-      if (vecNewMatrix((objVector *)Vector, &matrix, false) IS ERR::Okay) {
-         vecParseTransform(matrix, Value.c_str());
+      if (vec::NewMatrix((objVector *)Vector, &matrix, false) IS ERR::Okay) {
+         vec::ParseTransform(matrix, Value.c_str());
          matrix->Tag = Tag;
       }
       else {
@@ -472,7 +472,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
    objXML *xml;
    ERR error = ERR::Okay;
-   if (NewObject(CLASSID::XML, NF::LOCAL, &xml) IS ERR::Okay) {
+   if (NewLocalObject(CLASSID::XML, &xml) IS ERR::Okay) {
       objTask *task = CurrentTask();
       STRING working_path = NULL;
 
@@ -532,7 +532,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          for (auto &inherit : Self->Inherit) {
             OBJECTPTR ref;
-            if (scFindDef(Self->Scene, inherit.ID.c_str(), &ref) IS ERR::Okay) {
+            if (sc::FindDef(Self->Scene, inherit.ID.c_str(), &ref) IS ERR::Okay) {
                inherit.Object->set(FID_Inherit, ref);
             }
             else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());

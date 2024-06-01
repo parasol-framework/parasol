@@ -50,7 +50,7 @@ void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value));
 
 void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY, bool NonClient)
 {
-   if (auto pointer = gfxAccessPointer(); pointer) {
+   if (auto pointer = gfx::AccessPointer(); pointer) {
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
 
       struct dcDeviceInput joy = {
@@ -61,7 +61,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
       };
 
       acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
-      gfxReleasePointer(pointer);
+      ReleaseObject(pointer);
    }
 }
 
@@ -73,7 +73,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
       if (FindObject("SystemPointer", CLASSID::NIL, FOF::NIL, &glPointerID) != ERR::Okay) return;
    }
    
-   if (auto pointer = gfxAccessPointer(); pointer) {
+   if (auto pointer = gfx::AccessPointer(); pointer) {
       struct dcDeviceInput joy = {
          .Values    = { Wheel, 0 },
          .Timestamp = PreciseTime(),
@@ -82,7 +82,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
       };
 
       acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
-      gfxReleasePointer(pointer);
+      ReleaseObject(pointer);
    }
 }
 
@@ -108,7 +108,7 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 
 void MsgButtonPress(LONG button, LONG State)
 {
-   if (auto pointer = gfxAccessPointer()) {
+   if (auto pointer = gfx::AccessPointer()) {
       struct dcDeviceInput joy[3];
 
       LONG i = 0;
@@ -140,8 +140,7 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (i) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(struct dcDeviceInput) * i);
 
-      gfxReleasePointer(pointer);
-
+      ReleaseObject(pointer);
    }
 }
 
@@ -155,26 +154,24 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
-   objSurface *surface;
-   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
-      extDisplay *display;
-      OBJECTID display_id = surface->DisplayID;
-      if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
-         FUNCTION feedback = display->ResizeFeedback;
+   FUNCTION feedback;
+   OBJECTID display_id = 0;
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
+      display_id = surface->DisplayID;
+      if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
+         feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
          display->Width  = WinWidth;
          display->Height = WinHeight;
-         ReleaseObject(display);
-         ReleaseObject(surface);
-
-         // Notification occurs with the display and surface released so as to reduce the potential for dead-locking.
-
-         resize_feedback(&feedback, display_id, ClientX, ClientY, ClientWidth, ClientHeight);
-         return;
       }
-      ReleaseObject(surface);
+      else return;
    }
+   else return;
+
+   // Notification occurs with the display and surface released so as to reduce the potential for dead-locking.
+
+   resize_feedback(&feedback, display_id, ClientX, ClientY, ClientWidth, ClientHeight);
 }
 
 //********************************************************************************************************************
@@ -187,15 +184,13 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
 void MsgSetFocus(OBJECTID SurfaceID)
 {
-   pf::Log log;
-   objSurface *surface;
-   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
+      pf::Log log;
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
-      ReleaseObject(surface);
    }
 }
 
@@ -206,8 +201,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 {
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
-   objSurface *surface;
-   if (AccessObject(SurfaceID, 3000, &surface) IS ERR::Okay) {
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
       auto minwidth  = surface->get<LONG>(FID_MinWidth);
       auto minheight = surface->get<LONG>(FID_MinHeight);
       auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
@@ -232,8 +226,6 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
             *Width = *Height * scale;
          }
       }
-
-      ReleaseObject(surface);
    }
 }
 
@@ -244,8 +236,8 @@ void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
    pf::ScopedObjectLock surface(SurfaceID);
 
    if (surface.granted()) {
-      if ((Width) and (Height)) drwExpose(*surface, X, Y, Width, Height, EXF::CHILDREN);
-      else Action(MT_DrwExpose, *surface, NULL);
+      if ((Width) and (Height)) drw::ExposeToDisplay(*surface, X, Y, Width, Height, EXF::CHILDREN);
+      else Action(MT_DrwExposeToDisplay, *surface, NULL);
    }
 }
 
@@ -263,7 +255,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
    pf::Log log(__FUNCTION__);
 
    if (SurfaceID) {
-      const WindowHook hook(SurfaceID, WH::CLOSE);
+      const WinHook hook(SurfaceID, WH::CLOSE);
 
       if (glWindowHooks.contains(hook)) {
          auto func = &glWindowHooks[hook];
@@ -275,7 +267,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
             result = callback(SurfaceID, func->Meta);
          }
          else if (func->isScript()) {
-            scCall(*func, std::to_array<ScriptArg>({ { "SurfaceID", SurfaceID, FDF_OBJECTID } }), result);
+            sc::Call(*func, std::to_array<ScriptArg>({ { "SurfaceID", SurfaceID, FDF_OBJECTID } }), result);
          }
          else result = ERR::Okay;
 

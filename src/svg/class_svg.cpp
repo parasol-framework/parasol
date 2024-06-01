@@ -173,7 +173,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR SVG_ParseSymbol(extSVG *Self, struct svgParseSymbol *Args)
+static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
 {
    pf::Log log;
 
@@ -212,7 +212,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR SVG_Render(extSVG *Self, struct svgRender *Args)
+static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -269,7 +269,7 @@ static ERR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 
    auto pic = objPicture::create { fl::Width(width), fl::Height(height), fl::Flags(PCF::ALPHA|PCF::NEW) };
    if (pic.ok()) {
-      if ((error = svgRender(Self, pic->Bitmap, 0, 0, width, height)) IS ERR::Okay) {
+      if ((error = svg::Render(Self, pic->Bitmap, 0, 0, width, height)) IS ERR::Okay) {
          if ((error = acSaveImage(*pic, Args->Dest, Args->ClassID)) IS ERR::Okay) {
             return ERR::Okay;
          }
@@ -316,11 +316,11 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       if (xml.ok()) {
          Self->XML = *xml;
 
-         ERR error = xmlInsertXML(*xml, 0, XMI::NIL, header, NULL);
+         ERR error = xml::InsertXML(*xml, 0, XMI::NIL, header, NULL);
          LONG index = xml->Tags.back().ID;
 
          XMLTag *tag;
-         if ((error = xmlInsertStatement(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
+         if ((error = xml::InsertStatement(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if ((error = save_svg_defs(Self, *xml, Self->Scene, index)) IS ERR::Okay) {
@@ -343,7 +343,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                if (error IS ERR::Okay) {
                   char buffer[80];
                   snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
-                  xmlNewAttrib(tag, "viewBox", buffer);
+                  xml::NewAttrib(tag, "viewBox", buffer);
                }
 
                LONG dim;

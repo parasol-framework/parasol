@@ -103,7 +103,7 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
       }
 
       pf::ScopedObjectLock surface(Self->SurfaceID);
-      if (surface.granted()) drwScheduleRedraw(*surface);
+      if (surface.granted()) drw::ScheduleRedraw(*surface);
    }
 }
 
@@ -158,7 +158,7 @@ UnsupportedOwner: The definition is not owned by the scene.
 
 *********************************************************************************************************************/
 
-static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
+static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 {
    pf::Log log;
 
@@ -271,8 +271,8 @@ static ERR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
       LONG s_x, s_y;
 
       Self->RefreshCursor = false;
-      gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
-      gfxGetCursorPos(&abs_x, &abs_y);
+      gfx::GetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
+      gfx::GetCursorPos(&abs_x, &abs_y);
 
       const InputEvent event = {
          .Next        = NULL,
@@ -304,7 +304,7 @@ static ERR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 // For debugging purposes, draw a boundary around the target area.
 //   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
 //   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
-//   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
+//   gfx::DrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 
    return ERR::Okay;
 }
@@ -331,7 +331,7 @@ Search: A definition with the given Name was not found.
 
 *********************************************************************************************************************/
 
-static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
+static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 {
    pf::Log log;
 
@@ -372,7 +372,7 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 
    if (Self->Viewport) Self->Viewport->Parent = NULL;
    if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+   if (Self->InputHandle) { gfx::UnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    if (Self->SurfaceID) {
       OBJECTPTR surface;
@@ -397,7 +397,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
    if (Self->SurfaceID) {
       pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
-         drwAddCallback(*surface, APTR(render_to_surface));
+         drw::AddCallback(*surface, APTR(render_to_surface));
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;
@@ -416,7 +416,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
       }
 
       auto callback = C_FUNCTION(scene_input_events);
-      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::CROSSING|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle) != ERR::Okay) {
+      if (gfx::SubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::CROSSING|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle) != ERR::Okay) {
          return ERR::Function;
       }
    }
@@ -507,7 +507,7 @@ Search: A vector with a matching ID was not found.
 
 *********************************************************************************************************************/
 
-static ERR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *Args)
+static ERR VECTORSCENE_SearchByID(extVectorScene *Self, struct sc::SearchByID *Args)
 {
    if (!Args) return ERR::NullArgs;
    Args->Result = NULL;
@@ -792,7 +792,7 @@ static void process_resize_msgs(extVectorScene *Self)
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.Meta);
             }
             else if (func.isScript()) {
-               scCall(func, std::to_array<ScriptArg>({
+               sc::Call(func, std::to_array<ScriptArg>({
                   { "Viewport",       view, FDF_OBJECT },
                   { "Vector",         vector, FDF_OBJECT },
                   { "ViewportX",      view->FinalX },
@@ -823,7 +823,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
       }
       else if (sub.Callback.isScript()) {
          // In this implementation the script function will receive all the events chained via the Next field
-         scCall(sub.Callback, std::to_array<ScriptArg>({
+         sc::Call(sub.Callback, std::to_array<ScriptArg>({
             { "Vector",     Vector, FDF_OBJECT },
             { "Qualifiers", LONG(Event->Qualifiers) },
             { "Code",       LONG(Event->Code) },

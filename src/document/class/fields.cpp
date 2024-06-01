@@ -184,7 +184,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    recursion++;
    for (auto &trigger : Self->Triggers[LONG(DRT::LEAVING_PAGE)]) {
       if (trigger.isScript()) {
-         scCall(trigger, std::to_array<ScriptArg>({ { "OldURI", Self->Path }, { "NewURI", newpath } }));
+         sc::Call(trigger, std::to_array<ScriptArg>({ { "OldURI", Self->Path }, { "NewURI", newpath } }));
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING, APTR))trigger.Routine;

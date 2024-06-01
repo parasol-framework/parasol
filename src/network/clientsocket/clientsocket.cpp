@@ -36,7 +36,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
          error = routine(Socket, ClientSocket, Socket->Incoming.Meta);
       }
       else if (Socket->Incoming.isScript()) {
-         if (scCall(Socket->Incoming, std::to_array<ScriptArg>({
+         if (sc::Call(Socket->Incoming, std::to_array<ScriptArg>({
                { "NetSocket",    Socket, FD_OBJECTPTR },
                { "ClientSocket", ClientSocket, FD_OBJECTPTR }
             }), error) != ERR::Okay) error = ERR::Terminate;
@@ -144,7 +144,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
             error = routine(Socket, ClientSocket, ClientSocket->Outgoing.Meta);
          }
          else if (ClientSocket->Outgoing.isScript()) {
-            if (scCall(ClientSocket->Outgoing, std::to_array<ScriptArg>({
+            if (sc::Call(ClientSocket->Outgoing, std::to_array<ScriptArg>({
                   { "NetSocket", Socket, FD_OBJECTPTR },
                   { "ClientSocket", ClientSocket, FD_OBJECTPTR }
                }), error) != ERR::Okay) error = ERR::Terminate;
@@ -290,7 +290,7 @@ AllocMemory: A message buffer could not be allocated.
 
 *********************************************************************************************************************/
 
-static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
+static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClientMsg *Args)
 {
    pf::Log log;
 
@@ -467,7 +467,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
+static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct cs::WriteClientMsg *Args)
 {
    pf::Log log;
 

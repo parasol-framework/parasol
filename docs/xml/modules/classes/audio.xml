@@ -64,7 +64,7 @@
     <method>
       <name>AddSample</name>
       <comment>Adds a new sample to an audio object for channel-based playback.</comment>
-      <prototype>ERR sndAddSample(OBJECTPTR Object, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
+      <prototype>ERR snd::AddSample(OBJECTPTR Object, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
       <input>
         <param type="FUNCTION" name="OnStop">This optional callback function will be called when the stream stops playing.</param>
         <param type="SFM" name="SampleFormat" lookup="SFM">Indicates the format of the sample data that you are adding.</param>
@@ -97,7 +97,7 @@
     <method>
       <name>AddStream</name>
       <comment>Adds a new sample-stream to an Audio object for channel-based playback.</comment>
-      <prototype>ERR sndAddStream(OBJECTPTR Object, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
+      <prototype>ERR snd::AddStream(OBJECTPTR Object, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
       <input>
         <param type="FUNCTION" name="Callback">This callback function must be able to return raw audio data for streaming.</param>
         <param type="FUNCTION" name="OnStop">This optional callback function will be called when the stream stops playing.</param>
@@ -132,7 +132,7 @@
     <method>
       <name>Beep</name>
       <comment>Beeps the PC audio speaker.</comment>
-      <prototype>ERR sndBeep(OBJECTPTR Object, LONG Pitch, LONG Duration, LONG Volume)</prototype>
+      <prototype>ERR snd::Beep(OBJECTPTR Object, LONG Pitch, LONG Duration, LONG Volume)</prototype>
       <input>
         <param type="LONG" name="Pitch">The pitch of the beep in HZ.</param>
         <param type="LONG" name="Duration">The duration of the beep in milliseconds.</param>
@@ -151,7 +151,7 @@
     <method>
       <name>CloseChannels</name>
       <comment>Frees audio channels that have been allocated for sample playback.</comment>
-      <prototype>ERR sndCloseChannels(OBJECTPTR Object, LONG Handle)</prototype>
+      <prototype>ERR snd::CloseChannels(OBJECTPTR Object, LONG Handle)</prototype>
       <input>
         <param type="LONG" name="Handle">Must refer to a channel handle returned from the <method>OpenChannels</method> method.</param>
       </input>
@@ -168,7 +168,7 @@
     <method>
       <name>OpenChannels</name>
       <comment>Allocates audio channels that can be used for sample playback.</comment>
-      <prototype>ERR sndOpenChannels(OBJECTPTR Object, LONG Total, LONG * Result)</prototype>
+      <prototype>ERR snd::OpenChannels(OBJECTPTR Object, LONG Total, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Total">Total of channels to allocate.</param>
         <param type="LONG *" name="Result">The resulting channel handle is returned in this parameter.</param>
@@ -189,7 +189,7 @@
     <method>
       <name>RemoveSample</name>
       <comment>Removes a sample from the global sample list and deallocates its resources.</comment>
-      <prototype>ERR sndRemoveSample(OBJECTPTR Object, LONG Handle)</prototype>
+      <prototype>ERR snd::RemoveSample(OBJECTPTR Object, LONG Handle)</prototype>
       <input>
         <param type="LONG" name="Handle">The handle of the sample that requires removal.</param>
       </input>
@@ -207,7 +207,7 @@
     <method>
       <name>SetSampleLength</name>
       <comment>Sets the byte length of a streaming sample.</comment>
-      <prototype>ERR sndSetSampleLength(OBJECTPTR Object, LONG Sample, LARGE Length)</prototype>
+      <prototype>ERR snd::SetSampleLength(OBJECTPTR Object, LONG Sample, LARGE Length)</prototype>
       <input>
         <param type="LONG" name="Sample">A sample handle from AddStream().</param>
         <param type="LARGE" name="Length">Byte length of the sample stream.</param>
@@ -227,7 +227,7 @@
     <method>
       <name>SetVolume</name>
       <comment>Sets the volume for input and output mixers.</comment>
-      <prototype>ERR sndSetVolume(OBJECTPTR Object, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume)</prototype>
+      <prototype>ERR snd::SetVolume(OBJECTPTR Object, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the mixer that you want to set.</param>
         <param type="CSTRING" name="Name">If the correct index number is unknown, the name of the mixer may be set here.</param>

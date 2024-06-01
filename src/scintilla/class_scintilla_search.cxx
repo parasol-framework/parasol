@@ -75,7 +75,7 @@ Search: The string sequence was not found.
 
 *********************************************************************************************************************/
 
-static ERR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
+static ERR SEARCH_Find(objScintillaSearch *Self, struct ss::Find *Args)
 {
    pf::Log log;
    LONG start, end, pos, startLine, endLine, i, targstart, targend;
@@ -208,7 +208,7 @@ Search: The string could not be found.
 
 *********************************************************************************************************************/
 
-static ERR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
+static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 {
    pf::Log log;
 
@@ -314,7 +314,7 @@ Search: The string could not be found.
 
 *********************************************************************************************************************/
 
-static ERR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
+static ERR SEARCH_Prev(objScintillaSearch *Self, struct ss::Prev *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -324,7 +324,7 @@ static ERR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
    if ((Self->Flags & STF::BACKWARDS) != STF::NIL) Self->Flags &= ~STF::BACKWARDS;
    else Self->Flags |= STF::BACKWARDS;
 
-   SEARCH_Next(Self, (struct ssNext *)Args);
+   SEARCH_Next(Self, (struct ss::Next *)Args);
 
    Self->Flags = flags; // Restore the original flags
    return ERR::Okay;
@@ -374,9 +374,9 @@ static const FunctionField argsPrev[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 
 static const FunctionField argsFind[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
 
 static const MethodEntry clMethods[] = {
-   { MT_SsNext, (APTR)SEARCH_Next, "Next", argsNext, sizeof(struct ssNext) },
-   { MT_SsPrev, (APTR)SEARCH_Prev, "Prev", argsPrev, sizeof(struct ssPrev) },
-   { MT_SsFind, (APTR)SEARCH_Find, "Find", argsFind, sizeof(struct ssFind) },
+   { MT_SsNext, (APTR)SEARCH_Next, "Next", argsNext, sizeof(struct ss::Next) },
+   { MT_SsPrev, (APTR)SEARCH_Prev, "Prev", argsPrev, sizeof(struct ss::Prev) },
+   { MT_SsFind, (APTR)SEARCH_Find, "Find", argsFind, sizeof(struct ss::Find) },
    { 0, NULL, NULL, NULL, 0 }
 };
 

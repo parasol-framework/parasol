@@ -43,7 +43,7 @@ static void * test_locking(void *Arg)
       //log.branch("Attempt %d.%d: Acquiring the memory.", info->index, i);
 
       BYTE *memory;
-      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory); error IS ERR::Okay) {
+      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, (APTR *)&memory); error IS ERR::Okay) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);

@@ -19,15 +19,15 @@ FDEF maMergeFile[] = { { "Path", FD_STR }, { 0, 0 } };
 FDEF maMerge[] = { { "Source", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clConfigMethods[] = {
-   { -1, (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfgReadValue) },
-   { -2, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfgSet) },
-   { -3, (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfgWriteValue) },
-   { -4, (APTR)CONFIG_DeleteKey, "DeleteKey", maDeleteKey, sizeof(struct cfgDeleteKey) },
-   { -5, (APTR)CONFIG_DeleteGroup, "DeleteGroup", maDeleteGroup, sizeof(struct cfgDeleteGroup) },
-   { -6, (APTR)CONFIG_GetGroupFromIndex, "GetGroupFromIndex", maGetGroupFromIndex, sizeof(struct cfgGetGroupFromIndex) },
-   { -7, (APTR)CONFIG_SortByKey, "SortByKey", maSortByKey, sizeof(struct cfgSortByKey) },
-   { -9, (APTR)CONFIG_MergeFile, "MergeFile", maMergeFile, sizeof(struct cfgMergeFile) },
-   { -10, (APTR)CONFIG_Merge, "Merge", maMerge, sizeof(struct cfgMerge) },
+   { -1, (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfg::ReadValue) },
+   { -2, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfg::Set) },
+   { -3, (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfg::WriteValue) },
+   { -4, (APTR)CONFIG_DeleteKey, "DeleteKey", maDeleteKey, sizeof(struct cfg::DeleteKey) },
+   { -5, (APTR)CONFIG_DeleteGroup, "DeleteGroup", maDeleteGroup, sizeof(struct cfg::DeleteGroup) },
+   { -6, (APTR)CONFIG_GetGroupFromIndex, "GetGroupFromIndex", maGetGroupFromIndex, sizeof(struct cfg::GetGroupFromIndex) },
+   { -7, (APTR)CONFIG_SortByKey, "SortByKey", maSortByKey, sizeof(struct cfg::SortByKey) },
+   { -9, (APTR)CONFIG_MergeFile, "MergeFile", maMergeFile, sizeof(struct cfg::MergeFile) },
+   { -10, (APTR)CONFIG_Merge, "Merge", maMerge, sizeof(struct cfg::Merge) },
    { 0, 0, 0, 0, 0 }
 };
 

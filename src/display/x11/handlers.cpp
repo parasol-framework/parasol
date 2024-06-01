@@ -97,7 +97,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if ((Atom)xevent.xclient.data.l[0] == XWADeleteWindow) {
                if (auto display_id = get_display(xevent.xany.window)) {
                   auto surface_id = GetOwnerID(display_id);
-                  const WindowHook hook(surface_id, WH::CLOSE);
+                  const WinHook hook(surface_id, WH::CLOSE);
 
                   if (glWindowHooks.contains(hook)) {
                      auto func = &glWindowHooks[hook];
@@ -109,7 +109,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                         result = callback(surface_id, func->Meta);
                      }
                      else if (func->isScript()) {
-                        scCall(*func, std::to_array<ScriptArg>({ { "SurfaceID", surface_id, FDF_OBJECTID } }), result);
+                        sc::Call(*func, std::to_array<ScriptArg>({ { "SurfaceID", surface_id, FDF_OBJECTID } }), result);
                      }
                      else result = ERR::Okay;
 
@@ -148,20 +148,15 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          auto notify = (XRRScreenChangeNotifyEvent *)&xevent;
 
          if (auto display_id = get_display(xevent.xany.window)) {
-            auto surface_id = GetOwnerID(display_id);
-            objSurface *surface;
-            if (AccessObject(surface_id, 5000, &surface) IS ERR::Okay) {
+            if (ScopedObjectLock<objSurface> surface(GetOwnerID(display_id), 5000); surface.granted()) {
                // Update the display width/height so that we don't recursively post further display mode updates to the
                // X server.
 
-             extDisplay *display;
-              if (AccessObject(display_id, 5000, &display) IS ERR::Okay) {
+               if (ScopedObjectLock<extDisplay> display(display_id, 5000); display.granted()) {
                   display->Width  = notify->width;
                   display->Height = notify->height;
-                  acResize(surface, notify->width, notify->height, 0);
-                  ReleaseObject(display);
+                  acResize(*surface, notify->width, notify->height, 0);
                }
-               ReleaseObject(surface);
             }
          }
       }
@@ -180,7 +175,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
 void handle_button_press(XEvent *xevent)
 {
-   if (auto pointer = gfxAccessPointer()) {
+   if (auto pointer = gfx::AccessPointer()) {
       if ((xevent->xbutton.button IS 4) or (xevent->xbutton.button IS 5)) {
          // Mouse wheel movement
 
@@ -228,7 +223,7 @@ void handle_button_press(XEvent *xevent)
 
 void handle_button_release(XEvent *xevent)
 {
-   if (auto pointer = gfxAccessPointer()) {
+   if (auto pointer = gfx::AccessPointer()) {
       struct dcDeviceInput input = {
          .Values    = { 0, 0 },
          .Timestamp = PreciseTime(),
@@ -279,11 +274,12 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
    log.traceBranch("Win: %d, Pos: %dx%d,%dx%d", (int)xevent->window, x, y, width, height);
 
-   if (auto display_id = get_display(xevent->window)) {
-      extDisplay *display;
-      if (AccessObject(display_id, 3000, &display) IS ERR::Okay) {
+   FUNCTION feedback;
+   OBJECTID display_id;
+   LONG absx, absy;
+   if ((display_id = get_display(xevent->window))) {
+      if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
          Window childwin;
-         LONG absx, absy;
 
          XTranslateCoordinates(XDisplay, (Window)display->WindowHandle, DefaultRootWindow(XDisplay),
             0, 0, &absx, &absy, &childwin);
@@ -292,22 +288,26 @@ void handle_configure_notify(XConfigureEvent *xevent)
          display->Y = absy;
          display->Width  = width;
          display->Height = height;
-         resize_pixmap(display, width, height);
+         resize_pixmap(*display, width, height);
          acResize(display->Bitmap, width, height, 0.0);
 
-         FUNCTION feedback = display->ResizeFeedback;
-
-         ReleaseObject(display);
-
-         // Notify with the display and surface unlocked, this reduces the potential for dead-locking.
-
-         log.trace("Sending redimension notification: %dx%d,%dx%d", absx, absy, width, height);
-
-         resize_feedback(&feedback, display_id, absx, absy, width, height);
+         feedback = display->ResizeFeedback;
       }
-      else log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
+      else {
+         log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
+         return;
+      }
    }
-   else log.warning("Failed to retrieve Display from X window.");
+   else {
+      log.warning("Failed to retrieve Display from X window.");
+      return;
+   }
+
+   // Notify with the display and surface unlocked, this reduces the potential for dead-locking.
+
+   log.trace("Sending redimension notification: %dx%d,%dx%d", absx, absy, width, height);
+
+   resize_feedback(&feedback, display_id, absx, absy, width, height);
 }
 
 //********************************************************************************************************************
@@ -322,8 +322,9 @@ void handle_exposure(XExposeEvent *event)
 
       XEvent xevent;
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
-      struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
-      QueueAction(MT_DrwExpose, surface_id, &region); // Redraw everything
+
+      struct drw::ExposeToDisplay region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
+      QueueAction(MT_DrwExposeToDisplay, surface_id, &region); // Redraw everything
    }
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
 }
@@ -663,9 +664,7 @@ void handle_enter_notify(XCrossingEvent *xevent)
 
 void process_movement(Window Window, LONG X, LONG Y)
 {
-   objPointer *pointer;
-
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = gfx::AccessPointer()) {
       // Refer to the Pointer class to see how this works
       pointer->HostX = X;
       pointer->HostY = Y;

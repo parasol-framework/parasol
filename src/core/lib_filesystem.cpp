@@ -187,7 +187,7 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
    }
    else if (Callback->isScript()) {
       ERR error;
-      if (scCall(*Callback, std::to_array<ScriptArg>({
+      if (sc::Call(*Callback, std::to_array<ScriptArg>({
          { "Size",       Feedback->Size },
          { "Position",   Feedback->Position },
          { "Path",       Feedback->Path },
@@ -1635,7 +1635,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
-            error = flMove(*srcfile, Dest, NULL);
+            error = fl::Move(*srcfile, Dest, NULL);
             goto exit;
          }
       }
@@ -1778,7 +1778,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       else error = log.warning(ERR::AllocMemory);
 
       if ((Move) and (error IS ERR::Okay)) {
-         flDelete(*srcfile, 0);
+         fl::Delete(*srcfile, 0);
       }
 
       goto exit;

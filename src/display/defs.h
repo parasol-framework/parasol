@@ -160,26 +160,26 @@ struct SurfaceRecord {
 typedef std::vector<SurfaceRecord> SURFACELIST;
 extern std::recursive_mutex glSurfaceLock;
 
-class WindowHook {
+class WinHook {
 public:
    OBJECTID SurfaceID;
    WH Event;
 
-   WindowHook(OBJECTID aSurfaceID, WH aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
+   WinHook(OBJECTID aSurfaceID, WH aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
 
-   bool operator== (const WindowHook &rhs) const {
+   bool operator== (const WinHook &rhs) const {
       return (SurfaceID == rhs.SurfaceID) and (Event == rhs.Event);
    }
 
-   bool operator() (const WindowHook &lhs, const WindowHook &rhs) const {
+   bool operator() (const WinHook &lhs, const WinHook &rhs) const {
        if (lhs.SurfaceID == rhs.SurfaceID) return UBYTE(lhs.Event) < UBYTE(rhs.Event);
        else return lhs.SurfaceID < rhs.SurfaceID;
    }
 };
 
 namespace std {
-   template <> struct hash<WindowHook> {
-      std::size_t operator()(const WindowHook &k) const {
+   template <> struct hash<WinHook> {
+      std::size_t operator()(const WinHook &k) const {
          return ((std::hash<OBJECTID>()(k.SurfaceID)
             ^ (std::hash<UBYTE>()(UBYTE(k.Event)) << 1)) >> 1);
       }
@@ -454,7 +454,7 @@ extern ERR  update_surface_copy(extSurface *);
 extern ERR  update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 extern void get_resolutions(extDisplay *);
 
-extern ERR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
+extern ERR RedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
 #ifdef DBG_LAYERS
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
@@ -483,7 +483,7 @@ extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
 
-extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
+extern std::unordered_map<WinHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
 extern std::recursive_mutex glFocusLock;
 extern std::recursive_mutex glSurfaceLock;

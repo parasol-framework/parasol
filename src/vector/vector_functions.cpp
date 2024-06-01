@@ -53,17 +53,7 @@ static SimpleVector * new_simplevector(void)
    return vector;
 }
 
-//********************************************************************************************************************
-
-#include "module_def.c"
-
-//********************************************************************************************************************
-
-ERR MODOpen(OBJECTPTR Module)
-{
-   ((objModule *)Module)->setFunctionList(glFunctions);
-   return ERR::Okay;
-}
+namespace vec {
 
 /*********************************************************************************************************************
 
@@ -78,7 +68,7 @@ processing the path as a string is detrimental to performance.
 
 -INPUT-
 ptr Path: The source path to be copied.
-obj VectorPath: The target VectorPath object.
+obj(VectorPath) VectorPath: The target VectorPath object.
 
 -ERRORS-
 Okay
@@ -86,7 +76,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
+ERR ApplyPath(APTR Vector, objVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
    if (VectorPath->classID() != CLASSID::VECTORPATH) return ERR::Args;
@@ -117,9 +107,9 @@ int(ARC) Flags: Optional flags.
 
 *********************************************************************************************************************/
 
-void vecArcTo(SimpleVector *Vector, double RX, double RY, double Angle, double X, double Y, ARC Flags)
+void ArcTo(APTR Vector, double RX, double RY, double Angle, double X, double Y, ARC Flags)
 {
-   Vector->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
+   ((SimpleVector *)Vector)->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
 }
 
 /*********************************************************************************************************************
@@ -145,7 +135,7 @@ double: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-double vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
+double CharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
 {
    if (!Handle) return 0;
 
@@ -166,7 +156,7 @@ double vecCharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
    }
    else {
       if (Kerning) *Kerning = 0;
-      return fntCharWidth(((bmp_font *)Handle)->font, Char);
+      return fnt::CharWidth(((bmp_font *)Handle)->font, Char);
    }
 }
 
@@ -186,9 +176,9 @@ ptr Path: The vector path to modify.
 
 *********************************************************************************************************************/
 
-void vecClosePath(SimpleVector *Vector)
+void ClosePath(APTR Vector)
 {
-   Vector->mPath.close_polygon();
+   ((SimpleVector *)Vector)->mPath.close_polygon();
 }
 
 /*********************************************************************************************************************
@@ -208,9 +198,9 @@ double Y: The vertical end point for the curve3 command.
 
 *********************************************************************************************************************/
 
-void vecCurve3(SimpleVector *Vector, double CtrlX, double CtrlY, double X, double Y)
+void Curve3(APTR Vector, double CtrlX, double CtrlY, double X, double Y)
 {
-   Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
+   ((SimpleVector *)Vector)->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
 
 /*********************************************************************************************************************
@@ -232,9 +222,9 @@ double Y: The vertical end point for the curve4 command.
 
 *********************************************************************************************************************/
 
-void vecCurve4(SimpleVector *Vector, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y)
+void Curve4(APTR Vector, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y)
 {
-   Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
+   ((SimpleVector *)Vector)->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
 
 /*********************************************************************************************************************
@@ -264,7 +254,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, double StrokeWidth, OBJECTPTR StrokeStyle,
+ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
@@ -277,7 +267,7 @@ ERR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, double StrokeWidth,
       return ERR::Okay;
    }
 
-   Path->DrawPath(Bitmap, StrokeWidth, StrokeStyle, FillStyle);
+   ((SimpleVector *)Path)->DrawPath(Bitmap, StrokeWidth, StrokeStyle, FillStyle);
    return ERR::Okay;
 }
 
@@ -301,7 +291,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecFlushMatrix(VectorMatrix *Matrix)
+ERR FlushMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -330,9 +320,9 @@ int: The internal command value for the vertex will be returned.
 
 *********************************************************************************************************************/
 
-LONG vecGetVertex(SimpleVector *Vector, double *X, double *Y)
+LONG GetVertex(APTR Vector, double *X, double *Y)
 {
-   return Vector->mPath.vertex(X, Y);
+   return ((SimpleVector *)Vector)->mPath.vertex(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -358,7 +348,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR vecGenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path)
+ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -431,7 +421,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR vecGenerateRectangle(double X, double Y, double Width, double Height, APTR *Path)
+ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -494,7 +484,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR vecGeneratePath(CSTRING Sequence, APTR *Path)
+ERR GeneratePath(CSTRING Sequence, APTR *Path)
 {
    if (!Path) return ERR::NullArgs;
 
@@ -544,7 +534,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecGetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -578,7 +568,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecGetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
+ERR GetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
 {
    if ((!Handle) or (!Metrics)) return ERR::NullArgs;
 
@@ -616,7 +606,7 @@ If the `Callback` returns `ERR::Terminate`, then no further coordinates will be 
 
 -INPUT-
 ptr Path:      The vector path to trace.
-func Callback: A function to call with the path coordinates.
+ptr(func) Callback: A function to call with the path coordinates.
 double Scale:  Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.
 
 -ERRORS-
@@ -625,14 +615,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, double Scale)
+ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
 {
    pf::Log log;
 
    if ((!Path) or (!Callback)) return ERR::NullArgs;
 
-   Path->mPath.rewind(0);
-   Path->mPath.approximation_scale(Scale);
+   ((SimpleVector *)Path)->mPath.rewind(0);
+   ((SimpleVector *)Path)->mPath.approximation_scale(Scale);
 
    double x, y;
    LONG cmd = -1;
@@ -644,9 +634,9 @@ ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, double Scale)
       pf::SwitchContext context(GetParentContext());
 
       do {
-         cmd = Path->mPath.vertex(&x, &y);
+         cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
          if (agg::is_vertex(cmd)) {
-            if (routine(Path, index++, cmd, x, y, Callback->Meta) IS ERR::Terminate) {
+            if (routine((SimpleVector *)Path, index++, cmd, x, y, Callback->Meta) IS ERR::Terminate) {
                return ERR::Okay;
             }
          }
@@ -664,13 +654,13 @@ ERR vecTracePath(SimpleVector *Path, FUNCTION *Callback, double Scale)
 
       ERR result;
       do {
-         cmd = Path->mPath.vertex(&x, &y);
+         cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
          if (agg::is_vertex(cmd)) {
             args[1].Long = index++;
             args[2].Long = cmd;
             args[3].Double = x;
             args[4].Double = y;
-            if (scCall(*Callback, args, result) != ERR::Okay) return ERR::Failed;
+            if (sc::Call(*Callback, args, result) != ERR::Okay) return ERR::Failed;
             if (result IS ERR::Terminate) return ERR::Okay;
          }
       } while (cmd != agg::path_cmd_stop);
@@ -694,9 +684,9 @@ double Y: The line end point on the vertical plane.
 
 *********************************************************************************************************************/
 
-void vecLineTo(SimpleVector *Vector, double X, double Y)
+void LineTo(APTR Vector, double X, double Y)
 {
-   Vector->mPath.line_to(X, Y);
+   ((SimpleVector *)Vector)->mPath.line_to(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -716,9 +706,9 @@ double Y: The vertical end point for the command.
 
 *********************************************************************************************************************/
 
-void vecMoveTo(SimpleVector *Vector, double X, double Y)
+void MoveTo(APTR Vector, double X, double Y)
 {
-   Vector->mPath.move_to(X, Y);
+   ((SimpleVector *)Vector)->mPath.move_to(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -744,7 +734,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecMultiply(VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX,
+ERR Multiply(VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX,
    double ScaleY, double TranslateX, double TranslateY)
 {
    if (!Matrix) {
@@ -785,7 +775,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
+ERR MultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
       pf::Log log(__FUNCTION__);
@@ -832,7 +822,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
+ERR ParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
       pf::Log log(__FUNCTION__);
@@ -934,7 +924,7 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             break;
 
          case M_ROTATE: {
-            vecRotate(Matrix, m.angle, m.tx, m.ty);
+            vec::Rotate(Matrix, m.angle, m.tx, m.ty);
             break;
          }
 
@@ -948,7 +938,7 @@ ERR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             break;
 
          case M_SKEW:
-            vecSkew(Matrix, m.tx, m.ty);
+            vec::Skew(Matrix, m.tx, m.ty);
             break;
       }
    });
@@ -990,7 +980,7 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERR vecReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
+ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
    ULONG i;
@@ -1276,7 +1266,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecResetMatrix(VectorMatrix *Matrix)
+ERR ResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1309,9 +1299,9 @@ ptr Path: The vector path to rewind.
 
 *********************************************************************************************************************/
 
-void vecRewindPath(SimpleVector *Vector)
+void RewindPath(APTR Vector)
 {
-   if (Vector) Vector->mPath.rewind(0);
+   if (Vector) ((SimpleVector *)Vector)->mPath.rewind(0);
 }
 
 /*********************************************************************************************************************
@@ -1334,7 +1324,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecRotate(VectorMatrix *Matrix, double Angle, double CenterX, double CenterY)
+ERR Rotate(VectorMatrix *Matrix, double Angle, double CenterX, double CenterY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1389,7 +1379,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR vecScale(VectorMatrix *Matrix, double X, double Y)
+ERR Scale(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1428,7 +1418,7 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 *********************************************************************************************************************/
 
-ERR vecSkew(VectorMatrix *Matrix, double X, double Y)
+ERR Skew(VectorMatrix *Matrix, double X, double Y)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1440,7 +1430,7 @@ ERR vecSkew(VectorMatrix *Matrix, double X, double Y)
          .ScaleY = 1.0, .TranslateX = 0, .TranslateY = 0
       };
 
-      vecMultiplyMatrix(Matrix, &skew);
+      vec::MultiplyMatrix(Matrix, &skew);
    }
    else return log.warning(ERR::OutOfRange);
 
@@ -1450,7 +1440,7 @@ ERR vecSkew(VectorMatrix *Matrix, double X, double Y)
          .ScaleY = 1.0, .TranslateX = 0, .TranslateY = 0
       };
 
-      vecMultiplyMatrix(Matrix, &skew);
+      vec::MultiplyMatrix(Matrix, &skew);
    }
    else return log.warning(ERR::OutOfRange);
 
@@ -1474,10 +1464,10 @@ double Y: The vertical end point for the smooth3 command.
 
 *********************************************************************************************************************/
 
-void vecSmooth3(SimpleVector *Vector, double X, double Y)
+void Smooth3(APTR Vector, double X, double Y)
 {
    if (!Vector) return;
-   Vector->mPath.curve3(X, Y);
+   ((SimpleVector *)Vector)->mPath.curve3(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -1500,10 +1490,10 @@ double Y: The vertical end point for the smooth4 instruction.
 
 *********************************************************************************************************************/
 
-void vecSmooth4(SimpleVector *Vector, double CtrlX, double CtrlY, double X, double Y)
+void Smooth4(APTR Vector, double CtrlX, double CtrlY, double X, double Y)
 {
    if (!Vector) return;
-   Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
+   ((SimpleVector *)Vector)->mPath.curve4(CtrlX, CtrlY, X, Y);
 }
 
 /*********************************************************************************************************************
@@ -1528,7 +1518,7 @@ double: The pixel width of the string is returned.
 
 *********************************************************************************************************************/
 
-double vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
+double StringWidth(APTR Handle, CSTRING String, LONG Chars)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1570,7 +1560,7 @@ double vecStringWidth(APTR Handle, CSTRING String, LONG Chars)
       if (widest > len) return widest;
       else return len;
    }
-   else return fntStringWidth(((bmp_font *)Handle)->font, String, Chars);
+   else return fnt::StringWidth(((bmp_font *)Handle)->font, String, Chars);
 }
 
 /*********************************************************************************************************************
@@ -1592,7 +1582,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR vecTranslate(VectorMatrix *Matrix, double X, double Y)
+ERR Translate(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
@@ -1622,8 +1612,22 @@ double Y: Translate the path vertically by the given value.
 
 *********************************************************************************************************************/
 
-void vecTranslatePath(SimpleVector *Vector, double X, double Y)
+void TranslatePath(APTR Vector, double X, double Y)
 {
    if (!Vector) return;
-   Vector->mPath.translate_all_paths(X, Y);
+   ((SimpleVector *)Vector)->mPath.translate_all_paths(X, Y);
+}
+
+} // namespace
+
+//********************************************************************************************************************
+
+#include "module_def.c"
+
+//********************************************************************************************************************
+
+ERR MODOpen(OBJECTPTR Module)
+{
+   ((objModule *)Module)->setFunctionList(glFunctions);
+   return ERR::Okay;
 }

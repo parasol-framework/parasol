@@ -118,7 +118,7 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
       routine(DisplayID, X, Y, Width, Height, Feedback->Meta);
    }
    else if (Feedback->isScript()) {
-      scCall(*Feedback, std::to_array<ScriptArg>({
+      sc::Call(*Feedback, std::to_array<ScriptArg>({
          { "Display", DisplayID, FD_OBJECTID },
          { "X",       X },
          { "Y",       Y },
@@ -821,10 +821,8 @@ static ERR DISPLAY_Init(extDisplay *Self)
          CurrentTask()->get(FID_Name, &name);
          HWND popover = 0;
          if (Self->PopOverID) {
-            extDisplay *other_display;
-            if (AccessObject(Self->PopOverID, 3000, &other_display) IS ERR::Okay) {
+            if (ScopedObjectLock<extDisplay> other_display(Self->PopOverID, 3000); other_display.granted()) {
                popover = other_display->WindowHandle;
-               ReleaseObject(other_display);
             }
             else log.warning(ERR::AccessObject);
          }
@@ -880,7 +878,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
 
    if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
-   struct gfxUpdatePalette pal = { .NewPalette = bmp->Palette };
+   struct gfx::UpdatePalette pal = { .NewPalette = bmp->Palette };
    Action(MT_GfxUpdatePalette, Self, &pal);
 
    // Take a record of the pixel format for GetDisplayInfo()
@@ -1096,7 +1094,7 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
 {
    new (Self) extDisplay;
 
-   if (NewObject(CLASSID::BITMAP, NF::LOCAL, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
+   if (NewLocalObject(CLASSID::BITMAP, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
 
    OBJECTID id;
    if (FindObject("SystemVideo", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay) SetName(Self->Bitmap, "SystemVideo");
@@ -1381,7 +1379,7 @@ NoSupport: The host platform does not support this feature.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
+static ERR DISPLAY_SizeHints(extDisplay *Self, struct gfx::SizeHints *Args)
 {
 #ifdef __xwindows__
    XSizeHints hints = { .flags = 0 };
@@ -1446,7 +1444,7 @@ Failed: Failed to switch to the requested display mode.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
+static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfx::SetDisplay *Args)
 {
    pf::Log log;
 
@@ -1547,7 +1545,7 @@ NoSupport: The graphics hardware does not support gamma correction.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
+static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfx::SetGamma *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1609,7 +1607,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *Args)
+static ERR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfx::SetGammaLinear *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1687,7 +1685,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
+static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfx::SetMonitor *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1869,7 +1867,7 @@ ERR DISPLAY_Show(extDisplay *Self)
    objPointer *pointer;
    OBJECTID pointer_id;
    if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &pointer_id) != ERR::Okay) {
-      if (NewObject(CLASSID::POINTER, NF::UNTRACKED, &pointer) IS ERR::Okay) {
+      if (NewObject(CLASSID::POINTER, NF::UNTRACKED, (OBJECTPTR *)&pointer) IS ERR::Okay) {
          SetName(pointer, "SystemPointer");
          if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::SURFACE)) pointer->setSurface(Self->Owner->UID);
 
@@ -1909,7 +1907,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Args)
+static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfx::UpdatePalette *Args)
 {
    pf::Log log;
 
@@ -2584,17 +2582,15 @@ static ERR SET_PopOver(extDisplay *Self, OBJECTID Value)
 #ifdef __xwindows__
 
    if (Self->initialised()) {
-      extDisplay *popover;
       if (!Value) {
          Self->PopOverID = 0;
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
-      else if (AccessObject(Value, 2000, &popover) IS ERR::Okay) {
+      else if (ScopedObjectLock<extDisplay> popover(Value, 2000); popover.granted()) {
          if (popover->Class->BaseClassID IS CLASSID::DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
          }
-         ReleaseObject(popover);
       }
       else return ERR::AccessObject;
    }

@@ -724,9 +724,9 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
                   case OP::INVERT_RGB:  Self->doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
                }
 
-                bmpDemultiply(mixBmp);
+                bmp::Demultiply(mixBmp);
             }
-            bmpDemultiply(inBmp);
+            bmp::Demultiply(inBmp);
          }
 
          break;

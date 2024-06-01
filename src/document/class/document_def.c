@@ -36,19 +36,19 @@ FDEF maEdit[] = { { "Name", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maReadContent[] = { { "Format", FD_LONG }, { "Start", FD_LONG }, { "End", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clDocumentMethods[] = {
-   { -1, (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct docFeedParser) },
-   { -2, (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct docSelectLink) },
-   { -4, (APTR)DOCUMENT_FindIndex, "FindIndex", maFindIndex, sizeof(struct docFindIndex) },
-   { -5, (APTR)DOCUMENT_InsertXML, "InsertXML", maInsertXML, sizeof(struct docInsertXML) },
-   { -6, (APTR)DOCUMENT_RemoveContent, "RemoveContent", maRemoveContent, sizeof(struct docRemoveContent) },
-   { -7, (APTR)DOCUMENT_InsertText, "InsertText", maInsertText, sizeof(struct docInsertText) },
-   { -8, (APTR)DOCUMENT_CallFunction, "CallFunction", maCallFunction, sizeof(struct docCallFunction) },
-   { -9, (APTR)DOCUMENT_AddListener, "AddListener", maAddListener, sizeof(struct docAddListener) },
-   { -10, (APTR)DOCUMENT_RemoveListener, "RemoveListener", maRemoveListener, sizeof(struct docRemoveListener) },
-   { -11, (APTR)DOCUMENT_ShowIndex, "ShowIndex", maShowIndex, sizeof(struct docShowIndex) },
-   { -12, (APTR)DOCUMENT_HideIndex, "HideIndex", maHideIndex, sizeof(struct docHideIndex) },
-   { -13, (APTR)DOCUMENT_Edit, "Edit", maEdit, sizeof(struct docEdit) },
-   { -14, (APTR)DOCUMENT_ReadContent, "ReadContent", maReadContent, sizeof(struct docReadContent) },
+   { -1, (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct doc::FeedParser) },
+   { -2, (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct doc::SelectLink) },
+   { -4, (APTR)DOCUMENT_FindIndex, "FindIndex", maFindIndex, sizeof(struct doc::FindIndex) },
+   { -5, (APTR)DOCUMENT_InsertXML, "InsertXML", maInsertXML, sizeof(struct doc::InsertXML) },
+   { -6, (APTR)DOCUMENT_RemoveContent, "RemoveContent", maRemoveContent, sizeof(struct doc::RemoveContent) },
+   { -7, (APTR)DOCUMENT_InsertText, "InsertText", maInsertText, sizeof(struct doc::InsertText) },
+   { -8, (APTR)DOCUMENT_CallFunction, "CallFunction", maCallFunction, sizeof(struct doc::CallFunction) },
+   { -9, (APTR)DOCUMENT_AddListener, "AddListener", maAddListener, sizeof(struct doc::AddListener) },
+   { -10, (APTR)DOCUMENT_RemoveListener, "RemoveListener", maRemoveListener, sizeof(struct doc::RemoveListener) },
+   { -11, (APTR)DOCUMENT_ShowIndex, "ShowIndex", maShowIndex, sizeof(struct doc::ShowIndex) },
+   { -12, (APTR)DOCUMENT_HideIndex, "HideIndex", maHideIndex, sizeof(struct doc::HideIndex) },
+   { -13, (APTR)DOCUMENT_Edit, "Edit", maEdit, sizeof(struct doc::Edit) },
+   { -14, (APTR)DOCUMENT_ReadContent, "ReadContent", maReadContent, sizeof(struct doc::ReadContent) },
    { 0, 0, 0, 0, 0 }
 };
 

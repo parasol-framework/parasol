@@ -146,7 +146,7 @@ struct parser {
             fl::Fill("rgb(0,0,0,128)")
          });
 
-         scAddDef(Self->Viewport->Scene, "/widget/default", pattern);
+         sc::AddDef(Self->Viewport->Scene, "/widget/default", pattern);
       }
    }
 };
@@ -265,7 +265,7 @@ void parser::process_page(objXML *pXML)
    if (!Self->PageProcessed) {
       for (auto &trigger : Self->Triggers[LONG(DRT::PAGE_PROCESSED)]) {
          if (trigger.isScript()) {
-            scCall(trigger);
+            sc::Call(trigger);
          }
          else if (trigger.isC()) {
             auto routine = (void (*)(APTR, extDocument *, APTR))trigger.Routine;
@@ -646,7 +646,7 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
    }
    else if (!Output.compare(pos, sizeof("[%content]")-1, "[%content]")) {
       if ((m_in_template) and (m_inject_tag)) {
-         std::string content = xmlGetContent(m_inject_tag[0][0]);
+         std::string content = xml::GetContent(m_inject_tag[0][0]);
          Output.replace(pos, sizeof("[%content]")-1, content);
 
          //if (!xmlSerialise(m_inject_xml, m_inject_tag[0][0].ID, XMF::INCLUDE_SIBLINGS, &content)) {
@@ -1455,7 +1455,7 @@ void parser::tag_body(XMLTag &Tag)
       switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_clip_path: {
             OBJECTPTR clip;
-            if (scFindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip) IS ERR::Okay) {
+            if (sc::FindDef(Self->Scene, Tag.Attribs[i].Value.c_str(), &clip) IS ERR::Okay) {
                Self->Page->set(FID_Mask, clip);
             }
             break;
@@ -1620,16 +1620,16 @@ void parser::tag_call(XMLTag &Tag)
             else args.emplace_back(Tag.Attribs[i].Name.c_str(), Tag.Attribs[i].Value);
          }
 
-         scExec(script, function.c_str(), args.data(), args.size());
+         sc::Exec(script, function.c_str(), args.data(), args.size());
       }
-      else scExec(script, function.c_str(), NULL, 0);
+      else sc::Exec(script, function.c_str(), NULL, 0);
    }
 
    // Check for a result and print it
 
    CSTRING *results;
    LONG size;
-   if ((GetFieldArray(script, FID_Results, &results, &size) IS ERR::Okay) and (size > 0)) {
+   if ((GetFieldArray(script, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
       auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
       if (xmlinc) {
          auto old_xml = change_xml(xmlinc);
@@ -1721,7 +1721,7 @@ void parser::tag_button(XMLTag &Tag)
             });
          }
 
-         scAddDef(Self->Viewport->Scene, "/widget/button/active", pattern_active);
+         sc::AddDef(Self->Viewport->Scene, "/widget/button/active", pattern_active);
       }
 
       if (auto pattern_inactive = objVectorPattern::create::global({
@@ -1744,7 +1744,7 @@ void parser::tag_button(XMLTag &Tag)
             });
          }
 
-         scAddDef(Self->Viewport->Scene, "/widget/button/inactive", pattern_inactive);
+         sc::AddDef(Self->Viewport->Scene, "/widget/button/inactive", pattern_inactive);
       }
    }
 
@@ -1827,7 +1827,7 @@ void parser::tag_checkbox(XMLTag &Tag)
          vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
             fl::ViewX(-8), fl::ViewY(-8), fl::ViewWidth(54), fl::ViewHeight(54));
 
-         scAddDef(Self->Viewport->Scene, "/widget/checkbox/on", pattern_on);
+         sc::AddDef(Self->Viewport->Scene, "/widget/checkbox/on", pattern_on);
       }
 
       if (auto pattern_off = objVectorPattern::create::global({
@@ -1853,7 +1853,7 @@ void parser::tag_checkbox(XMLTag &Tag)
          vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
             fl::ViewX(-8), fl::ViewY(-8), fl::ViewWidth(54), fl::ViewHeight(54));
 
-         scAddDef(Self->Viewport->Scene, "/widget/checkbox/off", pattern_off);
+         sc::AddDef(Self->Viewport->Scene, "/widget/checkbox/off", pattern_off);
       }
    }
 
@@ -1900,7 +1900,7 @@ void parser::tag_combobox(XMLTag &Tag)
             // adjustments may also be provided.
             if (scan.hasContent()) {
                STRING xml_ser;
-               if (xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser) IS ERR::Okay) {
+               if (xml::Serialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser) IS ERR::Okay) {
                   widget.style = xml_ser;
                   FreeResource(xml_ser);
                }
@@ -1911,7 +1911,7 @@ void parser::tag_combobox(XMLTag &Tag)
 
             if (!scan.Children.empty()) {
                STRING xml_ser;
-               if (xmlSerialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser) IS ERR::Okay) {
+               if (xml::Serialise(m_xml, scan.Children[0].ID, XMF::INCLUDE_SIBLINGS, &xml_ser) IS ERR::Okay) {
                   value = xml_ser;
                   FreeResource(xml_ser);
                }
@@ -1964,7 +1964,7 @@ void parser::tag_combobox(XMLTag &Tag)
             fl::ViewX(-PAD), fl::ViewY(-PAD),
             fl::ViewWidth(29+(PAD*2)), fl::ViewHeight(29+(PAD*2)));
 
-         scAddDef(Self->Viewport->Scene, "/widget/combobox", pattern_cb);
+         sc::AddDef(Self->Viewport->Scene, "/widget/combobox", pattern_cb);
       }
    }
 
@@ -2060,7 +2060,7 @@ void parser::tag_svg(XMLTag &Tag)
    }
 
    STRING xml_svg;
-   if (auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg); err IS ERR::Okay) {
+   if (auto err = xml::Serialise(m_xml, Tag.ID, XMF::NIL, &xml_svg); err IS ERR::Okay) {
       if ((Self->SVG = objSVG::create::local({ fl::Statement(xml_svg), fl::Target(target) }))) {
          if (target IS Self->View) { // Put the page back in front of the background objects
             acMoveToFront(Self->Page);
@@ -2639,8 +2639,8 @@ void parser::tag_template(XMLTag &Tag)
    // styles by placing updated definitions at the end of the style list.
 
    STRING strxml;
-   if (xmlSerialise(m_xml, Tag.ID, XMF::NIL, &strxml) IS ERR::Okay) {
-      xmlInsertXML(Self->Templates, 0, XMI::PREV, strxml, 0);
+   if (xml::Serialise(m_xml, Tag.ID, XMF::NIL, &strxml) IS ERR::Okay) {
+      xml::InsertXML(Self->Templates, 0, XMI::PREV, strxml, 0);
       FreeResource(strxml);
    }
    else log.warning("Failed to convert template %d to an XML string.", Tag.ID);
@@ -2973,10 +2973,10 @@ void parser::tag_object(XMLTag &Tag)
    /*
    pf::Log log(__FUNCTION__);
 
-   // NF::INTEGRAL is only set when the object is owned by the document
+   // NF::LOCAL is only set when the object is owned by the document
 
    OBJECTPTR object;
-   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object)) {
+   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::LOCAL, (OBJECTPTR *)&object)) {
       log.warning("Failed to create object of class #%d.", class_id);
       return;
    }
@@ -3323,7 +3323,7 @@ void parser::tag_script(XMLTag &Tag)
    }
 
    if (iequals("fluid", type)) {
-      error = NewObject(CLASSID::FLUID, NF::LOCAL, &script);
+      error = NewLocalObject(CLASSID::FLUID, &script);
    }
    else {
       error = ERR::NoSupport;
@@ -3335,7 +3335,7 @@ void parser::tag_script(XMLTag &Tag)
 
       if (!src.empty()) script->setPath(src);
       else {
-         std::string content = xmlGetContent(Tag);
+         std::string content = xml::GetContent(Tag);
          if (!content.empty()) script->setStatement(content);
       }
 
@@ -3374,7 +3374,7 @@ void parser::tag_script(XMLTag &Tag)
 
             CSTRING *results;
             LONG size;
-            if ((GetFieldArray(script, FID_Results, &results, &size) IS ERR::Okay) and (size > 0)) {
+            if ((GetFieldArray(script, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
                auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
                if (xmlinc) {
                   auto old_xml = change_xml(xmlinc);
@@ -3909,7 +3909,7 @@ void parser::tag_trigger(XMLTag &Tag)
 
       std::string args;
       if (extract_script(Self, function_name.c_str(), &script, function_name, args) IS ERR::Okay) {
-         if (scGetProcedureID(script, function_name.c_str(), &function_id) IS ERR::Okay) {
+         if (sc::GetProcedureID(script, function_name.c_str(), &function_id) IS ERR::Okay) {
             Self->Triggers[LONG(trigger_code)].emplace_back(FUNCTION(script, function_id));
          }
          else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name.c_str(), script->UID);

@@ -84,8 +84,8 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
          }
 
          UWORD namelen, extralen;
-         if (flReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
-         if (flReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
+         if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
+         if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
          dataoffset = last.Offset + HEAD_LENGTH + namelen + extralen + last.CompressedSize;
       }
 
@@ -255,8 +255,8 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
       if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK::START) != ERR::Okay) return log.warning(ERR::Seek);
 
       UWORD namelen, extralen;
-      if (flReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
-      if (flReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
+      if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
+      if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
       dataoffset = chain.Offset + HEAD_LENGTH + namelen + extralen + chain.CompressedSize;
    }
 
@@ -438,8 +438,8 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
    if (acSeekStart(Self->FileIO, File->Offset + HEAD_NAMELEN) != ERR::Okay) return log.warning(ERR::Seek);
 
    UWORD namelen, extralen;
-   if (flReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
-   if (flReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
+   if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
+   if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
    LONG chunksize  = HEAD_LENGTH + namelen + extralen + File->CompressedSize;
    DOUBLE currentpos = File->Offset + chunksize;
    if (acSeekStart(Self->FileIO, currentpos) != ERR::Okay) return log.warning(ERR::Seek);
@@ -588,7 +588,7 @@ static ERR scan_zip(extCompression *Self)
 
    LONG type, result;
    LONG total_files = 0;
-   while (flReadLE(Self->FileIO, &type) IS ERR::Okay) {
+   while (fl::ReadLE(Self->FileIO, &type) IS ERR::Okay) {
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected
 
@@ -705,7 +705,7 @@ static ERR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
       error = routine(Self, Feedback, Self->Feedback.Meta);
    }
    else if (Self->Feedback.isScript()) {
-      if (scCall(Self->Feedback, std::to_array<ScriptArg>({
+      if (sc::Call(Self->Feedback, std::to_array<ScriptArg>({
          { "Compression", Self, FD_OBJECTPTR },
          { "CompressionFeedback:Feedback", Feedback, FD_POINTER|FD_STRUCT }
       }), error) != ERR::Okay) error = ERR::Failed;
@@ -730,8 +730,8 @@ static void write_eof(extCompression *Self)
          acSeekStart(Self->FileIO, last.Offset + HEAD_NAMELEN);
 
          UWORD namelen, extralen;
-         if (flReadLE(Self->FileIO, &namelen) != ERR::Okay) return;
-         if (flReadLE(Self->FileIO, &extralen) != ERR::Okay) return;
+         if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return;
+         if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return;
          acSeekCurrent(Self->FileIO, last.CompressedSize + namelen + extralen);
          ULONG listoffset = last.Offset + last.CompressedSize + namelen + extralen + HEAD_LENGTH;
 

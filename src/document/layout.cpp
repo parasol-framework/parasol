@@ -282,7 +282,7 @@ CELL layout::lay_cell(bc_table *Table)
       }));
 
       if (cell.hooks.events != JTYPE::NIL) {
-         vecSubscribeInput(*cell.viewport, cell.hooks.events, C_FUNCTION(inputevent_cell));
+         vec::SubscribeInput(*cell.viewport, cell.hooks.events, C_FUNCTION(inputevent_cell));
       }
    }
 
@@ -431,7 +431,7 @@ void layout::size_widget(widget_mgr &Widget, bool ScaleToFont)
    }
 
    if (!Widget.label.empty()) {
-      Widget.label_width = vecStringWidth(m_font->handle, Widget.label.c_str(), -1);
+      Widget.label_width = vec::StringWidth(m_font->handle, Widget.label.c_str(), -1);
    }
    else Widget.label_width = 0;
 }
@@ -526,7 +526,7 @@ WRAP layout::lay_button(bc_button &Button)
       }));
 
       if (Button.viewport->Scene->SurfaceID) {
-         vecSubscribeInput(*Button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_button));
+         vec::SubscribeInput(*Button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_button));
       }
 
       Button.viewport->setFill(Button.fill);
@@ -562,7 +562,7 @@ void layout::apply_style(bc_font &Style) {
    else m_font->align = ALIGN::NIL;
 
    m_no_wrap = ((Style.options & FSO::NO_WRAP) != FSO::NIL);
-   m_space_width = vecCharWidth(m_font->handle, ' ', 0, 0);
+   m_space_width = vec::CharWidth(m_font->handle, ' ', 0, 0);
 }
 
 //********************************************************************************************************************
@@ -648,7 +648,7 @@ WRAP layout::lay_text()
          LONG unicode;
          DOUBLE kerning;
          i += getutf8(str.c_str()+i, &unicode);
-         m_word_width += vecCharWidth(m_font->handle, unicode, m_kernchar, &kerning);
+         m_word_width += vec::CharWidth(m_font->handle, unicode, m_kernchar, &kerning);
          m_word_width += kerning;
          m_kernchar    = unicode;
 
@@ -778,7 +778,7 @@ void layout::lay_paragraph()
          para.item_indent = list->item_indent;
 
          if (!para.value.empty()) {
-            auto strwidth = vecStringWidth(m_font->handle, para.value.c_str(), -1) + 10;
+            auto strwidth = vec::StringWidth(m_font->handle, para.value.c_str(), -1) + 10;
             if (strwidth > list->item_indent.px(*this)) {
                list->item_indent = DUNIT(strwidth, DU::PIXEL);
                para.item_indent  = DUNIT(strwidth, DU::PIXEL);
@@ -1305,7 +1305,7 @@ static void layout_doc(extDocument *Self)
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.isScript()) {
-            scCall(trigger, std::to_array<ScriptArg>({
+            sc::Call(trigger, std::to_array<ScriptArg>({
                { "ViewWidth", Self->VPWidth }, { "ViewHeight", Self->VPHeight },
                { "PageWidth", Self->CalcWidth }, { "PageHeight", Self->PageHeight }
             }));
@@ -1391,7 +1391,7 @@ extend_page:
    m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
    m_font           = *Font;
-   m_space_width    = vecCharWidth(m_font->handle, ' ', 0, NULL);
+   m_space_width    = vec::CharWidth(m_font->handle, ' ', 0, NULL);
    m_line_count     = 0;
 
    m_word_index.reset();
@@ -1505,7 +1505,7 @@ extend_page:
                }));
 
                if (link.path->Scene->SurfaceID) {
-                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(link_callback));
+                  vec::SubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(link_callback));
                }
             }
             break;
@@ -1535,7 +1535,7 @@ extend_page:
          case SCODE::USE: {
             auto &use = m_stream->lookup<bc_use>(idx);
             if (!use.processed) {
-               svgParseSymbol(Self->SVG, use.id.c_str(), m_viewport);
+               svg::ParseSymbol(Self->SVG, use.id.c_str(), m_viewport);
                use.processed = true;
             }
             break;

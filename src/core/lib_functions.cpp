@@ -487,7 +487,7 @@ LARGE GetResource(RES Resource)
          auto file = objFile::create { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
-            while ((line = flReadLine(*file))) {
+            while ((line = fl::ReadLine(*file))) {
                if (startswith("cpu Mhz", line)) cpu_mhz = StrToInt(line);
             }
          }
@@ -575,15 +575,14 @@ LARGE PreciseTime(void)
 -FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
-This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
-activity occurs on the descriptor then the function specified in the `Routine` parameter will be called.  The routine
-must read all of information from the descriptor, as the running process will not be able to sleep until all the
-data is cleared.
+This function will register a file descriptor that will be monitored for activity when the task is sleeping.  When
+activity occurs on the descriptor, the callback referenced in `Routine` will be called.  The callback should read all 
+information from the descriptor, as the process will not be able to sleep if data is back-logged.
 
 The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the
 program to hang if not handled carefully.
 
-File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
+File descriptors support read and write states simultaneously, and a callback routine can be applied to either state.
 Set the `RFD::READ` flag to apply the `Routine` to the read callback and `RFD::WRITE` for the write callback.  If neither
 flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to one subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
@@ -598,13 +597,13 @@ Call the `DeregisterFD()` macro to simplify unsubscribing once the file descript
 -INPUT-
 hhandle FD: The file descriptor that is to be watched.
 int(RFD) Flags: Set to at least one of `READ`, `WRITE`, `EXCEPT`, `REMOVE`.
-fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is `void Routine(LONG FD, APTR Data)`.
-ptr Data: User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.
+fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The prototype is `void Routine(HOSTHANDLE FD, APTR Data)`.
+ptr Data: User specific data pointer that will be passed to the `Routine`.  Separate data pointers apply to the read and write states of operation.
 
 -ERRORS-
-Okay: The FD was successfully registered.
-Args: The FD was set to a value of -1.
-NoSupport: The host platform does not support file descriptors.
+Okay: The `FD` was successfully registered.
+Args: The `FD` was set to a value of `-1`.
+NoSupport: The host platform does not support the provided `FD`.
 -END-
 
 *********************************************************************************************************************/
@@ -973,7 +972,7 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
          lock.release();
 
          if (timer->Routine.isScript()) {
-            scDerefProcedure(timer->Routine.Context, &timer->Routine);
+            sc::DerefProcedure(timer->Routine.Context, &timer->Routine);
          }
 
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {

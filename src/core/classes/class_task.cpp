@@ -96,15 +96,15 @@ static ERR GET_LaunchPath(extTask *, STRING *);
 
 static ERR TASK_Activate(extTask *);
 static ERR TASK_Free(extTask *);
-static ERR TASK_GetEnv(extTask *, struct taskGetEnv *);
+static ERR TASK_GetEnv(extTask *, struct task::GetEnv *);
 static ERR TASK_GetKey(extTask *, struct acGetKey *);
 static ERR TASK_Init(extTask *);
 static ERR TASK_NewObject(extTask *);
-static ERR TASK_SetEnv(extTask *, struct taskSetEnv *);
+static ERR TASK_SetEnv(extTask *, struct task::SetEnv *);
 static ERR TASK_SetKey(extTask *, struct acSetKey *);
 static ERR TASK_Write(extTask *, struct acWrite *);
 
-static ERR TASK_AddArgument(extTask *, struct taskAddArgument *);
+static ERR TASK_AddArgument(extTask *, struct task::AddArgument *);
 static ERR TASK_Expunge(extTask *);
 static ERR TASK_Quit(extTask *);
 
@@ -166,7 +166,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
       routine(Self, buffer, bytes_read, error, Self->InputCallback.Meta);
    }
    else if (Self->InputCallback.isScript()) {
-      scCall(Self->InputCallback, std::to_array<ScriptArg>({
+      sc::Call(Self->InputCallback, std::to_array<ScriptArg>({
          { "Task",       Self },
          { "Buffer",     buffer, FD_PTRBUFFER },
          { "BufferSize", bytes_read, FD_LONG|FD_BUFSIZE },
@@ -222,7 +222,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
          routine(task, buffer, len, task->OutputCallback.Meta);
       }
       else if (task->OutputCallback.isScript()) {
-         scCall(task->OutputCallback, std::to_array<ScriptArg>({
+         sc::Call(task->OutputCallback, std::to_array<ScriptArg>({
             { "Task",       Task,   FD_OBJECTPTR },
             { "Buffer",     buffer, FD_PTRBUFFER },
             { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
@@ -250,7 +250,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
          routine(task, buffer, len, task->ErrorCallback.Meta);
       }
       else if (task->ErrorCallback.isScript()) {
-         scCall(task->ErrorCallback, std::to_array<ScriptArg>({
+         sc::Call(task->ErrorCallback, std::to_array<ScriptArg>({
             { "Task", Task, FD_OBJECTPTR },
             { "Data", buffer, FD_PTRBUFFER },
             { "Size", len, FD_LONG|FD_BUFSIZE }
@@ -273,7 +273,7 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG
       routine(Task, Buffer, Size, Callback->Meta);
    }
    else if (Callback->isScript()) {
-      scCall(*Callback, std::to_array<ScriptArg>({
+      sc::Call(*Callback, std::to_array<ScriptArg>({
          { "Task", Task, FD_OBJECTPTR },
          { "Data", Buffer, FD_PTRBUFFER },
          { "Size", Size, FD_LONG|FD_BUFSIZE }
@@ -542,7 +542,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
       routine(Task, Task->ExitCallback.Meta);
    }
    else if (Task->ExitCallback.isScript()) {
-      scCall(Task->ExitCallback, std::to_array<ScriptArg>({ { "Task", Task, FD_OBJECTPTR } }));
+      sc::Call(Task->ExitCallback, std::to_array<ScriptArg>({ { "Task", Task, FD_OBJECTPTR } }));
    }
 
    // Post an event for the task's closure
@@ -1105,7 +1105,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
+static ERR TASK_AddArgument(extTask *Self, struct task::AddArgument *Args)
 {
    if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return ERR::NullArgs;
 
@@ -1226,7 +1226,7 @@ NoSupport: The platform does not support environment variables.
 
 *********************************************************************************************************************/
 
-static ERR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
+static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 {
    pf::Log log;
 
@@ -1547,7 +1547,7 @@ NoSupport: The platform does not support environment variables.
 
 *********************************************************************************************************************/
 
-static ERR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
+static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 {
    pf::Log log;
 
@@ -1741,7 +1741,7 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
 
          if (*Value) while (*Value > 0x20) Value++;
 
-         struct taskAddArgument add = { .Argument = buffer };
+         struct task::AddArgument add = { .Argument = buffer };
          Action(MT_TaskAddArgument, Self, &add);
       }
    }

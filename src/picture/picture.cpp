@@ -18,7 +18,7 @@ also supported, but user preference may dictate whether or not the necessary dri
 
 <header>Technical Notes</>
 
-To find out general information about a picture before initialising it, #Query() it first so that the picture object 
+To find out general information about a picture before initialising it, #Query() it first so that the picture object
 can load initial details on the file format.
 
 Images are also remapped automatically if the source palette and destination palettes do not match, or if there are
@@ -109,8 +109,8 @@ Activate: Loads image data into a picture object.
 Loading an image file requires a call to Activate() after initialisation.  The #Path field will be used to source
 the image file.
 
-Pre-setting picture field values will place restrictions on the image file that is to be loaded.  For example, if 
-the source image is wider than a preset @Bitmap.Width, the image will have its right edge clipped.  The same is 
+Pre-setting picture field values will place restrictions on the image file that is to be loaded.  For example, if
+the source image is wider than a preset @Bitmap.Width, the image will have its right edge clipped.  The same is
 true for the @Bitmap.Height and other restrictions apply to fields such as the @Bitmap.Palette.
 
 Once the picture is loaded, the image data will be held in the picture's #Bitmap object.  Manipulating the #Bitmap
@@ -301,7 +301,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
       if (tmp_bitmap.ok()) {
          if ((error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height)) IS ERR::Okay) {
-            gfxCopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+            gfx::CopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
       }
    }
@@ -438,7 +438,7 @@ static ERR PICTURE_NewObject(extPicture *Self)
 
    Self->Quality = 80; // 80% quality rating when saving
 
-   if (NewObject(CLASSID::BITMAP, NF::LOCAL, &Self->Bitmap) IS ERR::Okay) {
+   if (NewLocalObject(CLASSID::BITMAP, &Self->Bitmap) IS ERR::Okay) {
       return ERR::Okay;
    }
    else return log.warning(ERR::NewObject);
@@ -875,7 +875,7 @@ static ERR SET_Author(extPicture *Self, CSTRING Value)
 Bitmap: Represents a picture's image data.
 
 The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains
-information on the image dimensions and palette for example.  The @Bitmap.Palette can be preset if you want to 
+information on the image dimensions and palette for example.  The @Bitmap.Palette can be preset if you want to
 remap the  source image to a specific set of colour values.
 
 Please refer to the @Bitmap class for more details on the structure of bitmap objects.

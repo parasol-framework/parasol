@@ -101,7 +101,7 @@ in a file.
 extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 static ERR FILE_Init(extFile *);
-static ERR FILE_Watch(extFile *, struct flWatch *);
+static ERR FILE_Watch(extFile *, struct fl::Watch *);
 
 static ERR SET_Path(extFile *, CSTRING);
 static ERR SET_Size(extFile *, LARGE);
@@ -240,7 +240,7 @@ static ERR FILE_Activate(extFile *Self)
 
    // If the BUFFER flag is set, load the entire file into RAM and treat it as a read/write memory buffer.
 
-   if ((Self->Flags & FL::BUFFER) != FL::NIL) return flBufferContent(Self);
+   if ((Self->Flags & FL::BUFFER) != FL::NIL) return fl::BufferContent(Self);
 
    return ERR::Okay;
 }
@@ -386,7 +386,7 @@ AllocMemory:
 
 *********************************************************************************************************************/
 
-static ERR FILE_Copy(extFile *Self, struct flCopy *Args)
+static ERR FILE_Copy(extFile *Self, struct fl::Copy *Args)
 {
    return CopyFile(Self->Path, Args->Dest, Args->Callback);
 }
@@ -415,7 +415,7 @@ BufferOverflow: The file path string is too long.
 
 *********************************************************************************************************************/
 
-static ERR FILE_Delete(extFile *Self, struct flDelete *Args)
+static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 {
    pf::Log log;
 
@@ -801,7 +801,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR FILE_MoveFile(extFile *Self, struct flMove *Args)
+static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
 {
    pf::Log log;
 
@@ -914,7 +914,7 @@ DirEmpty: The index has reached the end of the file list.
 
 *********************************************************************************************************************/
 
-static ERR FILE_NextFile(extFile *Self, struct flNext *Args)
+static ERR FILE_NextFile(extFile *Self, struct fl::Next *Args)
 {
    pf::Log log;
 
@@ -1089,7 +1089,7 @@ NoData: There is no more data left to read.
 
 *********************************************************************************************************************/
 
-static ERR FILE_ReadLine(extFile *Self, struct flReadLine *Args)
+static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
 {
    pf::Log log;
 
@@ -1352,7 +1352,7 @@ NoSupport: The platform does not support file date setting.
 
 *********************************************************************************************************************/
 
-static ERR FILE_SetDate(extFile *Self, struct flSetDate *Args)
+static ERR FILE_SetDate(extFile *Self, struct fl::SetDate *Args)
 {
    pf::Log log;
 
@@ -1449,7 +1449,7 @@ NoSupport: The file is not streamed.
 
 *********************************************************************************************************************/
 
-static ERR FILE_StartStream(extFile *Self, struct flStartStream *Args)
+static ERR FILE_StartStream(extFile *Self, struct fl::StartStream *Args)
 {
    pf::Log log;
 
@@ -1516,7 +1516,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR FILE_Watch(extFile *Self, struct flWatch *Args)
+static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 {
    pf::Log log;
 

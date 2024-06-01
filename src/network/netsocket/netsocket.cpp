@@ -124,7 +124,7 @@ Failed: The connect failed for some other reason.
 static void connect_name_resolved_nl(objNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &);
 static void connect_name_resolved(extNetSocket *, ERR, const std::string &, const std::vector<IPAddress> &);
 
-static ERR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
+static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 {
    pf::Log log;
 
@@ -148,7 +148,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
    Self->Port = Args->Port;
 
    IPAddress server_ip;
-   if (netStrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
+   if (net::StrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
       std::vector<IPAddress> list;
       list.emplace_back(server_ip);
       connect_name_resolved(Self, ERR::Okay, "", list);
@@ -163,7 +163,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
-      if (nlResolveName(Self->NetLookup, Self->Address) != ERR::Okay) {
+      if (nl::ResolveName(Self->NetLookup, Self->Address) != ERR::Okay) {
          return log.warning(Self->Error = ERR::HostNotFound);
       }
    }
@@ -195,8 +195,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
    ClearMemory(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
-   server_address.sin_port = netHostToShort((UWORD)Socket->Port);
-   server_address.sin_addr.s_addr = netHostToLong(IPs[0].Data[0]);
+   server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
+   server_address.sin_addr.s_addr = net::HostToLong(IPs[0].Data[0]);
 
 #ifdef __linux__
    LONG result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -305,7 +305,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectClient *Args)
+static ERR NETSOCKET_DisconnectClient(extNetSocket *Self, struct ns::DisconnectClient *Args)
 {
    if ((!Args) or (!Args->Client)) return ERR::NullArgs;
    free_client(Self, Args->Client);
@@ -330,7 +330,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectSocket *Args)
+static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectSocket *Args)
 {
    if ((!Args) or (!Args->Socket)) return ERR::NullArgs;
    free_client_socket(Self, (extClientSocket *)(Args->Socket), TRUE);
@@ -398,7 +398,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAddress *Args)
+static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIPAddress *Args)
 {
    pf::Log log;
 
@@ -418,7 +418,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAd
 #endif
 
    if (!result) {
-      Args->Address->Data[0] = netLongToHost(addr.sin_addr.s_addr);
+      Args->Address->Data[0] = net::LongToHost(addr.sin_addr.s_addr);
       Args->Address->Data[1] = 0;
       Args->Address->Data[2] = 0;
       Args->Address->Data[3] = 0;
@@ -503,7 +503,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             ClearMemory(&addr, sizeof(addr));
             addr.sin6_family = AF_INET6;
-            addr.sin6_port   = netHostToShort(Self->Port); // Must be passed in in network byte order
+            addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
             addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
 
             LONG result;
@@ -526,7 +526,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          struct sockaddr_in addr;
          ClearMemory(&addr, sizeof(addr));
          addr.sin_family = AF_INET;
-         addr.sin_port   = netHostToShort(Self->Port); // Must be passed in in network byte order
+         addr.sin_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
          addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
 
          #ifdef __linux__
@@ -556,7 +556,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
    }
    else if ((Self->Address) and (Self->Port > 0)) {
-      if ((error = nsConnect(Self, Self->Address, Self->Port)) != ERR::Okay) {
+      if ((error = ns::Connect(Self, Self->Address, Self->Port)) != ERR::Okay) {
          return error;
       }
       else return ERR::Okay;
@@ -655,7 +655,7 @@ AllocMemory: A message buffer could not be allocated.
 
 *********************************************************************************************************************/
 
-static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
+static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
 {
    pf::Log log;
 
@@ -865,7 +865,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
+static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct ns::WriteMsg *Args)
 {
    pf::Log log;
 
@@ -1163,7 +1163,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             if (routine) routine(Self, NULL, Self->State, Self->Feedback.Meta);
          }
          else if (Self->Feedback.isScript()) {
-            scCall(Self->Feedback, std::to_array<ScriptArg>({
+            sc::Call(Self->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    Self, FD_OBJECTPTR },
                { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
                { "State",        LONG(Self->State) }

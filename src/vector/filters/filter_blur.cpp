@@ -121,15 +121,15 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    if ((rx < 1) and (ry < 1)) {
       if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
       BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
-      gfxCopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
+      gfx::CopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
       return ERR::Okay;
    }
    
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
    
-   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToLinear(inBmp);
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmp::ConvertToLinear(inBmp);
 
-   bmpPremultiply(inBmp);
+   bmp::Premultiply(inBmp);
    
    UBYTE *dst_pix_ptr;
    agg::rgba8 *stack_pix_ptr;
@@ -377,11 +377,11 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    //bmpDemultiply(inBmp);
 
    outBmp->Flags |= BMF::PREMUL; // Need to tell the bitmap it has premultiplied output before Demultiply()
-   bmpDemultiply(outBmp);
+   bmp::Demultiply(outBmp);
    
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
       outBmp->ColourSpace = CS::LINEAR_RGB;
-      bmpConvertToRGB(outBmp);
+      bmp::ConvertToRGB(outBmp);
    }
 
    return ERR::Okay;

@@ -34,7 +34,7 @@
     <method>
       <name>SetTime</name>
       <comment>Apply the time to the system clock.</comment>
-      <prototype>ERR tmSetTime(OBJECTPTR Object)</prototype>
+      <prototype>ERR pt::SetTime(OBJECTPTR Object)</prototype>
       <description>
 <p>This method will apply the time object's values to the BIOS.  Depending on the host platform, this method may only work if the user is logged in as the administrator.</p>
       </description>

@@ -99,7 +99,7 @@ static ERR JPEG_Activate(extPicture *Self)
       objBitmap::create tmp = { fl::Width(bmp->Width), fl::Height(bmp->Height), fl::BitsPerPixel(24) };
       if (tmp.ok()) {
          decompress_jpeg(Self, *tmp, &cinfo);
-         gfxCopyArea(*tmp, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+         gfx::CopyArea(*tmp, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
       }
    }
 

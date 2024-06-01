@@ -54,18 +54,18 @@ FDEF maGetPos[] = { { "Line", FD_LONG }, { "Column", FD_LONG }, { "Pos", FD_LONG
 FDEF maScrollToPoint[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clScintillaMethods[] = {
-   { -1, (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sciSetFont) },
-   { -2, (APTR)SCINTILLA_ReplaceText, "ReplaceText", maReplaceText, sizeof(struct sciReplaceText) },
-   { -3, (APTR)SCINTILLA_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct sciDeleteLine) },
-   { -4, (APTR)SCINTILLA_SelectRange, "SelectRange", maSelectRange, sizeof(struct sciSelectRange) },
-   { -5, (APTR)SCINTILLA_InsertText, "InsertText", maInsertText, sizeof(struct sciInsertText) },
-   { -6, (APTR)SCINTILLA_GetLine, "GetLine", maGetLine, sizeof(struct sciGetLine) },
-   { -7, (APTR)SCINTILLA_ReplaceLine, "ReplaceLine", maReplaceLine, sizeof(struct sciReplaceLine) },
-   { -8, (APTR)SCINTILLA_GotoLine, "GotoLine", maGotoLine, sizeof(struct sciGotoLine) },
+   { -1, (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sci::SetFont) },
+   { -2, (APTR)SCINTILLA_ReplaceText, "ReplaceText", maReplaceText, sizeof(struct sci::ReplaceText) },
+   { -3, (APTR)SCINTILLA_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct sci::DeleteLine) },
+   { -4, (APTR)SCINTILLA_SelectRange, "SelectRange", maSelectRange, sizeof(struct sci::SelectRange) },
+   { -5, (APTR)SCINTILLA_InsertText, "InsertText", maInsertText, sizeof(struct sci::InsertText) },
+   { -6, (APTR)SCINTILLA_GetLine, "GetLine", maGetLine, sizeof(struct sci::GetLine) },
+   { -7, (APTR)SCINTILLA_ReplaceLine, "ReplaceLine", maReplaceLine, sizeof(struct sci::ReplaceLine) },
+   { -8, (APTR)SCINTILLA_GotoLine, "GotoLine", maGotoLine, sizeof(struct sci::GotoLine) },
    { -9, (APTR)SCINTILLA_TrimWhitespace, "TrimWhitespace", 0, 0 },
-   { -10, (APTR)SCINTILLA_GetPos, "GetPos", maGetPos, sizeof(struct sciGetPos) },
+   { -10, (APTR)SCINTILLA_GetPos, "GetPos", maGetPos, sizeof(struct sci::GetPos) },
    { -11, (APTR)SCINTILLA_ReportEvent, "ReportEvent", 0, 0 },
-   { -12, (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sciScrollToPoint) },
+   { -12, (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sci::ScrollToPoint) },
    { 0, 0, 0, 0, 0 }
 };
 

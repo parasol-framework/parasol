@@ -161,7 +161,7 @@ void doc_menu::refresh()
    DOUBLE view_height = doc_height;
 
    DISPLAYINFO *display;
-   if (gfxGetDisplayInfo(0, &display) IS ERR::Okay) {
+   if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
       if (view_height > display->Height * 0.25) view_height = display->Height * 0.25;
    }
 
@@ -180,7 +180,7 @@ void doc_menu::refresh()
             m_scroll.m_auto_adjust_view_size = false;
 
             OBJECTPTR clip;
-            if (scFindDef(m_scene, "PageClip", &clip) IS ERR::Okay) {
+            if (sc::FindDef(m_scene, "PageClip", &clip) IS ERR::Okay) {
                doc_page->set(FID_Mask, clip);
             }
          }
@@ -193,7 +193,7 @@ void doc_menu::refresh()
 void doc_menu::reposition(objVectorViewport *RelativeViewport)
 {
    DISPLAYINFO *display;
-   gfxGetDisplayInfo(0, &display);
+   gfx::GetDisplayInfo(0, &display);
 
    pf::ScopedObjectLock<objSurface> lk_surface(RelativeViewport->Scene->SurfaceID); // Window surface
    if (lk_surface.granted()) {

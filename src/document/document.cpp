@@ -218,10 +218,10 @@ font_entry * bc_font::get_font()
    auto style_name = get_font_style(options);
    APTR new_handle;
    CSTRING resolved_face;
-   if (fntResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
+   if (fnt::ResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
       face.assign(resolved_face);
 
-      if (vecGetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
+      if (vec::GetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
          for (unsigned i=0; i < glFonts.size(); i++) {
             if (new_handle IS glFonts[i].handle) {
                font_index = i;

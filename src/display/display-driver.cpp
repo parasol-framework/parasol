@@ -611,13 +611,12 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       return log.warning(ERR::Args);
    }
 
-   extDisplay *display;
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
          CopyMemory(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
-      else if (AccessObject(DisplayID, 5000, &display) IS ERR::Okay) {
+      else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -625,8 +624,8 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->BitsPerPixel  = display->Bitmap->BitsPerPixel;
          Info->BytesPerPixel = display->Bitmap->BytesPerPixel;
          Info->AmtColours    = display->Bitmap->AmtColours;
-         GET_HDensity(display, &Info->HDensity);
-         GET_VDensity(display, &Info->VDensity);
+         GET_HDensity(*display, &Info->HDensity);
+         GET_VDensity(*display, &Info->VDensity);
 
          #ifdef __xwindows__
             Info->AccelFlags = ACF(-1);
@@ -649,8 +648,6 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->PixelFormat.GreenPos   = display->Bitmap->ColourFormat->GreenPos;
          Info->PixelFormat.BluePos    = display->Bitmap->ColourFormat->BluePos;
          Info->PixelFormat.AlphaPos   = display->Bitmap->ColourFormat->AlphaPos;
-
-         ReleaseObject(display);
          return ERR::Okay;
       }
       else return log.warning(ERR::AccessObject);
@@ -1099,7 +1096,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
 
-   glDisplayType = gfxGetDisplayType();
+   glDisplayType = gfx::GetDisplayType();
 
 #ifdef __ANDROID__
       glpFullScreen = TRUE;
@@ -1115,37 +1112,37 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    auto config = objConfig::create { fl::Path("user:config/display.cfg") };
 
    if (config.ok()) {
-      cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
+      cfg::Read(*config, "DISPLAY", "Maximise", &glpMaximise);
 
       if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
-            cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
+         if ((cfg::Read(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
+            cfg::Read(*config, "DISPLAY", "Width", &glpDisplayWidth);
          }
 
-         if ((cfgRead(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
-            cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
+         if ((cfg::Read(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
+            cfg::Read(*config, "DISPLAY", "Height", &glpDisplayHeight);
          }
 
-         cfgRead(*config, "DISPLAY", "WindowX", &glpDisplayX);
-         cfgRead(*config, "DISPLAY", "WindowY", &glpDisplayY);
-         cfgRead(*config, "DISPLAY", "FullScreen", &glpFullScreen);
+         cfg::Read(*config, "DISPLAY", "WindowX", &glpDisplayX);
+         cfg::Read(*config, "DISPLAY", "WindowY", &glpDisplayY);
+         cfg::Read(*config, "DISPLAY", "FullScreen", &glpFullScreen);
       }
       else {
-         cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
-         cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
-         cfgRead(*config, "DISPLAY", "XCoord", &glpDisplayX);
-         cfgRead(*config, "DISPLAY", "YCoord", &glpDisplayY);
-         cfgRead(*config, "DISPLAY", "Depth", &glpDisplayDepth);
+         cfg::Read(*config, "DISPLAY", "Width", &glpDisplayWidth);
+         cfg::Read(*config, "DISPLAY", "Height", &glpDisplayHeight);
+         cfg::Read(*config, "DISPLAY", "XCoord", &glpDisplayX);
+         cfg::Read(*config, "DISPLAY", "YCoord", &glpDisplayY);
+         cfg::Read(*config, "DISPLAY", "Depth", &glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      cfgRead(*config, "DISPLAY", "RefreshRate", &glpRefreshRate);
-      cfgRead(*config, "DISPLAY", "GammaRed", &glpGammaRed);
-      cfgRead(*config, "DISPLAY", "GammaGreen", &glpGammaGreen);
-      cfgRead(*config, "DISPLAY", "GammaBlue", &glpGammaBlue);
+      cfg::Read(*config, "DISPLAY", "RefreshRate", &glpRefreshRate);
+      cfg::Read(*config, "DISPLAY", "GammaRed", &glpGammaRed);
+      cfg::Read(*config, "DISPLAY", "GammaGreen", &glpGammaGreen);
+      cfg::Read(*config, "DISPLAY", "GammaBlue", &glpGammaBlue);
       CSTRING dpms;
-      if (cfgReadValue(*config, "DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
+      if (cfg::ReadValue(*config, "DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
          StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
    }
@@ -1565,7 +1562,7 @@ ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Wid
       Self->Opacity);
    return ERR::Okay;
 #else
-   return(gfxCopyArea(Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL, X, Y, Width, Height, XDest, YDest));
+   return(gfx::CopyArea(Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL, X, Y, Width, Height, XDest, YDest));
 #endif
 }
 

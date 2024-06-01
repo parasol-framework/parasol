@@ -56,7 +56,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
             }
             else if (iequals("stop-color", name)) {
                VectorPainter painter;
-               vecReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+               vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
                stop.RGB = painter.Colour;
             }
             else if (iequals("stop-opacity", name)) {
@@ -152,7 +152,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
-            return scAddDef(Self->Scene, id.c_str(), gradient);
+            return sc::AddDef(Self->Scene, id.c_str(), gradient);
          }
          else return ERR::Okay;
       }
@@ -222,7 +222,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
-            return scAddDef(Self->Scene, id.c_str(), gradient);
+            return sc::AddDef(Self->Scene, id.c_str(), gradient);
          }
          else return ERR::Okay;
       }
@@ -291,7 +291,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
-            return scAddDef(Self->Scene, id.c_str(), gradient);
+            return sc::AddDef(Self->Scene, id.c_str(), gradient);
          }
          else return ERR::Okay;
       }
@@ -358,7 +358,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
-            return scAddDef(Self->Scene, id.c_str(), gradient);
+            return sc::AddDef(Self->Scene, id.c_str(), gradient);
          }
          else return ERR::Okay;
       }
@@ -431,7 +431,7 @@ static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
-            return scAddDef(Self->Scene, id.c_str(), gradient);
+            return sc::AddDef(Self->Scene, id.c_str(), gradient);
          }
          else return ERR::Okay;
       }

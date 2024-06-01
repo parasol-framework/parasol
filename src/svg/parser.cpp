@@ -198,7 +198,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
             SetArray(trans, FID_Stops, stops);
 
             if (InitObject(trans) IS ERR::Okay) {
-               if (!Self->Cloning) scAddDef(Self->Scene, id.c_str(), trans);
+               if (!Self->Cloning) sc::AddDef(Self->Scene, id.c_str(), trans);
                return;
             }
          }
@@ -265,7 +265,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
             auto vp = clip->get<OBJECTPTR>(FID_Viewport);
             process_children(Self, state, Tag, vp);
 
-            scAddDef(Self->Scene, id.c_str(), clip);
+            sc::AddDef(Self->Scene, id.c_str(), clip);
          }
          else FreeResource(clip);
       }
@@ -338,7 +338,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
             auto vp = clip->get<OBJECTPTR>(FID_Viewport);
             process_children(Self, state, Tag, vp);
 
-            scAddDef(Self->Scene, id.c_str(), clip);
+            sc::AddDef(Self->Scene, id.c_str(), clip);
          }
          else FreeResource(clip);
       }
@@ -698,7 +698,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
                FRGB rgb;
                if (current_colour(Self, Self->Scene->Viewport, State, rgb) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             }
-            else if (vecReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+            else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
          }
 
@@ -742,7 +742,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
             }
          }
 
-         error = ltSetDistantLight(fx, azimuth, elevation);
+         error = lt::SetDistantLight(fx, azimuth, elevation);
       }
       else if (std::string_view("fePointLight") == child.name()) {
          DOUBLE x = 0, y = 0, z = 0;
@@ -755,7 +755,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
             }
          }
 
-         error = ltSetPointLight(fx, x, y, z);
+         error = lt::SetPointLight(fx, x, y, z);
       }
       else if (std::string_view("feSpotLight") == child.name()) {
          DOUBLE x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
@@ -775,7 +775,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
             }
          }
 
-         error = ltSetSpotLight(fx, x, y, z, px, py, pz, exponent, cone_angle);
+         error = lt::SetSpotLight(fx, x, y, z, px, py, pz, exponent, cone_angle);
       }
       else {
          log.warning("Unrecognised %s child node '%s'", Tag.name(), child.name());
@@ -916,14 +916,14 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
          }
 
          switch(type) {
-            case SVF_TABLE:    rfSelectTable(fx, cmp, values.data(), values.size()); break;
-            case SVF_LINEAR:   rfSelectLinear(fx, cmp, slope, intercept);  break;
-            case SVF_GAMMA:    rfSelectGamma(fx, cmp, amp, offset, exp);  break;
-            case SVF_DISCRETE: rfSelectDiscrete(fx, cmp, values.data(), values.size());  break;
-            case SVF_IDENTITY: rfSelectIdentity(fx, cmp); break;
+            case SVF_TABLE:    rf::SelectTable(fx, cmp, values.data(), values.size()); break;
+            case SVF_LINEAR:   rf::SelectLinear(fx, cmp, slope, intercept);  break;
+            case SVF_GAMMA:    rf::SelectGamma(fx, cmp, amp, offset, exp);  break;
+            case SVF_DISCRETE: rf::SelectDiscrete(fx, cmp, values.data(), values.size());  break;
+            case SVF_IDENTITY: rf::SelectIdentity(fx, cmp); break;
             // The following additions are specific to Parasol and not SVG compatible.
-            case SVF_INVERT:   rfSelectInvert(fx, cmp); break;
-            case SVF_MASK:     rfSelectMask(fx, cmp, mask); break;
+            case SVF_INVERT:   rf::SelectInvert(fx, cmp); break;
+            case SVF_MASK:     rf::SelectMask(fx, cmp, mask); break;
             default:
                log.warning("feComponentTransfer node failed to specify its type.");
                return ERR::UndefinedField;
@@ -1066,7 +1066,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
             if (iequals("currentColor", val)) {
                if (current_colour(Self, Self->Scene->Viewport, State, painter.Colour) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             }
-            else if (vecReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+            else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
          }
 
@@ -1231,7 +1231,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
 
    objVector *vector = NULL;
    if (!ref.empty()) {
-      if (scFindDef(Self->Scene, ref.c_str(), (OBJECTPTR *)&vector) != ERR::Okay) {
+      if (sc::FindDef(Self->Scene, ref.c_str(), (OBJECTPTR *)&vector) != ERR::Okay) {
          // The reference is not an existing vector but should be a pre-registered declaration that would allow
          // us to create it.  Note that creation only occurs once.  Subsequent use of the ID will result in the
          // live reference being found.
@@ -1465,7 +1465,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
 
          Self->Effects.clear();
 
-         if (!Self->Cloning) scAddDef(Self->Scene, id.c_str(), filter);
+         if (!Self->Cloning) sc::AddDef(Self->Scene, id.c_str(), filter);
       }
       else FreeResource(filter);
    }
@@ -1559,7 +1559,7 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
 
          if (!Self->Cloning) {
             add_id(Self, Tag, id);
-            scAddDef(Self->Scene, id.c_str(), pattern);
+            sc::AddDef(Self->Scene, id.c_str(), pattern);
          }
       }
       else {
@@ -1750,7 +1750,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
    }
 
    if (file) {
-      flDelete(file, 0);
+      fl::Delete(file, 0);
       FreeResource(file);
    }
 
@@ -1811,7 +1811,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
             if (InitObject(image) IS ERR::Okay) {
                if (!Self->Cloning) {
                   add_id(Self, Tag, id);
-                  scAddDef(Self->Scene, id.c_str(), image);
+                  sc::AddDef(Self->Scene, id.c_str(), image);
                }
             }
             else {
@@ -1875,7 +1875,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       id = "img_" + std::to_string(strihash(src));
       if (!width.empty()) id += "_" + std::to_string(width);
       if (!height.empty()) id += "_" + std::to_string(height);
-      xmlNewAttrib(Tag, "id", id);
+      xml::NewAttrib(Tag, "id", id);
    }
 
    if (add_id(Self, Tag, id)) {
@@ -1895,7 +1895,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
             SetOwner(pic, image); // It's best if the pic belongs to the image.
 
-            scAddDef(Self->Scene, id.c_str(), image);
+            sc::AddDef(Self->Scene, id.c_str(), image);
          }
          else return ERR::CreateObject;
       }
@@ -2117,7 +2117,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
    OBJECTPTR transvector = NULL;
    if (!transition.empty()) {
-      if (scFindDef(Self->Scene, transition.c_str(), &transvector) != ERR::Okay) {
+      if (sc::FindDef(Self->Scene, transition.c_str(), &transvector) != ERR::Okay) {
          log.warning("Unable to find element '%s' referenced at line %d", transition.c_str(), Tag.LineNo);
          return;
       }
@@ -2151,7 +2151,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
       Parent->set(FID_MorphFlags, LONG(flags));
-      if (!Self->Cloning) scAddDef(Self->Scene, uri.c_str(), shape);
+      if (!Self->Cloning) sc::AddDef(Self->Scene, uri.c_str(), shape);
    }
 }
 
@@ -2422,7 +2422,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       if (ListChildren(group->UID, &list) IS ERR::Okay) {
          for (auto &child : list) {
             auto obj = GetObjectPtr(child.ObjectID);
-            vecSubscribeInput(obj, JTYPE::BUTTON, C_FUNCTION(link_event, link.get()));
+            vec::SubscribeInput(obj, JTYPE::BUTTON, C_FUNCTION(link_event, link.get()));
          }
          Self->Links.emplace_back(std::move(link));
       }
@@ -2555,14 +2555,14 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
          case SVF_MASK: {
             OBJECTPTR clip;
-            if (scFindDef(Self->Scene, val.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
+            if (sc::FindDef(Self->Scene, val.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
             else log.warning("Unable to find mask '%s'", val.c_str());
             break;
          }
 
          case SVF_CLIP_PATH: {
             OBJECTPTR clip;
-            if (scFindDef(Self->Scene, val.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
+            if (sc::FindDef(Self->Scene, val.c_str(), &clip) IS ERR::Okay) viewport->set(FID_Mask, clip);
             else log.warning("Unable to find clip-path '%s'", val.c_str());
             break;
          }
@@ -2798,7 +2798,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
             if (href) {
                objVector *path;
-               if (scFindDef(Self->Scene, href->c_str(), (OBJECTPTR *)&path) IS ERR::Okay) {
+               if (sc::FindDef(Self->Scene, href->c_str(), (OBJECTPTR *)&path) IS ERR::Okay) {
                   anim.mpath = path;
                }
             }
@@ -2874,15 +2874,15 @@ static void apply_rule(extSVG *Self, KatanaArray *Properties, XMLTag &Tag)
             case KATANA_VALUE_HZ:
             case KATANA_VALUE_KHZ:
             case KATANA_VALUE_TURN:
-               xmlUpdateAttrib(Tag, prop->property, value->raw, true);
+               xml::UpdateAttrib(Tag, prop->property, value->raw, true);
                break;
 
             case KATANA_VALUE_IDENT:
-               xmlUpdateAttrib(Tag, prop->property, value->string, true);
+               xml::UpdateAttrib(Tag, prop->property, value->string, true);
                break;
 
             case KATANA_VALUE_STRING:
-               xmlUpdateAttrib(Tag, prop->property, value->string, true);
+               xml::UpdateAttrib(Tag, prop->property, value->string, true);
                break;
 
             case KATANA_VALUE_PARSER_FUNCTION: {
@@ -2896,7 +2896,7 @@ static void apply_rule(extSVG *Self, KatanaArray *Properties, XMLTag &Tag)
                char str[8];
                if (value->iValue != '=') snprintf(str, sizeof(str), " %c ", value->iValue);
                else snprintf(str, sizeof(str), " %c", value->iValue);
-               xmlUpdateAttrib(Tag, prop->property, str, true);
+               xml::UpdateAttrib(Tag, prop->property, str, true);
                break;
             }
 
@@ -2905,11 +2905,11 @@ static void apply_rule(extSVG *Self, KatanaArray *Properties, XMLTag &Tag)
                break;
 
             case KATANA_VALUE_PARSER_HEXCOLOR:
-               xmlUpdateAttrib(Tag, prop->property, std::string("#") + value->string, true);
+               xml::UpdateAttrib(Tag, prop->property, std::string("#") + value->string, true);
                break;
 
             case KATANA_VALUE_URI:
-               xmlUpdateAttrib(Tag, prop->property, std::string("url(") + value->string + ")", true);
+               xml::UpdateAttrib(Tag, prop->property, std::string("url(") + value->string + ")", true);
                break;
 
             default:
@@ -3275,7 +3275,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_APPEND_PATH: {
          // The append-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
          OBJECTPTR other = NULL;
-         if (scFindDef(Self->Scene, StrValue.c_str(), &other) IS ERR::Okay) Vector->set(FID_AppendPath, other);
+         if (sc::FindDef(Self->Scene, StrValue.c_str(), &other) IS ERR::Okay) Vector->set(FID_AppendPath, other);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
          break;
       }
@@ -3283,7 +3283,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_JOIN_PATH: {
          // The join-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
          OBJECTPTR other = NULL;
-         if (scFindDef(Self->Scene, StrValue.c_str(), &other) IS ERR::Okay) {
+         if (sc::FindDef(Self->Scene, StrValue.c_str(), &other) IS ERR::Okay) {
             Vector->set(FID_AppendPath, other);
             Vector->setFlags(VF::JOIN_PATHS|Vector->Flags);
          }
@@ -3293,7 +3293,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
-         if (scFindDef(Self->Scene, StrValue.c_str(), &trans) IS ERR::Okay) Vector->set(FID_Transition, trans);
+         if (sc::FindDef(Self->Scene, StrValue.c_str(), &trans) IS ERR::Okay) Vector->set(FID_Transition, trans);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
          break;
       }
@@ -3367,7 +3367,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          if (!Self->Cloning) {
             Vector->set(FID_ID, StrValue);
             add_id(Self, Tag, StrValue);
-            scAddDef(Self->Scene, StrValue.c_str(), Vector);
+            sc::AddDef(Self->Scene, StrValue.c_str(), Vector);
             SetName(Vector, StrValue.c_str());
          }
          break;
@@ -3428,7 +3428,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_MASK: {
          OBJECTPTR clip;
-         if (scFindDef(Self->Scene, StrValue.c_str(), &clip) IS ERR::Okay) {
+         if (sc::FindDef(Self->Scene, StrValue.c_str(), &clip) IS ERR::Okay) {
             Vector->set(FID_Mask, clip);
          }
          else {
@@ -3440,7 +3440,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_CLIP_PATH: {
          OBJECTPTR clip;
-         if (scFindDef(Self->Scene, StrValue.c_str(), &clip) IS ERR::Okay) {
+         if (sc::FindDef(Self->Scene, StrValue.c_str(), &clip) IS ERR::Okay) {
             Vector->set(FID_Mask, clip);
          }
          else {

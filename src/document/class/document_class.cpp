@@ -120,7 +120,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
 
-         scCall(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
+         sc::Call(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
       else if (trigger.isC()) {
          auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.Routine;
@@ -206,7 +206,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
+static ERR DOCUMENT_AddListener(extDocument *Self, struct doc::AddListener *Args)
 {
    if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
@@ -239,7 +239,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
+static ERR DOCUMENT_CallFunction(extDocument *Self, struct doc::CallFunction *Args)
 {
    pf::Log log;
 
@@ -250,7 +250,7 @@ static ERR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args
    objScript *script;
    std::string function_name, args;
    if (auto error = extract_script(Self, Args->Function, &script, function_name, args); error IS ERR::Okay) {
-      return scExec(script, function_name.c_str(), Args->Args, Args->TotalArgs);
+      return sc::Exec(script, function_name.c_str(), Args->Args, Args->TotalArgs);
    }
    else return error;
 }
@@ -302,7 +302,7 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
          objClipboard::create clipboard = { };
          if (clipboard.ok()) {
-            if (clipAddText(*clipboard, buffer.c_str()) IS ERR::Okay) {
+            if (clip::AddText(*clipboard, buffer.c_str()) IS ERR::Okay) {
                // Delete the highlighted document if the CUT mode was used
                if (Args->Mode IS CLIPMODE::CUT) {
                   //delete_selection(Self);
@@ -324,7 +324,7 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
-         struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
+         struct clip::GetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
          if (Action(MT_ClipGetFiles, *clipboard, &get) IS ERR::Okay) {
             objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
@@ -461,7 +461,7 @@ Search: The cell was not found.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
+static ERR DOCUMENT_Edit(extDocument *Self, struct doc::Edit *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -504,7 +504,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
+static ERR DOCUMENT_FeedParser(extDocument *Self, struct doc::FeedParser *Args)
 {
    pf::Log log;
 
@@ -545,7 +545,7 @@ Search: The index was not found.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
+static ERR DOCUMENT_FindIndex(extDocument *Self, struct doc::FindIndex *Args)
 {
    pf::Log log;
 
@@ -665,7 +665,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
    if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      vecSubscribeKeyboard(Self->Viewport, C_FUNCTION(key_event));
+      vec::SubscribeKeyboard(Self->Viewport, C_FUNCTION(key_event));
       SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
       SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
       SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
@@ -713,7 +713,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    }
    else return ERR::CreateObject;
 
-   vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, C_FUNCTION(feedback_view));
+   vec::SubscribeFeedback(Self->View, FM::PATH_CHANGED, C_FUNCTION(feedback_view));
 
    // Flash the cursor via the timer
 
@@ -764,7 +764,7 @@ Search
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
+static ERR DOCUMENT_HideIndex(extDocument *Self, struct doc::HideIndex *Args)
 {
    pf::Log log(__FUNCTION__);
    LONG tab;
@@ -859,7 +859,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
+static ERR DOCUMENT_InsertXML(extDocument *Self, struct doc::InsertXML *Args)
 {
    pf::Log log;
 
@@ -913,7 +913,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
+static ERR DOCUMENT_InsertText(extDocument *Self, struct doc::InsertText *Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -973,7 +973,7 @@ NoData: Operation successful, but no data was present for extraction.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
+static ERR DOCUMENT_ReadContent(extDocument *Self, struct doc::ReadContent *Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1035,7 +1035,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self)
          // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 
          ERR error;
-         if (scCall(trigger, error) IS ERR::Okay) {
+         if (sc::Call(trigger, error) IS ERR::Okay) {
             if (error IS ERR::Skip) {
                log.msg("The refresh request has been handled by an event trigger.");
                return ERR::Okay;
@@ -1081,7 +1081,7 @@ Args
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
+static ERR DOCUMENT_RemoveContent(extDocument *Self, struct doc::RemoveContent *Args)
 {
    pf::Log log;
 
@@ -1116,7 +1116,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
+static ERR DOCUMENT_RemoveListener(extDocument *Self, struct doc::RemoveListener *Args)
 {
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR::NullArgs;
 
@@ -1186,7 +1186,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
+static ERR DOCUMENT_SelectLink(extDocument *Self, struct doc::SelectLink *Args)
 {
    pf::Log log;
 
@@ -1258,7 +1258,7 @@ Search: The index could not be found.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
+static ERR DOCUMENT_ShowIndex(extDocument *Self, struct doc::ShowIndex *Args)
 {
    pf::Log log;
 

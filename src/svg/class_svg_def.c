@@ -10,8 +10,8 @@ FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG
 FDEF maParseSymbol[] = { { "ID", FD_STR }, { "Viewport", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clSVGMethods[] = {
-   { -1, (APTR)SVG_Render, "Render", maRender, sizeof(struct svgRender) },
-   { -2, (APTR)SVG_ParseSymbol, "ParseSymbol", maParseSymbol, sizeof(struct svgParseSymbol) },
+   { -1, (APTR)SVG_Render, "Render", maRender, sizeof(struct svg::Render) },
+   { -2, (APTR)SVG_ParseSymbol, "ParseSymbol", maParseSymbol, sizeof(struct svg::ParseSymbol) },
    { 0, 0, 0, 0, 0 }
 };
 

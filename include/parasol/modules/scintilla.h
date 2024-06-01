@@ -99,73 +99,79 @@ DEFINE_ENUM_FLAG_OPERATORS(STF)
 #define MT_SciReportEvent -11
 #define MT_SciScrollToPoint -12
 
-struct sciSetFont { CSTRING Face;  };
-struct sciReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End;  };
-struct sciDeleteLine { LONG Line;  };
-struct sciSelectRange { LONG Start; LONG End;  };
-struct sciInsertText { CSTRING String; LONG Pos;  };
-struct sciGetLine { LONG Line; STRING Buffer; LONG Length;  };
-struct sciReplaceLine { LONG Line; CSTRING String; LONG Length;  };
-struct sciGotoLine { LONG Line;  };
-struct sciGetPos { LONG Line; LONG Column; LONG Pos;  };
-struct sciScrollToPoint { LONG X; LONG Y;  };
+namespace sci {
+struct SetFont { CSTRING Face;  };
+struct ReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End;  };
+struct DeleteLine { LONG Line;  };
+struct SelectRange { LONG Start; LONG End;  };
+struct InsertText { CSTRING String; LONG Pos;  };
+struct GetLine { LONG Line; STRING Buffer; LONG Length;  };
+struct ReplaceLine { LONG Line; CSTRING String; LONG Length;  };
+struct GotoLine { LONG Line;  };
+struct GetPos { LONG Line; LONG Column; LONG Pos;  };
+struct ScrollToPoint { LONG X; LONG Y;  };
 
-inline ERR sciSetFont(APTR Ob, CSTRING Face) noexcept {
-   struct sciSetFont args = { Face };
+inline ERR SetFont(APTR Ob, CSTRING Face) noexcept {
+   struct SetFont args = { Face };
    return(Action(MT_SciSetFont, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
-   struct sciReplaceText args = { Find, Replace, Flags, Start, End };
+inline ERR ReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
+   struct ReplaceText args = { Find, Replace, Flags, Start, End };
    return(Action(MT_SciReplaceText, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciDeleteLine(APTR Ob, LONG Line) noexcept {
-   struct sciDeleteLine args = { Line };
+inline ERR DeleteLine(APTR Ob, LONG Line) noexcept {
+   struct DeleteLine args = { Line };
    return(Action(MT_SciDeleteLine, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciSelectRange(APTR Ob, LONG Start, LONG End) noexcept {
-   struct sciSelectRange args = { Start, End };
+inline ERR SelectRange(APTR Ob, LONG Start, LONG End) noexcept {
+   struct SelectRange args = { Start, End };
    return(Action(MT_SciSelectRange, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciInsertText(APTR Ob, CSTRING String, LONG Pos) noexcept {
-   struct sciInsertText args = { String, Pos };
+inline ERR InsertText(APTR Ob, CSTRING String, LONG Pos) noexcept {
+   struct InsertText args = { String, Pos };
    return(Action(MT_SciInsertText, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciGetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) noexcept {
-   struct sciGetLine args = { Line, Buffer, Length };
+inline ERR GetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) noexcept {
+   struct GetLine args = { Line, Buffer, Length };
    return(Action(MT_SciGetLine, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) noexcept {
-   struct sciReplaceLine args = { Line, String, Length };
+inline ERR ReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) noexcept {
+   struct ReplaceLine args = { Line, String, Length };
    return(Action(MT_SciReplaceLine, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR sciGotoLine(APTR Ob, LONG Line) noexcept {
-   struct sciGotoLine args = { Line };
+inline ERR GotoLine(APTR Ob, LONG Line) noexcept {
+   struct GotoLine args = { Line };
    return(Action(MT_SciGotoLine, (OBJECTPTR)Ob, &args));
 }
 
-#define sciTrimWhitespace(obj) Action(MT_SciTrimWhitespace,(obj),0)
+inline ERR TrimWhitespace(APTR Ob) noexcept {
+   return(Action(MT_SciTrimWhitespace, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) noexcept {
-   struct sciGetPos args = { Line, Column, (LONG)0 };
+inline ERR GetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) noexcept {
+   struct GetPos args = { Line, Column, (LONG)0 };
    ERR error = Action(MT_SciGetPos, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
-#define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
+inline ERR ReportEvent(APTR Ob) noexcept {
+   return(Action(MT_SciReportEvent, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR sciScrollToPoint(APTR Ob, LONG X, LONG Y) noexcept {
-   struct sciScrollToPoint args = { X, Y };
+inline ERR ScrollToPoint(APTR Ob, LONG X, LONG Y) noexcept {
+   struct ScrollToPoint args = { X, Y };
    return(Action(MT_SciScrollToPoint, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objScintilla : public Object {
    public:
@@ -420,31 +426,33 @@ class objScintilla : public Object {
 #define MT_SsPrev -2
 #define MT_SsFind -3
 
-struct ssNext { LONG Pos;  };
-struct ssPrev { LONG Pos;  };
-struct ssFind { LONG Pos; STF Flags;  };
+namespace ss {
+struct Next { LONG Pos;  };
+struct Prev { LONG Pos;  };
+struct Find { LONG Pos; STF Flags;  };
 
-inline ERR ssNext(APTR Ob, LONG * Pos) noexcept {
-   struct ssNext args = { (LONG)0 };
+inline ERR Next(APTR Ob, LONG * Pos) noexcept {
+   struct Next args = { (LONG)0 };
    ERR error = Action(MT_SsNext, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
-inline ERR ssPrev(APTR Ob, LONG * Pos) noexcept {
-   struct ssPrev args = { (LONG)0 };
+inline ERR Prev(APTR Ob, LONG * Pos) noexcept {
+   struct Prev args = { (LONG)0 };
    ERR error = Action(MT_SsPrev, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
-inline ERR ssFind(APTR Ob, LONG * Pos, STF Flags) noexcept {
-   struct ssFind args = { (LONG)0, Flags };
+inline ERR Find(APTR Ob, LONG * Pos, STF Flags) noexcept {
+   struct Find args = { (LONG)0, Flags };
    ERR error = Action(MT_SsFind, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
+} // namespace
 
 class objScintillaSearch : public Object {
    public:

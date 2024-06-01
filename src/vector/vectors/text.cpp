@@ -306,7 +306,7 @@ Args: The Line value was out of the valid range.
 
 *********************************************************************************************************************/
 
-static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Args)
+static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vt::DeleteLine *Args)
 {
    if (Self->txLines.empty()) return ERR::Okay;
 
@@ -340,7 +340,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
    }
 
    if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-      vecSubscribeInput(Self->ParentView, JTYPE::NIL, C_FUNCTION(text_input_events));
+      vec::SubscribeInput(Self->ParentView, JTYPE::NIL, C_FUNCTION(text_input_events));
    }
 
    if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
@@ -352,7 +352,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
 
    if (Self->txFocusID) {
       pf::ScopedObjectLock focus(Self->txFocusID, 5000);
-      if (focus.granted()) vecSubscribeFeedback(*focus, FM::NIL, C_FUNCTION(text_focus_event));
+      if (focus.granted()) vec::SubscribeFeedback(*focus, FM::NIL, C_FUNCTION(text_focus_event));
    }
 
    return ERR::Okay;
@@ -370,7 +370,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
       {
          pf::ScopedObjectLock focus(Self->txFocusID, 5000);
          if (focus.granted()) {
-            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(text_focus_event));
+            vec::SubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(text_focus_event));
          }
       }
 
@@ -389,7 +389,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
       if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, C_FUNCTION(text_input_events));
+         vec::SubscribeInput(Self->ParentView, JTYPE::BUTTON, C_FUNCTION(text_input_events));
       }
    }
 
@@ -677,7 +677,7 @@ static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
       CSTRING name;
-      if (fntResolveFamilyName(Value, &name) IS ERR::Okay) {
+      if (fnt::ResolveFamilyName(Value, &name) IS ERR::Okay) {
          Self->txFamily = StrClone(name);
       }
       else Self->txFamily = StrClone("Noto Sans"); // Better to resort to a default than fail completely
@@ -785,11 +785,11 @@ static ERR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
    CSTRING next;
-   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
+   if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = StrClone(Value);
 
       if (next) {
-         vecReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
          Self->FGFill = true;
       }
       else Self->FGFill = false;
@@ -1305,7 +1305,7 @@ static ERR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
    LONG width = 0;
    for (auto &line : Self->txLines) {
       if (Self->txBitmapFont) {
-         auto w = fntStringWidth(Self->txBitmapFont, line.c_str(), -1);
+         auto w = fnt::StringWidth(Self->txBitmapFont, line.c_str(), -1);
          if (w > width) width = w;
       }
       else {
@@ -1641,7 +1641,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
          case KEY::K: // Delete line
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
-            vtDeleteLine(Self, Self->txCursor.row());
+            vt::DeleteLine(Self, Self->txCursor.row());
             return;
 
          case KEY::Z: // Undo
@@ -1704,7 +1704,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else {
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
-         vtDeleteLine(Self, Self->txCursor.row());
+         vt::DeleteLine(Self, Self->txCursor.row());
       }
       break;
 

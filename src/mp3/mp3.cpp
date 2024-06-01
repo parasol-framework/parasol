@@ -683,7 +683,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    prv->File->get(FID_Size, &filesize);
 
    UBYTE *buffer;
-   if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, &buffer, NULL) IS ERR::Okay) {
+   if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
       // Load MP3 data from the file
 
       prv->File->seekStart(prv->SeekOffset);

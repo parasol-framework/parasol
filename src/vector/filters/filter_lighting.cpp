@@ -555,7 +555,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct ltSetDistantLight *Args)
+static ERR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct lt::SetDistantLight *Args)
 {
    pf::Log log;
 
@@ -594,7 +594,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLight *Args)
+static ERR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct lt::SetPointLight *Args)
 {
    pf::Log log;
 
@@ -641,7 +641,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight *Args)
+static ERR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct lt::SetSpotLight *Args)
 {
    pf::Log log;
 

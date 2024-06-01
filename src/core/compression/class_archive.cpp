@@ -85,7 +85,7 @@ static ERR seek_to_item(extFile *Self)
    prv->ReadPtr = NULL;
 
    UWORD extra_len;
-   if (flReadLE(prv->FileStream, &extra_len) != ERR::Okay) return ERR::Read;
+   if (fl::ReadLE(prv->FileStream, &extra_len) != ERR::Okay) return ERR::Read;
    ULONG stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR::Okay) return ERR::Seek;
 
@@ -582,7 +582,7 @@ static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    log.traceBranch("%s", Path);
 
    if (auto cmp = find_archive(Path, file_path)) {
-      struct cmpFind find { file_path.c_str(), TRUE, FALSE };
+      struct cmp::Find find { file_path.c_str(), TRUE, FALSE };
       if ((error = Action(MT_CmpFind, cmp, &find)) != ERR::Okay) return error;
       item = find.Item;
    }
@@ -638,11 +638,11 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
    }
 
    CompressedItem *item;
-   ERR error = cmpFind(cmp, file_path.c_str(), TRUE, FALSE, &item);
+   ERR error = cmp::Find(cmp, file_path.c_str(), TRUE, FALSE, &item);
 
    if ((error != ERR::Okay) and ((Flags & RSF::APPROXIMATE) != RSF::NIL)) {
       file_path.append(".*");
-      if ((error = cmpFind(cmp, file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
+      if ((error = cmp::Find(cmp, file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
          // Point the path to the discovered item
          LONG i;
          for (i=0; (Path[i] != '/') and (Path[i]); i++);

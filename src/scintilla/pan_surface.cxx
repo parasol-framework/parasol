@@ -179,7 +179,7 @@ void SurfacePan::LineTo(int x, int y)
 
       //DBGDRAW("panLineTo:","%dx%d - %dx%d", penx, peny, x, y);
 
-      gfxDrawRectangle(bitmap, penx, peny, x-penx, y-peny, pencol, BAF::FILL);
+      gfx::DrawRectangle(bitmap, penx, peny, x-penx, y-peny, pencol, BAF::FILL);
       penx = x;
       peny = y;
    }
@@ -208,7 +208,7 @@ void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAlloc
 
       LONG i;
       for (i=0; i<npts-1; ++i) {
-         //gfxDrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
+         //gfx::DrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
       }
    }
 }
@@ -225,8 +225,8 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 
       DBGDRAW("panRectangleDraw()","#%.8x, #%.8x", bk32, fr32);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), bk32, BAF::FILL);
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), fr32, BAF::NIL);
+      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), bk32, BAF::FILL);
+      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), fr32, BAF::NIL);
    }
 }
 
@@ -242,7 +242,7 @@ void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 
       DBGDRAW("panFillRectangle()","Bitmap: %p, Size: %dx%d,%dx%d, Colour: $%.8x, Clipping: %dx%d,%dx%d", bitmap, rc.left, rc.top, rc.Width(), rc.Height(), colour, bitmap->Clip.Left, bitmap->Clip.Right, bitmap->Clip.Top, bitmap->Clip.Bottom);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), colour, BAF::FILL);
+      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), colour, BAF::FILL);
    }
 }
 
@@ -295,7 +295,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 
       DBGDRAW("panCopy:","From: %dx%d To: %dx%d,%dx%d, Clip: %dx%d,%dx%d", from.x, from.y, rc.left, rc.top, rc.Width(), rc.Height(), bitmap->Clip.Left, bitmap->Clip.Top, bitmap->Clip.Right, bitmap->Clip.Bottom);
       DBGDRAW("panCopy:","Bitmap: %d, Offset: %dx%d", bitmap->Head.UID, bitmap->XOffset, bitmap->YOffset);
-      gfxCopyArea(src_surface.bitmap, bitmap, BAF::NIL,
+      gfx::CopyArea(src_surface.bitmap, bitmap, BAF::NIL,
          from.x, from.y, rc.Width(), rc.Height(), /* source */
          rc.left, rc.top); /* dest */
 
@@ -412,7 +412,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
                unicode = UTF8ReadValue((STRING)(str+i), &copy);
             }
 
-            charpos += fntCharWidth(font, unicode);
+            charpos += fnt::CharWidth(font, unicode);
          }
          positions[i++] = charpos;
 
@@ -435,7 +435,7 @@ int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
 
    if (font) {
       // Note: The length must be passed as the number of characters, not bytes
-      return fntStringWidth((objFont *)font, (STRING)s, len);
+      return fnt::StringWidth((objFont *)font, (STRING)s, len);
    }
 
    return 5; // crashes if you return 0 here !!!
@@ -446,7 +446,7 @@ int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
 int SurfacePan::WidthChar(Scintilla::Font &font_, char ch)
 {
    objFont *font = (objFont *)GetFont(font_);
-   return fntCharWidth(font, ch);
+   return fnt::CharWidth(font, ch);
 }
 
 /****************************************************************************/
@@ -581,9 +581,9 @@ void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scinti
    if (bitmap) {
       BitmapClipper clipper(bitmap, cliprect);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, fill), BAF::FILL);
+      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, fill), BAF::FILL);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, outline), BAF::NIL);
+      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, outline), BAF::NIL);
    }
    else log.warning("Bitmap was NULL.");
 

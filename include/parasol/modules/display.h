@@ -500,52 +500,62 @@ typedef struct BitmapSurfaceV2 {
 #define MT_BmpConvertToLinear -12
 #define MT_BmpConvertToRGB -13
 
-struct bmpCopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
-struct bmpCompress { LONG Level;  };
-struct bmpDecompress { LONG RetainData;  };
-struct bmpFlip { FLIP Orientation;  };
-struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags;  };
-struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
-struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
+namespace bmp {
+struct CopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
+struct Compress { LONG Level;  };
+struct Decompress { LONG RetainData;  };
+struct Flip { FLIP Orientation;  };
+struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags;  };
+struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
+struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 
-inline ERR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
-   struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
+inline ERR CopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
+   struct CopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR bmpCompress(APTR Ob, LONG Level) noexcept {
-   struct bmpCompress args = { Level };
+inline ERR Compress(APTR Ob, LONG Level) noexcept {
+   struct Compress args = { Level };
    return(Action(MT_BmpCompress, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR bmpDecompress(APTR Ob, LONG RetainData) noexcept {
-   struct bmpDecompress args = { RetainData };
+inline ERR Decompress(APTR Ob, LONG RetainData) noexcept {
+   struct Decompress args = { RetainData };
    return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR bmpFlip(APTR Ob, FLIP Orientation) noexcept {
-   struct bmpFlip args = { Orientation };
+inline ERR Flip(APTR Ob, FLIP Orientation) noexcept {
+   struct Flip args = { Orientation };
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
-   struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
+inline ERR DrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
+   struct DrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
-   struct bmpSetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
+inline ERR SetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
+   struct SetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
    return(Action(MT_BmpSetClipRegion, (OBJECTPTR)Ob, &args));
 }
 
-#define bmpPremultiply(obj) Action(MT_BmpPremultiply,(obj),0)
+inline ERR Premultiply(APTR Ob) noexcept {
+   return(Action(MT_BmpPremultiply, (OBJECTPTR)Ob, NULL));
+}
 
-#define bmpDemultiply(obj) Action(MT_BmpDemultiply,(obj),0)
+inline ERR Demultiply(APTR Ob) noexcept {
+   return(Action(MT_BmpDemultiply, (OBJECTPTR)Ob, NULL));
+}
 
-#define bmpConvertToLinear(obj) Action(MT_BmpConvertToLinear,(obj),0)
+inline ERR ConvertToLinear(APTR Ob) noexcept {
+   return(Action(MT_BmpConvertToLinear, (OBJECTPTR)Ob, NULL));
+}
 
-#define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
+inline ERR ConvertToRGB(APTR Ob) noexcept {
+   return(Action(MT_BmpConvertToRGB, (OBJECTPTR)Ob, NULL));
+}
 
+} // namespace
 
 class objBitmap : public Object {
    public:
@@ -589,7 +599,7 @@ class objBitmap : public Object {
    inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
       else {
-         struct bmpGetColour args = { Red, Green, Blue, Alpha };
+         struct bmp::GetColour args = { Red, Green, Blue, Alpha };
          if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
@@ -598,7 +608,7 @@ class objBitmap : public Object {
    inline ULONG getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
-         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
+         struct bmp::GetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
          if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
          return 0;
       }
@@ -894,49 +904,57 @@ class objBitmap : public Object {
 #define MT_GfxMinimise -8
 #define MT_GfxCheckXWindow -9
 
-struct gfxUpdatePalette { struct RGBPalette * NewPalette;  };
-struct gfxSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
-struct gfxSizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect;  };
-struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
-struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
-struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags;  };
+namespace gfx {
+struct UpdatePalette { struct RGBPalette * NewPalette;  };
+struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
+struct SizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect;  };
+struct SetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
+struct SetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
+struct SetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags;  };
 
-#define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
+inline ERR WaitVBL(APTR Ob) noexcept {
+   return(Action(MT_GfxWaitVBL, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR gfxUpdatePalette(APTR Ob, struct RGBPalette * NewPalette) noexcept {
-   struct gfxUpdatePalette args = { NewPalette };
+inline ERR UpdatePalette(APTR Ob, struct RGBPalette * NewPalette) noexcept {
+   struct UpdatePalette args = { NewPalette };
    return(Action(MT_GfxUpdatePalette, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
-   struct gfxSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
+inline ERR SetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
+   struct SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
    return(Action(MT_GfxSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
-   struct gfxSizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
+inline ERR SizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
+   struct SizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
    return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
-   struct gfxSetGamma args = { Red, Green, Blue, Flags };
+inline ERR SetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+   struct SetGamma args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
-   struct gfxSetGammaLinear args = { Red, Green, Blue, Flags };
+inline ERR SetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+   struct SetGammaLinear args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
-   struct gfxSetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
+inline ERR SetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
+   struct SetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
    return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
 }
 
-#define gfxMinimise(obj) Action(MT_GfxMinimise,(obj),0)
+inline ERR Minimise(APTR Ob) noexcept {
+   return(Action(MT_GfxMinimise, (OBJECTPTR)Ob, NULL));
+}
 
-#define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
+inline ERR CheckXWindow(APTR Ob) noexcept {
+   return(Action(MT_GfxCheckXWindow, (OBJECTPTR)Ob, NULL));
+}
 
+} // namespace
 
 class objDisplay : public Object {
    public:
@@ -1137,24 +1155,25 @@ class objDisplay : public Object {
 #define MT_ClipAddText -4
 #define MT_ClipRemove -5
 
-struct clipAddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags;  };
-struct clipAddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags;  };
-struct clipGetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;  };
-struct clipAddText { CSTRING String;  };
-struct clipRemove { CLIPTYPE Datatype;  };
+namespace clip {
+struct AddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags;  };
+struct AddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags;  };
+struct GetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;  };
+struct AddText { CSTRING String;  };
+struct Remove { CLIPTYPE Datatype;  };
 
-inline ERR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
-   struct clipAddFile args = { Datatype, Path, Flags };
+inline ERR AddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
+   struct AddFile args = { Datatype, Path, Flags };
    return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
-   struct clipAddObjects args = { Datatype, Objects, Flags };
+inline ERR AddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
+   struct AddObjects args = { Datatype, Objects, Flags };
    return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) noexcept {
-   struct clipGetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
+inline ERR GetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) noexcept {
+   struct GetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
    ERR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
    if (Datatype) *Datatype = args.Datatype;
    if (Files) *Files = args.Files;
@@ -1162,16 +1181,17 @@ inline ERR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Fil
    return(error);
 }
 
-inline ERR clipAddText(APTR Ob, CSTRING String) noexcept {
-   struct clipAddText args = { String };
+inline ERR AddText(APTR Ob, CSTRING String) noexcept {
+   struct AddText args = { String };
    return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR clipRemove(APTR Ob, CLIPTYPE Datatype) noexcept {
-   struct clipRemove args = { Datatype };
+inline ERR Remove(APTR Ob, CLIPTYPE Datatype) noexcept {
+   struct Remove args = { Datatype };
    return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
 }
 
+} // namespace
 
 class objClipboard : public Object {
    public:
@@ -1334,7 +1354,7 @@ class objPointer : public Object {
 // Surface methods
 
 #define MT_DrwInheritedFocus -1
-#define MT_DrwExpose -2
+#define MT_DrwExposeToDisplay -2
 #define MT_DrwInvalidateRegion -3
 #define MT_DrwSetDisplay -4
 #define MT_DrwSetOpacity -5
@@ -1344,49 +1364,55 @@ class objPointer : public Object {
 #define MT_DrwRemoveCallback -9
 #define MT_DrwScheduleRedraw -10
 
-struct drwInheritedFocus { OBJECTID FocusID; RNF Flags;  };
-struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
-struct drwInvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height;  };
-struct drwSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
-struct drwSetOpacity { DOUBLE Value; DOUBLE Adjustment;  };
-struct drwAddCallback { FUNCTION * Callback;  };
-struct drwResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
-struct drwRemoveCallback { FUNCTION * Callback;  };
+namespace drw {
+struct InheritedFocus { OBJECTID FocusID; RNF Flags;  };
+struct ExposeToDisplay { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
+struct InvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height;  };
+struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
+struct SetOpacity { DOUBLE Value; DOUBLE Adjustment;  };
+struct AddCallback { FUNCTION * Callback;  };
+struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
+struct RemoveCallback { FUNCTION * Callback;  };
 
-inline ERR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
-   struct drwInheritedFocus args = { FocusID, Flags };
+inline ERR InheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
+   struct InheritedFocus args = { FocusID, Flags };
    return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
-   struct drwExpose args = { X, Y, Width, Height, Flags };
-   return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
+inline ERR ExposeToDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
+   struct ExposeToDisplay args = { X, Y, Width, Height, Flags };
+   return(Action(MT_DrwExposeToDisplay, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR drwInvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
-   struct drwInvalidateRegion args = { X, Y, Width, Height };
+inline ERR InvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   struct InvalidateRegion args = { X, Y, Width, Height };
    return(Action(MT_DrwInvalidateRegion, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR drwSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
-   struct drwSetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
+inline ERR SetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
+   struct SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
    return(Action(MT_DrwSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-inline ERR drwSetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) noexcept {
-   struct drwSetOpacity args = { Value, Adjustment };
+inline ERR SetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) noexcept {
+   struct SetOpacity args = { Value, Adjustment };
    return(Action(MT_DrwSetOpacity, (OBJECTPTR)Ob, &args));
 }
 
-#define drwMinimise(obj) Action(MT_DrwMinimise,(obj),0)
+inline ERR Minimise(APTR Ob) noexcept {
+   return(Action(MT_DrwMinimise, (OBJECTPTR)Ob, NULL));
+}
 
-inline ERR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
-   struct drwResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
+inline ERR ResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
+   struct ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
    return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
 }
 
-#define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
+inline ERR ScheduleRedraw(APTR Ob) noexcept {
+   return(Action(MT_DrwScheduleRedraw, (OBJECTPTR)Ob, NULL));
+}
 
+} // namespace
 
 class objSurface : public Object {
    public:
@@ -1740,145 +1766,147 @@ struct DisplayBase {
 #ifndef PARASOL_STATIC
    objPointer * (*_AccessPointer)(void);
    ERR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
-   ERR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   void (*_DrawPixel)(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
-   void (*_DrawRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
-   void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
+   ERR (*_CopyArea)(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERR (*_CopyRawBitmap)(struct BitmapSurfaceV2 *Surface, objBitmap *Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERR (*_CopySurface)(OBJECTID Surface, objBitmap *Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   void (*_DrawPixel)(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour);
+   void (*_DrawRGBPixel)(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB);
+   void (*_DrawRectangle)(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
    ERR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
-   void (*_FlipBitmap)(objBitmap * Bitmap, FLIP Orientation);
-   void (*_GetColourFormat)(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
-   ERR (*_GetCursorInfo)(struct CursorInfo * Info, LONG Size);
-   ERR (*_GetCursorPos)(DOUBLE * X, DOUBLE * Y);
-   ERR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 ** Info);
+   void (*_FlipBitmap)(objBitmap *Bitmap, FLIP Orientation);
+   void (*_GetColourFormat)(struct ColourFormat *Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
+   ERR (*_GetCursorInfo)(struct CursorInfo *Info, LONG Size);
+   ERR (*_GetCursorPos)(DOUBLE *X, DOUBLE *Y);
+   ERR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 **Info);
    DT (*_GetDisplayType)(void);
    CSTRING (*_GetInputTypeName)(JET Type);
    OBJECTID (*_GetModalSurface)(void);
-   ERR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
-   ERR (*_GetSurfaceCoords)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-   ERR (*_GetSurfaceFlags)(OBJECTID Surface, RNF * Flags);
-   ERR (*_GetSurfaceInfo)(OBJECTID Surface, struct SurfaceInfoV2 ** Info);
+   ERR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE *X, DOUBLE *Y);
+   ERR (*_GetSurfaceCoords)(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height);
+   ERR (*_GetSurfaceFlags)(OBJECTID Surface, RNF *Flags);
+   ERR (*_GetSurfaceInfo)(OBJECTID Surface, struct SurfaceInfoV2 **Info);
    OBJECTID (*_GetUserFocus)(void);
-   ERR (*_GetVisibleArea)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-   ERR (*_LockBitmap)(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info);
+   ERR (*_GetVisibleArea)(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height);
+   ERR (*_LockBitmap)(OBJECTID Surface, objBitmap **Bitmap, LVF *Info);
    ERR (*_LockCursor)(OBJECTID Surface);
-   ULONG (*_ReadPixel)(objBitmap * Bitmap, LONG X, LONG Y);
-   void (*_ReadRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
-   ERR (*_Resample)(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
+   ULONG (*_ReadPixel)(objBitmap *Bitmap, LONG X, LONG Y);
+   void (*_ReadRGBPixel)(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **RGB);
+   ERR (*_Resample)(objBitmap *Bitmap, struct ColourFormat *ColourFormat);
    ERR (*_RestoreCursor)(PTC Cursor, OBJECTID Owner);
    DOUBLE (*_ScaleToDPI)(DOUBLE Value);
-   ERR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
-   void (*_SetClipRegion)(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
+   ERR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfoV3 *Info, LONG Size);
+   void (*_SetClipRegion)(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
    ERR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
    ERR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
-   ERR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
+   ERR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
    ERR (*_SetHostOption)(HOST Option, LARGE Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
    ERR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
-   ERR (*_SubscribeInput)(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
-   void (*_Sync)(objBitmap * Bitmap);
-   ERR (*_UnlockBitmap)(OBJECTID Surface, objBitmap * Bitmap);
+   ERR (*_SubscribeInput)(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle);
+   void (*_Sync)(objBitmap *Bitmap);
+   ERR (*_UnlockBitmap)(OBJECTID Surface, objBitmap *Bitmap);
    ERR (*_UnlockCursor)(OBJECTID Surface);
    ERR (*_UnsubscribeInput)(LONG Handle);
-   ERR (*_WindowHook)(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
+   ERR (*_WindowHook)(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_DISPLAY_MODULE
 #ifndef PARASOL_STATIC
 extern struct DisplayBase *DisplayBase;
-inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(); }
-inline ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
-inline ERR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
-inline void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
-inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
-inline ERR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
-inline void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
-inline void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
-inline ERR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
-inline ERR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetCursorPos(X,Y); }
-inline ERR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
-inline DT gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
-inline CSTRING gfxGetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
-inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
-inline ERR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
-inline ERR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
-inline ERR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
-inline OBJECTID gfxGetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
-inline ERR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
-inline ERR gfxLockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
-inline ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
-inline void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
-inline ERR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
-inline ERR gfxRestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
-inline DOUBLE gfxScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
-inline ERR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
-inline void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
-inline ERR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
-inline ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
-inline ERR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
-inline ERR gfxSetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
-inline OBJECTID gfxSetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
-inline ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
-inline ERR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
-inline void gfxSync(objBitmap * Bitmap) { return DisplayBase->_Sync(Bitmap); }
-inline ERR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
-inline ERR gfxUnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
-inline ERR gfxUnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
-inline ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
+namespace gfx {
+inline objPointer * AccessPointer(void) { return DisplayBase->_AccessPointer(); }
+inline ERR CheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
+inline ERR CopyArea(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERR CopyRawBitmap(struct BitmapSurfaceV2 *Surface, objBitmap *Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERR CopySurface(OBJECTID Surface, objBitmap *Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
+inline void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
+inline void DrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
+inline void DrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
+inline ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
+inline void FlipBitmap(objBitmap *Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
+inline void GetColourFormat(struct ColourFormat *Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
+inline ERR GetCursorInfo(struct CursorInfo *Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
+inline ERR GetCursorPos(DOUBLE *X, DOUBLE *Y) { return DisplayBase->_GetCursorPos(X,Y); }
+inline ERR GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 **Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
+inline DT GetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
+inline CSTRING GetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
+inline OBJECTID GetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
+inline ERR GetRelativeCursorPos(OBJECTID Surface, DOUBLE *X, DOUBLE *Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
+inline ERR GetSurfaceCoords(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
+inline ERR GetSurfaceFlags(OBJECTID Surface, RNF *Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
+inline ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 **Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
+inline OBJECTID GetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
+inline ERR GetVisibleArea(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
+inline ERR LockBitmap(OBJECTID Surface, objBitmap **Bitmap, LVF *Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
+inline ERR LockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
+inline ULONG ReadPixel(objBitmap *Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
+inline void ReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
+inline ERR Resample(objBitmap *Bitmap, struct ColourFormat *ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
+inline ERR RestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
+inline DOUBLE ScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
+inline ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 *Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
+inline void SetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
+inline ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
+inline ERR SetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
+inline ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
+inline ERR SetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
+inline OBJECTID SetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
+inline ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
+inline ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
+inline void Sync(objBitmap *Bitmap) { return DisplayBase->_Sync(Bitmap); }
+inline ERR UnlockBitmap(OBJECTID Surface, objBitmap *Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
+inline ERR UnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
+inline ERR UnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
+inline ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
+} // namespace
 #else
-extern "C" {
-extern objPointer * gfxAccessPointer(void);
-extern ERR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
-extern ERR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-extern ERR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-extern ERR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-extern void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
-extern void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
-extern void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
-extern ERR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
-extern void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation);
-extern void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
-extern ERR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size);
-extern ERR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y);
-extern ERR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info);
-extern DT gfxGetDisplayType(void);
-extern CSTRING gfxGetInputTypeName(JET Type);
-extern OBJECTID gfxGetModalSurface(void);
-extern ERR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
-extern ERR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-extern ERR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags);
-extern ERR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info);
-extern OBJECTID gfxGetUserFocus(void);
-extern ERR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-extern ERR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info);
-extern ERR gfxLockCursor(OBJECTID Surface);
-extern ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y);
-extern void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
-extern ERR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
-extern ERR gfxRestoreCursor(PTC Cursor, OBJECTID Owner);
-extern DOUBLE gfxScaleToDPI(DOUBLE Value);
-extern ERR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
-extern void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-extern ERR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
-extern ERR gfxSetCursorPos(DOUBLE X, DOUBLE Y);
-extern ERR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-extern ERR gfxSetHostOption(HOST Option, LARGE Value);
-extern OBJECTID gfxSetModalSurface(OBJECTID Surface);
-extern ERR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
-extern ERR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
-extern void gfxSync(objBitmap * Bitmap);
-extern ERR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap);
-extern ERR gfxUnlockCursor(OBJECTID Surface);
-extern ERR gfxUnsubscribeInput(LONG Handle);
-extern ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
-}
+namespace gfx {
+extern objPointer * AccessPointer(void);
+extern ERR CheckIfChild(OBJECTID Parent, OBJECTID Child);
+extern ERR CopyArea(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern ERR CopyRawBitmap(struct BitmapSurfaceV2 *Surface, objBitmap *Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern ERR CopySurface(OBJECTID Surface, objBitmap *Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour);
+extern void DrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB);
+extern void DrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
+extern ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
+extern void FlipBitmap(objBitmap *Bitmap, FLIP Orientation);
+extern void GetColourFormat(struct ColourFormat *Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
+extern ERR GetCursorInfo(struct CursorInfo *Info, LONG Size);
+extern ERR GetCursorPos(DOUBLE *X, DOUBLE *Y);
+extern ERR GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 **Info);
+extern DT GetDisplayType(void);
+extern CSTRING GetInputTypeName(JET Type);
+extern OBJECTID GetModalSurface(void);
+extern ERR GetRelativeCursorPos(OBJECTID Surface, DOUBLE *X, DOUBLE *Y);
+extern ERR GetSurfaceCoords(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height);
+extern ERR GetSurfaceFlags(OBJECTID Surface, RNF *Flags);
+extern ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 **Info);
+extern OBJECTID GetUserFocus(void);
+extern ERR GetVisibleArea(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height);
+extern ERR LockBitmap(OBJECTID Surface, objBitmap **Bitmap, LVF *Info);
+extern ERR LockCursor(OBJECTID Surface);
+extern ULONG ReadPixel(objBitmap *Bitmap, LONG X, LONG Y);
+extern void ReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **RGB);
+extern ERR Resample(objBitmap *Bitmap, struct ColourFormat *ColourFormat);
+extern ERR RestoreCursor(PTC Cursor, OBJECTID Owner);
+extern DOUBLE ScaleToDPI(DOUBLE Value);
+extern ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 *Info, LONG Size);
+extern void SetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
+extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
+extern ERR SetCursorPos(DOUBLE X, DOUBLE Y);
+extern ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
+extern ERR SetHostOption(HOST Option, LARGE Value);
+extern OBJECTID SetModalSurface(OBJECTID Surface);
+extern ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
+extern ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle);
+extern void Sync(objBitmap *Bitmap);
+extern ERR UnlockBitmap(OBJECTID Surface, objBitmap *Bitmap);
+extern ERR UnlockCursor(OBJECTID Surface);
+extern ERR UnsubscribeInput(LONG Handle);
+extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 
@@ -1894,34 +1922,35 @@ extern ERR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
 
-#define gfxReleasePointer(a)    (ReleaseObject(a))
-
 // Stubs
 
-inline ERR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
+namespace drw {
+
+inline ERR AddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = C_FUNCTION(Callback);
-      struct drwAddCallback args = { &call };
+      struct AddCallback args = { &call };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
    else {
-      struct drwAddCallback args = { NULL };
+      struct AddCallback args = { NULL };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
 }
 
-inline ERR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
+inline ERR RemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       auto call = C_FUNCTION(Callback);
-      struct drwRemoveCallback args = { &call };
+      struct RemoveCallback args = { &call };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
    else {
-      struct drwRemoveCallback args = { NULL };
+      struct RemoveCallback args = { NULL };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
 }
 
+} // namespace
 
 namespace fl {
    using namespace pf;

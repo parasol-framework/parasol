@@ -152,7 +152,7 @@
     <method>
       <name>BufferContent</name>
       <comment>Reads all file content into a local memory buffer.</comment>
-      <prototype>ERR flBufferContent(OBJECTPTR Object)</prototype>
+      <prototype>ERR fl::BufferContent(OBJECTPTR Object)</prototype>
       <description>
 <p>File content may be buffered at any time by calling the BufferContent method.  This will allocate a buffer that matches the current file size and the file's content will be read into that buffer.  The <code>BUFFER</code> flag is set in the file object and a pointer to the content is referenced in the file's <fl>Buffer</fl> field.  Standard file operations such as read, write and seek have the same effect when a file is in buffer mode.</p>
 <p>Once a file has been buffered, the original file handle and any locks on that file are returned to the system. Physical operations on the file object such as delete, rename and attribute settings no longer have meaning when applied to a buffered file.  It is not possible to drop the buffer and return the file object to its original state once buffering has been enabled.</p>
@@ -167,7 +167,7 @@
     <method>
       <name>Copy</name>
       <comment>Copies the data of a file to another location.</comment>
-      <prototype>ERR flCopy(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
+      <prototype>ERR fl::Copy(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
       <input>
         <param type="CSTRING" name="Dest">The destination file path for the copy operation.</param>
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
@@ -194,7 +194,7 @@
     <method>
       <name>Delete</name>
       <comment>Deletes a file from its source location.</comment>
-      <prototype>ERR flDelete(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR fl::Delete(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
       </input>
@@ -216,7 +216,7 @@
     <method>
       <name>Move</name>
       <comment>Moves a file to a new location.</comment>
-      <prototype>ERR flMove(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
+      <prototype>ERR fl::Move(OBJECTPTR Object, CSTRING Dest, FUNCTION * Callback)</prototype>
       <input>
         <param type="CSTRING" name="Dest">The desired path for the file.</param>
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
@@ -237,7 +237,7 @@
     <method>
       <name>Next</name>
       <comment>Retrieve meta information describing the next indexed file in the folder list.</comment>
-      <prototype>ERR flNext(OBJECTPTR Object, objFile ** File)</prototype>
+      <prototype>ERR fl::Next(OBJECTPTR Object, objFile ** File)</prototype>
       <input>
         <param type="objFile **" name="File">A pointer to a new File object will be returned in this parameter if the call is successful.</param>
       </input>
@@ -258,7 +258,7 @@
     <method>
       <name>ReadLine</name>
       <comment>Reads the next line from the file.</comment>
-      <prototype>ERR flReadLine(OBJECTPTR Object, STRING * Result)</prototype>
+      <prototype>ERR fl::ReadLine(OBJECTPTR Object, STRING * Result)</prototype>
       <input>
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
@@ -280,7 +280,7 @@
     <method>
       <name>SetDate</name>
       <comment>Sets the date on a file.</comment>
-      <prototype>ERR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
+      <prototype>ERR fl::SetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
       <input>
         <param type="LONG" name="Year">Year (-ve for BC, +ve for AD).</param>
         <param type="LONG" name="Month">Month (1 - 12)</param>
@@ -308,7 +308,7 @@
     <method>
       <name>StartStream</name>
       <comment>Starts streaming data from a file source.</comment>
-      <prototype>ERR flStartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
+      <prototype>ERR fl::StartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
       <input>
         <param type="OBJECTID" name="Subscriber">Reference to an object that will receive streamed data notifications.</param>
         <param type="FL" name="Flags" lookup="FL">Use <code>READ</code> for incoming data, <code>WRITE</code> for outgoing data.</param>
@@ -332,7 +332,7 @@
     <method>
       <name>StopStream</name>
       <comment>Stops streaming data from a file source.</comment>
-      <prototype>ERR flStopStream(OBJECTPTR Object)</prototype>
+      <prototype>ERR fl::StopStream(OBJECTPTR Object)</prototype>
       <description>
 <p>This method terminates data streaming from a file (instantiated by the <method>StartStream</method> method).  Any resources related to the streaming process will be deallocated.</p>
       </description>
@@ -346,7 +346,7 @@
     <method>
       <name>Watch</name>
       <comment>Monitors files and folders for file system events.</comment>
-      <prototype>ERR flWatch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, MFF Flags)</prototype>
+      <prototype>ERR fl::Watch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, MFF Flags)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">The routine that will be called when a file change is triggered by the system.</param>
         <param type="LARGE" name="Custom">A custom 64-bit value that will passed to the Callback routine as a parameter.</param>

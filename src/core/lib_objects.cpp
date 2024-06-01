@@ -603,7 +603,7 @@ ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION 
          if (Callback) call->Callback = *Callback;
          else call->Callback.Type = CALL::NIL;
 
-         thSetData(thread, call, argssize);
+         th::SetData(thread, call, argssize);
 
          error = thread->activate();
       }

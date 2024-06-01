@@ -147,7 +147,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.Meta);
    }
    else if (Self->Feedback.isScript()) {
-      scCall(Self->Feedback, std::to_array<ScriptArg>({
+      sc::Call(Self->Feedback, std::to_array<ScriptArg>({
          { "NetSocket",    Self, FD_OBJECTPTR },
          { "ClientSocket", client_socket, FD_OBJECTPTR },
          { "State",        LONG(NTC::CONNECTED) }
@@ -218,7 +218,7 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
          if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.Meta);
       }
       else if (Socket->Feedback.isScript()) {
-         scCall(Socket->Feedback, std::to_array<ScriptArg>({
+         sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR },
             { "State",        LONG(NTC::DISCONNECTED) }
