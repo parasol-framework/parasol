@@ -236,8 +236,8 @@ void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
    pf::ScopedObjectLock surface(SurfaceID);
 
    if (surface.granted()) {
-      if ((Width) and (Height)) drw::Expose(*surface, X, Y, Width, Height, EXF::CHILDREN);
-      else Action(MT_DrwExpose, *surface, NULL);
+      if ((Width) and (Height)) drw::ExposeToDisplay(*surface, X, Y, Width, Height, EXF::CHILDREN);
+      else Action(MT_DrwExposeToDisplay, *surface, NULL);
    }
 }
 
