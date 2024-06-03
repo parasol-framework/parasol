@@ -23,7 +23,7 @@ This function converts `JET` integer constants to their string equivalent.
 int(JET) Type: JET type integer.
 
 -RESULT-
-cstr: A string describing the input type is returned or NULL if the Type is invalid.
+cstr: A string describing the input `Type` is returned, or `NULL` if the `Type` is invalid.
 
 *********************************************************************************************************************/
 
@@ -63,14 +63,14 @@ ERR consume_input_events(const InputEvent *Events, LONG Handle)
 }
 </pre>
 
-All processable events are referenced in the InputEvent structure in the Events parameter.
+All processable events are referenced in the !InputEvent structure in the `Events` parameter.
 
 `JET` constants are as follows and take note of `CROSSED_IN` and `CROSSED_OUT` which are software generated and not
 a device event:
 
 <types lookup="JET"/>
 
-The `JTYPE` values for the Flags field are as follows.  Note that these flags also serve as input masks for the
+The `JTYPE` values for the `Flags` field are as follows.  Note that these flags also serve as input masks for the
 SubscribeInput() function, so to receive a message of the given type the appropriate `JTYPE` flag must have been set in the
 original subscription call.
 
@@ -78,8 +78,8 @@ original subscription call.
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
-oid SurfaceFilter: Optional.  Only the input messages that match the given surface ID will be received.
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
+oid SurfaceFilter: Optional.  Only the input messages that match the given @Surface ID will be received.
+int(JTYPE) Mask: Combine #JTYPE flags to define the input messages required by the client.  Set to `0xffffffff` if all messages are required.
 oid DeviceFilter: Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.
 &int Handle: A handle for the subscription is returned here.
 
@@ -122,7 +122,7 @@ UnsubscribeInput: Removes an input subscription.
 This function removes an input subscription that has been created with ~SubscribeInput().
 
 -INPUT-
-int Handle: Reference to a handle returned by SubscribeInput().
+int Handle: Reference to a handle returned by ~SubscribeInput().
 
 -ERRORS-
 Okay

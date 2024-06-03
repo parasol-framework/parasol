@@ -56,11 +56,11 @@
 
   <methods>
     <method>
-      <name>Delete</name>
+      <name>DeleteRecord</name>
       <comment>Removes a proxy from the database.</comment>
-      <prototype>ERR prx::Delete(OBJECTPTR Object)</prototype>
+      <prototype>ERR prx::DeleteRecord(OBJECTPTR Object)</prototype>
       <description>
-<p>Call the Delete() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy database on the success of this function.</p>
+<p>Call the DeleteRecord() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy database on the success of this function.</p>
       </description>
       <result>
         <error code="Okay">Proxy deleted.</error>

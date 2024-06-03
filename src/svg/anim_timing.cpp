@@ -140,7 +140,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       // attribute.
 
       if (not vt.matrix) {
-         vec::NewMatrix(*vector, &vt.matrix, false);
+         vector->newMatrix(&vt.matrix, false);
          vt.matrix->Tag = MTAG_ANIMATE_TRANSFORM;
       }
 

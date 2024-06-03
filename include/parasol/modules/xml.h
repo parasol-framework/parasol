@@ -144,129 +144,22 @@ typedef struct XMLTag {
 
 // XML methods
 
-#define MT_XMLSetAttrib -1
-#define MT_XMLSerialise -2
-#define MT_XMLInsertXML -3
-#define MT_XMLGetContent -4
-#define MT_XMLSort -5
-#define MT_XMLRemoveTag -6
-#define MT_XMLMoveTags -7
-#define MT_XMLGetAttrib -8
-#define MT_XMLInsertXPath -9
-#define MT_XMLFindTag -10
-#define MT_XMLFilter -11
-#define MT_XMLCount -13
-#define MT_XMLInsertContent -14
-#define MT_XMLRemoveXPath -15
-#define MT_XMLGetTag -18
-
 namespace xml {
-struct SetAttrib { LONG Index; LONG Attrib; CSTRING Name; CSTRING Value;  };
-struct Serialise { LONG Index; XMF Flags; STRING Result;  };
-struct InsertXML { LONG Index; XMI Where; CSTRING XML; LONG Result;  };
-struct GetContent { LONG Index; STRING Buffer; LONG Length;  };
-struct Sort { CSTRING XPath; CSTRING Sort; XSF Flags;  };
-struct RemoveTag { LONG Index; LONG Total;  };
-struct MoveTags { LONG Index; LONG Total; LONG DestIndex; XMI Where;  };
-struct GetAttrib { LONG Index; CSTRING Attrib; CSTRING Value;  };
-struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; LONG Result;  };
-struct FindTag { CSTRING XPath; FUNCTION * Callback; LONG Result;  };
-struct Filter { CSTRING XPath;  };
-struct Count { CSTRING XPath; LONG Result;  };
-struct InsertContent { LONG Index; XMI Where; CSTRING Content; LONG Result;  };
-struct RemoveXPath { CSTRING XPath; LONG Limit;  };
-struct GetTag { LONG Index; struct XMLTag * Result;  };
-
-inline ERR SetAttrib(APTR Ob, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) noexcept {
-   struct SetAttrib args = { Index, Attrib, Name, Value };
-   return(Action(MT_XMLSetAttrib, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Serialise(APTR Ob, LONG Index, XMF Flags, STRING * Result) noexcept {
-   struct Serialise args = { Index, Flags, (STRING)0 };
-   ERR error = Action(MT_XMLSerialise, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR InsertXML(APTR Ob, LONG Index, XMI Where, CSTRING XML, LONG * Result) noexcept {
-   struct InsertXML args = { Index, Where, XML, (LONG)0 };
-   ERR error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR GetContent(APTR Ob, LONG Index, STRING Buffer, LONG Length) noexcept {
-   struct GetContent args = { Index, Buffer, Length };
-   return(Action(MT_XMLGetContent, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Sort(APTR Ob, CSTRING XPath, CSTRING Sort, XSF Flags) noexcept {
-   struct Sort args = { XPath, Sort, Flags };
-   return(Action(MT_XMLSort, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR RemoveTag(APTR Ob, LONG Index, LONG Total) noexcept {
-   struct RemoveTag args = { Index, Total };
-   return(Action(MT_XMLRemoveTag, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR MoveTags(APTR Ob, LONG Index, LONG Total, LONG DestIndex, XMI Where) noexcept {
-   struct MoveTags args = { Index, Total, DestIndex, Where };
-   return(Action(MT_XMLMoveTags, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetAttrib(APTR Ob, LONG Index, CSTRING Attrib, CSTRING * Value) noexcept {
-   struct GetAttrib args = { Index, Attrib, (CSTRING)0 };
-   ERR error = Action(MT_XMLGetAttrib, (OBJECTPTR)Ob, &args);
-   if (Value) *Value = args.Value;
-   return(error);
-}
-
-inline ERR InsertXPath(APTR Ob, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result) noexcept {
-   struct InsertXPath args = { XPath, Where, XML, (LONG)0 };
-   ERR error = Action(MT_XMLInsertXPath, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR FindTag(APTR Ob, CSTRING XPath, FUNCTION * Callback, LONG * Result) noexcept {
-   struct FindTag args = { XPath, Callback, (LONG)0 };
-   ERR error = Action(MT_XMLFindTag, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR Filter(APTR Ob, CSTRING XPath) noexcept {
-   struct Filter args = { XPath };
-   return(Action(MT_XMLFilter, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Count(APTR Ob, CSTRING XPath, LONG * Result) noexcept {
-   struct Count args = { XPath, (LONG)0 };
-   ERR error = Action(MT_XMLCount, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR InsertContent(APTR Ob, LONG Index, XMI Where, CSTRING Content, LONG * Result) noexcept {
-   struct InsertContent args = { Index, Where, Content, (LONG)0 };
-   ERR error = Action(MT_XMLInsertContent, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR RemoveXPath(APTR Ob, CSTRING XPath, LONG Limit) noexcept {
-   struct RemoveXPath args = { XPath, Limit };
-   return(Action(MT_XMLRemoveXPath, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetTag(APTR Ob, LONG Index, struct XMLTag ** Result) noexcept {
-   struct GetTag args = { Index, (struct XMLTag *)0 };
-   ERR error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
+struct SetAttrib { LONG Index; LONG Attrib; CSTRING Name; CSTRING Value; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Serialise { LONG Index; XMF Flags; STRING Result; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertXML { LONG Index; XMI Where; CSTRING XML; LONG Result; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetContent { LONG Index; STRING Buffer; LONG Length; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Sort { CSTRING XPath; CSTRING Sort; XSF Flags; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveTag { LONG Index; LONG Total; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct MoveTags { LONG Index; LONG Total; LONG DestIndex; XMI Where; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetAttrib { LONG Index; CSTRING Attrib; CSTRING Value; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; LONG Result; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindTag { CSTRING XPath; FUNCTION * Callback; LONG Result; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Filter { CSTRING XPath; static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Count { CSTRING XPath; LONG Result; static const ACTIONID id = -13; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertContent { LONG Index; XMI Where; CSTRING Content; LONG Result; static const ACTIONID id = -14; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveXPath { CSTRING XPath; LONG Limit; static const ACTIONID id = -15; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetTag { LONG Index; struct XMLTag * Result; static const ACTIONID id = -18; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -288,6 +181,29 @@ class objXML : public Object {
    typedef pf::vector<XMLTag> TAGS;
    typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
+
+   template <class T> inline ERR insertStatement(LONG Index, XMI Where, T Statement, XMLTag **Result) {
+      LONG index_result; 
+      XMLTag *tag_result;
+      if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
+         error = getTag(index_result, &tag_result);
+         *Result = tag_result;
+         return error;
+      }
+      else return error;
+   }
+
+   template <class T> inline ERR setAttribValue(LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+      auto attrib = to_cstring(Attrib);
+      auto buffer = std::to_string(Value);
+      return setAttrib(Tag, Flags, attrib, buffer.c_str());
+   }
+
+   template <class T> inline ERR setAttribValue(LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+      auto attrib = to_cstring(Attrib);
+      auto buffer = std::to_string(Value);
+      return setAttrib(Tag, Flags, attrib, buffer.c_str());
+   }
 
    // Action stubs
 
@@ -311,6 +227,82 @@ class objXML : public Object {
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
       return Action(AC_SetKey, this, &args);
+   }
+   inline ERR setAttrib(LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) noexcept {
+      struct xml::SetAttrib args = { Index, Attrib, Name, Value };
+      return(Action(-1, this, &args));
+   }
+   inline ERR serialise(LONG Index, XMF Flags, STRING * Result) noexcept {
+      struct xml::Serialise args = { Index, Flags, (STRING)0 };
+      ERR error = Action(-2, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR insertXML(LONG Index, XMI Where, CSTRING XML, LONG * Result) noexcept {
+      struct xml::InsertXML args = { Index, Where, XML, (LONG)0 };
+      ERR error = Action(-3, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR getContent(LONG Index, STRING Buffer, LONG Length) noexcept {
+      struct xml::GetContent args = { Index, Buffer, Length };
+      return(Action(-4, this, &args));
+   }
+   inline ERR sort(CSTRING XPath, CSTRING Sort, XSF Flags) noexcept {
+      struct xml::Sort args = { XPath, Sort, Flags };
+      return(Action(-5, this, &args));
+   }
+   inline ERR removeTag(LONG Index, LONG Total) noexcept {
+      struct xml::RemoveTag args = { Index, Total };
+      return(Action(-6, this, &args));
+   }
+   inline ERR moveTags(LONG Index, LONG Total, LONG DestIndex, XMI Where) noexcept {
+      struct xml::MoveTags args = { Index, Total, DestIndex, Where };
+      return(Action(-7, this, &args));
+   }
+   inline ERR getAttrib(LONG Index, CSTRING Attrib, CSTRING * Value) noexcept {
+      struct xml::GetAttrib args = { Index, Attrib, (CSTRING)0 };
+      ERR error = Action(-8, this, &args);
+      if (Value) *Value = args.Value;
+      return(error);
+   }
+   inline ERR insertXPath(CSTRING XPath, XMI Where, CSTRING XML, LONG * Result) noexcept {
+      struct xml::InsertXPath args = { XPath, Where, XML, (LONG)0 };
+      ERR error = Action(-9, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR findTag(CSTRING XPath, FUNCTION * Callback, LONG * Result) noexcept {
+      struct xml::FindTag args = { XPath, Callback, (LONG)0 };
+      ERR error = Action(-10, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR filter(CSTRING XPath) noexcept {
+      struct xml::Filter args = { XPath };
+      return(Action(-11, this, &args));
+   }
+   inline ERR count(CSTRING XPath, LONG * Result) noexcept {
+      struct xml::Count args = { XPath, (LONG)0 };
+      ERR error = Action(-13, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR insertContent(LONG Index, XMI Where, CSTRING Content, LONG * Result) noexcept {
+      struct xml::InsertContent args = { Index, Where, Content, (LONG)0 };
+      ERR error = Action(-14, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR removeXPath(CSTRING XPath, LONG Limit) noexcept {
+      struct xml::RemoveXPath args = { XPath, Limit };
+      return(Action(-15, this, &args));
+   }
+   inline ERR getTag(LONG Index, struct XMLTag ** Result) noexcept {
+      struct xml::GetTag args = { Index, (struct XMLTag *)0 };
+      ERR error = Action(-18, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
    }
 
    // Customised field setting
@@ -355,18 +347,6 @@ class objXML : public Object {
 
 namespace xml {
 
-template <class T> inline ERR SetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
-   auto attrib = to_cstring(Attrib);
-   auto buffer = std::to_string(Value);
-   return SetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
-}
-
-template <class T> inline ERR SetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
-   auto attrib = to_cstring(Attrib);
-   auto buffer = std::to_string(Value);
-   return SetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
-}
-
 inline void UpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
 {
    for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
@@ -395,18 +375,6 @@ inline std::string GetContent(const XMLTag &Tag) {
       if (scan.Attribs[0].isContent()) value.append(scan.Attribs[0].Value);
    }
    return value;
-}
-
-template <class T> inline ERR InsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
-   struct InsertXML insert = { Index, Where, to_cstring(Statement) };
-
-   if (auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert); error IS ERR::Okay) {
-      struct GetTag get = { insert.Result };
-      error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &get);
-      *Result = get.Result;
-      return error;
-   }
-   else return error;
 }
 
 //********************************************************************************************************************

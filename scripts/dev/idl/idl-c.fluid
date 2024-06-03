@@ -1012,11 +1012,7 @@ function class(Name, Options, Spec, Private, Custom)
       end
    end
 
-   -- Export method definitions according to this template:
-   --
-   -- #define MT_[Prefix][Method] [ID]
-   -- struct [Prefix][Method] { [Args] }
-   -- inline ERR [Prefix][Method]([Args]) { }
+   -- Export method definitions for a class
 
    if (class.methods != nil) then
       local pfx  = class.methodPrefix
@@ -1062,15 +1058,15 @@ function class(Name, Options, Spec, Private, Custom)
             return name
          end
 
-         local def     = '' -- struct definition
-         local values  = '' -- struct values
-         local call    = 'APTR Ob' -- Inline function parameters
+         local struct_params = '' -- struct parameter types & names
+         local values = '' -- Parameter values
          local results = false
+         local params = ''
          for _, param in ipairs(method.params) do
-            def = def .. param.basicType .. ' ' .. pName(param) .. '; '
+            struct_params = struct_params .. param.basicType .. ' ' .. pName(param) .. '; '
 
-            if nz(call) then call = call .. ', ' end
-            call = call .. param.type .. ' ' .. pName(param)
+            if nz(params) then params = params .. ', ' end
+            params = params .. param.type .. ' ' .. pName(param)
 
             if nz(values) then values = values .. ', ' end
             if (param.resultValue) then
@@ -1081,41 +1077,47 @@ function class(Name, Options, Spec, Private, Custom)
             end
          end
 
+         local action_support = 'static const ACTIONID id = -' .. method.id .. '; ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
          if (method.params != nil) and (#method.params > 0) then
-            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. def .. ' };'
+            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
+         else
+            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
          end
 
          if (method.inline != false) then
-            local inline = 'inline ERR ' .. method.name .. '(' .. call .. ') noexcept {\n'
+            -- Nested inline variant
+
+            local name = method.name:decap()
+            if name == 'delete' then name = 'del' end -- C++ keyword check
+
+            local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
             local args = 'NULL'
+
             if (method.params != nil) and (#method.params > 0) then
-               inline = inline .. '   struct ' .. method.name .. ' args = { ' .. values .. ' };\n'
+               inline = inline .. '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
                args = '&args'
             end
+
             if (results) then
-               inline = inline .. '   ERR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, ' .. args .. ');\n'
+               inline = inline .. '      ERR error = Action(-' .. method.id .. ', this, ' .. args .. ');\n'
                for _, p in pairs(method.params) do
                   if (p.resultValue) then
-                     inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+                     inline = inline .. '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
                   end
                end
-               inline = inline .. '   return(error);\n'
+               inline = inline .. '      return(error);\n'
             else
-               inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, ' .. args .. '));\n'
+               inline = inline .. '      return(Action(-' .. method.id .. ', this, ' .. args .. '));\n'
             end
-            inline = inline .. '}\n'
-            class.methods[k].inline = inline
+
+            inline = inline .. '   }'
+            class.methods[k].nestedInline = inline
          else
-            class.methods[k].inline = nil
+            class.methods[k].nestedInline = nil
          end
       end
 
       output('// ' .. Name:cap() .. ' methods')
-      output()
-
-      for _, method in ipairs(class.methods) do
-         output('#define MT_' .. pfx .. method.name .. ' -' .. method.id)
-      end
       output()
 
       if nz(lpfx) then
@@ -1128,12 +1130,6 @@ function class(Name, Options, Spec, Private, Custom)
          end
       end
       output()
-
-      for _, method in ipairs(class.methods) do
-         if nz(method.inline) then
-            output(method.inline)
-         end
-      end
 
       if nz(lpfx) then
          output('} // namespace')
@@ -1513,204 +1509,211 @@ end
 -- Output the CPP compatible class definition
 
 function outputClassHeader(class, Private, Custom)
-      local physicalFields = false
-      for _, f in ipairs(class.fields) do
-         if not f.virtual then physicalFields = true end
-      end
+   local physicalFields = false
+   for _, f in ipairs(class.fields) do
+      if not f.virtual then physicalFields = true end
+   end
 
-      priority('class obj' .. class.name .. ';') -- Forward declaration
-      output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'Object') .. ' {')
-      output('   public:')
-      output('   static constexpr CLASSID CLASS_ID = CLASSID::' .. class.name:upper() .. ';')
-      output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
+   priority('class obj' .. class.name .. ';') -- Forward declaration
+   output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'Object') .. ' {')
+   output('   public:')
+   output('   static constexpr CLASSID CLASS_ID = CLASSID::' .. class.name:upper() .. ';')
+   output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
+   output('')
+   output('   using create = pf::Create<obj' .. class.name .. '>;')
+
+   if physicalFields then
       output('')
-      output('   using create = pf::Create<obj' .. class.name .. '>;')
 
-      if physicalFields then
-         output('')
+      local max_len = 3 + class.longestFieldType + 1 + 2
 
-         local max_len = 3 + class.longestFieldType + 1 + 2
-
-         for _, f in ipairs(class.fields) do
-            if not f.virtual then
-               local left
-               local field_name = cName(f, true)
-               if nz(field_name) then
-                  left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
-               else
-                  left = string.format('   %-' .. class.longestType .. 's;', f.type)
-               end
-
-               if nz(f.comment) then
-                  local clean_comment = f.comment:gsub('[`!@#]', '')
-                  output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
-               else
-                  output(left)
-               end
-            end
-         end
-
-         if (Private != nil) then
-            output()
-            output('#ifdef PRV_' .. class.name:upper())
-            output(Private)
-            output('#endif')
-         end
-
-         if (Custom != nil) then
-            output('   public:')
-            output(Custom)
-         end
-
-         -- Insert registered actions
-
-         if nz(class.sortedActions) then
-            output('')
-            output('   // Action stubs\n')
-            for _, action in ipairs(class.sortedActions) do
-               if glActionStubs[action.name] then
-                  if (glActionStubs[action.name]:len() != 0) then
-                     local stub = glActionStubs[action.name]
-                     stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
-                     output(stub)
-                  end
-               else
-                  output('   // ' .. action.name .. '\n')
-               end
-            end
-
-            if not class.actions['Init'] then
-               output(glActionStubs['Init'])
-            end
-         end
-
-         -- Insert customised set-field functions.  These are intended to be as fast as possible, so
-         -- features such as error logging and parameter checking are not included.
-
-         output('')
-         output('   // Customised field setting\n')
-         local indent = '      '
-
-         for _, f in ipairs(class.fields) do
+      for _, f in ipairs(class.fields) do
+         if not f.virtual then
+            local left
             local field_name = cName(f, true)
-            if nz(field_name) and (f.write != nil) then
-               local fid_name = field_name
-               local id = fid_name:sub(-3)
-               if id:find('^%lID$') then
-                  fid_name = fid_name:sub(1, -3)
-               end
+            if nz(field_name) then
+               left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
+            else
+               left = string.format('   %-' .. class.longestType .. 's;', f.type)
+            end
 
-               local field_type = f.type
+            if nz(f.comment) then
+               local clean_comment = f.comment:gsub('[`!@#]', '')
+               output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
+            else
+               output(left)
+            end
+         end
+      end
 
-               if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
-                  field_type = 'APTR'
-               end
+      if (Private != nil) then
+         output()
+         output('#ifdef PRV_' .. class.name:upper())
+         output(Private)
+         output('#endif')
+      end
 
-               if not field_type:find('^const ') then
-                  if (bit.band(f.flags, FD_STRING) != 0) and (bit.band(f.flags, FD_ARRAY) == 0) then
-                     if field_type:find('^STRING') or field_type:find('^CSTRING') then
-                        field_type = 'T &&'
-                     else
-                        field_type = 'const ' .. field_type
-                     end
-                  elseif bit.band(f.flags, bit.bor(FD_POINTER, FD_OBJECT)) != 0 then
-                     -- Applying const to pointers can cause type conversion issues.
-                  else
-                     field_type = 'const ' .. field_type
-                  end
-               end
+      if (Custom != nil) then
+         output('   public:')
+         output(Custom)
+      end
+   end
 
-               if (f.write == 'Set') or nz(f.setField) or f.virtual then
-                  if f.struct then
-                     if field_type:sub(-1) != '*' then
-                        field_type = field_type .. ' *'
-                     end
-                  end
+   -- Insert registered actions
 
-                  if (field_type:sub(-2) == '[]') then
-                     field_type = field_type:sub(1,-3) .. '*'
-                     output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
-                  elseif (bit.band(f.flags, FD_ARRAY) != 0) then
-                     if bit.band(f.flags, FD_CPP) != 0 then
-                        output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
-                     else
-                        output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
-                     end
-                  elseif (field_type == 'T &&') then
-                     output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
-                  else
-                     output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
-                  end
+   if nz(class.sortedActions) then
+      output('')
+      output('   // Action stubs\n')
+      for _, action in ipairs(class.sortedActions) do
+         if glActionStubs[action.name] then
+            if (glActionStubs[action.name]:len() != 0) then
+               local stub = glActionStubs[action.name]
+               stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
+               output(stub)
+            end
+         else
+            output('   // ' .. action.name .. '\n')
+         end
+      end
 
-                  if (f.write == 'Init') then
-                     output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
-                  end
+      if not class.actions['Init'] then
+         output(glActionStubs['Init'])
+      end
+   end
 
-                  local err, fl, target = class.meta.mtFindField(f.name:hash())
+   -- Insert registered methods
 
-                  if (err != ERR_Okay) then
-                     print('Failed to field ' .. f.name .. ' in class ' .. class.name)
-                  end
+   if nz(class.methods) then
+      for _, m in ipairs(class.methods) do
+         if m.nestedInline then output(m.nestedInline) end
+      end
+   end
 
-                  if (err == ERR_Okay) and (target.id == class.meta.id) then
-                     output(indent .. 'auto target = this;')
-                     output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
-                  else
-                     output(indent .. 'OBJECTPTR target;')
-                     output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
-                  end
+   -- Insert customised set-field functions.  These are intended to be as fast as possible, so
+   -- features such as error logging and parameter checking are not included.
 
-                  if bit.band(f.flags, FD_VARIABLE) != 0 then
-                     if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
-                        output(indent .. 'Variable var(Value);')
-                        output(indent .. 'return field->WriteValue(target, field, FD_VARIABLE, &var, 1);')
-                     else
-                        -- Pass through as pointer; requires further analysis to determine viability
-                        output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')
-                     end
-                  elseif bit.band(f.flags, FD_ARRAY) != 0 then
-                     if bit.band(f.flags, FD_CPP) != 0 then
-                        local flags = string.format('%08x', f.flags):sub(-8)
-                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
-                     else
-                        local flags = string.format('%08x', f.flags):sub(-8)
-                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
-                     end
-                  elseif bit.band(f.flags, FD_FUNCTION) != 0 then
-                     output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
-                  elseif bit.band(f.flags, bit.bor(FD_STRING)) != 0 then
-                     local flags = string.format('%08x', f.flags):sub(-8)
-                     output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
-                  elseif bit.band(f.flags, bit.bor(FD_POINTER)) != 0 then
-                     local flags = string.format('%08x', f.flags):sub(-8)
-                     output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
-                  elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
-                     output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
-                  elseif bit.band(f.flags, FD_LARGE) != 0 then
-                     output(indent .. 'return field->WriteValue(target, field, FD_LARGE, &Value, 1);')
-                  else
-                     output(indent .. 'return field->WriteValue(target, field, FD_LONG, &Value, 1);')
-                  end
+   output('')
+   output('   // Customised field setting\n')
+   local indent = '      '
+
+   for _, f in ipairs(class.fields) do
+      local field_name = cName(f, true)
+      if nz(field_name) and (f.write != nil) then
+         local fid_name = field_name
+         local id = fid_name:sub(-3)
+         if id:find('^%lID$') then
+            fid_name = fid_name:sub(1, -3)
+         end
+
+         local field_type = f.type
+
+         if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
+            field_type = 'APTR'
+         end
+
+         if not field_type:find('^const ') then
+            if (bit.band(f.flags, FD_STRING) != 0) and (bit.band(f.flags, FD_ARRAY) == 0) then
+               if field_type:find('^STRING') or field_type:find('^CSTRING') then
+                  field_type = 'T &&'
                else
-                  if (field_type == 'T &&') then
-                     output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
-                  else
-                     output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
-                  end
-                  if (f.write == 'Init') then
-                     output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
-                  end
-                  output(indent .. string.format('this->%s = Value;', field_name))
-                  output(indent .. 'return ERR::Okay;')
+                  field_type = 'const ' .. field_type
                end
-
-               output('   }\n')
+            elseif bit.band(f.flags, bit.bor(FD_POINTER, FD_OBJECT)) != 0 then
+               -- Applying const to pointers can cause type conversion issues.
+            else
+               field_type = 'const ' .. field_type
             end
          end
 
+         if (f.write == 'Set') or nz(f.setField) or f.virtual then
+            if f.struct then
+               if field_type:sub(-1) != '*' then
+                  field_type = field_type .. ' *'
+               end
+            end
+
+            if (field_type:sub(-2) == '[]') then
+               field_type = field_type:sub(1,-3) .. '*'
+               output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+            elseif (bit.band(f.flags, FD_ARRAY) != 0) then
+               if bit.band(f.flags, FD_CPP) != 0 then
+                  output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
+               else
+                  output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+               end
+            elseif (field_type == 'T &&') then
+               output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            else
+               output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            end
+
+            if (f.write == 'Init') then
+               output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
+            end
+
+            local err, fl, target = class.meta.mtFindField(f.name:hash())
+
+            if (err != ERR_Okay) then
+               print('Failed to field ' .. f.name .. ' in class ' .. class.name)
+            end
+
+            if (err == ERR_Okay) and (target.id == class.meta.id) then
+               output(indent .. 'auto target = this;')
+               output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
+            else
+               output(indent .. 'OBJECTPTR target;')
+               output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
+            end
+
+            if bit.band(f.flags, FD_VARIABLE) != 0 then
+               if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
+                  output(indent .. 'Variable var(Value);')
+                  output(indent .. 'return field->WriteValue(target, field, FD_VARIABLE, &var, 1);')
+               else
+                  -- Pass through as pointer; requires further analysis to determine viability
+                  output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')
+               end
+            elseif bit.band(f.flags, FD_ARRAY) != 0 then
+               if bit.band(f.flags, FD_CPP) != 0 then
+                  local flags = string.format('%08x', f.flags):sub(-8)
+                  output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
+               else
+                  local flags = string.format('%08x', f.flags):sub(-8)
+                  output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
+               end
+            elseif bit.band(f.flags, FD_FUNCTION) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
+            elseif bit.band(f.flags, bit.bor(FD_STRING)) != 0 then
+               local flags = string.format('%08x', f.flags):sub(-8)
+               output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
+            elseif bit.band(f.flags, bit.bor(FD_POINTER)) != 0 then
+               local flags = string.format('%08x', f.flags):sub(-8)
+               output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
+            elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
+            elseif bit.band(f.flags, FD_LARGE) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_LARGE, &Value, 1);')
+            else
+               output(indent .. 'return field->WriteValue(target, field, FD_LONG, &Value, 1);')
+            end
+         else
+            if (field_type == 'T &&') then
+               output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            else
+               output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            end
+            if (f.write == 'Init') then
+               output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
+            end
+            output(indent .. string.format('this->%s = Value;', field_name))
+            output(indent .. 'return ERR::Okay;')
+         end
+
+         output('   }\n')
       end
-      output('};')
-      output()
+   end
+   output('};')
+   output()
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -1911,7 +1911,7 @@ int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.  If set to neit
 
 void FlipBitmap(objBitmap *Bitmap, FLIP Orientation)
 {
-   bmp::Flip(Bitmap, Orientation);
+   Bitmap->flip(Orientation);
 }
 
 /*********************************************************************************************************************

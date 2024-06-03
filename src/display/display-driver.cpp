@@ -201,7 +201,7 @@ static LONG glActualCount = 0;
 
 std::recursive_mutex glInputLock;
 
-OBJECTPTR glCompress = NULL;
+objCompression *glCompress = NULL;
 static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
@@ -1112,37 +1112,37 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    auto config = objConfig::create { fl::Path("user:config/display.cfg") };
 
    if (config.ok()) {
-      cfg::Read(*config, "DISPLAY", "Maximise", &glpMaximise);
+      config->read("DISPLAY", "Maximise", &glpMaximise);
 
       if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((cfg::Read(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
-            cfg::Read(*config, "DISPLAY", "Width", &glpDisplayWidth);
+         if ((config->read("DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
+            config->read("DISPLAY", "Width", &glpDisplayWidth);
          }
 
-         if ((cfg::Read(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
-            cfg::Read(*config, "DISPLAY", "Height", &glpDisplayHeight);
+         if ((config->read("DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
+            config->read("DISPLAY", "Height", &glpDisplayHeight);
          }
 
-         cfg::Read(*config, "DISPLAY", "WindowX", &glpDisplayX);
-         cfg::Read(*config, "DISPLAY", "WindowY", &glpDisplayY);
-         cfg::Read(*config, "DISPLAY", "FullScreen", &glpFullScreen);
+         config->read("DISPLAY", "WindowX", &glpDisplayX);
+         config->read("DISPLAY", "WindowY", &glpDisplayY);
+         config->read("DISPLAY", "FullScreen", &glpFullScreen);
       }
       else {
-         cfg::Read(*config, "DISPLAY", "Width", &glpDisplayWidth);
-         cfg::Read(*config, "DISPLAY", "Height", &glpDisplayHeight);
-         cfg::Read(*config, "DISPLAY", "XCoord", &glpDisplayX);
-         cfg::Read(*config, "DISPLAY", "YCoord", &glpDisplayY);
-         cfg::Read(*config, "DISPLAY", "Depth", &glpDisplayDepth);
+         config->read("DISPLAY", "Width", &glpDisplayWidth);
+         config->read("DISPLAY", "Height", &glpDisplayHeight);
+         config->read("DISPLAY", "XCoord", &glpDisplayX);
+         config->read("DISPLAY", "YCoord", &glpDisplayY);
+         config->read("DISPLAY", "Depth", &glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      cfg::Read(*config, "DISPLAY", "RefreshRate", &glpRefreshRate);
-      cfg::Read(*config, "DISPLAY", "GammaRed", &glpGammaRed);
-      cfg::Read(*config, "DISPLAY", "GammaGreen", &glpGammaGreen);
-      cfg::Read(*config, "DISPLAY", "GammaBlue", &glpGammaBlue);
+      config->read("DISPLAY", "RefreshRate", &glpRefreshRate);
+      config->read("DISPLAY", "GammaRed", &glpGammaRed);
+      config->read("DISPLAY", "GammaGreen", &glpGammaGreen);
+      config->read("DISPLAY", "GammaBlue", &glpGammaBlue);
       CSTRING dpms;
-      if (cfg::ReadValue(*config, "DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
+      if (config->readValue("DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
          StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
    }

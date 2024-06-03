@@ -252,7 +252,7 @@ static const ActionArray clActions[] = {
 };
 
 static const MethodEntry clMethods[] = {
-   { MT_PtSetTime, (APTR)TIME_SetTime, "SetTime", 0, 0 },
+   { pt::SetTime::id, (APTR)TIME_SetTime, "SetTime", 0, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 

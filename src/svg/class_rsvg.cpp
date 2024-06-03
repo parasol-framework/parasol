@@ -18,7 +18,7 @@ static ERR RSVG_Activate(extPicture *Self)
    }
 
    gfx::DrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF::FILL); // Black background
-   svg::Render(prv->SVG, bmp, 0, 0, bmp->Width, bmp->Height);
+   prv->SVG->render(bmp, 0, 0, bmp->Width, bmp->Height);
    return ERR::Okay;
 }
 

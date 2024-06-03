@@ -443,7 +443,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    Args->Value[0] = 0;
 
    if (pf::startswith("count:", field)) {
-      if (xml::Count(Self, field+6, &count) IS ERR::Okay) {
+      if (Self->count(field+6, &count) IS ERR::Okay) {
          Args->Value[IntToStr(count, Args->Value, Args->Size)] = 0;
          return ERR::Okay;
       }
@@ -525,7 +525,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
          }
          else if (extract IS 2) {
             STRING str;
-            ERR error = xml::Serialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
+            ERR error = Self->serialise(Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (error IS ERR::Okay) {
                StrCopy(str, Args->Value, Args->Size);
                FreeResource(str);
@@ -1183,7 +1183,7 @@ static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 
    ERR error;
    STRING str;
-   if ((error = xml::Serialise(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str)) IS ERR::Okay) {
+   if ((error = Self->serialise(0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str)) IS ERR::Okay) {
       struct acWrite write = { str, StrLength(str) };
       if (Action(AC_Write, Args->Dest, &write) != ERR::Okay) error = ERR::Write;
       FreeResource(str);

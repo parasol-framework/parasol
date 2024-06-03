@@ -169,8 +169,8 @@ void ScintillaParasol::SetVerticalScrollPos()
       scroll.PageSize = -1;
       scroll.Position = topLine * vs.lineHeight;
       scroll.Unit     = vs.lineHeight;
-      if (glBitmap) QueueAction(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
-      else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
+      if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
+      else ActionMsg(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
    }
 */
 }
@@ -189,8 +189,8 @@ void ScintillaParasol::SetHorizontalScrollPos()
    scroll.PageSize = -1;
    scroll.Position = xOffset;
    scroll.Unit     = vs.lineHeight;
-   if (glBitmap) QueueAction(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
-   else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
+   if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
+   else ActionMsg(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
 */
 }
 
@@ -217,8 +217,8 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
    log.traceBranch("Lines: %d, PageWidth: %d/%d, Delay: %c", nMax, scroll.PageSize, scroll.ViewSize, (glBitmap ? 'Y' : 'N'));
 
-   if (glBitmap) QueueAction(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
-   else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
+   if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
+   else ActionMsg(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
 
    // Vertical scrollbar
 
@@ -243,8 +243,8 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
    log.trace("PageLength: %d/%d (lines: %d/%d), Pos: %d", scroll.PageSize, scroll.ViewSize, lines, nMax, scroll.Position);
 
-   if (glBitmap) QueueAction(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
-   else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
+   if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
+   else ActionMsg(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
 #endif
    return TRUE;
 }
@@ -277,7 +277,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
 
    auto clipboard = objClipboard::create { };
    if (clipboard.ok()) {
-      if (clip::AddText(*clipboard, selectedText.s) IS ERR::Okay) {
+      if (clipboard->addText(selectedText.s) IS ERR::Okay) {
 
       }
    }
@@ -326,9 +326,9 @@ void ScintillaParasol::Paste()
 
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
-      struct clip::GetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
-      if (Action(MT_ClipGetFiles, *clipboard, &get) IS ERR::Okay) {
-         objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
+      CSTRING *files;
+      if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+         objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {
             LONG len, size;
             if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
@@ -357,7 +357,7 @@ void ScintillaParasol::Paste()
          }
          else {
             char msg[200];
-            snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
+            snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", files[0]);
             error_dialog("Paste Error", msg, ERR::Okay);
          }
       }
@@ -412,7 +412,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
          scintilla->ReportEventFlags |= SEF::CURSOR_POS;
-         QueueAction(MT_SciReportEvent, scintilla->UID);
+         QueueAction(sci::ReportEvent::id, scintilla->UID);
       }
    }
    else if (code IS SCN_STYLENEEDED) {
@@ -437,7 +437,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[MODIFYATTEMPTRO]");
 
       scintilla->ReportEventFlags |= SEF::FAIL_RO;
-      QueueAction(MT_SciReportEvent, scintilla->UID);
+      QueueAction(sci::ReportEvent::id, scintilla->UID);
    }
    else if (code IS SCN_CHARADDED) {
       // This is sent when the user types an ordinary text character (as opposed to a command character) that is
@@ -475,7 +475,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       }
 
       scintilla->ReportEventFlags |= SEF::NEW_CHAR;
-      QueueAction(MT_SciReportEvent, scintilla->UID);
+      QueueAction(sci::ReportEvent::id, scintilla->UID);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)
@@ -645,7 +645,7 @@ void ScintillaParasol::ScrollText(int linesToMove)
    movecontent.ClipRight  = rect.left + rect.Width();
    movecontent.ClipBottom = rect.top + rect.Height();
    movecontent.Flags = 0;
-   ActionMsg(MT_MoveContent, surfaceid, &movecontent);
+   ActionMsg(drw::MoveContent, surfaceid, &movecontent);
 */
    Scintilla::PRectangle rect = GetClientRectangle();
    pf::ScopedObjectLock surface(surfaceid);

@@ -661,7 +661,7 @@ static ERR HTTP_Activate(extHTTP *Self)
    if (write_socket(Self, cstr.c_str(), cstr.length(), NULL) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
          ERR result;
-         if ((result = ns::Connect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR::Okay) {
+         if ((result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR::Okay) {
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
@@ -795,7 +795,7 @@ static ERR HTTP_Init(extHTTP *Self)
 
    if (!Self->ProxyDefined) {
       if (glProxy) {
-         if (prx::Find(glProxy, Self->Port, TRUE) IS ERR::Okay) {
+         if (glProxy->find(Self->Port, true) IS ERR::Okay) {
             if (Self->ProxyServer) FreeResource(Self->ProxyServer);
             Self->ProxyServer = StrClone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080

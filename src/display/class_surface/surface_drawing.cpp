@@ -159,14 +159,14 @@ ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, LON
       else {
          log.trace("Unable to access internal bitmap, sending delayed expose message.  Error: %s", GetErrorMsg(bitmap.error));
 
-         struct drw::ExposeToDisplay expose = {
-            .X      = childexpose.Left   - List[i].Left,
-            .Y      = childexpose.Top    - List[i].Top,
-            .Width  = childexpose.Right  - childexpose.Left,
-            .Height = childexpose.Bottom - childexpose.Top,
-            .Flags  = EXF::NIL
+         struct drw::ExposeToDisplay expose {
+            childexpose.Left   - List[i].Left,
+            childexpose.Top    - List[i].Top,
+            childexpose.Right  - childexpose.Left,
+            childexpose.Bottom - childexpose.Top,
+            EXF::NIL
          };
-         QueueAction(MT_DrwExposeToDisplay, List[i].SurfaceID, &expose);
+         QueueAction(drw::ExposeToDisplay::id, List[i].SurfaceID, &expose);
       }
    }
 
@@ -327,7 +327,7 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
    while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-      if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS drw::InvalidateRegion::id) and (action->ObjectID IS Self->UID)) {
          if (!action->SendArgs) {
             return ERR::Okay|ERR::Notified;
          }
@@ -401,7 +401,7 @@ static ERR SURFACE_ExposeToDisplay(extSurface *Self, struct drw::ExposeToDisplay
    while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-      if ((action->ActionID IS MT_DrwExposeToDisplay) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS drw::ExposeToDisplay::id) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs) {
             auto msgexpose = (struct drw::ExposeToDisplay *)(action + 1);
 
@@ -495,7 +495,7 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
    UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-      if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS drw::InvalidateRegion::id) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs IS TRUE) {
             auto msginvalid = (struct drw::InvalidateRegion *)(action + 1);
 

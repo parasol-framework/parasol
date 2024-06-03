@@ -100,7 +100,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
 
          char string[12];
          UTF8WriteValue(Unicode, string, sizeof(string));
-         doc::InsertText(Self, string, Self->CursorIndex.index, Self->CursorIndex.offset, true); // Will set UpdatingLayout to true
+         Self->insertText(string, Self->CursorIndex.index, Self->CursorIndex.offset, true); // Will set UpdatingLayout to true
          Self->CursorIndex += StrLength(string); // Reposition the cursor
 
          layout_doc_fast(Self);
@@ -453,7 +453,7 @@ static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char Cu
 
       if (extract_script(Self, edit.on_enter, &script, function_name, argstring) IS ERR::Okay) {
          ScriptArg args[] = { { "ID", edit.name } };
-         sc::Exec(script, function_name.c_str(), args, ARRAYSIZE(args));
+         script->exec(function_name.c_str(), args, ARRAYSIZE(args));
       }
    }
 
@@ -509,7 +509,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 
                for (auto &cell_arg : cell.args) args.emplace_back("", cell_arg.second);
 
-               sc::Exec(script, function_name.c_str(), args.data(), args.size());
+               script->exec(function_name.c_str(), args.data(), args.size());
             }
          }
       }
@@ -790,7 +790,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
                { "Y", Event->Y },
                { "Args", argstring }
             };
-            sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            script->exec(func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
    }
@@ -804,7 +804,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
                { "Y", Event->Y },
                { "Args", argstring }
             };
-            sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            script->exec(func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
 
@@ -827,7 +827,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
             const ScriptArg args[] = {
                { "Element", link->origin.uid },
                { "Args", argstring } };
-            sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+            script->exec(func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
 
@@ -921,7 +921,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
                DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
                   if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
-                     vec::GetBoundary(*link.origin.path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
+                     link.origin.path->getBoundary(VBF::NIL, &link_x, &link_y, &link_width, &link_height);
                   }
                }
 
@@ -1117,7 +1117,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                   { "Y", Event->Y },
                   { "Args", s_args }
                };
-               sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+               script->exec(func_name.c_str(), args, ARRAYSIZE(args));
             }
          }
       }
@@ -1133,7 +1133,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+                  script->exec(func_name.c_str(), args, ARRAYSIZE(args));
                }
             }
          }
@@ -1150,7 +1150,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+                  script->exec(func_name.c_str(), args, ARRAYSIZE(args));
                }
             }
          }
@@ -1167,7 +1167,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  sc::Exec(script, func_name.c_str(), args, ARRAYSIZE(args));
+                  script->exec(func_name.c_str(), args, ARRAYSIZE(args));
                }
             }
          }
@@ -1205,7 +1205,7 @@ static ERR inputevent_button(objVectorViewport *Viewport, const InputEvent *Even
 
             if (!button->viewport->Matrices) {
                VectorMatrix *matrix;
-               vec::NewMatrix(*button->viewport, &matrix, false);
+               button->viewport->newMatrix(&matrix, false);
             }
 
             const auto width  = button->viewport->get<DOUBLE>(FID_Width);

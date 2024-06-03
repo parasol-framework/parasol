@@ -47,13 +47,12 @@
       <param type="OBJECTID" name="Child">The child surface to check.</param>
     </input>
     <description>
-<p>This function checks if a surface identified by the Child value is the child of the surface identified by the Parent value.  <code>ERR::True</code> is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent values are equal.  All other return codes indicate false or failure.</p>
+<p>This function checks if a surface identified by the <code>Child</code> value is the child of the surface identified by the <code>Parent</code> value.  <code>ERR::True</code> is returned if the surface is confirmed as being a child of the parent, or if the <code>Child</code> and <code>Parent</code> values are equal.  All other return codes indicate false or failure.</p>
     </description>
     <result type="ERR">
-      <error code="True">The Child surface belongs to the Parent.</error>
-      <error code="False">The Child surface is not a child of Parent.</error>
-      <error code="Args">Invalid arguments were specified.</error>
-      <error code="AccessMemory">Failed to access the internal surface list.</error>
+      <error code="True">The <code>Child</code> surface belongs to the <code>Parent</code>.</error>
+      <error code="False">The <code>Child</code> surface is not a child of <code>Parent</code>.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -121,7 +120,7 @@
     <prototype>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
-      <param type="objBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Must reference a target <class name="Bitmap">Bitmap</class> object.</param>
       <param type="BDF" name="Flags" lookup="BDF">Optional flags.</param>
       <param type="LONG" name="X">The horizontal source coordinate.</param>
       <param type="LONG" name="Y">The vertical source coordinate.</param>
@@ -135,8 +134,8 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">The supplied SurfaceID did not refer to a recognised surface object</error>
-      <error code="AccessMemory">Failed to access the internal surfacelist memory structure</error>
+      <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -203,15 +202,14 @@
       <param type="LONG" name="Y">The vertical coordinate of the area to expose.</param>
       <param type="LONG" name="Width">The width of the expose area.</param>
       <param type="LONG" name="Height">The height of the expose area.</param>
-      <param type="EXF" name="Flags" lookup="EXF">Optional flags - using CHILDREN will expose all intersecting child regions.</param>
+      <param type="EXF" name="Flags" lookup="EXF">Optional flags - using <code>CHILDREN</code> will expose all intersecting child regions.</param>
     </input>
     <description>
 <p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF::CHILDREN</code> flag.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">The SurfaceID does not refer to an existing surface object</error>
-      <error code="AccessMemory">The internal surfacelist could not be accessed</error>
+      <error code="Search">The <code>Surface</code> ID does not refer to an existing surface object</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -263,8 +261,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Retrieves graphics information from the active mouse cursor.</comment>
     <prototype>ERR gfx::GetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
     <input>
-      <param type="struct CursorInfo *" name="Info">Pointer to a CursorInfo structure.</param>
-      <param type="LONG" name="Size">The byte-size of the Info structure.</param>
+      <param type="struct CursorInfo *" name="Info">Pointer to a <st>CursorInfo</st> structure.</param>
+      <param type="LONG" name="Size">The byte-size of the <code>Info</code> structure.</param>
     </input>
     <description>
 <p>The GetCursorInfo() function is used to retrieve useful information on the graphics structure of the mouse cursor.  It will return the maximum possible dimensions for custom cursor graphics and indicates the optimal bits-per-pixel setting for the hardware cursor.</p>
@@ -339,7 +337,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>This function converts <code>JET</code> integer constants to their string equivalent.</p>
     </description>
-    <result type="CSTRING">A string describing the input type is returned or NULL if the Type is invalid.</result>
+    <result type="CSTRING">A string describing the input <code>Type</code> is returned, or <code>NULL</code> if the <code>Type</code> is invalid.</result>
   </function>
 
   <function>
@@ -392,23 +390,22 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">The supplied SurfaceID did not refer to a recognised surface object.</error>
-      <error code="AccessMemory">Failed to access the internal surfacelist memory structure.</error>
+      <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object.</error>
     </result>
   </function>
 
   <function>
     <name>GetSurfaceFlags</name>
     <category>Surfaces</category>
-    <comment>Retrieves the Flags field from a surface.</comment>
+    <comment>Retrieves the <code>Flags</code> field from a <class name="Surface">Surface</class>.</comment>
     <prototype>ERR gfx::GetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level surface is queried.</param>
       <param type="RNF *" name="Flags" lookup="RNF">The flags value is returned here.</param>
     </input>
     <description>
-<p>This function returns the current Flags field from a surface.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
-<p>For information on the available flags, please refer to the Flags field of the <class name="Surface">Surface</class> class.</p>
+<p>This function returns the current <code>Flags</code> field from a <class name="Surface">Surface</class>.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
+<p>For information on the available flags, please refer to the <class name="Surface" field="Flags">Surface.Flags</class> field.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -423,17 +420,16 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Retrieves display information for any surface object without having to access it directly.</comment>
     <prototype>ERR gfx::GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">The unique ID of a surface to query.  If zero, the root surface is returned.</param>
-      <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a SurfaceInfo pointer that describes the Surface object.</param>
+      <param type="OBJECTID" name="Surface">The unique ID of a <class name="Surface">Surface</class> to query.  If zero, the root surface is returned.</param>
+      <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a <st>SurfaceInfo</st> pointer that describes the surface object.</param>
     </input>
     <description>
-<p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the AccessObject() function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
+<p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the <function module="Core">AccessObject</function> function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">The supplied SurfaceID did not refer to a recognised surface object.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Failed to access the internal surfacelist memory structure.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -451,7 +447,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>GetVisibleArea</name>
     <category>Surfaces</category>
-    <comment>Returns the visible region of a surface.</comment>
+    <comment>Returns the visible region of a <class name="Surface">Surface</class>.</comment>
     <prototype>ERR gfx::GetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display will be queried.</param>
@@ -463,12 +459,12 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="LONG *" name="Height">The visible height of the surface.</param>
     </input>
     <description>
-<p>The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent surfaces. The resulting coordinates are relative to point <code>0,0</code> of the queried surface. If the surface is not obscured, then the resulting coordinates will be <code>(0,0),(Width,Height)</code>.</p>
+<p>The GetVisibleArea() function returns the visible area of a <class name="Surface">Surface</class>, which is based on its position within its parent surfaces. The resulting coordinates are relative to point <code>0,0</code> of the queried surface. If the surface is not obscured, then the resulting coordinates will be <code>(0,0),(Width,Height)</code>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Search">The supplied SurfaceID did not refer to a recognised surface object.</error>
-      <error code="AccessMemory">Failed to access the internal surfacelist memory structure.</error>
+      <error code="Failed">General failure.</error>
+      <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object.</error>
     </result>
   </function>
 
@@ -480,7 +476,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <input>
       <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
       <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
-      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
+      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If <code>EXPOSE_CHANGES</code> is returned, any changes must be exposed in order for them to be displayed to the user.</param>
     </input>
     <description>
 <p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
@@ -501,7 +497,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should send movement signals to.</param>
     </input>
     <description>
-<p>The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface referenced in the Surface parameter.  The pointer will not move unless the <function>SetCursorPos</function> function is called. The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200 microseconds.</p>
+<p>The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface referenced in the <code>Surface</code> parameter.  The pointer will not move unless the <function>SetCursorPos</function> function is called. The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200 microseconds.</p>
 <p>The anchor can be released at any time by calling the <function>UnlockCursor</function> function.</p>
     </description>
     <result type="ERR">
@@ -625,25 +621,27 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
     <prototype>ERR gfx::SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the <code>RESTRICT</code> flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
       <param type="PTC" name="Cursor" lookup="PTC">The ID of the cursor image that is to be set.</param>
-      <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if Cursor is zero).</param>
+      <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if <code>Cursor</code> is zero).</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor, and/or owner of the cursor image setting.</param>
     </input>
     <description>
 <p>Use the SetCursor() function to change the pointer image and/or restrict the movement of the pointer to a surface area.</p>
-<p>To change the cursor image, set the Cursor or Name parameters to define the new image.  Valid cursor ID's and their equivalent names are listed in the documentation for the Cursor field.  If the ObjectID field is set to a valid surface, then the cursor image will switch back to the default setting once the pointer moves outside of its region.  If both the Cursor and Name parameters are NULL, the cursor image will remain unchanged from its current image.</p>
-<p>The SetCursor() function accepts the following flags in the Flags parameter:</p>
+<p>To change the cursor image, set the <code>Cursor</code> or <code>Name</code> parameters to define the new image.  Valid cursor ID's and their equivalent names are listed in the documentation for the <class name="Pointer" field="Cursor">_Pointer.Cursor_</class> field.  If the <code>Surface</code> field is set to a valid surface, the cursor image will switch back to its default once the pointer moves outside of the surface's area.  If both the <code>Cursor</code> and <code>Name</code> parameters are <code>NULL</code>, the cursor image will remain unchanged from its current image.</p>
+<p>The SetCursor() function accepts the following flags in the <code>Flags</code> parameter:</p>
 <types lookup="CRF"/>
-<p>The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <function>RestoreCursor</function> is called.</p>
+<p>The <code>Owner</code> parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <function>RestoreCursor</function> is called.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="NothingDone">There is nothing to process.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NoSupport">The pointer cannot be set due to system limitations.</error>
       <error code="OutOfRange">The cursor ID is outside of acceptable range.</error>
-      <error code="AccessObject">Failed to access the internally maintained image object.</error>
+      <error code="AccessObject">Failed to access the mouse pointer.</error>
     </result>
   </function>
 
@@ -671,20 +669,19 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Sets the cursor to a customised bitmap image.</comment>
     <prototype>ERR gfx::SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="OBJECTID" name="Surface">Refers to the <class name="Surface">Surface</class> object that the pointer should restrict itself to, if the <code>RESTRICT</code> flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
-      <param type="objBitmap *" name="Bitmap">The bitmap to set for the mouse cursor.</param>
+      <param type="objBitmap *" name="Bitmap">The <class name="Bitmap">Bitmap</class> to set for the mouse cursor.</param>
       <param type="LONG" name="HotX">The horizontal position of the cursor hot-spot.</param>
       <param type="LONG" name="HotY">The vertical position of the cursor hot-spot.</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor.</param>
     </input>
     <description>
-<p>Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some minor adjustments to allow custom images to be set.</p>
-<p>The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or resampled appropriately when the cursor is downloaded to the video card.</p>
-<p>It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit, alpha-enabled graphics area.  The following code illustrates this process:</p>
+<p>Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it cannot move without permission.  The functionality provided is identical to that of the <function>SetCursor</function> function with some minor adjustments to allow custom images to be set.</p>
+<p>The <code>Bitmap</code> that is provided should be within the width, height and bits-per-pixel settings that are returned by the <function>GetCursorInfo</function> function.  If the basic settings are outside the allowable parameters, the <code>Bitmap</code> will be trimmed or resampled appropriately when the cursor is downloaded to the video card.</p>
+<p>It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap buffer rather than supplying a fresh bitmap.  To do this, the <code>Bitmap</code> parameter must be <code>NULL</code> and it is necessary to draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit, alpha-enabled graphics area.  The following code illustrates this process:</p>
 <pre>if (auto pointer = gfx::AccessPointer()) {
-   objBitmap *bitmap;
-   if (!AccessObject(pointer-&gt;BitmapID, 3000, &amp;bitmap)) {
+   if (ScopedObjectLock&lt;objBitmap&gt; bitmap(pointer-&gt;BitmapID, 3000); bitmap.granted()) {
       // Adjust clipping to match the cursor size.
       buffer-&gt;Clip.Right  = CursorWidth;
       buffer-&gt;Clip.Bottom = CursorHeight;
@@ -695,7 +692,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       ...
 
       gfx::SetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
-      ReleaseObject(bitmap);
    }
    gfx::ReleasePointer(pointer);
 }
@@ -736,7 +732,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </input>
     <description>
 <p>Any surface that is created by a task can be enabled as a modal surface.  A surface that has been enabled as modal becomes the central point for all GUI interaction with the task.  All other I/O between the user and surfaces maintained by the task will be ignored for as long as the target surface remains modal.</p>
-<p>A task can switch off the current modal surface by calling this function with a Surface parameter of zero.</p>
+<p>A task can switch off the current modal surface by calling this function with a <code>Surface</code> parameter of zero.</p>
 <p>If a surface is modal at the time that this function is called, it is not possible to switch to a new modal surface until the current modal state is dropped.</p>
     </description>
     <result type="OBJECTID">The object ID of the previous modal surface is returned (zero if there was no currently modal surface).</result>
@@ -755,10 +751,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </input>
     <description>
 <p>This function starts a drag and drop operation with the mouse cursor.  The user must be holding the primary mouse button to initiate the drag and drop operation.</p>
-<p>A Source object ID is required that indicates the origin of the item being dragged and will be used to retrieve the data on completion of the drag and drop operation. An Item number, which is optional, identifies the item being dragged from the Source object.</p>
-<p>The type of data represented by the source item and all other supportable data types are specified in the Datatypes parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native data type.  Acceptable data type values are listed in the documentation for the DataFeed action.</p>
-<p>The Surface argument allows for a composite surface to be dragged by the mouse cursor as a graphical representation of the source item.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The Surface will be hidden on completion of the drag and drop operation.</p>
-<p>If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement and UserClickRelease actions normally reported from the SystemPointer will now include the <code>JD_DRAGITEM</code> flag in the ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.</p>
+<p>A <code>Source</code> object ID is required that indicates the origin of the item being dragged and will be used to retrieve the data on completion of the drag and drop operation. An <code>Item</code> number, which is optional, identifies the item being dragged from the <code>Source</code> object.</p>
+<p>The type of data represented by the source item and all other supportable data types are specified in the <code>Datatypes</code> parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native data type.  Acceptable data type values are listed in the documentation for the DataFeed action.</p>
+<p>The <code>Surface</code> parameter allows for a composite surface to be dragged by the mouse cursor as a graphical representation of the source <code>Item</code>.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The <code>Surface</code> will be hidden on completion of the drag and drop operation.</p>
+<p>If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement and UserClickRelease actions normally reported from the SystemPointer will now include the <code>JD_DRAGITEM</code> flag in the <code>ButtonFlags</code> parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -776,8 +772,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <prototype>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
-      <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given surface ID will be received.</param>
-      <param type="JTYPE" name="Mask" lookup="JTYPE">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+      <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given <class name="Surface">Surface</class> ID will be received.</param>
+      <param type="JTYPE" name="Mask" lookup="JTYPE">Combine <fl>JTYPE</fl> flags to define the input messages required by the client.  Set to <code>0xffffffff</code> if all messages are required.</param>
       <param type="OBJECTID" name="DeviceFilter">Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.</param>
       <param type="LONG *" name="Handle">A handle for the subscription is returned here.</param>
     </input>
@@ -797,11 +793,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
    return ERR::Okay;
 }
 </pre>
-<p>All processable events are referenced in the InputEvent structure in the Events parameter.</p>
+<p>All processable events are referenced in the <st>InputEvent</st> structure in the <code>Events</code> parameter.</p>
 <p>
 <code>JET</code> constants are as follows and take note of <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> which are software generated and not a device event:</p>
 <types lookup="JET"/>
-<p>The <code>JTYPE</code> values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate <code>JTYPE</code> flag must have been set in the original subscription call.</p>
+<p>The <code>JTYPE</code> values for the <code>Flags</code> field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate <code>JTYPE</code> flag must have been set in the original subscription call.</p>
 <types lookup="JTYPE"/>
     </description>
     <result type="ERR">
@@ -866,7 +862,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <comment>Removes an input subscription.</comment>
     <prototype>ERR gfx::UnsubscribeInput(LONG Handle)</prototype>
     <input>
-      <param type="LONG" name="Handle">Reference to a handle returned by SubscribeInput().</param>
+      <param type="LONG" name="Handle">Reference to a handle returned by <function>SubscribeInput</function>.</param>
     </input>
     <description>
 <p>This function removes an input subscription that has been created with <function>SubscribeInput</function>.</p>
@@ -1106,6 +1102,57 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="SINGLE_BITMAP">Only draw children and/or siblings when they share our bitmap space.</const>
     </constants>
 
+    <constants lookup="JET" comment="JET constants are documented in GetInputEvent()">
+      <const name="ABS_XY">The X, Y values are defined as absolute coordinates, relative to the top-left of the display.</const>
+      <const name="ANALOG2_XY">As for <code>ANALOG_XY</code>, this type covers a second analog stick if present.</const>
+      <const name="ANALOG2_Z">As for <code>ANALOG_Z</code>, this type covers a second analog stick if present.</const>
+      <const name="ANALOG_XY">Position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
+      <const name="ANALOG_Z">3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.</const>
+      <const name="BUTTON_1">Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
+      <const name="BUTTON_10">Non-specific button assignment.</const>
+      <const name="BUTTON_2">Right mouse button, XBox X button, PS cross button.</const>
+      <const name="BUTTON_3">Middle mouse button, XBox Y button, PS triangle.</const>
+      <const name="BUTTON_4">XBox B button, PS circle.</const>
+      <const name="BUTTON_5">Left analog stick depressed.</const>
+      <const name="BUTTON_6">Right analog stick depressed.</const>
+      <const name="BUTTON_7">Non-specific button assignment.</const>
+      <const name="BUTTON_8">Non-specific button assignment.</const>
+      <const name="BUTTON_9">Non-specific button assignment.</const>
+      <const name="BUTTON_SELECT">Gamepad select button - value is 0 or 1.</const>
+      <const name="BUTTON_START">Gamepad start button - value is 0 or 1.</const>
+      <const name="CROSSED_IN">This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.</const>
+      <const name="CROSSED_OUT">This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.</const>
+      <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
+      <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
+      <const name="DIGITAL_XY">Digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
+      <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
+      <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
+      <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
+      <const name="RIGHT_BUMPER_1">Gamepad right-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="RIGHT_BUMPER_2">Gamepad right-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="TRIGGER_LEFT">Gamepad left-hand trigger - value is between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
+      <const name="TRIGGER_RIGHT">Gamepad right-hand trigger.</const>
+      <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
+      <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>
+    </constants>
+
+    <constants lookup="JTYPE" comment="JTYPE flags are used to categorise input types.">
+      <const name="ANALOG">Analog movement (ranging from -1.0 to 1.0)</const>
+      <const name="ANCHORED">Cursor has been anchored with LockCursor()</const>
+      <const name="BUTTON">Input is a physical button or switch</const>
+      <const name="CROSSING">Crossing events manage the entering and leaving of an area.</const>
+      <const name="DBL_CLICK">Set by the input system if the Type is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
+      <const name="DIGITAL">D-Pad or digital joystick source (restricted to +/- 1)</const>
+      <const name="DRAGGED">Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).</const>
+      <const name="DRAG_ITEM">This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.</const>
+      <const name="EXT_MOVEMENT">Extended or indirect movement information.  This covers all types of movement that are unconnected to coordinate positioning -  mouse wheel movement and pen tilt are two such examples.</const>
+      <const name="MOVEMENT">X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.</const>
+      <const name="REPEATED">Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)</const>
+      <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
+    </constants>
+
     <constants lookup="LVF" comment="drwLockBitmap() result flags">
       <const name="EXPOSE_CHANGES"/>
     </constants>
@@ -1276,6 +1323,22 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="Index" type="LONG">Display mode ID (internal)</field>
       <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
       <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
+    </struct>
+
+    <struct name="InputEvent">
+      <field name="Next" type="const struct InputEvent *">Next event in the chain</field>
+      <field name="Value" type="DOUBLE">The value associated with the Type</field>
+      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
+      <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
+      <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor (relative to the top left of the display)</field>
+      <field name="AbsY" type="DOUBLE">Absolute vertical position of mouse cursor (relative to the top left of the display)</field>
+      <field name="X" type="DOUBLE">Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
+      <field name="Y" type="DOUBLE">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
+      <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from</field>
+      <field name="Type" type="JET" lookup="JET">JET constant that describes the event</field>
+      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given <code>Type</code> (see <code>JTYPE</code> flags).  Automatically defined when delivered to the pointer object</field>
+      <field name="Mask" type="JTYPE" lookup="JTYPE">Mask to use for checking against subscribers</field>
     </struct>
 
     <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">

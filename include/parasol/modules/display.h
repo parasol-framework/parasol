@@ -488,72 +488,18 @@ typedef struct BitmapSurfaceV2 {
 
 // Bitmap methods
 
-#define MT_BmpCopyArea -1
-#define MT_BmpCompress -2
-#define MT_BmpDecompress -3
-#define MT_BmpFlip -4
-#define MT_BmpDrawRectangle -6
-#define MT_BmpSetClipRegion -7
-#define MT_BmpGetColour -8
-#define MT_BmpPremultiply -10
-#define MT_BmpDemultiply -11
-#define MT_BmpConvertToLinear -12
-#define MT_BmpConvertToRGB -13
-
 namespace bmp {
-struct CopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
-struct Compress { LONG Level;  };
-struct Decompress { LONG RetainData;  };
-struct Flip { FLIP Orientation;  };
-struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags;  };
-struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
-struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
-
-inline ERR CopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
-   struct CopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
-   return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Compress(APTR Ob, LONG Level) noexcept {
-   struct Compress args = { Level };
-   return(Action(MT_BmpCompress, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Decompress(APTR Ob, LONG RetainData) noexcept {
-   struct Decompress args = { RetainData };
-   return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Flip(APTR Ob, FLIP Orientation) noexcept {
-   struct Flip args = { Orientation };
-   return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR DrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
-   struct DrawRectangle args = { X, Y, Width, Height, Colour, Flags };
-   return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
-   struct SetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
-   return(Action(MT_BmpSetClipRegion, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Premultiply(APTR Ob) noexcept {
-   return(Action(MT_BmpPremultiply, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR Demultiply(APTR Ob) noexcept {
-   return(Action(MT_BmpDemultiply, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR ConvertToLinear(APTR Ob) noexcept {
-   return(Action(MT_BmpConvertToLinear, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR ConvertToRGB(APTR Ob) noexcept {
-   return(Action(MT_BmpConvertToRGB, (OBJECTPTR)Ob, NULL));
-}
+struct CopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Compress { LONG Level; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Decompress { LONG RetainData; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Flip { FLIP Orientation; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Premultiply { static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Demultiply { static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ConvertToLinear { static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ConvertToRGB { static const ACTIONID id = -13; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -596,21 +542,14 @@ class objBitmap : public Object {
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
    CS      ColourSpace;                                              // Defines the colour space for RGB values.
    public:
-   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
-      else {
-         struct bmp::GetColour args = { Red, Green, Blue, Alpha };
-         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
-         return 0;
-      }
-   }
-
    inline ULONG getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
-         struct bmp::GetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
-         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
-         return 0;
+         ULONG result;
+         if (getColour(RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha, &result) IS ERR::Okay) {
+            return result;
+         }
+         else return 0;
       }
    }
 
@@ -742,6 +681,48 @@ class objBitmap : public Object {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
+   }
+   inline ERR copyArea(objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
+      struct bmp::CopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
+      return(Action(-1, this, &args));
+   }
+   inline ERR compress(LONG Level) noexcept {
+      struct bmp::Compress args = { Level };
+      return(Action(-2, this, &args));
+   }
+   inline ERR decompress(LONG RetainData) noexcept {
+      struct bmp::Decompress args = { RetainData };
+      return(Action(-3, this, &args));
+   }
+   inline ERR flip(FLIP Orientation) noexcept {
+      struct bmp::Flip args = { Orientation };
+      return(Action(-4, this, &args));
+   }
+   inline ERR drawRectangle(LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
+      struct bmp::DrawRectangle args = { X, Y, Width, Height, Colour, Flags };
+      return(Action(-6, this, &args));
+   }
+   inline ERR setClipRegion(LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
+      struct bmp::SetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
+      return(Action(-7, this, &args));
+   }
+   inline ERR getColour(LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour) noexcept {
+      struct bmp::GetColour args = { Red, Green, Blue, Alpha, (ULONG)0 };
+      ERR error = Action(-8, this, &args);
+      if (Colour) *Colour = args.Colour;
+      return(error);
+   }
+   inline ERR premultiply() noexcept {
+      return(Action(-10, this, NULL));
+   }
+   inline ERR demultiply() noexcept {
+      return(Action(-11, this, NULL));
+   }
+   inline ERR convertToLinear() noexcept {
+      return(Action(-12, this, NULL));
+   }
+   inline ERR convertToRGB() noexcept {
+      return(Action(-13, this, NULL));
    }
 
    // Customised field setting
@@ -894,65 +875,16 @@ class objBitmap : public Object {
 
 // Display methods
 
-#define MT_GfxWaitVBL -1
-#define MT_GfxUpdatePalette -2
-#define MT_GfxSetDisplay -3
-#define MT_GfxSizeHints -4
-#define MT_GfxSetGamma -5
-#define MT_GfxSetGammaLinear -6
-#define MT_GfxSetMonitor -7
-#define MT_GfxMinimise -8
-#define MT_GfxCheckXWindow -9
-
 namespace gfx {
-struct UpdatePalette { struct RGBPalette * NewPalette;  };
-struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
-struct SizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect;  };
-struct SetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
-struct SetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
-struct SetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags;  };
-
-inline ERR WaitVBL(APTR Ob) noexcept {
-   return(Action(MT_GfxWaitVBL, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR UpdatePalette(APTR Ob, struct RGBPalette * NewPalette) noexcept {
-   struct UpdatePalette args = { NewPalette };
-   return(Action(MT_GfxUpdatePalette, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
-   struct SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
-   return(Action(MT_GfxSetDisplay, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
-   struct SizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
-   return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
-   struct SetGamma args = { Red, Green, Blue, Flags };
-   return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
-   struct SetGammaLinear args = { Red, Green, Blue, Flags };
-   return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
-   struct SetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
-   return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Minimise(APTR Ob) noexcept {
-   return(Action(MT_GfxMinimise, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR CheckXWindow(APTR Ob) noexcept {
-   return(Action(MT_GfxCheckXWindow, (OBJECTPTR)Ob, NULL));
-}
+struct WaitVBL { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct UpdatePalette { struct RGBPalette * NewPalette; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Minimise { static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CheckXWindow { static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1039,6 +971,39 @@ class objDisplay : public Object {
    }
    inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
    inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR waitVBL() noexcept {
+      return(Action(-1, this, NULL));
+   }
+   inline ERR updatePalette(struct RGBPalette * NewPalette) noexcept {
+      struct gfx::UpdatePalette args = { NewPalette };
+      return(Action(-2, this, &args));
+   }
+   inline ERR setDisplay(LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
+      struct gfx::SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
+      return(Action(-3, this, &args));
+   }
+   inline ERR sizeHints(LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
+      struct gfx::SizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
+      return(Action(-4, this, &args));
+   }
+   inline ERR setGamma(DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+      struct gfx::SetGamma args = { Red, Green, Blue, Flags };
+      return(Action(-5, this, &args));
+   }
+   inline ERR setGammaLinear(DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+      struct gfx::SetGammaLinear args = { Red, Green, Blue, Flags };
+      return(Action(-6, this, &args));
+   }
+   inline ERR setMonitor(CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
+      struct gfx::SetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
+      return(Action(-7, this, &args));
+   }
+   inline ERR minimise() noexcept {
+      return(Action(-8, this, NULL));
+   }
+   inline ERR checkXWindow() noexcept {
+      return(Action(-9, this, NULL));
+   }
 
    // Customised field setting
 
@@ -1149,47 +1114,12 @@ class objDisplay : public Object {
 
 // Clipboard methods
 
-#define MT_ClipAddFile -1
-#define MT_ClipAddObjects -2
-#define MT_ClipGetFiles -3
-#define MT_ClipAddText -4
-#define MT_ClipRemove -5
-
 namespace clip {
-struct AddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags;  };
-struct AddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags;  };
-struct GetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;  };
-struct AddText { CSTRING String;  };
-struct Remove { CLIPTYPE Datatype;  };
-
-inline ERR AddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
-   struct AddFile args = { Datatype, Path, Flags };
-   return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR AddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
-   struct AddObjects args = { Datatype, Objects, Flags };
-   return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) noexcept {
-   struct GetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
-   ERR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
-   if (Datatype) *Datatype = args.Datatype;
-   if (Files) *Files = args.Files;
-   if (Flags) *Flags = args.Flags;
-   return(error);
-}
-
-inline ERR AddText(APTR Ob, CSTRING String) noexcept {
-   struct AddText args = { String };
-   return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Remove(APTR Ob, CLIPTYPE Datatype) noexcept {
-   struct Remove args = { Datatype };
-   return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
-}
+struct AddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetFiles { CLIPTYPE Filter; LONG Index; CLIPTYPE Datatype; CSTRING * Files; CEF Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddText { CSTRING String; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Remove { CLIPTYPE Datatype; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1214,6 +1144,30 @@ class objClipboard : public Object {
       return Action(AC_DataFeed, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
+   inline ERR addFile(CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
+      struct clip::AddFile args = { Datatype, Path, Flags };
+      return(Action(-1, this, &args));
+   }
+   inline ERR addObjects(CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
+      struct clip::AddObjects args = { Datatype, Objects, Flags };
+      return(Action(-2, this, &args));
+   }
+   inline ERR getFiles(CLIPTYPE Filter, LONG Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags) noexcept {
+      struct clip::GetFiles args = { Filter, Index, (CLIPTYPE)0, (CSTRING *)0, (CEF)0 };
+      ERR error = Action(-3, this, &args);
+      if (Datatype) *Datatype = args.Datatype;
+      if (Files) *Files = args.Files;
+      if (Flags) *Flags = args.Flags;
+      return(error);
+   }
+   inline ERR addText(CSTRING String) noexcept {
+      struct clip::AddText args = { String };
+      return(Action(-4, this, &args));
+   }
+   inline ERR remove(CLIPTYPE Datatype) noexcept {
+      struct clip::Remove args = { Datatype };
+      return(Action(-5, this, &args));
+   }
 
    // Customised field setting
 
@@ -1353,64 +1307,17 @@ class objPointer : public Object {
 
 // Surface methods
 
-#define MT_DrwInheritedFocus -1
-#define MT_DrwExposeToDisplay -2
-#define MT_DrwInvalidateRegion -3
-#define MT_DrwSetDisplay -4
-#define MT_DrwSetOpacity -5
-#define MT_DrwAddCallback -6
-#define MT_DrwMinimise -7
-#define MT_DrwResetDimensions -8
-#define MT_DrwRemoveCallback -9
-#define MT_DrwScheduleRedraw -10
-
 namespace drw {
-struct InheritedFocus { OBJECTID FocusID; RNF Flags;  };
-struct ExposeToDisplay { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
-struct InvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height;  };
-struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
-struct SetOpacity { DOUBLE Value; DOUBLE Adjustment;  };
-struct AddCallback { FUNCTION * Callback;  };
-struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
-struct RemoveCallback { FUNCTION * Callback;  };
-
-inline ERR InheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) noexcept {
-   struct InheritedFocus args = { FocusID, Flags };
-   return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ExposeToDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
-   struct ExposeToDisplay args = { X, Y, Width, Height, Flags };
-   return(Action(MT_DrwExposeToDisplay, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR InvalidateRegion(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
-   struct InvalidateRegion args = { X, Y, Width, Height };
-   return(Action(MT_DrwInvalidateRegion, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
-   struct SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
-   return(Action(MT_DrwSetDisplay, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetOpacity(APTR Ob, DOUBLE Value, DOUBLE Adjustment) noexcept {
-   struct SetOpacity args = { Value, Adjustment };
-   return(Action(MT_DrwSetOpacity, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Minimise(APTR Ob) noexcept {
-   return(Action(MT_DrwMinimise, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR ResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
-   struct ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
-   return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ScheduleRedraw(APTR Ob) noexcept {
-   return(Action(MT_DrwScheduleRedraw, (OBJECTPTR)Ob, NULL));
-}
+struct InheritedFocus { OBJECTID FocusID; RNF Flags; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ExposeToDisplay { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetOpacity { DOUBLE Value; DOUBLE Adjustment; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddCallback { FUNCTION * Callback; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Minimise { static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveCallback { FUNCTION * Callback; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ScheduleRedraw { static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1509,6 +1416,44 @@ class objSurface : public Object {
       return Action(AC_SaveImage, this, &args);
    }
    inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR inheritedFocus(OBJECTID FocusID, RNF Flags) noexcept {
+      struct drw::InheritedFocus args = { FocusID, Flags };
+      return(Action(-1, this, &args));
+   }
+   inline ERR exposeToDisplay(LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
+      struct drw::ExposeToDisplay args = { X, Y, Width, Height, Flags };
+      return(Action(-2, this, &args));
+   }
+   inline ERR invalidateRegion(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct drw::InvalidateRegion args = { X, Y, Width, Height };
+      return(Action(-3, this, &args));
+   }
+   inline ERR setDisplay(LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
+      struct drw::SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
+      return(Action(-4, this, &args));
+   }
+   inline ERR setOpacity(DOUBLE Value, DOUBLE Adjustment) noexcept {
+      struct drw::SetOpacity args = { Value, Adjustment };
+      return(Action(-5, this, &args));
+   }
+   inline ERR addCallback(FUNCTION * Callback) noexcept {
+      struct drw::AddCallback args = { Callback };
+      return(Action(-6, this, &args));
+   }
+   inline ERR minimise() noexcept {
+      return(Action(-7, this, NULL));
+   }
+   inline ERR resetDimensions(DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
+      struct drw::ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
+      return(Action(-8, this, &args));
+   }
+   inline ERR removeCallback(FUNCTION * Callback) noexcept {
+      struct drw::RemoveCallback args = { Callback };
+      return(Action(-9, this, &args));
+   }
+   inline ERR scheduleRedraw() noexcept {
+      return(Action(-10, this, NULL));
+   }
 
    // Customised field setting
 
@@ -1921,36 +1866,6 @@ extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
 #define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-
-// Stubs
-
-namespace drw {
-
-inline ERR AddCallback(OBJECTPTR Surface, APTR Callback) {
-   if (Callback) {
-      auto call = C_FUNCTION(Callback);
-      struct AddCallback args = { &call };
-      return Action(MT_DrwAddCallback, Surface, &args);
-   }
-   else {
-      struct AddCallback args = { NULL };
-      return Action(MT_DrwAddCallback, Surface, &args);
-   }
-}
-
-inline ERR RemoveCallback(OBJECTPTR Surface, APTR Callback) {
-   if (Callback) {
-      auto call = C_FUNCTION(Callback);
-      struct RemoveCallback args = { &call };
-      return Action(MT_DrwRemoveCallback, Surface, &args);
-   }
-   else {
-      struct RemoveCallback args = { NULL };
-      return Action(MT_DrwRemoveCallback, Surface, &args);
-   }
-}
-
-} // namespace
 
 namespace fl {
    using namespace pf;

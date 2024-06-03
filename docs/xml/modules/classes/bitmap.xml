@@ -17,8 +17,8 @@
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
 <p>To create a new bitmap object, you need to specify its <fl>Width</fl> and <fl>Height</fl> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
 <p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the <code>TEXTURE</code> or <code>VIDEO</code> flags are specified in the <fl>DataFlags</fl> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
-<p>If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality provided by the Vector module.</p>
-<p>To save the image of a bitmap, either copy its image to a <class name="Picture">Picture</class> object, or use the SaveImage action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
+<p>If you require complex drawing functionality that is not available in the Bitmap class, consider using the functionality provided by the Vector module.</p>
+<p>To save the image of a bitmap, either copy its image to a <class name="Picture">Picture</class> object, or use the SaveImage() action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
     <source>
       <file>class_bitmap.cpp</file>
     </source>
@@ -66,7 +66,7 @@
       <prototype>ERR acFlush(*Object)</prototype>
       <description>
 <p>The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator. Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may result in corruption in the bitmap's graphics display.</p>
-<p>You do not have to use this function if you stick to using the graphics functions that are provided in the Bitmap class.</p>
+<p>Clients do not need to call this function if solely using the graphics methods provided in the <class name="Bitmap">Bitmap</class> class.</p>
       </description>
     </action>
 
@@ -211,15 +211,15 @@
       <comment>Convert a bitmap's colour space to standard RGB.</comment>
       <prototype>ERR bmp::ConvertToRGB(OBJECTPTR Object)</prototype>
       <description>
-<p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
+<p>Use ConvertToRGB() to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <fl>ColourSpace</fl> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <fl>ColourSpace</fl> is already set to <code>SRGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="NothingDone">The Bitmap's content is already in sRGB format.</error>
+        <error code="NothingDone">The bitmap's content is already in sRGB format.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="InvalidState">The Bitmap is not in the expected state.</error>
+        <error code="InvalidState">The bitmap is not in the expected state.</error>
       </result>
     </method>
 
@@ -342,7 +342,7 @@
       <comment>Premultiplies RGB channel values by the alpha channel.</comment>
       <prototype>ERR bmp::Premultiply(OBJECTPTR Object)</prototype>
       <description>
-<p>Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The exact formula applied per channel is <code>(Colour * Alpha + 0xff)&gt;&gt;8</code>.  The alpha channel is not affected.</p>
+<p>Use Premultiply() to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The exact formula applied per channel is <code>(Colour * Alpha + 0xff)&gt;&gt;8</code>.  The alpha channel is not affected.</p>
 <p>This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are already pre-multiplied, the method returns immediately.</p>
 <p>The process can be reversed with a call to <method>Demultiply</method>.</p>
       </description>
@@ -633,7 +633,7 @@ unpackAlpha(Colour)
       <access read="R" write="S">Read/Set</access>
       <type>struct RGBPalette *</type>
       <description>
-<p>A palette is an array of containing colour values in standard RGB format <code>$RRGGBB</code>.  The first value must have a header ID of <code>ID_PALETTE</code>, followed by the amount of values in the array. Following this is the actual list itself - colour 0, then colour 1 and so on. There is no termination signal at the end of the list.</p>
+<p>A palette is an array of containing colour values in standard RGB format <code>0xRRGGBB</code>.  The first value must have a header ID of <code>ID_PALETTE</code>, followed by the amount of values in the array. Following this is the actual list itself - colour 0, then colour 1 and so on. There is no termination signal at the end of the list.</p>
 <p>The following example is for a 32 colour palette:</p>
 <pre>RGBPalette Palette = {
   ID_PALETTE, VER_PALETTE, 32,
@@ -659,7 +659,7 @@ unpackAlpha(Colour)
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>This field specifies the distance (in bytes) between each bitplane.  For non-planar types like <code>CHUNKY</code>, this field will actually reflect the total size of the bitmap.  The calculation used for <code>PLANAR</code> types is <code>ByteWidth * Height</code>.</p>
+<p>This field specifies the distance (in bytes) between each bitplane.  For non-planar types like <code>CHUNKY</code>, this field will reflect the total size of the bitmap.  The calculation used for <code>PLANAR</code> types is <code>ByteWidth * Height</code>.</p>
       </description>
     </field>
 

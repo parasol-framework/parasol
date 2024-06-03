@@ -42,7 +42,7 @@ JUMPTABLE_VECTOR
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
 
 struct prvSVG { // Private variables for RSVG
-   OBJECTPTR SVG;
+   class objSVG *SVG;
 };
 
 struct svgInherit {
@@ -89,7 +89,7 @@ class extSVG : public objSVG {
    objVectorScene *Scene;
    STRING Folder;
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
-   OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
+   class objVectorViewport *Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::list<std::variant<anim_transform, anim_motion, anim_value>> Animations; // NB: Pointer stability is a container requirement
    std::map<OBJECTID, svgAnimState> Animatrix; // For animated transforms, a vector may have one matrix only.
    std::vector<std::unique_ptr<svgLink>> Links;

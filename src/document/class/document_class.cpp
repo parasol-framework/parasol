@@ -250,7 +250,7 @@ static ERR DOCUMENT_CallFunction(extDocument *Self, struct doc::CallFunction *Ar
    objScript *script;
    std::string function_name, args;
    if (auto error = extract_script(Self, Args->Function, &script, function_name, args); error IS ERR::Okay) {
-      return sc::Exec(script, function_name.c_str(), Args->Args, Args->TotalArgs);
+      return script->exec(function_name.c_str(), Args->Args, Args->TotalArgs);
    }
    else return error;
 }
@@ -302,7 +302,7 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
          objClipboard::create clipboard = { };
          if (clipboard.ok()) {
-            if (clip::AddText(*clipboard, buffer.c_str()) IS ERR::Okay) {
+            if (clipboard->addText(buffer.c_str()) IS ERR::Okay) {
                // Delete the highlighted document if the CUT mode was used
                if (Args->Mode IS CLIPMODE::CUT) {
                   //delete_selection(Self);
@@ -324,9 +324,9 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
-         struct clip::GetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
-         if (Action(MT_ClipGetFiles, *clipboard, &get) IS ERR::Okay) {
-            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
+         CSTRING *files;
+         if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+            objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                LONG size;
                if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
@@ -342,7 +342,7 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
                   else error_dialog("Clipboard Paste Error", ERR::AllocMemory);
                }
             }
-            else error_dialog("Paste Error", "Failed to load clipboard file \"" + std::string(get.Files[0]) + "\"");
+            else error_dialog("Paste Error", "Failed to load clipboard file \"" + std::string(files[0]) + "\"");
          }
       }
 
@@ -665,7 +665,8 @@ static ERR DOCUMENT_Init(extDocument *Self)
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
    if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      vec::SubscribeKeyboard(Self->Viewport, C_FUNCTION(key_event));
+      auto call = C_FUNCTION(key_event);
+      Self->Viewport->subscribeKeyboard(&call);
       SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
       SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
       SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
@@ -713,7 +714,8 @@ static ERR DOCUMENT_Init(extDocument *Self)
    }
    else return ERR::CreateObject;
 
-   vec::SubscribeFeedback(Self->View, FM::PATH_CHANGED, C_FUNCTION(feedback_view));
+   auto call = C_FUNCTION(feedback_view);
+   Self->View->subscribeFeedback(FM::PATH_CHANGED, &call);
 
    // Flash the cursor via the timer
 

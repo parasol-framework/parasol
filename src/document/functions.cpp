@@ -886,7 +886,7 @@ void ui_link::exec(extDocument *Self)
             }
          }
 
-         sc::Exec(script, function_name.c_str(), sa.data(), sa.size());
+         script->exec(function_name.c_str(), sa.data(), sa.size());
       }
    }
    else if (origin.type IS LINK::HREF) {
@@ -959,7 +959,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
    // Find the indexes for the bookmark name
 
    LONG start, end;
-   if (doc::FindIndex(Self, Bookmark.c_str(), &start, &end) IS ERR::Okay) {
+   if (Self->findIndex(Bookmark.c_str(), &start, &end) IS ERR::Okay) {
       // Get the vertical position of the index and scroll to it
 
       auto &esc_index = Self->Stream.lookup<bc_index>(start);

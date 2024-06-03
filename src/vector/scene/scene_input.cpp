@@ -249,7 +249,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                   if (!lock.granted()) continue;
                   auto vector = lock.obj;
 
-                  if (vec::PointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
+                  if (vector->pointInPath(input->X, input->Y) != ERR::Okay) continue;
 
                   if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
@@ -320,7 +320,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             // Additional bounds check to cater for transforms, clip masks etc.
 
             if (in_bounds) {
-               if (vec::PointInPath(vector, input->X, input->Y) != ERR::Okay) continue;
+               if (vector->pointInPath(input->X, input->Y) != ERR::Okay) continue;
             }
 
             if (Self->ActiveVector != bounds.vector_id) {

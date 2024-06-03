@@ -589,7 +589,7 @@ static ERR CONFIG_Set(extConfig *Self, struct cfg::Set *Args)
    if ((!Args->Key) or (!Args->Key[0])) return ERR::NullArgs;
 
    auto group = find_group_wild(Self, Args->Group);
-   if (group) return Action(MT_CfgWriteValue, Self, Args);
+   if (group) return Self->writeValue(Args->Group, Args->Key, Args->Data);
    else return ERR::Search;
 }
 

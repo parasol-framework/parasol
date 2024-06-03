@@ -62,9 +62,9 @@ void anim_motion::perform()
 
          points.clear();
          if (mpath) {
-            if ((vec::Trace(mpath, &call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
+            if ((mpath->trace(&call, vector->get<double>(FID_DisplayScale), false) != ERR::Okay) or (points.empty())) return;
          }
-         else if ((vec::Trace(*path, &call, 1.0, false) != ERR::Okay) or (points.empty())) return;
+         else if ((path->trace(&call, 1.0, false) != ERR::Okay) or (points.empty())) return;
 
          path_timestamp = vector->get<LONG>(FID_PathTimestamp);
 
@@ -175,7 +175,7 @@ void anim_motion::perform()
    // intermixed with other transforms.
 
    if (not matrix) {
-      vec::NewMatrix(*vector, &matrix, true);
+      vector->newMatrix(&matrix, true);
       matrix->Tag = MTAG_ANIMATE_MOTION;
    }
    vec::ResetMatrix(matrix);

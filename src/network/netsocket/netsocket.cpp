@@ -163,7 +163,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
-      if (nl::ResolveName(Self->NetLookup, Self->Address) != ERR::Okay) {
+      if (Self->NetLookup->resolveName(Self->Address) != ERR::Okay) {
          return log.warning(Self->Error = ERR::HostNotFound);
       }
    }
@@ -556,7 +556,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
    }
    else if ((Self->Address) and (Self->Port > 0)) {
-      if ((error = ns::Connect(Self, Self->Address, Self->Port)) != ERR::Okay) {
+      if ((error = Self->connect(Self->Address, Self->Port)) != ERR::Okay) {
          return error;
       }
       else return ERR::Okay;

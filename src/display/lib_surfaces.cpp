@@ -739,8 +739,8 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
       if (InsideWidth < Width) InsideWidth = Width;
       if (InsideHeight < Height) InsideHeight = Height;
 
-      if (ScopedObjectLock display(Self->DisplayID, 5000); display.granted()) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
-         if (gfx::SetDisplay(*display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
+      if (ScopedObjectLock<objDisplay> display(Self->DisplayID, 5000); display.granted()) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+         if (display->setDisplay(X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
             return log.warning(ERR::Redimension);
          }
 
@@ -966,8 +966,8 @@ namespace gfx {
 -FUNCTION-
 CheckIfChild: Check if a surface is the child of another surface.
 
-This function checks if a surface identified by the Child value is the child of the surface identified by the Parent
-value.  `ERR::True` is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent
+This function checks if a surface identified by the `Child` value is the child of the surface identified by the `Parent`
+value.  `ERR::True` is returned if the surface is confirmed as being a child of the parent, or if the `Child` and `Parent`
 values are equal.  All other return codes indicate false or failure.
 
 -INPUT-
@@ -975,10 +975,9 @@ oid Parent: The surface that is assumed to be the parent.
 oid Child: The child surface to check.
 
 -ERRORS-
-True: The Child surface belongs to the Parent.
-False: The Child surface is not a child of Parent.
-Args: Invalid arguments were specified.
-AccessMemory: Failed to access the internal surface list.
+True: The `Child` surface belongs to the `Parent`.
+False: The `Child` surface is not a child of `Parent`.
+NullArgs
 
 *********************************************************************************************************************/
 
@@ -1018,7 +1017,7 @@ guaranteed that the result will not be obscured by any overlapping surfaces that
 
 -INPUT-
 oid Surface: The ID of the surface object to copy from.
-obj(Bitmap) Bitmap: Must reference a target Bitmap object.
+obj(Bitmap) Bitmap: Must reference a target @Bitmap object.
 int(BDF) Flags:  Optional flags.
 int X:      The horizontal source coordinate.
 int Y:      The vertical source coordinate.
@@ -1030,8 +1029,8 @@ int YDest:  The vertical target coordinate.
 -ERRORS-
 Okay
 NullArgs
-Search: The supplied SurfaceID did not refer to a recognised surface object
-AccessMemory: Failed to access the internal surfacelist memory structure
+Search: The supplied `Surface` ID did not refer to a recognised surface object
+AccessObject
 
 *********************************************************************************************************************/
 
@@ -1121,13 +1120,12 @@ int X:       The horizontal coordinate of the area to expose.
 int Y:       The vertical coordinate of the area to expose.
 int Width:   The width of the expose area.
 int Height:  The height of the expose area.
-int(EXF) Flags: Optional flags - using CHILDREN will expose all intersecting child regions.
+int(EXF) Flags: Optional flags - using `CHILDREN` will expose all intersecting child regions.
 
 -ERRORS-
 Okay
 NullArgs
-Search: The SurfaceID does not refer to an existing surface object
-AccessMemory: The internal surfacelist could not be accessed
+Search: The `Surface` ID does not refer to an existing surface object
 
 *********************************************************************************************************************/
 
@@ -1192,8 +1190,7 @@ oid Surface: The surface to query.  If zero, the top-level display is queried.
 
 -ERRORS-
 Okay
-Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemory: Failed to access the internal surfacelist memory structure.
+Search: The supplied `Surface` ID did not refer to a recognised surface object.
 
 *********************************************************************************************************************/
 
@@ -1232,13 +1229,13 @@ ERR GetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *Abs
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetSurfaceFlags: Retrieves the Flags field from a surface.
+GetSurfaceFlags: Retrieves the `Flags` field from a @Surface.
 
-This function returns the current Flags field from a surface.  It provides the same result as reading the field
+This function returns the current `Flags` field from a @Surface.  It provides the same result as reading the field
 directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a
 read operation is undesirable.
 
-For information on the available flags, please refer to the Flags field of the @Surface class.
+For information on the available flags, please refer to the @Surface.Flags field.
 
 -INPUT-
 oid Surface: The surface to query.  If zero, the top-level surface is queried.
@@ -1274,18 +1271,17 @@ ERR GetSurfaceFlags(OBJECTID SurfaceID, RNF *Flags)
 GetSurfaceInfo: Retrieves display information for any surface object without having to access it directly.
 
 GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the
-AccessObject() function.  The resulting structure values are good only up until the next call to this function,
+~Core.AccessObject() function.  The resulting structure values are good only up until the next call to this function,
 at which point those values will be overwritten.
 
 -INPUT-
-oid Surface: The unique ID of a surface to query.  If zero, the root surface is returned.
-&struct(SurfaceInfo) Info: This parameter will receive a SurfaceInfo pointer that describes the Surface object.
+oid Surface: The unique ID of a @Surface to query.  If zero, the root surface is returned.
+&struct(SurfaceInfo) Info: This parameter will receive a !SurfaceInfo pointer that describes the surface object.
 
 -ERRORS-
-Okay:
-Args:
+Okay
+NullArgs
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *********************************************************************************************************************/
 
@@ -1355,9 +1351,9 @@ OBJECTID GetUserFocus(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetVisibleArea: Returns the visible region of a surface.
+GetVisibleArea: Returns the visible region of a @Surface.
 
-The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent
+The GetVisibleArea() function returns the visible area of a @Surface, which is based on its position within its parent
 surfaces. The resulting coordinates are relative to point `0,0` of the queried surface. If the surface is not obscured,
 then the resulting coordinates will be `(0,0),(Width,Height)`.
 
@@ -1372,8 +1368,8 @@ oid Surface: The surface to query.  If zero, the top-level display will be queri
 
 -ERRORS-
 Okay
-Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemory: Failed to access the internal surfacelist memory structure.
+Failed
+Search: The supplied `Surface` ID did not refer to a recognised surface object.
 
 *********************************************************************************************************************/
 
@@ -1423,7 +1419,7 @@ Any surface that is created by a task can be enabled as a modal surface.  A surf
 becomes the central point for all GUI interaction with the task.  All other I/O between the user and surfaces
 maintained by the task will be ignored for as long as the target surface remains modal.
 
-A task can switch off the current modal surface by calling this function with a Surface parameter of zero.
+A task can switch off the current modal surface by calling this function with a `Surface` parameter of zero.
 
 If a surface is modal at the time that this function is called, it is not possible to switch to a new modal surface
 until the current modal state is dropped.
@@ -1493,7 +1489,7 @@ Repeated calls to this function will nest.  To release a surface bitmap, call th
 -INPUT-
 oid Surface:         Object ID of the surface object that you want to lock.
 &obj(Bitmap) Bitmap: The resulting bitmap will be returned in this parameter.
-&int(LVF) Info:      Special flags may be returned in this parameter.  If EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.
+&int(LVF) Info:      Special flags may be returned in this parameter.  If `EXPOSE_CHANGES` is returned, any changes must be exposed in order for them to be displayed to the user.
 
 -ERRORS-
 Okay

@@ -249,7 +249,7 @@ static void parse_transform(objVector *Vector, const std::string Value, LONG Tag
 {
    if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
-      if (vec::NewMatrix((objVector *)Vector, &matrix, false) IS ERR::Okay) {
+      if (Vector->newMatrix(&matrix, false) IS ERR::Okay) {
          vec::ParseTransform(matrix, Value.c_str());
          matrix->Tag = Tag;
       }
@@ -532,7 +532,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          for (auto &inherit : Self->Inherit) {
             OBJECTPTR ref;
-            if (sc::FindDef(Self->Scene, inherit.ID.c_str(), &ref) IS ERR::Okay) {
+            if (Self->Scene->findDef(inherit.ID.c_str(), &ref) IS ERR::Okay) {
                inherit.Object->set(FID_Inherit, ref);
             }
             else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());

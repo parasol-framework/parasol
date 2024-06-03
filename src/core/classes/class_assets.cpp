@@ -70,8 +70,8 @@ struct prvFileAsset {
 };
 
 static const MethodEntry clMethods[] = {
-   { MT_FileDelete, ASSET_Delete, "Delete", NULL, 0 },
-   { MT_FileMove,   ASSET_Move, "Move", NULL, 0 },
+   { asset::FileDelete::id, ASSET_Delete, "Delete", NULL, 0 },
+   { asset::FileMove::id,   ASSET_Move, "Move", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 

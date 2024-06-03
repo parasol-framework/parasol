@@ -972,7 +972,7 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
          lock.release();
 
          if (timer->Routine.isScript()) {
-            sc::DerefProcedure(timer->Routine.Context, &timer->Routine);
+            ((objScript *)timer->Routine.Context)->derefProcedure(&timer->Routine);
          }
 
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {

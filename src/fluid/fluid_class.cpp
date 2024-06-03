@@ -83,8 +83,8 @@ static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
 static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
 
 static const MethodEntry clMethods[] = {
-   { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
-   { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
+   { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
+   { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 

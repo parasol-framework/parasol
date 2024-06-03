@@ -432,7 +432,7 @@ next_card:
                   setvol.Volume  = oldctl[j].Channels[0];
                   if ((oldctl[j].Flags & VCF::MUTE) != VCF::NIL) setvol.Flags |= SVF::MUTE;
                   else setvol.Flags |= SVF::UNMUTE;
-                  Action(MT_SndSetVolume, Self, &setvol);
+                  Action(snd::SetVolume::id, Self, &setvol);
                   break;
                }
             }
@@ -445,7 +445,7 @@ next_card:
                setvol.Flags   = SVF::NIL;
                setvol.Channel = -1;
                setvol.Volume  = 0.8;
-               Action(MT_SndSetVolume, Self, &setvol);
+               Action(snd::SetVolume::id, Self, &setvol);
             }
          }
       }

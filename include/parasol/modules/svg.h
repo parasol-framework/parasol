@@ -26,22 +26,9 @@ DEFINE_ENUM_FLAG_OPERATORS(SVF)
 
 // SVG methods
 
-#define MT_SvgRender -1
-#define MT_SvgParseSymbol -2
-
 namespace svg {
-struct Render { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
-struct ParseSymbol { CSTRING ID; objVectorViewport * Viewport;  };
-
-inline ERR Render(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
-   struct Render args = { Bitmap, X, Y, Width, Height };
-   return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ParseSymbol(APTR Ob, CSTRING ID, objVectorViewport * Viewport) noexcept {
-   struct ParseSymbol args = { ID, Viewport };
-   return(Action(MT_SvgParseSymbol, (OBJECTPTR)Ob, &args));
-}
+struct Render { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ParseSymbol { CSTRING ID; objVectorViewport * Viewport; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -76,6 +63,14 @@ class objSVG : public Object {
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERR render(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct svg::Render args = { Bitmap, X, Y, Width, Height };
+      return(Action(-1, this, &args));
+   }
+   inline ERR parseSymbol(CSTRING ID, objVectorViewport * Viewport) noexcept {
+      struct svg::ParseSymbol args = { ID, Viewport };
+      return(Action(-2, this, &args));
    }
 
    // Customised field setting

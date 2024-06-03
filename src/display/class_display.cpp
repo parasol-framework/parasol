@@ -878,8 +878,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
 
    if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
-   struct gfx::UpdatePalette pal = { .NewPalette = bmp->Palette };
-   Action(MT_GfxUpdatePalette, Self, &pal);
+   Self->updatePalette(bmp->Palette);
 
    // Take a record of the pixel format for GetDisplayInfo()
 
@@ -1829,7 +1828,7 @@ ERR DISPLAY_Show(extDisplay *Self)
       // Mapping a window may cause the window manager to resize it without sending a notification event, so check the
       // window size on a delay.
 
-      QueueAction(MT_GfxCheckXWindow, Self->UID);
+      QueueAction(gfx::CheckXWindow::id, Self->UID);
 
       // Originally introduced as a hack to manage focusing for dropdown menus, possibly no longer required as focus should remain with the instigator.
 

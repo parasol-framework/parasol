@@ -456,14 +456,8 @@ static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERR Result,
 
    log.traceBranch("Display exposure received - redrawing display.");
 
-   if (Args) {
-      struct drw::ExposeToDisplay expose = { Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN };
-      Action(MT_DrwExposeToDisplay, Self, &expose);
-   }
-   else {
-      struct drw::ExposeToDisplay expose = { 0, 0, 20000, 20000, EXF::CHILDREN };
-      Action(MT_DrwExposeToDisplay, Self, &expose);
-   }
+   if (Args) Self->exposeToDisplay(Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN);
+   else Self->exposeToDisplay(0, 0, 20000, 20000, EXF::CHILDREN);
 }
 
 static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acRedimension *Args)
@@ -853,11 +847,10 @@ static ERR SURFACE_Focus(extSurface *Self)
 
    // Send a Focus action to all parent surface objects in our generated focus list.
 
-   struct drw::InheritedFocus inherit = { .FocusID = Self->UID, .Flags = Self->Flags };
    auto it = glFocusList.begin() + 1; // Skip Self
    while (it != glFocusList.end()) {
-      pf::ScopedObjectLock obj(*it);
-      if (obj.granted()) Action(MT_DrwInheritedFocus, *obj, &inherit);
+      pf::ScopedObjectLock<objSurface> obj(*it);
+      if (obj.granted()) obj->inheritedFocus(Self->UID, Self->Flags);
       it++;
    }
 
@@ -935,7 +928,7 @@ static ERR SURFACE_Free(extSurface *Self)
       if (pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
          UnsubscribeAction(*parent, 0);
          if (Self->transparent()) {
-            drw::RemoveCallback(*parent, NULL);
+            parent->removeCallback(NULL);
          }
       }
    }
@@ -1131,8 +1124,7 @@ static ERR SURFACE_Init(extSurface *Self)
 
       if (Self->transparent()) {
          auto func = C_FUNCTION(draw_region);
-         struct drw::AddCallback args = { &func };
-         Action(MT_DrwAddCallback, *parent, &args);
+         parent->addCallback(&func);
 
          // Turn off flags that should never be combined with transparent surfaces.
          Self->Flags &= ~(RNF::PRECOPY|RNF::AFTER_COPY|RNF::COMPOSITE);
@@ -1342,7 +1334,7 @@ static ERR SURFACE_Init(extSurface *Self)
             fl::PopOver(pop_display),
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
-         gfx::SetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF::SAVE);
+         display->setGamma(glpGammaRed, glpGammaGreen, glpGammaBlue, GMF::SAVE);
          gfx::SetHostOption(HOST::TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
 
          // Get the true coordinates of the client area of the surface
@@ -1352,15 +1344,12 @@ static ERR SURFACE_Init(extSurface *Self)
          Self->Width  = display->Width;
          Self->Height = display->Height;
 
-         struct gfx::SizeHints hints;
-
          if ((Self->MaxWidth) or (Self->MaxHeight) or (Self->MinWidth) or (Self->MinHeight)) {
-            if (Self->MaxWidth > 0)  hints.MaxWidth  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MaxWidth  = 0;
-            if (Self->MaxHeight > 0) hints.MaxHeight = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin; else hints.MaxHeight = 0;
-            if (Self->MinWidth > 0)  hints.MinWidth  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MinWidth  = 0;
-            if (Self->MinHeight > 0) hints.MinHeight = Self->MinHeight + Self->TopMargin  + Self->BottomMargin; else hints.MinHeight = 0;
-            hints.EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL;
-            Action(MT_GfxSizeHints, display, &hints);
+            LONG mxW = (Self->MaxWidth > 0)  ? Self->MaxWidth  + Self->LeftMargin + Self->RightMargin  : 0;
+            LONG mxH = (Self->MaxHeight > 0) ? Self->MaxHeight + Self->TopMargin  + Self->BottomMargin : 0;
+            LONG mnW = (Self->MinWidth > 0)  ? Self->MinWidth  + Self->LeftMargin + Self->RightMargin  : 0;
+            LONG mnH = (Self->MinHeight > 0) ? Self->MinHeight + Self->TopMargin  + Self->BottomMargin : 0;
+            display->sizeHints(mxW, mxH, mnW, mnH, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
          }
 
          acFlush(display);
@@ -1550,8 +1539,8 @@ host platform.
 static ERR SURFACE_Minimise(extSurface *Self)
 {
    if (Self->DisplayID) {
-      pf::ScopedObjectLock display(Self->DisplayID);
-      if (display.granted()) gfx::Minimise(*display);
+      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID);
+      if (display.granted()) display->minimise();
    }
    return ERR::Okay;
 }
@@ -2267,7 +2256,7 @@ static ERR SURFACE_SetOpacity(extSurface *Self, struct drw::SetOpacity *Args)
 
    // Use the QueueAction() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
 
-   if (Self->visible()) QueueAction(MT_DrwInvalidateRegion, Self->UID);
+   if (Self->visible()) QueueAction(drw::InvalidateRegion::id, Self->UID);
 
    return ERR::Okay;
 }

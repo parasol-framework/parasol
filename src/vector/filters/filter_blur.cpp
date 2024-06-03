@@ -127,9 +127,9 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
    
-   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmp::ConvertToLinear(inBmp);
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
 
-   bmp::Premultiply(inBmp);
+   inBmp->premultiply();
    
    UBYTE *dst_pix_ptr;
    agg::rgba8 *stack_pix_ptr;
@@ -377,11 +377,11 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    //bmpDemultiply(inBmp);
 
    outBmp->Flags |= BMF::PREMUL; // Need to tell the bitmap it has premultiplied output before Demultiply()
-   bmp::Demultiply(outBmp);
+   outBmp->demultiply();
    
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
       outBmp->ColourSpace = CS::LINEAR_RGB;
-      bmp::ConvertToRGB(outBmp);
+      outBmp->convertToRGB();
    }
 
    return ERR::Okay;

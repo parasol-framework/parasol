@@ -233,11 +233,11 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 
 void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
-   pf::ScopedObjectLock surface(SurfaceID);
+   pf::ScopedObjectLock<objSurface> surface(SurfaceID);
 
    if (surface.granted()) {
-      if ((Width) and (Height)) drw::ExposeToDisplay(*surface, X, Y, Width, Height, EXF::CHILDREN);
-      else Action(MT_DrwExposeToDisplay, *surface, NULL);
+      if ((Width) and (Height)) surface->exposeToDisplay(X, Y, Width, Height, EXF::CHILDREN);
+      else surface->exposeToDisplay(0, 0, 0x7fff, 0x7fff, EXF::CHILDREN);
    }
 }
 

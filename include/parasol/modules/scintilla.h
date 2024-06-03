@@ -86,90 +86,19 @@ DEFINE_ENUM_FLAG_OPERATORS(STF)
 
 // Scintilla methods
 
-#define MT_SciSetFont -1
-#define MT_SciReplaceText -2
-#define MT_SciDeleteLine -3
-#define MT_SciSelectRange -4
-#define MT_SciInsertText -5
-#define MT_SciGetLine -6
-#define MT_SciReplaceLine -7
-#define MT_SciGotoLine -8
-#define MT_SciTrimWhitespace -9
-#define MT_SciGetPos -10
-#define MT_SciReportEvent -11
-#define MT_SciScrollToPoint -12
-
 namespace sci {
-struct SetFont { CSTRING Face;  };
-struct ReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End;  };
-struct DeleteLine { LONG Line;  };
-struct SelectRange { LONG Start; LONG End;  };
-struct InsertText { CSTRING String; LONG Pos;  };
-struct GetLine { LONG Line; STRING Buffer; LONG Length;  };
-struct ReplaceLine { LONG Line; CSTRING String; LONG Length;  };
-struct GotoLine { LONG Line;  };
-struct GetPos { LONG Line; LONG Column; LONG Pos;  };
-struct ScrollToPoint { LONG X; LONG Y;  };
-
-inline ERR SetFont(APTR Ob, CSTRING Face) noexcept {
-   struct SetFont args = { Face };
-   return(Action(MT_SciSetFont, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
-   struct ReplaceText args = { Find, Replace, Flags, Start, End };
-   return(Action(MT_SciReplaceText, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR DeleteLine(APTR Ob, LONG Line) noexcept {
-   struct DeleteLine args = { Line };
-   return(Action(MT_SciDeleteLine, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectRange(APTR Ob, LONG Start, LONG End) noexcept {
-   struct SelectRange args = { Start, End };
-   return(Action(MT_SciSelectRange, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR InsertText(APTR Ob, CSTRING String, LONG Pos) noexcept {
-   struct InsertText args = { String, Pos };
-   return(Action(MT_SciInsertText, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) noexcept {
-   struct GetLine args = { Line, Buffer, Length };
-   return(Action(MT_SciGetLine, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) noexcept {
-   struct ReplaceLine args = { Line, String, Length };
-   return(Action(MT_SciReplaceLine, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GotoLine(APTR Ob, LONG Line) noexcept {
-   struct GotoLine args = { Line };
-   return(Action(MT_SciGotoLine, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR TrimWhitespace(APTR Ob) noexcept {
-   return(Action(MT_SciTrimWhitespace, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR GetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) noexcept {
-   struct GetPos args = { Line, Column, (LONG)0 };
-   ERR error = Action(MT_SciGetPos, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-inline ERR ReportEvent(APTR Ob) noexcept {
-   return(Action(MT_SciReportEvent, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR ScrollToPoint(APTR Ob, LONG X, LONG Y) noexcept {
-   struct ScrollToPoint args = { X, Y };
-   return(Action(MT_SciScrollToPoint, (OBJECTPTR)Ob, &args));
-}
+struct SetFont { CSTRING Face; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteLine { LONG Line; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectRange { LONG Start; LONG End; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertText { CSTRING String; LONG Pos; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetLine { LONG Line; STRING Buffer; LONG Length; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReplaceLine { LONG Line; CSTRING String; LONG Length; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GotoLine { LONG Line; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct TrimWhitespace { static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetPos { LONG Line; LONG Column; LONG Pos; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReportEvent { static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ScrollToPoint { LONG X; LONG Y; static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -233,6 +162,54 @@ class objScintilla : public Object {
    inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
+   }
+   inline ERR setFont(CSTRING Face) noexcept {
+      struct sci::SetFont args = { Face };
+      return(Action(-1, this, &args));
+   }
+   inline ERR replaceText(CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
+      struct sci::ReplaceText args = { Find, Replace, Flags, Start, End };
+      return(Action(-2, this, &args));
+   }
+   inline ERR deleteLine(LONG Line) noexcept {
+      struct sci::DeleteLine args = { Line };
+      return(Action(-3, this, &args));
+   }
+   inline ERR selectRange(LONG Start, LONG End) noexcept {
+      struct sci::SelectRange args = { Start, End };
+      return(Action(-4, this, &args));
+   }
+   inline ERR insertText(CSTRING String, LONG Pos) noexcept {
+      struct sci::InsertText args = { String, Pos };
+      return(Action(-5, this, &args));
+   }
+   inline ERR getLine(LONG Line, STRING Buffer, LONG Length) noexcept {
+      struct sci::GetLine args = { Line, Buffer, Length };
+      return(Action(-6, this, &args));
+   }
+   inline ERR replaceLine(LONG Line, CSTRING String, LONG Length) noexcept {
+      struct sci::ReplaceLine args = { Line, String, Length };
+      return(Action(-7, this, &args));
+   }
+   inline ERR gotoLine(LONG Line) noexcept {
+      struct sci::GotoLine args = { Line };
+      return(Action(-8, this, &args));
+   }
+   inline ERR trimWhitespace() noexcept {
+      return(Action(-9, this, NULL));
+   }
+   inline ERR getPos(LONG Line, LONG Column, LONG * Pos) noexcept {
+      struct sci::GetPos args = { Line, Column, (LONG)0 };
+      ERR error = Action(-10, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
+   inline ERR reportEvent() noexcept {
+      return(Action(-11, this, NULL));
+   }
+   inline ERR scrollToPoint(LONG X, LONG Y) noexcept {
+      struct sci::ScrollToPoint args = { X, Y };
+      return(Action(-12, this, &args));
    }
 
    // Customised field setting
@@ -422,35 +399,10 @@ class objScintilla : public Object {
 
 // ScintillaSearch methods
 
-#define MT_SsNext -1
-#define MT_SsPrev -2
-#define MT_SsFind -3
-
 namespace ss {
-struct Next { LONG Pos;  };
-struct Prev { LONG Pos;  };
-struct Find { LONG Pos; STF Flags;  };
-
-inline ERR Next(APTR Ob, LONG * Pos) noexcept {
-   struct Next args = { (LONG)0 };
-   ERR error = Action(MT_SsNext, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-inline ERR Prev(APTR Ob, LONG * Pos) noexcept {
-   struct Prev args = { (LONG)0 };
-   ERR error = Action(MT_SsPrev, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-inline ERR Find(APTR Ob, LONG * Pos, STF Flags) noexcept {
-   struct Find args = { (LONG)0, Flags };
-   ERR error = Action(MT_SsFind, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
+struct Next { LONG Pos; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Prev { LONG Pos; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { LONG Pos; STF Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -466,6 +418,24 @@ class objScintillaSearch : public Object {
    STF     Flags;               // Optional flags.
    LONG    Start;               // Start of the current/most recent selection
    LONG    End;                 // End of the current/most recent selection
+   inline ERR next(LONG * Pos) noexcept {
+      struct ss::Next args = { (LONG)0 };
+      ERR error = Action(-1, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
+   inline ERR prev(LONG * Pos) noexcept {
+      struct ss::Prev args = { (LONG)0 };
+      ERR error = Action(-2, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
+   inline ERR find(LONG * Pos, STF Flags) noexcept {
+      struct ss::Find args = { (LONG)0, Flags };
+      ERR error = Action(-3, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
 
    // Customised field setting
 
