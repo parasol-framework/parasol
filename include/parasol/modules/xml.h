@@ -272,8 +272,8 @@ class objXML : public Object {
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR findTag(CSTRING XPath, FUNCTION * Callback, LONG * Result) noexcept {
-      struct xml::FindTag args = { XPath, Callback, (LONG)0 };
+   inline ERR findTag(CSTRING XPath, FUNCTION Callback, LONG * Result) noexcept {
+      struct xml::FindTag args = { XPath, &Callback, (LONG)0 };
       ERR error = Action(-10, this, &args);
       if (Result) *Result = args.Result;
       return(error);

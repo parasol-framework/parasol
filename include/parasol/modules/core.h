@@ -3413,21 +3413,27 @@ class objFile : public Object {
    inline ERR stopStream() noexcept {
       return(Action(-2, this, NULL));
    }
-   inline ERR del(FUNCTION * Callback) noexcept {
-      struct fl::Delete args = { Callback };
+   inline ERR del(FUNCTION Callback) noexcept {
+      struct fl::Delete args = { &Callback };
       return(Action(-3, this, &args));
    }
-   inline ERR move(CSTRING Dest, FUNCTION * Callback) noexcept {
-      struct fl::Move args = { Dest, Callback };
+   inline ERR move(CSTRING Dest, FUNCTION Callback) noexcept {
+      struct fl::Move args = { Dest, &Callback };
       return(Action(-4, this, &args));
    }
-   inline ERR copy(CSTRING Dest, FUNCTION * Callback) noexcept {
-      struct fl::Copy args = { Dest, Callback };
+   inline ERR copy(CSTRING Dest, FUNCTION Callback) noexcept {
+      struct fl::Copy args = { Dest, &Callback };
       return(Action(-5, this, &args));
    }
    inline ERR setDate(LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) noexcept {
       struct fl::SetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
       return(Action(-6, this, &args));
+   }
+   inline ERR readLine(STRING * Result) noexcept {
+      struct fl::ReadLine args = { (STRING)0 };
+      ERR error = Action(-7, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
    }
    inline ERR bufferContent() noexcept {
       return(Action(-8, this, NULL));
@@ -3438,8 +3444,8 @@ class objFile : public Object {
       if (File) *File = args.File;
       return(error);
    }
-   inline ERR watch(FUNCTION * Callback, LARGE Custom, MFF Flags) noexcept {
-      struct fl::Watch args = { Callback, Custom, Flags };
+   inline ERR watch(FUNCTION Callback, LARGE Custom, MFF Flags) noexcept {
+      struct fl::Watch args = { &Callback, Custom, Flags };
       return(Action(-10, this, &args));
    }
 
@@ -3784,8 +3790,8 @@ class objScript : public Object {
       struct sc::Exec args = { Procedure, Args, TotalArgs };
       return(Action(-1, this, &args));
    }
-   inline ERR derefProcedure(FUNCTION * Procedure) noexcept {
-      struct sc::DerefProcedure args = { Procedure };
+   inline ERR derefProcedure(FUNCTION Procedure) noexcept {
+      struct sc::DerefProcedure args = { &Procedure };
       return(Action(-2, this, &args));
    }
    inline ERR callback(LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
@@ -4392,23 +4398,23 @@ class objCompression : public Object {
       struct cmp::RemoveFile args = { Path };
       return(Action(-5, this, &args));
    }
-   inline ERR compressStream(APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
-      struct cmp::CompressStream args = { Input, Length, Callback, Output, OutputSize };
+   inline ERR compressStream(APTR Input, LONG Length, FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
+      struct cmp::CompressStream args = { Input, Length, &Callback, Output, OutputSize };
       return(Action(-6, this, &args));
    }
-   inline ERR decompressStream(APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
-      struct cmp::DecompressStream args = { Input, Length, Callback, Output, OutputSize };
+   inline ERR decompressStream(APTR Input, LONG Length, FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
+      struct cmp::DecompressStream args = { Input, Length, &Callback, Output, OutputSize };
       return(Action(-7, this, &args));
    }
    inline ERR compressStreamStart() noexcept {
       return(Action(-8, this, NULL));
    }
-   inline ERR compressStreamEnd(FUNCTION * Callback, APTR Output, LONG OutputSize) noexcept {
-      struct cmp::CompressStreamEnd args = { Callback, Output, OutputSize };
+   inline ERR compressStreamEnd(FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
+      struct cmp::CompressStreamEnd args = { &Callback, Output, OutputSize };
       return(Action(-9, this, &args));
    }
-   inline ERR decompressStreamEnd(FUNCTION * Callback) noexcept {
-      struct cmp::DecompressStreamEnd args = { Callback };
+   inline ERR decompressStreamEnd(FUNCTION Callback) noexcept {
+      struct cmp::DecompressStreamEnd args = { &Callback };
       return(Action(-10, this, &args));
    }
    inline ERR decompressStreamStart() noexcept {
@@ -4418,8 +4424,8 @@ class objCompression : public Object {
       struct cmp::DecompressObject args = { Path, Object };
       return(Action(-12, this, &args));
    }
-   inline ERR scan(CSTRING Folder, CSTRING Filter, FUNCTION * Callback) noexcept {
-      struct cmp::Scan args = { Folder, Filter, Callback };
+   inline ERR scan(CSTRING Folder, CSTRING Filter, FUNCTION Callback) noexcept {
+      struct cmp::Scan args = { Folder, Filter, &Callback };
       return(Action(-13, this, &args));
    }
    inline ERR find(CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item) noexcept {

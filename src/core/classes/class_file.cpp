@@ -496,7 +496,7 @@ static ERR FILE_Free(extFile *Self)
 {
    pf::Log log;
 
-   if (Self->prvWatch) Self->watch(NULL, 0, MFF::NIL);
+   if (Self->prvWatch) Action(fl::Watch::id, Self, NULL);
 
 #ifdef _WIN32
    STRING path = NULL;
@@ -843,7 +843,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
          #endif
 
          ERR error;
-         if ((error = fs_copy(src, newpath, Args->Callback, TRUE)) IS ERR::Okay) {
+         if ((error = fs_copy(src, newpath, Args->Callback, true)) IS ERR::Okay) {
             FreeResource(Self->Path);
             Self->Path = newpath;
          }
@@ -864,7 +864,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
          #endif
 
-         if (auto error = fs_copy(src, newpath, Args->Callback, TRUE); error IS ERR::Okay) {
+         if (auto error = fs_copy(src, newpath, Args->Callback, true); error IS ERR::Okay) {
             FreeResource(Self->Path);
             Self->Path = newpath;
             return ERR::Okay;
@@ -1209,7 +1209,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
                n[j++] = Args->Name[i];
             }
 
-            if (fs_copy(Self->Path, n, NULL, TRUE) IS ERR::Okay) {
+            if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
                // Add the trailing slash
                if (n[j-1] != '/') n[j++] = '/';
                n[j] = 0;
@@ -1242,7 +1242,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
          #endif
 
-         if (fs_copy(Self->Path, n, NULL, TRUE) IS ERR::Okay) {
+         if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
             FreeResource(Self->Path);
             Self->Path = n;
             return ERR::Okay;

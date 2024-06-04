@@ -1750,7 +1750,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
    }
 
    if (file) {
-      file->del(0);
+      Action(fl::Delete::id, file, NULL);
       FreeResource(file);
    }
 
@@ -2422,8 +2422,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       if (ListChildren(group->UID, &list) IS ERR::Okay) {
          for (auto &child : list) {
             auto obj = (objVector *)GetObjectPtr(child.ObjectID);
-            auto call = C_FUNCTION(link_event, link.get());
-            obj->subscribeInput(JTYPE::BUTTON, &call);
+            obj->subscribeInput(JTYPE::BUTTON, C_FUNCTION(link_event, link.get()));
          }
          Self->Links.emplace_back(std::move(link));
       }

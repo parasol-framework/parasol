@@ -1635,7 +1635,8 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
-            error = srcfile->move(Dest, NULL);
+            fl::Move args = { Dest, NULL };
+            error = Action(fl::Move::id, *srcfile, &args);
             goto exit;
          }
       }
@@ -1778,7 +1779,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       else error = log.warning(ERR::AllocMemory);
 
       if ((Move) and (error IS ERR::Okay)) {
-         srcfile->del(0);
+         Action(fl::Delete::id, *srcfile, NULL);
       }
 
       goto exit;
