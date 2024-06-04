@@ -496,7 +496,7 @@ static ERR FILE_Free(extFile *Self)
 {
    pf::Log log;
 
-   if (Self->prvWatch) Self->watch(NULL, NULL, MFF::NIL);
+   if (Self->prvWatch) Self->watch(NULL, 0, MFF::NIL);
 
 #ifdef _WIN32
    STRING path = NULL;

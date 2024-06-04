@@ -579,7 +579,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
             }
          }
          else { // Source is an ximage, destination is a pixmap
-            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmp::Premultiply(src);
+            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) src->premultiply();
 
             if (src->x11.XShmImage IS true)  {
                XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &src->x11.ximage, X, Y, DestX, DestY, Width, Height, False);
@@ -591,7 +591,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
             }
             else XClearWindow(XDisplay, dest->x11.window); // 'Clear' the window to the pixmap background
 
-            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmp::Demultiply(src);
+            if ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) src->demultiply();
          }
       }
       else { // Both the source and the destination are pixmaps
