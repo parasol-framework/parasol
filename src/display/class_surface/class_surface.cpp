@@ -1349,7 +1349,7 @@ static ERR SURFACE_Init(extSurface *Self)
             LONG mxH = (Self->MaxHeight > 0) ? Self->MaxHeight + Self->TopMargin  + Self->BottomMargin : 0;
             LONG mnW = (Self->MinWidth > 0)  ? Self->MinWidth  + Self->LeftMargin + Self->RightMargin  : 0;
             LONG mnH = (Self->MinHeight > 0) ? Self->MinHeight + Self->TopMargin  + Self->BottomMargin : 0;
-            display->sizeHints(mxW, mxH, mnW, mnH, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+            display->sizeHints(mnW, mnH, mxW, mxH, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
          }
 
          acFlush(display);
