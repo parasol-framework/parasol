@@ -217,8 +217,8 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
-   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmp::ConvertToLinear(inBmp);
-   bmp::Premultiply(inBmp);
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
+   inBmp->premultiply();
 
    if ((canvas_width > Self->MatrixColumns*3) and (canvas_height > Self->MatrixRows*3)) {
       const LONG ew = Self->MatrixColumns>>1;
@@ -244,9 +244,9 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 
    delete [] output;
 
-   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmp::ConvertToRGB(inBmp);
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToRGB();
 
-   bmp::Demultiply(inBmp);
+   inBmp->demultiply();
    return ERR::Okay;
 }
 

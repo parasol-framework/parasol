@@ -240,7 +240,7 @@ static ERR FILE_Activate(extFile *Self)
 
    // If the BUFFER flag is set, load the entire file into RAM and treat it as a read/write memory buffer.
 
-   if ((Self->Flags & FL::BUFFER) != FL::NIL) return fl::BufferContent(Self);
+   if ((Self->Flags & FL::BUFFER) != FL::NIL) return Self->bufferContent();
 
    return ERR::Okay;
 }
@@ -496,7 +496,7 @@ static ERR FILE_Free(extFile *Self)
 {
    pf::Log log;
 
-   if (Self->prvWatch) Action(MT_FlWatch, Self, NULL);
+   if (Self->prvWatch) Self->watch(NULL, 0, MFF::NIL);
 
 #ifdef _WIN32
    STRING path = NULL;

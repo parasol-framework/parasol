@@ -625,6 +625,15 @@ class objVectorTransition : public Object {
    static constexpr CSTRING CLASS_NAME = "VectorTransition";
 
    using create = pf::Create<objVectorTransition>;
+
+   // Customised field setting
+
+   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, 0x00001218, Value, Elements);
+   }
+
 };
 
 // VectorScene class definition
@@ -633,38 +642,11 @@ class objVectorTransition : public Object {
 
 // VectorScene methods
 
-#define MT_ScAddDef -1
-#define MT_ScSearchByID -2
-#define MT_ScFindDef -3
-#define MT_ScDebug -4
-
 namespace sc {
-struct AddDef { CSTRING Name; OBJECTPTR Def;  };
-struct SearchByID { LONG ID; OBJECTPTR Result;  };
-struct FindDef { CSTRING Name; OBJECTPTR Def;  };
-
-inline ERR AddDef(APTR Ob, CSTRING Name, OBJECTPTR Def) noexcept {
-   struct AddDef args = { Name, Def };
-   return(Action(MT_ScAddDef, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SearchByID(APTR Ob, LONG ID, OBJECTPTR * Result) noexcept {
-   struct SearchByID args = { ID, (OBJECTPTR)0 };
-   ERR error = Action(MT_ScSearchByID, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR FindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) noexcept {
-   struct FindDef args = { Name, (OBJECTPTR)0 };
-   ERR error = Action(MT_ScFindDef, (OBJECTPTR)Ob, &args);
-   if (Def) *Def = args.Def;
-   return(error);
-}
-
-inline ERR Debug(APTR Ob) noexcept {
-   return(Action(MT_ScDebug, (OBJECTPTR)Ob, NULL));
-}
+struct AddDef { CSTRING Name; OBJECTPTR Def; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SearchByID { LONG ID; OBJECTPTR Result; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindDef { CSTRING Name; OBJECTPTR Def; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Debug { static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -706,6 +688,25 @@ class objVectorScene : public Object {
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
+   }
+   inline ERR addDef(CSTRING Name, OBJECTPTR Def) noexcept {
+      struct sc::AddDef args = { Name, Def };
+      return(Action(-1, this, &args));
+   }
+   inline ERR searchByID(LONG ID, OBJECTPTR * Result) noexcept {
+      struct sc::SearchByID args = { ID, (OBJECTPTR)0 };
+      ERR error = Action(-2, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR findDef(CSTRING Name, OBJECTPTR * Def) noexcept {
+      struct sc::FindDef args = { Name, (OBJECTPTR)0 };
+      ERR error = Action(-3, this, &args);
+      if (Def) *Def = args.Def;
+      return(error);
+   }
+   inline ERR debug() noexcept {
+      return(Action(-4, this, NULL));
    }
 
    // Customised field setting
@@ -1195,6 +1196,36 @@ class objImageFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "ImageFX";
 
    using create = pf::Create<objImageFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   template <class T> inline ERR setPath(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
+   }
+
+   inline ERR setAspectRatio(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setResampleMethod(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // SourceFX class definition
@@ -1207,6 +1238,36 @@ class objSourceFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "SourceFX";
 
    using create = pf::Create<objSourceFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setAspectRatio(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERR setSourceName(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08800408, to_cstring(Value), 1);
+   }
+
+   inline ERR setSource(OBJECTPTR Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08000109, Value, 1);
+   }
+
 };
 
 // BlurFX class definition
@@ -1219,6 +1280,30 @@ class objBlurFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "BlurFX";
 
    using create = pf::Create<objBlurFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setSX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setSY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 // ColourFX class definition
@@ -1231,6 +1316,30 @@ class objColourFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "ColourFX";
 
    using create = pf::Create<objColourFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setMode(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setValues(const DOUBLE * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x80001508, Value, Elements);
+   }
+
 };
 
 // CompositeFX class definition
@@ -1243,6 +1352,48 @@ class objCompositeFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
 
    using create = pf::Create<objCompositeFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setOperator(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setK1(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setK2(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setK3(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setK4(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 // ConvolveFX class definition
@@ -1255,6 +1406,84 @@ class objConvolveFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
 
    using create = pf::Create<objConvolveFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setBias(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setDivisor(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setEdgeMode(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setMatrixRows(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setMatrixColumns(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setMatrix(const DOUBLE * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x80001508, Value, Elements);
+   }
+
+   inline ERR setPreserveAlpha(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setTargetX(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setTargetY(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setUnitX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setUnitY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 // DisplacementFX class definition
@@ -1267,6 +1496,36 @@ class objDisplacementFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
 
    using create = pf::Create<objDisplacementFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setScale(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setXChannel(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setYChannel(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // FloodFX class definition
@@ -1279,6 +1538,30 @@ class objFloodFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "FloodFX";
 
    using create = pf::Create<objFloodFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, 0x10001308, Value, Elements);
+   }
+
+   inline ERR setOpacity(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 // LightingFX class definition
@@ -1287,29 +1570,10 @@ class objFloodFX : public objFilterEffect {
 
 // LightingFX methods
 
-#define MT_LTSetDistantLight -20
-#define MT_LTSetPointLight -22
-#define MT_LTSetSpotLight -21
-
 namespace lt {
-struct SetDistantLight { DOUBLE Azimuth; DOUBLE Elevation;  };
-struct SetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z;  };
-struct SetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle;  };
-
-inline ERR SetDistantLight(APTR Ob, DOUBLE Azimuth, DOUBLE Elevation) noexcept {
-   struct SetDistantLight args = { Azimuth, Elevation };
-   return(Action(MT_LTSetDistantLight, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetPointLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
-   struct SetPointLight args = { X, Y, Z };
-   return(Action(MT_LTSetPointLight, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) noexcept {
-   struct SetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
-   return(Action(MT_LTSetSpotLight, (OBJECTPTR)Ob, &args));
-}
+struct SetDistantLight { DOUBLE Azimuth; DOUBLE Elevation; static const ACTIONID id = -20; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z; static const ACTIONID id = -22; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle; static const ACTIONID id = -21; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1319,6 +1583,72 @@ class objLightingFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "LightingFX";
 
    using create = pf::Create<objLightingFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR setDistantLight(DOUBLE Azimuth, DOUBLE Elevation) noexcept {
+      struct lt::SetDistantLight args = { Azimuth, Elevation };
+      return(Action(-20, this, &args));
+   }
+   inline ERR setPointLight(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+      struct lt::SetPointLight args = { X, Y, Z };
+      return(Action(-22, this, &args));
+   }
+   inline ERR setSpotLight(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) noexcept {
+      struct lt::SetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
+      return(Action(-21, this, &args));
+   }
+
+   // Customised field setting
+
+   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x10001308, Value, Elements);
+   }
+
+   inline ERR setConstant(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setExponent(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setScale(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setType(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setUnitX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setUnitY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 // MergeFX class definition
@@ -1331,6 +1661,24 @@ class objMergeFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "MergeFX";
 
    using create = pf::Create<objMergeFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setSourceList(const APTR Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, 0x00001318, Value, Elements);
+   }
+
 };
 
 // MorphologyFX class definition
@@ -1343,6 +1691,36 @@ class objMorphologyFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
 
    using create = pf::Create<objMorphologyFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setOperator(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setRadiusX(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setRadiusY(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // OffsetFX class definition
@@ -1355,6 +1733,30 @@ class objOffsetFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
 
    using create = pf::Create<objOffsetFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setXOffset(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setYOffset(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // RemapFX class definition
@@ -1363,57 +1765,14 @@ class objOffsetFX : public objFilterEffect {
 
 // RemapFX methods
 
-#define MT_RFSelectGamma -20
-#define MT_RFSelectTable -21
-#define MT_RFSelectLinear -22
-#define MT_RFSelectIdentity -23
-#define MT_RFSelectDiscrete -24
-#define MT_RFSelectInvert -25
-#define MT_RFSelectMask -26
-
 namespace rf {
-struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
-struct SelectTable { CMP Component; DOUBLE * Values; LONG Size;  };
-struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept;  };
-struct SelectIdentity { CMP Component;  };
-struct SelectDiscrete { CMP Component; DOUBLE * Values; LONG Size;  };
-struct SelectInvert { CMP Component;  };
-struct SelectMask { CMP Component; LONG Mask;  };
-
-inline ERR SelectGamma(APTR Ob, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) noexcept {
-   struct SelectGamma args = { Component, Amplitude, Offset, Exponent };
-   return(Action(MT_RFSelectGamma, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectTable(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) noexcept {
-   struct SelectTable args = { Component, Values, Size };
-   return(Action(MT_RFSelectTable, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectLinear(APTR Ob, CMP Component, DOUBLE Slope, DOUBLE Intercept) noexcept {
-   struct SelectLinear args = { Component, Slope, Intercept };
-   return(Action(MT_RFSelectLinear, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectIdentity(APTR Ob, CMP Component) noexcept {
-   struct SelectIdentity args = { Component };
-   return(Action(MT_RFSelectIdentity, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectDiscrete(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) noexcept {
-   struct SelectDiscrete args = { Component, Values, Size };
-   return(Action(MT_RFSelectDiscrete, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectInvert(APTR Ob, CMP Component) noexcept {
-   struct SelectInvert args = { Component };
-   return(Action(MT_RFSelectInvert, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectMask(APTR Ob, CMP Component, LONG Mask) noexcept {
-   struct SelectMask args = { Component, Mask };
-   return(Action(MT_RFSelectMask, (OBJECTPTR)Ob, &args));
-}
+struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent; static const ACTIONID id = -20; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectTable { CMP Component; DOUBLE * Values; LONG Size; static const ACTIONID id = -21; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept; static const ACTIONID id = -22; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectIdentity { CMP Component; static const ACTIONID id = -23; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectDiscrete { CMP Component; DOUBLE * Values; LONG Size; static const ACTIONID id = -24; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectInvert { CMP Component; static const ACTIONID id = -25; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectMask { CMP Component; LONG Mask; static const ACTIONID id = -26; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1423,6 +1782,46 @@ class objRemapFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "RemapFX";
 
    using create = pf::Create<objRemapFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR selectGamma(CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) noexcept {
+      struct rf::SelectGamma args = { Component, Amplitude, Offset, Exponent };
+      return(Action(-20, this, &args));
+   }
+   inline ERR selectTable(CMP Component, DOUBLE * Values, LONG Size) noexcept {
+      struct rf::SelectTable args = { Component, Values, Size };
+      return(Action(-21, this, &args));
+   }
+   inline ERR selectLinear(CMP Component, DOUBLE Slope, DOUBLE Intercept) noexcept {
+      struct rf::SelectLinear args = { Component, Slope, Intercept };
+      return(Action(-22, this, &args));
+   }
+   inline ERR selectIdentity(CMP Component) noexcept {
+      struct rf::SelectIdentity args = { Component };
+      return(Action(-23, this, &args));
+   }
+   inline ERR selectDiscrete(CMP Component, DOUBLE * Values, LONG Size) noexcept {
+      struct rf::SelectDiscrete args = { Component, Values, Size };
+      return(Action(-24, this, &args));
+   }
+   inline ERR selectInvert(CMP Component) noexcept {
+      struct rf::SelectInvert args = { Component };
+      return(Action(-25, this, &args));
+   }
+   inline ERR selectMask(CMP Component, LONG Mask) noexcept {
+      struct rf::SelectMask args = { Component, Mask };
+      return(Action(-26, this, &args));
+   }
+
+   // Customised field setting
+
 };
 
 // TurbulenceFX class definition
@@ -1435,6 +1834,54 @@ class objTurbulenceFX : public objFilterEffect {
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
 
    using create = pf::Create<objTurbulenceFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setFX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setFY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setOctaves(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setSeed(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setStitch(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setType(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // VectorClip class definition
@@ -1580,83 +2027,17 @@ class objVectorFilter : public Object {
 
 // Vector methods
 
-#define MT_VecPush -1
-#define MT_VecTrace -2
-#define MT_VecGetBoundary -3
-#define MT_VecPointInPath -4
-#define MT_VecSubscribeInput -5
-#define MT_VecSubscribeKeyboard -6
-#define MT_VecSubscribeFeedback -7
-#define MT_VecDebug -8
-#define MT_VecNewMatrix -9
-#define MT_VecFreeMatrix -10
-
 namespace vec {
-struct Push { LONG Position;  };
-struct Trace { FUNCTION * Callback; DOUBLE Scale; LONG Transform;  };
-struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
-struct PointInPath { DOUBLE X; DOUBLE Y;  };
-struct SubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
-struct SubscribeKeyboard { FUNCTION * Callback;  };
-struct SubscribeFeedback { FM Mask; FUNCTION * Callback;  };
-struct NewMatrix { struct VectorMatrix * Transform; LONG End;  };
-struct FreeMatrix { struct VectorMatrix * Matrix;  };
-
-inline ERR Push(APTR Ob, LONG Position) noexcept {
-   struct Push args = { Position };
-   return(Action(MT_VecPush, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Trace(APTR Ob, FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
-   struct Trace args = { Callback, Scale, Transform };
-   return(Action(MT_VecTrace, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetBoundary(APTR Ob, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
-   struct GetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
-   ERR error = Action(MT_VecGetBoundary, (OBJECTPTR)Ob, &args);
-   if (X) *X = args.X;
-   if (Y) *Y = args.Y;
-   if (Width) *Width = args.Width;
-   if (Height) *Height = args.Height;
-   return(error);
-}
-
-inline ERR PointInPath(APTR Ob, DOUBLE X, DOUBLE Y) noexcept {
-   struct PointInPath args = { X, Y };
-   return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION * Callback) noexcept {
-   struct SubscribeInput args = { Mask, Callback };
-   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SubscribeKeyboard(APTR Ob, FUNCTION * Callback) noexcept {
-   struct SubscribeKeyboard args = { Callback };
-   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) noexcept {
-   struct SubscribeFeedback args = { Mask, Callback };
-   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Debug(APTR Ob) noexcept {
-   return(Action(MT_VecDebug, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR NewMatrix(APTR Ob, struct VectorMatrix ** Transform, LONG End) noexcept {
-   struct NewMatrix args = { (struct VectorMatrix *)0, End };
-   ERR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
-   if (Transform) *Transform = args.Transform;
-   return(error);
-}
-
-inline ERR FreeMatrix(APTR Ob, struct VectorMatrix * Matrix) noexcept {
-   struct FreeMatrix args = { Matrix };
-   return(Action(MT_VecFreeMatrix, (OBJECTPTR)Ob, &args));
-}
+struct Push { LONG Position; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Trace { FUNCTION * Callback; DOUBLE Scale; LONG Transform; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct PointInPath { DOUBLE X; DOUBLE Y; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SubscribeInput { JTYPE Mask; FUNCTION * Callback; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SubscribeKeyboard { FUNCTION * Callback; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SubscribeFeedback { FM Mask; FUNCTION * Callback; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Debug { static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct NewMatrix { struct VectorMatrix * Transform; LONG End; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FreeMatrix { struct VectorMatrix * Matrix; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1700,6 +2081,52 @@ class objVector : public Object {
    inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
    inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
    inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR push(LONG Position) noexcept {
+      struct vec::Push args = { Position };
+      return(Action(-1, this, &args));
+   }
+   inline ERR trace(FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
+      struct vec::Trace args = { Callback, Scale, Transform };
+      return(Action(-2, this, &args));
+   }
+   inline ERR getBoundary(VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
+      struct vec::GetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
+      ERR error = Action(-3, this, &args);
+      if (X) *X = args.X;
+      if (Y) *Y = args.Y;
+      if (Width) *Width = args.Width;
+      if (Height) *Height = args.Height;
+      return(error);
+   }
+   inline ERR pointInPath(DOUBLE X, DOUBLE Y) noexcept {
+      struct vec::PointInPath args = { X, Y };
+      return(Action(-4, this, &args));
+   }
+   inline ERR subscribeInput(JTYPE Mask, FUNCTION * Callback) noexcept {
+      struct vec::SubscribeInput args = { Mask, Callback };
+      return(Action(-5, this, &args));
+   }
+   inline ERR subscribeKeyboard(FUNCTION * Callback) noexcept {
+      struct vec::SubscribeKeyboard args = { Callback };
+      return(Action(-6, this, &args));
+   }
+   inline ERR subscribeFeedback(FM Mask, FUNCTION * Callback) noexcept {
+      struct vec::SubscribeFeedback args = { Mask, Callback };
+      return(Action(-7, this, &args));
+   }
+   inline ERR debug() noexcept {
+      return(Action(-8, this, NULL));
+   }
+   inline ERR newMatrix(struct VectorMatrix ** Transform, LONG End) noexcept {
+      struct vec::NewMatrix args = { (struct VectorMatrix *)0, End };
+      ERR error = Action(-9, this, &args);
+      if (Transform) *Transform = args.Transform;
+      return(error);
+   }
+   inline ERR freeMatrix(struct VectorMatrix * Matrix) noexcept {
+      struct vec::FreeMatrix args = { Matrix };
+      return(Action(-10, this, &args));
+   }
 
    // Customised field setting
 
@@ -1918,45 +2345,12 @@ class objVector : public Object {
 
 // VectorPath methods
 
-#define MT_VPAddCommand -30
-#define MT_VPRemoveCommand -31
-#define MT_VPSetCommand -32
-#define MT_VPGetCommand -33
-#define MT_VPSetCommandList -34
-
 namespace vp {
-struct AddCommand { struct PathCommand * Commands; LONG Size;  };
-struct RemoveCommand { LONG Index; LONG Total;  };
-struct SetCommand { LONG Index; struct PathCommand * Command; LONG Size;  };
-struct GetCommand { LONG Index; struct PathCommand * Command;  };
-struct SetCommandList { APTR Commands; LONG Size;  };
-
-inline ERR AddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) noexcept {
-   struct AddCommand args = { Commands, Size };
-   return(Action(MT_VPAddCommand, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR RemoveCommand(APTR Ob, LONG Index, LONG Total) noexcept {
-   struct RemoveCommand args = { Index, Total };
-   return(Action(MT_VPRemoveCommand, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LONG Size) noexcept {
-   struct SetCommand args = { Index, Command, Size };
-   return(Action(MT_VPSetCommand, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) noexcept {
-   struct GetCommand args = { Index, (struct PathCommand *)0 };
-   ERR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
-   if (Command) *Command = args.Command;
-   return(error);
-}
-
-inline ERR SetCommandList(APTR Ob, APTR Commands, LONG Size) noexcept {
-   struct SetCommandList args = { Commands, Size };
-   return(Action(MT_VPSetCommandList, (OBJECTPTR)Ob, &args));
-}
+struct AddCommand { struct PathCommand * Commands; LONG Size; static const ACTIONID id = -30; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveCommand { LONG Index; LONG Total; static const ACTIONID id = -31; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetCommand { LONG Index; struct PathCommand * Command; LONG Size; static const ACTIONID id = -32; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetCommand { LONG Index; struct PathCommand * Command; static const ACTIONID id = -33; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetCommandList { APTR Commands; LONG Size; static const ACTIONID id = -34; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1966,6 +2360,61 @@ class objVectorPath : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorPath";
 
    using create = pf::Create<objVectorPath>;
+
+   // Action stubs
+
+   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR addCommand(struct PathCommand * Commands, LONG Size) noexcept {
+      struct vp::AddCommand args = { Commands, Size };
+      return(Action(-30, this, &args));
+   }
+   inline ERR removeCommand(LONG Index, LONG Total) noexcept {
+      struct vp::RemoveCommand args = { Index, Total };
+      return(Action(-31, this, &args));
+   }
+   inline ERR setCommand(LONG Index, struct PathCommand * Command, LONG Size) noexcept {
+      struct vp::SetCommand args = { Index, Command, Size };
+      return(Action(-32, this, &args));
+   }
+   inline ERR getCommand(LONG Index, struct PathCommand ** Command) noexcept {
+      struct vp::GetCommand args = { Index, (struct PathCommand *)0 };
+      ERR error = Action(-33, this, &args);
+      if (Command) *Command = args.Command;
+      return(error);
+   }
+   inline ERR setCommandList(APTR Commands, LONG Size) noexcept {
+      struct vp::SetCommandList args = { Commands, Size };
+      return(Action(-34, this, &args));
+   }
+
+   // Customised field setting
+
+   template <class T> inline ERR setSequence(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
+   inline ERR setTotalCommands(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setPathLength(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setCommands(const APTR Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x00001318, Value, Elements);
+   }
+
 };
 
 // VectorText class definition
@@ -1974,15 +2423,8 @@ class objVectorPath : public objVector {
 
 // VectorText methods
 
-#define MT_VTDeleteLine -30
-
 namespace vt {
-struct DeleteLine { LONG Line;  };
-
-inline ERR DeleteLine(APTR Ob, LONG Line) noexcept {
-   struct DeleteLine args = { Line };
-   return(Action(MT_VTDeleteLine, (OBJECTPTR)Ob, &args));
-}
+struct DeleteLine { LONG Line; static const ACTIONID id = -30; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1992,6 +2434,175 @@ class objVectorText : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorText";
 
    using create = pf::Create<objVectorText>;
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR deleteLine(LONG Line) noexcept {
+      struct vt::DeleteLine args = { Line };
+      return(Action(-30, this, &args));
+   }
+
+   // Customised field setting
+
+   inline ERR setX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setWeight(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERR setString(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
+   inline ERR setAlign(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERR setFace(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setFill(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setFontSize(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800328, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setFontStyle(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
+   }
+
+   inline ERR setDX(const DOUBLE * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, 0x80001308, Value, Elements);
+   }
+
+   inline ERR setDY(const DOUBLE * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x80001308, Value, Elements);
+   }
+
+   inline ERR setInlineSize(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setLetterSpacing(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setRotate(const DOUBLE * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x80001308, Value, Elements);
+   }
+
+   inline ERR setShapeInside(OBJECTID Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setShapeSubtract(OBJECTID Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setTextLength(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setTextFlags(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setStartOffset(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setSpacing(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[26];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setFont(OBJECTPTR Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      return field->WriteValue(target, field, 0x08000409, Value, 1);
+   }
+
+   inline ERR setFocus(OBJECTID Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setCursorColumn(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setCursorRow(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setLineLimit(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setCharLimit(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // VectorGroup class definition
@@ -2004,6 +2615,9 @@ class objVectorGroup : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorGroup";
 
    using create = pf::Create<objVectorGroup>;
+
+   // Customised field setting
+
 };
 
 // VectorWave class definition
@@ -2016,6 +2630,85 @@ class objVectorWave : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorWave";
 
    using create = pf::Create<objVectorWave>;
+
+   // Customised field setting
+
+   inline ERR setAmplitude(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setClose(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setDecay(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setDegree(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setDimensions(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setFrequency(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setHeight(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setStyle(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setThickness(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setWidth(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
 };
 
 // VectorRectangle class definition
@@ -2028,6 +2721,77 @@ class objVectorRectangle : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
 
    using create = pf::Create<objVectorRectangle>;
+
+   // Customised field setting
+
+   inline ERR setRounding(const DOUBLE * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x80001308, Value, Elements);
+   }
+
+   inline ERR setRoundX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setRoundY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setXOffset(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setYOffset(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setWidth(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setHeight(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setDimensions(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // VectorPolygon class definition
@@ -2040,6 +2804,61 @@ class objVectorPolygon : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
 
    using create = pf::Create<objVectorPolygon>;
+
+   // Customised field setting
+
+   inline ERR setClosed(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setPathLength(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setPointsArray(APTR * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08001308, Value, Elements);
+   }
+
+   template <class T> inline ERR setPoints(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
+   }
+
+   inline ERR setX1(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setY1(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setX2(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setY2(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
 };
 
 // VectorShape class definition
@@ -2052,6 +2871,108 @@ class objVectorShape : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorShape";
 
    using create = pf::Create<objVectorShape>;
+
+   // Customised field setting
+
+   inline ERR setCenterX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setCenterY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setRadius(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setClose(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setDimensions(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setPhi(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setA(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setB(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setM(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setN1(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setN2(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setN3(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setVertices(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setMod(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setSpiral(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setRepeat(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // VectorSpiral class definition
@@ -2064,6 +2985,74 @@ class objVectorSpiral : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
 
    using create = pf::Create<objVectorSpiral>;
+
+   // Customised field setting
+
+   inline ERR setPathLength(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setWidth(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setHeight(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setCenterX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setCenterY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setRadius(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setOffset(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setStep(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setSpacing(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setLoopLimit(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 // VectorEllipse class definition
@@ -2076,6 +3065,70 @@ class objVectorEllipse : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
 
    using create = pf::Create<objVectorEllipse>;
+
+   // Customised field setting
+
+   inline ERR setWidth(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setHeight(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setCenterX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setCenterY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setRadius(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setRadiusX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setRadiusY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setDimensions(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setVertices(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // VectorViewport class definition
@@ -2088,6 +3141,136 @@ class objVectorViewport : public objVector {
    static constexpr CSTRING CLASS_NAME = "VectorViewport";
 
    using create = pf::Create<objVectorViewport>;
+
+   // Action stubs
+
+   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+      struct acMove args = { X, Y, Z };
+      return Action(AC_Move, this, &args);
+   }
+   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
+      struct acMoveToPoint moveto = { X, Y, Z, Flags };
+      return Action(AC_MoveToPoint, this, &moveto);
+   }
+   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+      struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+      struct acRedimension args = { X, Y, 0, Width, Height, 0 };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+      struct acResize args = { Width, Height, Depth };
+      return Action(AC_Resize, this, &args);
+   }
+
+   // Customised field setting
+
+   inline ERR setAspectRatio(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setDimensions(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setDragCallback(FUNCTION Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERR setOverflow(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setOverflowX(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setOverflowY(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setXOffset(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setYOffset(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setWidth(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setHeight(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERR setViewX(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setViewY(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setViewWidth(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setViewHeight(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
 };
 
 #ifdef PARASOL_STATIC
@@ -2735,24 +3918,6 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_BY 0x00597760
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
-
-namespace vec {
-inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
-   struct SubscribeInput args = { Mask, &Callback };
-   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SubscribeKeyboard(APTR Ob, FUNCTION Callback) {
-   struct SubscribeKeyboard args = { &Callback };
-   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
-   struct SubscribeFeedback args = { Mask, &Callback };
-   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
-}
-
-} // namespace
 
 namespace fl {
    using namespace pf;

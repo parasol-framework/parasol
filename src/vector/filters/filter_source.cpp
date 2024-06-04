@@ -278,7 +278,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    }
 
    objVector *src;
-   if (sc::FindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src) IS ERR::Okay) {
+   if (Self->Filter->Scene->findDef(Value, (OBJECTPTR *)&src) IS ERR::Okay) {
       if (src->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
       Self->Source = src;
       SubscribeAction(src, AC_Free, C_FUNCTION(notify_free_source));

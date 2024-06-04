@@ -282,7 +282,8 @@ CELL layout::lay_cell(bc_table *Table)
       }));
 
       if (cell.hooks.events != JTYPE::NIL) {
-         vec::SubscribeInput(*cell.viewport, cell.hooks.events, C_FUNCTION(inputevent_cell));
+         auto call = C_FUNCTION(inputevent_cell);
+         cell.viewport->subscribeInput(cell.hooks.events, &call);
       }
    }
 
@@ -526,7 +527,8 @@ WRAP layout::lay_button(bc_button &Button)
       }));
 
       if (Button.viewport->Scene->SurfaceID) {
-         vec::SubscribeInput(*Button.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_button));
+         auto call = C_FUNCTION(inputevent_button);
+         Button.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING, &call);
       }
 
       Button.viewport->setFill(Button.fill);
@@ -1505,7 +1507,8 @@ extend_page:
                }));
 
                if (link.path->Scene->SurfaceID) {
-                  vec::SubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(link_callback));
+                  auto call = C_FUNCTION(link_callback);
+                  link.path->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING, &call);
                }
             }
             break;
@@ -1535,7 +1538,7 @@ extend_page:
          case SCODE::USE: {
             auto &use = m_stream->lookup<bc_use>(idx);
             if (!use.processed) {
-               svg::ParseSymbol(Self->SVG, use.id.c_str(), m_viewport);
+               Self->SVG->parseSymbol(use.id.c_str(), m_viewport);
                use.processed = true;
             }
             break;

@@ -445,7 +445,7 @@ GetFiles: Retrieve the most recently clipped data as a list of files.
 This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it
 supports (or zero if all datatypes are recognised).
 
-The most recently clipped datatype is always returned.  To scan for all available clip items, set the `Datatype`
+The most recently clipped datatype is always returned.  To scan for all available clip items, set the `Filter`
 parameter to zero and repeatedly call this method with incremented Index numbers until the error code `ERR::OutOfRange`
 is returned.
 
@@ -459,8 +459,9 @@ successfully copying the data.  When cutting and pasting files within the file s
 recommended as the most efficient method.
 
 -INPUT-
-&int(CLIPTYPE) Datatype: Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
-int Index: If the `Datatype` parameter is zero, this parameter may be set to the index of the desired clip item.
+int(CLIPTYPE) Filter: Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
+int Index: If the `Filter` parameter is zero, this parameter may be set to the index of the desired clip item.
+&int(CLIPTYPE) Datatype: The resulting datatype of the requested clip data.
 !array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a `NULL` entry.  You are required to free the returned array with ~Core.FreeResource().
 &int(CEF) Flags: Result flags are returned in this parameter.  If `DELETE` is set, you need to delete the files after use in order to support the 'cut' operation.
 
@@ -497,14 +498,14 @@ static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
    // Find the first clipboard entry to match what has been requested
 
    if ((Self->Flags & CPF::HISTORY_BUFFER) != CPF::NIL) {
-      if (Args->Datatype IS CLIPTYPE::NIL) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
+      if (Args->Filter IS CLIPTYPE::NIL) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
          if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return log.warning(ERR::OutOfRange);
          std::advance(clip, Args->Index);
       }
       else {
          bool found = false;
          for (auto &scan : glClips) {
-            if ((Args->Datatype & scan.Datatype) != CLIPTYPE::NIL) {
+            if ((Args->Filter & scan.Datatype) != CLIPTYPE::NIL) {
                found = true;
                clip = &scan;
                break;
@@ -512,13 +513,13 @@ static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
          }
 
          if (!found) {
-            log.warning("No clips available for datatype $%x", LONG(Args->Datatype));
+            log.warning("No clips available for datatype $%x", LONG(Args->Filter));
             return ERR::NoData;
          }
       }
    }
-   else if (Args->Datatype != CLIPTYPE::NIL) {
-      if ((clip->Datatype & Args->Datatype) IS CLIPTYPE::NIL) return ERR::NoData;
+   else if (Args->Filter != CLIPTYPE::NIL) {
+      if ((clip->Datatype & Args->Filter) IS CLIPTYPE::NIL) return ERR::NoData;
    }
 
    CSTRING *list = NULL;

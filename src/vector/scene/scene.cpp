@@ -102,8 +102,8 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
          mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use scaled coordinates.
       }
 
-      pf::ScopedObjectLock surface(Self->SurfaceID);
-      if (surface.granted()) drw::ScheduleRedraw(*surface);
+      pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
+      if (surface.granted()) surface->scheduleRedraw();
    }
 }
 
@@ -165,7 +165,7 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
    if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR::NullArgs);
 
    if (Self->HostScene) { // Defer all definitions if a hosting scene is active.
-      return Action(MT_ScAddDef, Self->HostScene, Args);
+      return Self->HostScene->addDef(Args->Name, Args->Def);
    }
 
    OBJECTPTR def = Args->Def;
@@ -337,7 +337,7 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
-   if (Self->HostScene) return Action(MT_ScFindDef, Self->HostScene, Args);
+   if (Self->HostScene) return Self->HostScene->findDef(Args->Name, &Args->Def);
 
    CSTRING name = Args->Name;
 
@@ -397,7 +397,8 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
    if (Self->SurfaceID) {
       pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
-         drw::AddCallback(*surface, APTR(render_to_surface));
+         auto call = C_FUNCTION(render_to_surface);
+         surface->addCallback(&call);
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;

@@ -2064,6 +2064,14 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
     int       Static    # Set to `true` if a file object should be static.
     oid       Target    # Specifies a surface ID to target for user feedback and dialog boxes.
     ptr(char) Buffer    # Points to the internal data buffer if the file content is held in memory.
+  ]],
+  nil,
+  [[
+   inline CSTRING readLine() {
+      struct fl::ReadLine args;
+      if (Action(fl::ReadLine::id, this, &args) IS ERR::Okay) return args.Result;
+      else return NULL;
+   }
   ]])
 
   methods("config", "Cfg", {
@@ -2136,48 +2144,39 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
    }
 
    inline ERR write(CSTRING Group, CSTRING Key, CSTRING Value) {
-      struct cfg::WriteValue write = { Group, Key, Value };
-      return Action(MT_CfgWriteValue, this, &write);
+      return writeValue(Group, Key, Value);
    }
+
    inline ERR write(CSTRING Group, CSTRING Key, STRING Value) {
-      struct cfg::WriteValue write = { Group, Key, Value };
-      return Action(MT_CfgWriteValue, this, &write);
+      return writeValue(Group, Key, Value);
    }
+
    inline ERR write(CSTRING Group, CSTRING Key, std::string Value) {
-      struct cfg::WriteValue write = { Group, Key, Value.c_str() };
-      return Action(MT_CfgWriteValue, this, &write);
+      return writeValue(Group, Key, Value.c_str());
    }
+
    template <class T> inline ERR write(CSTRING Group, CSTRING Key, T Value) {
       auto str = std::to_string(Value);
-      struct cfg::WriteValue write = { Group, Key, str.c_str() };
-      return Action(MT_CfgWriteValue, this, &write);
+      return writeValue(Group, Key, str.c_str());
    }
-  ]])
 
-  c_insert([[
-namespace cfg {
-
-inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
-{
-   struct ReadValue read = { .Group = Group, .Key = Key };
-   if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
-      *Value = strtod(read.Data, NULL);
-      return ERR::Okay;
+   inline ERR read(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value) {
+      CSTRING result;
+      if (auto error = readValue(Group, Key, &result); error IS ERR::Okay) {
+         *Value = strtod(result, NULL);
+         return ERR::Okay;
+      }
+      else { *Value = 0; return error; }
    }
-   else { *Value = 0; return error; }
-}
 
-inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
-{
-   struct ReadValue read = { .Group = Group, .Key = Key };
-   if (auto error = Action(MT_CfgReadValue, Self, &read); error IS ERR::Okay) {
-      *Value = strtol(read.Data, NULL, 0);
-      return ERR::Okay;
+   inline ERR read(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value) {
+      CSTRING result;
+      if (auto error = readValue(Group, Key, &result); error IS ERR::Okay) {
+         *Value = strtol(result, NULL, 0);
+         return ERR::Okay;
+      }
+      else { *Value = 0; return error; }
    }
-   else { *Value = 0; return error; }
-}
-
-} // namespace
   ]])
 
   methods("Script", "Sc", {
@@ -2217,24 +2216,24 @@ inline ERR Read(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 namespace sc {
 template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
    struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
-   return Action(MT_ScCallback, Function.Context, &args);
+   return Action(sc::Callback::id, Function.Context, &args);
 }
 
 template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
    struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
-   ERR error = Action(MT_ScCallback, Function.Context, &args);
+   ERR error = Action(sc::Callback::id, Function.Context, &args);
    Result = args.Error;
    return(error);
 }
 
 inline ERR Call(const FUNCTION &Function) noexcept {
    struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
-   return Action(MT_ScCallback, Function.Context, &args);
+   return Action(sc::Callback::id, Function.Context, &args);
 }
 
 inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
    struct Callback args = { Function.ProcedureID, NULL, 0, ERR::Okay };
-   ERR error = Action(MT_ScCallback, Function.Context, &args);
+   ERR error = Action(sc::Callback::id, Function.Context, &args);
    Result = args.Error;
    return(error);
 }
@@ -2453,24 +2452,16 @@ struct evHotplug {
       LONG DeviceID;
    };
    char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   char  Group[32];    // Group name in the config file
+   char  Group[32];      // Group name in the config file
    char  Class[32];      // Class identifier (USB)
    union {
-      char Product[40]; // Name of product or the hardware device
+      char Product[40];  // Name of product or the hardware device
       char Device[40];
    };
-   char Vendor[40];     // Name of vendor
+   char Vendor[40];      // Name of vendor
 };
 
-// File Methods.
-
 namespace fl {
-
-inline CSTRING ReadLine(OBJECTPTR Object) {
-   struct ReadLine args;
-   if (Action(MT_FlReadLine, Object, &args) IS ERR::Okay) return args.Result;
-   else return NULL;
-}
 
 // Read endian values from files and objects.
 

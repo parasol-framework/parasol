@@ -1741,8 +1741,7 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
 
          if (*Value) while (*Value > 0x20) Value++;
 
-         struct task::AddArgument add = { .Argument = buffer };
-         Action(MT_TaskAddArgument, Self, &add);
+         Self->addArgument(buffer);
       }
    }
 

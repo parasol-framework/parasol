@@ -358,7 +358,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       // Merge tailored font options into the machine-generated database
 
-      cfg::MergeFile(glConfig, "fonts:options.cfg");
+      glConfig->mergeFile("fonts:options.cfg");
    }
    else {
       log.error("Failed to load or prepare the font configuration file.");
@@ -724,7 +724,7 @@ ERR RefreshFonts(void)
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   cfg::SortByKey(glConfig, NULL, FALSE); // Sort the font names into alphabetical order
+   glConfig->sortByKey(NULL, false); // Sort the font names into alphabetical order
 
    // Create a style list for each font, e.g.
    //

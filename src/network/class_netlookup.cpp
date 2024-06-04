@@ -330,7 +330,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
          CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
-         if ((th::SetData(th, rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
+         if ((th->setData(rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
             return ERR::Okay;
@@ -394,7 +394,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
       rb->NetLookupID = Self->UID;
       rb->ThreadID    = th->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
-      if ((th::SetData(th, buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
+      if ((th->setData(buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
          return ERR::Okay;

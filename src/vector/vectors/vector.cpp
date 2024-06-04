@@ -250,9 +250,8 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
 
-      pf::ScopedObjectLock surface(Self->Scene->SurfaceID);
-      if (surface.granted()) {
-         Action(MT_DrwScheduleRedraw, *surface, NULL);
+      if (pf::ScopedObjectLock<objSurface> surface(Self->Scene->SurfaceID); surface.granted()) {
+         surface->scheduleRedraw();
          return ERR::Okay;
       }
       else return ERR::AccessObject;
@@ -1512,7 +1511,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
    }
 
    OBJECTPTR def = NULL;
-   if (sc::FindDef(Self->Scene, Value, &def) != ERR::Okay) {
+   if (Self->Scene->findDef(Value, &def) != ERR::Okay) {
       log.warning("Failed to resolve filter '%s'", Value);
       return ERR::Search;
    }

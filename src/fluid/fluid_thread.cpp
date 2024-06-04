@@ -100,8 +100,8 @@ static ERR thread_script_callback(OBJECTID ThreadID)
    if (auto it = glThreadCB.find(ThreadID); it != glThreadCB.end()) {
       thread_callback &cb = it->second;
       if (ScopedObjectLock<objScript> script(cb.mainScriptID, 4000); script.granted()) {
-         auto prv= (prvFluid *)script->ChildPrivate;
-         sc::Callback(*script, cb.callbackID, NULL, 0, NULL);
+         auto prv = (prvFluid *)script->ChildPrivate;
+         script->callback(cb.callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
       }
       glThreadCB.erase(it);

@@ -175,8 +175,8 @@ colour (white) and 3 is an XOR pixel.  When creating the bitmap, always set the 
 wanted.  The mask colour for the bitmap must refer to colour index 0.
 
 -INPUT-
-struct(*CursorInfo) Info: Pointer to a CursorInfo structure.
-structsize Size: The byte-size of the Info structure.
+struct(*CursorInfo) Info: Pointer to a !CursorInfo structure.
+structsize Size: The byte-size of the `Info` structure.
 
 -ERRORS-
 Okay:
@@ -222,9 +222,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ERR GetCursorPos(DOUBLE *X, DOUBLE *Y)
 {
-   objPointer *pointer;
-
-   if ((pointer = gfx::AccessPointer())) {
+   if (auto pointer = gfx::AccessPointer()) {
       if (X) *X = pointer->X;
       if (Y) *Y = pointer->Y;
       ReleaseObject(pointer);
@@ -232,8 +230,7 @@ ERR GetCursorPos(DOUBLE *X, DOUBLE *Y)
    }
    else {
       pf::Log log(__FUNCTION__);
-      log.warning("Failed to grab the mouse pointer.");
-      return ERR::Failed;
+      return log.warning(ERR::AccessObject);
    }
 }
 
@@ -261,7 +258,6 @@ AccessObject: Failed to access the SystemPointer object.
 ERR GetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 {
    pf::Log log(__FUNCTION__);
-   objPointer *pointer;
    LONG absx, absy;
 
    if (get_surface_abs(SurfaceID, &absx, &absy, 0, 0) != ERR::Okay) {
@@ -269,17 +265,13 @@ ERR GetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
       return ERR::Failed;
    }
 
-   if ((pointer = gfx::AccessPointer())) {
+   if (auto pointer = gfx::AccessPointer()) {
       if (X) *X = pointer->X - absx;
       if (Y) *Y = pointer->Y - absy;
-
       ReleaseObject(pointer);
       return ERR::Okay;
    }
-   else {
-      log.warning("Failed to grab the mouse pointer.");
-      return ERR::AccessObject;
-   }
+   else return log.warning(ERR::AccessObject);
 }
 
 /*********************************************************************************************************************
@@ -288,7 +280,7 @@ ERR GetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 LockCursor: Anchors the cursor so that it cannot move without explicit movement signals.
 
 The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface
-referenced in the Surface parameter.  The pointer will not move unless the ~SetCursorPos() function is called.
+referenced in the `Surface` parameter.  The pointer will not move unless the ~SetCursorPos() function is called.
 The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement
 signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200
 microseconds.
@@ -375,24 +367,25 @@ SetCursor: Sets the cursor image and can anchor the pointer to any surface.
 
 Use the SetCursor() function to change the pointer image and/or restrict the movement of the pointer to a surface area.
 
-To change the cursor image, set the Cursor or Name parameters to define the new image.  Valid cursor ID's and their
-equivalent names are listed in the documentation for the Cursor field.  If the ObjectID field is set to a valid surface,
-then the cursor image will switch back to the default setting once the pointer moves outside of its region.  If both
-the Cursor and Name parameters are NULL, the cursor image will remain unchanged from its current image.
+To change the cursor image, set the `Cursor` or `Name` parameters to define the new image.  Valid cursor ID's and 
+their equivalent names are listed in the documentation for the @Pointer.Cursor field.  If the `Surface` field is set 
+to a valid surface, the cursor image will switch back to its default once the pointer moves outside of the surface's
+area.  If both the `Cursor` and `Name` parameters are `NULL`, the cursor image will remain unchanged from its 
+current image.
 
-The SetCursor() function accepts the following flags in the Flags parameter:
+The SetCursor() function accepts the following flags in the `Flags` parameter:
 
 <types lookup="CRF"/>
 
-The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We
+The `Owner` parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We
 recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your
 program's control until ~RestoreCursor() is called.
 
 -INPUT-
-oid Surface: Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
+oid Surface: Refers to the surface object that the pointer should anchor itself to, if the `RESTRICT` flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
 int(CRF) Flags:  Optional flags that affect the cursor.
 int(PTC) Cursor: The ID of the cursor image that is to be set.
-cstr Name: The name of the cursor image that is to be set (if Cursor is zero).
+cstr Name: The name of the cursor image that is to be set (if `Cursor` is zero).
 oid Owner: The object nominated as the owner of the anchor, and/or owner of the cursor image setting.
 
 -ERRORS-
@@ -400,7 +393,9 @@ Okay
 Args
 NoSupport: The pointer cannot be set due to system limitations.
 OutOfRange: The cursor ID is outside of acceptable range.
-AccessObject: Failed to access the internally maintained image object.
+AccessObject: Failed to access the mouse pointer.
+LockFailed
+NothingDone
 -END-
 
 *********************************************************************************************************************/
@@ -579,22 +574,21 @@ ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID
 SetCustomCursor: Sets the cursor to a customised bitmap image.
 
 Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it
-cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some
-minor adjustments to allow custom images to be set.
+cannot move without permission.  The functionality provided is identical to that of the ~SetCursor() function with 
+some minor adjustments to allow custom images to be set.
 
-The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the
-GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or
-resampled appropriately when the cursor is downloaded to the video card.
+The `Bitmap` that is provided should be within the width, height and bits-per-pixel settings that are returned by the
+~GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the `Bitmap` will be trimmed 
+or resampled appropriately when the cursor is downloaded to the video card.
 
 It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap
-buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw
-to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit,
+buffer rather than supplying a fresh bitmap.  To do this, the `Bitmap` parameter must be `NULL` and it is necessary to 
+draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit,
 alpha-enabled graphics area.  The following code illustrates this process:
 
 <pre>
 if (auto pointer = gfx::AccessPointer()) {
-   objBitmap *bitmap;
-   if (!AccessObject(pointer->BitmapID, 3000, &bitmap)) {
+   if (ScopedObjectLock&lt;objBitmap&gt; bitmap(pointer->BitmapID, 3000); bitmap.granted()) {
       // Adjust clipping to match the cursor size.
       buffer->Clip.Right  = CursorWidth;
       buffer->Clip.Bottom = CursorHeight;
@@ -605,16 +599,15 @@ if (auto pointer = gfx::AccessPointer()) {
       ...
 
       gfx::SetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
-      ReleaseObject(bitmap);
    }
    gfx::ReleasePointer(pointer);
 }
 </pre>
 
 -INPUT-
-oid Surface: Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
+oid Surface: Refers to the @Surface object that the pointer should restrict itself to, if the `RESTRICT` flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
 int(CRF) Flags: Optional flags affecting the cursor are set here.
-obj(Bitmap) Bitmap: The bitmap to set for the mouse cursor.
+obj(Bitmap) Bitmap: The @Bitmap to set for the mouse cursor.
 int HotX: The horizontal position of the cursor hot-spot.
 int HotY: The vertical position of the cursor hot-spot.
 oid Owner: The object nominated as the owner of the anchor.
@@ -671,21 +664,21 @@ StartCursorDrag: Attaches an item to the cursor for the purpose of drag and drop
 This function starts a drag and drop operation with the mouse cursor.  The user must be holding the primary mouse
 button to initiate the drag and drop operation.
 
-A Source object ID is required that indicates the origin of the item being dragged and will be used to retrieve the
-data on completion of the drag and drop operation. An Item number, which is optional, identifies the item being dragged
-from the Source object.
+A `Source` object ID is required that indicates the origin of the item being dragged and will be used to retrieve the
+data on completion of the drag and drop operation. An `Item` number, which is optional, identifies the item being dragged
+from the `Source` object.
 
-The type of data represented by the source item and all other supportable data types are specified in the Datatypes
+The type of data represented by the source item and all other supportable data types are specified in the `Datatypes`
 parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native
 data type.  Acceptable data type values are listed in the documentation for the DataFeed action.
 
-The Surface argument allows for a composite surface to be dragged by the mouse cursor as a graphical representation of
-the source item.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The
-Surface will be hidden on completion of the drag and drop operation.
+The `Surface` parameter allows for a composite surface to be dragged by the mouse cursor as a graphical representation of
+the source `Item`.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The
+`Surface` will be hidden on completion of the drag and drop operation.
 
 If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement
 and UserClickRelease actions normally reported from the SystemPointer will now include the `JD_DRAGITEM` flag in the
-ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
+`ButtonFlags` parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
 DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for
 the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The
 resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.

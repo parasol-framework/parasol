@@ -67,9 +67,9 @@ static void free_proxy(void)
 /*********************************************************************************************************************
 
 -METHOD-
-Delete: Removes a proxy from the database.
+DeleteRecord: Removes a proxy from the database.
 
-Call the Delete() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy
+Call the DeleteRecord() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy
 database on the success of this function.
 
 -ERRORS-
@@ -78,7 +78,7 @@ Okay: Proxy deleted.
 
 *********************************************************************************************************************/
 
-static ERR PROXY_Delete(extProxy *Self)
+static ERR PROXY_DeleteRecord(extProxy *Self)
 {
    pf::Log log;
 
@@ -95,7 +95,7 @@ static ERR PROXY_Delete(extProxy *Self)
    if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
-      cfg::DeleteGroup(glConfig, Self->GroupName);
+      glConfig->deleteGroup(Self->GroupName);
       acSaveSettings(glConfig);
    }
 
@@ -189,7 +189,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
             }
 
             while (group_list.size() > 0) {
-               cfg::DeleteGroup(glConfig, group_list.top().c_str());
+               glConfig->deleteGroup(group_list.top().c_str());
                group_list.pop();
             }
          }
@@ -199,18 +199,18 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
          CSTRING value;
          bool bypass = false;
          auto task = CurrentTask();
-         if (task::GetEnv(task, HKEY_PROXY "ProxyEnable", &value) IS ERR::Okay) {
+         if (task->getEnv(HKEY_PROXY "ProxyEnable", &value) IS ERR::Okay) {
             LONG enabled = StrToInt(value);
 
             // If ProxyOverride is set and == <local> then you should bypass the proxy for local addresses.
 
             CSTRING override;
-            if (task::GetEnv(task, HKEY_PROXY "ProxyOverride", &override) IS ERR::Okay) {
+            if (task->getEnv(HKEY_PROXY "ProxyOverride", &override) IS ERR::Okay) {
                if (pf::iequals("<local>", override)) bypass = true;
             }
 
             CSTRING servers;
-            if ((task::GetEnv(task, HKEY_PROXY "ProxyServer", &servers) IS ERR::Okay) and (servers[0])) {
+            if ((task->getEnv(HKEY_PROXY "ProxyServer", &servers) IS ERR::Okay) and (servers[0])) {
                log.msg("Host has defined default proxies: %s", servers);
 
                CSTRING name = NULL;
@@ -258,7 +258,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
                      char server[80];
 
                      id = 0;
-                     cfg::Read(glConfig, "ID", "Value", &id);
+                     glConfig->read("ID", "Value", &id);
                      id = id + 1;
                      glConfig->write("ID", "Value", id);
 
@@ -475,14 +475,14 @@ static ERR PROXY_SaveSettings(extProxy *Self)
 
    if (Self->Host) {
       #ifdef _WIN32
-         OBJECTPTR task = CurrentTask();
+         objTask *task = CurrentTask();
 
-         if (Self->Enabled) task::SetEnv(task, HKEY_PROXY "ProxyEnable", "1");
-         else task::SetEnv(task, HKEY_PROXY "ProxyEnable", "0");
+         if (Self->Enabled) task->setEnv(HKEY_PROXY "ProxyEnable", "1");
+         else task->setEnv(HKEY_PROXY "ProxyEnable", "0");
 
          if ((!Self->Server) or (!Self->Server[0])) {
             log.trace("Clearing proxy server value.");
-            task::SetEnv(task, HKEY_PROXY "ProxyServer", "");
+            task->setEnv(HKEY_PROXY "ProxyServer", "");
          }
          else if (Self->Port IS 0) {
             // Proxy is for all ports
@@ -492,7 +492,7 @@ static ERR PROXY_SaveSettings(extProxy *Self)
 
             log.trace("Changing all-port proxy to: %s", buffer);
 
-            task::SetEnv(task, HKEY_PROXY "ProxyServer", buffer);
+            task->setEnv(HKEY_PROXY "ProxyServer", buffer);
          }
          else {
             char buffer[120];
@@ -509,7 +509,7 @@ static ERR PROXY_SaveSettings(extProxy *Self)
             if (portname) {
                CSTRING servers;
                char server_buffer[200];
-               task::GetEnv(task, HKEY_PROXY "ProxyServer", &servers);
+               task->getEnv(HKEY_PROXY "ProxyServer", &servers);
                if (!servers) servers = "";
                StrCopy(servers, server_buffer, sizeof(server_buffer));
 
@@ -539,7 +539,7 @@ static ERR PROXY_SaveSettings(extProxy *Self)
 
                   // Save the new proxy list
 
-                  task::SetEnv(task, HKEY_PROXY "ProxyServer", newlist);
+                  task->setEnv(HKEY_PROXY "ProxyServer", newlist);
                   FreeResource(newlist);
                }
             }
@@ -554,10 +554,10 @@ static ERR PROXY_SaveSettings(extProxy *Self)
    objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
 
    if (config.ok()) {
-      if (Self->GroupName[0]) cfg::DeleteGroup(*config, Self->GroupName);
+      if (Self->GroupName[0]) config->deleteGroup(Self->GroupName);
       else { // This is a new proxy
          LONG id = 0;
-         cfg::Read(*config, "ID", "Value", &id);
+         config->read("ID", "Value", &id);
          id = id + 1;
          config->write("ID", "Value", id);
 
@@ -811,17 +811,17 @@ static ERR get_record(extProxy *Self)
    Self->Record = StrToInt(Self->GroupName);
 
    CSTRING str;
-   if (cfg::ReadValue(glConfig, Self->GroupName, "Server", &str) IS ERR::Okay)   {
+   if (glConfig->readValue(Self->GroupName, "Server", &str) IS ERR::Okay)   {
       Self->Server = StrClone(str);
-      if (cfg::ReadValue(glConfig, Self->GroupName, "NetworkFilter", &str) IS ERR::Okay) Self->NetworkFilter = StrClone(str);
-      if (cfg::ReadValue(glConfig, Self->GroupName, "GatewayFilter", &str) IS ERR::Okay) Self->GatewayFilter = StrClone(str);
-      if (cfg::ReadValue(glConfig, Self->GroupName, "Username", &str) IS ERR::Okay)      Self->Username = StrClone(str);
-      if (cfg::ReadValue(glConfig, Self->GroupName, "Password", &str) IS ERR::Okay)      Self->Password = StrClone(str);
-      if (cfg::ReadValue(glConfig, Self->GroupName, "Name", &str) IS ERR::Okay)          Self->ProxyName = StrClone(str);
-      cfg::Read(glConfig, Self->GroupName, "Port", &Self->Port);
-      cfg::Read(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort);
-      cfg::Read(glConfig, Self->GroupName, "Enabled", &Self->Enabled);
-      cfg::Read(glConfig, Self->GroupName, "Host", &Self->Host);
+      if (glConfig->readValue(Self->GroupName, "NetworkFilter", &str) IS ERR::Okay) Self->NetworkFilter = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "GatewayFilter", &str) IS ERR::Okay) Self->GatewayFilter = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "Username", &str) IS ERR::Okay)      Self->Username = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "Password", &str) IS ERR::Okay)      Self->Password = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "Name", &str) IS ERR::Okay)          Self->ProxyName = StrClone(str);
+      glConfig->read(Self->GroupName, "Port", &Self->Port);
+      glConfig->read(Self->GroupName, "ServerPort", &Self->ServerPort);
+      glConfig->read(Self->GroupName, "Enabled", &Self->Enabled);
+      glConfig->read(Self->GroupName, "Host", &Self->Host);
       return ERR::Okay;
    }
    else return log.error(ERR::NotFound);

@@ -46,7 +46,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
       case SVF_HREF:
       case SVF_XLINK_HREF: {
          OBJECTPTR ref_vector;
-         if (sc::FindDef(Anim.svg->Scene, Value.data(), &ref_vector) IS ERR::Okay) {
+         if (Anim.svg->Scene->findDef(Value.data(), &ref_vector) IS ERR::Okay) {
             Anim.target_vector = ref_vector->UID;
          }
          break;

@@ -158,27 +158,9 @@ struct NetClient {
 
 // ClientSocket methods
 
-#define MT_csReadClientMsg -1
-#define MT_csWriteClientMsg -2
-
 namespace cs {
-struct ReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
-struct WriteClientMsg { APTR Message; LONG Length;  };
-
-inline ERR ReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
-   struct ReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
-   ERR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
-   if (Message) *Message = args.Message;
-   if (Length) *Length = args.Length;
-   if (Progress) *Progress = args.Progress;
-   if (CRC) *CRC = args.CRC;
-   return(error);
-}
-
-inline ERR WriteClientMsg(APTR Ob, APTR Message, LONG Length) noexcept {
-   struct WriteClientMsg args = { Message, Length };
-   return(Action(MT_csWriteClientMsg, (OBJECTPTR)Ob, &args));
-}
+struct ReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteClientMsg { APTR Message; LONG Length; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -246,6 +228,19 @@ class objClientSocket : public Object {
       if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
+   inline ERR readClientMsg(APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+      struct cs::ReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
+      ERR error = Action(-1, this, &args);
+      if (Message) *Message = args.Message;
+      if (Length) *Length = args.Length;
+      if (Progress) *Progress = args.Progress;
+      if (CRC) *CRC = args.CRC;
+      return(error);
+   }
+   inline ERR writeClientMsg(APTR Message, LONG Length) noexcept {
+      struct cs::WriteClientMsg args = { Message, Length };
+      return(Action(-2, this, &args));
+   }
 
    // Customised field setting
 
@@ -257,25 +252,10 @@ class objClientSocket : public Object {
 
 // Proxy methods
 
-#define MT_prxDelete -1
-#define MT_prxFind -2
-#define MT_prxFindNext -3
-
 namespace prx {
-struct Find { LONG Port; LONG Enabled;  };
-
-inline ERR Delete(APTR Ob) noexcept {
-   return(Action(MT_prxDelete, (OBJECTPTR)Ob, NULL));
-}
-
-inline ERR Find(APTR Ob, LONG Port, LONG Enabled) noexcept {
-   struct Find args = { Port, Enabled };
-   return(Action(MT_prxFind, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR FindNext(APTR Ob) noexcept {
-   return(Action(MT_prxFindNext, (OBJECTPTR)Ob, NULL));
-}
+struct DeleteRecord { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { LONG Port; LONG Enabled; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindNext { static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -304,6 +284,16 @@ class objProxy : public Object {
    inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR deleteRecord() noexcept {
+      return(Action(-1, this, NULL));
+   }
+   inline ERR find(LONG Port, LONG Enabled) noexcept {
+      struct prx::Find args = { Port, Enabled };
+      return(Action(-2, this, &args));
+   }
+   inline ERR findNext() noexcept {
+      return(Action(-3, this, NULL));
+   }
 
    // Customised field setting
 
@@ -375,36 +365,11 @@ class objProxy : public Object {
 
 // NetLookup methods
 
-#define MT_nlResolveName -1
-#define MT_nlResolveAddress -2
-#define MT_nlBlockingResolveName -3
-#define MT_nlBlockingResolveAddress -4
-
 namespace nl {
-struct ResolveName { CSTRING HostName;  };
-struct ResolveAddress { CSTRING Address;  };
-struct BlockingResolveName { CSTRING HostName;  };
-struct BlockingResolveAddress { CSTRING Address;  };
-
-inline ERR ResolveName(APTR Ob, CSTRING HostName) noexcept {
-   struct ResolveName args = { HostName };
-   return(Action(MT_nlResolveName, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ResolveAddress(APTR Ob, CSTRING Address) noexcept {
-   struct ResolveAddress args = { Address };
-   return(Action(MT_nlResolveAddress, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR BlockingResolveName(APTR Ob, CSTRING HostName) noexcept {
-   struct BlockingResolveName args = { HostName };
-   return(Action(MT_nlBlockingResolveName, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR BlockingResolveAddress(APTR Ob, CSTRING Address) noexcept {
-   struct BlockingResolveAddress args = { Address };
-   return(Action(MT_nlBlockingResolveAddress, (OBJECTPTR)Ob, &args));
-}
+struct ResolveName { CSTRING HostName; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolveAddress { CSTRING Address; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BlockingResolveName { CSTRING HostName; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BlockingResolveAddress { CSTRING Address; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -421,6 +386,22 @@ class objNetLookup : public Object {
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
+   inline ERR resolveName(CSTRING HostName) noexcept {
+      struct nl::ResolveName args = { HostName };
+      return(Action(-1, this, &args));
+   }
+   inline ERR resolveAddress(CSTRING Address) noexcept {
+      struct nl::ResolveAddress args = { Address };
+      return(Action(-2, this, &args));
+   }
+   inline ERR blockingResolveName(CSTRING HostName) noexcept {
+      struct nl::BlockingResolveName args = { HostName };
+      return(Action(-3, this, &args));
+   }
+   inline ERR blockingResolveAddress(CSTRING Address) noexcept {
+      struct nl::BlockingResolveAddress args = { Address };
+      return(Action(-4, this, &args));
+   }
 
    // Customised field setting
 
@@ -448,55 +429,13 @@ class objNetLookup : public Object {
 
 // NetSocket methods
 
-#define MT_nsConnect -1
-#define MT_nsGetLocalIPAddress -2
-#define MT_nsDisconnectClient -3
-#define MT_nsDisconnectSocket -4
-#define MT_nsReadMsg -5
-#define MT_nsWriteMsg -6
-
 namespace ns {
-struct Connect { CSTRING Address; LONG Port;  };
-struct GetLocalIPAddress { struct IPAddress * Address;  };
-struct DisconnectClient { struct NetClient * Client;  };
-struct DisconnectSocket { objClientSocket * Socket;  };
-struct ReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
-struct WriteMsg { APTR Message; LONG Length;  };
-
-inline ERR Connect(APTR Ob, CSTRING Address, LONG Port) noexcept {
-   struct Connect args = { Address, Port };
-   return(Action(MT_nsConnect, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR GetLocalIPAddress(APTR Ob, struct IPAddress * Address) noexcept {
-   struct GetLocalIPAddress args = { Address };
-   return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR DisconnectClient(APTR Ob, struct NetClient * Client) noexcept {
-   struct DisconnectClient args = { Client };
-   return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR DisconnectSocket(APTR Ob, objClientSocket * Socket) noexcept {
-   struct DisconnectSocket args = { Socket };
-   return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
-   struct ReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
-   ERR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
-   if (Message) *Message = args.Message;
-   if (Length) *Length = args.Length;
-   if (Progress) *Progress = args.Progress;
-   if (CRC) *CRC = args.CRC;
-   return(error);
-}
-
-inline ERR WriteMsg(APTR Ob, APTR Message, LONG Length) noexcept {
-   struct WriteMsg args = { Message, Length };
-   return(Action(MT_nsWriteMsg, (OBJECTPTR)Ob, &args));
-}
+struct Connect { CSTRING Address; LONG Port; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetLocalIPAddress { struct IPAddress * Address; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectClient { struct NetClient * Client; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectSocket { objClientSocket * Socket; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteMsg { APTR Message; LONG Length; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -570,6 +509,35 @@ class objNetSocket : public Object {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
+   }
+   inline ERR connect(CSTRING Address, LONG Port) noexcept {
+      struct ns::Connect args = { Address, Port };
+      return(Action(-1, this, &args));
+   }
+   inline ERR getLocalIPAddress(struct IPAddress * Address) noexcept {
+      struct ns::GetLocalIPAddress args = { Address };
+      return(Action(-2, this, &args));
+   }
+   inline ERR disconnectClient(struct NetClient * Client) noexcept {
+      struct ns::DisconnectClient args = { Client };
+      return(Action(-3, this, &args));
+   }
+   inline ERR disconnectSocket(objClientSocket * Socket) noexcept {
+      struct ns::DisconnectSocket args = { Socket };
+      return(Action(-4, this, &args));
+   }
+   inline ERR readMsg(APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+      struct ns::ReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
+      ERR error = Action(-5, this, &args);
+      if (Message) *Message = args.Message;
+      if (Length) *Length = args.Length;
+      if (Progress) *Progress = args.Progress;
+      if (CRC) *CRC = args.CRC;
+      return(error);
+   }
+   inline ERR writeMsg(APTR Message, LONG Length) noexcept {
+      struct ns::WriteMsg args = { Message, Length };
+      return(Action(-6, this, &args));
    }
 
    // Customised field setting

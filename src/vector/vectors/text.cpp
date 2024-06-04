@@ -339,8 +339,9 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
       // TODO: This would be a good opportunity to garbage-collect stale glyphs
    }
 
-   if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-      vec::SubscribeInput(Self->ParentView, JTYPE::NIL, C_FUNCTION(text_input_events));
+   if ((((extVector *)Self)->ParentView) and (((extVector *)Self)->ParentView->Scene->SurfaceID)) {
+      auto call = C_FUNCTION(text_input_events);
+      ((extVector *)Self)->ParentView->subscribeInput(JTYPE::NIL, &call);
    }
 
    if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
@@ -351,8 +352,10 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
    if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
-      pf::ScopedObjectLock focus(Self->txFocusID, 5000);
-      if (focus.granted()) vec::SubscribeFeedback(*focus, FM::NIL, C_FUNCTION(text_focus_event));
+      if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
+         auto call = C_FUNCTION(text_focus_event);
+         focus->subscribeFeedback(FM::NIL, &call);
+      }
    }
 
    return ERR::Okay;
@@ -367,11 +370,9 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
 
-      {
-         pf::ScopedObjectLock focus(Self->txFocusID, 5000);
-         if (focus.granted()) {
-            vec::SubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(text_focus_event));
-         }
+      if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
+         auto call = C_FUNCTION(text_focus_event);
+         focus->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &call);
       }
 
       // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
@@ -389,7 +390,8 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
       if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-         vec::SubscribeInput(Self->ParentView, JTYPE::BUTTON, C_FUNCTION(text_input_events));
+         auto call = C_FUNCTION(text_input_events);
+         Self->ParentView->subscribeInput(JTYPE::BUTTON, &call);
       }
    }
 
@@ -1641,7 +1643,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
          case KEY::K: // Delete line
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
-            vt::DeleteLine(Self, Self->txCursor.row());
+            ((objVectorText *)Self)->deleteLine(Self->txCursor.row());
             return;
 
          case KEY::Z: // Undo
@@ -1704,7 +1706,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else {
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
-         vt::DeleteLine(Self, Self->txCursor.row());
+         ((objVectorText *)Self)->deleteLine(Self->txCursor.row());
       }
       break;
 

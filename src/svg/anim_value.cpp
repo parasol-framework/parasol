@@ -241,7 +241,7 @@ void anim_value::set_value(objVector &Vector)
             for (m=Vector.Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
 
             if (!m) {
-               vec::NewMatrix(&Vector, &m, false);
+               Vector.newMatrix(&m, false);
                m->Tag = MTAG_SVG_TRANSFORM;
             }
 
@@ -260,7 +260,7 @@ void anim_value::set_value(objVector &Vector)
             for (m=Vector.Matrices; (m) and (m->Tag != MTAG_SVG_TRANSFORM); m=m->Next);
 
             if (!m) {
-               vec::NewMatrix(&Vector, &m, false);
+               Vector.newMatrix(&m, false);
                m->Tag = MTAG_SVG_TRANSFORM;
             }
 

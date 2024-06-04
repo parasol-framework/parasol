@@ -107,7 +107,7 @@ typedef LONG SOCKET_HANDLE;
   ]])
 
   methods("proxy", "prx", {
-    { id=1, name="Delete" },
+    { id=1, name="DeleteRecord" },
     { id=2, name="Find" },
     { id=3, name="FindNext" }
   })

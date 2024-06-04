@@ -187,6 +187,62 @@ static const struct FieldDef clSurfaceALIGN[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clSurfaceJTYPE[] = {
+   { "Secondary", 0x00000001 },
+   { "Anchored", 0x00000002 },
+   { "Dragged", 0x00000004 },
+   { "Crossing", 0x00000008 },
+   { "Digital", 0x00000010 },
+   { "Analog", 0x00000020 },
+   { "ExtMovement", 0x00000040 },
+   { "Button", 0x00000080 },
+   { "Movement", 0x00000100 },
+   { "DblClick", 0x00000200 },
+   { "Repeated", 0x00000400 },
+   { "DragItem", 0x00000800 },
+   { NULL, 0 }
+};
+
+static const struct FieldDef clSurfaceJET[] = {
+   { "DigitalXY", 0x00000001 },
+   { "Button1", 0x00000002 },
+   { "Lmb", 0x00000002 },
+   { "Button2", 0x00000003 },
+   { "Rmb", 0x00000003 },
+   { "Button3", 0x00000004 },
+   { "Mmb", 0x00000004 },
+   { "Button4", 0x00000005 },
+   { "Button5", 0x00000006 },
+   { "Button6", 0x00000007 },
+   { "Button7", 0x00000008 },
+   { "Button8", 0x00000009 },
+   { "Button9", 0x0000000a },
+   { "Button10", 0x0000000b },
+   { "TriggerLeft", 0x0000000c },
+   { "TriggerRight", 0x0000000d },
+   { "ButtonStart", 0x0000000e },
+   { "ButtonSelect", 0x0000000f },
+   { "LeftBumper1", 0x00000010 },
+   { "LeftBumper2", 0x00000011 },
+   { "RightBumper1", 0x00000012 },
+   { "RightBumper2", 0x00000013 },
+   { "AnalogXY", 0x00000014 },
+   { "AnalogZ", 0x00000015 },
+   { "Analog2XY", 0x00000016 },
+   { "Analog2Z", 0x00000017 },
+   { "Wheel", 0x00000018 },
+   { "WheelTilt", 0x00000019 },
+   { "PenTiltXY", 0x0000001a },
+   { "AbsXY", 0x0000001b },
+   { "CrossedIn", 0x0000001c },
+   { "CrossedOut", 0x0000001d },
+   { "Pressure", 0x0000001e },
+   { "DeviceTiltXY", 0x0000001f },
+   { "DeviceTiltZ", 0x00000020 },
+   { "DisplayEdge", 0x00000021 },
+   { NULL, 0 }
+};
+
 FDEF maInheritedFocus[] = { { "FocusID", FD_OBJECTID }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maExposeToDisplay[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maInvalidateRegion[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };

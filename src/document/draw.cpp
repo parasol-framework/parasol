@@ -245,7 +245,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   fl::Owner(Viewport->UID), fl::Stroke("rgb(255,0,0,255)"), fl::StrokeWidth(2)
                });
 
-               vp::SetCommand(vp, seq.size(), seq.data(), seq.size() * sizeof(PathCommand));
+               vp->setCommand(seq.size(), seq.data(), seq.size() * sizeof(PathCommand));
                m_cursor_drawn = true;
             }
          }
@@ -346,7 +346,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
             case SCODE::TABLE_END: {
                auto &table = stack_table.top();
-               vp::SetCommand(*table->path, table->seq.size(), table->seq.data(),
+               table->path->setCommand(table->seq.size(), table->seq.data(),
                   table->seq.size() * sizeof(PathCommand));
                table->seq.clear();
 
@@ -475,7 +475,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                // Define the path that represents the clickable area.
 
-               vp::SetCommand(*ui_link.origin.path, ui_link.path.size(), ui_link.path.data(),
+               ui_link.origin.path->setCommand(ui_link.path.size(), ui_link.path.data(),
                   ui_link.path.size() * sizeof(PathCommand));
 
                acMoveToFront(*ui_link.origin.path);
@@ -566,7 +566,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.processed) {
                   checkbox.processed = true;
                   if ((!checkbox.viewport.empty()) and (checkbox.viewport->Scene->SurfaceID)) {
-                     vec::SubscribeInput(*checkbox.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_checkbox));
+                     auto call = C_FUNCTION(inputevent_checkbox);
+                     checkbox.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING, &call);
                   }
                }
 
@@ -638,9 +639,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Width(combo.full_height()) // Button width matches the widget height
                   });
 
-                  vec::SubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_dropdown));
+                  auto call = C_FUNCTION(inputevent_dropdown);
+                  combo.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING,&call);
 
-                  vec::SubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(combo_feedback));
+                  call = C_FUNCTION(combo_feedback);
+                  combo.viewport->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &call);
 
                   combo.clip_vp = objVectorViewport::create::global({
                      fl::Name("vp_clip_combo"),

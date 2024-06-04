@@ -94,104 +94,20 @@ DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
 // Document methods
 
-#define MT_docFeedParser -1
-#define MT_docSelectLink -2
-#define MT_docFindIndex -4
-#define MT_docInsertXML -5
-#define MT_docRemoveContent -6
-#define MT_docInsertText -7
-#define MT_docCallFunction -8
-#define MT_docAddListener -9
-#define MT_docRemoveListener -10
-#define MT_docShowIndex -11
-#define MT_docHideIndex -12
-#define MT_docEdit -13
-#define MT_docReadContent -14
-
 namespace doc {
-struct FeedParser { CSTRING String;  };
-struct SelectLink { LONG Index; CSTRING Name;  };
-struct FindIndex { CSTRING Name; LONG Start; LONG End;  };
-struct InsertXML { CSTRING XML; LONG Index;  };
-struct RemoveContent { LONG Start; LONG End;  };
-struct InsertText { CSTRING Text; LONG Index; LONG Char; LONG Preformat;  };
-struct CallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs;  };
-struct AddListener { DRT Trigger; FUNCTION * Function;  };
-struct RemoveListener { LONG Trigger; FUNCTION * Function;  };
-struct ShowIndex { CSTRING Name;  };
-struct HideIndex { CSTRING Name;  };
-struct Edit { CSTRING Name; LONG Flags;  };
-struct ReadContent { DATA Format; LONG Start; LONG End; STRING Result;  };
-
-inline ERR FeedParser(APTR Ob, CSTRING String) noexcept {
-   struct FeedParser args = { String };
-   return(Action(MT_docFeedParser, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SelectLink(APTR Ob, LONG Index, CSTRING Name) noexcept {
-   struct SelectLink args = { Index, Name };
-   return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR FindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) noexcept {
-   struct FindIndex args = { Name, (LONG)0, (LONG)0 };
-   ERR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
-   if (Start) *Start = args.Start;
-   if (End) *End = args.End;
-   return(error);
-}
-
-inline ERR InsertXML(APTR Ob, CSTRING XML, LONG Index) noexcept {
-   struct InsertXML args = { XML, Index };
-   return(Action(MT_docInsertXML, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR RemoveContent(APTR Ob, LONG Start, LONG End) noexcept {
-   struct RemoveContent args = { Start, End };
-   return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR InsertText(APTR Ob, CSTRING Text, LONG Index, LONG Char, LONG Preformat) noexcept {
-   struct InsertText args = { Text, Index, Char, Preformat };
-   return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR CallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) noexcept {
-   struct CallFunction args = { Function, Args, TotalArgs };
-   return(Action(MT_docCallFunction, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR AddListener(APTR Ob, DRT Trigger, FUNCTION * Function) noexcept {
-   struct AddListener args = { Trigger, Function };
-   return(Action(MT_docAddListener, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR RemoveListener(APTR Ob, LONG Trigger, FUNCTION * Function) noexcept {
-   struct RemoveListener args = { Trigger, Function };
-   return(Action(MT_docRemoveListener, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ShowIndex(APTR Ob, CSTRING Name) noexcept {
-   struct ShowIndex args = { Name };
-   return(Action(MT_docShowIndex, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR HideIndex(APTR Ob, CSTRING Name) noexcept {
-   struct HideIndex args = { Name };
-   return(Action(MT_docHideIndex, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR Edit(APTR Ob, CSTRING Name, LONG Flags) noexcept {
-   struct Edit args = { Name, Flags };
-   return(Action(MT_docEdit, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR ReadContent(APTR Ob, DATA Format, LONG Start, LONG End, STRING * Result) noexcept {
-   struct ReadContent args = { Format, Start, End, (STRING)0 };
-   ERR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
+struct FeedParser { CSTRING String; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectLink { LONG Index; CSTRING Name; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindIndex { CSTRING Name; LONG Start; LONG End; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertXML { CSTRING XML; LONG Index; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveContent { LONG Start; LONG End; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertText { CSTRING Text; LONG Index; LONG Char; LONG Preformat; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddListener { DRT Trigger; FUNCTION * Function; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveListener { LONG Trigger; FUNCTION * Function; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ShowIndex { CSTRING Name; static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct HideIndex { CSTRING Name; static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Edit { CSTRING Name; LONG Flags; static const ACTIONID id = -13; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadContent { DATA Format; LONG Start; LONG End; STRING Result; static const ACTIONID id = -14; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -252,6 +168,63 @@ class objDocument : public Object {
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
       return Action(AC_SetKey, this, &args);
+   }
+   inline ERR feedParser(CSTRING String) noexcept {
+      struct doc::FeedParser args = { String };
+      return(Action(-1, this, &args));
+   }
+   inline ERR selectLink(LONG Index, CSTRING Name) noexcept {
+      struct doc::SelectLink args = { Index, Name };
+      return(Action(-2, this, &args));
+   }
+   inline ERR findIndex(CSTRING Name, LONG * Start, LONG * End) noexcept {
+      struct doc::FindIndex args = { Name, (LONG)0, (LONG)0 };
+      ERR error = Action(-4, this, &args);
+      if (Start) *Start = args.Start;
+      if (End) *End = args.End;
+      return(error);
+   }
+   inline ERR insertXML(CSTRING XML, LONG Index) noexcept {
+      struct doc::InsertXML args = { XML, Index };
+      return(Action(-5, this, &args));
+   }
+   inline ERR removeContent(LONG Start, LONG End) noexcept {
+      struct doc::RemoveContent args = { Start, End };
+      return(Action(-6, this, &args));
+   }
+   inline ERR insertText(CSTRING Text, LONG Index, LONG Char, LONG Preformat) noexcept {
+      struct doc::InsertText args = { Text, Index, Char, Preformat };
+      return(Action(-7, this, &args));
+   }
+   inline ERR callFunction(CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) noexcept {
+      struct doc::CallFunction args = { Function, Args, TotalArgs };
+      return(Action(-8, this, &args));
+   }
+   inline ERR addListener(DRT Trigger, FUNCTION * Function) noexcept {
+      struct doc::AddListener args = { Trigger, Function };
+      return(Action(-9, this, &args));
+   }
+   inline ERR removeListener(LONG Trigger, FUNCTION * Function) noexcept {
+      struct doc::RemoveListener args = { Trigger, Function };
+      return(Action(-10, this, &args));
+   }
+   inline ERR showIndex(CSTRING Name) noexcept {
+      struct doc::ShowIndex args = { Name };
+      return(Action(-11, this, &args));
+   }
+   inline ERR hideIndex(CSTRING Name) noexcept {
+      struct doc::HideIndex args = { Name };
+      return(Action(-12, this, &args));
+   }
+   inline ERR edit(CSTRING Name, LONG Flags) noexcept {
+      struct doc::Edit args = { Name, Flags };
+      return(Action(-13, this, &args));
+   }
+   inline ERR readContent(DATA Format, LONG Start, LONG End, STRING * Result) noexcept {
+      struct doc::ReadContent args = { Format, Start, End, (STRING)0 };
+      ERR error = Action(-14, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
    }
 
    // Customised field setting

@@ -372,7 +372,7 @@ timer_cycle:
 
             if (error IS ERR::Terminate) {
                if (timer->Routine.isScript()) {
-                  sc::DerefProcedure(timer->Routine.Context, &timer->Routine);
+                  ((objScript *)timer->Routine.Context)->derefProcedure(&timer->Routine);
                }
 
                timer = glTimers.erase(timer);

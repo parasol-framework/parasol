@@ -1115,13 +1115,7 @@ static ERR SET_MasterVolume(extAudio *Self, DOUBLE Value)
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
 
-   struct snd::SetVolume setvol;
-   setvol.Index   = 0;
-   setvol.Name    = "Master";
-   setvol.Volume  = Value;
-   setvol.Channel = -1;
-   setvol.Flags   = SVF::NIL;
-   return Action(MT_SndSetVolume, Self, &setvol);
+   return Self->setVolume(0, "Master", SVF::NIL, -1, Value);
 }
 
 /*********************************************************************************************************************
@@ -1164,14 +1158,7 @@ static ERR GET_Mute(extAudio *Self, LONG *Value)
 
 static ERR SET_Mute(extAudio *Self, LONG Value)
 {
-   struct snd::SetVolume setvol = {
-      .Index   = 0,
-      .Name    = "Master",
-      .Volume  = -1
-   };
-   if (Value) setvol.Flags = SVF::MUTE;
-   else setvol.Flags = SVF::UNMUTE;
-   return Action(MT_SndSetVolume, Self, &setvol);
+   return Self->setVolume(0, "Master", Value ? SVF::MUTE : SVF::UNMUTE, -1, -1);
 }
 
 /*********************************************************************************************************************

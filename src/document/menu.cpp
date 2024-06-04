@@ -180,7 +180,7 @@ void doc_menu::refresh()
             m_scroll.m_auto_adjust_view_size = false;
 
             OBJECTPTR clip;
-            if (sc::FindDef(m_scene, "PageClip", &clip) IS ERR::Okay) {
+            if (m_scene->findDef("PageClip", &clip) IS ERR::Okay) {
                doc_page->set(FID_Mask, clip);
             }
          }

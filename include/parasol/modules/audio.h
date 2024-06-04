@@ -160,70 +160,15 @@ struct AudioLoop {
 
 // Audio methods
 
-#define MT_SndOpenChannels -1
-#define MT_SndCloseChannels -2
-#define MT_SndAddSample -3
-#define MT_SndRemoveSample -4
-#define MT_SndSetSampleLength -5
-#define MT_SndAddStream -6
-#define MT_SndBeep -7
-#define MT_SndSetVolume -8
-
 namespace snd {
-struct OpenChannels { LONG Total; LONG Result;  };
-struct CloseChannels { LONG Handle;  };
-struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
-struct RemoveSample { LONG Handle;  };
-struct SetSampleLength { LONG Sample; LARGE Length;  };
-struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
-struct Beep { LONG Pitch; LONG Duration; LONG Volume;  };
-struct SetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
-
-inline ERR OpenChannels(APTR Ob, LONG Total, LONG * Result) noexcept {
-   struct OpenChannels args = { Total, (LONG)0 };
-   ERR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR CloseChannels(APTR Ob, LONG Handle) noexcept {
-   struct CloseChannels args = { Handle };
-   return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR AddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
-   struct AddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
-   ERR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR RemoveSample(APTR Ob, LONG Handle) noexcept {
-   struct RemoveSample args = { Handle };
-   return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetSampleLength(APTR Ob, LONG Sample, LARGE Length) noexcept {
-   struct SetSampleLength args = { Sample, Length };
-   return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR AddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
-   struct AddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
-   ERR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
-inline ERR Beep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) noexcept {
-   struct Beep args = { Pitch, Duration, Volume };
-   return(Action(MT_SndBeep, (OBJECTPTR)Ob, &args));
-}
-
-inline ERR SetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
-   struct SetVolume args = { Index, Name, Flags, Channel, Volume };
-   return(Action(MT_SndSetVolume, (OBJECTPTR)Ob, &args));
-}
+struct OpenChannels { LONG Total; LONG Result; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CloseChannels { LONG Handle; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveSample { LONG Handle; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetSampleLength { LONG Sample; LARGE Length; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Beep { LONG Pitch; LONG Duration; LONG Volume; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -251,6 +196,44 @@ class objAudio : public Object {
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERR openChannels(LONG Total, LONG * Result) noexcept {
+      struct snd::OpenChannels args = { Total, (LONG)0 };
+      ERR error = Action(-1, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR closeChannels(LONG Handle) noexcept {
+      struct snd::CloseChannels args = { Handle };
+      return(Action(-2, this, &args));
+   }
+   inline ERR addSample(FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
+      struct snd::AddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
+      ERR error = Action(-3, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR removeSample(LONG Handle) noexcept {
+      struct snd::RemoveSample args = { Handle };
+      return(Action(-4, this, &args));
+   }
+   inline ERR setSampleLength(LONG Sample, LARGE Length) noexcept {
+      struct snd::SetSampleLength args = { Sample, Length };
+      return(Action(-5, this, &args));
+   }
+   inline ERR addStream(FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
+      struct snd::AddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
+      ERR error = Action(-6, this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR beep(LONG Pitch, LONG Duration, LONG Volume) noexcept {
+      struct snd::Beep args = { Pitch, Duration, Volume };
+      return(Action(-7, this, &args));
+   }
+   inline ERR setVolume(LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
+      struct snd::SetVolume args = { Index, Name, Flags, Channel, Volume };
+      return(Action(-8, this, &args));
    }
 
    // Customised field setting

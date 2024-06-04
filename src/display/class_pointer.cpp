@@ -1047,12 +1047,12 @@ static void set_pointer_defaults(extPointer *Self)
    if (config.ok()) {
       DOUBLE dbl;
       CSTRING str;
-      if (cfg::Read(*config, "POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
-      if (cfg::Read(*config, "POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
-      if (cfg::Read(*config, "POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
-      if (cfg::Read(*config, "POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
-      if (cfg::Read(*config, "POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
-      if (cfg::ReadValue(*config, "POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
+      if (config->read("POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
+      if (config->read("POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
+      if (config->read("POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
+      if (config->read("POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
+      if (config->read("POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
+      if (config->readValue("POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;

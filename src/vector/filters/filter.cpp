@@ -243,7 +243,7 @@ static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VS
       save_bitmap(bmp, std::to_string(Self->UID) + "_" + std::to_string(Self->ClientVector->UID) + "_source");
    #endif
 
-   if (Premultiply) bmp::Premultiply(bmp);
+   if (Premultiply) bmp->premultiply();
 
    *BitmapResult = bmp;
    return ERR::Okay;

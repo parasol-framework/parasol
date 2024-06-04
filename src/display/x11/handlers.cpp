@@ -204,7 +204,7 @@ void handle_button_press(XEvent *xevent)
             input.Type  = JET::BUTTON_2;
             input.Values[0] = 1;
          }
-   
+
          if (input.Type != JET::NIL) {
             input.Flags = glInputType[LONG(input.Type)].Flags;
             input.Timestamp = PreciseTime();
@@ -324,7 +324,7 @@ void handle_exposure(XExposeEvent *event)
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
 
       struct drw::ExposeToDisplay region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
-      QueueAction(MT_DrwExposeToDisplay, surface_id, &region); // Redraw everything
+      QueueAction(drw::ExposeToDisplay::id, surface_id, &region); // Redraw everything
    }
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
 }

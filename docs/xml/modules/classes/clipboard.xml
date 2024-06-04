@@ -113,16 +113,17 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
+      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, LONG Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
-        <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
-        <param type="LONG" name="Index">If the <code>Datatype</code> parameter is zero, this parameter may be set to the index of the desired clip item.</param>
+        <param type="CLIPTYPE" name="Filter" lookup="CLIPTYPE">Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
+        <param type="LONG" name="Index">If the <code>Filter</code> parameter is zero, this parameter may be set to the index of the desired clip item.</param>
+        <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">The resulting datatype of the requested clip data.</param>
         <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a <code>NULL</code> entry.  You are required to free the returned array with <function module="Core">FreeResource</function>.</param>
         <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If <code>DELETE</code> is set, you need to delete the files after use in order to support the 'cut' operation.</param>
       </input>
       <description>
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
-<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the <code>Datatype</code> parameter to zero and repeatedly call this method with incremented Index numbers until the error code <code>ERR::OutOfRange</code> is returned.</p>
+<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the <code>Filter</code> parameter to zero and repeatedly call this method with incremented Index numbers until the error code <code>ERR::OutOfRange</code> is returned.</p>
 <p>On success this method will return a list of files (terminated with a <code>NULL</code> entry) in the <code>Files</code> parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting <code>Datatype</code>.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting <code>Files</code> array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
 <p>If this method returns the <code>CEF::DELETE</code> flag in the <code>Flags</code> parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>

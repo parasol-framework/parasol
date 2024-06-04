@@ -90,6 +90,16 @@ string.cap = function(s)
 end
 
 ------------------------------------------------------------------------------
+
+string.decap = function(s)
+   if nz(s) then
+      return s:sub(1,1):lower() .. s:sub(2)
+   else
+      return ''
+   end
+end
+
+------------------------------------------------------------------------------
 -- Trims either side of a string
 
 string.trim = function(s)

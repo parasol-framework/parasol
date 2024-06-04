@@ -367,7 +367,7 @@ static ERR SOUND_Activate(extSound *Self)
 
          pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
          if (audio.granted()) {
-            if (Action(MT_SndAddStream, *audio, &stream) IS ERR::Okay) {
+            if (Action(snd::AddStream::id, *audio, &stream) IS ERR::Okay) {
                Self->Handle = stream.Result;
             }
             else {
@@ -416,7 +416,7 @@ static ERR SOUND_Activate(extSound *Self)
 
             pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
             if (audio.granted()) {
-               if (Action(MT_SndAddSample, *audio, &add) IS ERR::Okay) {
+               if (Action(snd::AddSample::id, *audio, &add) IS ERR::Okay) {
                   Self->Handle = add.Result;
                }
                else {
@@ -613,7 +613,7 @@ static ERR SOUND_Free(extSound *Self)
    if ((Self->Handle) and (Self->AudioID)) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
-         snd::RemoveSample(*audio, Self->Handle);
+         audio->removeSample(Self->Handle);
          Self->Handle = 0;
       }
    }
@@ -680,7 +680,7 @@ static ERR SOUND_Init(extSound *Self)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (snd::OpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
+         if (audio->openChannels(audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -784,7 +784,7 @@ static ERR SOUND_Init(extSound *Self)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (snd::OpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
+         if (audio->openChannels(audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -1215,7 +1215,7 @@ static ERR SOUND_SET_Length(extSound *Self, LONG Value)
          if ((Self->Handle) and (Self->AudioID)) {
             pf::ScopedObjectLock<objAudio> audio(Self->AudioID);
             if (audio.granted()) {
-               return snd::SetSampleLength(*audio, Self->Handle, Value);
+               return audio->setSampleLength(Self->Handle, Value);
             }
             else return log.warning(ERR::AccessObject);
          }

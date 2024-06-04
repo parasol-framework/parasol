@@ -582,9 +582,7 @@ static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    log.traceBranch("%s", Path);
 
    if (auto cmp = find_archive(Path, file_path)) {
-      struct cmp::Find find { file_path.c_str(), TRUE, FALSE };
-      if ((error = Action(MT_CmpFind, cmp, &find)) != ERR::Okay) return error;
-      item = find.Item;
+      if ((error = cmp->find(file_path.c_str(), true, false, &item)) != ERR::Okay) return error;
    }
    else return ERR::DoesNotExist;
 
@@ -638,11 +636,11 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
    }
 
    CompressedItem *item;
-   ERR error = cmp::Find(cmp, file_path.c_str(), TRUE, FALSE, &item);
+   ERR error = cmp->find(file_path.c_str(), TRUE, FALSE, &item);
 
    if ((error != ERR::Okay) and ((Flags & RSF::APPROXIMATE) != RSF::NIL)) {
       file_path.append(".*");
-      if ((error = cmp::Find(cmp, file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
+      if ((error = cmp->find(file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
          // Point the path to the discovered item
          LONG i;
          for (i=0; (Path[i] != '/') and (Path[i]); i++);

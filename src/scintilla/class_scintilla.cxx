@@ -487,24 +487,16 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                            ScriptArg("Path",      a.Value.c_str(), FD_STR)
                         };
 
-                        struct sc::Callback exec;
-                        exec.ProcedureID = Self->FileDrop.ProcedureID;
-                        exec.Args      = args;
-                        exec.TotalArgs = ARRAYSIZE(args);
-                        auto script = Self->FileDrop.Context;
-                        Action(MT_ScCallback, script, &exec);
+                        auto script = (objScript *)Self->FileDrop.Context;
+                        script->callback(Self->FileDrop.ProcedureID, args, ARRAYSIZE(args), NULL);
                      }
                      break;
                   }
                }
             }
             else if (iequals("text", tag.name())) {
-               struct sci::InsertText insert;
-
                if ((!tag.Children.empty()) and (tag.Children[0].isContent())) {
-                  insert.String = tag.Children[0].Attribs[0].Value.c_str();
-                  insert.Pos    = -1;
-                  Action(MT_SciInsertText, Self, &insert);
+                  Self->insertText(tag.Children[0].Attribs[0].Value.c_str(), -1);
                }
             }
          }
@@ -643,8 +635,9 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    }
 
    if (Self->SurfaceID) {
-      if (pf::ScopedObjectLock object(Self->SurfaceID, 500); object.granted()) {
-         drw::RemoveCallback(*object, (APTR)&draw_scintilla);
+      if (pf::ScopedObjectLock<objSurface> object(Self->SurfaceID, 500); object.granted()) {
+         auto call = C_FUNCTION(&draw_scintilla);
+         object->removeCallback(&call);
          UnsubscribeAction(*object, 0);
       }
    }
@@ -806,7 +799,8 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->Surface.Width  = surface->Width;
       Self->Surface.Height = surface->Height;
 
-      drw::AddCallback(*surface, (APTR)&draw_scintilla);
+      auto call = C_FUNCTION(draw_scintilla);
+      surface->addCallback(&call);
 
       //SubscribeFeed(surface); TODO: Deprecated
 
@@ -2209,7 +2203,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
    if (auto file = objFile::create::local(fl::Flags(FL::READ), fl::Path(Path))) {
       if ((file->Flags & FL::STREAM) != FL::NIL) {
-         if (fl::StartStream(file, Self->UID, FL::READ, 0) IS ERR::Okay) {
+         if (file->startStream(Self->UID, FL::READ, 0) IS ERR::Okay) {
             acClear(Self);
 
             SubscribeAction(file, AC_Write, C_FUNCTION(notify_write));

@@ -466,7 +466,7 @@ extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO glDisplayInfo;
 extern APTR glDither;
-extern OBJECTPTR glCompress;
+extern objCompression *glCompress;
 extern struct CoreBase *CoreBase;
 extern ColourFormat glColourFormat;
 extern bool glHeadless;

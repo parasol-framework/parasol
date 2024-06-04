@@ -25,10 +25,10 @@ memory (this is the default type).  If the `TEXTURE` or `VIDEO` flags are specif
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
-If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality
-provided by the Vector module.
+If you require complex drawing functionality that is not available in the Bitmap class, consider using the 
+functionality provided by the Vector module.
 
-To save the image of a bitmap, either copy its image to a @Picture object, or use the SaveImage
+To save the image of a bitmap, either copy its image to a @Picture object, or use the SaveImage()
 action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write
 actions.
 -END-
@@ -521,14 +521,10 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    APTR buffer;
    if (AllocMemory(Self->Size, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-      struct cmp::CompressBuffer cbuf;
-      cbuf.Input      = Self->Data;
-      cbuf.InputSize  = Self->Size;
-      cbuf.Output     = buffer;
-      cbuf.OutputSize = Self->Size;
-      if (Action(MT_CmpCompressBuffer, glCompress, &cbuf) IS ERR::Okay) {
-         if (AllocMemory(cbuf.Result, MEM::NO_CLEAR, &Self->prvCompress) IS ERR::Okay) {
-            CopyMemory(buffer, Self->prvCompress, cbuf.Result);
+      LONG result;
+      if (glCompress->compressBuffer(Self->Data, Self->Size, buffer, Self->Size, &result) IS ERR::Okay) {
+         if (AllocMemory(result, MEM::NO_CLEAR, &Self->prvCompress) IS ERR::Okay) {
+            CopyMemory(buffer, Self->prvCompress, result);
             FreeResource(buffer);
          }
          else error = ERR::ReallocMemory;
@@ -629,7 +625,7 @@ ERR BITMAP_ConvertToLinear(extBitmap *Self)
 -METHOD-
 ConvertToRGB: Convert a bitmap's colour space to standard RGB.
 
-Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF::ALPHA_CHANNEL` flag is
+Use ConvertToRGB() to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF::ALPHA_CHANNEL` flag is
 enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `SRGB` on completion.  This method returns immediately if the #ColourSpace is
@@ -639,8 +635,8 @@ For the sake of efficiency, lookup tables are used to quickly perform the conver
 
 -ERRORS-
 Okay
-NothingDone: The Bitmap's content is already in sRGB format.
-InvalidState: The Bitmap is not in the expected state.
+NothingDone: The bitmap's content is already in sRGB format.
+InvalidState: The bitmap is not in the expected state.
 InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
@@ -753,7 +749,6 @@ AllocMemory: Insufficient memory in recreating the bitmap data buffer.
 static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
 {
    pf::Log log;
-   struct cmp::DecompressBuffer dbuf;
 
    if (!Self->prvCompress) return ERR::Okay;
 
@@ -776,10 +771,7 @@ static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
       SetOwner(glCompress, glModule);
    }
 
-   dbuf.Input      = Self->prvCompress;
-   dbuf.Output     = Self->Data;
-   dbuf.OutputSize = Self->Size;
-   ERR error = Action(MT_CmpDecompressBuffer, glCompress, &dbuf);
+   auto error = glCompress->decompressBuffer(Self->prvCompress, Self->Data, Self->Size, NULL);
    if (error IS ERR::BufferOverflow) error = ERR::Okay;
 
    if ((Args) and (Args->RetainData IS TRUE)) {
@@ -1021,7 +1013,7 @@ The Flush() action ensures that client graphics operations are synchronised with
 Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
 result in corruption in the bitmap's graphics display.
 
-You do not have to use this function if you stick to using the graphics functions that are provided in the Bitmap class.
+Clients do not need to call this function if solely using the graphics methods provided in the @Bitmap class.
 -END-
 
 *********************************************************************************************************************/
@@ -1515,7 +1507,7 @@ static ERR BITMAP_NewObject(extBitmap *Self)
 -METHOD-
 Premultiply: Premultiplies RGB channel values by the alpha channel.
 
-Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The
+Use Premultiply() to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The
 exact formula applied per channel is `(Colour * Alpha + 0xff)>>8`.  The alpha channel is not affected.
 
 This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are
@@ -2537,7 +2529,7 @@ graphics.
 -FIELD-
 Palette: Points to a bitmap's colour palette.
 
-A palette is an array of containing colour values in standard RGB format `$RRGGBB`.  The first value must have a
+A palette is an array of containing colour values in standard RGB format `0xRRGGBB`.  The first value must have a
 header ID of `ID_PALETTE`, followed by the amount of values in the array. Following this is the actual list itself -
 colour 0, then colour 1 and so on. There is no termination signal at the end of the list.
 
@@ -2601,8 +2593,8 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 -FIELD-
 PlaneMod: The differential between each bitmap plane.
 
-This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field will
-actually reflect the total size of the bitmap.  The calculation used for `PLANAR` types is `ByteWidth * Height`.
+This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field 
+will reflect the total size of the bitmap.  The calculation used for `PLANAR` types is `ByteWidth * Height`.
 
 -FIELD-
 Position: The current read/write data position.
@@ -2907,8 +2899,8 @@ static const FieldArray clBitmapFields[] = {
    { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
    { "Opacity",       FDF_LONG|FDF_RW },
    { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
-   { "TransColour",      FDF_RGB|FDF_RW, NULL, SET_Trans },
-   { "Bkgd",       FDF_RGB|FDF_RW, NULL, SET_Bkgd },
+   { "TransColour",   FDF_RGB|FDF_RW, NULL, SET_Trans },
+   { "Bkgd",          FDF_RGB|FDF_RW, NULL, SET_Bkgd },
    { "BkgdIndex",     FDF_LONG|FDF_RW, NULL, SET_BkgdIndex },
    { "ColourSpace",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
    // Virtual fields

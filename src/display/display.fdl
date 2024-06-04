@@ -329,7 +329,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     { id=4, name="Flip" },
     { id=6, name="DrawRectangle" },
     { id=7, name="SetClipRegion" },
-    { id=8, name="GetColour", inline=false },
+    { id=8, name="GetColour" },
     { id=10, name="Premultiply" },
     { id=11, name="Demultiply" },
     { id=12, name="ConvertToLinear" },
@@ -371,21 +371,14 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
   ]],
   nil,
   [[
-   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
-      else {
-         struct bmp::GetColour args = { Red, Green, Blue, Alpha };
-         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
-         return 0;
-      }
-   }
-
    inline ULONG getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
-         struct bmp::GetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
-         if (Action(MT_BmpGetColour, this, &args) IS ERR::Okay) return args.Colour;
-         return 0;
+         ULONG result;
+         if (getColour(RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha, &result) IS ERR::Okay) {
+            return result;
+         }
+         else return 0;
       }
    }
 
@@ -528,14 +521,14 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     { id=3, name="InvalidateRegion" },
     { id=4, name="SetDisplay" },
     { id=5, name="SetOpacity" },
-    { id=6, name="AddCallback", inline=false },
+    { id=6, name="AddCallback" },
     { id=7, name="Minimise" },
     { id=8, name="ResetDimensions" },
-    { id=9, name="RemoveCallback", inline=false },
+    { id=9, name="RemoveCallback" },
     { id=10, name="ScheduleRedraw" }
   })
 
-  class("Surface", { references={ 'DMF', 'ALIGN' }, src={
+  class("Surface", { references={ 'DMF', 'ALIGN', 'JTYPE', 'JET', 'InputEvent' }, src={
       "class_surface/class_surface.cpp",
       "class_surface/surface_dimensions.cpp",
       "class_surface/surface_drawing.cpp",
@@ -648,36 +641,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
 #define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-
-// Stubs
-
-namespace drw {
-
-inline ERR AddCallback(OBJECTPTR Surface, APTR Callback) {
-   if (Callback) {
-      auto call = C_FUNCTION(Callback);
-      struct AddCallback args = { &call };
-      return Action(MT_DrwAddCallback, Surface, &args);
-   }
-   else {
-      struct AddCallback args = { NULL };
-      return Action(MT_DrwAddCallback, Surface, &args);
-   }
-}
-
-inline ERR RemoveCallback(OBJECTPTR Surface, APTR Callback) {
-   if (Callback) {
-      auto call = C_FUNCTION(Callback);
-      struct RemoveCallback args = { &call };
-      return Action(MT_DrwRemoveCallback, Surface, &args);
-   }
-   else {
-      struct RemoveCallback args = { NULL };
-      return Action(MT_DrwRemoveCallback, Surface, &args);
-   }
-}
-
-} // namespace
 
 namespace fl {
    using namespace pf;
