@@ -546,40 +546,30 @@ static ERR setval_unit(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LO
 {
    // Convert the value to match what the unit will accept, then call the unit field's set function.
 
-   Unit var;
    FieldContext ctx(Object, Field);
 
    if (Flags & (FD_LONG|FD_LARGE)) {
-      var.Type = FD_LARGE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
-      if (Flags & FD_LONG) var.Double = *((LONG *)Data);
-      else var.Double = *((LARGE *)Data);
-      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
+      auto unit = Unit((Flags & FD_LONG) ? *((LONG *)Data) : *((LARGE *)Data), Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
+      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &unit);
    }
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
-      var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
-      var.Double = *((DOUBLE *)Data);
-      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
+      auto unit = Unit(*((DOUBLE *)Data), Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
+      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &unit);
    }
    else if (Flags & (FD_POINTER|FD_STRING)) {
+      Unit unit;
       if (Field->Flags & FD_SCALED) {
          // Percentages are only applicable to numeric variables, and require conversion in advance.
          // NB: If a field needs total control over variable conversion, it should not specify FD_SCALED.
          STRING pct;
-         var.Double = strtod((CSTRING)Data, &pct);
+         unit.Value = strtod((CSTRING)Data, &pct);
          if (pct[0] IS '%') {
-            var.Type = FD_DOUBLE|FD_SCALED;
-            var.Double *= 0.01;
-            return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
-         }
-         else {
-            var.Type = FD_DOUBLE;
-            return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
+            unit.Type = FD_SCALED;
+            unit.Value *= 0.01;
          }
       }
-      else var.Double = strtod((CSTRING)Data, NULL);
-
-      var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER))); // Allows support flags like FD_STRING to fall through
-      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
+      else unit.Value = strtod((CSTRING)Data, NULL);
+      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &unit);
    }
    else if (Flags & FD_UNIT) {
       return ((ERR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);

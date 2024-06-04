@@ -1807,11 +1807,13 @@ struct SystemState {
 };
 
 struct Unit {
-   ULONG  Type;      // Field definition flags
-   LONG   Unused;    // Unused 32-bit value for 64-bit alignment
-   DOUBLE Double;    // The value as a 64-bit float-point number.
-   Unit(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
-   Unit() { }
+   DOUBLE Value;    // The unit value.
+   ULONG  Type;     // Additional type information
+   Unit(double pValue, LONG pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
+   Unit() : Value(0), Type(0) { }
+   operator double() const { return Value; }
+   inline void set(const double pValue) { Value = pValue; }
+   inline bool scaled() { return (Type & FD_SCALED) ? true : false; }
 };
 
 struct ActionArray {

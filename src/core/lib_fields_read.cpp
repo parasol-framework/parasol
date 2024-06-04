@@ -546,9 +546,9 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          error = Field->GetValue(Object, &var);
 
          if (error IS ERR::Okay) {
-            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Double;
-            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Double;
-            else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Double;
+            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Value;
+            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Value;
+            else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Value;
             else error = ERR::FieldTypeMismatch;
          }
       }
@@ -557,9 +557,9 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
 
          error = Field->GetValue(Object, &var);
          if (error IS ERR::Okay) {
-            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Double;
-            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Double;
-            else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Double;
+            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Value;
+            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Value;
+            else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Value;
             else error = ERR::FieldTypeMismatch;
          }
       }

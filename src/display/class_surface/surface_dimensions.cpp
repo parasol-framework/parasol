@@ -248,15 +248,15 @@ for pairing the #Y and #YOffset fields together for dynamic height adjustment.
 
 static ERR GET_Height(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       if (dmf::hasScaledHeight(Self->Dimensions)) {
-         Value->Double = Self->HeightPercent;
+         Value->set(Self->HeightPercent);
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::FieldTypeMismatch;
    }
    else {
-      Value->Double  = Self->Height;
+      Value->set(Self->Height);
       return ERR::Okay;
    }
 }
@@ -265,7 +265,7 @@ static ERR SET_Height(extSurface *Self, Unit *Value)
 {
    pf::Log log;
 
-   auto value = Value->Double;
+   auto value = Value->Value;
 
    if (value <= 0) {
       if (Self->initialised()) return ERR::InvalidDimension;
@@ -276,7 +276,7 @@ static ERR SET_Height(extSurface *Self, Unit *Value)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->HeightPercent = value;
@@ -298,9 +298,7 @@ static ERR SET_Height(extSurface *Self, Unit *Value)
       // If the offset flags are used, adjust the vertical position
 
       if (dmf::hasScaledYOffset(Self->Dimensions)) {
-         Unit var;
-         var.Type   = FD_DOUBLE|FD_SCALED;
-         var.Double = Self->YOffsetPercent;
+         auto var = Unit(Self->YOffsetPercent, FD_SCALED);
          SET_YOffset(Self, &var);
       }
       else if (dmf::hasYOffset(Self->Dimensions)) {
@@ -751,22 +749,19 @@ Width values of 0 or less are illegal, and will result in an `ERR::OutOfRange` e
 
 static ERR GET_Width(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       if (dmf::hasScaledWidth(Self->Dimensions)) {
-         Value->Double = Self->WidthPercent;
+         Value->set(Self->WidthPercent);
       }
-      else return ERR::Failed;
+      else return ERR::FieldTypeMismatch;
    }
-   else Value->Double = Self->Width;
+   else Value->set(Self->Width);
    return ERR::Okay;
 }
 
 static ERR SET_Width(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   Unit var;
-
-   auto value = Value->Double;
+   auto value = Value->Value;
 
    if (value <= 0) {
       if (Self->initialised()) return ERR::InvalidDimension;
@@ -777,7 +772,7 @@ static ERR SET_Width(extSurface *Self, Unit *Value)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->WidthPercent = value;
@@ -798,14 +793,12 @@ static ERR SET_Width(extSurface *Self, Unit *Value)
 
       // If the offset flags are used, adjust the horizontal position
       if (dmf::hasScaledXOffset(Self->Dimensions)) {
-         var.Type = FD_DOUBLE|FD_SCALED;
-         var.Double = Self->XOffsetPercent;
-         SET_XOffset(Self, &var);
+         auto val = Unit(Self->XOffsetPercent, FD_SCALED);
+         SET_XOffset(Self, &val);
       }
       else if (dmf::hasXOffset(Self->Dimensions)) {
-         var.Type = FD_DOUBLE;
-         var.Double = Self->XOffset;
-         SET_XOffset(Self, &var);
+         auto val = Unit(Self->XOffset);
+         SET_XOffset(Self, &val);
       }
    }
    return ERR::Okay;
@@ -826,31 +819,22 @@ immediately.
 
 static ERR GET_XCoord(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_SCALED) Value->Double = Self->XPercent;
-      else Value->Double = Self->X;
-   }
-   else {
-      pf::Log log;
-      return log.warning(ERR::FieldTypeMismatch);
-   }
+   Value->set(Value->scaled() ? Self->XPercent : Self->X);
    return ERR::Okay;
 }
 
 static ERR SET_XCoord(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
+   auto value = Value->Value;
 
-   auto value = Value->Double;
-
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_X)) | DMF::SCALED_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width * value, Self->Y);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
@@ -863,7 +847,7 @@ static ERR SET_XCoord(extSurface *Self, Unit *Value)
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
 
@@ -892,10 +876,10 @@ static ERR GET_XOffset(extSurface *Self, Unit *Value)
    pf::Log log;
    DOUBLE value;
 
-   if (Value->Type & FD_SCALED) {
-      Unit xoffset(0.0);
+   if (Value->scaled()) {
+      Unit xoffset;
       if (GET_XOffset(Self, &xoffset) IS ERR::Okay) {
-         value = xoffset.Double / Self->Width;
+         value = xoffset / Self->Width;
       }
       else value = 0;
    }
@@ -912,18 +896,16 @@ static ERR GET_XOffset(extSurface *Self, Unit *Value)
       else value = 0;
    }
 
-   Value->Double = value;
+   Value->set(value);
    return ERR::Okay;
 }
 
 static ERR SET_XOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-
-   auto value = Value->Double;
+   auto value = Value->Value;
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_X_OFFSET)) | DMF::SCALED_X_OFFSET;
       Self->XOffsetPercent = value;
 
@@ -935,7 +917,7 @@ static ERR SET_XOffset(extSurface *Self, Unit *Value)
                resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             }
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
@@ -946,13 +928,13 @@ static ERR SET_XOffset(extSurface *Self, Unit *Value)
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width - Self->XOffset - Self->Width, Self->Y);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
       else if (dmf::hasAnyX(Self->Dimensions) and Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
 
@@ -973,28 +955,25 @@ If the value is changed while the surface is on display, its position will be up
 
 static ERR GET_YCoord(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_SCALED) Value->Double = Self->YPercent;
-   else Value->Double = Self->Y;
+   Value->set(Value->scaled() ? Self->YPercent : Self->Y);
    return ERR::Okay;
 }
 
 static ERR SET_YCoord(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_Y)) | DMF::SCALED_Y;
-      Self->YPercent = Value->Double;
+      Self->YPercent = Value->Value;
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
-            move_layer(Self, Self->X, parent->Height * Value->Double);
+            move_layer(Self, Self->X, parent->Height * Value->Value);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
       Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_Y)) | DMF::FIXED_Y;
-      move_layer(Self, Self->X, Value->Double);
+      move_layer(Self, Self->X, Value->Value);
    }
 
    return ERR::Okay;
@@ -1019,14 +998,11 @@ at a Y coordinate calculated from the formula `Y = ContainerHeight - SurfaceHeig
 
 static ERR GET_YOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
    DOUBLE value;
 
-   if (Value->Type & FD_SCALED) {
-      Unit yoffset(0.0);
-      if (GET_YOffset(Self, &yoffset) IS ERR::Okay) {
-         value = yoffset.Double / Self->Height;
-      }
+   if (Value->scaled()) {
+      Unit yoffset;
+      if (GET_YOffset(Self, &yoffset) IS ERR::Okay) value = yoffset / Self->Height;
       else value = 0;
    }
    else {
@@ -1037,24 +1013,22 @@ static ERR GET_YOffset(extSurface *Self, Unit *Value)
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Height - Self->Y - Self->Height;
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
       else value = 0;
    }
 
-   Value->Double = value;
+   Value->set(value);
    return ERR::Okay;
 }
 
 static ERR SET_YOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-
-   auto value = Value->Double;
+   auto value = Value->Value;
 
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_SCALED) {
+   if (Value->scaled()) {
       Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_Y_OFFSET)) | DMF::SCALED_Y_OFFSET;
       Self->YOffsetPercent = value;
 
@@ -1067,7 +1041,7 @@ static ERR SET_YOffset(extSurface *Self, Unit *Value)
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
@@ -1081,13 +1055,13 @@ static ERR SET_YOffset(extSurface *Self, Unit *Value)
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
       else if (dmf::hasAnyY(Self->Dimensions) and Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
          }
-         else return log.warning(ERR::AccessObject);
+         else return ERR::AccessObject;
       }
    }
    return ERR::Okay;
