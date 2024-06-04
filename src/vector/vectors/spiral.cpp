@@ -22,15 +22,15 @@ class extVectorSpiral : public extVector {
    DOUBLE CX, CY;
    DOUBLE Step;
    DOUBLE LoopLimit;
-   LONG Dimensions;
+   DMF Dimensions;
 };
 
 //********************************************************************************************************************
 
 static void generate_spiral(extVectorSpiral *Vector, agg::path_storage &Path)
 {
-   const DOUBLE cx = (Vector->Dimensions & DMF_SCALED_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
-   const DOUBLE cy = (Vector->Dimensions & DMF_SCALED_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
+   const DOUBLE cx = dmf::hasScaledCenterX(Vector->Dimensions) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
+   const DOUBLE cy = dmf::hasScaledCenterY(Vector->Dimensions) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
 
    DOUBLE min_x = DBL_MAX, max_x = -DBL_MAX, min_y = DBL_MAX, max_y = -DBL_MAX;
    DOUBLE angle  = 0;
@@ -113,8 +113,8 @@ static ERR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR::FieldTypeMismatch);
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_X) & (~DMF::FIXED_CENTER_X);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_CENTER_X) & (~DMF::SCALED_CENTER_X);
 
    Self->CX = val;
 
@@ -147,8 +147,8 @@ static ERR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR::FieldTypeMismatch);
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_Y) & (~DMF::FIXED_CENTER_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_CENTER_Y) & (~DMF::SCALED_CENTER_Y);
 
    Self->CY = val;
    reset_path(Self);
@@ -317,8 +317,8 @@ static ERR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
 
    if (val < 0) return log.warning(ERR::InvalidDimension);
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y) & (~(DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y));
+   else Self->Dimensions = (Self->Dimensions | (DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y)) & (~(DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y));
 
    Self->Radius = val;
    reset_path(Self);

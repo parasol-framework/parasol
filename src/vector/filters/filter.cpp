@@ -77,37 +77,37 @@ static void compute_target_area(extVectorFilter *Self)
    Self->BoundHeight = bounds.height();
 
    if (Self->Units IS VUNIT::BOUNDING_BOX) {
-      if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = boundX;
-      else if (Self->Dimensions & DMF_SCALED_X) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
+      if (dmf::hasX(Self->Dimensions)) Self->TargetX = boundX;
+      else if (dmf::hasScaledX(Self->Dimensions)) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
       else Self->TargetX = boundX;
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->TargetY = boundY;
-      else if (Self->Dimensions & DMF_SCALED_Y) Self->TargetY = trunc(boundY + (Self->Y * Self->BoundHeight));
+      if (dmf::hasY(Self->Dimensions)) Self->TargetY = boundY;
+      else if (dmf::hasScaledY(Self->Dimensions)) Self->TargetY = trunc(boundY + (Self->Y * Self->BoundHeight));
       else Self->TargetY = boundY;
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
-      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
+      if (dmf::hasWidth(Self->Dimensions)) Self->TargetWidth = Self->Width * Self->BoundWidth;
+      else if (dmf::hasScaledWidth(Self->Dimensions)) Self->TargetWidth = Self->Width * Self->BoundWidth;
       else Self->TargetWidth = Self->BoundWidth;
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
-      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
+      if (dmf::hasHeight(Self->Dimensions)) Self->TargetHeight = Self->Height * Self->BoundHeight;
+      else if (dmf::hasScaledHeight(Self->Dimensions)) Self->TargetHeight = Self->Height * Self->BoundHeight;
       else Self->TargetHeight = Self->BoundHeight;
    }
    else { // USERSPACE: Scaled dimensions are measured against the client's viewport rather than the vector.
-      if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = trunc(Self->X);
-      else if (Self->Dimensions & DMF_SCALED_X) Self->TargetX = trunc(Self->X * Self->ClientViewport->vpFixedWidth);
+      if (dmf::hasX(Self->Dimensions)) Self->TargetX = trunc(Self->X);
+      else if (dmf::hasScaledX(Self->Dimensions)) Self->TargetX = trunc(Self->X * Self->ClientViewport->vpFixedWidth);
       else Self->TargetX = boundX;
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->TargetY = trunc(Self->Y);
-      else if (Self->Dimensions & DMF_SCALED_Y) Self->TargetY = trunc(Self->Y * Self->ClientViewport->vpFixedHeight);
+      if (dmf::hasY(Self->Dimensions)) Self->TargetY = trunc(Self->Y);
+      else if (dmf::hasScaledY(Self->Dimensions)) Self->TargetY = trunc(Self->Y * Self->ClientViewport->vpFixedHeight);
       else Self->TargetY = boundY;
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->TargetWidth = Self->Width;
-      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->TargetWidth = Self->Width * Self->ClientViewport->vpFixedWidth;
+      if (dmf::hasWidth(Self->Dimensions)) Self->TargetWidth = Self->Width;
+      else if (dmf::hasScaledWidth(Self->Dimensions)) Self->TargetWidth = Self->Width * Self->ClientViewport->vpFixedWidth;
       else Self->TargetWidth = Self->ClientViewport->vpFixedWidth;
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->TargetHeight = Self->Height;
-      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->TargetHeight = Self->Height * Self->ClientViewport->vpFixedHeight;
+      if (dmf::hasHeight(Self->Dimensions)) Self->TargetHeight = Self->Height;
+      else if (dmf::hasScaledHeight(Self->Dimensions)) Self->TargetHeight = Self->Height * Self->ClientViewport->vpFixedHeight;
       else Self->TargetHeight = Self->ClientViewport->vpFixedHeight;
    }
 }
@@ -353,38 +353,38 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
       auto const bound_width  = bounds.width();
       auto const bound_height = bounds.height();
 
-      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.left = F2T(bounds.left + Self->X);
-      else if (Self->Dimensions & DMF_SCALED_X) Self->VectorClip.left = F2T(bounds.left) + (Self->X * bound_width);
+      if (dmf::hasX(Self->Dimensions)) Self->VectorClip.left = F2T(bounds.left + Self->X);
+      else if (dmf::hasScaledX(Self->Dimensions)) Self->VectorClip.left = F2T(bounds.left) + (Self->X * bound_width);
       else Self->VectorClip.left = F2T(bounds.left);
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.top = F2T(bounds.top + Self->Y);
-      else if (Self->Dimensions & DMF_SCALED_Y) Self->VectorClip.top = F2T(bounds.top + (Self->Y * bound_height));
+      if (dmf::hasY(Self->Dimensions)) Self->VectorClip.top = F2T(bounds.top + Self->Y);
+      else if (dmf::hasScaledY(Self->Dimensions)) Self->VectorClip.top = F2T(bounds.top + (Self->Y * bound_height));
       else Self->VectorClip.top = F2T(bounds.top);
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
-      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
+      if (dmf::hasWidth(Self->Dimensions)) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
+      else if (dmf::hasScaledWidth(Self->Dimensions)) Self->VectorClip.right = Self->VectorClip.left + F2T(Self->Width * bound_width);
       else Self->VectorClip.right = Self->VectorClip.left + F2T(bound_width);
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->VectorClip.bottom = Self->VectorClip.top + F2T(Self->Height * bound_height);
-      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->VectorClip.bottom = Self->VectorClip.top + F2T(Self->Height * bound_height);
+      if (dmf::hasHeight(Self->Dimensions)) Self->VectorClip.bottom = Self->VectorClip.top + F2T(Self->Height * bound_height);
+      else if (dmf::hasScaledHeight(Self->Dimensions)) Self->VectorClip.bottom = Self->VectorClip.top + F2T(Self->Height * bound_height);
       else Self->VectorClip.bottom = Self->VectorClip.top + F2T(bound_height);
    }
    else { // USERSPACE
       DOUBLE x, y, w, h;
-      if (Self->Dimensions & DMF_FIXED_X) x = F2T(Self->X);
-      else if (Self->Dimensions & DMF_SCALED_X) x = F2T(Self->X * container_width);
+      if (dmf::hasX(Self->Dimensions)) x = F2T(Self->X);
+      else if (dmf::hasScaledX(Self->Dimensions)) x = F2T(Self->X * container_width);
       else x = 0;
 
-      if (Self->Dimensions & DMF_FIXED_Y) y = F2T(Self->Y);
-      else if (Self->Dimensions & DMF_SCALED_Y) y = F2T(Self->Y * container_height);
+      if (dmf::hasY(Self->Dimensions)) y = F2T(Self->Y);
+      else if (dmf::hasScaledY(Self->Dimensions)) y = F2T(Self->Y * container_height);
       else y = 0;
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) w = F2T(Self->Width);
-      else if (Self->Dimensions & DMF_SCALED_WIDTH) w = F2T(Self->Width * container_width);
+      if (dmf::hasWidth(Self->Dimensions)) w = F2T(Self->Width);
+      else if (dmf::hasScaledWidth(Self->Dimensions)) w = F2T(Self->Width * container_width);
       else w = F2T(container_width);
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) h = F2T(Self->Height);
-      else if (Self->Dimensions & DMF_SCALED_HEIGHT) h = F2T(Self->Height * container_height);
+      if (dmf::hasHeight(Self->Dimensions)) h = F2T(Self->Height);
+      else if (dmf::hasScaledHeight(Self->Dimensions)) h = F2T(Self->Height * container_height);
       else h = F2T(container_height);
 
       agg::path_storage rect;
@@ -572,7 +572,7 @@ static ERR VECTORFILTER_NewObject(extVectorFilter *Self)
    Self->Height         = 1.2;
    Self->AspectRatio    = VFA::MEET; // Scale X/Y values independently
    Self->ColourSpace    = VCS::SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
-   Self->Dimensions     = DMF_SCALED_X|DMF_SCALED_Y|DMF_SCALED_WIDTH|DMF_SCALED_HEIGHT;
+   Self->Dimensions     = DMF::SCALED_X|DMF::SCALED_Y|DMF::SCALED_WIDTH|DMF::SCALED_HEIGHT;
    return ERR::Okay;
 }
 
@@ -671,8 +671,8 @@ static ERR VECTORFILTER_SET_Height(extVectorFilter *Self, Variable *Value)
    else return ERR::FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
-      else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
+      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+      else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
       Self->Height = val;
       return ERR::Okay;
@@ -773,8 +773,8 @@ static ERR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
    else return ERR::FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
-      else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
+      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+      else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
       Self->Width = val;
       return ERR::Okay;
@@ -810,8 +810,8 @@ static ERR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
 
    Self->X = val;
    return ERR::Okay;
@@ -846,8 +846,8 @@ static ERR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
 
    Self->Y = val;
    return ERR::Okay;
@@ -856,14 +856,14 @@ static ERR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clFilterDimensions[] = {
-   { "FixedX",       DMF_FIXED_X },
-   { "FixedY",       DMF_FIXED_Y },
-   { "ScaledX",      DMF_SCALED_X },
-   { "ScaledY",      DMF_SCALED_Y },
-   { "FixedWidth",   DMF_FIXED_WIDTH },
-   { "FixedHeight",  DMF_FIXED_HEIGHT },
-   { "ScaledWidth",  DMF_SCALED_WIDTH },
-   { "ScaledHeight", DMF_SCALED_HEIGHT },
+   { "FixedX",       DMF::FIXED_X },
+   { "FixedY",       DMF::FIXED_Y },
+   { "ScaledX",      DMF::SCALED_X },
+   { "ScaledY",      DMF::SCALED_Y },
+   { "FixedWidth",   DMF::FIXED_WIDTH },
+   { "FixedHeight",  DMF::FIXED_HEIGHT },
+   { "ScaledWidth",  DMF::SCALED_WIDTH },
+   { "ScaledHeight", DMF::SCALED_HEIGHT },
    { NULL, 0 }
 };
 

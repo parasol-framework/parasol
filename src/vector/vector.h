@@ -476,7 +476,7 @@ class extVectorViewport : public extVector {
    TClipRectangle<DOUBLE> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
-   LONG  vpDimensions;
+   DMF   vpDimensions;
    ARF   vpAspectRatio;
    VOF   vpOverflowX, vpOverflowY;
    UBYTE vpDragging:1;
@@ -513,7 +513,7 @@ class extVectorRectangle : public extVector {
    struct coord { DOUBLE x, y; };
    DOUBLE rX, rY, rWidth, rHeight, rXOffset, rYOffset;
    std::array<coord, 4> rRound;
-   LONG   rDimensions;
+   DMF    rDimensions;
    bool   rFullControl;
 };
 
@@ -854,8 +854,8 @@ inline static DOUBLE get_parent_width(const objVector *Vector)
    auto eVector = (const extVector *)Vector;
    if (auto view = (extVectorViewport *)eVector->ParentView) {
       if (view->vpViewWidth > 0) return view->vpViewWidth;
-      else if ((view->vpDimensions & DMF_WIDTH) or
-          ((view->vpDimensions & DMF_X) and (view->vpDimensions & DMF_X_OFFSET))) {
+      else if ((dmf::hasAnyWidth(view->vpDimensions)) or
+          ((dmf::hasAnyX(view->vpDimensions)) and (dmf::hasAnyXOffset(view->vpDimensions)))) {
          return view->vpFixedWidth;
       }
       else return eVector->Scene->PageWidth;
@@ -869,8 +869,8 @@ inline static DOUBLE get_parent_height(const objVector *Vector)
    auto eVector = (const extVector *)Vector;
    if (auto view = (extVectorViewport *)eVector->ParentView) {
       if (view->vpViewHeight > 0) return view->vpViewHeight;
-      else if ((view->vpDimensions & DMF_HEIGHT) or
-          ((view->vpDimensions & DMF_Y) and (view->vpDimensions & DMF_Y_OFFSET))) {
+      else if ((dmf::hasAnyHeight(view->vpDimensions)) or
+          ((dmf::hasAnyY(view->vpDimensions)) and (dmf::hasAnyYOffset(view->vpDimensions)))) {
          return view->vpFixedHeight;
       }
       else return eVector->Scene->PageHeight;

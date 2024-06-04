@@ -64,23 +64,23 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
    DOUBLE img_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
-      if (Self->Dimensions & (DMF_FIXED_X|DMF_SCALED_X)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
-      if (Self->Dimensions & (DMF_FIXED_Y|DMF_SCALED_Y)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
-      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) img_width = Self->Width * filter->BoundWidth;
-      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) img_height = Self->Height * filter->BoundHeight;
+      if (dmf::hasAnyX(Self->Dimensions)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
+      if (dmf::hasAnyY(Self->Dimensions)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
+      if (dmf::hasAnyWidth(Self->Dimensions))  img_width = Self->Width * filter->BoundWidth;
+      if (dmf::hasAnyHeight(Self->Dimensions)) img_height = Self->Height * filter->BoundHeight;
    }
    else {
-      if (Self->Dimensions & DMF_SCALED_X)   img_x = filter->TargetX + (Self->X * filter->TargetWidth);
-      else if (Self->Dimensions & DMF_FIXED_X) img_x = Self->X;
+      if (dmf::hasScaledX(Self->Dimensions)) img_x = filter->TargetX + (Self->X * filter->TargetWidth);
+      else if (dmf::hasX(Self->Dimensions))  img_x = Self->X;
 
-      if (Self->Dimensions & DMF_SCALED_Y)   img_y = filter->TargetY + (Self->Y * filter->TargetHeight);
-      else if (Self->Dimensions & DMF_FIXED_Y) img_y = Self->Y;
+      if (dmf::hasScaledY(Self->Dimensions)) img_y = filter->TargetY + (Self->Y * filter->TargetHeight);
+      else if (dmf::hasY(Self->Dimensions))  img_y = Self->Y;
 
-      if (Self->Dimensions & DMF_SCALED_WIDTH)   img_width = filter->TargetWidth * Self->Width;
-      else if (Self->Dimensions & DMF_FIXED_WIDTH) img_width = Self->Width;
+      if (dmf::hasScaledWidth(Self->Dimensions)) img_width = filter->TargetWidth * Self->Width;
+      else if (dmf::hasWidth(Self->Dimensions))  img_width = Self->Width;
 
-      if (Self->Dimensions & DMF_SCALED_HEIGHT)   img_height = filter->TargetHeight * Self->Height;
-      else if (Self->Dimensions & DMF_FIXED_HEIGHT) img_height = Self->Height;
+      if (dmf::hasScaledHeight(Self->Dimensions)) img_height = filter->TargetHeight * Self->Height;
+      else if (dmf::hasHeight(Self->Dimensions))  img_height = Self->Height;
    }
 
    if ((filter->ClientViewport->Scene->PageWidth > Self->Scene->PageWidth) or

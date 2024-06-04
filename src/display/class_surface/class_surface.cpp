@@ -497,31 +497,31 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
 
    // Convert relative offsets to their fixed equivalent
 
-   if (Self->Dimensions & DMF_SCALED_X_OFFSET) Self->XOffset = parentwidth * Self->XOffsetPercent;
-   if (Self->Dimensions & DMF_SCALED_Y_OFFSET) Self->YOffset = parentheight * Self->YOffsetPercent;
+   if (dmf::hasScaledXOffset(Self->Dimensions)) Self->XOffset = parentwidth * Self->XOffsetPercent;
+   if (dmf::hasScaledYOffset(Self->Dimensions)) Self->YOffset = parentheight * Self->YOffsetPercent;
 
    // Calculate absolute width and height values
 
-   if (Self->Dimensions & DMF_SCALED_WIDTH)   width = parentwidth * Self->WidthPercent;
-   else if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
-   else if (Self->Dimensions & DMF_X_OFFSET) {
-      if (Self->Dimensions & DMF_FIXED_X) {
+   if (dmf::hasScaledWidth(Self->Dimensions))   width = parentwidth * Self->WidthPercent;
+   else if (dmf::hasWidth(Self->Dimensions)) width = Self->Width;
+   else if (dmf::hasAnyXOffset(Self->Dimensions)) {
+      if (dmf::hasX(Self->Dimensions)) {
          width = parentwidth - Self->X - Self->XOffset;
       }
-      else if (Self->Dimensions & DMF_SCALED_X) {
+      else if (dmf::hasScaledX(Self->Dimensions)) {
          width = parentwidth - (parentwidth * Self->XPercent) - Self->XOffset;
       }
       else width = parentwidth - Self->XOffset;
    }
    else width = Self->Width;
 
-   if (Self->Dimensions & DMF_SCALED_HEIGHT)   height = parentheight * Self->HeightPercent;
-   else if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
-   else if (Self->Dimensions & DMF_Y_OFFSET) {
-      if (Self->Dimensions & DMF_FIXED_Y) {
+   if (dmf::hasScaledHeight(Self->Dimensions))   height = parentheight * Self->HeightPercent;
+   else if (dmf::hasHeight(Self->Dimensions)) height = Self->Height;
+   else if (dmf::hasAnyYOffset(Self->Dimensions)) {
+      if (dmf::hasY(Self->Dimensions)) {
          height = parentheight - Self->Y - Self->YOffset;
       }
-      else if (Self->Dimensions & DMF_SCALED_Y) {
+      else if (dmf::hasScaledY(Self->Dimensions)) {
          height = parentheight - (parentheight * Self->YPercent) - Self->YOffset;
       }
       else height = parentheight - Self->YOffset;
@@ -530,12 +530,12 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
 
    // Calculate new coordinates
 
-   if (Self->Dimensions & DMF_SCALED_X) x = parentwidth * Self->XPercent;
-   else if (Self->Dimensions & DMF_X_OFFSET) x = parentwidth - Self->XOffset - width;
+   if (dmf::hasScaledX(Self->Dimensions)) x = parentwidth * Self->XPercent;
+   else if (dmf::hasAnyXOffset(Self->Dimensions)) x = parentwidth - Self->XOffset - width;
    else x = Self->X;
 
-   if (Self->Dimensions & DMF_SCALED_Y) y = parentheight * Self->YPercent;
-   else if (Self->Dimensions & DMF_Y_OFFSET) y = parentheight - Self->YOffset - height;
+   if (dmf::hasScaledY(Self->Dimensions)) y = parentheight * Self->YPercent;
+   else if (dmf::hasAnyYOffset(Self->Dimensions)) y = parentheight - Self->YOffset - height;
    else y = Self->Y;
 
    // Alignment adjustments
@@ -1110,7 +1110,7 @@ static ERR SURFACE_Init(extSurface *Self)
       if ((parent->Type & RT::ROOT) != RT::NIL) { // The window class can set the ROOT type
          Self->Type |= RT::ROOT;
          if (Self->RootID IS Self->UID) {
-            Self->InheritedRoot = TRUE;
+            Self->InheritedRoot = true;
             Self->RootID = parent->RootID; // Inherit the parent's root layer
          }
       }
@@ -1133,52 +1133,52 @@ static ERR SURFACE_Init(extSurface *Self)
 
       // Set FixedX/FixedY accordingly - this is used to assist in the layout process when a surface is used in a document.
 
-      if (Self->Dimensions & 0xffff) {
-         if ((Self->Dimensions & DMF_X) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH|DMF_FIXED_X_OFFSET|DMF_SCALED_X_OFFSET))) {
-            Self->FixedX = TRUE;
+      if ((Self->Dimensions & DMF(0xffff)) != DMF::NIL) {
+         if ((dmf::hasAnyX(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_WIDTH|DMF::SCALED_WIDTH|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) {
+            Self->FixedX = true;
          }
-         else if ((Self->Dimensions & DMF_X_OFFSET) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH|DMF_FIXED_X|DMF_SCALED_X))) {
-            Self->FixedX = TRUE;
+         else if ((dmf::hasAnyXOffset(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_WIDTH|DMF::SCALED_WIDTH|DMF::FIXED_X|DMF::SCALED_X)) {
+            Self->FixedX = true;
          }
 
-         if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_SCALED_Y_OFFSET))) {
-            Self->FixedY = TRUE;
+         if ((dmf::hasAnyY(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) {
+            Self->FixedY = true;
          }
-         else if ((Self->Dimensions & DMF_Y_OFFSET) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT|DMF_FIXED_Y|DMF_SCALED_Y))) {
-            Self->FixedY = TRUE;
+         else if ((dmf::hasAnyYOffset(Self->Dimensions)) and dmf::has(Self->Dimensions, DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT|DMF::FIXED_Y|DMF::SCALED_Y)) {
+            Self->FixedY = true;
          }
       }
 
       // Recalculate coordinates if offsets are used
 
-      if (Self->Dimensions & DMF_FIXED_X_OFFSET)         Self->setXOffset(Self->XOffset);
-      else if (Self->Dimensions & DMF_SCALED_X_OFFSET) Self->setScale(FID_XOffset, Self->XOffsetPercent);
+      if (dmf::hasXOffset(Self->Dimensions))         Self->setXOffset(Self->XOffset);
+      else if (dmf::hasScaledXOffset(Self->Dimensions)) Self->setScale(FID_XOffset, Self->XOffsetPercent);
 
-      if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         Self->setYOffset(Self->YOffset);
-      else if (Self->Dimensions & DMF_SCALED_Y_OFFSET) Self->setScale(FID_YOffset, Self->YOffsetPercent);
+      if (dmf::hasYOffset(Self->Dimensions))         Self->setYOffset(Self->YOffset);
+      else if (dmf::hasScaledYOffset(Self->Dimensions)) Self->setScale(FID_YOffset, Self->YOffsetPercent);
 
-      if (Self->Dimensions & DMF_SCALED_X)       Self->setScale(FID_X, Self->XPercent);
-      if (Self->Dimensions & DMF_SCALED_Y)       Self->setScale(FID_Y, Self->YPercent);
-      if (Self->Dimensions & DMF_SCALED_WIDTH)   Self->setScale(FID_Width,  Self->WidthPercent);
-      if (Self->Dimensions & DMF_SCALED_HEIGHT)  Self->setScale(FID_Height, Self->HeightPercent);
+      if (dmf::hasScaledX(Self->Dimensions))       Self->setScale(FID_X, Self->XPercent);
+      if (dmf::hasScaledY(Self->Dimensions))       Self->setScale(FID_Y, Self->YPercent);
+      if (dmf::hasScaledWidth(Self->Dimensions))   Self->setScale(FID_Width,  Self->WidthPercent);
+      if (dmf::hasScaledHeight(Self->Dimensions))  Self->setScale(FID_Height, Self->HeightPercent);
 
-      if (!(Self->Dimensions & DMF_WIDTH)) {
-         if (Self->Dimensions & (DMF_SCALED_X_OFFSET|DMF_FIXED_X_OFFSET)) {
+      if (!(dmf::hasAnyWidth(Self->Dimensions))) {
+         if (dmf::hasAnyXOffset(Self->Dimensions)) {
             Self->Width = parent->Width - Self->X - Self->XOffset;
          }
          else {
             Self->Width = 20;
-            Self->Dimensions |= DMF_FIXED_WIDTH;
+            Self->Dimensions |= DMF::FIXED_WIDTH;
          }
       }
 
-      if (!(Self->Dimensions & DMF_HEIGHT)) {
-         if (Self->Dimensions & (DMF_SCALED_Y_OFFSET|DMF_FIXED_Y_OFFSET)) {
+      if (!(dmf::hasAnyHeight(Self->Dimensions))) {
+         if (dmf::hasAnyYOffset(Self->Dimensions)) {
             Self->Height = parent->Height - Self->Y - Self->YOffset;
          }
          else {
             Self->Height = 20;
-            Self->Dimensions |= DMF_FIXED_HEIGHT;
+            Self->Dimensions |= DMF::FIXED_HEIGHT;
          }
       }
 
@@ -1205,7 +1205,7 @@ static ERR SURFACE_Init(extSurface *Self)
       // If the parent is a host, all child surfaces within it must get their own bitmap space.
       // If not, managing layered surfaces between processes becomes more difficult.
 
-      if ((parent->Flags & RNF::HOST) != RNF::NIL) require_store = TRUE;
+      if ((parent->Flags & RNF::HOST) != RNF::NIL) require_store = true;
    }
    else {
       log.trace("This surface object will be display-based.");
@@ -1256,26 +1256,26 @@ static ERR SURFACE_Init(extSurface *Self)
          if (glpFullScreen) scrflags |= SCR::MAXIMISE|SCR::BORDERLESS;
       }
 
-      if (!(Self->Dimensions & DMF_FIXED_WIDTH)) {
+      if (!(dmf::hasWidth(Self->Dimensions))) {
          Self->Width = glpDisplayWidth;
-         Self->Dimensions |= DMF_FIXED_WIDTH;
+         Self->Dimensions |= DMF::FIXED_WIDTH;
       }
 
-      if (!(Self->Dimensions & DMF_FIXED_HEIGHT)) {
+      if (!(dmf::hasHeight(Self->Dimensions))) {
          Self->Height = glpDisplayHeight;
-         Self->Dimensions |= DMF_FIXED_HEIGHT;
+         Self->Dimensions |= DMF::FIXED_HEIGHT;
       }
 
-      if (!(Self->Dimensions & DMF_FIXED_X)) {
+      if (!(dmf::hasX(Self->Dimensions))) {
          if ((Self->Flags & RNF::HOST) != RNF::NIL) Self->X = 0;
          else Self->X = glpDisplayX;
-         Self->Dimensions |= DMF_FIXED_X;
+         Self->Dimensions |= DMF::FIXED_X;
       }
 
-      if (!(Self->Dimensions & DMF_FIXED_Y)) {
+      if (!(dmf::hasY(Self->Dimensions))) {
          if ((Self->Flags & RNF::HOST) != RNF::NIL) Self->Y = 0;
          else Self->Y = glpDisplayY;
-         Self->Dimensions |= DMF_FIXED_Y;
+         Self->Dimensions |= DMF::FIXED_Y;
       }
 
       if ((Self->Width < 10) or (Self->Height < 6)) {
@@ -1574,7 +1574,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
       if ((action->ActionID IS AC_MoveToPoint) and (action->ObjectID IS Self->UID)) {
          return ERR::Okay|ERR::Notified;
       }
-      else if ((action->ActionID IS AC_Move) and (action->SendArgs IS TRUE) and
+      else if ((action->ActionID IS AC_Move) and (action->SendArgs IS true) and
                (action->ObjectID IS Self->UID)) {
          auto msgmove = (struct acMove *)(action + 1);
          msgmove->DeltaX += Args->DeltaX;
@@ -1659,8 +1659,8 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
    }
 
 /* These lines cause problems for the resizing of offset surface objects.
-   if (Self->Dimensions & DMF_X_OFFSET) Self->XOffset += move.DeltaX;
-   if (Self->Dimensions & DMF_Y_OFFSET) Self->YOffset += move.DeltaY;
+   if (dmf::hasAnyXOffset(Self->Dimensions)) Self->XOffset += move.DeltaX;
+   if (dmf::hasAnyYOffset(Self->Dimensions)) Self->YOffset += move.DeltaY;
 */
 
    log.traceBranch("Sending redimension notifications");
@@ -2005,7 +2005,7 @@ needs to change to a fixed setting, then ResetDimensions() will have to be used.
 
 It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension
 settings.  For instance if `X` and `Width` are set, `XOffset` is ignored and the Dimensions value must include
-`DMF_FIXED_X` and `DMF_FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full
+`DMF::FIXED_X` and `DMF::FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full
 list of dimension flags that can be specified.
 
 -INPUT-
@@ -2031,11 +2031,11 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   log.branch("%.0f,%.0f %.0fx%.0f %.0fx%.0f, Flags: $%.8x", Args->X, Args->Y, Args->XOffset, Args->YOffset, Args->Width, Args->Height, Args->Dimensions);
+   log.branch("%.0f,%.0f %.0fx%.0f %.0fx%.0f, Flags: $%.8x", Args->X, Args->Y, Args->XOffset, Args->YOffset, Args->Width, Args->Height, LONG(Args->Dimensions));
 
-   if (!Args->Dimensions) return log.warning(ERR::NullArgs);
+   if (Args->Dimensions IS DMF::NIL) return log.warning(ERR::NullArgs);
 
-   LONG dimensions = Args->Dimensions;
+   auto dimensions = Args->Dimensions;
 
    Self->Dimensions = dimensions;
 
@@ -2048,23 +2048,23 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 
    //gfx::ForbidDrawing();
 
-   if (dimensions & DMF_SCALED_X) SetField(Self, FID_X|TDOUBLE|TSCALE, Args->X);
-   else if (dimensions & DMF_FIXED_X) SetField(Self, FID_X|TDOUBLE, Args->X);
+   if (dmf::hasScaledX(dimensions)) SetField(Self, FID_X|TDOUBLE|TSCALE, Args->X);
+   else if (dmf::hasX(dimensions)) SetField(Self, FID_X|TDOUBLE, Args->X);
 
-   if (dimensions & DMF_SCALED_Y) SetField(Self, FID_Y|TDOUBLE|TSCALE, Args->Y);
-   else if (dimensions & DMF_FIXED_Y) SetField(Self, FID_Y|TDOUBLE, Args->Y);
+   if (dmf::hasScaledY(dimensions)) SetField(Self, FID_Y|TDOUBLE|TSCALE, Args->Y);
+   else if (dmf::hasY(dimensions)) SetField(Self, FID_Y|TDOUBLE, Args->Y);
 
-   if (dimensions & DMF_SCALED_X_OFFSET) SetField(Self, FID_XOffset|TDOUBLE|TSCALE, Args->XOffset);
-   else if (dimensions & DMF_FIXED_X_OFFSET) SetField(Self, FID_XOffset|TDOUBLE, Args->XOffset);
+   if (dmf::hasScaledXOffset(dimensions)) SetField(Self, FID_XOffset|TDOUBLE|TSCALE, Args->XOffset);
+   else if (dmf::hasXOffset(dimensions)) SetField(Self, FID_XOffset|TDOUBLE, Args->XOffset);
 
-   if (dimensions & DMF_SCALED_Y_OFFSET) SetField(Self, FID_YOffset|TDOUBLE|TSCALE, Args->YOffset);
-   else if (dimensions & DMF_FIXED_Y_OFFSET) SetField(Self, FID_YOffset|TDOUBLE, Args->YOffset);
+   if (dmf::hasScaledYOffset(dimensions)) SetField(Self, FID_YOffset|TDOUBLE|TSCALE, Args->YOffset);
+   else if (dmf::hasYOffset(dimensions)) SetField(Self, FID_YOffset|TDOUBLE, Args->YOffset);
 
-   if (dimensions & DMF_SCALED_HEIGHT) SetField(Self, FID_Height|TDOUBLE|TSCALE, Args->Height);
-   else if (dimensions & DMF_FIXED_HEIGHT) SetField(Self, FID_Height|TDOUBLE, Args->Height);
+   if (dmf::hasScaledHeight(dimensions)) SetField(Self, FID_Height|TDOUBLE|TSCALE, Args->Height);
+   else if (dmf::hasHeight(dimensions)) SetField(Self, FID_Height|TDOUBLE, Args->Height);
 
-   if (dimensions & DMF_SCALED_WIDTH) SetField(Self, FID_Width|TDOUBLE|TSCALE, Args->Width);
-   else if (dimensions & DMF_FIXED_WIDTH) SetField(Self, FID_Width|TDOUBLE, Args->Width);
+   if (dmf::hasScaledWidth(dimensions)) SetField(Self, FID_Width|TDOUBLE|TSCALE, Args->Width);
+   else if (dmf::hasWidth(dimensions)) SetField(Self, FID_Width|TDOUBLE, Args->Width);
 
    //gfx::PermitDrawing();
 
@@ -2125,7 +2125,7 @@ static ERR SURFACE_ScheduleRedraw(extSurface *Self)
 
    if (SubscribeTimer(1.0 / FPS, C_FUNCTION(redraw_timer), &Self->RedrawTimer) IS ERR::Okay) {
       Self->RedrawCountdown = FPS * 30.0;
-      Self->RedrawScheduled = TRUE;
+      Self->RedrawScheduled = true;
       return ERR::Okay;
    }
    else return ERR::Failed;

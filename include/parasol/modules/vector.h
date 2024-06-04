@@ -774,7 +774,7 @@ class objVectorImage : public Object {
    objPicture * Picture;    // Refers to a Picture from which the source Bitmap is acquired.
    objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
    VUNIT   Units;           // Declares the coordinate system to use for the X and Y values.
-   LONG    Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or scaled values.
+   DMF     Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VSPREAD SpreadMethod;    // Defines image tiling behaviour, if desired.
    ARF     AspectRatio;     // Flags that affect the aspect ratio of the image within its target vector.
 
@@ -807,7 +807,7 @@ class objVectorImage : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const DMF Value) noexcept {
       this->Dimensions = Value;
       return ERR::Okay;
    }
@@ -845,7 +845,7 @@ class objVectorPattern : public Object {
    VSPREAD SpreadMethod;          // The behaviour to use when the pattern bounds do not match the vector path.
    VUNIT   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
    VUNIT   ContentUnits;          // Private. Not yet implemented.
-   LONG    Dimensions;            // Dimension flags are stored here.
+   DMF     Dimensions;            // Dimension flags are stored here.
 
    // Customised field setting
 
@@ -1101,7 +1101,7 @@ class objFilterEffect : public Object {
    DOUBLE Y;                  // Primitive Y coordinate for the effect.
    DOUBLE Width;              // Primitive width of the effect area.
    DOUBLE Height;             // Primitive height of the effect area.
-   LONG   Dimensions;         // Dimension flags are stored here.
+   DMF    Dimensions;         // Dimension flags are stored here.
    VSF    SourceType;         // Specifies an input source for the effect algorithm, if required.
    VSF    MixType;            // If a secondary mix input is required for the effect, specify it here.
 
@@ -1936,7 +1936,7 @@ class objVectorFilter : public Object {
    LONG   ResY;                  // Height of the intermediate images, measured in pixels.
    VUNIT  Units;                 // Defines the coordinate system for X, Y, Width and Height.
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
-   LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
+   DMF    Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
    VFA    AspectRatio;           // Aspect ratio to use when scaling X/Y values
 
@@ -3918,6 +3918,23 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_BY 0x00597760
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
+
+namespace vec {
+inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
+   struct SubscribeInput args = { Mask, &Callback };
+   return(Action(vec::SubscribeInput::id, (OBJECTPTR)Ob, &args));
+}
+
+inline ERR SubscribeKeyboard(APTR Ob, FUNCTION Callback) {
+   struct SubscribeKeyboard args = { &Callback };
+   return(Action(vec::SubscribeKeyboard::id, (OBJECTPTR)Ob, &args));
+}
+
+inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
+   struct SubscribeFeedback args = { Mask, &Callback };
+   return(Action(vec::SubscribeFeedback::id, (OBJECTPTR)Ob, &args));
+}
+} // namespace
 
 namespace fl {
    using namespace pf;

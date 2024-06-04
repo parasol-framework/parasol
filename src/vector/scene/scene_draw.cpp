@@ -47,13 +47,13 @@ public:
 private:
    constexpr DOUBLE view_width() {
       if (mView->vpViewWidth > 0) return mView->vpViewWidth;
-      else if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) return mView->vpFixedWidth;
+      else if (dmf::hasAnyWidth(mView->vpDimensions)) return mView->vpFixedWidth;
       else return mView->Scene->PageWidth;
    }
 
    constexpr DOUBLE view_height() {
       if (mView->vpViewHeight > 0) return mView->vpViewHeight;
-      else if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) return mView->vpFixedHeight;
+      else if (dmf::hasAnyHeight(mView->vpDimensions)) return mView->vpFixedHeight;
       else return mView->Scene->PageHeight;
    }
 

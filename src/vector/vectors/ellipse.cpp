@@ -17,7 +17,7 @@ class extVectorEllipse : public extVector {
 
    DOUBLE eCX, eCY;
    DOUBLE eRadiusX, eRadiusY;
-   LONG eDimensions;
+   DMF eDimensions;
    LONG eVertices;
 };
 
@@ -28,14 +28,14 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
    DOUBLE cx = Vector->eCX, cy = Vector->eCY;
    DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
 
-   if (Vector->eDimensions & (DMF_SCALED_CENTER_X|DMF_SCALED_CENTER_Y|DMF_SCALED_RADIUS_X|DMF_SCALED_RADIUS_Y)) {
+   if (dmf::has(Vector->eDimensions, DMF::SCALED_CENTER_X|DMF::SCALED_CENTER_Y|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) {
       auto view_width = get_parent_width(Vector);
       auto view_height = get_parent_height(Vector);
 
-      if (Vector->eDimensions & DMF_SCALED_CENTER_X) cx *= view_width;
-      if (Vector->eDimensions & DMF_SCALED_CENTER_Y) cy *= view_height;
-      if (Vector->eDimensions & DMF_SCALED_RADIUS_X) rx *= view_width;
-      if (Vector->eDimensions & DMF_SCALED_RADIUS_Y) ry *= view_height;
+      if (dmf::hasScaledCenterX(Vector->eDimensions)) cx *= view_width;
+      if (dmf::hasScaledCenterY(Vector->eDimensions)) cy *= view_height;
+      if (dmf::hasScaledRadiusX(Vector->eDimensions)) rx *= view_width;
+      if (dmf::hasScaledRadiusY(Vector->eDimensions)) ry *= view_height;
    }
 
 #if 0
@@ -109,8 +109,8 @@ static ERR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *Arg
 
    if ((Args->Flags & MTF::X) != MTF::NIL) Self->eCX = Args->X;
    if ((Args->Flags & MTF::Y) != MTF::NIL) Self->eCY = Args->Y;
-   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->eDimensions = (Self->eDimensions | DMF_SCALED_CENTER_X | DMF_SCALED_CENTER_Y) & ~(DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y) & ~(DMF_SCALED_CENTER_X | DMF_SCALED_CENTER_Y);
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->eDimensions = (Self->eDimensions | DMF::SCALED_CENTER_X | DMF::SCALED_CENTER_Y) & ~(DMF::FIXED_CENTER_X | DMF::FIXED_CENTER_Y);
+   else Self->eDimensions = (Self->eDimensions | DMF::FIXED_CENTER_X | DMF::FIXED_CENTER_Y) & ~(DMF::SCALED_CENTER_X | DMF::SCALED_CENTER_Y);
    reset_path(Self);
    return ERR::Okay;
 }
@@ -143,13 +143,13 @@ The following dimension flags are supported:
 
 *********************************************************************************************************************/
 
-static ERR ELLIPSE_GET_Dimensions(extVectorEllipse *Self, LONG *Value)
+static ERR ELLIPSE_GET_Dimensions(extVectorEllipse *Self, DMF *Value)
 {
    *Value = Self->eDimensions;
    return ERR::Okay;
 }
 
-static ERR ELLIPSE_SET_Dimensions(extVectorEllipse *Self, LONG Value)
+static ERR ELLIPSE_SET_Dimensions(extVectorEllipse *Self, DMF Value)
 {
    Self->eDimensions = Value;
    reset_path(Self);
@@ -206,8 +206,8 @@ static ERR ELLIPSE_SET_CenterX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF::SCALED_CENTER_X) & (~DMF::FIXED_CENTER_X);
+   else Self->eDimensions = (Self->eDimensions | DMF::FIXED_CENTER_X) & (~DMF::SCALED_CENTER_X);
 
    Self->eCX = val;
 
@@ -238,8 +238,8 @@ static ERR ELLIPSE_SET_CenterY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF::SCALED_CENTER_Y) & (~DMF::FIXED_CENTER_Y);
+   else Self->eDimensions = (Self->eDimensions | DMF::FIXED_CENTER_Y) & (~DMF::SCALED_CENTER_Y);
 
    Self->eCY = val;
    reset_path(Self);
@@ -270,8 +270,8 @@ static ERR ELLIPSE_SET_Radius(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y) & (~(DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y));
+   else Self->eDimensions = (Self->eDimensions|DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y) & (~(DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y));
 
    Self->eRadiusX = Self->eRadiusY = val;
    reset_path(Self);
@@ -301,8 +301,8 @@ static ERR ELLIPSE_SET_RadiusX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_X) & (~DMF_SCALED_RADIUS_X);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF::SCALED_RADIUS_X) & (~DMF::FIXED_RADIUS_X);
+   else Self->eDimensions = (Self->eDimensions | DMF::FIXED_RADIUS_X) & (~DMF::SCALED_RADIUS_X);
 
    Self->eRadiusX = val;
    reset_path(Self);
@@ -332,8 +332,8 @@ static ERR ELLIPSE_SET_RadiusY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_SCALED_RADIUS_Y);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF::SCALED_RADIUS_Y) & (~DMF::FIXED_RADIUS_Y);
+   else Self->eDimensions = (Self->eDimensions | DMF::FIXED_RADIUS_Y) & (~DMF::SCALED_RADIUS_Y);
 
    Self->eRadiusY = val;
    reset_path(Self);
@@ -398,14 +398,14 @@ static ERR ELLIPSE_SET_Width(extVectorEllipse *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clEllipseDimensions[] = {
-   { "FixedRadiusX",  DMF_FIXED_RADIUS_X },
-   { "FixedRadiusY",  DMF_FIXED_RADIUS_Y },
-   { "FixedCenterX",  DMF_FIXED_CENTER_X },
-   { "FixedCenterY",  DMF_FIXED_CENTER_Y },
-   { "ScaledRadiusX", DMF_SCALED_RADIUS_X },
-   { "ScaledRadiusY", DMF_SCALED_RADIUS_Y },
-   { "ScaledCenterX", DMF_SCALED_CENTER_X },
-   { "ScaledCenterY", DMF_SCALED_CENTER_Y },
+   { "FixedRadiusX",  DMF::FIXED_RADIUS_X },
+   { "FixedRadiusY",  DMF::FIXED_RADIUS_Y },
+   { "FixedCenterX",  DMF::FIXED_CENTER_X },
+   { "FixedCenterY",  DMF::FIXED_CENTER_Y },
+   { "ScaledRadiusX", DMF::SCALED_RADIUS_X },
+   { "ScaledRadiusY", DMF::SCALED_RADIUS_Y },
+   { "ScaledCenterX", DMF::SCALED_CENTER_X },
+   { "ScaledCenterY", DMF::SCALED_CENTER_Y },
    { NULL, 0 }
 };
 

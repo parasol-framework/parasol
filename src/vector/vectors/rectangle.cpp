@@ -13,46 +13,46 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
 {
    DOUBLE x, y, width, height;
 
-   if (Vector->rDimensions & DMF_FIXED_X) x = Vector->rX;
-   else if (Vector->rDimensions & DMF_SCALED_X) x = Vector->rX * get_parent_width(Vector);
-   else if ((Vector->rDimensions & DMF_WIDTH) and (Vector->rDimensions & DMF_X_OFFSET)) {
-      if (Vector->rDimensions & DMF_FIXED_WIDTH) width = Vector->rWidth;
+   if (dmf::hasX(Vector->rDimensions)) x = Vector->rX;
+   else if (dmf::hasScaledX(Vector->rDimensions)) x = Vector->rX * get_parent_width(Vector);
+   else if ((dmf::hasAnyWidth(Vector->rDimensions)) and (dmf::hasAnyXOffset(Vector->rDimensions))) {
+      if (dmf::hasWidth(Vector->rDimensions)) width = Vector->rWidth;
       else width = get_parent_width(Vector) * Vector->rWidth;
 
-      if (Vector->rDimensions & DMF_FIXED_X_OFFSET) x = get_parent_width(Vector) - width - Vector->rXOffset;
+      if (dmf::hasXOffset(Vector->rDimensions)) x = get_parent_width(Vector) - width - Vector->rXOffset;
       else x = get_parent_width(Vector) - width - (get_parent_width(Vector) * Vector->rXOffset);
    }
    else x = 0;
 
-   if (Vector->rDimensions & DMF_FIXED_Y) y = Vector->rY;
-   else if (Vector->rDimensions & DMF_SCALED_Y) y = Vector->rY * get_parent_height(Vector);
-   else if ((Vector->rDimensions & DMF_WIDTH) and (Vector->rDimensions & DMF_Y_OFFSET)) {
-      if (Vector->rDimensions & DMF_FIXED_WIDTH) height = Vector->rHeight;
+   if (dmf::hasY(Vector->rDimensions)) y = Vector->rY;
+   else if (dmf::hasScaledY(Vector->rDimensions)) y = Vector->rY * get_parent_height(Vector);
+   else if ((dmf::hasAnyWidth(Vector->rDimensions)) and (dmf::hasAnyYOffset(Vector->rDimensions))) {
+      if (dmf::hasWidth(Vector->rDimensions)) height = Vector->rHeight;
       else height = get_parent_height(Vector) * Vector->rHeight;
 
-      if (Vector->rDimensions & DMF_FIXED_Y_OFFSET) y = get_parent_height(Vector) - height - Vector->rYOffset;
+      if (dmf::hasYOffset(Vector->rDimensions)) y = get_parent_height(Vector) - height - Vector->rYOffset;
       else y = get_parent_height(Vector) - height - (get_parent_height(Vector) * Vector->rYOffset);
    }
    else y = 0;
 
-   if (Vector->rDimensions & DMF_FIXED_WIDTH) width = Vector->rWidth;
-   else if (Vector->rDimensions & DMF_SCALED_WIDTH) width = Vector->rWidth * get_parent_width(Vector);
-   else if (Vector->rDimensions & (DMF_FIXED_X_OFFSET|DMF_SCALED_X_OFFSET)) {
-      if (Vector->rDimensions & DMF_SCALED_X) x = Vector->rX * get_parent_width(Vector);
+   if (dmf::hasWidth(Vector->rDimensions)) width = Vector->rWidth;
+   else if (dmf::hasScaledWidth(Vector->rDimensions)) width = Vector->rWidth * get_parent_width(Vector);
+   else if (dmf::hasXOffset(Vector->rDimensions)) {
+      if (dmf::hasScaledX(Vector->rDimensions)) x = Vector->rX * get_parent_width(Vector);
       else x = Vector->rX;
 
-      if (Vector->rDimensions & DMF_FIXED_X_OFFSET) width = get_parent_width(Vector) - Vector->rXOffset - x;
+      if (dmf::hasXOffset(Vector->rDimensions)) width = get_parent_width(Vector) - Vector->rXOffset - x;
       else width = get_parent_width(Vector) - (Vector->rXOffset * get_parent_width(Vector)) - x;
    }
    else width = get_parent_width(Vector);
 
-   if (Vector->rDimensions & DMF_FIXED_HEIGHT) height = Vector->rHeight;
-   else if (Vector->rDimensions & DMF_SCALED_HEIGHT) height = Vector->rHeight * get_parent_height(Vector);
-   else if (Vector->rDimensions & (DMF_FIXED_Y_OFFSET|DMF_SCALED_Y_OFFSET)) {
-      if (Vector->rDimensions & DMF_SCALED_Y) y = Vector->rY * get_parent_height(Vector);
+   if (dmf::hasHeight(Vector->rDimensions)) height = Vector->rHeight;
+   else if (dmf::hasScaledHeight(Vector->rDimensions)) height = Vector->rHeight * get_parent_height(Vector);
+   else if (dmf::hasYOffset(Vector->rDimensions)) {
+      if (dmf::hasScaledY(Vector->rDimensions)) y = Vector->rY * get_parent_height(Vector);
       else y = Vector->rY;
 
-      if (Vector->rDimensions & DMF_FIXED_Y_OFFSET) height = get_parent_height(Vector) - Vector->rYOffset - y;
+      if (dmf::hasYOffset(Vector->rDimensions)) height = get_parent_height(Vector) - Vector->rYOffset - y;
       else height = get_parent_height(Vector) - (Vector->rYOffset * get_parent_height(Vector)) - y;
    }
    else height = get_parent_height(Vector);
@@ -64,11 +64,11 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
 
       DOUBLE scale_x = 1.0, scale_y = 1.0;
 
-      if (Vector->rDimensions & DMF_SCALED_RADIUS_X) {
+      if (dmf::hasScaledRadiusX(Vector->rDimensions)) {
          scale_x = sqrt((width * width) + (height * height)) * INV_SQRT2;
       }
 
-      if (Vector->rDimensions & DMF_SCALED_RADIUS_Y) {
+      if (dmf::hasScaledRadiusY(Vector->rDimensions)) {
          if (scale_x != 1.0) scale_x = scale_x;
          else scale_y = sqrt((width * width) + (height * height)) * INV_SQRT2;
       }
@@ -107,7 +107,7 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
 
       DOUBLE rx = Vector->rRound[0].x, ry = Vector->rRound[0].y;
 
-      if (Vector->rDimensions & DMF_SCALED_RADIUS_X) {
+      if (dmf::hasScaledRadiusX(Vector->rDimensions)) {
          rx *= sqrt((width * width) + (height * height)) * INV_SQRT2;
       }
 
@@ -115,7 +115,7 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
       if (rx > height * 0.5) rx = height * 0.5;
 
       if ((rx != ry) and (ry)) {
-         if (Vector->rDimensions & DMF_SCALED_RADIUS_Y) {
+         if (dmf::hasScaledRadiusY(Vector->rDimensions)) {
             ry *= sqrt((width * width) + (height * height)) * INV_SQRT2;
          }
          if (ry > height * 0.5) ry = height * 0.5;
@@ -189,8 +189,8 @@ static ERR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint 
 
    if ((Args->Flags & MTF::X) != MTF::NIL) Self->rX = Args->X;
    if ((Args->Flags & MTF::Y) != MTF::NIL) Self->rY = Args->Y;
-   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->rDimensions = (Self->rDimensions | DMF_SCALED_X | DMF_SCALED_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_SCALED_X | DMF_SCALED_Y);
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X | DMF::SCALED_Y) & ~(DMF::FIXED_X | DMF::FIXED_Y);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_X | DMF::FIXED_Y) & ~(DMF::SCALED_X | DMF::SCALED_Y);
    reset_path(Self);
    return ERR::Okay;
 }
@@ -245,13 +245,13 @@ The following dimension flags are supported:
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_Dimensions(extVectorRectangle *Self, LONG *Value)
+static ERR RECTANGLE_GET_Dimensions(extVectorRectangle *Self, DMF *Value)
 {
    *Value = Self->rDimensions;
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_Dimensions(extVectorRectangle *Self, LONG Value)
+static ERR RECTANGLE_SET_Dimensions(extVectorRectangle *Self, DMF Value)
 {
    Self->rDimensions = Value;
    reset_path(Self);
@@ -286,8 +286,8 @@ static ERR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR::SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
    Self->rHeight = val;
    reset_path(Self);
@@ -304,7 +304,7 @@ pairs must be provided in sequence, with the first describing the top-left corne
 Each pair of values is equivalent to a #RoundX,#RoundY definition for that corner only.
 
 By default, values will be treated as fixed pixel units.  They can be changed to scaled values by defining the
-`DMF_SCALED_RADIUS_X` and/or `DMF_SCALED_RADIUS_Y` flags in the #Dimensions field.  The scale is calculated
+`DMF::SCALED_RADIUS_X` and/or `DMF::SCALED_RADIUS_Y` flags in the #Dimensions field.  The scale is calculated
 against the rectangle's diagonal.
 
 *********************************************************************************************************************/
@@ -356,8 +356,8 @@ static ERR RECTANGLE_SET_RoundX(extVectorRectangle *Self, Variable *Value)
 
    if ((val < 0) or (val > 1000)) return ERR::OutOfRange;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_X) & (~DMF_SCALED_RADIUS_X);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_RADIUS_X) & (~DMF::FIXED_RADIUS_X);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_RADIUS_X) & (~DMF::SCALED_RADIUS_X);
 
    Self->rRound[0].x = Self->rRound[1].x = Self->rRound[2].x = Self->rRound[3].x = val;
    reset_path(Self);
@@ -393,8 +393,8 @@ static ERR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Variable *Value)
 
    if ((val < 0) or (val > 1000)) return ERR::OutOfRange;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_SCALED_RADIUS_Y);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_RADIUS_Y) & (~DMF::FIXED_RADIUS_Y);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_RADIUS_Y) & (~DMF::SCALED_RADIUS_Y);
 
    Self->rRound[0].y = Self->rRound[1].y = Self->rRound[2].y = Self->rRound[3].y = val;
    reset_path(Self);
@@ -426,8 +426,8 @@ static ERR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
 
    Self->rX = val;
    reset_path(Self);
@@ -446,16 +446,16 @@ static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE value = 0;
 
-   if (Self->rDimensions & DMF_FIXED_X_OFFSET) value = Self->rXOffset;
-   else if (Self->rDimensions & DMF_SCALED_X_OFFSET) {
+   if (dmf::hasXOffset(Self->rDimensions)) value = Self->rXOffset;
+   else if (dmf::hasScaledXOffset(Self->rDimensions)) {
       value = Self->rXOffset * get_parent_width(Self);
    }
-   else if ((Self->rDimensions & DMF_X) and (Self->rDimensions & DMF_WIDTH)) {
+   else if ((dmf::hasAnyX(Self->rDimensions)) and (dmf::hasAnyWidth(Self->rDimensions))) {
       DOUBLE width;
-      if (Self->rDimensions & DMF_FIXED_WIDTH) width = Self->rHeight;
+      if (dmf::hasWidth(Self->rDimensions)) width = Self->rHeight;
       else width = get_parent_width(Self) * Self->rHeight;
 
-      if (Self->rDimensions & DMF_FIXED_X) value = get_parent_width(Self) - (Self->rX + width);
+      if (dmf::hasX(Self->rDimensions)) value = get_parent_width(Self) - (Self->rX + width);
       else value = get_parent_width(Self) - ((Self->rX * get_parent_width(Self)) + width);
    }
    else value = 0;
@@ -476,8 +476,8 @@ static ERR RECTANGLE_SET_XOffset(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) Self->rXOffset = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X_OFFSET) & (~DMF_SCALED_X_OFFSET);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X_OFFSET) & (~DMF::FIXED_X_OFFSET);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_X_OFFSET) & (~DMF::SCALED_X_OFFSET);
 
    reset_path(Self);
    return ERR::Okay;
@@ -508,8 +508,8 @@ static ERR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) Self->rWidth = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
    reset_path(Self);
    return ERR::Okay;
@@ -540,8 +540,8 @@ static ERR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
 
    Self->rY = val;
    reset_path(Self);
@@ -560,16 +560,16 @@ static ERR RECTANGLE_GET_YOffset(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE value = 0;
 
-   if (Self->rDimensions & DMF_FIXED_Y_OFFSET) value = Self->rYOffset;
-   else if (Self->rDimensions & DMF_SCALED_Y_OFFSET) {
+   if (dmf::hasYOffset(Self->rDimensions)) value = Self->rYOffset;
+   else if (dmf::hasScaledYOffset(Self->rDimensions)) {
       value = Self->rYOffset * get_parent_height(Self);
    }
-   else if ((Self->rDimensions & DMF_Y) and (Self->rDimensions & DMF_HEIGHT)) {
+   else if ((dmf::hasAnyY(Self->rDimensions)) and (dmf::hasAnyHeight(Self->rDimensions))) {
       DOUBLE height;
-      if (Self->rDimensions & DMF_FIXED_HEIGHT) height = Self->rHeight;
+      if (dmf::hasHeight(Self->rDimensions)) height = Self->rHeight;
       else height = get_parent_height(Self) * Self->rHeight;
 
-      if (Self->rDimensions & DMF_FIXED_Y) value = get_parent_height(Self) - (Self->rY + height);
+      if (dmf::hasY(Self->rDimensions)) value = get_parent_height(Self) - (Self->rY + height);
       else value = get_parent_height(Self) - ((Self->rY * get_parent_height(Self)) + height);
    }
    else value = 0;
@@ -590,8 +590,8 @@ static ERR RECTANGLE_SET_YOffset(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) Self->rYOffset = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR::SetValueNotNumeric;
 
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF_SCALED_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
-   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_SCALED_Y_OFFSET);
+   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_Y_OFFSET) & (~DMF::FIXED_Y_OFFSET);
+   else Self->rDimensions = (Self->rDimensions | DMF::FIXED_Y_OFFSET) & (~DMF::SCALED_Y_OFFSET);
 
    reset_path(Self);
    return ERR::Okay;
@@ -600,18 +600,18 @@ static ERR RECTANGLE_SET_YOffset(extVectorRectangle *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clRectDimensions[] = {
-   { "FixedHeight",   DMF_FIXED_HEIGHT },
-   { "FixedWidth",    DMF_FIXED_WIDTH },
-   { "FixedX",        DMF_FIXED_X },
-   { "FixedY",        DMF_FIXED_Y },
-   { "FixedXOffset",  DMF_FIXED_X_OFFSET },
-   { "FixedYOffset",  DMF_FIXED_Y_OFFSET },
-   { "ScaledHeight",  DMF_SCALED_HEIGHT },
-   { "ScaledWidth",   DMF_SCALED_WIDTH },
-   { "ScaledX",       DMF_SCALED_X },
-   { "ScaledY",       DMF_SCALED_Y },
-   { "ScaledXOffset", DMF_SCALED_X_OFFSET },
-   { "ScaledYOffset", DMF_SCALED_Y_OFFSET },
+   { "FixedHeight",   DMF::FIXED_HEIGHT },
+   { "FixedWidth",    DMF::FIXED_WIDTH },
+   { "FixedX",        DMF::FIXED_X },
+   { "FixedY",        DMF::FIXED_Y },
+   { "FixedXOffset",  DMF::FIXED_X_OFFSET },
+   { "FixedYOffset",  DMF::FIXED_Y_OFFSET },
+   { "ScaledHeight",  DMF::SCALED_HEIGHT },
+   { "ScaledWidth",   DMF::SCALED_WIDTH },
+   { "ScaledX",       DMF::SCALED_X },
+   { "ScaledY",       DMF::SCALED_Y },
+   { "ScaledXOffset", DMF::SCALED_X_OFFSET },
+   { "ScaledYOffset", DMF::SCALED_Y_OFFSET },
    { NULL, 0 }
 };
 
